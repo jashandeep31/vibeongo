@@ -1,5 +1,5 @@
 import { EC2Client, RunInstancesCommand } from "@aws-sdk/client-ec2";
-import { env } from "../lib/env";
+import { env } from "../lib/env.js";
 
 const createEc2Client = (region: string) => {
   return new EC2Client({

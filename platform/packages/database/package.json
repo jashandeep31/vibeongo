@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "@repo/db",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -7,23 +7,24 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
-    "build": "npx tsc",
-    "start": "node dist/index.js"
+    "build": "tsx node_modules/drizzle-kit/bin.cjs generate && npx tsc"
+  },
+  "exports": {
+    ".": "./dist/index.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@repo/db": "workspace:*",
-    "@aws-sdk/client-ec2": "^3.988.0",
-    "@types/cors": "^2.8.19",
-    "@types/express": "^5.0.6",
-    "cors": "^2.8.6",
     "dotenv": "^17.2.4",
-    "express": "^5.2.1",
-    "zod": "^4.3.6"
+    "drizzle-orm": "^0.45.1",
+    "pg": "^8.18.0"
   },
   "devDependencies": {
-    "tsc-watch": "^7.2.0"
+    "@types/node": "^22.15.3",
+    "@types/pg": "^8.16.0",
+    "drizzle-kit": "^0.31.9",
+    "tsc-watch": "^7.2.0",
+    "tsx": "^4.21.0"
   }
 }
