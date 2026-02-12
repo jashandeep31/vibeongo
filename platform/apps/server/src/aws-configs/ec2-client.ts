@@ -1,4 +1,8 @@
-import { EC2Client, RunInstancesCommand } from "@aws-sdk/client-ec2";
+import {
+  DescribeImagesCommand,
+  EC2Client,
+  RunInstancesCommand,
+} from "@aws-sdk/client-ec2";
 import { env } from "../lib/env.js";
 
 const createEc2Client = (region: string) => {
@@ -9,6 +13,26 @@ const createEc2Client = (region: string) => {
       secretAccessKey: env.AWS_EC2_ACCESS_KEY_SECRET,
     },
   });
+};
+
+// TODO: cache the response
+export const getAWSLinuxAmis = async () => {
+  console.log(`amis is running `);
+  const command = new DescribeImagesCommand({
+    Owners: ["amazon"],
+    // Filters: [{ Name: "platform", Values: ["windows"] }],
+    // Filters: [{ Name: "platform", Values: ["amazon"] }],
+    //
+    Filters: [
+      { Name: "name", Values: ["amzn2-ami-hvm-*"] }, // Amazon Linux 2
+      { Name: "state", Values: ["available"] },
+      { Name: "architecture", Values: ["x86_64"] },
+    ],
+  });
+  const client = createEc2Client("us-east-1");
+  const res = await client.send(command);
+
+  console.log(res);
 };
 
 //TODO: create the upgraded if needed

@@ -7,7 +7,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
-    "build": "tsx node_modules/drizzle-kit/bin.cjs generate && npx tsc"
+    "build": "tsx node_modules/drizzle-kit/bin.cjs generate && npx tsc",
+    "drizzle:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
+    "drizzle:push": "tsx node_modules/drizzle-kit/bin.cjs push",
+    "drizzle:studio": "tsx node_modules/drizzle-kit/bin.cjs studio"
   },
   "exports": {
     ".": "./dist/index.js"
