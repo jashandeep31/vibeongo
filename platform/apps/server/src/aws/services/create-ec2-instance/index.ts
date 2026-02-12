@@ -1,11 +1,20 @@
 import { RunInstancesCommand } from "@aws-sdk/client-ec2";
 import { createAndGetEc2Client } from "../../ec2-client.js";
 import { env } from "../../../lib/env.js";
+import { awsSupportedRegions } from "../../configs/aws-supported-regions-configs.js";
+import { ec2RegionImageIds } from "../../configs/ec2-region-image-config.js";
 
-//TODO: create the upgraded if needed
-export const createEc2Instance = async () => {
+export const createEc2Instance = async ({
+  region,
+}: {
+  region: (typeof awsSupportedRegions)[number];
+}) => {
+  const imageConfig = ec2RegionImageIds.find((item) => item.region === region);
+  if (!imageConfig)
+    throw new Error("Regions isn't suppported yet for ec2 deployment");
+
   const command = new RunInstancesCommand({
-    ImageId: "ami-0c1fe732b5494dc14", //the version of os,
+    ImageId: imageConfig.awsLinuxImageId, //the version of os,
     InstanceType: "t3.micro",
     MinCount: 1,
     MaxCount: 1,
@@ -44,7 +53,7 @@ echo "SSH key added successfully"
 `,
     ).toString("base64"),
   });
-  const client = createAndGetEc2Client("us-east-1");
+  const client = createAndGetEc2Client(region);
 
   const res = await client.send(command);
   console.log(res);
