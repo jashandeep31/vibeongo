@@ -1,6 +1,8 @@
 import { env } from "./lib/env";
+import test from "./test";
 
 console.log(`server is running at port ${env.PORT}`);
+test();
 
 // TODO: tasks i wanna do
 // 1. create a ec2 by the route hitting of this project

@@ -8,6 +8,9 @@ const envSchema = z.object({
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),
+  AWS_EC2_ACCESS_KEY_ID: z.string(),
+  AWS_EC2_ACCESS_KEY_SECRET: z.string(),
+  SSH_KEY: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
