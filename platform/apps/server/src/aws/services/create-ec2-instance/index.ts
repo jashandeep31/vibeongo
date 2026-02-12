@@ -4,6 +4,9 @@ import { env } from "../../../lib/env.js";
 import { awsSupportedRegions } from "../../configs/aws-supported-regions-configs.js";
 import { ec2RegionImageIds } from "../../configs/ec2-region-image-config.js";
 
+/**
+ * Create a ec2 instance depending upon the user requirnments
+ */
 export const createEc2Instance = async ({
   region,
 }: {
@@ -55,6 +58,5 @@ echo "SSH key added successfully"
   });
   const client = createAndGetEc2Client(region);
 
-  const res = await client.send(command);
-  console.log(res);
+  return await client.send(command);
 };

@@ -11,6 +11,7 @@ const envSchema = z.object({
   AWS_EC2_ACCESS_KEY_ID: z.string(),
   AWS_EC2_ACCESS_KEY_SECRET: z.string(),
   SSH_KEY: z.string(),
+  DATABASE_URL: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
