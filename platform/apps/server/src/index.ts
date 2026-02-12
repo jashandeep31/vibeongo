@@ -1,12 +1,9 @@
 import { env } from "./lib/env.js";
 import test from "./test.js";
 
-import { db, usersTable } from "@repo/db";
-
 console.log(`server is running at port ${env.PORT}`);
 test();
 
-db.select().from(usersTable);
 // TODO: tasks i wanna do
 // 1. create a ec2 by the route hitting of this project
 // 2. make ist small vms per the requirements of the user
