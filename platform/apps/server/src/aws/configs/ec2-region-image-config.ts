@@ -1,7 +1,7 @@
 import { awsSupportedRegions } from "./aws-supported-regions-configs.js";
 
 //TODO:: make the ids automated using aws fetching current or same version for all the regions
-export const ec2DeploymentConfigs: {
+export const ec2RegionImageIds: {
   region: (typeof awsSupportedRegions)[number];
   awsLinuxImageId: string;
 }[] = [
@@ -9,7 +9,7 @@ export const ec2DeploymentConfigs: {
     region: "us-east-1",
     awsLinuxImageId: "ami-0c1fe732b5494dc14",
   },
-];
+] as const;
 //
 // export const getAWSLinuxAmis = async () => {
 //   console.log(`amis is running `);
