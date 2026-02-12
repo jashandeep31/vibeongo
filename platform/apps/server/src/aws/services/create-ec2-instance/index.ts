@@ -1,5 +1,5 @@
 import { RunInstancesCommand } from "@aws-sdk/client-ec2";
-import { createAndGetEc2Client } from "../../ec2-client.js";
+import { getEc2Client } from "../../ec2-client.js";
 import { env } from "../../../lib/env.js";
 import { awsSupportedRegions } from "../../configs/aws-supported-regions-configs.js";
 import { ec2RegionImageIds } from "../../configs/ec2-region-image-config.js";
@@ -56,7 +56,7 @@ echo "SSH key added successfully"
 `,
     ).toString("base64"),
   });
-  const client = createAndGetEc2Client(region);
+  const client = getEc2Client(region);
 
   return await client.send(command);
 };
