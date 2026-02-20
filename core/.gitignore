@@ -1,14 +1,37 @@
-
-# Dependencies
-node_modules
+# Node dependencies
+node_modules/
 .pnp
 .pnp.js
 
-# Local env files
+# Environment files
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
+.env.*
+!.env.example
 
-# Testing
+# Temp and build artifacts
+tmp/
+temp/
+*.tmp
+*.temp
+dist/
+build/
+
+# Go build/test outputs
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+cover.out
+
+# Logs
+*.log
+build-errors.log
+
+# Editor and OS files
+.DS_Store
+.idea/
+.vscode/
