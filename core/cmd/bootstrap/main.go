@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
@@ -8,9 +9,18 @@ import (
 
 func main() {
 	fmt.Println("Bootstrap script is running")
-	currentPath, err := os.Getwd()
+
+	content, err := os.ReadFile("test.json")
 	if err != nil {
-		log.Logger("Failed to get the currentPath")
+		log.Fatalf("Failed to create the file test")
 	}
-	fmt.Println(currentPath)
+
+	var data map[string]any
+
+	err = json.Unmarshal(content, &data)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	fmt.Println(data)
 }
