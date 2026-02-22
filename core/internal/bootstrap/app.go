@@ -1,17 +1,16 @@
 package bootstrap
 
 import (
-	"fmt"
 	"log"
 )
 
 func Run() {
 	// gettting the config json file
-	file, err := LoadConfig("test.json")
+	file, err := LoadConfig("config.json")
 	if err != nil {
 		log.Fatalf("application startup failed: %v", err)
 	}
-	fmt.Println(string(file))
 
+	ValidateConfig(file)
 	// TODO: validate the json file
 }
