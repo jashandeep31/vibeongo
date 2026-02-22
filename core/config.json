@@ -1,109 +1,75 @@
 {
   "os": "ubuntu",
-
   "system_user": {
     "username": "appuser",
     "password": "StrongLinuxPassword123"
   },
-
   "packages": [
     {
       "name": "docker",
-      "enabled": true
-      "config" : {
-
-    "images": [
-      {
-        "name": "postgres",
-        "tag": "15"
-      }
-    ],
-    "containers": [
-      {
-        "name": "postgres-db",
-        "image": "postgres:15",
-        "restart": "always",
-        "ports": [
+      "enabled": true,
+      "config": {
+        "images": [
           {
-            "host": 5432,
-            "container": 5432
+            "name": "postgres",
+            "tag": "15"
           }
         ],
-        "env": {
-          "POSTGRES_USER": "dbadmin",
-          "POSTGRES_PASSWORD": "StrongDBPassword456",
-          "POSTGRES_DB": "appdb"
-        },
-        "volumes": [
+        "containers": [
           {
-            "host": "/var/lib/postgres-data",
-            "container": "/var/lib/postgresql/data"
+            "name": "postgres-db",
+            "image": "postgres:15",
+            "restart": "always",
+            "ports": [
+              {
+                "host": 5432,
+                "container": 5432
+              }
+            ],
+            "env": {
+              "POSTGRES_USER": "dbadmin",
+              "POSTGRES_PASSWORD": "StrongDBPassword456",
+              "POSTGRES_DB": "appdb"
+            },
+            "volumes": [
+              {
+                "host": "/var/lib/postgres-data",
+                "container": "/var/lib/postgresql/data"
+              }
+            ]
           }
         ]
-      }
-    ]
       }
     },
     {
       "name": "nodejs",
       "enabled": true,
-      "version": "20"
+      "config": {
+        "version": "20"
+      }
     },
     {
       "name": "git",
-      "enabled": true
-    }
-  ],
-
-  "git": {
-    "enabled": true,
-    "repo_url": "https://github.com/yourusername/your-private-repo.git",
-    "branch": "main",
-    "clone_path": "/home/appuser/app",
-    "auth": {
-      "type": "https",
-      "username": "github-username",
-      "password": "github-personal-access-token"
-    }
-  },
-
-  "docker": {
-    "enabled": true,
-    "images": [
-      {
-        "name": "postgres",
-        "tag": "15"
+      "enabled": true,
+      "config": {
+        "repo_url": "https://github.com/yourusername/your-private-repo.git",
+        "branch": "main",
+        "clone_path": "/home/appuser/app",
+        "auth": {
+          "type": "https",
+          "username": "github-username",
+          "password": "github-personal-access-token"
+        }
       }
-    ],
-    "containers": [
-      {
-        "name": "postgres-db",
-        "image": "postgres:15",
-        "restart": "always",
-        "ports": [
-          {
-            "host": 5432,
-            "container": 5432
-          }
-        ],
-        "env": {
-          "POSTGRES_USER": "dbadmin",
-          "POSTGRES_PASSWORD": "StrongDBPassword456",
-          "POSTGRES_DB": "appdb"
-        },
-        "volumes": [
-          {
-            "host": "/var/lib/postgres-data",
-            "container": "/var/lib/postgresql/data"
-          }
-        ]
+    },
+    {
+      "name": "env",
+      "enabled": true,
+      "config": {
+        "path": "/home/appuser/app/.env",
+        "secret_key": "SuperSecretAppKey987"
       }
-    ]
-  },
-
-  "env": {
-    "enabled": true,
-    "path": "/home/appuser/app/.env",
-    "secret_key": "SuperSecretAppKey987"
-  }
+    }
+  ]
 }
+
