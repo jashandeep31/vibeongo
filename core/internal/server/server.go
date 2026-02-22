@@ -1,8 +1,8 @@
 package server
 
 import (
-	"github.com/jashandeep31/vibeongo/core/cmd/internal/config"
-	"github.com/jashandeep31/vibeongo/core/cmd/internal/routes"
+	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/routes"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 )
