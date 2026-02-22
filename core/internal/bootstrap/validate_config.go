@@ -22,11 +22,17 @@ type Config struct {
 	Packages   []Package  `json:"packages" validate:"required,dive"`
 }
 
-func ValidateConfig(file []byte) {
+func ValidateConfig(file []byte) (Config, error) {
 	var cfg Config
-	if err := json.Unmarshal([]byte(file), &cfg); err != nil {
-		fmt.Println("Json is pared")
+	if err := json.Unmarshal(file, &cfg); err != nil {
+		return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 	}
 
-	fmt.Println(cfg)
+	// fmt.Println("Config successfully parsed:")
+	// fmt.Println(cfg)
+
+	for _, pkg := range cfg.Packages {
+		fmt.Println(pkg.Name)
+	}
+	return cfg, nil
 }
