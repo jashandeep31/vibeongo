@@ -3,10 +3,12 @@ package bootstrap
 import (
 	"fmt"
 	"log"
+
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 )
 
 func Run() {
-	// gettting the config json file
+	// getting the config json file
 	file, err := LoadConfig("config.json")
 	if err != nil {
 		log.Fatalf("application startup failed: %v", err)
@@ -19,6 +21,12 @@ func Run() {
 	}
 
 	for _, pkg := range validatedConfig.Packages {
-		fmt.Printf("working for the %s package\n", pkg.Name)
+		switch pkg.Name {
+		case "docker":
+			// TODO: working with docker function
+			docker.Installer(pkg)
+		default:
+			fmt.Printf("%s is missing\n", pkg.Name)
+		}
 	}
 }
