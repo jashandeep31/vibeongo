@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 )
 
 func Run() {
@@ -19,6 +20,11 @@ func Run() {
 	if err != nil {
 		log.Fatalf("config is here")
 	}
+
+	// creating the user
+
+	output, err := utils.RunCommand("ls", "-a")
+	fmt.Println(output)
 
 	for _, pkg := range validatedConfig.Packages {
 		switch pkg.Name {

@@ -1,8 +1,9 @@
 package config
 
 type SystemUser struct {
-	Username string `json:"username" validate:"required"`
-	Password string `json:"password" validate:"required"`
+	Username   string `json:"username" validate:"required"`
+	Password   string `json:"password" validate:"required"`
+	IsSudoUser bool   `json:"is_sudo_user"`
 }
 
 type Package struct {
