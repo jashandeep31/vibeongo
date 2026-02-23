@@ -1,6 +1,6 @@
 #!/bin/bash
 
-VM_NAME="server1" 
+VM_NAME="server" 
 USERNAME="ubuntu"
 
 echo "Launching the server "
@@ -15,7 +15,6 @@ multipass exec $VM_NAME -- sudo usermod -aG sudo $USERNAME
 echo "Transferring files..."
 multipass transfer ./main $VM_NAME:/home/$USERNAME/
 multipass transfer ./config.json $VM_NAME:/home/$USERNAME/
-
 echo "Fixing permissions..."
 multipass exec $VM_NAME -- sudo chown $USERNAME:$USERNAME /home/$USERNAME/main
 multipass exec $VM_NAME -- sudo chmod +x /home/$USERNAME/main
