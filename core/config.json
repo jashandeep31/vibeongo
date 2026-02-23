@@ -1,8 +1,9 @@
 {
   "os": "ubuntu",
   "system_user": {
-    "username": "appuser",
-    "password": "StrongLinuxPassword123"
+    "username": "jashan",
+    "password": "5",
+    "is_sudo_user": true
   },
   "packages": [
     {
@@ -72,4 +73,3 @@
     }
   ]
 }
-
