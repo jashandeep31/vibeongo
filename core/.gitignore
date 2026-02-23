@@ -9,6 +9,8 @@ node_modules/
 !.env.example
 
 main
+api-server
+bootstrap
 # Temp and build artifacts
 tmp/
 temp/
