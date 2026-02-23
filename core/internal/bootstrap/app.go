@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/user"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 )
 
@@ -22,6 +23,9 @@ func Run() {
 	}
 
 	// creating the user
+	if err := user.CreateUser(validatedConfig.SystemUser); err != nil {
+		log.Fatalf("Failed to create user with error: %v", err)
+	}
 
 	output, err := utils.RunCommand("ls", "-a")
 	fmt.Println(output)
