@@ -8,7 +8,7 @@ api:
 
 
 bootstrap: 
-	go build -o bootstrap ./cmd/bootstrap
+	go build -o bootstrap-script ./cmd/bootstrap
 
 deploy:
-	scp ./bootstrap  ironman@192.168.1.11:/home/ironman
+	scp ./bootstrap-script  ironman@192.168.1.11:/home/ironman
