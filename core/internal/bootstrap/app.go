@@ -6,10 +6,10 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/user"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 )
 
 func Run() {
+	const runScript = false
 	// getting the config json file
 	file, err := LoadConfig("config.json")
 	if err != nil {
@@ -19,24 +19,33 @@ func Run() {
 	// validated validatedConfig
 	validatedConfig, err := ValidateConfig(file)
 	if err != nil {
-		log.Fatalf("config is here")
+		log.Fatalf("config has error %v", err)
 	}
 
-	// creating the user
-	if err := user.CreateUser(validatedConfig.SystemUser); err != nil {
-		log.Fatalf("Failed to create user with error: %v", err)
-	}
-
-	output, err := utils.RunCommand("ls", "-a")
-	fmt.Println(output)
-
-	for _, pkg := range validatedConfig.Packages {
-		switch pkg.Name {
-		case "docker":
-			// TODO: working with docker function
-			docker.Installer(pkg)
-		default:
-			fmt.Printf("%s is missing\n", pkg.Name)
+	if runScript == true {
+		// creating the user
+		if err := user.CreateUser(validatedConfig.SystemUser); err != nil {
+			log.Fatalf("Failed to create user with error: %v", err)
 		}
+
+		for _, pkg := range validatedConfig.Packages {
+			switch pkg.Name {
+			case "docker":
+				// TODO: working with docker function
+				docker.Installer(pkg, validatedConfig.SystemUser)
+			default:
+				fmt.Printf("%s is missing\n", pkg.Name)
+			}
+		}
+	} else {
+		fmt.Println("Only testing script is working ")
+		for _, pkg := range validatedConfig.Packages {
+			switch pkg.Name {
+			case "docker":
+				// TODO: working with docker function
+				docker.ScriptValidator(pkg)
+			}
+		}
+		// docker.ScriptValidator()
 	}
 }
