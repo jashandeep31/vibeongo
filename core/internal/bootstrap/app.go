@@ -40,11 +40,17 @@ func Run() {
 			}
 		}
 	} else {
+
+		//
+		//
+		//  Testing purposes things only
+		//
+		//
+
 		fmt.Println("Only testing script is working ")
 		for _, pkg := range validatedConfig.Packages {
 			switch pkg.Name {
 			case "docker":
-				// TODO: working with docker function
 				if err := docker.ScriptValidator(pkg); err != nil {
 					log.Fatalf("docker validation failed: %v", err)
 				}
