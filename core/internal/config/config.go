@@ -1,5 +1,7 @@
 package config
 
+import "encoding/json"
+
 type SystemUser struct {
 	Username   string `json:"username" validate:"required"`
 	Password   string `json:"password" validate:"required"`
@@ -7,9 +9,8 @@ type SystemUser struct {
 }
 
 type Package struct {
-	Name    string `json:"name" validate:"required"`
-	Enabled bool   `json:"enabled" validate:"required"`
-	Config  any    `json:"config"`
+	Name   string          `json:"name" validate:"required"`
+	Config json.RawMessage `json:"config"`
 }
 
 type Config struct {
