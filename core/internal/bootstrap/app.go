@@ -46,8 +46,9 @@ func Run() {
 		//  Testing purposes things only
 		//
 		//
+		//
 
-		fmt.Println("Only testing script is working ")
+		fmt.Println("Only testing script is working")
 		for _, pkg := range validatedConfig.Packages {
 			switch pkg.Name {
 			case "docker":
