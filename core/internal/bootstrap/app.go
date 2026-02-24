@@ -32,7 +32,9 @@ func Run() {
 			switch pkg.Name {
 			case "docker":
 				// TODO: working with docker function
-				docker.Installer(pkg, validatedConfig.SystemUser)
+				if err := docker.Installer(pkg, validatedConfig.SystemUser); err != nil {
+					log.Fatalf("docker install flow failed: %v", err)
+				}
 			default:
 				fmt.Printf("%s is missing\n", pkg.Name)
 			}
@@ -43,7 +45,9 @@ func Run() {
 			switch pkg.Name {
 			case "docker":
 				// TODO: working with docker function
-				docker.ScriptValidator(pkg)
+				if err := docker.ScriptValidator(pkg); err != nil {
+					log.Fatalf("docker validation failed: %v", err)
+				}
 			}
 		}
 		// docker.ScriptValidator()
