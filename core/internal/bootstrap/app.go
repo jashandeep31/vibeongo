@@ -2,7 +2,10 @@ package bootstrap
 
 import (
 	"fmt"
+	"io"
 	"log"
+	"net/http"
+	"os"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/user"
@@ -27,7 +30,6 @@ func Run() {
 		if err := user.CreateUser(validatedConfig.SystemUser); err != nil {
 			log.Fatalf("Failed to create user with error: %v", err)
 		}
-
 		for _, pkg := range validatedConfig.Packages {
 			switch pkg.Name {
 			case "docker":
@@ -47,6 +49,18 @@ func Run() {
 		//
 		//
 		//
+
+		response, err := http.Get("http://pokeapi.co/api/v2/pokedex/kanto/")
+		if err != nil {
+			fmt.Print(err.Error())
+			os.Exit(1)
+		}
+
+		responseData, err := io.ReadAll(response.Body)
+		if err != nil {
+			log.Fatal(err)
+		}
+		fmt.Println(string(responseData))
 
 		fmt.Println("Only testing script is working")
 		for _, pkg := range validatedConfig.Packages {
