@@ -1,12 +1,31 @@
-import { env } from "./lib/env.js";
-import test from "./test.js";
-import express from "express";
+import express, { Request, Response } from "express";
 import cors from "cors";
+import test from "./test.js";
+import { env } from "./lib/env.js";
+import { testRoutes } from "./routes/test-routes.js";
 
 // app config
 const app = express();
 app.use(express.json());
 app.use(cors());
+
+const START_TIME = Date.now();
+app.get("/", (req: Request, res: Response) => {
+  const diffMs = Date.now() - START_TIME;
+
+  const totalSeconds = Math.floor(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  res.status(200).json({
+    message: "server is running",
+    uptime: `${hours}h ${minutes}m ${seconds}s`,
+  });
+});
+
+// routes of application
+app.use("/", testRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
