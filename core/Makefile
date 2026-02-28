@@ -11,4 +11,4 @@ bootstrap:
 	go build -o bootstrap-script ./cmd/bootstrap
 
 deploy:
-	scp ./bootstrap-script  ironman@192.168.1.69:/home/ironman
+	scp ./bootstrap-script ./config.json ironman@192.168.1.69:/home/ironman

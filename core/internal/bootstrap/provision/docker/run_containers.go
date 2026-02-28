@@ -31,7 +31,7 @@ type aPIResponse struct {
 }
 
 // function to run the containers
-func RunContainers(pkg config.Package) error {
+func ComposeContainers(pkg config.Package) error {
 	var cfg DockerContainersConfig
 	if err := json.Unmarshal(pkg.Config, &cfg); err != nil {
 		return err
@@ -42,7 +42,7 @@ func RunContainers(pkg config.Package) error {
 		fmt.Println(container.ComposeFileURL)
 
 		// Getting the response from api
-		resp, err := http.Get("http://localhost:8000/postgres-docker-compose-file")
+		resp, err := http.Get(container.ComposeFileURL)
 		if err != nil {
 			return err
 		}
