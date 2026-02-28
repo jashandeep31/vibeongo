@@ -13,7 +13,7 @@
           {
             "name": "postgres",
             "compose_file_url": "https://test",
-            "path": "./postgres"
+            "filename": "postgres-docker-compose.yaml"
           }
         ]
       }
