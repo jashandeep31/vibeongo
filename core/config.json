@@ -12,7 +12,7 @@
         "containers": [
           {
             "name": "postgres",
-            "compose_file_url": "https://test",
+            "compose_file_url": "http://192.168.1.15:8000/postgres-docker-compose-file",
             "filename": "postgres-docker-compose.yaml"
           }
         ]

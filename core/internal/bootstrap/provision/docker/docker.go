@@ -10,11 +10,10 @@ func Installer(pkg config.Package, systemUser config.SystemUser) error {
 		return err
 	}
 
-	// validating the script
-	if err := RunContainers(pkg); err != nil {
+	// Composing up the docker containers
+	if err := ComposeContainers(pkg); err != nil {
 		return err
 	}
 
-	// run the config docker container
 	return nil
 }
