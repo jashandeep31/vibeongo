@@ -31,3 +31,13 @@ export const accounts = pgTable("accounts", {
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
 });
+
+export const usersApiKeys = pgTable("users_api_keys", {
+  id: uuid().unique().defaultRandom(),
+  user_id: uuid().references(() => users.id),
+
+  expires_at: timestamp().defaultNow(),
+
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
