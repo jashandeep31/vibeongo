@@ -64,8 +64,12 @@ func ScriptValidator(pkg config.Package) error {
 			return err
 		}
 
+		// !!!! Why not folders  why? we are using direct files
+		// Sometimes the program is failing in the dev mode to create the files inside the folders
 		fileBytes := []byte(apiResp.Data.File)
 		os.WriteFile(container.Filename, fileBytes, 0644)
+
+		// utils.RunCommand("docker" , "compose" , "-f", container.Filename, "up", "-d")
 
 	}
 	return nil
