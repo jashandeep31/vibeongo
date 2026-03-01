@@ -17,6 +17,12 @@
           }
         ]
       }
+    },
+    {
+      "name": "opencode",
+      "config": {
+        "command": "curl -fsSL https://opencode.ai/install | bash"
+      }
     }
   ]
 }
