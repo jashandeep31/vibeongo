@@ -1,13 +1,13 @@
 import { Request, Router, Response } from "express";
 import {
+  createEc2Server,
   deleteEc2ServerById,
   getAllRunningEc2s,
 } from "../controlers/test-controllers.js";
-import { createEc2Instance } from "../aws/services/create-ec2-instance/index.js";
 
 const routes: Router = Router();
 
-routes.route("/servers").get(getAllRunningEc2s).post(createEc2Instance);
+routes.route("/servers").get(getAllRunningEc2s).post(createEc2Server);
 routes.route("/servers/:id").delete(deleteEc2ServerById);
 
 // Dev route for the go bootstrap script

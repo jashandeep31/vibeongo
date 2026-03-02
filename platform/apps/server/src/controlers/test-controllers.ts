@@ -3,6 +3,7 @@ import { catchAsync } from "../lib/catch-async.js";
 import { db, ec2 } from "@repo/db";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
 import { createEc2Instance } from "../aws/services/create-ec2-instance/index.js";
+import { eq } from "drizzle-orm";
 
 export const getAllRunningEc2s = catchAsync(
   async (req: Request, res: Response) => {
@@ -19,6 +20,8 @@ export const deleteEc2ServerById = catchAsync(
     if (!id) throw new Error("id is requried");
 
     const response = await terminateEc2Instance([id]);
+    await db.delete(ec2).where(eq(ec2.ec2_id, id));
+
     res.status(200).json({
       data: response,
     });
@@ -28,7 +31,7 @@ export const deleteEc2ServerById = catchAsync(
 export const createEc2Server = catchAsync(
   async (req: Request, res: Response) => {
     const ec2res = await createEc2Instance({ region: "us-east-1" });
-    ec2res.Instances?.map(async (instance) => {
+    for (const instance of ec2res.Instances ?? []) {
       if (instance.InstanceId) {
         await db.insert(ec2).values({
           ec2_id: instance.InstanceId,
@@ -37,7 +40,8 @@ export const createEc2Server = catchAsync(
           status: "running",
         });
       }
-    });
+    }
+
     res.status(201).json({
       data: "server is started",
     });
