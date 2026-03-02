@@ -1,21 +1,12 @@
-import { createEc2Instance } from "./aws/services/create-ec2-instance/index.js";
-import { db, ec2 } from "@repo/db";
-import { terminateEc2Instance } from "./aws/services/terminate-ec2-instance.js";
-
 export default async function test() {
-  const ec2s = await db.select().from(ec2);
-
-  // if (1 === 1) return;
-  //TODO: remove this if wanna test something
-
-  if (ec2s.filter((ec) => ec.status === "running").length >= 1) {
-    console.log(`already running ec2 look into billing i can't spin more `);
-    const ids: string[] = ec2s.map((instance) => instance.ec2_id);
-    const res = await terminateEc2Instance(ids);
-    console.log(res);
-    return;
-  }
-
+  // await getAWSLinuxAmis();
+  // if (ec2s.filter((ec) => ec.status === "running").length >= 1) {
+  //   console.log(`already running ec2 look into billing i can't spin more `);
+  //   const ids: string[] = ec2s.map((instance) => instance.ec2_id);
+  //   const res = await terminateEc2Instance(ids);
+  //   console.log(res);
+  //   return;
+  // }
   // const ec2res = await createEc2Instance({
   //   region: "us-east-1",
   // });
