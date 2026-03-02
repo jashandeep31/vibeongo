@@ -13,7 +13,7 @@ routes.route("/servers/:id").delete(deleteEc2ServerById);
 // Dev route for the go bootstrap script
 routes
   .route("/postgres-docker-compose-file")
-  .get((req: Request, res: Response) => {
+  .get((_req: Request, res: Response) => {
     const fileData = `services:
   db:
     image: postgres:18
