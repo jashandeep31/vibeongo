@@ -2,7 +2,6 @@
 hello:
 	echo "Hello MakeFile is working brotheeerrr"
 
-
 api: 
 	go build -o api ./cmd/api
 
@@ -16,5 +15,7 @@ watch-api:
 watch-bootstrap:
 	air -c .air.bootstrap.toml
 
+# the default ip is the local ip for testing purposes 
+IP ?= 192.168.1.69
 deploy:
-	scp ./bootstrap-script ./config.json ironman@192.168.1.69:/home/ironman
+	scp ./bootstrap-script ./config.json ubuntu@$(IP):/home/ubuntu

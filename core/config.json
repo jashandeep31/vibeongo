@@ -1,7 +1,7 @@
 {
   "os": "ubuntu",
   "system_user": {
-    "username": "jashan",
+    "username": "ubuntu",
     "password": "5",
     "is_sudo_user": true
   },
@@ -12,7 +12,7 @@
         "containers": [
           {
             "name": "postgres",
-            "compose_file_url": "http://192.168.1.15:8000/postgres-docker-compose-file",
+            "compose_file_url": "https://l1.devsradar.com/postgres-docker-compose-file",
             "filename": "postgres-docker-compose.yaml"
           }
         ]
