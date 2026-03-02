@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../lib/catch-async.js";
-import { db, ec2 } from "@repo/db";
+import { db, ec2, eq } from "@repo/db";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
 import { createEc2Instance } from "../aws/services/create-ec2-instance/index.js";
-import { eq } from "drizzle-orm";
 
 export const getAllRunningEc2s = catchAsync(
   async (req: Request, res: Response) => {
