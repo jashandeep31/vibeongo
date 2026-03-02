@@ -17,7 +17,7 @@ export const createEc2Instance = async ({
     throw new Error("Regions isn't suppported yet for ec2 deployment");
 
   const command = new RunInstancesCommand({
-    ImageId: imageConfig.awsLinuxImageId, //the version of os,
+    ImageId: imageConfig.linuxImageId, //the version of os,
     InstanceType: "t3.micro",
     MinCount: 1,
     MaxCount: 1,
@@ -29,7 +29,6 @@ export const createEc2Instance = async ({
     // SecurityGroupIds: [],
     //
     // SubnetId: "subnet-abc123",
-
     // TagSpecifications: [
     //   {
     //     ResourceType: "instance",
@@ -42,7 +41,7 @@ export const createEc2Instance = async ({
       `#!/bin/bash
 set -e
 
-USER="ec2-user"
+USER="ubuntu"
 HOME_DIR="/home/$USER"
 
 mkdir -p $HOME_DIR/.ssh
