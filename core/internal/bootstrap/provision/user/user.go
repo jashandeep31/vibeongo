@@ -15,6 +15,9 @@ func checkRootPrivileges() error {
 	return nil
 }
 
+// CreateUser creates a new system user.
+//
+// Deprecated: No need to create the users in the ec2 may needed for the local testing .
 func CreateUser(systemUser config.SystemUser) error {
 	// Check for root/sudo before doing anything
 	if err := checkRootPrivileges(); err != nil {
