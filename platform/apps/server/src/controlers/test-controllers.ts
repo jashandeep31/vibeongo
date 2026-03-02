@@ -3,9 +3,10 @@ import { catchAsync } from "../lib/catch-async.js";
 import { db, ec2, eq } from "@repo/db";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
 import { createEc2Instance } from "../aws/services/create-ec2-instance/index.js";
+import { awsSupportedRegions } from "../aws/configs/aws-supported-regions-configs.js";
 
 export const getAllRunningEc2s = catchAsync(
-  async (req: Request, res: Response) => {
+  async (_req: Request, res: Response) => {
     const servers = await db.select().from(ec2);
     res.status(200).json({
       data: servers,
@@ -30,19 +31,21 @@ export const deleteEc2ServerById = catchAsync(
 );
 
 export const createEc2Server = catchAsync(
-  async (req: Request, res: Response) => {
-    const ec2res = await createEc2Instance({ region: "ap-south-1" });
+  async (_req: Request, res: Response) => {
+    // WARN: the region is hard coded here
+    const REGION: (typeof awsSupportedRegions)[number] = "ap-south-1";
+
+    const ec2res = await createEc2Instance({ region: REGION });
     for (const instance of ec2res.Instances ?? []) {
       if (instance.InstanceId) {
         await db.insert(ec2).values({
           ec2_id: instance.InstanceId,
-          region: "ap-south-1",
+          region: REGION,
           ip: instance.PrivateIpAddress || null,
           status: "running",
         });
       }
     }
-
     res.status(201).json({
       data: "server is started",
     });
