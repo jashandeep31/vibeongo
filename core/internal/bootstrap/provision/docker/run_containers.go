@@ -62,7 +62,7 @@ func ComposeContainers(pkg config.Package) error {
 		os.WriteFile(container.Filename, fileBytes, 0644)
 
 		// execute the command to run the container
-		if _, err := utils.RunCommand("docker", "compose", "-f", container.Filename, "up", "-d"); err != nil {
+		if _, err := utils.RunCommand("sudo", "docker", "compose", "-f", container.Filename, "up", "-d"); err != nil {
 			return fmt.Errorf("failed to start container %s %w", container.Name, err)
 		}
 
