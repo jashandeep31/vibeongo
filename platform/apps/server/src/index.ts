@@ -10,16 +10,15 @@ app.use(express.json());
 app.use(cors());
 
 const START_TIME = Date.now();
-app.get("/", (req: Request, res: Response) => {
+app.get("/", (_req: Request, res: Response) => {
   const diffMs = Date.now() - START_TIME;
-
   const totalSeconds = Math.floor(diffMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
 
   res.status(200).json({
-    message: "server is running",
+    message: "Platform server is running",
     uptime: `${hours}h ${minutes}m ${seconds}s`,
   });
 });
