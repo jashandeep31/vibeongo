@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Terminal } from "@xterm/xterm";
 import "@xterm/xterm/css/xterm.css";
+import { FitAddon } from "@xterm/addon-fit";
 
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8080";
@@ -31,9 +32,10 @@ export default function Page() {
       cursorBlink: true,
       fontSize: 14,
     });
-    console.log(term.rows, term.cols);
-
     term.open(terminalRef.current);
+    const fitAddon = new FitAddon();
+    term.loadAddon(fitAddon);
+    fitAddon.fit();
 
     const ws = new WebSocket(WS_URL);
     ws.binaryType = "arraybuffer";
@@ -95,7 +97,7 @@ export default function Page() {
       <div
         ref={terminalRef}
         id="terminal"
-        className="w-full h-[500px] bg-black rounded-md p-2"
+        className="w-full h-[80vh] bg-black rounded-md p-2"
       />
     </div>
   );
