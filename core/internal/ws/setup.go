@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"fmt"
 	"net/http"
 	"os/exec"
 
@@ -18,21 +19,26 @@ var upgrader = websocket.Upgrader{
 }
 
 func WebSocket(c *echo.Context) error {
+	// setting up the websocket
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
 	}
+
 	defer conn.Close()
 
-	cmd := exec.Command("bash")
-	ptmx, err := pty.Start(cmd)
+	// pty setup
+	cmd := exec.Command("bash", "-l")
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 30, Cols: 120})
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("Failed to start a terminal session \n"))
 		return err
 	}
+	fmt.Println("terminal is started")
 
 	defer func() {
 		// WARN: handle the closing of the terminal in the better way
+		fmt.Println("Terminal is closed")
 		ptmx.Close()
 	}()
 
@@ -40,6 +46,7 @@ func WebSocket(c *echo.Context) error {
 	go func() {
 		buf := make([]byte, 1024)
 		for {
+			fmt.Println(string(buf))
 			n, err := ptmx.Read(buf)
 			if err != nil {
 				return
@@ -55,22 +62,10 @@ func WebSocket(c *echo.Context) error {
 		if err != nil {
 			return err
 		}
+		fmt.Println("input is here", string(msg))
 		_, err = ptmx.Write(msg)
 		if err != nil {
 			return err
 		}
 	}
-	// for {
-	// 	msgType, msg, err := conn.ReadMessage()
-	// 	if err != nil {
-	// 		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-	// 			return nil
-	// 		}
-	// 		return err
-	// 	}
-	//
-	// 	if err := conn.WriteMessage(msgType, msg); err != nil {
-	// 		return err
-	// 	}
-	// }
 }
