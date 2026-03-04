@@ -26,20 +26,22 @@ export default function Page() {
   const terminalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    if (!terminalRef.current) return;
+    const terminalElement = terminalRef.current;
+    if (!terminalElement) return;
 
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 14,
     });
-    term.open(terminalRef.current);
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
-    fitAddon.fit();
+    term.open(terminalElement);
 
     const ws = new WebSocket(WS_URL);
     ws.binaryType = "arraybuffer";
-    ws.onopen = (event) => {
+    const sendTerminalSize = () => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      console.log(term.rows, term.cols);
       ws.send(
         JSON.stringify({
           type: "size",
@@ -49,6 +51,36 @@ export default function Page() {
           },
         }),
       );
+    };
+
+    const fitTerminal = () => {
+      fitAddon.fit();
+      sendTerminalSize();
+    };
+
+    let fitFrame = 0;
+    const scheduleFit = () => {
+      if (fitFrame) {
+        window.cancelAnimationFrame(fitFrame);
+      }
+
+      fitFrame = window.requestAnimationFrame(() => {
+        fitFrame = 0;
+        fitTerminal();
+      });
+    };
+
+    scheduleFit();
+
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleFit();
+    });
+    resizeObserver.observe(terminalElement);
+
+    window.addEventListener("resize", scheduleFit);
+
+    ws.onopen = () => {
+      scheduleFit();
     };
 
     // Server -> Terminal
@@ -85,6 +117,11 @@ export default function Page() {
     });
 
     return () => {
+      if (fitFrame) {
+        window.cancelAnimationFrame(fitFrame);
+      }
+      window.removeEventListener("resize", scheduleFit);
+      resizeObserver.disconnect();
       ws.close();
       term.dispose();
     };
