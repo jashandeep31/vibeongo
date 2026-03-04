@@ -16,6 +16,7 @@ func Start() {
 
 	// routes of app
 	routes.RegisterMiscRoutes(e)
+	routes.RegisterWSRoutes(e)
 
 	address := ":" + config.ENV.PORT
 	if err := e.Start(address); err != nil {
