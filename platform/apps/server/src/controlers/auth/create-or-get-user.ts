@@ -7,14 +7,13 @@ interface CreateUser {
   password?: string | undefined;
   provider: ["google"][number];
 }
-export const createUser = async ({
+export const createOrGetUser = async ({
   email,
   name,
 }: CreateUser): Promise<typeof users.$inferSelect> => {
   const [isUser] = await db.select().from(users).where(eq(users.email, email));
 
   if (isUser) {
-    // just make the login
     return isUser;
   }
 
@@ -26,7 +25,7 @@ export const createUser = async ({
       .values({
         email: email,
         first_name: firstName ? firstName : "unkown",
-        last_name: "",
+        last_name: lastName,
       })
       .returning();
     if (!user) throw new Error("Something went wrong on our side");
