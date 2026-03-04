@@ -29,7 +29,7 @@ var upgrader = websocket.Upgrader{
 	},
 }
 
-func WebSocket(c echo.Context) error { // Note: echo.Context not *echo.Context
+func WebSocket(c *echo.Context) error { // Note: echo.Context not *echo.Context
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
@@ -37,7 +37,7 @@ func WebSocket(c echo.Context) error { // Note: echo.Context not *echo.Context
 	defer conn.Close()
 
 	cmd := exec.Command("bash", "-l")
-	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 24, Cols: 80})
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 40, Cols: 155})
 	if err != nil {
 		conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
 		return err
@@ -80,7 +80,8 @@ func WebSocket(c echo.Context) error { // Note: echo.Context not *echo.Context
 		}
 
 		switch m.Type {
-		case "resize":
+		case "size":
+			fmt.Println(m.Data)
 			pty.Setsize(ptmx, &pty.Winsize{
 				Rows: m.Data.Rows,
 				Cols: m.Data.Cols,
