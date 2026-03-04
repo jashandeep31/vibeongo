@@ -31,16 +31,40 @@ export default function Page() {
       cursorBlink: true,
       fontSize: 14,
     });
+    console.log(term.rows, term.cols);
 
     term.open(terminalRef.current);
 
     const ws = new WebSocket(WS_URL);
-    if (!ws) return;
+    ws.binaryType = "arraybuffer";
+    ws.onopen = (event) => {
+      ws.send(
+        JSON.stringify({
+          type: "size",
+          data: {
+            rows: term.rows,
+            cols: term.cols,
+          },
+        }),
+      );
+    };
 
     // Server -> Terminal
-    ws.onmessage = (event) => {
-      console.log(event.data);
-      term.write(event.data);
+    ws.onmessage = async (event) => {
+      if (typeof event.data === "string") {
+        term.write(event.data);
+        return;
+      }
+
+      if (event.data instanceof ArrayBuffer) {
+        term.write(new Uint8Array(event.data));
+        return;
+      }
+
+      if (event.data instanceof Blob) {
+        const buffer = await event.data.arrayBuffer();
+        term.write(new Uint8Array(buffer));
+      }
     };
 
     ws.onerror = (err) => {
@@ -53,7 +77,9 @@ export default function Page() {
 
     // Terminal -> Server
     term.onData((data) => {
-      ws.send(data);
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(data);
+      }
     });
 
     return () => {
