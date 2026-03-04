@@ -4,6 +4,7 @@ import test from "./test.js";
 import { env } from "./lib/env.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { authRoutes } from "./routes/auth-routes.js";
+import { userRoutes } from "./routes/user-routes.js";
 
 // app config
 const app = express();
@@ -31,6 +32,7 @@ app.get("/", (_req: Request, res: Response) => {
 // routes of application
 app.use("/", testRoutes);
 app.use("/api/v1", authRoutes);
+app.use("/api/v1/user", userRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
