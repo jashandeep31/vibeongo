@@ -3,6 +3,7 @@ import cors from "cors";
 import test from "./test.js";
 import { env } from "./lib/env.js";
 import { testRoutes } from "./routes/test-routes.js";
+import { authRoutes } from "./routes/auth-routes.js";
 
 // app config
 const app = express();
@@ -25,6 +26,7 @@ app.get("/", (_req: Request, res: Response) => {
 
 // routes of application
 app.use("/", testRoutes);
+app.use("/", authRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
