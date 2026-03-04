@@ -63,6 +63,9 @@ importers:
       axios:
         specifier: ^1.13.6
         version: 1.13.6
+      lucide-react:
+        specifier: ^0.563.0
+        version: 0.563.0(react@19.2.0)
       next:
         specifier: 16.1.5
         version: 16.1.5(react-dom@19.2.0(react@19.2.0))(react@19.2.0)

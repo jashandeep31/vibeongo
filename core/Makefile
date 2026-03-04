@@ -20,5 +20,8 @@ IP ?= 192.168.1.69
 deploy:
 	scp ./bootstrap-script ./config.json ubuntu@$(IP):/home/ubuntu
 
-devapi:
-	exec air -c .air.api.toml
+# WARN: This is only workks for the local
+apideploy:
+	go build -o api ./cmd/api/
+	scp ./api ironman@$(IP):/home/ironman
+
