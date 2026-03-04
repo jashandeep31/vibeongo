@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@repo/ui": "workspace:*",
+    "@xterm/xterm": "^6.0.0",
     "axios": "^1.13.6",
     "next": "16.1.5",
     "react": "^19.2.0",
