@@ -20,6 +20,5 @@ IP ?= 192.168.1.69
 deploy:
 	scp ./bootstrap-script ./config.json ubuntu@$(IP):/home/ubuntu
 
-devapi: 
-	air -c .air.api.toml
-
+devapi:
+	exec air -c .air.api.toml
