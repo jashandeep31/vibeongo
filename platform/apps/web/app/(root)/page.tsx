@@ -35,9 +35,11 @@ export default function Page() {
     term.open(terminalRef.current);
 
     const ws = new WebSocket(WS_URL);
+    if (!ws) return;
 
     // Server -> Terminal
     ws.onmessage = (event) => {
+      console.log(event.data);
       term.write(event.data);
     };
 
@@ -63,9 +65,7 @@ export default function Page() {
   return (
     <div className="p-6 space-y-4">
       <h1 className="text-xl font-bold">Web Terminal</h1>
-
       <Button>Shadcn is working</Button>
-
       <div
         ref={terminalRef}
         id="terminal"
