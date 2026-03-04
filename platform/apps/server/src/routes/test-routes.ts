@@ -4,9 +4,11 @@ import {
   deleteEc2ServerById,
   getAllRunningEc2s,
 } from "../controlers/test-controllers.js";
+import { checkAuthorization } from "../lib/check-authorization.js";
 
 const routes: Router = Router();
 
+routes.route("health").get(checkAuthorization(["user"]));
 routes.route("/servers").get(getAllRunningEc2s).post(createEc2Server);
 routes.route("/servers/:id").delete(deleteEc2ServerById);
 
