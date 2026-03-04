@@ -2,7 +2,9 @@ package ws
 
 import (
 	"net/http"
+	"os/exec"
 
+	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v5"
 )
@@ -20,19 +22,55 @@ func WebSocket(c *echo.Context) error {
 	if err != nil {
 		return err
 	}
+	defer conn.Close()
 
-	for {
-
-		msgType, msg, err := conn.ReadMessage()
-		if err != nil {
-			break
-		}
-
-		if err := conn.WriteMessage(msgType, msg); err != nil {
-			break
-		}
+	cmd := exec.Command("bash")
+	ptmx, err := pty.Start(cmd)
+	if err != nil {
+		conn.WriteMessage(websocket.TextMessage, []byte("Failed to start a terminal session \n"))
+		return err
 	}
 
-	defer conn.Close()
-	return nil
+	defer func() {
+		// WARN: handle the closing of the terminal in the better way
+		ptmx.Close()
+	}()
+
+	// pty output to the user
+	go func() {
+		buf := make([]byte, 1024)
+		for {
+			n, err := ptmx.Read(buf)
+			if err != nil {
+				return
+			}
+
+			conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+		}
+	}()
+
+	// user input to pty
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		_, err = ptmx.Write(msg)
+		if err != nil {
+			return err
+		}
+	}
+	// for {
+	// 	msgType, msg, err := conn.ReadMessage()
+	// 	if err != nil {
+	// 		if websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+	// 			return nil
+	// 		}
+	// 		return err
+	// 	}
+	//
+	// 	if err := conn.WriteMessage(msgType, msg); err != nil {
+	// 		return err
+	// 	}
+	// }
 }
