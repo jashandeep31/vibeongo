@@ -8,7 +8,11 @@ import { authRoutes } from "./routes/auth-routes.js";
 // app config
 const app = express();
 app.use(express.json());
-app.use(cors());
+app.use(
+  cors({
+    origin: ["http://localhost:3000"],
+  }),
+);
 
 const START_TIME = Date.now();
 app.get("/", (_req: Request, res: Response) => {
@@ -26,7 +30,7 @@ app.get("/", (_req: Request, res: Response) => {
 
 // routes of application
 app.use("/", testRoutes);
-app.use("/", authRoutes);
+app.use("/api/v1", authRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
