@@ -3,7 +3,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { env } from "../../lib/env.js";
 import { OAuth2Client } from "google-auth-library";
 import { z } from "zod";
-import { createUser } from "./create-user.js";
+import { createOrGetUser } from "./create-or-get-user.js";
 
 const payloadSchema = z.object({
   email: z.string(),
@@ -46,7 +46,7 @@ export const googleAuthCallbackController = catchAsync(
 
     const parsedPayload = payloadSchema.parse(payload);
 
-    const user = await createUser({
+    const user = await createOrGetUser({
       ...parsedPayload,
       provider: "google",
     });
@@ -57,5 +57,7 @@ export const googleAuthCallbackController = catchAsync(
         id: user.id,
       }),
     );
+
+    res.redirect(process.env.CLIENT_URL || "http://localhost:3000/dashboard");
   },
 );
