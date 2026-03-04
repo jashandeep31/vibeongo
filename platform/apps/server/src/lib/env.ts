@@ -12,8 +12,10 @@ const envSchema = z.object({
   AWS_EC2_ACCESS_KEY_SECRET: z.string(),
   SSH_KEY: z.string(),
   DATABASE_URL: z.string(),
+  GOOGLE_AUTH_CLIENT_ID: z.string(),
+  GOOGLE_AUTH_SECRET_KEY: z.string(),
+  GOOGLE_AUTH_REDIRECT_URI: z.string(),
 });
-
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {

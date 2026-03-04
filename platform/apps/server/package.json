@@ -14,13 +14,14 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@repo/db": "workspace:*",
     "@aws-sdk/client-ec2": "^3.988.0",
+    "@repo/db": "workspace:*",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
     "express": "^5.2.1",
+    "google-auth-library": "^10.6.1",
     "zod": "^4.3.6"
   },
   "devDependencies": {
