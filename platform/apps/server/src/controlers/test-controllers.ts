@@ -4,6 +4,9 @@ import { db, ec2, eq } from "@repo/db";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
 import { createEc2Instance } from "../aws/services/create-ec2-instance/index.js";
 import { awsSupportedRegions } from "../aws/configs/aws-supported-regions-configs.js";
+import { getEc2Client } from "../aws/ec2-client.js";
+import { DescribeInstancesCommand } from "@aws-sdk/client-ec2";
+import { getInstancePublicAddress } from "../aws/services/get-instance-public-address.js";
 
 export const getAllRunningEc2s = catchAsync(
   async (_req: Request, res: Response) => {
@@ -38,14 +41,21 @@ export const createEc2Server = catchAsync(
     const ec2res = await createEc2Instance({ region: REGION });
     for (const instance of ec2res.Instances ?? []) {
       if (instance.InstanceId) {
+        // TODO: create a better bg runner task
+        await new Promise<void>((res) => setTimeout(res, 5000));
+        const publicIpAddress = await getInstancePublicAddress(
+          instance.InstanceId,
+          REGION,
+        );
         await db.insert(ec2).values({
           ec2_id: instance.InstanceId,
           region: REGION,
-          ip: instance.PrivateIpAddress || null,
+          ip: publicIpAddress || null,
           status: "running",
         });
       }
     }
+
     res.status(201).json({
       data: "server is started",
     });
