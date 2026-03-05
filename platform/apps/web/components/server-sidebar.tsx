@@ -1,0 +1,91 @@
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+} from "@repo/ui/components/sidebar";
+import {
+  ArrowUpRight,
+  CreditCard,
+  Github,
+  LucideIcon,
+  PlusCircle,
+  Server,
+  Settings,
+  FolderOpen,
+} from "lucide-react";
+import Link from "next/link";
+
+const sidebarLinks: {
+  title: string;
+  icon: LucideIcon;
+  url: string;
+  external?: boolean;
+}[] = [
+  {
+    title: "My Projects",
+    url: "/dashboard",
+    icon: FolderOpen,
+  },
+  {
+    title: "Create Project",
+    url: "/projects/new",
+    icon: PlusCircle,
+  },
+  {
+    title: "Billing",
+    url: "/billing",
+    icon: CreditCard,
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+  },
+  {
+    title: "GitHub",
+    url: "https://github.com",
+    icon: Github,
+    external: true,
+  },
+] as const;
+
+export function ServerSidebar() {
+  return (
+    <Sidebar className="">
+      <SidebarContent className="bg-background">
+        <SidebarGroup>
+          <SidebarGroupLabel>Quick Links</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {sidebarLinks.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    className="active:bg-background data-active:bg-background cursor-pointer"
+                  >
+                    <Link
+                      href={item.url}
+                      target={item.external ? "_blank" : undefined}
+                      rel={item.external ? "noopener noreferrer" : undefined}
+                    >
+                      <item.icon />
+                      <span>{item.title}</span>
+                      {item.external && (
+                        <ArrowUpRight className=" h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
+  );
+}
