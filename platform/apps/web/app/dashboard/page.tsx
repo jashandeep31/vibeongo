@@ -87,7 +87,7 @@ export default function ProjectsPage() {
           </p>
         </div>
         <Button asChild size="lg">
-          <Link href="/projects/new">
+          <Link href="/project/create">
             <PlusCircle className="mr-2 h-4 w-4" />
             Create Project
           </Link>
