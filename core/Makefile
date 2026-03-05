@@ -18,7 +18,7 @@ watch-bootstrap:
 # the default ip is the local ip for testing purposes 
 IP ?= 192.168.1.69
 deploy:
-	scp ./bootstrap-script ./config.json ubuntu@$(IP):/home/ubuntu
+	scp ./bootstrap-script ./config.json ./api ubuntu@$(IP):/home/ubuntu
 
 # WARN: This is only workks for the local
 apideploy:
