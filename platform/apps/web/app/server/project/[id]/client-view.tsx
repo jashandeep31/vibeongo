@@ -1,28 +1,13 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { Button } from "@repo/ui/components/button";
 import { Terminal } from "@xterm/xterm";
-import "@xterm/xterm/css/xterm.css";
+import { useEffect, useRef } from "react";
 import { FitAddon } from "@xterm/addon-fit";
+import "@xterm/xterm/css/xterm.css";
 
-const API_BASE_URL =
-  process.env.NEXT_PUBLIC_SERVER_URL ?? "http://localhost:8080";
-
-const WS_URL = (() => {
-  try {
-    const url = new URL(API_BASE_URL);
-    url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-    url.pathname = "/ws";
-    url.search = "";
-    url.hash = "";
-    return url.toString();
-  } catch {
-    return "ws://localhost:8080/ws";
-  }
-})();
-
-export default function Page() {
+export default function ClientView() {
+  // const SERVER_URL = "http://13.233.161.174:8080";
+  const SERVER_URL = "ws://3.109.4.229:8080/ws";
   const terminalRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -33,12 +18,13 @@ export default function Page() {
       cursorBlink: true,
       fontSize: 14,
     });
+
     const fitAddon = new FitAddon();
     term.loadAddon(fitAddon);
     term.open(terminalElement);
 
-    const ws = new WebSocket(WS_URL);
-    ws.binaryType = "arraybuffer";
+    const ws = new WebSocket(SERVER_URL);
+
     const sendTerminalSize = () => {
       if (ws.readyState !== WebSocket.OPEN) return;
       console.log(term.rows, term.cols);
@@ -83,7 +69,6 @@ export default function Page() {
       scheduleFit();
     };
 
-    // Server -> Terminal
     ws.onmessage = async (event) => {
       if (typeof event.data === "string") {
         term.write(event.data);
@@ -115,27 +100,22 @@ export default function Page() {
         ws.send(data);
       }
     });
-
     return () => {
-      if (fitFrame) {
-        window.cancelAnimationFrame(fitFrame);
-      }
-      window.removeEventListener("resize", scheduleFit);
-      resizeObserver.disconnect();
       ws.close();
       term.dispose();
     };
   }, []);
 
   return (
-    <div className="p-6 space-y-4">
-      <h1 className="text-xl font-bold">Web Terminal</h1>
-      <Button>Shadcn is working</Button>
-      <div
-        ref={terminalRef}
-        id="terminal"
-        className="w-full h-[80vh] bg-black rounded-md p-2"
-      />
+    <div className="p-8">
+      <h1 className="text-3xl font-bold tracking-tight">Server Name</h1>
+      <div className="mt-12">
+        <div
+          ref={terminalRef}
+          id="terminal"
+          className="w-full h-[80vh] bg-black rounded-md p-2"
+        />
+      </div>
     </div>
   );
 }
