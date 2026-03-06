@@ -5,10 +5,14 @@ import { env } from "./lib/env.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { authRoutes } from "./routes/auth-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
+import { checkAuthorization } from "./lib/check-authorization.js";
+import cookieParser from "cookie-parser";
+import { projectRoutes } from "./routes/project-routes.js";
 
 // app config
 const app = express();
 app.use(express.json());
+app.use(cookieParser());
 app.use(
   cors({
     origin: ["http://localhost:3000"],
@@ -16,7 +20,7 @@ app.use(
 );
 
 const START_TIME = Date.now();
-app.get("/", (_req: Request, res: Response) => {
+app.get("/", checkAuthorization(["any"]), (_req: Request, res: Response) => {
   const diffMs = Date.now() - START_TIME;
   const totalSeconds = Math.floor(diffMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);
@@ -33,6 +37,7 @@ app.get("/", (_req: Request, res: Response) => {
 app.use("/", testRoutes);
 app.use("/api/v1", authRoutes);
 app.use("/api/v1/user", userRoutes);
+app.use("/api/v1/project", projectRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
