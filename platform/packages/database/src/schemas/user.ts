@@ -8,7 +8,7 @@ export const users = pgTable("users", {
 
   first_name: varchar().notNull(),
   last_name: varchar(),
-  role: userRoles().default("user"),
+  role: userRoles().default("user").notNull(),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
