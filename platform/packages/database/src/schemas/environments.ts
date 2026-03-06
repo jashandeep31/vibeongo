@@ -2,7 +2,7 @@ import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 
 export const environments = pgTable("environments", {
-  id: uuid().unique().defaultRandom().primaryKey(),
+  id: uuid().defaultRandom().primaryKey(),
   user_id: uuid()
     .references(() => users.id)
     .notNull(),
