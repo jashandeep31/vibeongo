@@ -6,6 +6,7 @@ import {
   varchar,
   integer,
   text,
+  json,
 } from "drizzle-orm/pg-core";
 
 export const projectStatusEnum = pgEnum("project_status", [
@@ -20,7 +21,28 @@ export const projects = pgTable("projects", {
   status: projectStatusEnum().notNull(),
 
   total_charges: integer().notNull().default(0),
+  ports_config: json().notNull(),
 
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
+
+export const projectFiles = pgTable("project_files", {
+  id: uuid().defaultRandom().primaryKey(),
+
+  name: varchar().notNull(),
+  path: varchar().notNull(),
+
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
+
+export const projectFileData = pgTable("project_file_data", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  version: integer(),
+  project_file_id: uuid().references(() => projectFiles.id, {
+    onDelete: "cascade",
+  }),
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
 });
