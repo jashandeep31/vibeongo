@@ -1,31 +1,26 @@
-import {
-  integer,
-  pgEnum,
-  pgTable,
-  timestamp,
-  uuid,
-  varchar,
-} from "drizzle-orm/pg-core";
+import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
+import { projects } from "./projects.js";
+import { instanceTypes } from "./instances-metadata.js";
 
-// currently we are only using the aws instances
-// TODO: please further add more regions to this
-export const instancesRegionsEnum = pgEnum("instances_regions", [
-  "us-east-1",
-  "us-east-2",
+export const instanceState = pgEnum("instance_state", [
+  "running",
+  "terminated",
 ]);
-export const instancesProvidersEnum = pgEnum("instances_providers", ["aws"]);
+
 export const instances = pgTable("instances", {
-  id: uuid().primaryKey().defaultRandom(),
-  name: varchar().notNull(),
+  id: uuid().defaultRandom().primaryKey(),
 
-  // WARN: slug should contain the region at the end of the slug
-  slug: varchar().notNull().unique(),
+  project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
+  instance_type: uuid().references(() => instanceTypes.id),
 
-  region: instancesRegionsEnum().notNull(),
-  provider: instancesProvidersEnum().notNull(),
+  terminated_at: timestamp(),
+  started_at: timestamp(),
+  state: instanceState().notNull(),
 
-  pricePerHour: integer().notNull(),
-  pricePerSec: integer().notNull(),
+  // instance data
+  public_ip: varchar(),
+  private_ip: varchar(),
+  instance_id: varchar().notNull(),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),

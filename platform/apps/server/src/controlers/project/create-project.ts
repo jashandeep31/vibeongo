@@ -9,5 +9,8 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
     throw new AppError("authentication is required", 401);
   }
 
-  const project = await db.transaction(async (tx) => {});
+  const project = await db.transaction(async (tx) => {
+    // create the project with the stoped state
+    // just save the config
+  });
 });
