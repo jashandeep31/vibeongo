@@ -1,4 +1,16 @@
 {
+  "ssh_keys": ["ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3..."],
+  "ports": [
+    {
+      "port": 8080,
+      "protocol": "TCP"
+    }
+  ],
+  "repos": [
+    {
+      "git_url": "https://github.com/example/repo.git"
+    }
+  ],
   "packages": [
     {
       "name": "opencode",
@@ -26,6 +38,12 @@
       "name": "neovim",
       "config": {
         "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
+      }
+    },
+    {
+      "name": "nodejs",
+      "config": {
+        "version": 25
       }
     }
   ]

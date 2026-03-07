@@ -17,6 +17,10 @@ export const opencodeConfigValidator = z.object({
 
 export const tmuxConfigValidator = z.object({});
 
+export const nodeConfigValidator = z.object({
+  version: z.number(),
+});
+
 export const neovimConfigValidator = z.object({
   config_url: z
     .string()
@@ -25,7 +29,20 @@ export const neovimConfigValidator = z.object({
 
 export const projectConfigValidator = z.object({
   // name: z.string(),
+  ssh_keys: z.array(z.string()),
+  ports: z.array(
+    z.object({
+      port: z.number(),
+      protocol: z.enum(["TCP", "UDP"]),
+    }),
+  ),
 
+  repos: z.array(
+    z.object({
+      git_url: z.string(),
+      access_token: z.string().optional(),
+    }),
+  ),
   packages: z.array(
     z.discriminatedUnion("name", [
       z.object({
@@ -44,6 +61,10 @@ export const projectConfigValidator = z.object({
       z.object({
         name: z.literal("neovim"),
         config: neovimConfigValidator,
+      }),
+      z.object({
+        name: z.literal("nodejs"),
+        config: nodeConfigValidator,
       }),
     ]),
   ),
