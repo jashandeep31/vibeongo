@@ -16,6 +16,7 @@
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.988.0",
     "@repo/db": "workspace:*",
+    "@repo/shared": "workspace:*",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "cookie-parser": "^1.4.7",
