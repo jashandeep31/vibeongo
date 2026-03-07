@@ -2,6 +2,7 @@ import {
   integer,
   pgEnum,
   pgTable,
+  text,
   timestamp,
   uuid,
   varchar,
@@ -22,6 +23,9 @@ export const instanceTypes = pgTable("instance_types", {
 
   // WARN: slug should contain the region at the end of the slug
   slug: varchar().notNull().unique(),
+  description: text(),
+  cpu: text(),
+  ram: text(),
 
   region: instanceRegionsEnum().notNull(),
   provider: instanceProvidersEnum().notNull(),
