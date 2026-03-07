@@ -14,28 +14,127 @@ const micro = (price: number) => Math.round(price * 10000);
 /**
  * convert hourly price → per second
  */
-const perSec = (hourPrice: number) => Math.round(hourPrice / 3600);
+const perSec = (microPerHour: number) => Math.round(microPerHour / 3600);
 
-export const regionsSeed: (typeof instanceRegions.$inferInsert)[] = [
-  {
-    slug: "us-east-1",
-    name: "US East (N.Virginia)",
+const awsRegions = [
+  // { slug: "af-south-1", name: "Africa (Cape Town)" },
+  { slug: "ap-east-1", name: "Asia Pacific (Hong Kong)" },
+  // { slug: "ap-east-2", name: "Asia Pacific (Taipei)" },
+  // { slug: "ap-northeast-1", name: "Asia Pacific (Tokyo)" },
+  // { slug: "ap-northeast-2", name: "Asia Pacific (Seoul)" },
+  // { slug: "ap-northeast-3", name: "Asia Pacific (Osaka)" },
+  { slug: "ap-south-1", name: "Asia Pacific (Mumbai)" },
+  { slug: "ap-south-2", name: "Asia Pacific (Hyderabad)" },
+  // { slug: "ap-southeast-1", name: "Asia Pacific (Singapore)" },
+  // { slug: "ap-southeast-2", name: "Asia Pacific (Sydney)" },
+  // { slug: "ap-southeast-3", name: "Asia Pacific (Jakarta)" },
+  // { slug: "ap-southeast-4", name: "Asia Pacific (Melbourne)" },
+  // { slug: "ap-southeast-5", name: "Asia Pacific (Malaysia)" },
+  // { slug: "ap-southeast-6", name: "Asia Pacific (New Zealand)" },
+  // { slug: "ap-southeast-7", name: "Asia Pacific (Thailand)" },
+  // { slug: "ca-central-1", name: "Canada (Central)" },
+  // { slug: "ca-west-1", name: "Canada West (Calgary)" },
+  // { slug: "cn-north-1", name: "China (Beijing)" },
+  // { slug: "cn-northwest-1", name: "China (Ningxia)" },
+  // { slug: "eu-central-1", name: "Europe (Frankfurt)" },
+  // { slug: "eu-central-2", name: "Europe (Zurich)" },
+  // { slug: "eu-north-1", name: "Europe (Stockholm)" },
+  // { slug: "eu-south-1", name: "Europe (Milan)" },
+  // { slug: "eu-south-2", name: "Europe (Spain)" },
+  // { slug: "eu-west-1", name: "Europe (Ireland)" },
+  // { slug: "eu-west-2", name: "Europe (London)" },
+  // { slug: "eu-west-3", name: "Europe (Paris)" },
+  // { slug: "il-central-1", name: "Israel (Tel Aviv)" },
+  // { slug: "me-central-1", name: "Middle East (UAE)" },
+  // { slug: "me-south-1", name: "Middle East (Bahrain)" },
+  // { slug: "mx-central-1", name: "Mexico (Central)" },
+  // { slug: "sa-east-1", name: "South America (Sao Paulo)" },
+  // { slug: "us-east-1", name: "US East (N. Virginia)" },
+  // { slug: "us-east-2", name: "US East (Ohio)" },
+  // { slug: "us-gov-east-1", name: "AWS GovCloud (US-East)" },
+  // { slug: "us-gov-west-1", name: "AWS GovCloud (US-West)" },
+  // { slug: "us-west-1", name: "US West (N. California)" },
+  // { slug: "us-west-2", name: "US West (Oregon)" },
+] as const;
+
+export const regionsSeed: (typeof instanceRegions.$inferInsert)[] =
+  awsRegions.map((region) => ({
+    ...region,
     provider: "aws",
-  },
-];
+  }));
 
-const regions = await db.select().from(instanceRegions);
-export const instancesSeed: (typeof instanceTypes.$inferInsert)[] = [
+const instanceTemplates = [
   {
     name: "t3.micro",
-    slug: "t3-micro-us-east-1",
-    region_id: regions.find((region) => (region.slug = "us-east-1"))?.id!,
-    provider: "aws",
-    price_per_hour: micro(10),
-    price_per_sec: perSec(micro(10)),
+    slug_prefix: "t3-micro",
+    description: "General purpose burstable instance",
+    cpu: "2 vCPU",
+    ram: "1 GiB",
+    price_per_hour_dollars: 10,
   },
-];
+] as const;
+
+type RegionRecord = Pick<typeof instanceRegions.$inferSelect, "id" | "slug">;
+
+const buildInstancesSeed = (
+  regions: RegionRecord[],
+): (typeof instanceTypes.$inferInsert)[] =>
+  regions.flatMap((region) =>
+    instanceTemplates.map((template) => {
+      const pricePerHour = micro(template.price_per_hour_dollars);
+
+      return {
+        name: template.name,
+        slug: `${template.slug_prefix}-${region.slug}`,
+        description: template.description,
+        cpu: template.cpu,
+        ram: template.ram,
+        provider: "aws",
+        region_id: region.id,
+        price_per_hour: pricePerHour,
+        price_per_sec: perSec(pricePerHour),
+      };
+    }),
+  );
 
 export const createInstances = async () => {
-  await db.insert(instanceTypes).values(instancesSeed);
+  const existingRegions = await db
+    .select({
+      id: instanceRegions.id,
+      slug: instanceRegions.slug,
+    })
+    .from(instanceRegions);
+
+  const existingRegionSlugs = new Set(
+    existingRegions.map((region) => region.slug),
+  );
+  const missingRegions = regionsSeed.filter(
+    (region) => !existingRegionSlugs.has(region.slug),
+  );
+
+  if (missingRegions.length > 0) {
+    await db.insert(instanceRegions).values(missingRegions);
+  }
+
+  const allRegions = await db
+    .select({
+      id: instanceRegions.id,
+      slug: instanceRegions.slug,
+    })
+    .from(instanceRegions);
+
+  const expectedInstances = buildInstancesSeed(allRegions);
+  const existingInstanceSlugs = new Set(
+    (await db.select({ slug: instanceTypes.slug }).from(instanceTypes)).map(
+      (instance) => instance.slug,
+    ),
+  );
+
+  const missingInstances = expectedInstances.filter(
+    (instance) => !existingInstanceSlugs.has(instance.slug),
+  );
+
+  if (missingInstances.length > 0) {
+    await db.insert(instanceTypes).values(missingInstances);
+  }
 };
