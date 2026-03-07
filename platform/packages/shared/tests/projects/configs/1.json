@@ -1,0 +1,32 @@
+{
+  "packages": [
+    {
+      "name": "opencode",
+      "config": {
+        "command": "echo 'Hello World'"
+      }
+    },
+    {
+      "name": "docker",
+      "config": {
+        "containers": [
+          {
+            "name": "web-server",
+            "filename": "Dockerfile.web",
+            "file_content": "FROM node:18\nWORKDIR /app\nCOPY package.json .\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]"
+          }
+        ]
+      }
+    },
+    {
+      "name": "tmux",
+      "config": {}
+    },
+    {
+      "name": "neovim",
+      "config": {
+        "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
+      }
+    }
+  ]
+}
