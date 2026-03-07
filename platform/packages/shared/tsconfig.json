@@ -9,9 +9,9 @@
     // See also https://aka.ms/tsconfig/module
     "module": "nodenext",
     "target": "esnext",
-    "types": ["node"],
     // "types": [],
     // For nodejs:
+    "types": ["node"],
     // "lib": ["esnext"],
     // and npm install -D @types/node
 
@@ -40,5 +40,7 @@
     "noUncheckedSideEffectImports": true,
     "moduleDetection": "force",
     "skipLibCheck": true
-  }
+  },
+  "include": ["src/**/*.ts"],
+  "exclude": ["vitest.config.ts", "tests", "dist", "node_modules"]
 }
