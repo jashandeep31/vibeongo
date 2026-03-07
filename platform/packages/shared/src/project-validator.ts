@@ -24,6 +24,8 @@ export const neovimConfigValidator = z.object({
 });
 
 export const projectConfigValidator = z.object({
+  // name: z.string(),
+
   packages: z.array(
     z.discriminatedUnion("name", [
       z.object({
@@ -38,6 +40,10 @@ export const projectConfigValidator = z.object({
       z.object({
         name: z.literal("tmux"),
         config: tmuxConfigValidator,
+      }),
+      z.object({
+        name: z.literal("neovim"),
+        config: neovimConfigValidator,
       }),
     ]),
   ),
