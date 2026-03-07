@@ -10,12 +10,18 @@ import {
 
 // currently we are only using the aws instances
 // TODO: please further add more regions to this
-export const instanceRegionsEnum = pgEnum("instance_regions", [
-  "us-east-1",
-  "us-east-2",
-]);
 
 export const instanceProvidersEnum = pgEnum("instance_providers", ["aws"]);
+
+export const instanceRegions = pgTable("instance_regions", {
+  id: uuid().defaultRandom().primaryKey(),
+  name: varchar().notNull(),
+  slug: varchar().notNull(),
+
+  provider: instanceProvidersEnum().notNull(),
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
 
 export const instanceTypes = pgTable("instance_types", {
   id: uuid().primaryKey().defaultRandom(),
@@ -27,8 +33,8 @@ export const instanceTypes = pgTable("instance_types", {
   cpu: text(),
   ram: text(),
 
-  region: instanceRegionsEnum().notNull(),
   provider: instanceProvidersEnum().notNull(),
+  region_id: uuid().references(() => instanceRegions.id),
 
   price_per_hour: integer().notNull(),
   price_per_sec: integer().notNull(),
