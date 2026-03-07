@@ -6,15 +6,16 @@
   "main": "index.js",
   "scripts": {
     "test": "vitest",
-    "dev": "tsc-watch -p ./tsconfig.json --onSuccess \"node dist/index.js\"",
+    "dev": "tsc-watch -p ./tsconfig.json --onSuccess \"node dist/src/index.js\"",
     "build": "npx tsc -p ./tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/src/index.js"
   },
-  "exports": "./dist/index.js",
+  "exports": "./dist/src/index.js",
   "keywords": [],
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@types/node": "^22.15.3",
     "tsc-watch": "^7.2.0",
     "vitest": "^4.0.18"
   },
