@@ -20,7 +20,21 @@ import {
   CardTitle,
 } from "@repo/ui/components/card";
 import { Badge } from "@repo/ui/components/badge";
-import { Check, Cpu, Globe, Server, Code, Container, Github, Plus, Trash2 } from "lucide-react";
+import {
+  Check,
+  Cpu,
+  Globe,
+  Server,
+  Code,
+  Container,
+  Github,
+  Plus,
+  Trash2,
+  Terminal,
+  FileCode,
+  Bot,
+  Sparkles,
+} from "lucide-react";
 import { cn } from "@repo/ui/lib/utils";
 
 const REGIONS = [
@@ -80,11 +94,15 @@ export default function ClientView() {
     setRepositories([...repositories, { id: Date.now(), url: "", token: "" }]);
   };
 
-  const updateRepository = (id: number, field: "url" | "token", value: string) => {
+  const updateRepository = (
+    id: number,
+    field: "url" | "token",
+    value: string,
+  ) => {
     setRepositories(
       repositories.map((repo) =>
-        repo.id === id ? { ...repo, [field]: value } : repo
-      )
+        repo.id === id ? { ...repo, [field]: value } : repo,
+      ),
     );
   };
 
@@ -94,17 +112,50 @@ export default function ClientView() {
     }
   };
 
+  // Ports Configuration State
+  const [ports, setPorts] = useState([
+    { id: Date.now(), port: "80", protocol: "TCP" },
+    { id: Date.now() + 1, port: "443", protocol: "TCP" },
+  ]);
+
+  const addPort = () => {
+    setPorts([...ports, { id: Date.now(), port: "", protocol: "TCP" }]);
+  };
+
+  const updatePort = (
+    id: number,
+    field: "port" | "protocol",
+    value: string,
+  ) => {
+    setPorts(
+      ports.map((p) =>
+        p.id === id ? { ...p, [field]: value } : p,
+      ),
+    );
+  };
+
+  const removePort = (id: number) => {
+    setPorts(ports.filter((p) => p.id !== id));
+  };
+
   // Add-ons State
   const [enableDocker, setEnableDocker] = useState(false);
   const [enableOpencode, setEnableOpencode] = useState(false);
-  
+  const [enableTmux, setEnableTmux] = useState(false);
+  const [enableNvim, setEnableNvim] = useState(false);
+  const [enableCodex, setEnableCodex] = useState(false);
+  const [enableClaudeCode, setEnableClaudeCode] = useState(false);
+
   // Docker specific state
   const [enablePostgres, setEnablePostgres] = useState(false);
-  
+
   // Opencode specific state
   const [opencodePassword, setOpencodePassword] = useState("");
   const [opencodeApiProvider, setOpencodeApiProvider] = useState("openai");
   const [opencodeApiKey, setOpencodeApiKey] = useState("");
+
+  // Nvim specific state
+  const [nvimConfigUrl, setNvimConfigUrl] = useState("");
 
   return (
     <div className=" p-8 ">
@@ -146,7 +197,7 @@ export default function ClientView() {
                     "relative flex cursor-pointer rounded-lg border p-4 shadow-sm focus:outline-none transition-all",
                     isSelected
                       ? "border-primary bg-primary/5 ring-1 ring-primary"
-                      : "border-border hover:border-primary/50"
+                      : "border-border hover:border-primary/50",
                   )}
                 >
                   <div className="flex w-full items-center justify-between">
@@ -161,9 +212,7 @@ export default function ClientView() {
                         </div>
                       </div>
                     </div>
-                    {isSelected && (
-                      <Check className="h-5 w-5 text-primary" />
-                    )}
+                    {isSelected && <Check className="h-5 w-5 text-primary" />}
                   </div>
                 </div>
               );
@@ -194,7 +243,7 @@ export default function ClientView() {
                       "cursor-pointer transition-all",
                       isSelected
                         ? "border-primary ring-1 ring-primary bg-primary/5"
-                        : "hover:border-primary/50"
+                        : "hover:border-primary/50",
                     )}
                   >
                     <CardHeader className="pb-3">
@@ -241,15 +290,21 @@ export default function ClientView() {
         {/* Repository Configuration */}
         <div className="space-y-4 pt-6 border-t">
           <div>
-            <Label className="text-base font-semibold">Repository Configuration</Label>
+            <Label className="text-base font-semibold">
+              Repository Configuration
+            </Label>
             <p className="text-sm text-muted-foreground mt-1">
-              Connect your GitHub repositories to automatically clone and push changes.
+              Connect your GitHub repositories to automatically clone and push
+              changes.
             </p>
           </div>
 
-          <div className="space-y-4 max-w-3xl">
+          <div className="space-y-4  gap-4 grid grid-cols-1 md:grid-cols-2">
             {repositories.map((repo, index) => (
-              <div key={repo.id} className="relative rounded-lg border border-border bg-card p-4 shadow-sm">
+              <div
+                key={repo.id}
+                className="relative rounded-lg border border-border bg-card p-4 shadow-sm"
+              >
                 <Button
                   variant="ghost"
                   size="icon"
@@ -259,29 +314,43 @@ export default function ClientView() {
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pr-8">
+
+                <div className="grid grid-cols-1 gap-4 pr-8">
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium" htmlFor={`github-url-${repo.id}`}>GitHub Repository URL</Label>
+                    <Label
+                      className="text-sm font-medium"
+                      htmlFor={`github-url-${repo.id}`}
+                    >
+                      GitHub Repository URL
+                    </Label>
                     <div className="relative">
                       <Github className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input
                         id={`github-url-${repo.id}`}
                         placeholder="https://github.com/user/repo"
                         value={repo.url}
-                        onChange={(e) => updateRepository(repo.id, "url", e.target.value)}
+                        onChange={(e) =>
+                          updateRepository(repo.id, "url", e.target.value)
+                        }
                         className="pl-8 bg-background h-9"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-sm font-medium" htmlFor={`github-token-${repo.id}`}>Personal Access Token</Label>
+                    <Label
+                      className="text-sm font-medium"
+                      htmlFor={`github-token-${repo.id}`}
+                    >
+                      Personal Access Token
+                    </Label>
                     <Input
                       id={`github-token-${repo.id}`}
                       type="password"
                       placeholder="ghp_..."
                       value={repo.token}
-                      onChange={(e) => updateRepository(repo.id, "token", e.target.value)}
+                      onChange={(e) =>
+                        updateRepository(repo.id, "token", e.target.value)
+                      }
                       className="bg-background h-9"
                     />
                   </div>
@@ -289,23 +358,99 @@ export default function ClientView() {
               </div>
             ))}
 
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={addRepository}
-              className="w-full border-dashed bg-transparent border-border hover:border-primary/50 hover:bg-muted/50 transition-all h-9"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Add Repository
-            </Button>
+            <div className="col-span-1 md:col-span-2 flex justify-center">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addRepository}
+                className="w-full border-dashed bg-transparent border-border hover:border-primary/50 hover:bg-muted/50 transition-all h-9"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Repository
+              </Button>
+            </div>
+          </div>
+        </div>
+
+        {/* Network & Firewall Configuration */}
+        <div className="space-y-4 pt-6 border-t">
+          <div>
+            <Label className="text-base font-semibold">Network & Firewall</Label>
+            <p className="text-sm text-muted-foreground mt-1">
+              Configure inbound port rules to expose your services to the internet.
+            </p>
+          </div>
+
+          <div className="space-y-4 max-w-3xl bg-secondary/10 p-4 rounded-xl border border-border/50">
+            <div className="hidden md:grid grid-cols-12 gap-4 pb-2 border-b border-border/50 text-sm font-medium text-muted-foreground px-1">
+              <div className="col-span-5">Port</div>
+              <div className="col-span-5">Protocol</div>
+              <div className="col-span-2"></div>
+            </div>
+
+            {ports.map((portRule, index) => (
+              <div key={portRule.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-end md:items-center bg-background/50 md:bg-transparent p-3 md:p-0 rounded-lg border border-border/50 md:border-none">
+                <div className="col-span-1 md:col-span-5 space-y-1 md:space-y-0">
+                  <Label className="text-xs md:hidden">Port</Label>
+                  <Input
+                    type="number"
+                    placeholder="e.g. 8080"
+                    value={portRule.port}
+                    onChange={(e) => updatePort(portRule.id, "port", e.target.value)}
+                    className="h-9 bg-background md:bg-transparent"
+                  />
+                </div>
+                <div className="col-span-1 md:col-span-5 space-y-1 md:space-y-0">
+                  <Label className="text-xs md:hidden">Protocol</Label>
+                  <Select
+                    value={portRule.protocol}
+                    onValueChange={(val) => updatePort(portRule.id, "protocol", val)}
+                  >
+                    <SelectTrigger className="h-9 bg-background md:bg-transparent">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="TCP">TCP</SelectItem>
+                      <SelectItem value="UDP">UDP</SelectItem>
+                      <SelectItem value="Both">TCP/UDP</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="col-span-1 md:col-span-2 flex justify-end md:justify-center">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive h-9 w-9"
+                    onClick={() => removePort(portRule.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            <div className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addPort}
+                className="w-full border-dashed bg-transparent border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/50 transition-all h-9"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Add Port Rule
+              </Button>
+            </div>
           </div>
         </div>
 
         {/* Add-ons Configuration */}
         <div className="space-y-4 pt-6 border-t">
           <div>
-            <Label className="text-base font-semibold">Additional Services</Label>
+            <Label className="text-base font-semibold">
+              Additional Services
+            </Label>
             <p className="text-sm text-muted-foreground mt-1">
               Enable optional services for your environment.
             </p>
@@ -316,7 +461,9 @@ export default function ClientView() {
             <div
               className={cn(
                 "border rounded-lg p-5 transition-all h-fit",
-                enableDocker ? "border-primary/50 bg-primary/5" : "border-border"
+                enableDocker
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border",
               )}
             >
               <div className="flex items-start space-x-3">
@@ -407,17 +554,22 @@ export default function ClientView() {
                       className="bg-background"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label>API Provider</Label>
-                    <Select value={opencodeApiProvider} onValueChange={setOpencodeApiProvider}>
+                    <Select
+                      value={opencodeApiProvider}
+                      onValueChange={setOpencodeApiProvider}
+                    >
                       <SelectTrigger className="w-full bg-background h-8">
                         <SelectValue placeholder="Select a provider" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="openai">OpenAI</SelectItem>
                         <SelectItem value="google">Google Gemini</SelectItem>
-                        <SelectItem value="claude">Claude (Anthropic)</SelectItem>
+                        <SelectItem value="claude">
+                          Claude (Anthropic)
+                        </SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -435,6 +587,148 @@ export default function ClientView() {
                   </div>
                 </div>
               )}
+            </div>
+
+            {/* Tmux Option */}
+            <div
+              className={cn(
+                "border rounded-lg p-5 transition-all h-fit",
+                enableTmux
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border",
+              )}
+            >
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="enable-tmux"
+                  checked={enableTmux}
+                  onCheckedChange={(c) => setEnableTmux(c as boolean)}
+                  className="mt-1"
+                />
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="enable-tmux"
+                    className="text-base font-medium cursor-pointer flex items-center gap-2"
+                  >
+                    <Terminal className="w-4 h-4" />
+                    Tmux
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Terminal multiplexer for managing multiple sessions.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Neovim Option */}
+            <div
+              className={cn(
+                "border rounded-lg p-5 transition-all h-fit",
+                enableNvim
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border",
+              )}
+            >
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="enable-nvim"
+                  checked={enableNvim}
+                  onCheckedChange={(c) => setEnableNvim(c as boolean)}
+                  className="mt-1"
+                />
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="enable-nvim"
+                    className="text-base font-medium cursor-pointer flex items-center gap-2"
+                  >
+                    <FileCode className="w-4 h-4" />
+                    Neovim
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Hyperextensible Vim-based text editor.
+                  </p>
+                </div>
+              </div>
+
+              {enableNvim && (
+                <div className="mt-5 pl-7 space-y-4 border-t pt-4 border-border/50">
+                  <div className="space-y-2">
+                    <Label htmlFor="nvim-config-url">Custom Config Repository (Optional)</Label>
+                    <div className="relative">
+                      <Github className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        id="nvim-config-url"
+                        placeholder="https://github.com/user/nvim-config"
+                        value={nvimConfigUrl}
+                        onChange={(e) => setNvimConfigUrl(e.target.value)}
+                        className="pl-8 bg-background"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Codex Option */}
+            <div
+              className={cn(
+                "border rounded-lg p-5 transition-all h-fit",
+                enableCodex
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border",
+              )}
+            >
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="enable-codex"
+                  checked={enableCodex}
+                  onCheckedChange={(c) => setEnableCodex(c as boolean)}
+                  className="mt-1"
+                />
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="enable-codex"
+                    className="text-base font-medium cursor-pointer flex items-center gap-2"
+                  >
+                    <Bot className="w-4 h-4" />
+                    Codex
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable OpenAI Codex AI assistant for your environment.
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            {/* Claude Code Option */}
+            <div
+              className={cn(
+                "border rounded-lg p-5 transition-all h-fit",
+                enableClaudeCode
+                  ? "border-primary/50 bg-primary/5"
+                  : "border-border",
+              )}
+            >
+              <div className="flex items-start space-x-3">
+                <Checkbox
+                  id="enable-claude-code"
+                  checked={enableClaudeCode}
+                  onCheckedChange={(c) => setEnableClaudeCode(c as boolean)}
+                  className="mt-1"
+                />
+                <div className="space-y-1">
+                  <Label
+                    htmlFor="enable-claude-code"
+                    className="text-base font-medium cursor-pointer flex items-center gap-2"
+                  >
+                    <Sparkles className="w-4 h-4" />
+                    Claude Code
+                  </Label>
+                  <p className="text-sm text-muted-foreground">
+                    Enable Anthropic Claude Code assistant.
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
         </div>
