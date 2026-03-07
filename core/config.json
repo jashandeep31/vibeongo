@@ -12,7 +12,7 @@
         "containers": [
           {
             "name": "postgres",
-            "compose_file_url": "https://l1.devsradar.com/postgres-docker-compose-file",
+            "file_content": "https://l1.devsradar.com/postgres-docker-compose-file",
             "filename": "postgres-docker-compose.yaml"
           }
         ]

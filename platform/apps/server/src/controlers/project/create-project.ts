@@ -2,12 +2,12 @@ import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/appError.js";
 import { db } from "@repo/db";
-import { z } from "zod";
+import { projectConfigValidator, z } from "@repo/shared";
 
 const createProjectSchema = z.object({
   name: z.string().min(3).max(3),
   instanceSlug: z.string(),
-  config: z.json(),
+  config: projectConfigValidator,
 });
 
 export const createProject = catchAsync(async (req: Request, res: Response) => {
@@ -19,5 +19,9 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
   const project = await db.transaction(async (tx) => {
     // create the project with the stoped state
     // just save the config
+    const { body } = req;
+    const parsedData = createProjectSchema.parse(body);
+
+    const config = parsedData.config;
   });
 });
