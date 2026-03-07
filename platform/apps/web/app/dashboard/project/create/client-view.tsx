@@ -127,11 +127,7 @@ export default function ClientView() {
     field: "port" | "protocol",
     value: string,
   ) => {
-    setPorts(
-      ports.map((p) =>
-        p.id === id ? { ...p, [field]: value } : p,
-      ),
-    );
+    setPorts(ports.map((p) => (p.id === id ? { ...p, [field]: value } : p)));
   };
 
   const removePort = (id: number) => {
@@ -376,9 +372,12 @@ export default function ClientView() {
         {/* Network & Firewall Configuration */}
         <div className="space-y-4 pt-6 border-t">
           <div>
-            <Label className="text-base font-semibold">Network & Firewall</Label>
+            <Label className="text-base font-semibold">
+              Network & Firewall
+            </Label>
             <p className="text-sm text-muted-foreground mt-1">
-              Configure inbound port rules to expose your services to the internet.
+              Configure inbound port rules to expose your services to the
+              internet.
             </p>
           </div>
 
@@ -389,15 +388,20 @@ export default function ClientView() {
               <div className="col-span-2"></div>
             </div>
 
-            {ports.map((portRule, index) => (
-              <div key={portRule.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-end md:items-center bg-background/50 md:bg-transparent p-3 md:p-0 rounded-lg border border-border/50 md:border-none">
+            {ports.map((portRule) => (
+              <div
+                key={portRule.id}
+                className="grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-end md:items-center bg-background/50 md:bg-transparent p-3 md:p-0 rounded-lg border border-border/50 md:border-none"
+              >
                 <div className="col-span-1 md:col-span-5 space-y-1 md:space-y-0">
                   <Label className="text-xs md:hidden">Port</Label>
                   <Input
                     type="number"
                     placeholder="e.g. 8080"
                     value={portRule.port}
-                    onChange={(e) => updatePort(portRule.id, "port", e.target.value)}
+                    onChange={(e) =>
+                      updatePort(portRule.id, "port", e.target.value)
+                    }
                     className="h-9 bg-background md:bg-transparent"
                   />
                 </div>
@@ -405,7 +409,9 @@ export default function ClientView() {
                   <Label className="text-xs md:hidden">Protocol</Label>
                   <Select
                     value={portRule.protocol}
-                    onValueChange={(val) => updatePort(portRule.id, "protocol", val)}
+                    onValueChange={(val) =>
+                      updatePort(portRule.id, "protocol", val)
+                    }
                   >
                     <SelectTrigger className="h-9 bg-background md:bg-transparent">
                       <SelectValue />
@@ -593,9 +599,7 @@ export default function ClientView() {
             <div
               className={cn(
                 "border rounded-lg p-5 transition-all h-fit",
-                enableTmux
-                  ? "border-primary/50 bg-primary/5"
-                  : "border-border",
+                enableTmux ? "border-primary/50 bg-primary/5" : "border-border",
               )}
             >
               <div className="flex items-start space-x-3">
@@ -624,9 +628,7 @@ export default function ClientView() {
             <div
               className={cn(
                 "border rounded-lg p-5 transition-all h-fit",
-                enableNvim
-                  ? "border-primary/50 bg-primary/5"
-                  : "border-border",
+                enableNvim ? "border-primary/50 bg-primary/5" : "border-border",
               )}
             >
               <div className="flex items-start space-x-3">
@@ -653,7 +655,9 @@ export default function ClientView() {
               {enableNvim && (
                 <div className="mt-5 pl-7 space-y-4 border-t pt-4 border-border/50">
                   <div className="space-y-2">
-                    <Label htmlFor="nvim-config-url">Custom Config Repository (Optional)</Label>
+                    <Label htmlFor="nvim-config-url">
+                      Custom Config Repository (Optional)
+                    </Label>
                     <div className="relative">
                       <Github className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input

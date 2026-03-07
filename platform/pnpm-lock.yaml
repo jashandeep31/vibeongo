@@ -26,6 +26,9 @@ importers:
       '@repo/db':
         specifier: workspace:*
         version: link:../../packages/database
+      '@repo/shared':
+        specifier: workspace:*
+        version: link:../../packages/shared
       '@types/cors':
         specifier: ^2.8.19
         version: 2.8.19
@@ -170,6 +173,16 @@ importers:
       typescript-eslint:
         specifier: ^8.50.0
         version: 8.50.0(eslint@9.39.1(jiti@2.6.1))(typescript@5.9.2)
+
+  packages/shared:
+    dependencies:
+      zod:
+        specifier: ^4.3.6
+        version: 4.3.6
+    devDependencies:
+      tsc-watch:
+        specifier: ^7.2.0
+        version: 7.2.0(typescript@5.9.2)
 
   packages/typescript-config: {}
 
