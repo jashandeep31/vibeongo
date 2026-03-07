@@ -41,6 +41,6 @@
     "moduleDetection": "force",
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"],
-  "exclude": ["tests", "vitest.config.ts", "dist", "node_modules"]
+  "include": ["src", "tests"],
+  "exclude": ["vitest.config.ts", "dist", "node_modules"]
 }
