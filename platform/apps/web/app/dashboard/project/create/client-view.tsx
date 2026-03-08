@@ -4,49 +4,43 @@ import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import InstanceRegionCards from "./components/instance-region-cards";
 import InstanceTypeCards from "./components/instance-type-cards";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
-import GitRepoConfig from "./components/git-repo-config-card";
+import GitRepoConfigCard from "./components/git-repo-config-card";
 import SshKeysCard from "./components/ssh-keys-card";
-import NetworkFirewallCard, {
-  PortRule,
-} from "./components/network-firewall-card";
+import NetworkFirewallCard from "./components/network-firewall-card";
 import AdditionalServices from "./components/additional-services";
 import { Button } from "@repo/ui/components/button";
+import {
+  createGitRepoConfig,
+  createPortRule,
+  type GitRepoConfig,
+  type PortRule,
+} from "./types";
 
-export interface GitRepoConfig {
-  git_url: string;
-  access_token: string;
-}
-export interface Error {
-  from: ["repo"][number];
-  error: string;
-}
 export default function ClientView() {
-  const [errors, setErrors] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
   >(null);
   const [selectedSshKeys, setSelectedSshKeys] = useState<string[]>([]);
-  const [portRules, setPortRules] = useState<PortRule[]>([
-    { port: "80", protocol: "TCP" },
-    { port: "443", protocol: "TCP" },
+  const [portRules, setPortRules] = useState<PortRule[]>(() => [
+    createPortRule("80"),
+    createPortRule("443"),
   ]);
   const [dockerEnabled, setDockerEnabled] = useState(false);
-  const [selectedContainers, setSelectedContainers] = useState<string[]>([]);
-  const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>([
-    {
-      git_url: "",
-      access_token: "",
-    },
+  const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>(() => [
+    createGitRepoConfig(),
   ]);
-  const { data } = useInstanceTypesByRegionID({ regionId: selectedRegion });
+  const { data: instanceTypes } = useInstanceTypesByRegionID({
+    regionId: selectedRegion,
+  });
 
-  const handleRegionChange = (region: string | null) => {
+  const handleRegionChange = useCallback((region: string | null) => {
     setSelectedRegion(region);
     setSelectedInstanceType(null);
-  };
+  }, []);
+
   return (
     <div className="p-8 space-y-8">
       <div>
@@ -73,13 +67,13 @@ export default function ClientView() {
       </div>
       <div>
         <InstanceTypeCards
-          instanceTypes={data}
+          instanceTypes={instanceTypes}
           selectedInstanceType={selectedInstanceType}
           setSelectedInstanceType={setSelectedInstanceType}
         />
       </div>
       <div>
-        <GitRepoConfig gitRepos={gitRepos} setGitRepos={setGitRepos} />
+        <GitRepoConfigCard gitRepos={gitRepos} setGitRepos={setGitRepos} />
       </div>
       <div>
         <SshKeysCard
@@ -94,8 +88,6 @@ export default function ClientView() {
         <AdditionalServices
           dockerEnabled={dockerEnabled}
           onDockerEnabledChange={setDockerEnabled}
-          selectedContainers={selectedContainers}
-          onSelectedContainersChange={setSelectedContainers}
         />
       </div>
       <div>

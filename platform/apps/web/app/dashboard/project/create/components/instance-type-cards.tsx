@@ -1,6 +1,7 @@
+import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
 
-export default function InstanceTypeCards({
+function InstanceTypeCards({
   instanceTypes,
   selectedInstanceType,
   setSelectedInstanceType,
@@ -9,7 +10,12 @@ export default function InstanceTypeCards({
   selectedInstanceType: string | null;
   setSelectedInstanceType: (type: string | null) => void;
 }) {
-  if (!instanceTypes || !Array.isArray(instanceTypes) || instanceTypes.length === 0) return null;
+  if (
+    !instanceTypes ||
+    !Array.isArray(instanceTypes) ||
+    instanceTypes.length === 0
+  )
+    return null;
 
   return (
     <div className="space-y-4">
@@ -40,11 +46,15 @@ export default function InstanceTypeCards({
             <div className="mt-auto w-full text-xs text-muted-foreground space-y-2">
               <div className="flex justify-between">
                 <span>CPU:</span>
-                <span className="font-medium text-foreground">{instance.cpu}</span>
+                <span className="font-medium text-foreground">
+                  {instance.cpu}
+                </span>
               </div>
               <div className="flex justify-between">
                 <span>RAM:</span>
-                <span className="font-medium text-foreground">{instance.ram}</span>
+                <span className="font-medium text-foreground">
+                  {instance.ram}
+                </span>
               </div>
             </div>
           </button>
@@ -53,3 +63,5 @@ export default function InstanceTypeCards({
     </div>
   );
 }
+
+export default memo(InstanceTypeCards);
