@@ -17,3 +17,10 @@ export const getSshKeys = async (): Promise<
   });
   return res.data.data;
 };
+
+export const deleteSshKey = async (id: string) => {
+  const res = await axios.delete(`${BACKEND_URL}/api/v1/user/ssh-key/${id}`, {
+    withCredentials: true,
+  });
+  return res.status;
+};
