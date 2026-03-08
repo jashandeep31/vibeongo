@@ -43,12 +43,9 @@ export default function NetworkFirewallCard({
   return (
     <div className="space-y-4">
       <div>
-        <h3 className="text-lg font-semibold text-foreground">
-          Network & Firewall
-        </h3>
-        <p className="text-sm text-muted-foreground mt-1">
-          Configure inbound port rules to expose your services to the internet.
-        </p>
+        <Label className="text-sm text-muted-foreground">
+          Networks & Firewall
+        </Label>
       </div>
       <div className="border rounded-lg p-6 bg-card space-y-6">
         <div className="space-y-4">
