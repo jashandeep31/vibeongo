@@ -1,5 +1,5 @@
 import ClientView from "./client-view";
 
-export default function page() {
+export default function Page() {
   return <ClientView />;
 }
