@@ -43,7 +43,7 @@ const sidebarLinks: {
   },
   {
     title: "Settings",
-    url: "/settings",
+    url: "/dashboard/settings",
     icon: Settings,
   },
   {
