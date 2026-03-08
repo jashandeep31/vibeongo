@@ -18,7 +18,12 @@ export interface GitRepoConfig {
   git_url: string;
   access_token: string;
 }
+export interface Error {
+  from: ["repo"][number];
+  error: string;
+}
 export default function ClientView() {
+  const [errors, setErrors] = useState([]);
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
