@@ -11,6 +11,8 @@ import SshKeysCard from "./components/ssh-keys-card";
 import NetworkFirewallCard, {
   PortRule,
 } from "./components/network-firewall-card";
+import AdditionalServices from "./components/additional-services";
+import { Button } from "@repo/ui/components/button";
 
 export interface GitRepoConfig {
   git_url: string;
@@ -26,6 +28,8 @@ export default function ClientView() {
     { port: "80", protocol: "TCP" },
     { port: "443", protocol: "TCP" },
   ]);
+  const [dockerEnabled, setDockerEnabled] = useState(false);
+  const [selectedContainers, setSelectedContainers] = useState<string[]>([]);
   const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>([
     {
       git_url: "",
@@ -80,6 +84,17 @@ export default function ClientView() {
       </div>
       <div>
         <NetworkFirewallCard rules={portRules} onRulesChange={setPortRules} />
+      </div>
+      <div>
+        <AdditionalServices
+          dockerEnabled={dockerEnabled}
+          onDockerEnabledChange={setDockerEnabled}
+          selectedContainers={selectedContainers}
+          onSelectedContainersChange={setSelectedContainers}
+        />
+      </div>
+      <div>
+        <Button>Create Project</Button>
       </div>
     </div>
   );
