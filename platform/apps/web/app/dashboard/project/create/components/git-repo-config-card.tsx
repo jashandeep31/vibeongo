@@ -3,9 +3,9 @@ import { Card, CardContent } from "@repo/ui/components/card";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { Trash2 } from "lucide-react";
-import { GitRepoConfig } from "../client-view";
 import { z } from "@repo/shared";
-import React from "react";
+import React, { useCallback } from "react";
+import { createGitRepoConfig, type GitRepoConfig } from "../types";
 
 const gitRepoSchema = z.object({
   git_url: z
@@ -17,20 +17,20 @@ const gitRepoSchema = z.object({
   access_token: z.string().optional(),
 });
 
-function RepoConfigItemCard({
+const RepoConfigItemCard = React.memo(function RepoConfigItemCard({
   repo,
   index,
-  onUpdate,
-  onDelete,
+  onUpdateRepo,
+  onDeleteRepo,
 }: {
-  repo: { git_url: string; access_token: string };
+  repo: GitRepoConfig;
   index: number;
-  onUpdate: (
-    index: number,
+  onUpdateRepo: (
+    id: string,
     field: "git_url" | "access_token",
     value: string,
   ) => void;
-  onDelete: (index: number) => void;
+  onDeleteRepo: (id: string) => void;
 }) {
   const parsed = gitRepoSchema.safeParse(repo);
   const errors = !parsed.success ? parsed.error.flatten().fieldErrors : {};
@@ -44,7 +44,7 @@ function RepoConfigItemCard({
             variant={"ghost"}
             size={"icon"}
             className="text-muted-foreground h-8 w-8"
-            onClick={() => onDelete(index)}
+            onClick={() => onDeleteRepo(repo.id)}
             type="button"
           >
             <Trash2 className="h-4 w-4" />
@@ -54,7 +54,7 @@ function RepoConfigItemCard({
           <Label className="text-sm text-muted-foreground">Repo Url</Label>
           <Input
             value={repo.git_url}
-            onChange={(e) => onUpdate(index, "git_url", e.target.value)}
+            onChange={(e) => onUpdateRepo(repo.id, "git_url", e.target.value)}
             placeholder="https://github.com/username/repo.git"
             className={
               errors.git_url && repo.git_url.length > 0
@@ -78,7 +78,9 @@ function RepoConfigItemCard({
           <Input
             type="password"
             value={repo.access_token}
-            onChange={(e) => onUpdate(index, "access_token", e.target.value)}
+            onChange={(e) =>
+              onUpdateRepo(repo.id, "access_token", e.target.value)
+            }
             placeholder="ghp_..."
             className={
               errors.access_token && repo.access_token.length > 0
@@ -95,7 +97,7 @@ function RepoConfigItemCard({
       </CardContent>
     </Card>
   );
-}
+});
 
 const GitRepoConfigCard = React.memo(
   ({
@@ -105,25 +107,33 @@ const GitRepoConfigCard = React.memo(
     gitRepos: GitRepoConfig[];
     setGitRepos: React.Dispatch<React.SetStateAction<GitRepoConfig[]>>;
   }) => {
-    const handleAddRepo = () => {
-      setGitRepos([...gitRepos, { git_url: "", access_token: "" }]);
-    };
+    const handleAddRepo = useCallback(() => {
+      setGitRepos((currentRepos) => [...currentRepos, createGitRepoConfig()]);
+    }, [setGitRepos]);
 
-    const handleDeleteRepo = (indexToRemove: number) => {
-      setGitRepos(gitRepos.filter((_, index) => index !== indexToRemove));
-    };
+    const handleDeleteRepo = useCallback(
+      (idToRemove: string) => {
+        setGitRepos((currentRepos) =>
+          currentRepos.filter((repo) => repo.id !== idToRemove),
+        );
+      },
+      [setGitRepos],
+    );
 
-    const handleUpdateRepo = (
-      indexToUpdate: number,
-      field: "git_url" | "access_token",
-      value: string,
-    ) => {
-      setGitRepos(
-        gitRepos.map((repo, index) =>
-          index === indexToUpdate ? { ...repo, [field]: value } : repo,
-        ),
-      );
-    };
+    const handleUpdateRepo = useCallback(
+      (
+        idToUpdate: string,
+        field: "git_url" | "access_token",
+        value: string,
+      ) => {
+        setGitRepos((currentRepos) =>
+          currentRepos.map((repo) =>
+            repo.id === idToUpdate ? { ...repo, [field]: value } : repo,
+          ),
+        );
+      },
+      [setGitRepos],
+    );
 
     return (
       <div className="space-y-3">
@@ -138,11 +148,11 @@ const GitRepoConfigCard = React.memo(
         <div className="grid grid-cols-2 gap-4">
           {gitRepos.map((repo, index) => (
             <RepoConfigItemCard
-              key={index}
+              key={repo.id}
               index={index}
               repo={repo}
-              onUpdate={handleUpdateRepo}
-              onDelete={handleDeleteRepo}
+              onUpdateRepo={handleUpdateRepo}
+              onDeleteRepo={handleDeleteRepo}
             />
           ))}
         </div>
