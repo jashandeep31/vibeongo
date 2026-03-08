@@ -1,18 +1,15 @@
+import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
 import DockerConfigCard from "./docker-config-card";
 
 interface AdditionalServicesProps {
   dockerEnabled: boolean;
   onDockerEnabledChange: (enabled: boolean) => void;
-  selectedContainers: string[];
-  onSelectedContainersChange: (containers: string[]) => void;
 }
 
-export default function AdditionalServices({
+function AdditionalServices({
   dockerEnabled,
   onDockerEnabledChange,
-  selectedContainers,
-  onSelectedContainersChange,
 }: AdditionalServicesProps) {
   return (
     <div className="space-y-4">
@@ -25,10 +22,10 @@ export default function AdditionalServices({
         <DockerConfigCard
           dockerEnabled={dockerEnabled}
           onDockerEnabledChange={onDockerEnabledChange}
-          selectedContainers={selectedContainers}
-          onSelectedContainersChange={onSelectedContainersChange}
         />
       </div>
     </div>
   );
 }
+
+export default memo(AdditionalServices);
