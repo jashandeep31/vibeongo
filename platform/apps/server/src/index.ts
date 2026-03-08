@@ -17,11 +17,12 @@ app.use(cookieParser());
 app.use(
   cors({
     origin: ["http://localhost:3000"],
+    credentials: true,
   }),
 );
 
 const START_TIME = Date.now();
-app.get("/", checkAuthorization(["any"]), (_req: Request, res: Response) => {
+app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
   const diffMs = Date.now() - START_TIME;
   const totalSeconds = Math.floor(diffMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);
