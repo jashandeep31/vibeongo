@@ -1,7 +1,7 @@
 import { db, eq, userRoles, users } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
 
-const userRolesArray = [...userRoles.enumValues, "any"];
+const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
 
 export const checkAuthorization = (allowedRoles: userRole[]) => {
@@ -33,7 +33,7 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
       });
     }
 
-    if (!allowedRoles.includes("any") && !allowedRoles.includes(user.role)) {
+    if (!allowedRoles.includes("all") && !allowedRoles.includes(user.role)) {
       return res.status(403).json({
         error: "not authorized",
       });
