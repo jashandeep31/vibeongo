@@ -14,3 +14,4 @@ export * from "./schemas/environments.js";
 export * from "./schemas/projects.js";
 export * from "./schemas/project-sessions.js";
 export * from "./schemas/instances-metadata.js";
+export * from "./schemas/ssh-key.js";
