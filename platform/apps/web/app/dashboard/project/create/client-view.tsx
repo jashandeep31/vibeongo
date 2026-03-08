@@ -7,6 +7,10 @@ import InstanceTypeCards from "./components/instance-type-cards";
 import { useState } from "react";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
 import GitRepoConfig from "./components/git-repo-config-card";
+import SshKeysCard from "./components/ssh-keys-card";
+import NetworkFirewallCard, {
+  PortRule,
+} from "./components/network-firewall-card";
 
 export interface GitRepoConfig {
   git_url: string;
@@ -17,6 +21,11 @@ export default function ClientView() {
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
   >(null);
+  const [selectedSshKeys, setSelectedSshKeys] = useState<string[]>([]);
+  const [portRules, setPortRules] = useState<PortRule[]>([
+    { port: "80", protocol: "TCP" },
+    { port: "443", protocol: "TCP" },
+  ]);
   const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>([
     {
       git_url: "",
@@ -62,6 +71,15 @@ export default function ClientView() {
       </div>
       <div>
         <GitRepoConfig gitRepos={gitRepos} setGitRepos={setGitRepos} />
+      </div>
+      <div>
+        <SshKeysCard
+          selectedKeys={selectedSshKeys}
+          onSelectedKeysChange={setSelectedSshKeys}
+        />
+      </div>
+      <div>
+        <NetworkFirewallCard rules={portRules} onRulesChange={setPortRules} />
       </div>
     </div>
   );

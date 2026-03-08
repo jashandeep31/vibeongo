@@ -1,6 +1,6 @@
 "use client";
 
-import { useSshKeys, useDeleteSshKey } from "@/hooks/use-shh-keys";
+import { useSshKeys, useDeleteSshKey } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { Key, Trash2 } from "lucide-react";

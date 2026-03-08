@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useCreateSshKey } from "@/hooks/use-shh-keys";
+import { useCreateSshKey } from "@/hooks/use-ssh-keys";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
