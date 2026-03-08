@@ -6,20 +6,23 @@ import { Package, Plus, Trash2 } from "lucide-react";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Button } from "@repo/ui/components/button";
-import { useState } from "react";
+import { memo, useCallback, useState } from "react";
 
 interface DockerConfigCardProps {
   dockerEnabled: boolean;
   onDockerEnabledChange: (enabled: boolean) => void;
-  // Ignoring these props internally but keeping them so parent components don't error
-  selectedContainers: string[];
-  onSelectedContainersChange: (containers: string[]) => void;
 }
 
 interface ContainerConfig {
   id: string;
   name: string;
   content: string;
+}
+
+interface ContainerEditorProps {
+  container: ContainerConfig;
+  onUpdateContainer: (id: string, updates: Partial<ContainerConfig>) => void;
+  onRemoveContainer: (id: string) => void;
 }
 
 const PREDEFINED_CONTAINERS = [
@@ -33,30 +36,78 @@ const PREDEFINED_CONTAINERS = [
   },
 ];
 
-export default function DockerConfigCard({
+const ContainerEditor = memo(function ContainerEditor({
+  container,
+  onUpdateContainer,
+  onRemoveContainer,
+}: ContainerEditorProps) {
+  return (
+    <div className="border border-border rounded-md bg-card p-4 space-y-3">
+      <div className="flex items-center space-x-3">
+        <Input
+          value={container.name}
+          onChange={(e) =>
+            onUpdateContainer(container.id, {
+              name: e.target.value,
+            })
+          }
+          placeholder="Container Name"
+          className="font-medium bg-transparent"
+        />
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => onRemoveContainer(container.id)}
+          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
+        >
+          <Trash2 className="w-4 h-4" />
+        </Button>
+      </div>
+      <Textarea
+        value={container.content}
+        onChange={(e) =>
+          onUpdateContainer(container.id, {
+            content: e.target.value,
+          })
+        }
+        placeholder="docker-compose.yml or Dockerfile content..."
+        className="font-mono text-xs whitespace-pre bg-muted/50 h-32 overflow-y-auto resize-y"
+      />
+    </div>
+  );
+});
+
+function DockerConfigCard({
   dockerEnabled,
   onDockerEnabledChange,
 }: DockerConfigCardProps) {
   const [containers, setContainers] = useState<ContainerConfig[]>([]);
 
-  const addContainer = (name: string, content: string = "") => {
+  const addContainer = useCallback((name: string, content: string = "") => {
     const newContainer = {
       id: crypto.randomUUID(),
       name,
       content,
     };
-    setContainers([...containers, newContainer]);
-  };
+    setContainers((currentContainers) => [...currentContainers, newContainer]);
+  }, []);
 
-  const removeContainer = (id: string) => {
-    setContainers(containers.filter((c) => c.id !== id));
-  };
-
-  const updateContainer = (id: string, updates: Partial<ContainerConfig>) => {
-    setContainers(
-      containers.map((c) => (c.id === id ? { ...c, ...updates } : c)),
+  const removeContainer = useCallback((id: string) => {
+    setContainers((currentContainers) =>
+      currentContainers.filter((container) => container.id !== id),
     );
-  };
+  }, []);
+
+  const updateContainer = useCallback(
+    (id: string, updates: Partial<ContainerConfig>) => {
+      setContainers((currentContainers) =>
+        currentContainers.map((container) =>
+          container.id === id ? { ...container, ...updates } : container,
+        ),
+      );
+    },
+    [],
+  );
 
   return (
     <div
@@ -97,41 +148,12 @@ export default function DockerConfigCard({
                       Active Containers
                     </h4>
                     {containers.map((container) => (
-                      <div
+                      <ContainerEditor
                         key={container.id}
-                        className="border border-border rounded-md bg-card p-4 space-y-3"
-                      >
-                        <div className="flex items-center space-x-3">
-                          <Input
-                            value={container.name}
-                            onChange={(e) =>
-                              updateContainer(container.id, {
-                                name: e.target.value,
-                              })
-                            }
-                            placeholder="Container Name"
-                            className="font-medium bg-transparent"
-                          />
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => removeContainer(container.id)}
-                            className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <Textarea
-                          value={container.content}
-                          onChange={(e) =>
-                            updateContainer(container.id, {
-                              content: e.target.value,
-                            })
-                          }
-                          placeholder="docker-compose.yml or Dockerfile content..."
-                          className="font-mono text-xs whitespace-pre bg-muted/50 h-32 overflow-y-auto resize-y"
-                        />
-                      </div>
+                        container={container}
+                        onUpdateContainer={updateContainer}
+                        onRemoveContainer={removeContainer}
+                      />
                     ))}
                   </div>
                 )}
@@ -172,3 +194,5 @@ export default function DockerConfigCard({
     </div>
   );
 }
+
+export default memo(DockerConfigCard);

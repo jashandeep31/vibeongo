@@ -1,7 +1,8 @@
+import { memo } from "react";
 import { useInstanceRegions } from "@/hooks/use-instance-metadata";
 import { Label } from "@repo/ui/components/label";
 
-export default function InstanceRegionCards({
+function InstanceRegionCards({
   selectedRegion,
   setSelectedRegion,
 }: {
@@ -39,3 +40,5 @@ export default function InstanceRegionCards({
     </div>
   );
 }
+
+export default memo(InstanceRegionCards);
