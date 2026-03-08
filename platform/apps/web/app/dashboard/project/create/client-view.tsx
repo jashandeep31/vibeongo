@@ -8,17 +8,21 @@ import { useState } from "react";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
 import GitRepoConfig from "./components/git-repo-config-card";
 
+export interface GitRepoConfig {
+  git_url: string;
+  access_token: string;
+}
 export default function ClientView() {
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
   >(null);
-  const [gitRepos, setGitRepos] = useState<
+  const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>([
     {
-      git_url: string;
-      access_token: string;
-    }[]
-  >([]);
+      git_url: "",
+      access_token: "",
+    },
+  ]);
   const { data } = useInstanceTypesByRegionID({ regionId: selectedRegion });
 
   const handleRegionChange = (region: string | null) => {

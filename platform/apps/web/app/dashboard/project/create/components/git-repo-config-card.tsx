@@ -3,59 +3,111 @@ import { Card, CardContent } from "@repo/ui/components/card";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { Trash2 } from "lucide-react";
+import { GitRepoConfig } from "../client-view";
+
+function RepoConfigItemCard({
+  repo,
+  index,
+  onUpdate,
+  onDelete,
+}: {
+  repo: { git_url: string; access_token: string };
+  index: number;
+  onUpdate: (
+    index: number,
+    field: "git_url" | "access_token",
+    value: string,
+  ) => void;
+  onDelete: (index: number) => void;
+}) {
+  return (
+    <Card>
+      <CardContent className="space-y-3">
+        <div className="flex items-center justify-between">
+          <p className="font-medium">Repo {index + 1}</p>
+          <Button
+            variant={"ghost"}
+            size={"icon"}
+            className="text-muted-foreground h-8 w-8"
+            onClick={() => onDelete(index)}
+            type="button"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="space-y-2">
+          <Label className="text-sm text-muted-foreground">Repo Url</Label>
+          <Input
+            value={repo.git_url}
+            onChange={(e) => onUpdate(index, "git_url", e.target.value)}
+            placeholder="https://github.com/..."
+          />
+        </div>
+        <div className="space-y-2">
+          <Label className="text-sm text-muted-foreground">
+            Personal Access Token{" "}
+            <span className="text-xs font-normal text-muted-foreground">
+              (optional)
+            </span>
+          </Label>
+          <Input
+            type="password"
+            value={repo.access_token}
+            onChange={(e) => onUpdate(index, "access_token", e.target.value)}
+            placeholder="ghp_..."
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export default function GitRepoConfigCard({
   gitRepos,
   setGitRepos,
 }: {
-  gitRepos: {
-    git_url: string;
-    access_token: string;
-  }[];
-  setGitRepos: React.Dispatch<
-    React.SetStateAction<
-      {
-        git_url: string;
-        access_token: string;
-      }[]
-    >
-  >;
+  gitRepos: GitRepoConfig[];
+  setGitRepos: React.Dispatch<React.SetStateAction<GitRepoConfig[]>>;
 }) {
+  const handleAddRepo = () => {
+    setGitRepos([...gitRepos, { git_url: "", access_token: "" }]);
+  };
+
+  const handleDeleteRepo = (indexToRemove: number) => {
+    setGitRepos(gitRepos.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleUpdateRepo = (
+    indexToUpdate: number,
+    field: "git_url" | "access_token",
+    value: string,
+  ) => {
+    setGitRepos(
+      gitRepos.map((repo, index) =>
+        index === indexToUpdate ? { ...repo, [field]: value } : repo,
+      ),
+    );
+  };
+
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <Label className="text-sm text-muted-foreground">
           Github Repos Config
         </Label>
-        <Button variant={"outline"}>+ Add Repo</Button>
+        <Button variant={"outline"} onClick={handleAddRepo} type="button">
+          + Add Repo
+        </Button>
       </div>
       <div className="grid grid-cols-2 gap-4">
-        {gitRepos.map((repo, key) => (
-          <Card key={key}>
-            <CardContent className="space-y-3">
-              <div className="flex items-center justify-between ">
-                <p>Repo</p>
-                <Button variant={"ghost"} className="text-muted-foreground">
-                  <Trash2 />
-                </Button>
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">
-                  Repo Url
-                </Label>
-                <Input />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm text-muted-foreground">
-                  Personal Access Token{" "}
-                  <span className="text-sm text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
-                <Input />
-              </div>
-            </CardContent>
-          </Card>
+        {gitRepos.map((repo, index) => (
+          <RepoConfigItemCard
+            key={index}
+            index={index}
+            repo={repo}
+            onUpdate={handleUpdateRepo}
+            onDelete={handleDeleteRepo}
+          />
         ))}
       </div>
     </div>
