@@ -90,7 +90,7 @@ export default function ClientView() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-8 opacity-5">
       <div className="mt-8 space-y-8">
         <ProjectBasicsSection
           projectName={projectName}
