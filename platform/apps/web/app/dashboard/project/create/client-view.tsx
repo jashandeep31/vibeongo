@@ -1,7 +1,5 @@
 "use client";
 
-import { Input } from "@repo/ui/components/input";
-import { Label } from "@repo/ui/components/label";
 import InstanceRegionCards from "./components/instance-region-cards";
 import InstanceTypeCards from "./components/instance-type-cards";
 import { useCallback, useState } from "react";
@@ -17,8 +15,10 @@ import {
   type GitRepoConfig,
   type PortRule,
 } from "./types";
+import NameCard from "./components/name-card";
 
 export default function ClientView() {
+  const [projectName, setProjectName] = useState<string>("");
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
@@ -49,16 +49,7 @@ export default function ClientView() {
           Set up a new deployment environment for your application.
         </p>
       </div>
-      <div className="space-y-3">
-        <Label htmlFor="project-name" className="text-sm text-muted-foreground">
-          Project Name
-        </Label>
-        <Input
-          id="project-name"
-          placeholder="my-awesome-project"
-          className="h-10 max-w-md"
-        />
-      </div>
+      <NameCard projectName={projectName} setProjectName={setProjectName} />
       <div>
         <InstanceRegionCards
           selectedRegion={selectedRegion}
