@@ -1,3 +1,5 @@
+import { v4 as uuid } from "uuid";
+
 export interface GitRepoConfig {
   id: string;
   git_url: string;
@@ -10,17 +12,9 @@ export interface PortRule {
   protocol: "TCP" | "UDP";
 }
 
-function createItemId() {
-  if (typeof crypto !== "undefined" && "randomUUID" in crypto) {
-    return crypto.randomUUID();
-  }
-
-  return Math.random().toString(36).slice(2);
-}
-
 export function createGitRepoConfig(): GitRepoConfig {
   return {
-    id: createItemId(),
+    id: uuid(),
     git_url: "",
     access_token: "",
   };
@@ -31,7 +25,7 @@ export function createPortRule(
   protocol: PortRule["protocol"] = "TCP",
 ): PortRule {
   return {
-    id: createItemId(),
+    id: uuid(),
     port,
     protocol,
   };
