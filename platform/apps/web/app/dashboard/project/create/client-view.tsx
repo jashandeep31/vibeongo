@@ -32,7 +32,11 @@ export default function ClientView() {
   const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>(() => [
     createGitRepoConfig(),
   ]);
-  const { data: instanceTypes } = useInstanceTypesByRegionID({
+  const {
+    data: instanceTypes,
+    isLoading: isInstanceTypesLoading,
+    isFetching: isInstanceTypesFetching,
+  } = useInstanceTypesByRegionID({
     regionId: selectedRegion,
   });
 
@@ -61,6 +65,7 @@ export default function ClientView() {
           instanceTypes={instanceTypes}
           selectedInstanceType={selectedInstanceType}
           setSelectedInstanceType={setSelectedInstanceType}
+          isLoading={isInstanceTypesLoading || isInstanceTypesFetching}
         />
       </div>
       <div>
