@@ -32,32 +32,32 @@ export function SystemInformation({ project }: SystemInformationProps) {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-        <HardDrive className="w-5 h-5 text-muted-foreground" />
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+        <HardDrive className="text-muted-foreground h-5 w-5" />
         System Information
       </h2>
 
       <Card>
         <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
+                <p className="text-muted-foreground mb-1 text-sm font-medium">
                   Operating System
                 </p>
                 <div className="flex items-center gap-2">
-                  <Terminal className="w-4 h-4" />
-                  <span className="capitalize font-medium">
+                  <Terminal className="h-4 w-4" />
+                  <span className="font-medium capitalize">
                     {project.config.os}
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
+                <p className="text-muted-foreground mb-1 text-sm font-medium">
                   Privileges
                 </p>
                 <div className="flex items-center gap-2">
-                  <ShieldCheck className="w-4 h-4 text-emerald-500" />
+                  <ShieldCheck className="h-4 w-4 text-emerald-500" />
                   <span className="text-sm">
                     {project.config.system_user.is_sudo_user
                       ? "Sudo Access Granted"
@@ -69,23 +69,23 @@ export function SystemInformation({ project }: SystemInformationProps) {
 
             <div className="space-y-4">
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
+                <p className="text-muted-foreground mb-1 text-sm font-medium">
                   Username
                 </p>
                 <div className="flex items-center gap-2">
-                  <User className="w-4 h-4" />
+                  <User className="h-4 w-4" />
                   <span className="font-medium">
                     {project.config.system_user.username}
                   </span>
                 </div>
               </div>
               <div>
-                <p className="text-sm font-medium text-muted-foreground mb-1">
+                <p className="text-muted-foreground mb-1 text-sm font-medium">
                   Password
                 </p>
                 <div className="flex items-center gap-2">
-                  <div className="font-mono text-sm bg-muted px-3 py-1.5 rounded-md border flex-1 flex items-center gap-2">
-                    <Key className="w-3.5 h-3.5 text-muted-foreground" />
+                  <div className="bg-muted flex flex-1 items-center gap-2 rounded-md border px-3 py-1.5 font-mono text-sm">
+                    <Key className="text-muted-foreground h-3.5 w-3.5" />
                     {showPassword
                       ? project.config.system_user.password
                       : "••••••••••••"}
@@ -97,9 +97,9 @@ export function SystemInformation({ project }: SystemInformationProps) {
                     title={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? (
-                      <EyeOff className="w-4 h-4" />
+                      <EyeOff className="h-4 w-4" />
                     ) : (
-                      <Eye className="w-4 h-4" />
+                      <Eye className="h-4 w-4" />
                     )}
                   </Button>
                   <Button
@@ -109,9 +109,9 @@ export function SystemInformation({ project }: SystemInformationProps) {
                     title="Copy password"
                   >
                     {copied ? (
-                      <Check className="w-4 h-4 text-emerald-500" />
+                      <Check className="h-4 w-4 text-emerald-500" />
                     ) : (
-                      <Copy className="w-4 h-4" />
+                      <Copy className="h-4 w-4" />
                     )}
                   </Button>
                 </div>

@@ -26,10 +26,10 @@ const SshKeysCard = React.memo(
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">SSH Keys</Label>
+            <Label className="text-muted-foreground text-sm">SSH Keys</Label>
             <CreateSshKeyDialog />
           </div>
-          <div className="text-sm text-muted-foreground animate-pulse border rounded-lg p-4 bg-card">
+          <div className="text-muted-foreground bg-card animate-pulse rounded-lg border p-4 text-sm">
             Loading SSH keys...
           </div>
         </div>
@@ -40,10 +40,10 @@ const SshKeysCard = React.memo(
       return (
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <Label className="text-sm text-muted-foreground">SSH Keys</Label>
+            <Label className="text-muted-foreground text-sm">SSH Keys</Label>
             <CreateSshKeyDialog />
           </div>
-          <div className="text-sm text-muted-foreground border rounded-lg p-4 bg-muted/50">
+          <div className="text-muted-foreground bg-muted/50 rounded-lg border p-4 text-sm">
             No SSH keys found.
           </div>
         </div>
@@ -53,10 +53,10 @@ const SshKeysCard = React.memo(
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <Label className="text-sm text-muted-foreground">SSH Keys</Label>
+          <Label className="text-muted-foreground text-sm">SSH Keys</Label>
           <CreateSshKeyDialog />
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           {sshKeys.map((sshKey) => {
             const isSelected = selectedKeys.includes(sshKey.value);
             return (
@@ -64,9 +64,9 @@ const SshKeysCard = React.memo(
                 type="button"
                 key={sshKey.id}
                 onClick={() => toggleKey(sshKey.value)}
-                className={`flex items-center space-x-3 text-left border rounded-lg p-3 transition-colors hover:bg-muted/50 ${
+                className={`hover:bg-muted/50 flex items-center space-x-3 rounded-lg border p-3 text-left transition-colors ${
                   isSelected
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    ? "border-primary bg-primary/5 ring-primary ring-1"
                     : "bg-card border-border"
                 }`}
               >
@@ -77,7 +77,7 @@ const SshKeysCard = React.memo(
                   aria-label={`Select ${sshKey.name}`}
                 />
                 <div
-                  className={`font-medium text-sm truncate ${
+                  className={`truncate text-sm font-medium ${
                     isSelected ? "text-foreground" : "text-muted-foreground"
                   }`}
                 >

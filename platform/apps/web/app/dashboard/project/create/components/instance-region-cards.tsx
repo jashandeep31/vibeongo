@@ -12,12 +12,12 @@ function InstanceRegionCards({
   const { data: regions } = useInstanceRegions();
   return (
     <div className="space-y-4">
-      <Label className="text-sm text-muted-foreground">Deployment Region</Label>
-      <div className="flex items-center flex-wrap gap-4">
+      <Label className="text-muted-foreground text-sm">Deployment Region</Label>
+      <div className="flex flex-wrap items-center gap-4">
         {regions?.map((region) => (
           <button
             onClick={() => setSelectedRegion(region.id)}
-            className={`hover:border-primary text-sm border bg-muted rounded-md p-2 hover:text-primary transition-colors group ${
+            className={`hover:border-primary bg-muted hover:text-primary group rounded-md border p-2 text-sm transition-colors ${
               selectedRegion === region.id
                 ? "border-orange-500 text-orange-500"
                 : ""
@@ -26,7 +26,7 @@ function InstanceRegionCards({
           >
             {region.name}
             <span
-              className={`block text-xs text-muted-foreground text-left group-hover:text-primary transition-colors ${
+              className={`text-muted-foreground group-hover:text-primary block text-left text-xs transition-colors ${
                 selectedRegion === region.id
                   ? "text-orange-500 group-hover:text-orange-500"
                   : ""

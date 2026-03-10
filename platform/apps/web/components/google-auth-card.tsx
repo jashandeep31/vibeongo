@@ -22,7 +22,7 @@ export function GoogleAuthCard({
   buttonLabel,
 }: GoogleAuthCardProps) {
   return (
-    <main className="flex min-h-screen items-center justify-center bg-muted/20 p-4">
+    <main className="bg-muted/20 flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm py-6 shadow-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-base">{title}</CardTitle>

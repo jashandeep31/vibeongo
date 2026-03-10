@@ -113,7 +113,7 @@ export default function ClientView() {
         <div
           ref={terminalRef}
           id="terminal"
-          className="w-full h-[80vh] bg-black rounded-md p-2"
+          className="h-[80vh] w-full rounded-md bg-black p-2"
         />
       </div>
     </div>

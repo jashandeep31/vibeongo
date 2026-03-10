@@ -42,7 +42,7 @@ const ContainerEditor = memo(function ContainerEditor({
   onRemoveContainer,
 }: ContainerEditorProps) {
   return (
-    <div className="border border-border rounded-md bg-card p-4 space-y-3">
+    <div className="border-border bg-card space-y-3 rounded-md border p-4">
       <div className="flex items-center space-x-3">
         <Input
           value={container.name}
@@ -52,7 +52,7 @@ const ContainerEditor = memo(function ContainerEditor({
             })
           }
           placeholder="Container Name"
-          className="font-medium bg-transparent"
+          className="bg-transparent font-medium"
         />
         <Button
           variant="ghost"
@@ -60,7 +60,7 @@ const ContainerEditor = memo(function ContainerEditor({
           onClick={() => onRemoveContainer(container.id)}
           className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
       <Textarea
@@ -71,7 +71,7 @@ const ContainerEditor = memo(function ContainerEditor({
           })
         }
         placeholder="docker-compose.yml or Dockerfile content..."
-        className="font-mono text-xs whitespace-pre bg-muted/50 h-32 overflow-y-auto resize-y"
+        className="bg-muted/50 h-32 resize-y overflow-y-auto font-mono text-xs whitespace-pre"
       />
     </div>
   );
@@ -111,7 +111,7 @@ function DockerConfigCard({
 
   return (
     <div
-      className={`border rounded-lg p-6 transition-colors ${
+      className={`rounded-lg border p-6 transition-colors ${
         dockerEnabled
           ? "border-orange-500 bg-orange-50/50 dark:bg-orange-950/20"
           : "bg-card border-border"
@@ -124,27 +124,27 @@ function DockerConfigCard({
           className="mt-1"
           id="docker-engine-checkbox"
         />
-        <div className="space-y-1 w-full">
+        <div className="w-full space-y-1">
           <Label
             htmlFor="docker-engine-checkbox"
-            className="text-base font-semibold flex items-center cursor-pointer text-foreground"
+            className="text-foreground flex cursor-pointer items-center text-base font-semibold"
           >
-            <Package className="w-5 h-5 mr-2" />
+            <Package className="mr-2 h-5 w-5" />
             Docker Engine
           </Label>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-muted-foreground text-sm">
             Pre-install Docker and run popular containers.
           </p>
 
           {dockerEnabled && (
-            <div className="pt-6 w-full animate-in fade-in slide-in-from-top-4 duration-300">
-              <div className="border-t border-border mb-6"></div>
+            <div className="animate-in fade-in slide-in-from-top-4 w-full pt-6 duration-300">
+              <div className="border-border mb-6 border-t"></div>
 
               <div className="space-y-8">
                 {/* Active Containers List */}
                 {containers.length > 0 && (
                   <div className="space-y-4">
-                    <h4 className="text-sm font-semibold text-foreground">
+                    <h4 className="text-foreground text-sm font-semibold">
                       Active Containers
                     </h4>
                     {containers.map((container) => (
@@ -160,7 +160,7 @@ function DockerConfigCard({
 
                 {/* Add Buttons */}
                 <div className="space-y-3">
-                  <h4 className="text-sm font-semibold text-foreground">
+                  <h4 className="text-foreground text-sm font-semibold">
                     Add Container
                   </h4>
                   <div className="flex flex-wrap gap-2">
@@ -169,7 +169,7 @@ function DockerConfigCard({
                       onClick={() => addContainer("Custom Container")}
                       className="border-dashed"
                     >
-                      <Plus className="w-4 h-4 mr-2" />
+                      <Plus className="mr-2 h-4 w-4" />
                       Custom Container
                     </Button>
                     {PREDEFINED_CONTAINERS.map((preset) => (
@@ -180,7 +180,7 @@ function DockerConfigCard({
                           addContainer(preset.name, preset.content)
                         }
                       >
-                        <Plus className="w-4 h-4 mr-2" />
+                        <Plus className="mr-2 h-4 w-4" />
                         {preset.name}
                       </Button>
                     ))}

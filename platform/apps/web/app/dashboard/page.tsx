@@ -51,16 +51,16 @@ export default function ProjectsPage() {
   const stoppedProjects = MOCK_PROJECTS.filter((p) => p.status === "stopped");
 
   const ProjectCard = ({ project }: { project: MockProject }) => (
-    <Card className="hover:bg-muted/50 transition-colors cursor-pointer flex flex-col">
+    <Card className="hover:bg-muted/50 flex cursor-pointer flex-col transition-colors">
       <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
         <div className="flex items-center gap-3">
-          <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0">
-            <Server className="w-5 h-5" />
+          <div className="bg-primary/10 text-primary shrink-0 rounded-lg p-2">
+            <Server className="h-5 w-5" />
           </div>
           <CardTitle className="text-lg">{project.name}</CardTitle>
         </div>
         {project.status === "running" ? (
-          <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/25 border-0">
+          <Badge className="border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
             Running
           </Badge>
         ) : (
@@ -78,8 +78,8 @@ export default function ProjectsPage() {
   );
 
   return (
-    <div className="flex-1 space-y-8 p-6 md:p-8 mx-auto w-full">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
+      <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">
@@ -96,8 +96,8 @@ export default function ProjectsPage() {
 
       <div className="space-y-6">
         <div>
-          <h2 className="text-xl font-semibold mb-4">Running Now</h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          <h2 className="mb-4 text-xl font-semibold">Running Now</h2>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {runningProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}
@@ -105,10 +105,10 @@ export default function ProjectsPage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold mb-4 text-muted-foreground">
+          <h2 className="text-muted-foreground mb-4 text-xl font-semibold">
             Offline / Stopped
           </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 opacity-75 grayscale-[20%]">
+          <div className="grid grid-cols-1 gap-6 opacity-75 grayscale-[20%] md:grid-cols-2 lg:grid-cols-3">
             {stoppedProjects.map((project) => (
               <ProjectCard key={project.id} project={project} />
             ))}

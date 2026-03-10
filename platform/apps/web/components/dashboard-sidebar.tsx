@@ -56,7 +56,7 @@ const sidebarLinks: {
 
 export function DashboardSidebar() {
   return (
-    <Sidebar className="h-[calc(100vh-56px)] mt-14 bg-background">
+    <Sidebar className="bg-background mt-14 h-[calc(100vh-56px)]">
       <SidebarContent className="bg-background">
         <SidebarGroup>
           <SidebarGroupLabel>Quick Links</SidebarGroupLabel>
@@ -76,7 +76,7 @@ export function DashboardSidebar() {
                       <item.icon />
                       <span>{item.title}</span>
                       {item.external && (
-                        <ArrowUpRight className=" h-4 w-4 text-muted-foreground" />
+                        <ArrowUpRight className="text-muted-foreground h-4 w-4" />
                       )}
                     </Link>
                   </SidebarMenuButton>

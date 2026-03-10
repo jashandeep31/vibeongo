@@ -51,7 +51,7 @@ const RepoConfigItemCard = React.memo(function RepoConfigItemCard({
           </Button>
         </div>
         <div className="space-y-2">
-          <Label className="text-sm text-muted-foreground">Repo Url</Label>
+          <Label className="text-muted-foreground text-sm">Repo Url</Label>
           <Input
             value={repo.git_url}
             onChange={(e) => onUpdateRepo(repo.id, "git_url", e.target.value)}
@@ -63,15 +63,15 @@ const RepoConfigItemCard = React.memo(function RepoConfigItemCard({
             }
           />
           {errors.git_url && repo.git_url.length > 0 && (
-            <p className="text-[0.8rem] font-medium text-destructive">
+            <p className="text-destructive text-[0.8rem] font-medium">
               {errors.git_url[0]}
             </p>
           )}
         </div>
         <div className="space-y-2">
-          <Label className="text-sm text-muted-foreground">
+          <Label className="text-muted-foreground text-sm">
             Personal Access Token{" "}
-            <span className="text-xs font-normal text-muted-foreground">
+            <span className="text-muted-foreground text-xs font-normal">
               (optional)
             </span>
           </Label>
@@ -89,7 +89,7 @@ const RepoConfigItemCard = React.memo(function RepoConfigItemCard({
             }
           />
           {errors.access_token && repo.access_token.length > 0 && (
-            <p className="text-[0.8rem] font-medium text-destructive">
+            <p className="text-destructive text-[0.8rem] font-medium">
               {errors.access_token[0]}
             </p>
           )}
@@ -138,7 +138,7 @@ const GitRepoConfigCard = React.memo(
     return (
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <Label className="text-sm text-muted-foreground">
+          <Label className="text-muted-foreground text-sm">
             Github Repos Config
           </Label>
           <Button variant={"outline"} onClick={handleAddRepo} type="button">

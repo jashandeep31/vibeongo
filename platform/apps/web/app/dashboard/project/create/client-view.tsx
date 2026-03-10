@@ -46,10 +46,10 @@ export default function ClientView() {
   }, []);
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="space-y-8 p-8">
       <div>
         <h1 className="text-3xl font-bold tracking-tight">Create project</h1>
-        <p className="mt-2 text-muted-foreground">
+        <p className="text-muted-foreground mt-2">
           Set up a new deployment environment for your application.
         </p>
       </div>

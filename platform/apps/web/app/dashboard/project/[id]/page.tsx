@@ -79,19 +79,19 @@ export default function ProjectPage() {
   );
 
   return (
-    <div className="flex-1 space-y-8 p-6 md:p-8 mx-auto w-full">
+    <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
       {/* Header Section */}
       <ProjectHeader project={project} status={status} setStatus={setStatus} />
 
-      <div className="flex flex-col lg:flex-row gap-8">
+      <div className="flex flex-col gap-8 lg:flex-row">
         {/* Left Side: Configuration (75%) */}
-        <div className="lg:w-3/4 space-y-6">
+        <div className="space-y-6 lg:w-3/4">
           <SystemInformation project={project} />
           <ProjectTabs project={project} />
         </div>
 
         {/* Right Side: Usage & Billing (25%) */}
-        <div className="lg:w-1/4 space-y-6">
+        <div className="space-y-6 lg:w-1/4">
           <UsageBilling project={project} />
         </div>
       </div>

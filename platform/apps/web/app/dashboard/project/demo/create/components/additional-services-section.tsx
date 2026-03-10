@@ -88,12 +88,12 @@ function ServiceCard({
             <Icon className="h-4 w-4" />
             {title}
           </Label>
-          <p className="text-sm text-muted-foreground">{description}</p>
+          <p className="text-muted-foreground text-sm">{description}</p>
         </div>
       </div>
 
       {checked && children ? (
-        <div className="mt-5 space-y-4 border-t border-border/50 pt-4 pl-7">
+        <div className="border-border/50 mt-5 space-y-4 border-t pt-4 pl-7">
           {children}
         </div>
       ) : null}
@@ -129,7 +129,7 @@ export function AdditionalServicesSection({
     <div className="space-y-4 border-t pt-6">
       <div>
         <Label className="text-base font-semibold">Additional Services</Label>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Enable optional services for your environment.
         </p>
       </div>
@@ -147,7 +147,7 @@ export function AdditionalServicesSection({
             <Label className="text-sm font-semibold">
               Predefined Containers
             </Label>
-            <div className="flex items-center space-x-2 rounded-md border border-border/50 bg-background/50 p-2">
+            <div className="border-border/50 bg-background/50 flex items-center space-x-2 rounded-md border p-2">
               <Checkbox
                 id="container-postgres"
                 checked={enablePostgres}
@@ -191,7 +191,7 @@ export function AdditionalServicesSection({
               value={opencodeApiProvider}
               onValueChange={onOpencodeApiProviderChange}
             >
-              <SelectTrigger className="h-8 w-full bg-background">
+              <SelectTrigger className="bg-background h-8 w-full">
                 <SelectValue placeholder="Select a provider" />
               </SelectTrigger>
               <SelectContent>
@@ -237,7 +237,7 @@ export function AdditionalServicesSection({
               Custom Config Repository (Optional)
             </Label>
             <div className="relative">
-              <Github className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Github className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
               <Input
                 id="nvim-config-url"
                 placeholder="https://github.com/user/nvim-config"
