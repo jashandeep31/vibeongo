@@ -18,7 +18,7 @@ import {
 import NameCard from "./components/name-card";
 
 export default function ClientView() {
-  const [projectName, setProjectName] = useState<string>("");
+  const [projectName, setProjectName] = useState<string>("demo-project-1");
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
