@@ -80,7 +80,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="space-y-4 p-4 container">
+    <div className="container space-y-4 p-4">
       <div className="flex items-center justify-between">
         <h1 className="text-lg font-semibold">EC2 Test Admin</h1>
         <Button onClick={handleCreateServer} disabled={isCreating}>

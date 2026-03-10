@@ -28,7 +28,7 @@ export function RepositoryConfigurationSection({
         <Label className="text-base font-semibold">
           Repository Configuration
         </Label>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="text-muted-foreground mt-1 text-sm">
           Connect your GitHub repositories to automatically clone and push
           changes.
         </p>
@@ -38,12 +38,12 @@ export function RepositoryConfigurationSection({
         {repositories.map((repo) => (
           <div
             key={repo.id}
-            className="relative rounded-lg border border-border bg-card p-4 shadow-sm"
+            className="border-border bg-card relative rounded-lg border p-4 shadow-sm"
           >
             <Button
               variant="ghost"
               size="icon"
-              className="absolute right-2 top-2 h-8 w-8 text-muted-foreground hover:bg-muted/50 hover:text-destructive"
+              className="text-muted-foreground hover:bg-muted/50 hover:text-destructive absolute top-2 right-2 h-8 w-8"
               onClick={() => onRemoveRepository(repo.id)}
               disabled={repositories.length === 1}
             >
@@ -59,7 +59,7 @@ export function RepositoryConfigurationSection({
                   GitHub Repository URL
                 </Label>
                 <div className="relative">
-                  <Github className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Github className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
                   <Input
                     id={`github-url-${repo.id}`}
                     placeholder="https://github.com/user/repo"
@@ -67,7 +67,7 @@ export function RepositoryConfigurationSection({
                     onChange={(event) =>
                       onUpdateRepository(repo.id, "url", event.target.value)
                     }
-                    className="h-9 bg-background pl-8"
+                    className="bg-background h-9 pl-8"
                   />
                 </div>
               </div>
@@ -87,7 +87,7 @@ export function RepositoryConfigurationSection({
                   onChange={(event) =>
                     onUpdateRepository(repo.id, "token", event.target.value)
                   }
-                  className="h-9 bg-background"
+                  className="bg-background h-9"
                 />
               </div>
             </div>
@@ -100,7 +100,7 @@ export function RepositoryConfigurationSection({
             variant="outline"
             size="sm"
             onClick={onAddRepository}
-            className="h-9 w-full border-dashed border-border bg-transparent transition-all hover:border-primary/50 hover:bg-muted/50"
+            className="border-border hover:border-primary/50 hover:bg-muted/50 h-9 w-full border-dashed bg-transparent transition-all"
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Repository
