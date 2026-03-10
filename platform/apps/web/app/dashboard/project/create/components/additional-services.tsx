@@ -14,7 +14,7 @@ function AdditionalServices({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-sm text-muted-foreground">
+        <Label className="text-muted-foreground text-sm">
           Additional Services
         </Label>
       </div>

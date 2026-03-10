@@ -6,7 +6,7 @@ export default function layout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <ServerSidebar />
-      <main className="w-full grid">{children}</main>
+      <main className="grid w-full">{children}</main>
     </SidebarProvider>
   );
 }

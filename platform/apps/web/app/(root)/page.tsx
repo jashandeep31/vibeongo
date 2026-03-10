@@ -128,13 +128,13 @@ export default function Page() {
   }, []);
 
   return (
-    <div className="p-6 space-y-4">
+    <div className="space-y-4 p-6">
       <h1 className="text-xl font-bold">Web Terminal</h1>
       <Button>Shadcn is working</Button>
       <div
         ref={terminalRef}
         id="terminal"
-        className="w-full h-[80vh] bg-black rounded-md p-2"
+        className="h-[80vh] w-full rounded-md bg-black p-2"
       />
     </div>
   );

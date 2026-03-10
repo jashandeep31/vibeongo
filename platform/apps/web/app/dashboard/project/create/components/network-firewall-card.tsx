@@ -33,7 +33,7 @@ const FirewallRuleRow = memo(function FirewallRuleRow({
   onRemoveRule,
 }: FirewallRuleRowProps) {
   return (
-    <div className="grid grid-cols-[1fr_120px_40px] gap-6 items-center">
+    <div className="grid grid-cols-[1fr_120px_40px] items-center gap-6">
       <Input
         placeholder="e.g. 80"
         value={rule.port}
@@ -61,7 +61,7 @@ const FirewallRuleRow = memo(function FirewallRuleRow({
           onClick={() => onRemoveRule(rule.id)}
           className="text-muted-foreground hover:text-destructive hover:bg-destructive/10 h-10 w-10"
         >
-          <Trash2 className="w-4 h-4" />
+          <Trash2 className="h-4 w-4" />
         </Button>
       </div>
     </div>
@@ -108,17 +108,17 @@ function NetworkFirewallCard({
   return (
     <div className="space-y-4">
       <div>
-        <Label className="text-sm text-muted-foreground">
+        <Label className="text-muted-foreground text-sm">
           Networks & Firewall
         </Label>
       </div>
-      <div className="border rounded-lg p-6 bg-card space-y-6">
+      <div className="bg-card space-y-6 rounded-lg border p-6">
         <div className="space-y-4">
-          <div className="grid grid-cols-[1fr_120px_40px] gap-6 items-center px-1 pb-4 border-b">
-            <Label className="text-sm font-medium text-muted-foreground">
+          <div className="grid grid-cols-[1fr_120px_40px] items-center gap-6 border-b px-1 pb-4">
+            <Label className="text-muted-foreground text-sm font-medium">
               Port
             </Label>
-            <Label className="text-sm font-medium text-muted-foreground">
+            <Label className="text-muted-foreground text-sm font-medium">
               Protocol
             </Label>
             <div></div>
@@ -140,9 +140,9 @@ function NetworkFirewallCard({
         <Button
           variant="outline"
           onClick={addRule}
-          className="w-full border-dashed hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-foreground h-10"
+          className="hover:border-primary hover:bg-primary/5 text-muted-foreground hover:text-foreground h-10 w-full border-dashed"
         >
-          <Plus className="w-4 h-4 mr-2" />
+          <Plus className="mr-2 h-4 w-4" />
           Add Port Rule
         </Button>
       </div>

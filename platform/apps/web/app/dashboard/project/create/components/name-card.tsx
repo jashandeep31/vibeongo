@@ -21,7 +21,7 @@ const NameCard = ({ projectName, setProjectName }: NameCardProps) => {
   };
   return (
     <div className="space-y-3">
-      <Label htmlFor="project-name" className="text-sm text-muted-foreground">
+      <Label htmlFor="project-name" className="text-muted-foreground text-sm">
         Project Name
       </Label>
       <Input

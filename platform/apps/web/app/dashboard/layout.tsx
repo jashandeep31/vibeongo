@@ -9,7 +9,7 @@ export default function layout({ children }: { children: React.ReactNode }) {
       <DashboardNavbar />
       <SidebarProvider>
         <DashboardSidebar />
-        <div className="w-full grid mt-12">{children}</div>
+        <div className="mt-12 grid w-full">{children}</div>
       </SidebarProvider>
     </div>
   );
