@@ -1,15 +1,48 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
+import { Skeleton } from "@repo/ui/components/skeleton";
 
 function InstanceTypeCards({
   instanceTypes,
   selectedInstanceType,
   setSelectedInstanceType,
+  isLoading,
 }: {
   instanceTypes: any;
   selectedInstanceType: string | null;
   setSelectedInstanceType: (type: string | null) => void;
+  isLoading?: boolean;
 }) {
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <Label className="text-sm text-muted-foreground">Instance Type</Label>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {[1, 2, 3].map((i) => (
+            <div
+              key={i}
+              className="flex flex-col text-left border rounded-lg p-4 h-[140px]"
+            >
+              <Skeleton className="h-5 w-24 mb-1" />
+              <Skeleton className="h-4 w-full mb-2" />
+              <Skeleton className="h-4 w-3/4 mb-4" />
+              <div className="mt-auto w-full space-y-2">
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-8" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-8" />
+                  <Skeleton className="h-3 w-12" />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   if (
     !instanceTypes ||
     !Array.isArray(instanceTypes) ||
