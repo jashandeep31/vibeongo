@@ -34,13 +34,13 @@ export default function ClientView() {
           <CreateSshKeyDialog />
         </div>
 
-        <div className="mt-6 space-y-4">
+        <div className="mt-6 space-y-4 grid md:grid-cols-2 gap-4">
           {isLoading ? (
-            <div className="space-y-4">
-              {[1, 2].map((i) => (
+            <>
+              {[1].map((i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-4 p-4 border rounded-lg"
+                  className="flex items-center gap-4 px-2 py-2 border rounded-lg"
                 >
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="space-y-2">
@@ -49,12 +49,12 @@ export default function ClientView() {
                   </div>
                 </div>
               ))}
-            </div>
+            </>
           ) : sshKeys && sshKeys.length > 0 ? (
             sshKeys.map((key) => (
               <div
                 key={key.id}
-                className="flex items-center justify-between p-4 border rounded-lg bg-card"
+                className="flex items-center justify-between px-2 border rounded-lg bg-card h-full"
               >
                 <div className="flex items-center gap-4">
                   <div className="p-2 bg-primary/10 rounded-full">
@@ -62,9 +62,6 @@ export default function ClientView() {
                   </div>
                   <div>
                     <h3 className="font-medium">{key.name}</h3>
-                    <p className="text-sm text-muted-foreground truncate max-w-[200px] sm:max-w-md md:max-w-lg lg:max-w-xl">
-                      {key.value}
-                    </p>
                   </div>
                 </div>
                 <ConfirmationDialog
