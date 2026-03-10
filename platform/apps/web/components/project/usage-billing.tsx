@@ -11,36 +11,36 @@ interface UsageBillingProps {
 export function UsageBilling({ project }: UsageBillingProps) {
   return (
     <div className="space-y-6">
-      <h2 className="text-xl font-semibold flex items-center gap-2 mb-4">
-        <CreditCard className="w-5 h-5 text-muted-foreground" />
+      <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
+        <CreditCard className="text-muted-foreground h-5 w-5" />
         Usage & Billing
       </h2>
       <Card>
-        <CardContent className="p-6 space-y-6">
+        <CardContent className="space-y-6 p-6">
           <div>
-            <p className="text-sm font-medium text-muted-foreground mb-1">
+            <p className="text-muted-foreground mb-1 text-sm font-medium">
               Total Charges
             </p>
             <p className="text-3xl font-bold">
               {project.metrics.billing.total}
             </p>
-            <p className="text-xs text-muted-foreground mt-1">
+            <p className="text-muted-foreground mt-1 text-xs">
               Current billing cycle
             </p>
           </div>
 
-          <div className="space-y-3 pt-4 border-t">
-            <div className="flex justify-between items-center text-sm">
+          <div className="space-y-3 border-t pt-4">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-2">
-                <Server className="w-4 h-4" /> Compute
+                <Server className="h-4 w-4" /> Compute
               </span>
               <span className="font-medium">
                 {project.metrics.billing.compute}
               </span>
             </div>
-            <div className="flex justify-between items-center text-sm">
+            <div className="flex items-center justify-between text-sm">
               <span className="text-muted-foreground flex items-center gap-2">
-                <Network className="w-4 h-4" /> Bandwidth
+                <Network className="h-4 w-4" /> Bandwidth
               </span>
               <span className="font-medium">
                 {project.metrics.billing.bandwidth}
@@ -48,9 +48,9 @@ export function UsageBilling({ project }: UsageBillingProps) {
             </div>
           </div>
 
-          <div className="pt-4 border-t">
-            <p className="text-sm font-medium text-muted-foreground mb-1 flex items-center gap-2">
-              <Clock className="w-4 h-4" />
+          <div className="border-t pt-4">
+            <p className="text-muted-foreground mb-1 flex items-center gap-2 text-sm font-medium">
+              <Clock className="h-4 w-4" />
               Running Time
             </p>
             <p className="font-medium">{project.metrics.uptime}</p>

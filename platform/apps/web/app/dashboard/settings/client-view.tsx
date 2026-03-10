@@ -27,20 +27,20 @@ export default function ClientView() {
     <div className="p-8">
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
       <div className="mt-8">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold text-muted-foreground">
+        <div className="flex items-center justify-between">
+          <h2 className="text-muted-foreground text-lg font-semibold">
             SSH keys
           </h2>
           <CreateSshKeyDialog />
         </div>
 
-        <div className="mt-6 space-y-4 grid md:grid-cols-2 gap-4">
+        <div className="mt-6 grid gap-4 space-y-4 md:grid-cols-2">
           {isLoading ? (
             <>
               {[1].map((i) => (
                 <div
                   key={i}
-                  className="flex items-center gap-4 px-2 py-2 border rounded-lg"
+                  className="flex items-center gap-4 rounded-lg border px-2 py-2"
                 >
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="space-y-2">
@@ -54,11 +54,11 @@ export default function ClientView() {
             sshKeys.map((key) => (
               <div
                 key={key.id}
-                className="flex items-center justify-between px-2 border rounded-lg bg-card h-full"
+                className="bg-card flex h-full items-center justify-between rounded-lg border px-2"
               >
                 <div className="flex items-center gap-4">
-                  <div className="p-2 bg-primary/10 rounded-full">
-                    <Key className="w-5 h-5 text-primary" />
+                  <div className="bg-primary/10 rounded-full p-2">
+                    <Key className="text-primary h-5 w-5" />
                   </div>
                   <div>
                     <h3 className="font-medium">{key.name}</h3>
@@ -76,14 +76,14 @@ export default function ClientView() {
                     size="icon"
                     className="text-destructive hover:text-destructive hover:bg-destructive/10"
                   >
-                    <Trash2 className="w-4 h-4" />
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </ConfirmationDialog>
               </div>
             ))
           ) : (
-            <div className="text-center p-8 border border-dashed rounded-lg text-muted-foreground">
-              <Key className="w-8 h-8 mx-auto mb-3 opacity-50" />
+            <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
+              <Key className="mx-auto mb-3 h-8 w-8 opacity-50" />
               <p>No SSH keys found.</p>
               <p className="text-sm">Add a new SSH key to get started.</p>
             </div>

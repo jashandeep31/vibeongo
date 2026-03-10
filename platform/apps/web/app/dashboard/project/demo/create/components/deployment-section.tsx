@@ -46,21 +46,21 @@ export function DeploymentSection({
                 className={cn(
                   "relative flex rounded-lg border p-4 text-left shadow-sm transition-all focus:outline-none",
                   isSelected
-                    ? "border-primary bg-primary/5 ring-1 ring-primary"
+                    ? "border-primary bg-primary/5 ring-primary ring-1"
                     : "border-border hover:border-primary/50",
                 )}
               >
                 <div className="flex w-full items-center justify-between">
                   <div className="text-sm">
-                    <div className="flex items-center gap-2 font-medium text-foreground">
-                      <Icon className="h-4 w-4 text-muted-foreground" />
+                    <div className="text-foreground flex items-center gap-2 font-medium">
+                      <Icon className="text-muted-foreground h-4 w-4" />
                       {region.name}
                     </div>
-                    <div className="mt-1 text-muted-foreground">
+                    <div className="text-muted-foreground mt-1">
                       {region.id}
                     </div>
                   </div>
-                  {isSelected && <Check className="h-5 w-5 text-primary" />}
+                  {isSelected && <Check className="text-primary h-5 w-5" />}
                 </div>
               </button>
             );
@@ -72,7 +72,7 @@ export function DeploymentSection({
         <div className="space-y-4 border-t pt-6">
           <div>
             <Label className="text-base font-semibold">Instance Type</Label>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="text-muted-foreground mt-1 text-sm">
               Select the computing resources for your project.
             </p>
           </div>
@@ -89,37 +89,37 @@ export function DeploymentSection({
                   className={cn(
                     "cursor-pointer transition-all",
                     isSelected
-                      ? "border-primary bg-primary/5 ring-1 ring-primary"
+                      ? "border-primary bg-primary/5 ring-primary ring-1"
                       : "hover:border-primary/50",
                   )}
                 >
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
-                      <Icon className="mb-2 h-5 w-5 text-muted-foreground" />
-                      {isSelected && <Check className="h-4 w-4 text-primary" />}
+                      <Icon className="text-muted-foreground mb-2 h-5 w-5" />
+                      {isSelected && <Check className="text-primary h-4 w-4" />}
                     </div>
                     <CardTitle className="text-lg">{instance.name}</CardTitle>
-                    <CardDescription className="min-h-[40px] line-clamp-2">
+                    <CardDescription className="line-clamp-2 min-h-[40px]">
                       {instance.description}
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <div className="mb-4 space-y-2 text-sm text-muted-foreground">
+                    <div className="text-muted-foreground mb-4 space-y-2 text-sm">
                       <div className="flex justify-between">
                         <span>CPU</span>
-                        <span className="font-medium text-foreground">
+                        <span className="text-foreground font-medium">
                           {instance.cpu}
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>RAM</span>
-                        <span className="font-medium text-foreground">
+                        <span className="text-foreground font-medium">
                           {instance.ram}
                         </span>
                       </div>
                     </div>
                     <div className="mt-4 flex items-end justify-between border-t pt-4">
-                      <div className="font-semibold text-foreground">
+                      <div className="text-foreground font-semibold">
                         {instance.price}
                       </div>
                       <Badge variant="secondary">{instance.id}</Badge>
