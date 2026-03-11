@@ -5,16 +5,31 @@ import React, { useState } from "react";
 interface NameCardProps {
   projectName: string;
   setProjectName: React.Dispatch<React.SetStateAction<string>>;
+  setErrors: React.Dispatch<React.SetStateAction<{ message: string }[]>>;
 }
-const NameCard = ({ projectName, setProjectName }: NameCardProps) => {
+const NameCard = ({
+  projectName,
+  setProjectName,
+  setErrors,
+}: NameCardProps) => {
   const [localError, setLocalError] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProjectName(e.target.value);
     if (e.target.value.length < 3) {
       setLocalError("Min length should have to 3");
+      setErrors([
+        {
+          message: "Min length should have to 3",
+        },
+      ]);
     } else if (e.target.value.length > 20) {
       setLocalError("Max length can be 20");
+      setErrors([
+        {
+          message: "Max length can be 20 only",
+        },
+      ]);
     } else {
       setLocalError("");
     }

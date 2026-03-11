@@ -17,7 +17,12 @@ import {
 } from "./types";
 import NameCard from "./components/name-card";
 
+interface Error {
+  message: string;
+}
+
 export default function ClientView() {
+  const [errors, setErrors] = useState<Error[]>([]);
   const [projectName, setProjectName] = useState<string>("demo-project-1");
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
@@ -54,7 +59,11 @@ export default function ClientView() {
           Set up a new deployment environment for your application.
         </p>
       </div>
-      <NameCard projectName={projectName} setProjectName={setProjectName} />
+      <NameCard
+        projectName={projectName}
+        setProjectName={setProjectName}
+        setErrors={setErrors}
+      />
       <div>
         <InstanceRegionCards
           selectedRegion={selectedRegion}
@@ -94,9 +103,10 @@ export default function ClientView() {
         {JSON.stringify({
           name: projectName,
           region: selectedRegion,
+          instance_type: selectedInstanceType,
           ssh_keys: selectedSshKeys.map((key) => key),
           ports: portRules,
-          docker: dockerEnabled
+          docker: dockerEnabled,
         })}
       </div>
     </div>
