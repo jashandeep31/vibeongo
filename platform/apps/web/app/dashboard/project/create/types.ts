@@ -15,7 +15,7 @@ export interface PortRule {
 export function createGitRepoConfig(): GitRepoConfig {
   return {
     id: uuid(),
-    git_url: "",
+    git_url: "https://github.com/jashandeep31/mailstudio.git",
     access_token: "",
   };
 }
