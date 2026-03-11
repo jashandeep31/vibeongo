@@ -29,6 +29,7 @@ export default function ClientView() {
     createPortRule("443"),
   ]);
   const [dockerEnabled, setDockerEnabled] = useState(false);
+  const [dockerConfig, setDockerConfig] = useState();
   const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>(() => [
     createGitRepoConfig(),
   ]);
@@ -88,6 +89,15 @@ export default function ClientView() {
       </div>
       <div>
         <Button>Create Project</Button>
+      </div>
+      <div>
+        {JSON.stringify({
+          name: projectName,
+          region: selectedRegion,
+          ssh_keys: selectedSshKeys.map((key) => key),
+          ports: portRules,
+          docker: dockerEnabled
+        })}
       </div>
     </div>
   );
