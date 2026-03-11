@@ -14,7 +14,6 @@ import {
   Github,
   LucideIcon,
   PlusCircle,
-  Server,
   Settings,
   FolderOpen,
 } from "lucide-react";
@@ -33,7 +32,7 @@ const sidebarLinks: {
   },
   {
     title: "Create Project",
-    url: "/projects/new",
+    url: "/dashboard/project/create",
     icon: PlusCircle,
   },
   {
