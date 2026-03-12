@@ -6,6 +6,7 @@ import { Trash2 } from "lucide-react";
 import { z } from "@repo/shared";
 import React, { useCallback } from "react";
 import { createGitRepoConfig, type GitRepoConfig } from "../types";
+import { useConfigStore } from "@/store/config-store";
 
 const gitRepoSchema = z.object({
   git_url: z
@@ -99,52 +100,45 @@ const RepoConfigItemCard = React.memo(function RepoConfigItemCard({
   );
 });
 
-const GitRepoConfigCard = React.memo(
-  ({
-    gitRepos,
-    setGitRepos,
-  }: {
-    gitRepos: GitRepoConfig[];
-    setGitRepos: React.Dispatch<React.SetStateAction<GitRepoConfig[]>>;
-  }) => {
-    const handleAddRepo = useCallback(() => {
-      setGitRepos((currentRepos) => [...currentRepos, createGitRepoConfig()]);
-    }, [setGitRepos]);
+const GitRepoConfigCard = React.memo(() => {
+  const { gitRepos, setGitRepos, addGitRepo, removeGitRepo } = useConfigStore();
+  const handleAddRepo = useCallback(() => {
+    addGitRepo(createGitRepoConfig());
+  }, [addGitRepo]);
 
-    const handleDeleteRepo = useCallback(
-      (idToRemove: string) => {
-        setGitRepos((currentRepos) =>
-          currentRepos.filter((repo) => repo.id !== idToRemove),
-        );
-      },
-      [setGitRepos],
-    );
+  const handleDeleteRepo = useCallback(
+    (id: string) => {
+      removeGitRepo(id);
+    },
+    [removeGitRepo],
+  );
 
-    const handleUpdateRepo = useCallback(
-      (
-        idToUpdate: string,
-        field: "git_url" | "access_token",
-        value: string,
-      ) => {
-        setGitRepos((currentRepos) =>
-          currentRepos.map((repo) =>
-            repo.id === idToUpdate ? { ...repo, [field]: value } : repo,
-          ),
-        );
-      },
-      [setGitRepos],
-    );
+  const handleUpdateRepo = useCallback(
+    (id: string, field: "git_url" | "access_token", value: string) => {
+      setGitRepos(
+        gitRepos.map((repo) =>
+          repo.id === id ? { ...repo, [field]: value } : repo,
+        ),
+      );
+    },
+    [gitRepos, setGitRepos],
+  );
 
-    return (
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <Label className="text-muted-foreground text-sm">
-            Github Repos Config
-          </Label>
-          <Button variant={"outline"} onClick={handleAddRepo} type="button">
-            + Add Repo
-          </Button>
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center justify-between">
+        <Label className="text-muted-foreground text-sm">
+          Github Repos Config
+        </Label>
+        <Button variant={"outline"} onClick={handleAddRepo} type="button">
+          + Add Repo
+        </Button>
+      </div>
+      {gitRepos.length === 0 ? (
+        <div className="text-muted-foreground border-dashed border rounded-lg p-8 text-center text-sm">
+          No git repos are configured.
         </div>
+      ) : (
         <div className="grid grid-cols-2 gap-4">
           {gitRepos.map((repo, index) => (
             <RepoConfigItemCard
@@ -156,9 +150,9 @@ const GitRepoConfigCard = React.memo(
             />
           ))}
         </div>
-      </div>
-    );
-  },
-);
+      )}
+    </div>
+  );
+});
 GitRepoConfigCard.displayName = "GitRepoConfigCard";
 export default GitRepoConfigCard;
