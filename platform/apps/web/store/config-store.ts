@@ -1,6 +1,7 @@
 import { create } from "zustand";
 
 interface GitRepo {
+  id: string;
   git_url: string;
   access_token: string;
 }
@@ -15,10 +16,13 @@ interface ConfigStore {
   instanceTypeId: string;
   setInstanceTypeId: (id: string) => void;
 
-  gitReps: GitRepo[];
-  setGitReps: (repos: GitRepo[]) => void;
-  addGitRep: (rep: GitRepo) => void;
-  removeGitRep: (index: number) => void;
+  gitRepos: GitRepo[];
+  setGitRepos: (repos: GitRepo[]) => void;
+  addGitRepo: (rep: GitRepo) => void;
+  removeGitRepo: (id: string) => void;
+
+  errors: string[];
+  addError: (error: string) => void;
 }
 
 export const useConfigStore = create<ConfigStore>((set) => ({
@@ -31,9 +35,14 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
 
-  gitReps: [],
-  setGitReps: (repos) => set(() => ({ gitReps: repos })),
-  addGitRep: (rep) => set((state) => ({ gitReps: [...state.gitReps, rep] })),
-  removeGitRep: (index) =>
-    set((state) => ({ gitReps: state.gitReps.filter((_, i) => i !== index) })),
+  gitRepos: [],
+  setGitRepos: (repos) => set(() => ({ gitRepos: repos })),
+  addGitRepo: (rep) => set((state) => ({ gitRepos: [...state.gitRepos, rep] })),
+  removeGitRepo: (id) =>
+    set((state) => ({
+      gitRepos: state.gitRepos.filter((repo) => repo.id !== id),
+    })),
+
+  errors: [],
+  addError: (error) => set((state) => ({ errors: [...state.errors, error] })),
 }));

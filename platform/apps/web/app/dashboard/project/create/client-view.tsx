@@ -9,21 +9,17 @@ import SshKeysCard from "./components/ssh-keys-card";
 import NetworkFirewallCard from "./components/network-firewall-card";
 import AdditionalServices from "./components/additional-services";
 import { Button } from "@repo/ui/components/button";
-import {
-  createGitRepoConfig,
-  createPortRule,
-  type GitRepoConfig,
-  type PortRule,
-} from "./types";
+import { createPortRule, type PortRule } from "./types";
 import NameCard from "./components/name-card";
+import { useConfigStore } from "@/store/config-store";
 
 interface Error {
   message: string;
 }
 
 export default function ClientView() {
+  const { gitRepos, projectName } = useConfigStore();
   const [errors, setErrors] = useState<Error[]>([]);
-  const [projectName, setProjectName] = useState<string>("demo-project-1");
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedInstanceType, setSelectedInstanceType] = useState<
     string | null
@@ -35,9 +31,6 @@ export default function ClientView() {
   ]);
   const [dockerEnabled, setDockerEnabled] = useState(false);
   const [dockerConfig, setDockerConfig] = useState();
-  const [gitRepos, setGitRepos] = useState<GitRepoConfig[]>(() => [
-    createGitRepoConfig(),
-  ]);
   const {
     data: instanceTypes,
     isLoading: isInstanceTypesLoading,
@@ -59,11 +52,7 @@ export default function ClientView() {
           Set up a new deployment environment for your application.
         </p>
       </div>
-      <NameCard
-        projectName={projectName}
-        setProjectName={setProjectName}
-        setErrors={setErrors}
-      />
+      <NameCard />
       <div>
         <InstanceRegionCards
           selectedRegion={selectedRegion}
@@ -79,7 +68,7 @@ export default function ClientView() {
         />
       </div>
       <div>
-        <GitRepoConfigCard gitRepos={gitRepos} setGitRepos={setGitRepos} />
+        <GitRepoConfigCard />
       </div>
       <div>
         <SshKeysCard
@@ -107,6 +96,7 @@ export default function ClientView() {
           ssh_keys: selectedSshKeys.map((key) => key),
           ports: portRules,
           docker: dockerEnabled,
+          gitRepos: gitRepos,
         })}
       </div>
     </div>
