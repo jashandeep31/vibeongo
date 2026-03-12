@@ -1,17 +1,10 @@
+import { useConfigStore } from "@/store/config-store";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import React, { useState } from "react";
 
-interface NameCardProps {
-  projectName: string;
-  setProjectName: React.Dispatch<React.SetStateAction<string>>;
-  setErrors: React.Dispatch<React.SetStateAction<{ message: string }[]>>;
-}
-const NameCard = ({
-  projectName,
-  setProjectName,
-  setErrors,
-}: NameCardProps) => {
+const NameCard = () => {
+  const { setProjectName, projectName } = useConfigStore();
   const [localError, setLocalError] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
