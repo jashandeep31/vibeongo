@@ -25,7 +25,8 @@
     "react-dom": "^19.2.0",
     "react-hook-form": "^7.71.2",
     "sonner": "^2.0.7",
-    "uuid": "^13.0.0"
+    "uuid": "^13.0.0",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",
