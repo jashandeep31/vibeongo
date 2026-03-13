@@ -1,18 +1,15 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { useConfigStore } from "@/store/config-store";
+import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
 
-function InstanceTypeCards({
-  instanceTypes,
-  selectedInstanceType,
-  setSelectedInstanceType,
-  isLoading,
-}: {
-  instanceTypes: any;
-  selectedInstanceType: string | null;
-  setSelectedInstanceType: (type: string | null) => void;
-  isLoading?: boolean;
-}) {
+function InstanceTypeCards() {
+  const { instanceRegion, instanceTypeId, setInstanceTypeId } =
+    useConfigStore();
+  const { isLoading, data: instanceTypes } = useInstanceTypesByRegionID({
+    regionId: instanceRegion,
+  });
   if (isLoading) {
     return (
       <div className="space-y-4">
@@ -56,9 +53,9 @@ function InstanceTypeCards({
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {instanceTypes.map((instance) => (
           <button
-            onClick={() => setSelectedInstanceType(instance.id)}
+            onClick={() => setInstanceTypeId(instance.id)}
             className={`hover:border-primary flex flex-col rounded-lg border p-4 text-left transition-colors ${
-              selectedInstanceType === instance.id
+              instanceTypeId === instance.id
                 ? "border-orange-500 bg-orange-500/5 ring-1 ring-orange-500"
                 : "bg-muted hover:bg-muted/80"
             }`}
@@ -66,7 +63,7 @@ function InstanceTypeCards({
           >
             <div
               className={`mb-1 font-medium ${
-                selectedInstanceType === instance.id ? "text-orange-500" : ""
+                instanceTypeId === instance.id ? "text-orange-500" : ""
               }`}
             >
               {instance.name}
