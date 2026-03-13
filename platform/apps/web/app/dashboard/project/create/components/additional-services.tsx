@@ -1,16 +1,11 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
 import DockerConfigCard from "./docker-config-card";
+// import { useConfigStore } from "@/store/config-store";
 
-interface AdditionalServicesProps {
-  dockerEnabled: boolean;
-  onDockerEnabledChange: (enabled: boolean) => void;
-}
-
-function AdditionalServices({
-  dockerEnabled,
-  onDockerEnabledChange,
-}: AdditionalServicesProps) {
+function AdditionalServices() {
+  // const additionalServices = useConfigStore((s) => s.additionalServices);
+  // const dockerConfig = additionalServices.dockerConfig;
   return (
     <div className="space-y-4">
       <div>
@@ -19,10 +14,7 @@ function AdditionalServices({
         </Label>
       </div>
       <div>
-        <DockerConfigCard
-          dockerEnabled={dockerEnabled}
-          onDockerEnabledChange={onDockerEnabledChange}
-        />
+        <DockerConfigCard />
       </div>
     </div>
   );

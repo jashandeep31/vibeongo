@@ -10,6 +10,18 @@ interface GitRepo {
   access_token: string;
 }
 
+interface ContainerConfig {
+  id: string;
+  name: string;
+  content: string;
+}
+interface AdditionalService {
+  dockerConfig: {
+    enabled: boolean;
+    containers: ContainerConfig[];
+  };
+}
+
 interface ConfigStore {
   projectName: string;
   setProjectName: (name: string) => void;
@@ -35,6 +47,12 @@ interface ConfigStore {
   setPortRules: (
     updater: PortRule[] | ((currentRules: PortRule[]) => PortRule[]),
   ) => void;
+
+  additionalServices: AdditionalService;
+  updateDockerConfig: (dockerConfig: {
+    enabled: boolean;
+    containers: ContainerConfig[];
+  }) => void;
 
   errors: { message: string }[];
   addError: (error: { message: string }) => void;
@@ -69,6 +87,13 @@ export const useConfigStore = create<ConfigStore>((set) => ({
     set((state) => ({
       portRules:
         typeof updater === "function" ? updater(state.portRules) : updater,
+    })),
+
+  additionalServices: { dockerConfig: { enabled: false, containers: [] } },
+
+  updateDockerConfig: (dockerConfig) =>
+    set((state) => ({
+      additionalServices: { ...state.additionalServices, dockerConfig },
     })),
 
   errors: [],
