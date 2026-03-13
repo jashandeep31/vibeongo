@@ -4,25 +4,21 @@ import { Label } from "@repo/ui/components/label";
 import React, { useState } from "react";
 
 const NameCard = () => {
-  const { setProjectName, projectName } = useConfigStore();
+  const { setProjectName, projectName, addError } = useConfigStore();
   const [localError, setLocalError] = useState("");
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setProjectName(e.target.value);
     if (e.target.value.length < 3) {
       setLocalError("Min length should have to 3");
-      setErrors([
-        {
-          message: "Min length should have to 3",
-        },
-      ]);
+      addError({
+        message: "Min length should have to 3",
+      });
     } else if (e.target.value.length > 20) {
       setLocalError("Max length can be 20");
-      setErrors([
-        {
-          message: "Max length can be 20 only",
-        },
-      ]);
+      addError({
+        message: "Max length can be 20 only",
+      });
     } else {
       setLocalError("");
     }

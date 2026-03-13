@@ -16,13 +16,16 @@ interface ConfigStore {
   instanceTypeId: string;
   setInstanceTypeId: (id: string) => void;
 
+  instanceRegion: string;
+  setInstanceRegion: (region: string) => void;
+
   gitRepos: GitRepo[];
   setGitRepos: (repos: GitRepo[]) => void;
   addGitRepo: (rep: GitRepo) => void;
   removeGitRepo: (id: string) => void;
 
-  errors: string[];
-  addError: (error: string) => void;
+  errors: { message: string }[];
+  addError: (error: { message: string }) => void;
 }
 
 export const useConfigStore = create<ConfigStore>((set) => ({
@@ -34,6 +37,9 @@ export const useConfigStore = create<ConfigStore>((set) => ({
 
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
+
+  instanceRegion: "",
+  setInstanceRegion: (region) => set(() => ({ instanceRegion: region })),
 
   gitRepos: [],
   setGitRepos: (repos) => set(() => ({ gitRepos: repos })),
