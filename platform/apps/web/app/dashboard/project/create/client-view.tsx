@@ -2,21 +2,17 @@
 
 import InstanceRegionCards from "./components/instance-region-cards";
 import InstanceTypeCards from "./components/instance-type-cards";
-import { useState } from "react";
 import GitRepoConfigCard from "./components/git-repo-config-card";
 import SshKeysCard from "./components/ssh-keys-card";
 import NetworkFirewallCard from "./components/network-firewall-card";
 import AdditionalServices from "./components/additional-services";
 import { Button } from "@repo/ui/components/button";
-import { createPortRule, type PortRule } from "./types";
 import NameCard from "./components/name-card";
 import { useConfigStore } from "@/store/config-store";
 
 export default function ClientView() {
-  const { gitRepos, projectName, sshKeys, portRules } = useConfigStore();
-
-  const [dockerEnabled, setDockerEnabled] = useState(false);
-  const [dockerConfig, setDockerConfig] = useState();
+  const { gitRepos, projectName, sshKeys, portRules, additionalServices } =
+    useConfigStore();
 
   return (
     <div className="space-y-8 p-8">
@@ -27,27 +23,12 @@ export default function ClientView() {
         </p>
       </div>
       <NameCard />
-      <div>
-        <InstanceRegionCards />
-      </div>
-      <div>
-        <InstanceTypeCards />
-      </div>
-      <div>
-        <GitRepoConfigCard />
-      </div>
-      <div>
-        <SshKeysCard />
-      </div>
-      <div>
-        <NetworkFirewallCard />
-      </div>
-      <div>
-        <AdditionalServices
-          dockerEnabled={dockerEnabled}
-          onDockerEnabledChange={setDockerEnabled}
-        />
-      </div>
+      <InstanceRegionCards />
+      <InstanceTypeCards />
+      <GitRepoConfigCard />
+      <SshKeysCard />
+      <NetworkFirewallCard />
+      <AdditionalServices />
       <div>
         <Button>Create Project</Button>
       </div>
@@ -56,8 +37,8 @@ export default function ClientView() {
           name: projectName,
           ssh_keys: sshKeys.map((key) => key),
           ports: portRules,
-          docker: dockerEnabled,
           gitRepos: gitRepos,
+          additionalServices,
         })}
       </div>
     </div>

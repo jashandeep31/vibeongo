@@ -6,7 +6,8 @@ import { Package, Plus, Trash2 } from "lucide-react";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Button } from "@repo/ui/components/button";
-import { memo, useCallback, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
+import { useConfigStore } from "@/store/config-store";
 
 interface DockerConfigCardProps {
   dockerEnabled: boolean;
@@ -77,10 +78,11 @@ const ContainerEditor = memo(function ContainerEditor({
   );
 });
 
-function DockerConfigCard({
-  dockerEnabled,
-  onDockerEnabledChange,
-}: DockerConfigCardProps) {
+function DockerConfigCard() {
+  const additionalServices = useConfigStore((s) => s.additionalServices);
+  const updateDockerConfig = useConfigStore((s) => s.updateDockerConfig);
+  const dockerEnabled = additionalServices.dockerConfig.enabled;
+
   const [containers, setContainers] = useState<ContainerConfig[]>([]);
 
   const addContainer = useCallback((name: string, content: string = "") => {
@@ -109,6 +111,17 @@ function DockerConfigCard({
     [],
   );
 
+  useEffect(() => {
+    updateDockerConfig({ enabled: dockerEnabled, containers: containers });
+    return () => {
+      return;
+    };
+  }, [containers, dockerEnabled, updateDockerConfig]);
+
+  const onDockerEnabledChange = (enabled: boolean) => {
+    updateDockerConfig({ enabled, containers: containers });
+  };
+
   return (
     <div
       className={`rounded-lg border p-6 transition-colors ${
@@ -119,8 +132,8 @@ function DockerConfigCard({
     >
       <div className="flex items-start space-x-3">
         <Checkbox
+          onCheckedChange={(checked: boolean) => onDockerEnabledChange(checked)}
           checked={dockerEnabled}
-          onCheckedChange={(checked) => onDockerEnabledChange(checked === true)}
           className="mt-1"
           id="docker-engine-checkbox"
         />
