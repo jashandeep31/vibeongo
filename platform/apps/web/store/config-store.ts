@@ -20,6 +20,14 @@ interface AdditionalService {
     enabled: boolean;
     containers: ContainerConfig[];
   };
+  opencodeConfig: {
+    enabled: boolean;
+    command: string;
+  };
+  nvimConfig: {
+    enabled: boolean;
+    config: string;
+  };
 }
 
 interface ConfigStore {
