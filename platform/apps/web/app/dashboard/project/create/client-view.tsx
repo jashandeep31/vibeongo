@@ -13,12 +13,8 @@ import NameCard from "./components/name-card";
 import { useConfigStore } from "@/store/config-store";
 
 export default function ClientView() {
-  const { gitRepos, projectName, sshKeys } = useConfigStore();
+  const { gitRepos, projectName, sshKeys, portRules } = useConfigStore();
 
-  const [portRules, setPortRules] = useState<PortRule[]>(() => [
-    createPortRule("80"),
-    createPortRule("443"),
-  ]);
   const [dockerEnabled, setDockerEnabled] = useState(false);
   const [dockerConfig, setDockerConfig] = useState();
 
@@ -44,7 +40,7 @@ export default function ClientView() {
         <SshKeysCard />
       </div>
       <div>
-        <NetworkFirewallCard rules={portRules} onRulesChange={setPortRules} />
+        <NetworkFirewallCard />
       </div>
       <div>
         <AdditionalServices

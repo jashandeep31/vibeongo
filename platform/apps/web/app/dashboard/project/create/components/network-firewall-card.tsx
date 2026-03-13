@@ -13,11 +13,7 @@ import {
 import { Button } from "@repo/ui/components/button";
 import { Trash2, Plus } from "lucide-react";
 import { createPortRule, type PortRule } from "../types";
-
-interface NetworkFirewallCardProps {
-  rules: PortRule[];
-  onRulesChange: Dispatch<SetStateAction<PortRule[]>>;
-}
+import { useConfigStore } from "@/store/config-store";
 
 interface FirewallRuleRowProps {
   rule: PortRule;
@@ -68,10 +64,9 @@ const FirewallRuleRow = memo(function FirewallRuleRow({
   );
 });
 
-function NetworkFirewallCard({
-  rules,
-  onRulesChange,
-}: NetworkFirewallCardProps) {
+function NetworkFirewallCard() {
+  const { portRules: rules, setPortRules: onRulesChange } = useConfigStore();
+
   const addRule = useCallback(() => {
     onRulesChange((currentRules) => [...currentRules, createPortRule("")]);
   }, [onRulesChange]);

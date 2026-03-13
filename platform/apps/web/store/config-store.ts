@@ -1,4 +1,8 @@
 import { create } from "zustand";
+import {
+  type PortRule,
+  createPortRule,
+} from "@/app/dashboard/project/create/types";
 
 interface GitRepo {
   id: string;
@@ -27,6 +31,11 @@ interface ConfigStore {
   sshKeys: string[];
   setSshKeys: (keys: string[]) => void;
 
+  portRules: PortRule[];
+  setPortRules: (
+    updater: PortRule[] | ((currentRules: PortRule[]) => PortRule[]),
+  ) => void;
+
   errors: { message: string }[];
   addError: (error: { message: string }) => void;
 }
@@ -54,6 +63,13 @@ export const useConfigStore = create<ConfigStore>((set) => ({
 
   sshKeys: [],
   setSshKeys: (keys) => set(() => ({ sshKeys: keys })),
+
+  portRules: [createPortRule("80"), createPortRule("443")],
+  setPortRules: (updater) =>
+    set((state) => ({
+      portRules:
+        typeof updater === "function" ? updater(state.portRules) : updater,
+    })),
 
   errors: [],
   addError: (error) => set((state) => ({ errors: [...state.errors, error] })),
