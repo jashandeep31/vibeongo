@@ -6,7 +6,7 @@ import { Package, Plus, Trash2 } from "lucide-react";
 import { Input } from "@repo/ui/components/input";
 import { Textarea } from "@repo/ui/components/textarea";
 import { Button } from "@repo/ui/components/button";
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useMemo } from "react";
 import { useConfigStore } from "@/store/config-store";
 
 interface DockerConfigCardProps {
@@ -82,44 +82,50 @@ function DockerConfigCard() {
   const additionalServices = useConfigStore((s) => s.additionalServices);
   const updateDockerConfig = useConfigStore((s) => s.updateDockerConfig);
   const dockerEnabled = additionalServices.dockerConfig.enabled;
+  const containers = useMemo(
+    () => additionalServices.dockerConfig.containers || [],
+    [additionalServices.dockerConfig.containers],
+  );
 
-  const [containers, setContainers] = useState<ContainerConfig[]>([]);
+  const addContainer = useCallback(
+    (name: string, content: string = "") => {
+      const newContainer = {
+        id: crypto.randomUUID(),
+        name,
+        content,
+      };
+      updateDockerConfig({
+        enabled: dockerEnabled,
+        containers: [...containers, newContainer],
+      });
+    },
+    [containers, dockerEnabled, updateDockerConfig],
+  );
 
-  const addContainer = useCallback((name: string, content: string = "") => {
-    const newContainer = {
-      id: crypto.randomUUID(),
-      name,
-      content,
-    };
-    setContainers((currentContainers) => [...currentContainers, newContainer]);
-  }, []);
-
-  const removeContainer = useCallback((id: string) => {
-    setContainers((currentContainers) =>
-      currentContainers.filter((container) => container.id !== id),
-    );
-  }, []);
+  const removeContainer = useCallback(
+    (id: string) => {
+      updateDockerConfig({
+        enabled: dockerEnabled,
+        containers: containers.filter((container) => container.id !== id),
+      });
+    },
+    [containers, dockerEnabled, updateDockerConfig],
+  );
 
   const updateContainer = useCallback(
     (id: string, updates: Partial<ContainerConfig>) => {
-      setContainers((currentContainers) =>
-        currentContainers.map((container) =>
+      updateDockerConfig({
+        enabled: dockerEnabled,
+        containers: containers.map((container) =>
           container.id === id ? { ...container, ...updates } : container,
         ),
-      );
+      });
     },
-    [],
+    [containers, dockerEnabled, updateDockerConfig],
   );
 
-  useEffect(() => {
-    updateDockerConfig({ enabled: dockerEnabled, containers: containers });
-    return () => {
-      return;
-    };
-  }, [containers, dockerEnabled, updateDockerConfig]);
-
   const onDockerEnabledChange = (enabled: boolean) => {
-    updateDockerConfig({ enabled, containers: containers });
+    updateDockerConfig({ enabled, containers });
   };
 
   return (
