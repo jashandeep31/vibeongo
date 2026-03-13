@@ -24,6 +24,9 @@ interface ConfigStore {
   addGitRepo: (rep: GitRepo) => void;
   removeGitRepo: (id: string) => void;
 
+  sshKeys: string[];
+  setSshKeys: (keys: string[]) => void;
+
   errors: { message: string }[];
   addError: (error: { message: string }) => void;
 }
@@ -48,6 +51,9 @@ export const useConfigStore = create<ConfigStore>((set) => ({
     set((state) => ({
       gitRepos: state.gitRepos.filter((repo) => repo.id !== id),
     })),
+
+  sshKeys: [],
+  setSshKeys: (keys) => set(() => ({ sshKeys: keys })),
 
   errors: [],
   addError: (error) => set((state) => ({ errors: [...state.errors, error] })),
