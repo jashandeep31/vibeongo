@@ -13,9 +13,8 @@ import NameCard from "./components/name-card";
 import { useConfigStore } from "@/store/config-store";
 
 export default function ClientView() {
-  const { gitRepos, projectName } = useConfigStore();
+  const { gitRepos, projectName, sshKeys } = useConfigStore();
 
-  const [selectedSshKeys, setSelectedSshKeys] = useState<string[]>([]);
   const [portRules, setPortRules] = useState<PortRule[]>(() => [
     createPortRule("80"),
     createPortRule("443"),
@@ -42,10 +41,7 @@ export default function ClientView() {
         <GitRepoConfigCard />
       </div>
       <div>
-        <SshKeysCard
-          selectedKeys={selectedSshKeys}
-          onSelectedKeysChange={setSelectedSshKeys}
-        />
+        <SshKeysCard />
       </div>
       <div>
         <NetworkFirewallCard rules={portRules} onRulesChange={setPortRules} />
@@ -62,7 +58,7 @@ export default function ClientView() {
       <div>
         {JSON.stringify({
           name: projectName,
-          ssh_keys: selectedSshKeys.map((key) => key),
+          ssh_keys: sshKeys.map((key) => key),
           ports: portRules,
           docker: dockerEnabled,
           gitRepos: gitRepos,
