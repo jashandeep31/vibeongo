@@ -14,6 +14,7 @@ const envSchema = z.object({
   DATABASE_URL: z.string(),
   GOOGLE_AUTH_CLIENT_ID: z.string(),
   GOOGLE_AUTH_SECRET_KEY: z.string(),
+  ALLOWED_ORIGINS: z.string().transform((val) => val.split(",")),
   GOOGLE_AUTH_REDIRECT_URI: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);

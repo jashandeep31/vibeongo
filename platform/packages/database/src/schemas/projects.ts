@@ -8,6 +8,8 @@ import {
   text,
   json,
 } from "drizzle-orm/pg-core";
+import { users } from "./user.js";
+import { instanceTypes } from "./instances-metadata.js";
 
 export const projectStatusEnum = pgEnum("project_status", [
   "running",
@@ -20,8 +22,17 @@ export const projects = pgTable("projects", {
   description: text(),
   status: projectStatusEnum().notNull(),
 
+  user_id: uuid()
+    .references(() => users.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+
+  instance_type_id: uuid()
+    .references(() => instanceTypes.id)
+    .notNull(),
   total_charges: integer().notNull().default(0),
-  ports_config: json().notNull(),
+  config: json().notNull(),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
