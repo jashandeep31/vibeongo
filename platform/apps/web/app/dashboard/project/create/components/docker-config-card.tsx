@@ -9,11 +9,6 @@ import { Button } from "@repo/ui/components/button";
 import { memo, useCallback, useMemo } from "react";
 import { useConfigStore } from "@/store/config-store";
 
-interface DockerConfigCardProps {
-  dockerEnabled: boolean;
-  onDockerEnabledChange: (enabled: boolean) => void;
-}
-
 interface ContainerConfig {
   id: string;
   name: string;
