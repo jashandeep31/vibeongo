@@ -4,9 +4,7 @@ export const dockerConfigValidator = z.object({
   containers: z.array(
     z.object({
       name: z.string(),
-      filename: z.string(),
-      //NOTE: while creating the project we are getting the file_content not the file_url but when we will run the bootstrap script it should have to be provideed a url
-      file_content: z.string(),
+      content: z.string(),
     }),
   ),
 });
@@ -22,14 +20,15 @@ export const nodeConfigValidator = z.object({
 });
 
 //TODO: make sure to check the git config url and show the error if it is not a valid git url
-export const neovimConfigValidator = z.object({
+export const nvimConfigValidator = z.object({
   config_url: z
     .string()
     .default("https://github.com/nvim-lua/kickstart.nvim.git"),
 });
 
 export const projectConfigValidator = z.object({
-  // name: z.string(),
+  name: z.string(),
+  description: z.string().optional(),
   ssh_keys: z.array(z.string()),
   ports: z.array(
     z.object({
@@ -48,23 +47,28 @@ export const projectConfigValidator = z.object({
     z.discriminatedUnion("name", [
       z.object({
         name: z.literal("docker"),
+        enabled: z.boolean(),
         config: dockerConfigValidator,
       }),
 
       z.object({
         name: z.literal("opencode"),
+        enabled: z.boolean(),
         config: opencodeConfigValidator,
       }),
       z.object({
         name: z.literal("tmux"),
+        enabled: z.boolean(),
         config: tmuxConfigValidator,
       }),
       z.object({
-        name: z.literal("neovim"),
-        config: neovimConfigValidator,
+        name: z.literal("nvim"),
+        enabled: z.boolean(),
+        config: nvimConfigValidator,
       }),
       z.object({
         name: z.literal("nodejs"),
+        enabled: z.boolean(),
         config: nodeConfigValidator,
       }),
     ]),
