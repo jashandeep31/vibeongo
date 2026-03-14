@@ -1,6 +1,8 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
 import DockerConfigCard from "./docker-config-card";
+import OpencodeConfigCard from "./opencode-config-card";
+import NvimConfigCard from "./nvim-config-card";
 // import { useConfigStore } from "@/store/config-store";
 
 function AdditionalServices() {
@@ -13,8 +15,10 @@ function AdditionalServices() {
           Additional Services
         </Label>
       </div>
-      <div>
+      <div className="space-y-4">
         <DockerConfigCard />
+        <OpencodeConfigCard />
+        <NvimConfigCard />
       </div>
     </div>
   );
