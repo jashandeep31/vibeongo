@@ -29,7 +29,9 @@ export const nvimConfigValidator = z.object({
 export const projectConfigValidator = z.object({
   name: z.string(),
   description: z.string().optional(),
-  ssh_keys: z.array(z.string()),
+  regionId: z.uuid(),
+  instanceTypeId: z.uuid(),
+  sshKeys: z.array(z.string()),
   ports: z.array(
     z.object({
       port: z.number(),

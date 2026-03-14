@@ -34,13 +34,10 @@ interface ConfigStore {
   projectName: string;
   setProjectName: (name: string) => void;
 
-  regionId: string;
-  setRegionId: (id: string) => void;
-
   instanceTypeId: string;
   setInstanceTypeId: (id: string) => void;
 
-  instanceRegion: string;
+  instanceRegionId: string;
   setInstanceRegion: (region: string) => void;
 
   gitRepos: GitRepo[];
@@ -75,17 +72,20 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   projectName: "Demo project dummy name",
   setProjectName: (name) => set(() => ({ projectName: name })),
 
-  regionId: "",
-  setRegionId: (id) => set(() => ({ regionId: id })),
-
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
 
-  instanceRegion: "",
-  setInstanceRegion: (region) => set(() => ({ instanceRegion: region })),
+  instanceRegionId: "",
+  setInstanceRegion: (region) => set(() => ({ instanceRegionId: region })),
 
   //TODO: remove the demo data in the production
-  gitRepos: [],
+  gitRepos: [
+    {
+      id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
+      git_url: "https://github.com/jashandeep31/mailstudio.git",
+      access_token: "",
+    },
+  ],
   setGitRepos: (repos) => set(() => ({ gitRepos: repos })),
   addGitRepo: (rep) => set((state) => ({ gitRepos: [...state.gitRepos, rep] })),
   removeGitRepo: (id) =>

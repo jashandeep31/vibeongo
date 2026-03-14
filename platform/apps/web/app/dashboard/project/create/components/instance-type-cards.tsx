@@ -5,8 +5,11 @@ import { useConfigStore } from "@/store/config-store";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
 
 function InstanceTypeCards() {
-  const { instanceRegion, instanceTypeId, setInstanceTypeId } =
-    useConfigStore();
+  const {
+    instanceRegionId: instanceRegion,
+    instanceTypeId,
+    setInstanceTypeId,
+  } = useConfigStore();
   const { isLoading, data: instanceTypes } = useInstanceTypesByRegionID({
     regionId: instanceRegion,
   });
