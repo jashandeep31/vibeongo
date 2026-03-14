@@ -27,17 +27,26 @@ export default function ConfigPreviewAndCreate() {
       {
         name: "docker",
         enabled: additionalServices.dockerConfig.enabled || false,
-        config: additionalServices.dockerConfig.containers as any,
+        config: {
+          containers: additionalServices.dockerConfig.containers.map((c) => ({
+            name: c.name,
+            content: c.content,
+          })),
+        },
       },
       {
         name: "opencode",
         enabled: additionalServices.opencodeConfig.enabled || false,
-        config: additionalServices.opencodeConfig.authJson as any,
+        config: {
+          auth_json: additionalServices.opencodeConfig.authJson,
+        },
       },
       {
         name: "nvim",
         enabled: additionalServices.nvimConfig.enabled || false,
-        config: additionalServices.nvimConfig.config as any,
+        config: {
+          config_url: additionalServices.nvimConfig.config,
+        },
       },
     ],
   };
