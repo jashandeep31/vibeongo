@@ -22,7 +22,7 @@ interface AdditionalService {
   };
   opencodeConfig: {
     enabled: boolean;
-    command: string;
+    authJson: string;
   };
   nvimConfig: {
     enabled: boolean;
@@ -61,6 +61,11 @@ interface ConfigStore {
     enabled: boolean;
     containers: ContainerConfig[];
   }) => void;
+  updateOpencodeConfig: (opencodeConfig: {
+    enabled: boolean;
+    authJson: string;
+  }) => void;
+  updateNvimConfig: (nvimConfig: { enabled: boolean; config: string }) => void;
 
   errors: { message: string }[];
   addError: (error: { message: string }) => void;
@@ -97,11 +102,25 @@ export const useConfigStore = create<ConfigStore>((set) => ({
         typeof updater === "function" ? updater(state.portRules) : updater,
     })),
 
-  additionalServices: { dockerConfig: { enabled: false, containers: [] } },
+  additionalServices: {
+    dockerConfig: { enabled: false, containers: [] },
+    opencodeConfig: { enabled: false, authJson: "" },
+    nvimConfig: { enabled: false, config: "" },
+  },
 
   updateDockerConfig: (dockerConfig) =>
     set((state) => ({
       additionalServices: { ...state.additionalServices, dockerConfig },
+    })),
+
+  updateOpencodeConfig: (opencodeConfig) =>
+    set((state) => ({
+      additionalServices: { ...state.additionalServices, opencodeConfig },
+    })),
+
+  updateNvimConfig: (nvimConfig) =>
+    set((state) => ({
+      additionalServices: { ...state.additionalServices, nvimConfig },
     })),
 
   errors: [],
