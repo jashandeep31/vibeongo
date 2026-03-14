@@ -31,48 +31,51 @@ export const projectConfigValidator = z.object({
   description: z.string().optional(),
   regionId: z.uuid(),
   instanceTypeId: z.uuid(),
-  sshKeys: z.array(z.string()),
-  ports: z.array(
-    z.object({
-      port: z.number(),
-      protocol: z.enum(["TCP", "UDP"]),
-    }),
-  ),
 
-  repos: z.array(
-    z.object({
-      git_url: z.string(),
-      access_token: z.string().optional(),
-    }),
-  ),
-  packages: z.array(
-    z.discriminatedUnion("name", [
+  config: z.object({
+    sshKeys: z.array(z.string()),
+    ports: z.array(
       z.object({
-        name: z.literal("docker"),
-        enabled: z.boolean(),
-        config: dockerConfigValidator,
+        port: z.number(),
+        protocol: z.enum(["TCP", "UDP"]),
       }),
+    ),
 
+    repos: z.array(
       z.object({
-        name: z.literal("opencode"),
-        enabled: z.boolean(),
-        config: opencodeConfigValidator,
+        git_url: z.string(),
+        access_token: z.string().optional(),
       }),
-      z.object({
-        name: z.literal("tmux"),
-        enabled: z.boolean(),
-        config: tmuxConfigValidator,
-      }),
-      z.object({
-        name: z.literal("nvim"),
-        enabled: z.boolean(),
-        config: nvimConfigValidator,
-      }),
-      z.object({
-        name: z.literal("nodejs"),
-        enabled: z.boolean(),
-        config: nodeConfigValidator,
-      }),
-    ]),
-  ),
+    ),
+    packages: z.array(
+      z.discriminatedUnion("name", [
+        z.object({
+          name: z.literal("docker"),
+          enabled: z.boolean(),
+          config: dockerConfigValidator,
+        }),
+
+        z.object({
+          name: z.literal("opencode"),
+          enabled: z.boolean(),
+          config: opencodeConfigValidator,
+        }),
+        z.object({
+          name: z.literal("tmux"),
+          enabled: z.boolean(),
+          config: tmuxConfigValidator,
+        }),
+        z.object({
+          name: z.literal("nvim"),
+          enabled: z.boolean(),
+          config: nvimConfigValidator,
+        }),
+        z.object({
+          name: z.literal("nodejs"),
+          enabled: z.boolean(),
+          config: nodeConfigValidator,
+        }),
+      ]),
+    ),
+  }),
 });
