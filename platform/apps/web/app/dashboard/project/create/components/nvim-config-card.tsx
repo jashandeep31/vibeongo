@@ -3,7 +3,7 @@
 import { Checkbox } from "@repo/ui/components/checkbox";
 import { Label } from "@repo/ui/components/label";
 import { FileCode2 } from "lucide-react";
-import { Textarea } from "@repo/ui/components/textarea";
+import { Input } from "@repo/ui/components/input";
 import { memo } from "react";
 import { useConfigStore } from "@/store/config-store";
 
@@ -17,7 +17,7 @@ function NvimConfigCard() {
     updateNvimConfig({ enabled, config: configContent });
   };
 
-  const onConfigChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const onConfigChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     updateNvimConfig({ enabled: nvimEnabled, config: e.target.value });
   };
 
@@ -45,7 +45,7 @@ function NvimConfigCard() {
             Neovim Environment
           </Label>
           <p className="text-muted-foreground text-sm">
-            Setup Neovim with your custom dotfiles or lua configuration.
+            Setup Neovim with your custom dotfiles repository.
           </p>
 
           {nvimEnabled && (
@@ -57,17 +57,17 @@ function NvimConfigCard() {
                   htmlFor="nvim-config"
                   className="text-foreground text-sm font-semibold"
                 >
-                  Configuration (init.lua or Git URL)
+                  Configuration (Git URL)
                 </Label>
-                <Textarea
+                <Input
                   id="nvim-config"
                   value={configContent}
                   onChange={onConfigChange}
-                  placeholder="Paste your init.lua content or provide a link to your dotfiles repo..."
-                  className="h-32 resize-y font-mono text-sm whitespace-pre"
+                  placeholder="Provide a link to your dotfiles repo..."
+                  className="font-mono text-sm"
                 />
                 <p className="text-muted-foreground text-xs">
-                  We will inject this configuration into `~/.config/nvim/init.lua` or clone the repository.
+                  We will clone the repository to your Neovim config directory.
                 </p>
               </div>
             </div>
