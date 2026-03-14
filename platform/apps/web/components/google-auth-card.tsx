@@ -1,4 +1,5 @@
-import { Button } from "@repo/ui/components/button";
+import { BACKEND_URL } from "@/lib/constants";
+import { buttonVariants } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
@@ -6,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import { cn } from "@repo/ui/lib/utils";
 
 type GoogleAuthCardProps = {
   title: string;
@@ -29,15 +31,16 @@ export function GoogleAuthCard({
           <CardDescription>{description}</CardDescription>
         </CardHeader>
         <CardContent>
-          <Button className="w-full" variant="outline" size="lg" type="button">
-            <img
-              src={GOOGLE_LOGO_URL}
-              alt=""
-              aria-hidden="true"
-              className="size-4"
-            />
+          <a
+            href={`${BACKEND_URL}/api/v1/auth/google`}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              "flex w-full items-center justify-center gap-2",
+            )}
+          >
+            <img src={GOOGLE_LOGO_URL} aria-hidden="true" className="size-4" />
             <span>{buttonLabel}</span>
-          </Button>
+          </a>
         </CardContent>
       </Card>
     </main>
