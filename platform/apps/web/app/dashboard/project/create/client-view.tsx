@@ -6,16 +6,10 @@ import GitRepoConfigCard from "./components/git-repo-config-card";
 import SshKeysCard from "./components/ssh-keys-card";
 import NetworkFirewallCard from "./components/network-firewall-card";
 import AdditionalServices from "./components/additional-services";
-import { Button } from "@repo/ui/components/button";
 import NameCard from "./components/name-card";
-import { useConfigStore } from "@/store/config-store";
-import { useCreateProject } from "@/hooks/use-project";
+import ConfigPreviewAndCreate from "./components/config-preview-and-create";
 
 export default function ClientView() {
-  const { gitRepos, projectName, sshKeys, portRules, additionalServices } =
-    useConfigStore();
-  const { mutate } = useCreateProject();
-
   return (
     <div className="space-y-8 p-8">
       <div>
@@ -31,20 +25,8 @@ export default function ClientView() {
       <SshKeysCard />
       <NetworkFirewallCard />
       <AdditionalServices />
-      <div>
-        <Button onClick={() => mutate({ projectName: "test project" })}>
-          Create Project
-        </Button>
-      </div>
-      <div>
-        {JSON.stringify({
-          name: projectName,
-          ssh_keys: sshKeys.map((key) => key),
-          ports: portRules,
-          gitRepos: gitRepos,
-          additionalServices,
-        })}
-      </div>
+      <ConfigPreviewAndCreate />
     </div>
   );
 }
+

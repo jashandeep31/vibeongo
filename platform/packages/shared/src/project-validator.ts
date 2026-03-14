@@ -21,6 +21,7 @@ export const nodeConfigValidator = z.object({
   version: z.number(),
 });
 
+//TODO: make sure to check the git config url and show the error if it is not a valid git url
 export const neovimConfigValidator = z.object({
   config_url: z
     .string()
