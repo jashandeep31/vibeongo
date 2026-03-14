@@ -72,7 +72,7 @@ interface ConfigStore {
 }
 
 export const useConfigStore = create<ConfigStore>((set) => ({
-  projectName: "",
+  projectName: "Demo project dummy name",
   setProjectName: (name) => set(() => ({ projectName: name })),
 
   regionId: "",
@@ -84,6 +84,7 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   instanceRegion: "",
   setInstanceRegion: (region) => set(() => ({ instanceRegion: region })),
 
+  //TODO: remove the demo data in the production
   gitRepos: [],
   setGitRepos: (repos) => set(() => ({ gitRepos: repos })),
   addGitRepo: (rep) => set((state) => ({ gitRepos: [...state.gitRepos, rep] })),
@@ -103,9 +104,22 @@ export const useConfigStore = create<ConfigStore>((set) => ({
     })),
 
   additionalServices: {
-    dockerConfig: { enabled: false, containers: [] },
-    opencodeConfig: { enabled: false, authJson: "" },
-    nvimConfig: { enabled: false, config: "" },
+    dockerConfig: {
+      enabled: true,
+      containers: [
+        {
+          id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
+          name: "PostgreSQL Database",
+          content:
+            "version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:",
+        },
+      ],
+    },
+    opencodeConfig: { enabled: true, authJson: `{"auths":{}}` },
+    nvimConfig: {
+      enabled: true,
+      config: "https://github.com/nvim-lua/kickstart.nvim.git",
+    },
   },
 
   updateDockerConfig: (dockerConfig) =>

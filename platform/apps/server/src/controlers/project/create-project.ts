@@ -1,13 +1,13 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/appError.js";
-import { db } from "@repo/db";
+import { db, projects } from "@repo/db";
 import { projectConfigValidator, z } from "@repo/shared";
 
 const createProjectSchema = z.object({
-  name: z.string().min(3).max(3),
-  instanceSlug: z.string(),
-  config: projectConfigValidator,
+  name: z.string().min(1),
+  instanceTypeId: z.string(),
+  config: z.json(),
 });
 
 export const createProject = catchAsync(async (req: Request, res: Response) => {
@@ -21,6 +21,18 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
     // just save the config
     const { body } = req;
     const parsedData = createProjectSchema.parse(body);
+    await db.transaction(async (tx) => {
+      await db.insert(projects).values({
+        name: parsedData.name,
+        description: "",
+        status: "running",
+        total_charges: 0,
+        config: parsedData.config,
+        user_id: user.id,
+        instance_type_id: parsedData.instanceTypeId,
+      });
+      // TODO: create the project files
+    });
 
     const config = parsedData.config;
   });
