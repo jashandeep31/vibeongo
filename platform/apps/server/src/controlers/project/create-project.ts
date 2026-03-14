@@ -18,7 +18,7 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
       .values({
         name: parsedData.name,
         description: parsedData.description,
-        status: "running",
+        status: "terminated",
         user_id: user.id,
         instance_type_id: parsedData.instanceTypeId,
         total_charges: 0,
