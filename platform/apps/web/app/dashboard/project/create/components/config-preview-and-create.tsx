@@ -6,14 +6,23 @@ import { useCreateProject } from "@/hooks/use-project";
 import { projectConfigValidator, z } from "@repo/shared";
 
 export default function ConfigPreviewAndCreate() {
-  const { gitRepos, projectName, sshKeys, portRules, additionalServices } =
-    useConfigStore();
+  const {
+    gitRepos,
+    projectName,
+    sshKeys,
+    portRules,
+    additionalServices,
+    instanceTypeId,
+    instanceRegionId,
+  } = useConfigStore();
   const { mutate } = useCreateProject();
 
   const config: z.infer<typeof projectConfigValidator> = {
     name: projectName,
     description: "coming soon feature",
-    ssh_keys: sshKeys.map((key) => key),
+    regionId: instanceRegionId,
+    instanceTypeId: instanceTypeId,
+    sshKeys: sshKeys.map((key) => key),
     ports: portRules.map((rule) => ({
       port: parseInt(rule.port, 10),
       protocol: rule.protocol,
@@ -50,21 +59,27 @@ export default function ConfigPreviewAndCreate() {
       },
     ],
   };
-  console.log(config);
   return (
     <>
       <div>
         <Button
           onClick={() => {
+            const parsedResponse = projectConfigValidator.safeParse(config);
+            if (parsedResponse.success) {
+              mutate({
+                ...config,
+              });
+            }
             mutate({
               ...config,
             });
+            console.log(parsedResponse.error);
           }}
         >
           Create Project
         </Button>
       </div>
-      <div className="bg-muted overflow-auto rounded-md p-4 text-xs">
+      <div className="bg-muted w-[80vw] overflow-auto rounded-md p-4 text-xs">
         <pre>{JSON.stringify(config, null, 2)}</pre>
       </div>
     </>
