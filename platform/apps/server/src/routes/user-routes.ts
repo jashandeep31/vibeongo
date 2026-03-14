@@ -5,6 +5,7 @@ import {
   getSshKeys,
   deleteSshKey,
 } from "../controlers/user/ssh-keys-controller.js";
+import { getUserMetadata } from "../controlers/user/metadata.js";
 
 const routes: Router = Router();
 
@@ -12,6 +13,8 @@ routes
   .route("/ssh-key")
   .post(checkAuthorization(["all"]), createSshKey)
   .get(checkAuthorization(["all"]), getSshKeys);
+
+routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 
 routes.route("/ssh-key/:id").delete(checkAuthorization(["all"]), deleteSshKey);
 export const userRoutes = routes;
