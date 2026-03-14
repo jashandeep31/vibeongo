@@ -22,9 +22,7 @@ export const googleAuthUrl = catchAsync(async (req: Request, res: Response) => {
     scope: ["openid", "email", "profile"],
     prompt: "consent",
   });
-  res.status(200).json({
-    url: authUrl,
-  });
+  res.redirect(authUrl);
 });
 
 export const googleAuthCallbackController = catchAsync(
