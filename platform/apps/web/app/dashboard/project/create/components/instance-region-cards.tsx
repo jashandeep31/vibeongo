@@ -5,7 +5,8 @@ import { useConfigStore } from "@/store/config-store";
 
 function InstanceRegionCards() {
   const { data: regions } = useInstanceRegions();
-  const { instanceRegion, setInstanceRegion } = useConfigStore();
+  const { instanceRegionId: instanceRegion, setInstanceRegion } =
+    useConfigStore();
   return (
     <div className="space-y-4">
       <Label className="text-muted-foreground text-sm">Deployment Region</Label>
