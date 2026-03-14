@@ -10,7 +10,7 @@ export const dockerConfigValidator = z.object({
 });
 
 export const opencodeConfigValidator = z.object({
-  command: z.string(),
+  auth_json: z.string(),
 });
 
 export const tmuxConfigValidator = z.object({});
