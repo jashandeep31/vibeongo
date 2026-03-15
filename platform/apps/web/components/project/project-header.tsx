@@ -7,8 +7,8 @@ import { Project } from "./types";
 
 interface ProjectHeaderProps {
   project: Project;
-  status: "running" | "stopped";
-  setStatus: (status: "running" | "stopped") => void;
+  status: "running" | "terminated";
+  setStatus: (status: "running" | "terminated") => void;
 }
 
 export function ProjectHeader({
@@ -30,7 +30,7 @@ export function ProjectHeader({
               variant="secondary"
               className="text-muted-foreground border-0"
             >
-              Stopped
+              Terminated
             </Badge>
           )}
         </div>
@@ -57,10 +57,10 @@ export function ProjectHeader({
             <Button
               variant="destructive"
               size="lg"
-              onClick={() => setStatus("stopped")}
+              onClick={() => setStatus("terminated")}
             >
               <Square className="mr-2 h-4 w-4" />
-              Stop
+              Terminate
             </Button>
           </>
         ) : (
