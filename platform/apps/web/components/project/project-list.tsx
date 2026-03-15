@@ -24,7 +24,7 @@ export function ProjectList() {
   }
 
   // Ensure projects is an array
-  const projectsList = Array.isArray(projects) ? projects : [];
+  const projectsList = projects || [];
 
   const runningProjects = projectsList.filter((p) => p.status === "running");
   const stoppedProjects = projectsList.filter((p) => p.status !== "running");
@@ -44,7 +44,10 @@ export function ProjectList() {
               Running
             </Badge>
           ) : (
-            <Badge variant="secondary" className="text-muted-foreground border-0">
+            <Badge
+              variant="secondary"
+              className="text-muted-foreground border-0"
+            >
               {project.status || "Stopped"}
             </Badge>
           )}
@@ -85,7 +88,9 @@ export function ProjectList() {
       )}
 
       {projectsList.length === 0 && (
-        <div className="text-muted-foreground">No projects found. Create one to get started!</div>
+        <div className="text-muted-foreground">
+          No projects found. Create one to get started!
+        </div>
       )}
     </div>
   );

@@ -1,11 +1,12 @@
 "use client";
 
-import { Clock, CreditCard, Network, Server } from "lucide-react";
+import { CreditCard, Server } from "lucide-react";
 import { Card, CardContent } from "@repo/ui/components/card";
-import { Project } from "./types";
+import { Project, DbInstance } from "./types";
 
 interface UsageBillingProps {
   project: Project;
+  instances: DbInstance[];
 }
 
 export function UsageBilling({ project }: UsageBillingProps) {
@@ -22,7 +23,7 @@ export function UsageBilling({ project }: UsageBillingProps) {
               Total Charges
             </p>
             <p className="text-3xl font-bold">
-              {project.metrics.billing.total}
+              ${(project.total_charges / 100).toFixed(2)}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
               Current billing cycle
@@ -35,25 +36,9 @@ export function UsageBilling({ project }: UsageBillingProps) {
                 <Server className="h-4 w-4" /> Compute
               </span>
               <span className="font-medium">
-                {project.metrics.billing.compute}
+                ${(project.total_charges / 100).toFixed(2)}
               </span>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground flex items-center gap-2">
-                <Network className="h-4 w-4" /> Bandwidth
-              </span>
-              <span className="font-medium">
-                {project.metrics.billing.bandwidth}
-              </span>
-            </div>
-          </div>
-
-          <div className="border-t pt-4">
-            <p className="text-muted-foreground mb-1 flex items-center gap-2 text-sm font-medium">
-              <Clock className="h-4 w-4" />
-              Running Time
-            </p>
-            <p className="font-medium">{project.metrics.uptime}</p>
           </div>
         </CardContent>
       </Card>
