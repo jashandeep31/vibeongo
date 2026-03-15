@@ -8,6 +8,13 @@
       "when": 1773165195944,
       "tag": "0000_slow_squadron_supreme",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1773592073171,
+      "tag": "0001_vengeful_starhawk",
+      "breakpoints": true
     }
   ]
 }
