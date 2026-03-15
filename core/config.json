@@ -1,27 +1,46 @@
 {
-  "os": "ubuntu",
-  "system_user": {
-    "username": "ubuntu",
-    "password": "5",
-    "is_sudo_user": true
-  },
+  "sshKeys": [],
+  "ports": [
+    {
+      "port": 80,
+      "protocol": "TCP"
+    },
+    {
+      "port": 443,
+      "protocol": "TCP"
+    }
+  ],
+  "repos": [
+    {
+      "git_url": "https://github.com/jashandeep31/mailstudio.git",
+      "access_token": ""
+    }
+  ],
   "packages": [
     {
       "name": "docker",
+      "enabled": true,
       "config": {
         "containers": [
           {
-            "name": "postgres",
-            "file_content": "https://l1.devsradar.com/postgres-docker-compose-file",
-            "filename": "postgres-docker-compose.yaml"
+            "name": "PostgreSQL Database",
+            "content": "version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:"
           }
         ]
       }
     },
     {
       "name": "opencode",
+      "enabled": true,
       "config": {
-        "command": "curl -fsSL https://opencode.ai/install | bash"
+        "auth_json": "{\"auths\":{}}"
+      }
+    },
+    {
+      "name": "nvim",
+      "enabled": true,
+      "config": {
+        "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
       }
     }
   ]
