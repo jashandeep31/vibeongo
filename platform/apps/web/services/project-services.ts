@@ -1,5 +1,5 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { projects } from "@repo/db";
+import { projects, instances } from "@repo/db";
 import axios from "axios";
 
 export const createProject = async (projectData: unknown) => {
@@ -10,8 +10,22 @@ export const createProject = async (projectData: unknown) => {
   return res.data;
 };
 
-export const getProjects = async (): Promise<typeof projects.$inferSelect> => {
+export const getProjects = async (): Promise<
+  (typeof projects.$inferSelect)[]
+> => {
   const res = await axios.get(BACKEND_URL + "/api/v1/project/", {
+    withCredentials: true,
+  });
+  return res.data.data;
+};
+
+export const getProjectById = async (
+  id: string,
+): Promise<{
+  project: typeof projects.$inferSelect;
+  instances: (typeof instances.$inferSelect)[];
+}> => {
+  const res = await axios.get(BACKEND_URL + `/api/v1/project/${id}`, {
     withCredentials: true,
   });
   return res.data.data;
