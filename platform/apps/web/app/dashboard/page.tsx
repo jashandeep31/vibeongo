@@ -2,8 +2,14 @@ import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
 import { ProjectList } from "@/components/project/project-list";
+import { getSession } from "@/lib/getSession";
+import { redirect } from "next/navigation";
 
-export default function ProjectsPage() {
+export default async function ProjectsPage() {
+  const session = await getSession()
+  if(!session || !session.id){
+    redirect("/login")
+  }
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
