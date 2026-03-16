@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 )
@@ -25,9 +24,10 @@ func Run() {
 
 		case "docker":
 			fmt.Println("Setting up the docker")
-			if err := docker.Installer(pkg, config.SystemUser); err != nil {
-				log.Fatalf("docker install flow failed: %v", err)
-			}
+			fmt.Println(config.Docker.Containers)
+			// if err := docker.Installer(pkg, config.SystemUser); err != nil {
+			// 	log.Fatalf("docker install flow failed: %v", err)
+			// }
 
 		case "opencode":
 			fmt.Println("Setting up the opencode")
