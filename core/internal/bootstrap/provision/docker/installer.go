@@ -4,10 +4,9 @@ import (
 	"fmt"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
-	"github.com/jashandeep31/vibeongo/core/internal/config"
 )
 
-func installDocker(systemUser config.SystemUser) error {
+func installDocker() error {
 	fmt.Println("Docker is getting installed")
 
 	// Remove old docker packages
@@ -84,10 +83,10 @@ EOF
 
 	// Add user to docker group
 	fmt.Println("Adding the docker to the user group")
-	_, err = utils.RunCommand("sudo", "usermod", "-aG", "docker", systemUser.Username)
-	if err != nil {
-		return fmt.Errorf("failed to update user group: %w", err)
-	}
+	// _, err = utils.RunCommand("sudo", "usermod", "-aG", "docker", systemUser.Username)
+	// if err != nil {
+	// 	return fmt.Errorf("failed to update user group: %w", err)
+	// }
 
 	return nil
 }
