@@ -1,19 +1,22 @@
-package bootstrap
+package utils
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 )
 
 type Config struct {
 	Packages []Package
-	Docker   *DockerConfig
+	Docker   DockerConfig
+	OpenCode OpenCodeConfig
+	Nvim     NvimConfig
 }
+
 type Package struct {
 	Name   string          `json:"name"`
 	Config json.RawMessage `json:"config"`
 }
+
 type DockerContainerConfig struct {
 	Name    string `json:"name"`
 	Content string `json:"content"`
@@ -27,50 +30,41 @@ type OpenCodeConfig struct {
 	AuthJson json.RawMessage `json:"auth_json"`
 }
 
+type NvimConfig struct {
+	ConfigJson json.RawMessage `json:"config_json"`
+}
+
 func ValidateConfig(file []byte) (Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(file, &cfg); err != nil {
 		return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 	}
 
-	// validating the docker config
-
+	// Validate packages configuration
 	for _, pkg := range cfg.Packages {
-		if pkg.Name == "docker" {
-
+		switch pkg.Name {
+		case "docker":
 			var dockerConfig DockerConfig
-
 			if err := json.Unmarshal(pkg.Config, &dockerConfig); err != nil {
 				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 			}
+			cfg.Docker = dockerConfig
 
-			for _, container := range dockerConfig.Containers {
-				fmt.Println(container.Name)
-			}
-
-			//Adding the docker config to the config
-			cfg.Docker = &dockerConfig
-		}
-
-		if pkg.Name == "opencode" {
-
+		case "opencode":
 			var openCodeConfig OpenCodeConfig
-
 			if err := json.Unmarshal(pkg.Config, &openCodeConfig); err != nil {
 				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 			}
+			cfg.OpenCode = openCodeConfig
 
-		}
-		if pkg.Name == "nvim" {
-
-			// 1. install the nvim
-			// 2. git clone the repo in the nvim folder
-			// fmt.Println("gitpod is here", string(pkg.Config))
+		case "nvim":
+			var nvimConfig NvimConfig
+			if err := json.Unmarshal(pkg.Config, &nvimConfig); err != nil {
+				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
+			}
+			cfg.Nvim = nvimConfig
 		}
 	}
-	// TODO: move all the validation to the config file here so no shit can happen on the go
-	// TODO: use colors to print the validation and other messages
 
-	return cfg, errors.New("this is custom generated error")
-	// return cfg, nil
+	return cfg, nil
 }
