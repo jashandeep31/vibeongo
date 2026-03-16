@@ -1,10 +1,13 @@
 package docker
 
 import (
+	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 )
 
-func Setup(cfg utils.DockerConfig) error {
+func Setup(cfg *utils.DockerConfig) error {
+	color.Green("Installing the docker")
+	// fmt.Println()
 	// fmt.Println(cfg.Containers)
 	// err := installDocker()
 	// if err != nil {
