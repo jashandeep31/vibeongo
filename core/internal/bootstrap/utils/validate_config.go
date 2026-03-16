@@ -7,9 +7,9 @@ import (
 
 type Config struct {
 	Packages []Package
-	Docker   DockerConfig
-	OpenCode OpenCodeConfig
-	Nvim     NvimConfig
+	Docker   *DockerConfig
+	OpenCode *OpenCodeConfig
+	Nvim     *NvimConfig
 }
 
 type Package struct {
@@ -48,21 +48,21 @@ func ValidateConfig(file []byte) (Config, error) {
 			if err := json.Unmarshal(pkg.Config, &dockerConfig); err != nil {
 				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 			}
-			cfg.Docker = dockerConfig
+			cfg.Docker = &dockerConfig
 
 		case "opencode":
 			var openCodeConfig OpenCodeConfig
 			if err := json.Unmarshal(pkg.Config, &openCodeConfig); err != nil {
 				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 			}
-			cfg.OpenCode = openCodeConfig
+			// cfg.OpenCode = &openCodeConfig
 
 		case "nvim":
 			var nvimConfig NvimConfig
 			if err := json.Unmarshal(pkg.Config, &nvimConfig); err != nil {
 				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 			}
-			cfg.Nvim = nvimConfig
+			cfg.Nvim = &nvimConfig
 		}
 	}
 
