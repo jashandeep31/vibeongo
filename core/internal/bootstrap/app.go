@@ -19,7 +19,7 @@ func Run() {
 	fmt.Println("")
 	fmt.Println("")
 
-	file, err := LoadConfig("config.json")
+	file, err := loadConfig("config.json")
 	if err != nil {
 		log.Fatalf("application startup failed: %v", err)
 	}
@@ -29,14 +29,17 @@ func Run() {
 		log.Fatalf("config has error %v", err)
 	}
 
-	fmt.Println(config.OpenCode)
+	if config.Docker != nil {
+		docker.Setup(config.Docker)
+	}
 
 	if config.OpenCode != nil {
 		opencode.Setup(config.OpenCode)
 	}
 
-	if config.Docker != nil {
-		docker.Setup(config.Docker)
+	if config.Nvim != nil {
+		// nvim.Setup(config.Nvim)
+		fmt.Println("nvim is not supported yet")
 	}
 
 	// Source .bashrc so the new PATH takes effect
@@ -53,7 +56,7 @@ func Run() {
 	// setting up the nvim with the kickstart
 }
 
-func LoadConfig(filename string) ([]byte, error) {
+func loadConfig(filename string) ([]byte, error) {
 	file, err := os.ReadFile(filename)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to load the config: %w", err)

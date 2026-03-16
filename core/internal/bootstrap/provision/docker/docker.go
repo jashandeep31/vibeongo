@@ -1,8 +1,12 @@
 package docker
 
 import (
+	"fmt"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
+	"github.com/metal3d/go-slugify"
 )
 
 func Setup(cfg *utils.DockerConfig) error {
@@ -26,5 +30,11 @@ func Setup(cfg *utils.DockerConfig) error {
 	// 	return err
 	// }
 
+	for _, container := range cfg.Containers {
+		folderName := strings.ToLower(slugify.Marshal(container.Name))
+		fmt.Println(folderName)
+		// create the folder
+
+	}
 	return nil
 }

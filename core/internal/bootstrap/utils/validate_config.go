@@ -55,7 +55,7 @@ func ValidateConfig(file []byte) (Config, error) {
 			if err := json.Unmarshal(pkg.Config, &openCodeConfig); err != nil {
 				return cfg, fmt.Errorf("Error in parsing the config: %w", err)
 			}
-			// cfg.OpenCode = &openCodeConfig
+			cfg.OpenCode = &openCodeConfig
 
 		case "nvim":
 			var nvimConfig NvimConfig
