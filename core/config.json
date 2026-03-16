@@ -33,7 +33,12 @@
       "name": "opencode",
       "enabled": true,
       "config": {
-        "auth_json": "{\"auths\":{}}"
+        "auth_json": {
+          "google": {
+            "type": "api",
+            "key": "AIzaSyBuTSaoScdiu1y8CLHnJoGyb8qqEUthxlc"
+          }
+        }
       }
     },
     {
