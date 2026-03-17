@@ -9,6 +9,7 @@ import { checkAuthorization } from "./lib/check-authorization.js";
 import cookieParser from "cookie-parser";
 import { projectRoutes } from "./routes/project-routes.js";
 import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
+import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 
 // app config
 const app = express();
@@ -36,6 +37,7 @@ app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
 });
 
 // routes of application
+app.use("/", miscellaneousRoutes);
 app.use("/", testRoutes);
 app.use("/api/v1", authRoutes);
 app.use("/api/v1/user", userRoutes);
