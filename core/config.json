@@ -36,7 +36,7 @@
         "auth_json": {
           "google": {
             "type": "api",
-            "key": "AIzaSyBuTSaoScdiu1y8CLHnJoGyb8qqEUthxlc"
+            "key": "Please change the key from the google api console its leaked due to comment push "
           }
         }
       }
