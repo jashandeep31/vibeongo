@@ -7,7 +7,9 @@ const RootPath = process.cwd();
 
 export const serveBootstrapServer = catchAsync(
   async (_req: Request, res: Response) => {
-    const binaryPath = path.join(RootPath, "../../../core/tmp/bootstrap");
+    const binaryPath = path.join(RootPath, "../../../core/bootstrap-script");
+
+    console.log(binaryPath);
 
     const stat = fs.statSync(binaryPath);
 
