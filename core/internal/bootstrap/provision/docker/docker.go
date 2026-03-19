@@ -13,10 +13,10 @@ func Setup(cfg *utils.DockerConfig) error {
 	color.Green("Installing the docker")
 	// fmt.Println()
 	// fmt.Println(cfg.Containers)
-	// err := installDocker()
-	// if err != nil {
-	// 	return err
-	// }
+	err := installDocker()
+	if err != nil {
+		return err
+	}
 	// for _, container := range cfg.Containers {
 	// 	// if err := runContainer(container); err != nil {
 	// 	// 	return err
