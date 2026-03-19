@@ -25,34 +25,33 @@ export const createEc2Instance = async ({
     Monitoring: {
       Enabled: false, // enable in future it's paid
     },
-
-    // SecurityGroupIds: [],
-    //
-    // SubnetId: "subnet-abc123",
-    // TagSpecifications: [
-    //   {
-    //     ResourceType: "instance",
-    //     Tags: [{ Key: "Name", Value: "MyCustomServer" }],
-    //   },
-    // ],
-
-    // things we wanna run in the server
+    // TODO: things i have to handle
+    // 1. get the boosstrap server and run
     UserData: Buffer.from(
-      `#!/bin/bash
-set -e
+      `#!/usr/bin/env bash
+set -euxo pipefail
 
-USER="ubuntu"
-HOME_DIR="/home/$USER"
+exec > /var/log/user-data.log 2>&1
 
-mkdir -p $HOME_DIR/.ssh
-echo "${env.SSH_KEY}" >> $HOME_DIR/.ssh/authorized_keys
+USER_HOME="/home/ubuntu"
 
-chmod 700 $HOME_DIR/.ssh
-chmod 600 $HOME_DIR/.ssh/authorized_keys
-chown -R $USER:$USER $HOME_DIR/.ssh
+mkdir -p "$USER_HOME/.ssh"
 
-echo "SSH key added successfully"
-`,
+echo "${env.SSH_KEY}" >> "$USER_HOME/.ssh/authorized_keys"
+
+chmod 700 "$USER_HOME/.ssh"
+chmod 600 "$USER_HOME/.ssh/authorized_keys"
+
+chown -R ubuntu:ubuntu "$USER_HOME/.ssh"
+
+echo "SSH key added successfully
+
+curl -fL https://l1.devsradar.com/install -o /home/ubuntu/install
+
+chmod +x /home/ubuntu/install
+
+/home/ubuntu/install
+"`,
     ).toString("base64"),
   });
   const client = getEc2Client(region);
