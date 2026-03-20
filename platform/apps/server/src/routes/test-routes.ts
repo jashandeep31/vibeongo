@@ -4,7 +4,6 @@ import {
   deleteEc2ServerById,
   getAllRunningEc2s,
 } from "../controlers/test-controllers.js";
-import { checkAuthorization } from "../lib/check-authorization.js";
 
 const routes: Router = Router();
 
@@ -38,5 +37,59 @@ volumes:
     });
   });
 
-
+routes.route("/config").get((req: Request, res: Response) => {
+  res.status(200).json({
+    sshKeys: [],
+    ports: [
+      {
+        port: 80,
+        protocol: "TCP",
+      },
+      {
+        port: 443,
+        protocol: "TCP",
+      },
+    ],
+    repos: [
+      {
+        git_url: "https://github.com/jashandeep31/mailstudio.git",
+        access_token: "",
+      },
+    ],
+    packages: [
+      {
+        name: "docker",
+        enabled: true,
+        config: {
+          containers: [
+            {
+              name: "PostgreSQL Database",
+              content:
+                "version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:",
+            },
+          ],
+        },
+      },
+      {
+        name: "opencode",
+        enabled: true,
+        config: {
+          auth_json: {
+            google: {
+              type: "api",
+              key: "Please change the key from the google api console its leaked due to comment push ",
+            },
+          },
+        },
+      },
+      {
+        name: "nvim",
+        enabled: true,
+        config: {
+          config_url: "https://github.com/nvim-lua/kickstart.nvim.git",
+        },
+      },
+    ],
+  });
+});
 export const testRoutes = routes;
