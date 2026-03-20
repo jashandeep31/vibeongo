@@ -2,6 +2,7 @@
 
 import axios from "axios";
 import { useEffect, useState } from "react";
+import { Copy, Check, Terminal } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import {
   Table,
@@ -30,6 +31,40 @@ const formatDate = (value: string | Date | null) => {
   if (!value) return "-";
   return new Date(value).toLocaleString();
 };
+
+function CopyButton({
+  text,
+  icon: Icon,
+  title,
+}: {
+  text: string;
+  icon: React.ElementType;
+  title: string;
+}) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  return (
+    <Button
+      variant="ghost"
+      size="icon-xs"
+      onClick={handleCopy}
+      title={title}
+      className="ml-2"
+    >
+      {copied ? <Check className="size-3" /> : <Icon className="size-3" />}
+    </Button>
+  );
+}
 
 export default function AdminPage() {
   const [servers, setServers] = useState<Ec2Server[]>([]);
@@ -116,7 +151,25 @@ export default function AdminPage() {
                 <TableRow key={server.ec2_id}>
                   <TableCell>{server.ec2_id}</TableCell>
                   <TableCell>{server.region}</TableCell>
-                  <TableCell>{server.ip ?? "-"}</TableCell>
+                  <TableCell>
+                    {server.ip ? (
+                      <div className="flex items-center">
+                        {server.ip}
+                        <CopyButton
+                          text={server.ip}
+                          icon={Copy}
+                          title="Copy IP"
+                        />
+                        <CopyButton
+                          text={`ssh ubuntu@${server.ip}`}
+                          icon={Terminal}
+                          title="Copy SSH Command"
+                        />
+                      </div>
+                    ) : (
+                      "-"
+                    )}
+                  </TableCell>
                   <TableCell>{server.status}</TableCell>
                   <TableCell>{formatDate(server.created_at)}</TableCell>
                   <TableCell>{formatDate(server.updated_at)}</TableCell>

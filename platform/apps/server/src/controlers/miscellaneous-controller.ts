@@ -23,3 +23,20 @@ export const serveBootstrapServer = catchAsync(
     stream.pipe(res);
   },
 );
+
+export const serveServer = catchAsync(async (_req: Request, res: Response) => {
+  const binaryPath = path.join(RootPath, "../../../core/api");
+
+  console.log(binaryPath);
+
+  const stat = fs.statSync(binaryPath);
+
+  res.writeHead(200, {
+    "Content-Type": "",
+    "Content-Length": stat.size,
+  });
+
+  const stream = fs.createReadStream(binaryPath);
+
+  stream.pipe(res);
+});
