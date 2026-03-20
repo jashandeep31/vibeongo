@@ -83,10 +83,12 @@ EOF
 
 	// Add user to docker group
 	fmt.Println("Adding the docker to the user group")
-	// _, err = utils.RunCommand("sudo", "usermod", "-aG", "docker", systemUser.Username)
-	// if err != nil {
-	// 	return fmt.Errorf("failed to update user group: %w", err)
-	// }
+
+	// TODO: username is hardcoded please fix this as username can be any
+	_, err = utils.RunCommand("sudo", "usermod", "-aG", "docker", "ubuntu")
+	if err != nil {
+		return fmt.Errorf("failed to update user group: %w", err)
+	}
 
 	return nil
 }

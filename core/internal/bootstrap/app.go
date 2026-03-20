@@ -12,7 +12,7 @@ import (
 )
 
 func Run() {
-	fmt.Println("v0.0.1")
+	fmt.Println("v0.0.2")
 	fmt.Println("")
 	color.Cyan("Welcome, We are setting the system up for you")
 	color.Yellow("it may take a while")
@@ -39,7 +39,7 @@ func Run() {
 
 	if config.Nvim != nil {
 		// nvim.Setup(config.Nvim)
-		fmt.Println("nvim is not supported yet")
+		// fmt.Println("nvim is not supported yet")
 	}
 
 	// Source .bashrc so the new PATH takes effect
