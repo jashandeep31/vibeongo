@@ -9,6 +9,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/joho/godotenv v1.5.1
 	github.com/labstack/echo/v5 v5.0.4
+	github.com/mattn/go-sqlite3 v1.14.22
 	github.com/metal3d/go-slugify v0.0.0-20160607203414-7ac2014b2f23
 	modernc.org/sqlite v1.47.0
 )
