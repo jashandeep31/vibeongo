@@ -25,8 +25,6 @@ export const createEc2Instance = async ({
     Monitoring: {
       Enabled: false, // enable in future it's paid
     },
-    // TODO: things i have to handle
-    // 1. get the boosstrap server and run
     UserData: Buffer.from(
       `#!/usr/bin/env bash
 set -euxo pipefail
@@ -50,13 +48,14 @@ echo "Step 2: Download install script"
 
 curl -fL https://l1.devsradar.com/install -o "$USER_HOME/install"
 
-curl -fL https://l1.devsradar.com/install -o "$USER_HOME/install-api"
+curl -fL https://l1.devsradar.com/install-api -o "$USER_HOME/server"
 
 echo "Step 3: Download config"
 
 curl -fL https://l1.devsradar.com/config -o "$USER_HOME/config.json"
 
 chmod +x "$USER_HOME/install"
+chmod +x "$USER_HOME/server"
 
 echo "Step 4: Run install script"
 
@@ -69,7 +68,7 @@ touch "$USER_HOME/done.txt"
 echo "We are done" > "$USER_HOME/done.txt"
 echo "Plese reboot the server onces" > "$USER_HOME/done.txt"
 
-source ~/.bashrc
+source /home/ubuntu/.bashrc
 newgrp docker
 
 `,
