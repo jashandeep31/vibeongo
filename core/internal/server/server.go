@@ -3,6 +3,8 @@ package server
 import (
 	"database/sql"
 	"log"
+	"os"
+	"path/filepath"
 
 	"github.com/golang-migrate/migrate/v4"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite"
@@ -21,13 +23,9 @@ func Start() {
 	e := echo.New()
 	e.Use(middleware.RequestLogger())
 
-	dbConn, err := sql.Open("sqlite", "./test.db")
-	if err != nil {
-		log.Fatalf("Failed to connect the db")
-	}
-	defer dbConn.Close()
-
-	m, err := migrate.New("file://internal/db/migrations", "sqlite://test.db")
+	wd, _ := os.Getwd()
+	migrationsPath := "file://" + filepath.Join(wd, "internal/db/migrations")
+	m, err := migrate.New(migrationsPath, "sqlite://test.db")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -35,6 +33,11 @@ func Start() {
 		log.Fatal(err)
 	}
 
+	dbConn, err := sql.Open("sqlite", "./test.db")
+	if err != nil {
+		log.Fatalf("Failed to connect the db")
+	}
+	defer dbConn.Close()
 	// routes of app
 	routes.RegisterMiscRoutes(e, dbConn)
 	routes.RegisterWSRoutes(e)

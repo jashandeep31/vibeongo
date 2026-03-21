@@ -7,12 +7,13 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 )
 
 func Run() {
-	fmt.Println("v0.0.2")
+	fmt.Println("v0.0.4")
 	fmt.Println("")
 	color.Cyan("Welcome, We are setting the system up for you")
 	color.Yellow("it may take a while")
@@ -28,6 +29,8 @@ func Run() {
 	if err != nil {
 		log.Fatalf("config has error %v", err)
 	}
+
+	gitrepos.Setup(config.Repos)
 
 	if config.Docker != nil {
 		docker.Setup(config.Docker)

@@ -6,13 +6,14 @@ import (
 )
 
 type Config struct {
-	Packages []Package
+	packages []packageConfig
+	Repos    []GitRepoConfig `json:"repos"`
 	Docker   *DockerConfig
 	OpenCode *OpenCodeConfig
 	Nvim     *NvimConfig
 }
 
-type Package struct {
+type packageConfig struct {
 	Name   string          `json:"name"`
 	Config json.RawMessage `json:"config"`
 }
@@ -24,6 +25,11 @@ type DockerContainerConfig struct {
 
 type DockerConfig struct {
 	Containers []DockerContainerConfig `json:"containers"`
+}
+
+type GitRepoConfig struct {
+	URL         string `json:"git_url"`
+	AccessToken string `json:"access_token"`
 }
 
 type OpenCodeConfig struct {
@@ -41,7 +47,7 @@ func ValidateConfig(file []byte) (Config, error) {
 	}
 
 	// Validate packages configuration
-	for _, pkg := range cfg.Packages {
+	for _, pkg := range cfg.packages {
 		switch pkg.Name {
 		case "docker":
 			var dockerConfig DockerConfig
