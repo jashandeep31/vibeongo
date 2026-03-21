@@ -13,7 +13,7 @@ import (
 )
 
 func Run() {
-	fmt.Println("v0.0.4")
+	fmt.Println("v0.0.5")
 	fmt.Println("")
 	color.Cyan("Welcome, We are setting the system up for you")
 	color.Yellow("it may take a while")

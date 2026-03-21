@@ -71,6 +71,28 @@ echo "Plese reboot the server onces" > "$USER_HOME/done.txt"
 source /home/ubuntu/.bashrc
 newgrp docker
 
+echo "Step 6: Setup systemd service"
+
+cat <<EOF > /etc/systemd/system/myserver.service
+[Unit]
+Description=My API Server
+After=network.target
+
+[Service]
+User=ubuntu
+WorkingDirectory=/home/ubuntu
+ExecStart=/home/ubuntu/server
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+EOF
+systemctl daemon-reexec
+systemctl daemon-reload
+systemctl enable myserver
+systemctl start myserver
+
 `,
     ).toString("base64"),
   });

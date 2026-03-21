@@ -15,5 +15,8 @@ func Setup(cfg *utils.OpenCodeConfig) {
 	if err != nil {
 		fmt.Println(err)
 	}
+
+	// path := "/home/jashan/.local/share/opencode"
+
 	fmt.Println(out)
 }
