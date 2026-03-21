@@ -4,7 +4,7 @@ import {
   deleteEc2ServerById,
   getAllRunningEc2s,
 } from "../controlers/test-controllers.js";
-import { checkAuthorization } from "../lib/check-authorization.js";
+import { AppError } from "../lib/appError.js";
 
 const routes: Router = Router();
 
@@ -39,7 +39,13 @@ volumes:
   });
 
 routes.route("/config").get((req: Request, res: Response) => {
+  // const { authorization } = req.headers;
+  // if (!authorization)
+  //   throw new AppError("authorization token is required", 400);
+
+  // TODO: write the code to verify the token
   res.status(200).json({
+    token: "jlasdjl",
     sshKeys: [],
     ports: [
       {
