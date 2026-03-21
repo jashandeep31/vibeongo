@@ -6,7 +6,8 @@ import (
 )
 
 type Config struct {
-	packages []packageConfig
+	token    string
+	Packages []packageConfig `json:"packages"`
 	Repos    []GitRepoConfig `json:"repos"`
 	Docker   *DockerConfig
 	OpenCode *OpenCodeConfig
@@ -47,7 +48,7 @@ func ValidateConfig(file []byte) (Config, error) {
 	}
 
 	// Validate packages configuration
-	for _, pkg := range cfg.packages {
+	for _, pkg := range cfg.Packages {
 		switch pkg.Name {
 		case "docker":
 			var dockerConfig DockerConfig
