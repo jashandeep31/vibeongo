@@ -29,7 +29,6 @@ app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
   const hours = Math.floor(totalSeconds / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
-
   res.status(200).json({
     message: "Platform server is running",
     uptime: `${hours}h ${minutes}m ${seconds}s`,
@@ -51,8 +50,3 @@ app.listen(env.PORT, () => {
 if (env.NODE_ENV === "development") {
   test();
 }
-
-// TODO: tasks i wanna do
-// 1. create a ec2 by the route hitting of this project
-// 2. make ist small vms per the requirements of the user
-// 3. install the user setup in it and our own core plugin to handle to make instance a server
