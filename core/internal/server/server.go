@@ -1,6 +1,9 @@
 package server
 
 import (
+	"database/sql"
+	"log"
+
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/routes"
 	"github.com/labstack/echo/v5"
@@ -14,6 +17,10 @@ func Start() {
 	e := echo.New()
 	e.Use(middleware.RequestLogger())
 
+	_, err := sql.Open("sqlite", "./test.sql")
+	if err != nil {
+		log.Fatalf("Failed to connect the db")
+	}
 	// routes of app
 	routes.RegisterMiscRoutes(e)
 	routes.RegisterWSRoutes(e)
