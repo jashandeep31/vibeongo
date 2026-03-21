@@ -11,7 +11,8 @@ type HealthResponse struct {
 }
 
 func Health(c *echo.Context) error {
+	version := "v0.0.1"
 	return c.JSON(http.StatusOK, HealthResponse{
-		Message: "Hello world",
+		Message: "Hi, Your sandbox server is running " + version,
 	})
 }
