@@ -8,8 +8,8 @@ tmp_dir = "tmp"
 
 [build]
   args_bin = []
-  bin = "./tmp/bootstrap"
-  cmd = "go build -o ./tmp/bootstrap ./cmd/bootstrap"
+  bin = "./bootstrap-script"
+  cmd = "go build -o ./bootstrap-script ./cmd/bootstrap"
   delay = 1000
   exclude_dir = ["assets", "tmp", "vendor", "testdata"]
   exclude_file = []
