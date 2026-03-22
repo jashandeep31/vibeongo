@@ -7,7 +7,7 @@ import "@xterm/xterm/css/xterm.css";
 import { FitAddon } from "@xterm/addon-fit";
 
 const API_BASE_URL =
-  process.env.NEXT_PUBLIC_SERVER_URL ?? "http://13.234.202.12:8000";
+  process.env.NEXT_PUBLIC_SERVER_URL ?? "http://43.205.112.200:8000";
 
 const WS_URL = (() => {
   try {
