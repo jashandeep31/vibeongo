@@ -69,7 +69,6 @@ echo "We are done" > "$USER_HOME/done.txt"
 echo "Plese reboot the server onces" > "$USER_HOME/done.txt"
 
 source /home/ubuntu/.bashrc
-newgrp docker
 
 echo "Step 6: Setup systemd service"
 
@@ -84,6 +83,10 @@ WorkingDirectory=/home/ubuntu
 ExecStart=/home/ubuntu/server
 Restart=always
 RestartSec=5
+
+Environment=TERM=xterm-256color
+Environment=COLORTERM=truecolor
+Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
 
 [Install]
 WantedBy=multi-user.target
