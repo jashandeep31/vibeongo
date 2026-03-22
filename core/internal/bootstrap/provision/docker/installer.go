@@ -86,6 +86,7 @@ EOF
 
 	// TODO: username is hardcoded please fix this as username can be any
 	_, err = utils.RunCommand("sudo", "usermod", "-aG", "docker", "ubuntu")
+	_, err = utils.RunCommand("newgrp", "docker")
 	if err != nil {
 		return fmt.Errorf("failed to update user group: %w", err)
 	}
