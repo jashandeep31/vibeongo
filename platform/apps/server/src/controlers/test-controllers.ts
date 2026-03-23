@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { catchAsync } from "../lib/catch-async.js";
 import { db, ec2, eq } from "@repo/db";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
-import { createEc2Instance } from "../aws/services/create-ec2-instance/index.js";
+import { createEc2Instance } from "../aws/services/create-ec2-instance.js";
 import { awsSupportedRegions } from "../aws/configs/aws-supported-regions-configs.js";
 import { getEc2Client } from "../aws/ec2-client.js";
 import { DescribeInstancesCommand } from "@aws-sdk/client-ec2";

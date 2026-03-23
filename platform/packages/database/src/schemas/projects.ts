@@ -11,16 +11,10 @@ import {
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
 
-export const projectStatusEnum = pgEnum("project_status", [
-  "running",
-  "terminated",
-]);
-
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: varchar().notNull(),
   description: text(),
-  status: projectStatusEnum().notNull(),
 
   user_id: uuid()
     .references(() => users.id, {
