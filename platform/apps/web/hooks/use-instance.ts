@@ -13,17 +13,12 @@ export const useCreateInstance = () =>
 export const useGetInstances = () =>
   useQuery({
     queryKey: ["instances"],
-    queryFn: async () => {
-      const res = await getInstances();
-      return res.data;
-    },
+    queryFn: getInstances,
   });
 
 export const useGetInstanceById = (id: string) =>
   useQuery({
     queryKey: ["instance", id],
-    queryFn: async () => {
-      const res = await getInstanceById(id);
-      return res.data;
-    },
+    queryFn: () => getInstanceById(id),
+    enabled: !!id,
   });
