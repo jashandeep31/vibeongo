@@ -12,16 +12,14 @@ export const createInstance = async (
   return res.data;
 };
 
-export const getInstances = async (): Promise<{ data: Instance[] }> => {
+export const getInstances = async (): Promise<Instance[]> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/instances`, {
     withCredentials: true,
   });
   return res.data.data;
 };
 
-export const getInstanceById = async (
-  id: string,
-): Promise<{ data: Instance }> => {
+export const getInstanceById = async (id: string): Promise<Instance> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/instances/${id}`, {
     withCredentials: true,
   });
