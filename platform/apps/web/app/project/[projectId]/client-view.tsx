@@ -1,5 +1,6 @@
 "use client";
 
+import { useCreateInstance } from "@/hooks/use-instance";
 import { useGetProjectById } from "@/hooks/use-project";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -10,6 +11,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import { toast } from "sonner";
 
 const formatDate = (value: unknown) => {
   if (!value) return "N/A";
@@ -27,6 +29,17 @@ const formatValue = (value: unknown) => {
 
 export default function ClientView({ projectId }: { projectId: string }) {
   const { data, isLoading, isError } = useGetProjectById(projectId);
+  const { mutateAsync: createInstance } = useCreateInstance();
+
+  const handleCreate = async () => {
+    const toastId = toast.loading("Creating the new instance");
+    try {
+      await createInstance({ projectId: projectId });
+      toast.success("created", { id: toastId });
+    } catch {
+      toast.error("failed", { id: toastId });
+    }
+  };
 
   if (isLoading) {
     return <div className="text-muted-foreground p-8">Loading project...</div>;
@@ -50,7 +63,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <Button>Create Instance </Button>
+          <Button onClick={handleCreate}>Create Instance </Button>
         </div>
         <p className="text-muted-foreground mt-2">
           {project.description || "No description provided."}
