@@ -119,7 +119,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
                 <CardHeader>
                   <div className="flex items-center justify-between gap-2">
                     <CardTitle className="text-lg">
-                      Instance {instance.instance_id}
+                      Instance {instance.aws_instance_id}
                     </CardTitle>
                     <Badge
                       variant={
