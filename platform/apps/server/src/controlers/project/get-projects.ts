@@ -28,7 +28,7 @@ export const getProjectById = catchAsync(
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
 
-    const [dbProject] = await db
+    const projectRows = await db
       .select({
         project: projects,
         instances: instances,
@@ -37,8 +37,22 @@ export const getProjectById = catchAsync(
       .leftJoin(instances, eq(instances.project_id, id))
       .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
 
+    if (projectRows.length === 0) {
+      throw new AppError("project not found", 404);
+    }
+
+    const project = projectRows[0]?.project;
+    const projectInstances = projectRows
+      .map((row) => row.instances)
+      .filter((instance): instance is NonNullable<typeof instance> =>
+        Boolean(instance?.id),
+      );
+
     res.status(200).json({
-      data: dbProject,
+      data: {
+        project,
+        instances: projectInstances,
+      },
     });
   },
 );
