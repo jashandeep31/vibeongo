@@ -1,6 +1,8 @@
 import { BACKEND_URL } from "@/lib/constants";
 import axios from "axios";
+import { instances } from "@repo/db";
 
+type Instance = typeof instances.$inferSelect;
 export const createInstance = async (
   data: unknown,
 ): Promise<{ message: string }> => {
@@ -8,4 +10,20 @@ export const createInstance = async (
     withCredentials: true,
   });
   return res.data;
+};
+
+export const getInstances = async (): Promise<{ data: Instance[] }> => {
+  const res = await axios.get(`${BACKEND_URL}/api/v1/instances`, {
+    withCredentials: true,
+  });
+  return res.data.data;
+};
+
+export const getInstanceById = async (
+  id: string,
+): Promise<{ data: Instance }> => {
+  const res = await axios.get(`${BACKEND_URL}/api/v1/instances/${id}`, {
+    withCredentials: true,
+  });
+  return res.data.data;
 };

@@ -12,6 +12,7 @@ import {
   CardTitle,
 } from "@repo/ui/components/card";
 import { toast } from "sonner";
+import Link from "next/link";
 
 const formatDate = (value: unknown) => {
   if (!value) return "N/A";
@@ -134,18 +135,25 @@ export default function ClientView({ projectId }: { projectId: string }) {
                     <CardTitle className="text-lg">
                       Instance {instance.aws_instance_id}
                     </CardTitle>
-                    <Badge
-                      variant={
-                        instance.state === "running" ? "default" : "secondary"
-                      }
-                      className={
-                        instance.state === "running"
-                          ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
-                          : "text-muted-foreground border-0"
-                      }
-                    >
-                      {instance.state}
-                    </Badge>
+                    <div>
+                      <Badge
+                        variant={
+                          instance.state === "running" ? "default" : "secondary"
+                        }
+                        className={
+                          instance.state === "running"
+                            ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
+                            : "text-muted-foreground border-0"
+                        }
+                      >
+                        {instance.state}
+                      </Badge>
+                      <Link
+                        href={`/projects/${project.id}/instances/${instance.id}`}
+                      >
+                        View
+                      </Link>
+                    </div>
                   </div>
                   <CardDescription className="break-all">
                     Instance Record ID: {instance.id}
