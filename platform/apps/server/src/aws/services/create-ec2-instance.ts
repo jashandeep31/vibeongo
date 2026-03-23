@@ -1,8 +1,8 @@
 import { RunInstancesCommand } from "@aws-sdk/client-ec2";
-import { getEc2Client } from "../../ec2-client.js";
-import { env } from "../../../lib/env.js";
-import { awsSupportedRegions } from "../../configs/aws-supported-regions-configs.js";
-import { ec2RegionImageIds } from "../../configs/ec2-region-image-config.js";
+import { getEc2Client } from "../ec2-client.js";
+import { env } from "../../lib/env.js";
+import { awsSupportedRegions } from "../configs/aws-supported-regions-configs.js";
+import { ec2RegionImageIds } from "../configs/ec2-region-image-config.js";
 
 /**
  * Create a ec2 instance depending upon the user requirnments
