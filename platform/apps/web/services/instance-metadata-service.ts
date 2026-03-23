@@ -17,7 +17,7 @@ export const getInstanceTypesByRegionId = async ({
   regionId: string;
 }): Promise<typeof instanceTypes.$inferSelect | null> => {
   const res = await axios.get(
-    `${BACKEND_URL}/api/v1/instance-metadata/instance-types/${regionId}`,
+    `${BACKEND_URL}/api/v1/instance-metadata/regions/${regionId}/instance-types`,
   );
   return res.data.data;
 };

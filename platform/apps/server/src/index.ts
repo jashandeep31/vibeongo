@@ -11,7 +11,6 @@ import { projectRoutes } from "./routes/project-routes.js";
 import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
-import { instances } from "@repo/db";
 
 // app config
 const app = express();
@@ -40,10 +39,10 @@ app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
 // routes of application
 app.use("/", miscellaneousRoutes);
 app.use("/", testRoutes);
-app.use("/api/v1", authRoutes);
-app.use("/api/v1/user", userRoutes);
-app.use("/api/v1/project", projectRoutes);
-app.use("/api/v1/instance", instanceRoutes);
+app.use("/api/v1/auth", authRoutes);
+app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/projects", projectRoutes);
+app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 
 app.listen(env.PORT, () => {
