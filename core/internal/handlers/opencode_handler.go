@@ -8,14 +8,96 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func LaunchOpenCodeWeb(c *echo.Context) error {
-	cmd := exec.Command("opencode", "serve")
-	out, err := cmd.CombinedOutput()
-	fmt.Println(string(out), err)
+var openCodeWebServer = struct {
+	running bool
+	port    int
+	cmd     *exec.Cmd
+}{
+	running: false,
+	port:    4096,
+}
 
-	return c.JSON(http.StatusOK, struct {
-		Message string `json:"message"`
-	}{
-		Message: "opencode section launch",
-	})
+type OpenCodeWebBody struct {
+	Action string `json:"action"`
+}
+
+type OpenCodeWebResponse struct {
+	Message string `json:"message"`
+	Running bool   `json:"running"`
+}
+
+func OpenCodeWeb(c *echo.Context) error {
+	var body OpenCodeWebBody
+
+	if err := c.Bind(&body); err != nil {
+		fmt.Println("Error binding:", err)
+		return c.JSON(http.StatusBadRequest, OpenCodeWebResponse{
+			Message: "bad request",
+			Running: openCodeWebServer.running,
+		})
+	}
+
+	switch body.Action {
+
+	case "start":
+		if openCodeWebServer.running {
+			return c.JSON(http.StatusOK, OpenCodeWebResponse{
+				Message: fmt.Sprintf("Web is already running at port: %d", openCodeWebServer.port),
+				Running: true,
+			})
+		}
+
+		// Prepare the command
+		openCodeWebServer.cmd = exec.Command(
+			"bash",
+			"-c",
+			"/home/ubuntu/.opencode/bin/opencode serve --port 4096 --hostname 0.0.0.0",
+		)
+
+		go func() {
+			openCodeWebServer.running = true
+			err := openCodeWebServer.cmd.Run()
+			if err != nil {
+				fmt.Println("Opencode server stopped with error:", err)
+			}
+			openCodeWebServer.running = false
+		}()
+
+		return c.JSON(http.StatusOK, OpenCodeWebResponse{
+			Message: fmt.Sprintf("Opencode web server is starting at port %d", openCodeWebServer.port),
+			Running: true,
+		})
+
+	case "terminate":
+		if !openCodeWebServer.running || openCodeWebServer.cmd == nil || openCodeWebServer.cmd.Process == nil {
+			return c.JSON(http.StatusOK, OpenCodeWebResponse{
+				Message: "Server is not currently running.",
+				Running: false,
+			})
+		}
+
+		err := openCodeWebServer.cmd.Process.Kill()
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
+				Message: fmt.Sprintf("Failed to terminate server: %v", err),
+				Running: openCodeWebServer.running,
+			})
+		}
+
+		return c.JSON(http.StatusOK, OpenCodeWebResponse{
+			Message: "Opencode web server terminated successfully.",
+			Running: false,
+		})
+
+	case "status":
+		return c.JSON(http.StatusOK, OpenCodeWebResponse{
+			Message: "Opencode web server status fetched successfully.",
+			Running: openCodeWebServer.running,
+		})
+	default:
+		return c.JSON(http.StatusBadRequest, OpenCodeWebResponse{
+			Message: fmt.Sprintf("only start, terminate, and status actions are valid and you sent '%s'", body.Action),
+			Running: openCodeWebServer.running,
+		})
+	}
 }
