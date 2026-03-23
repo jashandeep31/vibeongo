@@ -10,6 +10,7 @@ import cookieParser from "cookie-parser";
 import { projectRoutes } from "./routes/project-routes.js";
 import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
+import { instanceRoutes } from "./routes/instance-routes.js";
 
 // app config
 const app = express();
@@ -41,7 +42,8 @@ app.use("/", testRoutes);
 app.use("/api/v1", authRoutes);
 app.use("/api/v1/user", userRoutes);
 app.use("/api/v1/project", projectRoutes);
-app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
+app.use("/api/v1/instance", instanceMetadataRoutes);
+app.use("/api/v1/instance-metadata", instanceRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
