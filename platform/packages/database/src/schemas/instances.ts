@@ -1,6 +1,7 @@
 import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
 import { projects } from "./projects.js";
 import { instanceTypes } from "./instances-metadata.js";
+import { users } from "./user.js";
 
 export const instanceState = pgEnum("instance_state", [
   "running",
@@ -11,6 +12,9 @@ export const instances = pgTable("instances", {
   id: uuid().defaultRandom().primaryKey(),
 
   project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
+  user_id: uuid()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
   instance_type: uuid().references(() => instanceTypes.id),
 
   terminated_at: timestamp(),
