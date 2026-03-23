@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
@@ -30,7 +31,7 @@ func Run() {
 		log.Fatalf("config has error %v", err)
 	}
 
-	// gitrepos.Setup(config.Repos)
+	gitrepos.Setup(config.Repos)
 
 	if config.Docker != nil {
 		docker.Setup(config.Docker)
