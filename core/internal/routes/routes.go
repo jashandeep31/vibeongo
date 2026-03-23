@@ -12,7 +12,6 @@ func Register(e *echo.Echo, db *sql.DB) {
 	e.GET("/", handlers.Health)
 	e.GET("/ws", ws.WebSocket)
 	e.POST("/reboot", handlers.RebootServer)
-	e.POST("/update", handlers.UpdateApiServer)
 
 	// opencode related routes
 	// e.GET("/opencode", handlers.LaunchOpenCodeWeb)
