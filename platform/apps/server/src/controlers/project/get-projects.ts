@@ -44,15 +44,10 @@ export const getProjectById = catchAsync(
     const project = projectRows[0]?.project;
     const projectInstances = projectRows
       .map((row) => row.instances)
-      .filter((instance): instance is NonNullable<typeof instance> =>
-        Boolean(instance?.id),
-      );
+      .filter((instance) => Boolean(instance?.id));
 
     res.status(200).json({
-      data: {
-        project,
-        instances: projectInstances,
-      },
+      data: { project, instances: projectInstances },
     });
   },
 );
