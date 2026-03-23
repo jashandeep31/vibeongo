@@ -15,7 +15,7 @@ import Link from "next/link";
 
 // Mock data representing connected servers (projects)
 
-export function ServerSidebar() {
+export function ProjectsSidebar() {
   const { data: projects } = useGetProjects();
   return (
     <Sidebar className="">

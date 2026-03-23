@@ -7,7 +7,7 @@ import (
 )
 
 func Health(c *echo.Context) error {
-	version := "v0.0.1"
+	version := "v0.0.6"
 	return c.JSON(http.StatusOK, struct {
 		Message string `json:"message"`
 	}{
