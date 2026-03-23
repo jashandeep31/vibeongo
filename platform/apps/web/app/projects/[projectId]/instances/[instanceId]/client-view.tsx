@@ -4,9 +4,11 @@ import { Terminal } from "@xterm/xterm";
 import { useEffect, useRef } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
+import { useGetInstanceById, useGetInstances } from "@/hooks/use-instance";
 
-export default function ClientView() {
-  // const SERVER_URL = "http://13.233.161.174:8080";
+export default function ClientView({ instanceId }: { instanceId: string }) {
+  const { data: instance } = useGetInstanceById(instanceId);
+  console.log(instance);
   const SERVER_URL = "ws://3.109.4.229:8080/ws";
   const terminalRef = useRef<HTMLDivElement | null>(null);
 
@@ -109,6 +111,7 @@ export default function ClientView() {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold tracking-tight">Server Name</h1>
+      {JSON.stringify(instance)}
       <div className="mt-12">
         <div
           ref={terminalRef}
