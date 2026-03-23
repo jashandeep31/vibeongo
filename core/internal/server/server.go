@@ -32,11 +32,10 @@ func Start() {
 	}
 	defer dbConn.Close()
 	// routes of app
-	routes.RegisterMiscRoutes(e, dbConn)
-	routes.RegisterWSRoutes(e)
+	routes.Register(e, dbConn)
 
 	// address := ":" + config.ENV.PORT
-	address := ":" + "8000"
+	address := ":" + "8080"
 	if err := e.Start(address); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}
