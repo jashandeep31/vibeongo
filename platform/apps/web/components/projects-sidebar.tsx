@@ -30,7 +30,7 @@ export function ProjectsSidebar() {
                     asChild
                     className="active:bg-background data-active:bg-background cursor-pointer"
                   >
-                    <Link href={`/project/${server.id}`}>
+                    <Link href={`/projects/${server.id}`}>
                       <Server className="h-4 w-4" />
                       <span>{server.name}</span>
                     </Link>
