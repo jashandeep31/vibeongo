@@ -56,7 +56,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
   }
 
   const { project, instances } = data;
-  const projectInstances = instances ?? [];
+  const projectInstances = Array.isArray(instances) ? instances : [];
 
   return (
     <div className="space-y-8 p-8">
