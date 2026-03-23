@@ -20,7 +20,7 @@ sqlc:
 	~/go/bin/sqlc generate
 
 api: 
-	go build -o api ./cmd/api
+	go build -ldflags="-X github.com/jashandeep31/vibeongo/core/internal/handlers.Version=$(shell git rev-parse --short HEAD) -X github.com/jashandeep31/vibeongo/core/internal/handlers.BuildTime=$(shell date -u +'%Y-%m-%dT%H:%M:%SZ')" -o api ./cmd/api
 
 bootstrap: 
 	go build -o bootstrap-script ./cmd/bootstrap
