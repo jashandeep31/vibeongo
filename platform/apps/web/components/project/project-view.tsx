@@ -21,7 +21,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
   }
 
   const project = data.project;
-  const instances = data.instances || [];
+  const instances = Array.isArray(data.instances) ? data.instances : [];
 
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
