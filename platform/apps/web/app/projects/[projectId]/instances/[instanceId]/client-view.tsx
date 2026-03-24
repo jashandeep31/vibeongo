@@ -1,11 +1,13 @@
 "use client";
 
 import { Terminal } from "@xterm/xterm";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { Check, Copy } from "lucide-react";
 import { FitAddon } from "@xterm/addon-fit";
 import "@xterm/xterm/css/xterm.css";
 import { useGetInstanceById } from "@/hooks/use-instance";
 import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
@@ -32,6 +34,39 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: instance, isLoading, isError } = useGetInstanceById(instanceId);
   const SERVER_URL = "ws://3.109.4.229:8080/ws";
   const terminalRef = useRef<HTMLDivElement | null>(null);
+  const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
+  const handleCopyPublicIp = async () => {
+    const publicIp = instance?.public_ip;
+
+    if (!publicIp) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(String(publicIp));
+      setCopied(true);
+
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setCopied(false);
+      }, 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   useEffect(() => {
     const terminalElement = terminalRef.current;
@@ -175,42 +210,31 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-              <div>
-                <p className="text-muted-foreground">Project ID</p>
-                <p className="font-medium break-all">
-                  {formatValue(instance.project_id)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">User ID</p>
-                <p className="font-medium break-all">
-                  {formatValue(instance.user_id)}
-                </p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Instance Type</p>
-                <p className="font-medium">
-                  {formatValue(instance.instance_type)}
-                </p>
-              </div>
+            <div className="grid gap-4 text-sm md:grid-cols-2">
               <div>
                 <p className="text-muted-foreground">Public IP</p>
-                <p className="font-medium">{formatValue(instance.public_ip)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Private IP</p>
-                <p className="font-medium">
-                  {formatValue(instance.private_ip)}
-                </p>
+                <div className="mt-1 flex items-center gap-2">
+                  <p className="font-medium">{formatValue(instance.public_ip)}</p>
+                  <Button
+                    size="sm"
+                    type="button"
+                    variant="outline"
+                    aria-label="Copy IPv4 address"
+                    onClick={() => {
+                      void handleCopyPublicIp();
+                    }}
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
               <div>
                 <p className="text-muted-foreground">Created At</p>
                 <p className="font-medium">{formatDate(instance.created_at)}</p>
-              </div>
-              <div>
-                <p className="text-muted-foreground">Updated At</p>
-                <p className="font-medium">{formatDate(instance.updated_at)}</p>
               </div>
               <div>
                 <p className="text-muted-foreground">Started At</p>
