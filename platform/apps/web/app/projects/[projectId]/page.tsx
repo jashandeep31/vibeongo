@@ -1,9 +1,10 @@
 import ClientView from "./client-view";
 
-interface pageProps {
+interface PageProps {
   params: Promise<{ projectId: string }>;
 }
-export default async function page({ params }: pageProps) {
+
+export default async function Page({ params }: PageProps) {
   const { projectId } = await params;
 
   return <ClientView projectId={projectId} />;
