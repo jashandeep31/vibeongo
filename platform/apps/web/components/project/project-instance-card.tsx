@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { ArrowDownRight, Copy } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ArrowDownRight, Check, Copy } from "lucide-react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -10,7 +11,6 @@ import {
   CardTitle,
 } from "@repo/ui/components/card";
 import { instances } from "@repo/db";
-import { toast } from "sonner";
 
 type ProjectInstance = typeof instances.$inferSelect;
 
@@ -37,19 +37,37 @@ export function ProjectInstanceCard({
   projectId,
   instance,
 }: ProjectInstanceCardProps) {
+  const [copied, setCopied] = useState(false);
+  const copyResetTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+    };
+  }, []);
+
   const handleCopyPublicIp = async () => {
     const publicIp = instance.public_ip;
 
     if (!publicIp) {
-      toast.error("No IPv4 address available to copy");
       return;
     }
 
     try {
       await navigator.clipboard.writeText(String(publicIp));
-      toast.success("IPv4 copied");
+      setCopied(true);
+
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setCopied(false);
+      }, 1800);
     } catch {
-      toast.error("Failed to copy IPv4");
+      setCopied(false);
     }
   };
 
@@ -95,7 +113,11 @@ export function ProjectInstanceCard({
                   void handleCopyPublicIp();
                 }}
               >
-                <Copy className="h-4 w-4" />
+                {copied ? (
+                  <Check className="h-4 w-4 text-emerald-600" />
+                ) : (
+                  <Copy className="h-4 w-4" />
+                )}
               </Button>
             </div>
           </div>
