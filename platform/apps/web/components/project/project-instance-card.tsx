@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ArrowDownRight, Check, Copy } from "lucide-react";
+import { ArrowDownRight, Check, Copy, Loader2 } from "lucide-react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -11,6 +11,8 @@ import {
   CardTitle,
 } from "@repo/ui/components/card";
 import { instances } from "@repo/db";
+import { useTerminateInstance } from "@/hooks/use-instance";
+import { toast } from "sonner";
 
 type ProjectInstance = typeof instances.$inferSelect;
 
@@ -37,8 +39,12 @@ export function ProjectInstanceCard({
   projectId,
   instance,
 }: ProjectInstanceCardProps) {
+  const { mutateAsync: terminateInstance, isPending } =
+    useTerminateInstance(projectId);
   const [copied, setCopied] = useState(false);
   const copyResetTimerRef = useRef<number | null>(null);
+  const isTerminated =
+    instance.state === "terminated" || !!instance.terminated_at;
 
   useEffect(() => {
     return () => {
@@ -68,6 +74,20 @@ export function ProjectInstanceCard({
       }, 1800);
     } catch {
       setCopied(false);
+    }
+  };
+
+  const handleTerminate = async () => {
+    if (isTerminated) {
+      return;
+    }
+
+    const toastId = toast.loading("Terminating instance...");
+    try {
+      await terminateInstance(instance.id);
+      toast.success("Instance terminated", { id: toastId });
+    } catch {
+      toast.error("Failed to terminate instance", { id: toastId });
     }
   };
 
@@ -135,7 +155,27 @@ export function ProjectInstanceCard({
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end">
+        <div className="mt-4 flex justify-end gap-2">
+          <Button
+            size="sm"
+            variant="destructive"
+            type="button"
+            disabled={isPending || isTerminated}
+            onClick={() => {
+              void handleTerminate();
+            }}
+          >
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Terminating...
+              </>
+            ) : isTerminated ? (
+              "Terminated"
+            ) : (
+              "Terminate"
+            )}
+          </Button>
           <Button asChild size="sm">
             <Link href={`/projects/${projectId}/instances/${instance.id}`}>
               Interact

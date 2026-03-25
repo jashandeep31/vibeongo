@@ -25,3 +25,16 @@ export const getInstanceById = async (id: string): Promise<Instance> => {
   });
   return res.data.data;
 };
+
+export const terminateInstance = async (
+  id: string,
+): Promise<{ message: string }> => {
+  const res = await axios.post(
+    `${BACKEND_URL}/api/v1/instances/${id}`,
+    undefined,
+    {
+      withCredentials: true,
+    },
+  );
+  return res.data;
+};
