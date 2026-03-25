@@ -63,7 +63,7 @@ export const createInstance = catchAsync(
     await db.insert(instances).values({
       project_id: row.project.id,
       user_id: user.id,
-      instance_type: row.project.instance_type_id,
+      instance_type_id: row.project.instance_type_id,
       aws_instance_id: awsInstance.InstanceId,
       terminated_at: null,
       started_at: new Date(),
