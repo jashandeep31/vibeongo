@@ -36,7 +36,7 @@ export const terminateByIdInstance = catchAsync(
     if (!row) throw new AppError("Instance not found", 404);
 
     const awsResponse = await terminateEc2Instance(row.instance_regions.slug, [
-      id,
+      row.instances.aws_instance_id,
     ]);
 
     console.log(awsResponse);
