@@ -15,7 +15,7 @@ export const instances = pgTable("instances", {
   user_id: uuid()
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-  instance_type: uuid().references(() => instanceTypes.id),
+  instance_type_id: uuid().references(() => instanceTypes.id),
 
   terminated_at: timestamp(),
   started_at: timestamp(),
