@@ -75,6 +75,9 @@ func ValidateConfig(file []byte) (Config, error) {
 	return cfg, nil
 }
 
+// LoadAndValidate
+
+// LoadAndValidate loads the config file and validates it.
 func LoadAndValidate(filename string) (Config, error) {
 	file, err := loadConfig(filename)
 	if err != nil {
