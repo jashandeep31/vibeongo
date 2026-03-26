@@ -21,7 +21,7 @@ export const getProjects = async (): Promise<
 
 export const getProjectById = async (
   id: string,
-): Promise<{ project: typeof projects.$inferSelect }> => {
+): Promise<typeof projects.$inferSelect> => {
   const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}`, {
     withCredentials: true,
   });
