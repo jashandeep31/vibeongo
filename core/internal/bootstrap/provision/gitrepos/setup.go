@@ -6,9 +6,10 @@ import (
 	"os/exec"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
+	"github.com/jashandeep31/vibeongo/core/internal/config"
 )
 
-func Setup(gitRepos []utils.GitRepoConfig) {
+func Setup(gitRepos []config.GitRepoConfig) {
 	path := "/home/ubuntu/code"
 	utils.RunCommand("mkdir", "-p", path)
 
