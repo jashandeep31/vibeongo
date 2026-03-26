@@ -1,6 +1,6 @@
 "use client";
 import { Terminal } from "@xterm/xterm";
-import { Loader2 } from "lucide-react";
+import { Loader2, Trash2 } from "lucide-react";
 
 import { useEffect, useRef } from "react";
 import { FitAddon } from "@xterm/addon-fit";
@@ -159,6 +159,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             void handleTerminate();
           }}
         >
+          <Trash2 className="h-3 w-3" />
           {isPending ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
