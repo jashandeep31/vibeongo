@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os/exec"
 
+	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/labstack/echo/v5"
 )
 
@@ -26,7 +27,45 @@ type OpenCodeWebResponse struct {
 	Running bool   `json:"running"`
 }
 
+func OpenCodeWebStatus(c *echo.Context) error {
+	// checking if opencode is configured
+	cfg, err := config.LoadAndValidate("config.json")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
+			Message: fmt.Sprintf("failed to load config: %v", err),
+			Running: openCodeWebServer.running,
+		})
+	}
+
+	if cfg.OpenCode == nil {
+		return c.JSON(http.StatusBadRequest, OpenCodeWebResponse{
+			Message: "Opencode is not configured",
+			Running: openCodeWebServer.running,
+		})
+	}
+
+	return c.JSON(http.StatusOK, OpenCodeWebResponse{
+		Message: "Opencode web server status fetched successfully.",
+		Running: openCodeWebServer.running,
+	})
+}
+
 func OpenCodeWeb(c *echo.Context) error {
+	// checking if opencode is configured
+	cfg, err := config.LoadAndValidate("config.json")
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
+			Message: fmt.Sprintf("failed to load config: %v", err),
+			Running: openCodeWebServer.running,
+		})
+	}
+
+	if cfg.OpenCode == nil {
+		return c.JSON(http.StatusBadRequest, OpenCodeWebResponse{
+			Message: "Opencode is not configured",
+			Running: openCodeWebServer.running,
+		})
+	}
 	var body OpenCodeWebBody
 
 	if err := c.Bind(&body); err != nil {

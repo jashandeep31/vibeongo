@@ -5,11 +5,11 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
+	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/metal3d/go-slugify"
 )
 
-func Setup(cfg *utils.DockerConfig) error {
+func Setup(cfg *config.DockerConfig) error {
 	color.Green("Installing the docker")
 	// fmt.Println()
 	// fmt.Println(cfg.Containers)
