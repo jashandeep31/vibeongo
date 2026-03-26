@@ -2,6 +2,7 @@ import {
   createInstance,
   getInstanceById,
   getInstances,
+  getInstancesByProjectId,
   terminateInstance,
 } from "@/services/instance-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -15,6 +16,13 @@ export const useGetInstances = () =>
   useQuery({
     queryKey: ["instances"],
     queryFn: getInstances,
+  });
+
+export const useGetInstancesByProjectId = (projectId: string) =>
+  useQuery({
+    queryKey: ["instances", "project", projectId],
+    queryFn: () => getInstancesByProjectId(projectId),
+    enabled: !!projectId,
   });
 
 export const useGetInstanceById = (id: string) =>
@@ -32,6 +40,7 @@ export const useTerminateInstance = (id: string) => {
     onSuccess: (_, instanceId) => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       queryClient.invalidateQueries({ queryKey: ["instances"] });
+      queryClient.invalidateQueries({ queryKey: ["instances", "project", id] });
       queryClient.invalidateQueries({ queryKey: ["instance", instanceId] });
     },
   });
