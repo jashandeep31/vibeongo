@@ -19,6 +19,18 @@ export const getInstances = async (): Promise<Instance[]> => {
   return res.data.data;
 };
 
+export const getInstancesByProjectId = async (
+  projectId: string,
+): Promise<Instance[]> => {
+  const res = await axios.get(
+    `${BACKEND_URL}/api/v1/instances/project/${projectId}`,
+    {
+      withCredentials: true,
+    },
+  );
+  return res.data.data;
+};
+
 export const getInstanceById = async (id: string): Promise<Instance> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/instances/${id}`, {
     withCredentials: true,

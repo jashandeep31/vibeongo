@@ -2,7 +2,10 @@
 
 import { useState } from "react";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
-import { useCreateInstance } from "@/hooks/use-instance";
+import {
+  useCreateInstance,
+  useGetInstancesByProjectId,
+} from "@/hooks/use-instance";
 import { useGetProjectById } from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -27,6 +30,12 @@ const formatDate = (value: unknown) => {
 
 export default function ClientView({ projectId }: { projectId: string }) {
   const { data, isLoading, isError } = useGetProjectById(projectId);
+  const {
+    data: instances,
+    isLoading: isInstancesLoading,
+    isError: isInstancesError,
+    refetch: refetchInstances,
+  } = useGetInstancesByProjectId(projectId);
   const { mutateAsync: createInstance } = useCreateInstance();
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
@@ -35,6 +44,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
     const toastId = toast.loading("Creating the new instance");
     try {
       await createInstance({ projectId: projectId });
+      await refetchInstances();
       toast.success("created", { id: toastId });
     } catch {
       toast.error("failed", { id: toastId });
@@ -55,7 +65,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
     );
   }
 
-  const { project, instances } = data;
+  const { project } = data;
   const projectInstances = Array.isArray(instances) ? instances : [];
   const filteredInstances = projectInstances.filter((instance) => {
     if (instanceFilter === "all") {
@@ -134,7 +144,19 @@ export default function ClientView({ projectId }: { projectId: string }) {
           </div>
         </div>
 
-        {filteredInstances.length === 0 ? (
+        {isInstancesLoading ? (
+          <Card>
+            <CardContent className="text-muted-foreground py-8 text-center">
+              Loading instances...
+            </CardContent>
+          </Card>
+        ) : isInstancesError ? (
+          <Card>
+            <CardContent className="text-destructive py-8 text-center">
+              Failed to load instances.
+            </CardContent>
+          </Card>
+        ) : filteredInstances.length === 0 ? (
           <Card>
             <CardContent className="text-muted-foreground py-8 text-center">
               No {instanceFilter === "all" ? "" : `${instanceFilter} `}
