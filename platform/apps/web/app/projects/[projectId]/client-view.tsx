@@ -29,7 +29,7 @@ const formatDate = (value: unknown) => {
 };
 
 export default function ClientView({ projectId }: { projectId: string }) {
-  const { data, isLoading, isError } = useGetProjectById(projectId);
+  const { data: project, isLoading, isError } = useGetProjectById(projectId);
   const {
     data: instances,
     isLoading: isInstancesLoading,
@@ -55,7 +55,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
     return <div className="text-muted-foreground p-8">Loading project...</div>;
   }
 
-  if (isError || !data?.project) {
+  if (isError || !project) {
     return (
       <div className="p-8">
         <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-md border p-4">
@@ -65,7 +65,6 @@ export default function ClientView({ projectId }: { projectId: string }) {
     );
   }
 
-  const { project } = data;
   const projectInstances = Array.isArray(instances) ? instances : [];
   const filteredInstances = projectInstances.filter((instance) => {
     if (instanceFilter === "all") {

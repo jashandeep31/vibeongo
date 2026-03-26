@@ -36,7 +36,7 @@ export const getProjectById = catchAsync(
     if (!projectRow) throw new AppError("project not found", 404);
 
     res.status(200).json({
-      data: { project: projectRow },
+      data: projectRow,
     });
   },
 );
