@@ -20,12 +20,25 @@ import (
 
 var migrationsFS embed.FS
 
+// Start
+
+// Start starts the application.
 func Start() {
 	if _, err := config.LoadAndValidate("config.json"); err != nil {
 		log.Fatalf("application startup failed: %v", err)
 	}
 
 	e := echo.New()
+	// TODO: please use the proper cors way
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:3000"},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+		},
+	}))
+
 	e.Use(middleware.RequestLogger())
 
 	dbConn, err := sql.Open("sqlite", "./test.db")
