@@ -3,13 +3,12 @@ package bootstrap
 import (
 	"fmt"
 	"log"
-	"os"
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
+	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
 )
 
@@ -21,27 +20,22 @@ func Run() {
 	fmt.Println("")
 	fmt.Println("")
 
-	file, err := loadConfig("config.json")
-	if err != nil {
-		log.Fatalf("application startup failed: %v", err)
-	}
-
-	config, err := utils.ValidateConfig(file)
+	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		log.Fatalf("config has error %v", err)
 	}
 
-	gitrepos.Setup(config.Repos)
+	gitrepos.Setup(cfg.Repos)
 
-	if config.Docker != nil {
-		docker.Setup(config.Docker)
+	if cfg.Docker != nil {
+		docker.Setup(cfg.Docker)
 	}
 
-	if config.OpenCode != nil {
-		opencode.Setup(config.OpenCode)
+	if cfg.OpenCode != nil {
+		opencode.Setup(cfg.OpenCode)
 	}
 
-	if config.Nvim != nil {
+	if cfg.Nvim != nil {
 		// nvim.Setup(config.Nvim)
 		// fmt.Println("nvim is not supported yet")
 	}
@@ -60,12 +54,4 @@ func Run() {
 	// sending the terminal to ui
 	// settings the cloudflare or use something diff to just make the ssl connections
 	// setting up the nvim with the kickstart
-}
-
-func loadConfig(filename string) ([]byte, error) {
-	file, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load the config: %w", err)
-	}
-	return file, nil
 }

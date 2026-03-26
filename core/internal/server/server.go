@@ -11,6 +11,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/golang-migrate/migrate/v4/source/iofs"
+	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/routes"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
@@ -20,8 +21,9 @@ import (
 var migrationsFS embed.FS
 
 func Start() {
-	// loading the env
-	// config.LoadEnv()
+	if _, err := config.LoadAndValidate("config.json"); err != nil {
+		log.Fatalf("application startup failed: %v", err)
+	}
 
 	e := echo.New()
 	e.Use(middleware.RequestLogger())
