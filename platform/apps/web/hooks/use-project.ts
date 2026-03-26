@@ -19,11 +19,11 @@ export const useGetProjects = () =>
     },
   });
 
-export const useGetProjectById = (id: string) =>
+export const useGetProjectById = (id: string | null) =>
   useQuery({
-    queryKey: ["project", id],
+    queryKey: ["project", id!],
     queryFn: async () => {
-      const project = await getProjectById(id);
+      const project = await getProjectById(id!);
       return project;
     },
     enabled: !!id,
