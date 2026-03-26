@@ -176,12 +176,14 @@ export function ProjectInstanceCard({
               "Terminate"
             )}
           </Button>
-          <Button asChild size="sm">
-            <Link href={`/projects/${projectId}/instances/${instance.id}`}>
-              Interact
-              <ArrowDownRight className="h-4 w-4" />
-            </Link>
-          </Button>
+          {!isTerminated ? (
+            <Button asChild size="sm">
+              <Link href={`/projects/${projectId}/instances/${instance.id}`}>
+                Interact
+                <ArrowDownRight className="h-4 w-4" />
+              </Link>
+            </Button>
+          ) : null}
         </div>
       </CardContent>
     </Card>

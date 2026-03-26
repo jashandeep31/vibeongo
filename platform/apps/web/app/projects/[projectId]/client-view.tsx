@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
 import { useCreateInstance } from "@/hooks/use-instance";
 import { useGetProjectById } from "@/hooks/use-project";
@@ -13,6 +14,8 @@ import {
 } from "@repo/ui/components/card";
 import { toast } from "sonner";
 
+type InstanceFilter = "running" | "terminated" | "pending" | "all";
+
 const formatDate = (value: unknown) => {
   if (!value) return "N/A";
 
@@ -25,6 +28,8 @@ const formatDate = (value: unknown) => {
 export default function ClientView({ projectId }: { projectId: string }) {
   const { data, isLoading, isError } = useGetProjectById(projectId);
   const { mutateAsync: createInstance } = useCreateInstance();
+  const [instanceFilter, setInstanceFilter] =
+    useState<InstanceFilter>("running");
 
   const handleCreate = async () => {
     const toastId = toast.loading("Creating the new instance");
@@ -52,6 +57,17 @@ export default function ClientView({ projectId }: { projectId: string }) {
 
   const { project, instances } = data;
   const projectInstances = Array.isArray(instances) ? instances : [];
+  const filteredInstances = projectInstances.filter((instance) => {
+    if (instanceFilter === "all") {
+      return true;
+    }
+
+    if (instanceFilter === "terminated") {
+      return instance.state === "terminated" || !!instance.terminated_at;
+    }
+
+    return instance.state === instanceFilter;
+  });
 
   return (
     <div className="space-y-8 p-8">
@@ -74,7 +90,9 @@ export default function ClientView({ projectId }: { projectId: string }) {
       <Card>
         <CardHeader>
           <CardTitle>Project Information</CardTitle>
-          <CardDescription>Basic details and metadata for this project.</CardDescription>
+          <CardDescription>
+            Basic details and metadata for this project.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
@@ -95,17 +113,37 @@ export default function ClientView({ projectId }: { projectId: string }) {
       </Card>
 
       <div className="space-y-4">
-        <h2 className="text-2xl font-semibold tracking-tight">Instances</h2>
+        <div className="space-y-3">
+          <h2 className="text-2xl font-semibold tracking-tight">Instances</h2>
+          <div className="flex flex-wrap gap-2">
+            {(
+              ["running", "terminated", "pending", "all"] as InstanceFilter[]
+            ).map((filter) => (
+              <Button
+                key={filter}
+                type="button"
+                size="sm"
+                variant={instanceFilter === filter ? "default" : "outline"}
+                onClick={() => {
+                  setInstanceFilter(filter);
+                }}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </Button>
+            ))}
+          </div>
+        </div>
 
-        {projectInstances.length === 0 ? (
+        {filteredInstances.length === 0 ? (
           <Card>
             <CardContent className="text-muted-foreground py-8 text-center">
-              No instances found for this project.
+              No {instanceFilter === "all" ? "" : `${instanceFilter} `}
+              instances found for this project.
             </CardContent>
           </Card>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {projectInstances.map((instance) => (
+            {filteredInstances.map((instance) => (
               <ProjectInstanceCard
                 key={instance.id}
                 instance={instance}
