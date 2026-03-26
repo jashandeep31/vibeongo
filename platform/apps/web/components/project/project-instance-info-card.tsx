@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Check, Copy } from "lucide-react";
+import { ArrowUpRight, Check, Copy } from "lucide-react";
 import { instances } from "@repo/db";
 import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
+import { Button, buttonVariants } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
@@ -12,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import Link from "next/link";
 
 type ProjectInstance = typeof instances.$inferSelect;
 
@@ -115,6 +116,14 @@ export function ProjectInstanceInfoCard({
                   <Copy className="h-4 w-4" />
                 )}
               </Button>
+
+              <Link
+                href={`http://${instance.public_ip}:8080`}
+                target="_blank"
+                className={buttonVariants({ variant: "link" })}
+              >
+                <ArrowUpRight className="h-4 w-4" />
+              </Link>
             </div>
           </div>
           <div>
