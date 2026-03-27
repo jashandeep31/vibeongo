@@ -1,6 +1,6 @@
 "use client";
 import { Terminal } from "@xterm/xterm";
-import { Loader2, RotateCcw, Trash2 } from "lucide-react";
+import { Copy, Loader2, RotateCcw, Trash2 } from "lucide-react";
 
 import { useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
@@ -25,13 +25,18 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     ? `ws://${String(instance.public_ip)}:8080/ws`
     : null;
   const healthCheckUrl = instance?.public_ip
-    ? // ? `http://${String(instance.public_ip)}:8080`
-      `http://localhost:8080`
+    ? `http://${String(instance.public_ip)}:8080`
     : null;
   const terminalRef = useRef<HTMLDivElement | null>(null);
+  const websocketRef = useRef<WebSocket | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<TerminalConnectionStatus>("checking");
   const [refreshToken, setRefreshToken] = useState(0);
+  const [isManualDisconnect, setIsManualDisconnect] = useState(false);
+
+  const sshCommand = instance?.public_ip
+    ? `ssh ubuntu@${String(instance.public_ip)}`
+    : null;
 
   useEffect(() => {
     if (!healthCheckUrl) {
@@ -82,7 +87,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   }, [healthCheckUrl, refreshToken]);
 
   useEffect(() => {
-    if (!serverUrl) return;
+    if (!serverUrl || isManualDisconnect) return;
 
     const terminalElement = terminalRef.current;
     if (!terminalElement) return;
@@ -97,6 +102,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     term.open(terminalElement);
 
     const ws = new WebSocket(serverUrl);
+    websocketRef.current = ws;
 
     const sendTerminalSize = () => {
       if (ws.readyState !== WebSocket.OPEN) return;
@@ -177,9 +183,12 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       window.removeEventListener("resize", scheduleFit);
       resizeObserver.disconnect();
       ws.close();
+      if (websocketRef.current === ws) {
+        websocketRef.current = null;
+      }
       term.dispose();
     };
-  }, [serverUrl, refreshToken]);
+  }, [serverUrl, refreshToken, isManualDisconnect]);
 
   const handleTerminate = async () => {
     if (!instance || isTerminated) {
@@ -192,6 +201,33 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       toast.success("Instance terminated", { id: toastId });
     } catch {
       toast.error("Failed to terminate instance", { id: toastId });
+    }
+  };
+
+  const handleDisconnect = () => {
+    setIsManualDisconnect(true);
+    const ws = websocketRef.current;
+
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.close(1000, "Disconnected by user");
+      toast.success("Terminal disconnected");
+      return;
+    }
+
+    toast.message("Terminal is already disconnected");
+  };
+
+  const handleCopySshCommand = async () => {
+    if (!sshCommand) {
+      toast.error("Public IP not available");
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sshCommand);
+      toast.success("SSH command copied");
+    } catch {
+      toast.error("Failed to copy SSH command");
     }
   };
 
@@ -215,6 +251,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             variant="outline"
             type="button"
             onClick={() => {
+              setIsManualDisconnect(false);
               setRefreshToken((value) => value + 1);
             }}
             className={
@@ -231,6 +268,19 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               : connectionStatus === "checking"
                 ? "Checking"
                 : "Disconnected"}
+          </Button>
+
+          <Button
+            size="lg"
+            variant="outline"
+            type="button"
+            disabled={!sshCommand}
+            onClick={() => {
+              void handleCopySshCommand();
+            }}
+          >
+            <Copy className="h-4 w-4" />
+            SSH
           </Button>
 
           <Button
