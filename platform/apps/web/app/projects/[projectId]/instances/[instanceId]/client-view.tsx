@@ -1,8 +1,10 @@
 "use client";
-import { Loader2, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Copy, Check, Loader2, Trash2 } from "lucide-react";
 
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
+import { OpencodeWebCard } from "@/components/opencode-web-card";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
@@ -13,8 +15,19 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const { mutateAsync: terminateInstance, isPending } = useTerminateInstance(
     instance?.project_id || "",
   );
+  const [terminalConnectionStatus, setTerminalConnectionStatus] = useState<
+    "checking" | "connected" | "disconnected"
+  >("checking");
+  const [sshCopied, setSshCopied] = useState(false);
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
+
+  const terminalHealthCheckUrl = instance?.public_ip
+    ? `http://${instance.public_ip}:8080`
+    : null;
+  const sshCommand = instance?.public_ip
+    ? `ssh ubuntu@${String(instance.public_ip)}`
+    : null;
 
   const handleTerminate = async () => {
     if (!instance || isTerminated) {
@@ -30,21 +43,106 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     }
   };
 
+  const handleCopySshCommand = async () => {
+    if (!sshCommand) {
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(sshCommand);
+      setSshCopied(true);
+      setTimeout(() => setSshCopied(false), 1000);
+    } catch {
+      // Silently handle error, could add visual feedback here if needed
+    }
+  };
+
+  useEffect(() => {
+    if (!terminalHealthCheckUrl) {
+      setTerminalConnectionStatus("disconnected");
+      return;
+    }
+
+    let isDisposed = false;
+
+    const checkInstanceConnection = async () => {
+      setTerminalConnectionStatus("checking");
+
+      const controller = new AbortController();
+      const timeoutId = window.setTimeout(() => {
+        controller.abort();
+      }, 6000);
+
+      try {
+        const response = await fetch(terminalHealthCheckUrl, {
+          method: "GET",
+          signal: controller.signal,
+        });
+
+        if (!isDisposed) {
+          setTerminalConnectionStatus(
+            response.status === 200 ? "connected" : "disconnected",
+          );
+        }
+      } catch {
+        if (!isDisposed) {
+          setTerminalConnectionStatus("disconnected");
+        }
+      } finally {
+        window.clearTimeout(timeoutId);
+      }
+    };
+
+    void checkInstanceConnection();
+
+    const intervalId = window.setInterval(() => {
+      void checkInstanceConnection();
+    }, 30000);
+
+    return () => {
+      isDisposed = true;
+      window.clearInterval(intervalId);
+    };
+  }, [terminalHealthCheckUrl]);
+
   if (!instance) return <Card>Instance not found</Card>;
 
   return (
-    <div className="space-y-8 p-8">
+    <div className="space-y-12 p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">
-            Instance Terminal
+          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+            Instance
+            <span
+              className={
+                terminalConnectionStatus === "connected"
+                  ? "h-2.5 w-2.5 rounded-full bg-emerald-500"
+                  : terminalConnectionStatus === "checking"
+                    ? "h-2.5 w-2.5 rounded-full bg-amber-500"
+                    : "h-2.5 w-2.5 rounded-full bg-red-500"
+              }
+            />
           </h1>
-          <p className="text-muted-foreground mt-2 text-sm">
-            Live shell session and runtime information for this instance.
-          </p>
         </div>
 
         <div className="flex items-center gap-2">
+          <Button
+            size="lg"
+            variant="outline"
+            type="button"
+            disabled={!sshCommand}
+            onClick={() => {
+              void handleCopySshCommand();
+            }}
+          >
+            {sshCopied ? (
+              <Check className="h-4 w-4 text-green-600" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+            SSH
+          </Button>
+
           <Button
             size="lg"
             variant="destructive"
@@ -70,7 +168,13 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       </div>
 
       <ProjectInstanceInfoCard instance={instance} />
-      <ProjectInstanceTerminal publicIp={instance.public_ip} />
+
+      <OpencodeWebCard
+        publicIp={instance.public_ip}
+        isTerminated={isTerminated}
+      />
+
+      <ProjectInstanceTerminal publicIp={instance.public_ip} hideControls />
     </div>
   );
 }
