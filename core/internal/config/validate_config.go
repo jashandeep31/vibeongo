@@ -13,6 +13,7 @@ type Config struct {
 	Docker   *DockerConfig   `json:"-"`
 	OpenCode *OpenCodeConfig `json:"-"`
 	Nvim     *NvimConfig     `json:"-"`
+	Task     string          `json:"task"`
 }
 
 type PackageConfig struct {
