@@ -30,6 +30,39 @@ const formatValue = (value: unknown) => {
   return String(value);
 };
 
+const formatDuration = (startedAt: unknown, terminatedAt: unknown) => {
+  if (!startedAt) return "N/A";
+
+  const startDate = new Date(String(startedAt));
+  if (Number.isNaN(startDate.getTime())) return "N/A";
+
+  const endDate = terminatedAt ? new Date(String(terminatedAt)) : new Date();
+  if (Number.isNaN(endDate.getTime())) return "N/A";
+
+  const durationMs = endDate.getTime() - startDate.getTime();
+  if (durationMs < 0) return "N/A";
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
+};
+
 interface ProjectInstanceCardProps {
   projectId: string;
   instance: ProjectInstance;
@@ -150,8 +183,10 @@ export function ProjectInstanceCard({
             <p className="font-medium">{formatDate(instance.terminated_at)}</p>
           </div>
           <div>
-            <p className="text-muted-foreground">Created At</p>
-            <p className="font-medium">{formatDate(instance.created_at)}</p>
+            <p className="text-muted-foreground">Spun Up For</p>
+            <p className="font-medium">
+              {formatDuration(instance.started_at, instance.terminated_at)}
+            </p>
           </div>
         </div>
 
