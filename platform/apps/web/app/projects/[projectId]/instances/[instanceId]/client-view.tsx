@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Copy, Check, Loader2, Trash2 } from "lucide-react";
+import { Copy, Check, Loader2, Trash2, RotateCw } from "lucide-react";
 
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
@@ -9,6 +9,7 @@ import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { toast } from "sonner";
+import axios from "axios";
 
 export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: instance } = useGetInstanceById(instanceId);
@@ -54,6 +55,25 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       setTimeout(() => setSshCopied(false), 1000);
     } catch {
       // Silently handle error, could add visual feedback here if needed
+    }
+  };
+
+  const handleReboot = async () => {
+    if (!instance || isTerminated) {
+      return;
+    }
+    try {
+      const res = await axios.post(
+        `http://${instance.public_ip}:8080/reboot`,
+        {},
+      );
+      if (res.status === 200) {
+        toast.success("Server rebooted successfully");
+        await new Promise((res) => setTimeout(res, 2000));
+        window.location.reload();
+      }
+    } catch {
+      toast.error("Failed to reboot the server");
     }
   };
 
@@ -107,6 +127,55 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
   if (!instance) return <Card>Instance not found</Card>;
 
+  const Controls = () => {
+    return (
+      <div className="flex items-center gap-2">
+        <Button size={"lg"} variant="outline" onClick={handleReboot}>
+          <RotateCw className="h-4 w-4" />
+          Reboot
+        </Button>
+        <Button
+          size="lg"
+          variant="outline"
+          type="button"
+          disabled={!sshCommand}
+          onClick={() => {
+            void handleCopySshCommand();
+          }}
+        >
+          {sshCopied ? (
+            <Check className="h-4 w-4 text-green-600" />
+          ) : (
+            <Copy className="h-4 w-4" />
+          )}
+          SSH
+        </Button>
+
+        <Button
+          size="lg"
+          variant="destructive"
+          type="button"
+          disabled={isPending || isTerminated}
+          onClick={() => {
+            void handleTerminate();
+          }}
+        >
+          <Trash2 className="h-3 w-3" />
+          {isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Terminating...
+            </>
+          ) : isTerminated ? (
+            "Terminated"
+          ) : (
+            "Terminate"
+          )}
+        </Button>
+      </div>
+    );
+  };
+
   return (
     <div className="space-y-12 p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -125,46 +194,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           </h1>
         </div>
 
-        <div className="flex items-center gap-2">
-          <Button
-            size="lg"
-            variant="outline"
-            type="button"
-            disabled={!sshCommand}
-            onClick={() => {
-              void handleCopySshCommand();
-            }}
-          >
-            {sshCopied ? (
-              <Check className="h-4 w-4 text-green-600" />
-            ) : (
-              <Copy className="h-4 w-4" />
-            )}
-            SSH
-          </Button>
-
-          <Button
-            size="lg"
-            variant="destructive"
-            type="button"
-            disabled={isPending || isTerminated}
-            onClick={() => {
-              void handleTerminate();
-            }}
-          >
-            <Trash2 className="h-3 w-3" />
-            {isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Terminating...
-              </>
-            ) : isTerminated ? (
-              "Terminated"
-            ) : (
-              "Terminate"
-            )}
-          </Button>
-        </div>
+        <Controls />
       </div>
 
       <ProjectInstanceInfoCard instance={instance} />
