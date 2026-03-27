@@ -2,7 +2,6 @@ package gitrepos
 
 import (
 	"fmt"
-	"log"
 	"os/exec"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
@@ -19,7 +18,7 @@ func Setup(gitRepos []config.GitRepoConfig) {
 		cmd.Dir = path
 		err := cmd.Run()
 		if err != nil {
-			log.Fatal("Failed to clone the repo")
+			fmt.Println("Failed to clone the repo", repo.URL)
 		}
 	}
 }

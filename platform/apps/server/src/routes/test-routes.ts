@@ -97,6 +97,7 @@ routes.route("/config").get((req: Request, res: Response) => {
         },
       },
     ],
+    task: "Please review this is pull request and what we can do and write in the plan.md https://github.com/jashandeep31/mailstudio/pull/4",
   });
 });
 export const testRoutes = routes;
