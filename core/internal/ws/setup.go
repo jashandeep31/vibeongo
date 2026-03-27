@@ -3,7 +3,9 @@ package ws
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"os"
 	"os/exec"
 
 	"github.com/creack/pty"
@@ -12,8 +14,8 @@ import (
 )
 
 type sizeData struct {
-	Rows uint16 `json:"rows"` // Must be exported for json.Unmarshal
-	Cols uint16 `json:"cols"` // Using uint16 directly since pty.Winsize expects it
+	Rows uint16 `json:"rows"`
+	Cols uint16 `json:"cols"`
 }
 
 type wsMessage struct {
@@ -25,11 +27,17 @@ var upgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
 	CheckOrigin: func(r *http.Request) bool {
-		return true // WARN: Disable in production
+		return true
 	},
 }
 
-func WebSocket(c *echo.Context) error { // Note: echo.Context not *echo.Context
+const (
+	defaultRows = 40
+	defaultCols = 155
+	ptyBufSize  = 4096
+)
+
+func WebSocket(c *echo.Context) error {
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 	if err != nil {
 		return err
@@ -37,33 +45,40 @@ func WebSocket(c *echo.Context) error { // Note: echo.Context not *echo.Context
 	defer conn.Close()
 
 	cmd := exec.Command("bash", "-l")
-	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: 40, Cols: 155})
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
-		conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
+		_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
 		return err
 	}
-	fmt.Println("Terminal started")
 	defer func() {
-		fmt.Println("Terminal closed")
-		cmd.Process.Kill() // Kill the process, not just close the pty
-		ptmx.Close()
-	}()
-
-	// pty → websocket
-	go func() {
-		buf := make([]byte, 4096) // Larger buffer for smoother output
-		for {
-			n, err := ptmx.Read(buf)
-			if err != nil {
-				return
-			}
-			if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
-				return
-			}
+		if cmd.Process != nil {
+			_ = cmd.Process.Kill()
 		}
+		_ = ptmx.Close()
 	}()
 
-	// websocket → pty
+	go pipePTYToWebSocket(conn, ptmx)
+
+	return pipeWebSocketToPTY(conn, ptmx)
+}
+
+func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File) {
+	buf := make([]byte, ptyBufSize)
+	for {
+		n, err := ptmx.Read(buf)
+		if err != nil {
+			if err != io.EOF {
+				fmt.Printf("pty read error: %v\n", err)
+			}
+			return
+		}
+		if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+			return
+		}
+	}
+}
+
+func pipeWebSocketToPTY(conn *websocket.Conn, ptmx *os.File) error {
 	for {
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
@@ -81,11 +96,12 @@ func WebSocket(c *echo.Context) error { // Note: echo.Context not *echo.Context
 
 		switch m.Type {
 		case "size":
-			fmt.Println(m.Data)
-			pty.Setsize(ptmx, &pty.Winsize{
+			if err := pty.Setsize(ptmx, &pty.Winsize{
 				Rows: m.Data.Rows,
 				Cols: m.Data.Cols,
-			})
+			}); err != nil {
+				fmt.Printf("failed to resize pty: %v\n", err)
+			}
 		default:
 			fmt.Printf("Unknown message type: %s\n", m.Type)
 		}
