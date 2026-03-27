@@ -12,15 +12,17 @@ type TerminalConnectionStatus = "checking" | "connected" | "disconnected";
 
 interface ProjectInstanceTerminalProps {
   publicIp?: string | null;
+  hideControls?: boolean;
+  showConnectionButton?: boolean;
 }
 
 export function ProjectInstanceTerminal({
   publicIp,
+  hideControls = false,
+  showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
-  // const serverUrl = publicIp ? `ws://${String(publicIp)}:8080/ws` : null;
-  // const healthCheckUrl = publicIp ? `http://${String(publicIp)}:8080` : null;
-  const serverUrl = publicIp ? `ws://localhost:8080/ws` : null;
-  const healthCheckUrl = publicIp ? `http://localhost:8080` : null;
+  const serverUrl = publicIp ? `ws://${String(publicIp)}:8080/ws` : null;
+  const healthCheckUrl = publicIp ? `http://${String(publicIp)}:8080` : null;
   const sshCommand = publicIp ? `ssh ubuntu@${String(publicIp)}` : null;
 
   const terminalRef = useRef<HTMLDivElement | null>(null);
@@ -191,43 +193,47 @@ export function ProjectInstanceTerminal({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center gap-2">
-        <Button
-          size="lg"
-          variant="outline"
-          type="button"
-          onClick={() => {
-            setRefreshToken((value) => value + 1);
-          }}
-          className={
-            connectionStatus === "connected"
-              ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
-              : connectionStatus === "checking"
-                ? "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
-                : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
-          }
-        >
-          <RotateCcw className="h-4 w-4" />
-          {connectionStatus === "connected"
-            ? "Connected"
-            : connectionStatus === "checking"
-              ? "Checking"
-              : "Disconnected"}
-        </Button>
+      {!hideControls && (
+        <div className="flex flex-wrap items-center gap-2">
+          {showConnectionButton && (
+            <Button
+              size="lg"
+              variant="outline"
+              type="button"
+              onClick={() => {
+                setRefreshToken((value) => value + 1);
+              }}
+              className={
+                connectionStatus === "connected"
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
+                  : connectionStatus === "checking"
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
+                    : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
+              }
+            >
+              <RotateCcw className="h-4 w-4" />
+              {connectionStatus === "connected"
+                ? "Connected"
+                : connectionStatus === "checking"
+                  ? "Checking"
+                  : "Disconnected"}
+            </Button>
+          )}
 
-        <Button
-          size="lg"
-          variant="outline"
-          type="button"
-          disabled={!sshCommand}
-          onClick={() => {
-            void handleCopySshCommand();
-          }}
-        >
-          <Copy className="h-4 w-4" />
-          SSH
-        </Button>
-      </div>
+          <Button
+            size="lg"
+            variant="outline"
+            type="button"
+            disabled={!sshCommand}
+            onClick={() => {
+              void handleCopySshCommand();
+            }}
+          >
+            <Copy className="h-4 w-4" />
+            SSH
+          </Button>
+        </div>
+      )}
 
       <div>
         <h2 className="text-xl font-semibold tracking-tight">Terminal</h2>

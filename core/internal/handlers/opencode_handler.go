@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"os/exec"
+	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/labstack/echo/v5"
@@ -101,6 +102,8 @@ func OpenCodeWeb(c *echo.Context) error {
 			}
 			openCodeWebServer.running = false
 		}()
+
+		time.Sleep(3 * time.Second)
 
 		return c.JSON(http.StatusOK, OpenCodeWebResponse{
 			Message: fmt.Sprintf("Opencode web server is starting at port %d", openCodeWebServer.port),

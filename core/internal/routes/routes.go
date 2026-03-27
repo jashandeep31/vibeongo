@@ -15,5 +15,6 @@ func Register(e *echo.Echo, db *sql.DB) {
 
 	// opencode related routes
 	// e.GET("/opencode", handlers.LaunchOpenCodeWeb)
+	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
 	e.POST("/opencode/web", handlers.OpenCodeWeb)
 }

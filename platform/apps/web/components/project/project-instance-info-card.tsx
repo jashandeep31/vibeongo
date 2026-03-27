@@ -3,15 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUpRight, Check, Copy } from "lucide-react";
 import { instances } from "@repo/db";
-import { Badge } from "@repo/ui/components/badge";
 import { Button, buttonVariants } from "@repo/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/components/card";
 import Link from "next/link";
 
 type ProjectInstance = typeof instances.$inferSelect;
@@ -126,76 +118,48 @@ export function ProjectInstanceInfoCard({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle className="text-lg">
-              Instance {formatValue(instance.aws_instance_id)}
-            </CardTitle>
-            <CardDescription className="mt-1 break-all">
-              Record ID: {instance.id}
-            </CardDescription>
-          </div>
-          <Badge
-            variant={instance.state === "running" ? "default" : "secondary"}
-            className={
-              instance.state === "running"
-                ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
-                : "text-muted-foreground border-0"
-            }
+    <section className="flex flex-wrap items-center gap-x-8 gap-y-4 text-sm">
+      <div>
+        <p className="text-muted-foreground">Public IP</p>
+        <div className="mt-1 flex items-center gap-2">
+          <p className="font-medium">{formatValue(instance.public_ip)}</p>
+          <Button
+            size="sm"
+            type="button"
+            variant="outline"
+            aria-label="Copy IPv4 address"
+            onClick={() => {
+              void handleCopyPublicIp();
+            }}
           >
-            {formatValue(instance.state)}
-          </Badge>
-        </div>
-      </CardHeader>
-      <CardContent>
-        <div className="grid gap-4 text-sm md:grid-cols-2">
-          <div>
-            <p className="text-muted-foreground">Public IP</p>
-            <div className="mt-1 flex items-center gap-2">
-              <p className="font-medium">{formatValue(instance.public_ip)}</p>
-              <Button
-                size="sm"
-                type="button"
-                variant="outline"
-                aria-label="Copy IPv4 address"
-                onClick={() => {
-                  void handleCopyPublicIp();
-                }}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-emerald-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
+            {copied ? (
+              <Check className="h-4 w-4 text-emerald-600" />
+            ) : (
+              <Copy className="h-4 w-4" />
+            )}
+          </Button>
 
-              <Link
-                href={`http://${instance.public_ip}:8080`}
-                target="_blank"
-                className={buttonVariants({ variant: "link" })}
-              >
-                <ArrowUpRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Spun Up For</p>
-            <p className="font-medium">
-              {formatDuration(instance.started_at, instance.terminated_at, now)}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Started At</p>
-            <p className="font-medium">{formatDate(instance.started_at)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Terminated At</p>
-            <p className="font-medium">{formatDate(instance.terminated_at)}</p>
-          </div>
+          <Link
+            href={`http://${instance.public_ip}:8080`}
+            target="_blank"
+            className={buttonVariants({ variant: "link" })}
+          >
+            <ArrowUpRight className="h-4 w-4" />
+          </Link>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div>
+        <p className="text-muted-foreground">Spun Up For</p>
+        <p className="font-medium">
+          {formatDuration(instance.started_at, instance.terminated_at, now)}
+        </p>
+      </div>
+
+      <div>
+        <p className="text-muted-foreground">Started At</p>
+        <p className="font-medium">{formatDate(instance.started_at)}</p>
+      </div>
+    </section>
   );
 }
