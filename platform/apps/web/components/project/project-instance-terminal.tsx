@@ -246,7 +246,7 @@ export function ProjectInstanceTerminal({
         <div
           ref={terminalRef}
           id="terminal"
-          className="h-[80vh] w-full rounded-md bg-black p-2"
+          className="h-[80vh] w-[80vw] rounded-md bg-black p-2"
         />
       </div>
     </div>
