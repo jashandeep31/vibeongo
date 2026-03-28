@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/exec"
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
@@ -41,9 +42,19 @@ var setupCmd = &cobra.Command{
 	},
 }
 
+var taskCmd = &cobra.Command{
+	Use:   "task",
+	Short: "Perform the task",
+	Long:  "Perform the task",
+	Run: func(cmd *cobra.Command, args []string) {
+		PerformTask()
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(updateCmd)
 	rootCmd.AddCommand(setupCmd)
+	rootCmd.AddCommand(taskCmd)
 }
 
 func Execute() {
@@ -82,4 +93,24 @@ func Run() {
 
 	fmt.Println("writing the bash scripts")
 	scripts.WriteScripts()
+}
+
+func PerformTask() {
+	cfg, err := config.LoadAndValidate("config.json")
+	if err != nil {
+		log.Fatalf("config has error %v", err)
+	}
+	if cfg.Task == "" {
+		fmt.Println("No task to perform")
+		return
+	}
+	opencodeCommand := fmt.Sprintf("/home/ubuntu/.opencode/bin/opencode run %s", cfg.Task)
+	cmd := exec.Command("bash", "-c", opencodeCommand)
+	cmd.Dir = "/home/ubuntu/code"
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println("Done with the opencode task", string(out))
+	fmt.Println("Done with the opencode task")
 }
