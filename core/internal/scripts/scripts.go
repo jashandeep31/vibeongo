@@ -13,19 +13,20 @@ func WriteScripts() {
 	writeApiServerUpdateScript()
 }
 
-const basePath = "/home/ubuntu/vibeongo"
+const basePath = "/home/ubuntu/vibeongo/scripts"
 
 func writeApiServerUpdateScript() {
 	err := os.MkdirAll(basePath, os.ModePerm)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err, "Failed to create scripts directory")
 	}
 	scriptData := `
 set -e
 
 USER_HOME="/home/ubuntu"
-BIN="$USER_HOME/server"
-NEW="$USER_HOME/server.new"
+VIBEONGO_HOME="$USER_HOME/vibeongo"
+BIN="$VIBEONGO_HOME/server"
+NEW="$VIBEONGO_HOME/server.new"
 
 echo "[1/5] Downloading new binary..."
 curl -fL https://l1.devsradar.com/install-api -o "$NEW"
@@ -44,11 +45,11 @@ systemctl start myserver
 
 echo "✅ Update completed successfully"
 `
-	bashFilePath := filepath.Join(basePath, "/update.sh")
+	bashFilePath := filepath.Join(basePath, "update.sh")
 
 	err = os.WriteFile(bashFilePath, []byte(scriptData), 0644)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(err, "Failed to write update script")
 	}
 	cmd := exec.Command("sudo", "chmod", "+x", bashFilePath)
 	cmd.Run()
