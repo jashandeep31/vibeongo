@@ -38,7 +38,7 @@ chmod +x "$VIBEONGO_HOME/server"
 
 echo "Step 4: Run install script"
 
-sudo -u ubuntu bash -c "cd $VIBEONGO_HOME && ./install"
+sudo -u ubuntu bash -c "cd $VIBEONGO_HOME && ./install setup"
 
 echo "Step 5: Done"
 
