@@ -71,5 +71,7 @@ systemctl daemon-reload
 systemctl enable myserver
 systemctl start myserver
 
+cd $VIBEONGO_HOME
+./install task
 `;
 };
