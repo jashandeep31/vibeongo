@@ -61,6 +61,7 @@ routes.route("/config").get((req: Request, res: Response) => {
       {
         git_url: "https://github.com/jashandeep31/mailstudio.git",
         access_token: "",
+        folder_name: "mailstudio",
       },
     ],
     packages: [
