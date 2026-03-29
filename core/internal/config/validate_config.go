@@ -13,7 +13,12 @@ type Config struct {
 	Docker   *DockerConfig   `json:"-"`
 	OpenCode *OpenCodeConfig `json:"-"`
 	Nvim     *NvimConfig     `json:"-"`
-	Task     string          `json:"task"`
+	Tasks    []TaskConfig    `json:"tasks"`
+}
+
+type TaskConfig struct {
+	FolderName string `json:"folder_name"`
+	Task       string `json:"task"`
 }
 
 type PackageConfig struct {
