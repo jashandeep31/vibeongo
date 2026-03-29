@@ -2,13 +2,13 @@ package commands
 
 import (
 	"fmt"
-	"log"
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/nvim"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/runtimes"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
 	"github.com/spf13/cobra"
@@ -38,13 +38,13 @@ func runSetup() error {
 		return fmt.Errorf("config has error: %w", err)
 	}
 
-	// runtimes.NodeJSSetup()
+	runtimes.NodeJSSetup()
 	//
 	// gh.Setup()
 	//
 	gitrepos.Setup(cfg.Repos)
 	if 1 == 1 {
-		log.Fatal("dev stop")
+		return nil
 	}
 
 	if cfg.Docker != nil {

@@ -23,9 +23,14 @@ func Setup(gitRepos []config.GitRepoConfig) {
 		if err := os.MkdirAll(projectFolderPath, os.ModePerm); err != nil {
 			fmt.Println("Failed to create the folder", projectFolderPath, err)
 		}
+		out, err := utils.RunCommand("whoami")
+		if err != nil {
+			fmt.Println("Failed to clone the repo", repo.URL, err)
+		}
+		fmt.Println(string(out))
 		cmd := exec.Command("bash", "-c", fmt.Sprintf("git clone %s %s", repo.URL, projectFolderPath))
 		cmd.Dir = projectFolderPath
-		err := cmd.Run()
+		err = cmd.Run()
 		if err != nil {
 			fmt.Println("Failed to clone the repo", repo.URL, err)
 		}
