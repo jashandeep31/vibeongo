@@ -14,7 +14,9 @@
   "repos": [
     {
       "git_url": "https://github.com/jashandeep31/mailstudio.git",
-      "access_token": ""
+      "access_token": "",
+      "folder_name": "mailstudio",
+      "setup_script": "touch test.txt\necho \"hello world\" >> test.txt\nnode -v\nnpm i -g pnpm \npnpm i"
     }
   ],
   "packages": [
