@@ -1,7 +1,9 @@
 package commands
 
 import (
+	"bufio"
 	"fmt"
+	"os/exec"
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
@@ -9,6 +11,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/nvim"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/runtimes"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
 	"github.com/spf13/cobra"
@@ -37,12 +40,47 @@ func runSetup() error {
 	if err != nil {
 		return fmt.Errorf("config has error: %w", err)
 	}
+	script := `#!/usr/bin/env bash`
+	utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
+	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
 
-	runtimes.NodeJSSetup()
-	//
+	cmd := exec.Command("bash", "-c", script)
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("failed to capture stdout: %w", err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		return fmt.Errorf("failed to capture stderr: %w", err)
+	}
+	if err := cmd.Start(); err != nil {
+		return fmt.Errorf("failed to start update command: %w", err)
+	}
+	stdoutScanner := bufio.NewScanner(stdout)
+
+	for stdoutScanner.Scan() {
+		fmt.Println(stdoutScanner.Text())
+	}
+	if err := stdoutScanner.Err(); err != nil {
+		return fmt.Errorf("failed while reading stdout: %w", err)
+	}
+
+	stderrScanner := bufio.NewScanner(stderr)
+	for stderrScanner.Scan() {
+		fmt.Println(stderrScanner.Text())
+	}
+	if err := stderrScanner.Err(); err != nil {
+		return fmt.Errorf("failed while reading stderr: %w", err)
+	}
+
+	if err := cmd.Wait(); err != nil {
+		return fmt.Errorf("update command failed: %w", err)
+	}
+	fmt.Println("done")
+
 	// gh.Setup()
 	//
-	gitrepos.Setup(cfg.Repos)
+
 	if 1 == 1 {
 		return nil
 	}
