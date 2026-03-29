@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"path"
 
@@ -35,15 +36,18 @@ func runTask() error {
 		if (task.FolderName != "") && (task.FolderName != ".") {
 			taskFolder = path.Join(taskFolder, task.FolderName)
 		}
-		fmt.Println(taskFolder)
-		cmd := exec.Command("bash", "-c", task.Task)
+		opencodeCommand := fmt.Sprintf("/home/ubuntu/.opencode/bin/opencode run %s", task.Task)
+		cmd := exec.Command("bash", "-c", opencodeCommand)
 		cmd.Dir = taskFolder
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
 
-		out, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("task failed: %w", err)
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("failed to start update command: %w", err)
 		}
-		fmt.Println("Done with the task", string(out))
+		if err := cmd.Wait(); err != nil {
+			return fmt.Errorf("update command failed: %w", err)
+		}
 	}
 	return nil
 }

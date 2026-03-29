@@ -45,6 +45,7 @@ func WebSocket(c *echo.Context) error {
 	defer conn.Close()
 
 	cmd := exec.Command("bash", "-l")
+	cmd.Dir = "/home/ubuntu/code"
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
 		_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
