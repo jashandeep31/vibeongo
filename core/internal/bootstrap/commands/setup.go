@@ -44,10 +44,6 @@ func runSetup() error {
 
 	fmt.Println(cfg.Tasks)
 
-	if 1 == 1 {
-		return nil
-	}
-
 	gh.Setup()
 	// NOTE: uses the older way
 	if cfg.Docker != nil {
