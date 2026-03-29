@@ -7,6 +7,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gh"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/nvim"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
@@ -44,6 +45,22 @@ func runSetup() error {
 	utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
 	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
 
+	gh.Setup()
+	// NOTE: uses the older way
+	if cfg.Docker != nil {
+		docker.Setup(cfg.Docker)
+	}
+
+	if cfg.OpenCode != nil {
+		opencode.Setup(cfg.OpenCode)
+	}
+
+	if cfg.Nvim != nil {
+		nvim.Setup(cfg.Nvim)
+	}
+
+	scripts.WriteScripts()
+
 	cmd := exec.Command("bash", "-c", script)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
@@ -77,28 +94,6 @@ func runSetup() error {
 		return fmt.Errorf("update command failed: %w", err)
 	}
 	fmt.Println("done")
-
-	// gh.Setup()
-	//
-
-	if 1 == 1 {
-		return nil
-	}
-
-	if cfg.Docker != nil {
-		docker.Setup(cfg.Docker)
-	}
-
-	if cfg.OpenCode != nil {
-		opencode.Setup(cfg.OpenCode)
-	}
-
-	if cfg.Nvim != nil {
-		nvim.Setup(cfg.Nvim)
-	}
-
-	fmt.Println("writing the bash scripts")
-	scripts.WriteScripts()
 
 	return nil
 }
