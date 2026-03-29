@@ -2,7 +2,9 @@ package gitrepos
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
@@ -13,12 +15,18 @@ func Setup(gitRepos []config.GitRepoConfig) {
 	utils.RunCommand("mkdir", "-p", path)
 
 	for _, repo := range gitRepos {
-		fmt.Println("Working on the", repo.URL)
-		cmd := exec.Command("git", "clone", repo.URL)
-		cmd.Dir = path
+
+		// Create the folder for the repo  example-> /home/ubuntu/code/my-repo
+		projectFolderPath := filepath.Join(path, repo.FolderName)
+
+		if err := os.MkdirAll(projectFolderPath, os.ModePerm); err != nil {
+			fmt.Println("Failed to create the folder", projectFolderPath, err)
+		}
+		cmd := exec.Command("bash", "-c", fmt.Sprintf("git clone %s %s", repo.URL, projectFolderPath))
+		cmd.Dir = projectFolderPath
 		err := cmd.Run()
 		if err != nil {
-			fmt.Println("Failed to clone the repo", repo.URL)
+			fmt.Println("Failed to clone the repo", repo.URL, err)
 		}
 	}
 }
