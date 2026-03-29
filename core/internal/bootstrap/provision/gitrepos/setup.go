@@ -15,6 +15,7 @@ func Setup(gitRepos []config.GitRepoConfig) {
 	utils.RunCommand("mkdir", "-p", path)
 
 	for _, repo := range gitRepos {
+		fmt.Println("Cloning the repo", repo.URL)
 
 		// Create the folder for the repo  example-> /home/ubuntu/code/my-repo
 		projectFolderPath := filepath.Join(path, repo.FolderName)
@@ -27,6 +28,18 @@ func Setup(gitRepos []config.GitRepoConfig) {
 		err := cmd.Run()
 		if err != nil {
 			fmt.Println("Failed to clone the repo", repo.URL, err)
+		}
+
+		script := repo.SetupScript
+		if script != "" {
+			cmd = exec.Command("bash", "-c", script)
+			cmd.Dir = projectFolderPath
+			out, err := cmd.CombinedOutput()
+			if err != nil {
+				fmt.Println("Failed to run the setup script", err)
+			}
+			fmt.Println(string(out))
+
 		}
 	}
 }

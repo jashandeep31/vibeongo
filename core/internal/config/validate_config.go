@@ -35,6 +35,7 @@ type GitRepoConfig struct {
 	URL         string `json:"git_url"`
 	AccessToken string `json:"access_token"`
 	FolderName  string `json:"folder_name"`
+	SetupScript string `json:"setup_script"`
 }
 
 type OpenCodeConfig struct {
