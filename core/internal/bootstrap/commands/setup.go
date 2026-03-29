@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
@@ -37,7 +38,14 @@ func runSetup() error {
 		return fmt.Errorf("config has error: %w", err)
 	}
 
+	// runtimes.NodeJSSetup()
+	//
+	// gh.Setup()
+	//
 	gitrepos.Setup(cfg.Repos)
+	if 1 == 1 {
+		log.Fatal("dev stop")
+	}
 
 	if cfg.Docker != nil {
 		docker.Setup(cfg.Docker)
