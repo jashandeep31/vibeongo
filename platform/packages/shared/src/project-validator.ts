@@ -45,6 +45,7 @@ export const projectConfigValidator = z.object({
       z.object({
         git_url: z.string(),
         access_token: z.string().optional(),
+        folder_name: z.string(),
       }),
     ),
     packages: z.array(
