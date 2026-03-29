@@ -3,6 +3,7 @@ package commands
 import (
 	"fmt"
 	"os/exec"
+	"path"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/spf13/cobra"
@@ -25,22 +26,24 @@ func runTask() error {
 		return fmt.Errorf("config has error: %w", err)
 	}
 
-	if cfg.Task == "" {
-		fmt.Println("No task to perform")
+	if cfg.Tasks == nil {
 		return nil
 	}
 
-	opencodeCommand := fmt.Sprintf("/home/ubuntu/.opencode/bin/opencode run %s", cfg.Task)
-	cmd := exec.Command("bash", "-c", opencodeCommand)
-	cmd.Dir = "/home/ubuntu/code"
+	for _, task := range cfg.Tasks {
+		taskFolder := path.Join("/home/ubuntu/code")
+		if (task.FolderName != "") && (task.FolderName != ".") {
+			taskFolder = path.Join(taskFolder, task.FolderName)
+		}
+		fmt.Println(taskFolder)
+		cmd := exec.Command("bash", "-c", task.Task)
+		cmd.Dir = taskFolder
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("opencode task failed: %w", err)
+		out, err := cmd.CombinedOutput()
+		if err != nil {
+			return fmt.Errorf("task failed: %w", err)
+		}
+		fmt.Println("Done with the task", string(out))
 	}
-
-	fmt.Println("Done with the opencode task", string(out))
-	fmt.Println("Done with the opencode task")
-
 	return nil
 }
