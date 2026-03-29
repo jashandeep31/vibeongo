@@ -3,8 +3,24 @@ import { env } from "../lib/env.js";
 export const setupInstanceScript = (): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
-
 exec > /var/log/user-data.log 2>&1
+
+# Create the swap file
+sudo fallocate -l 3G /swapfile
+
+# Set permissions
+sudo chmod 600 /swapfile
+
+# Make it a swap
+sudo mkswap /swapfile
+
+# Enable it
+sudo swapon /swapfile
+
+# Make it permanent across reboots
+
+echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+
 
 USER_HOME="/home/ubuntu"
 VIBEONGO_HOME="$USER_HOME/vibeongo"
@@ -25,13 +41,13 @@ sudo chown -R ubuntu:ubuntu $VIBEONGO_HOME
 
 echo "Step 2: Downloading the bootstrap scripts adnd api server"
 
-curl -fL https://l1.devsradar.com/install -o "$VIBEONGO_HOME/install"
+curl -fL https://frank-bull-partly.ngrok-free.app/install -o "$VIBEONGO_HOME/install"
 
-curl -fL https://l1.devsradar.com/install-api -o "$VIBEONGO_HOME/server"
+curl -fL https://frank-bull-partly.ngrok-free.app/install-api -o "$VIBEONGO_HOME/server"
 
 echo "Step 3: Download config"
 
-curl -fL https://l1.devsradar.com/config -o "$VIBEONGO_HOME/config.json"
+curl -fL https://frank-bull-partly.ngrok-free.app/config -o "$VIBEONGO_HOME/config.json"
 
 chmod +x "$VIBEONGO_HOME/install"
 chmod +x "$VIBEONGO_HOME/server"

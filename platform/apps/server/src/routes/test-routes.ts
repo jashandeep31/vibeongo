@@ -105,7 +105,17 @@ pnpm i
         },
       },
     ],
-    task: "Please review this is pull request and what we can do and write in the plan.md https://github.com/jashandeep31/mailstudio/pull/4",
+    // task: "Please review this is pull request and what we can do and write in the plan.md https://github.com/jashandeep31/mailstudio/pull/4",
+    tasks: [
+      {
+        folder_name: "mailstudio",
+        task: "write a well detailed plan for the mailstudio to create is new landing page in the plan.mdx",
+      },
+      {
+        folder_name: "mailstudio",
+        task: "please review the plan.mdx and write about in review.mdx",
+      },
+    ],
   });
 });
 export const testRoutes = routes;
