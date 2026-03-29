@@ -41,9 +41,12 @@ func runSetup() error {
 	if err != nil {
 		return fmt.Errorf("config has error: %w", err)
 	}
-	script := `#!/usr/bin/env bash`
-	utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
-	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
+
+	fmt.Println(cfg.Tasks)
+
+	if 1 == 1 {
+		return nil
+	}
 
 	gh.Setup()
 	// NOTE: uses the older way
@@ -60,6 +63,11 @@ func runSetup() error {
 	}
 
 	scripts.WriteScripts()
+
+	script := `#!/usr/bin/env bash`
+
+	utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
+	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
 
 	cmd := exec.Command("bash", "-c", script)
 	stdout, err := cmd.StdoutPipe()
