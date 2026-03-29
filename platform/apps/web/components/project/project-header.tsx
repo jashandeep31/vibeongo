@@ -3,19 +3,22 @@
 import { Globe, Play, RefreshCw, Server, Square, Terminal } from "lucide-react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { projects } from "@repo/db";
+import { Project, DbInstance } from "./types";
 
 interface ProjectHeaderProps {
-  project: typeof projects.$inferSelect;
+  project: Project;
+  instances?: DbInstance[];
 }
 
-export function ProjectHeader({ project }: ProjectHeaderProps) {
+export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
+  const isRunning = instances.some((instance) => instance.state === "running");
+
   return (
     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
       <div>
         <div className="mb-2 flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          {project.status === "running" ? (
+          {isRunning ? (
             <Badge className="border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
               Running
             </Badge>
@@ -34,7 +37,7 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0">
-        {project.status === "running" ? (
+        {isRunning ? (
           <>
             <Button variant="outline" size="lg">
               <Terminal className="mr-2 h-4 w-4" />

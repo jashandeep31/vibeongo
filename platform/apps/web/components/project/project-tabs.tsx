@@ -90,7 +90,7 @@ export function ProjectTabs({ project }: ProjectTabsProps) {
                       <span>Configured and enabled</span>
                     </div>
 
-                    {pkg.name === "docker" && pkg.config && "containers" in pkg.config && pkg.config.containers.length > 0 && (
+                    {pkg.name === "docker" && pkg.config && pkg.config.containers && pkg.config.containers.length > 0 && (
                       <div className="mt-2 space-y-2 border-t pt-2">
                         <span className="text-xs font-medium text-muted-foreground">Containers</span>
                         {pkg.config.containers.map((c, cIdx) => (

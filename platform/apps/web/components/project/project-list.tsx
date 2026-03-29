@@ -11,6 +11,9 @@ import {
 } from "@repo/ui/components/card";
 import { Badge } from "@repo/ui/components/badge";
 import { useGetProjects } from "@/hooks/use-project";
+import { projects } from "@repo/db";
+
+type ProjectListItem = typeof projects.$inferSelect & { status?: string };
 
 export function ProjectList() {
   const { data: projects, isLoading, error } = useGetProjects();
@@ -26,10 +29,10 @@ export function ProjectList() {
   // Ensure projects is an array
   const projectsList = projects || [];
 
-  const runningProjects = projectsList.filter((p) => p.status === "running");
-  const stoppedProjects = projectsList.filter((p) => p.status !== "running");
+  const runningProjects = projectsList.filter((p: ProjectListItem) => p.status === "running");
+  const stoppedProjects = projectsList.filter((p: ProjectListItem) => p.status !== "running");
 
-  const ProjectCard = ({ project }: { project: any }) => (
+  const ProjectCard = ({ project }: { project: ProjectListItem }) => (
     <Link href={`/dashboard/project/${project.id}`}>
       <Card className="hover:bg-muted/50 flex cursor-pointer flex-col transition-colors">
         <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">

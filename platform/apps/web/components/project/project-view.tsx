@@ -4,15 +4,21 @@ import { SystemInformation } from "./system-information";
 import { ProjectTabs } from "./project-tabs";
 import { UsageBilling } from "./usage-billing";
 import { useGetProjectById } from "@/hooks/use-project";
+import { useGetInstancesByProjectId } from "@/hooks/use-instance";
+
+import { Project } from "./types";
 
 export function ProjectView({ projectId }: { projectId: string }) {
-  const { data, isLoading } = useGetProjectById(projectId);
+  const { data: projectRaw, isLoading: isProjectLoading } = useGetProjectById(projectId);
 
-  if (isLoading) {
+  const { data: instancesData, isLoading: isInstanceLoading } =
+    useGetInstancesByProjectId(projectId);
+
+  if (isProjectLoading || isInstanceLoading) {
     return <div className="p-8 text-center">Loading project...</div>;
   }
 
-  if (!data?.project) {
+  if (!projectRaw) {
     return (
       <div className="p-8 text-center text-red-500">
         Failed to load project.
@@ -20,13 +26,13 @@ export function ProjectView({ projectId }: { projectId: string }) {
     );
   }
 
-  const project = data.project;
-  const instances = Array.isArray(data.instances) ? data.instances : [];
+  const project = projectRaw as unknown as Project;
+  const instances = Array.isArray(instancesData) ? instancesData : [];
 
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
       {/* Header Section */}
-      <ProjectHeader project={data.project} />
+      <ProjectHeader project={project} instances={instances} />
 
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* Left Side: Configuration (75%) */}
@@ -41,7 +47,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
         </div>
       </div>
       <pre className="text-xs">
-        {JSON.stringify(data.project.config, null, 2)}
+        {JSON.stringify(project.config, null, 2)}
       </pre>
     </div>
   );
