@@ -33,6 +33,8 @@ export default function ConfigPreviewAndCreate() {
       repos: gitRepos.map((repo) => ({
         git_url: repo.git_url,
         access_token: repo.access_token,
+        folder_name: repo.folder_name,
+        setup_script: repo.setup_script || "",
       })),
       packages: [
         {

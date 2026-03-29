@@ -8,6 +8,8 @@ interface GitRepo {
   id: string;
   git_url: string;
   access_token: string;
+  folder_name: string;
+  setup_script: string;
 }
 
 interface ContainerConfig {
@@ -84,6 +86,8 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
       git_url: "https://github.com/jashandeep31/mailstudio.git",
       access_token: "",
+      folder_name: "mailstudio",
+      setup_script: "",
     },
   ],
   setGitRepos: (repos) => set(() => ({ gitRepos: repos })),

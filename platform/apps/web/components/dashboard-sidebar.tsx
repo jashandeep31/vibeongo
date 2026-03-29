@@ -26,8 +26,14 @@ const sidebarLinks: {
   external?: boolean;
 }[] = [
   {
-    title: "My Projects",
+    title: "Dashboard",
     url: "/dashboard",
+    icon: FolderOpen,
+  },
+
+  {
+    title: "My Projects",
+    url: "/projects",
     icon: FolderOpen,
   },
   {

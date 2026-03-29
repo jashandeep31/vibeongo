@@ -20,7 +20,7 @@ func writeApiServerUpdateScript() {
 	if err != nil {
 		log.Fatal(err, "Failed to create scripts directory")
 	}
-	scriptData := `
+	scriptData := `#!/usr/bin/env bash
 set -e
 
 USER_HOME="/home/ubuntu"
