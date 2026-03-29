@@ -38,7 +38,6 @@ func runUpdate() error {
 	}
 
 	stdoutScanner := bufio.NewScanner(stdout)
-	stdoutScanner.Split(bufio.ScanWords)
 	for stdoutScanner.Scan() {
 		fmt.Println(stdoutScanner.Text())
 	}
