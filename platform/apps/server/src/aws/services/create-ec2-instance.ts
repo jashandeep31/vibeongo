@@ -19,7 +19,7 @@ export const createEc2Instance = async ({
 
   const command = new RunInstancesCommand({
     ImageId: imageConfig.linuxImageId, //the version of os,
-    InstanceType: "t3.micro",
+    InstanceType: "t3.small",
     MinCount: 1,
     MaxCount: 1,
 
