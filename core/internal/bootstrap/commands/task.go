@@ -22,6 +22,9 @@ func TaskCmd() *cobra.Command {
 }
 
 func runTask() error {
+	if 1 == 1 {
+		return nil
+	}
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return fmt.Errorf("config has error: %w", err)
