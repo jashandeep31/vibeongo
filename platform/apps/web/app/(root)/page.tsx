@@ -30,7 +30,7 @@ export default function Page() {
 
         {/* Call to Actions */}
         <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
-          {/* Google Sign up button */}
+          {/* Github Sign up button */}
           <Button
             asChild
             size="lg"
@@ -59,7 +59,7 @@ export default function Page() {
                   fill="#EA4335"
                 />
               </svg>
-              Sign up with Google
+              Sign up with Github
             </Link>
           </Button>
           <Button
