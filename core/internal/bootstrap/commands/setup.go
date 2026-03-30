@@ -6,12 +6,8 @@ import (
 	"os/exec"
 
 	"github.com/fatih/color"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/docker"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gh"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/nvim"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/opencode"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/runtimes"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
@@ -46,23 +42,23 @@ func runSetup() error {
 
 	gh.Setup()
 	// NOTE: uses the older way
-	if cfg.Docker != nil {
-		docker.Setup(cfg.Docker)
-	}
+	// if cfg.Docker != nil {
+	// 	docker.Setup(cfg.Docker)
+	// }
 
-	if cfg.OpenCode != nil {
-		opencode.Setup(cfg.OpenCode)
-	}
+	// if cfg.OpenCode != nil {
+	// 	opencode.Setup(cfg.OpenCode)
+	// }
 
-	if cfg.Nvim != nil {
-		nvim.Setup(cfg.Nvim)
-	}
+	// if cfg.Nvim != nil {
+	// 	nvim.Setup(cfg.Nvim)
+	// }
 
 	scripts.WriteScripts()
 
 	script := `#!/usr/bin/env bash`
 
-	utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
+	// utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
 	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
 
 	cmd := exec.Command("bash", "-c", script)
