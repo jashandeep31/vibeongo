@@ -8,21 +8,19 @@ import {
   CardTitle,
 } from "@repo/ui/components/card";
 import { cn } from "@repo/ui/lib/utils";
+import { Github } from "lucide-react";
 
-type GoogleAuthCardProps = {
+type GithubAuthCardProps = {
   title: string;
   description: string;
   buttonLabel: string;
 };
 
-const GOOGLE_LOGO_URL =
-  "https://img.icons8.com/?size=100&id=V5cGWnc9R4xj&format=png&color=000000";
-
-export function GoogleAuthCard({
+export function GithubAuthCard({
   title,
   description,
   buttonLabel,
-}: GoogleAuthCardProps) {
+}: GithubAuthCardProps) {
   return (
     <main className="bg-muted/20 flex min-h-screen items-center justify-center p-4">
       <Card className="w-full max-w-sm py-6 shadow-sm">
@@ -32,13 +30,13 @@ export function GoogleAuthCard({
         </CardHeader>
         <CardContent>
           <a
-            href={`${BACKEND_URL}/api/v1/auth/google`}
+            href={`${BACKEND_URL}/api/v1/auth/github`}
             className={cn(
               buttonVariants({ variant: "outline" }),
               "flex w-full items-center justify-center gap-2",
             )}
           >
-            <img src={GOOGLE_LOGO_URL} aria-hidden="true" className="size-4" />
+            <Github aria-hidden="true" className="size-4" />
             <span>{buttonLabel}</span>
           </a>
         </CardContent>

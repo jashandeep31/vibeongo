@@ -1,11 +1,11 @@
-import { GoogleAuthCard } from "@/components/google-auth-card";
+import { GithubAuthCard } from "@/components/github-auth-card";
 
 export default function page() {
   return (
-    <GoogleAuthCard
+    <GithubAuthCard
       title="Create account"
-      description="Sign up with your Google account."
-      buttonLabel="Continue with Google"
+      description="Sign up with your GitHub account."
+      buttonLabel="Continue with GitHub"
     />
   );
 }
