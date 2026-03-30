@@ -1,9 +1,4 @@
-import { z } from "@repo/shared";
 import { cookies } from "next/headers";
-
-const cookiesSchema = z.object({
-  id: z.string(),
-});
 
 export const getSession = async (): Promise<null | { id: string }> => {
   try {
@@ -12,8 +7,8 @@ export const getSession = async (): Promise<null | { id: string }> => {
     if (!session) {
       return null;
     }
-    const sessionData = cookiesSchema.parse(JSON.parse(session.value));
-    return sessionData;
+    //TODO: fix this is sending the value
+    return { id: session.value };
   } catch {
     return null;
   }
