@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { sign } from "jsonwebtoken";
 import { catchAsync } from "../../lib/catch-async.js";
 import { env } from "../../lib/env.js";
 
@@ -100,19 +101,15 @@ export const githubAuthCallbackController = catchAsync(
       throw new Error("Something went wrong on our side");
     }
 
-    res.cookie(
-      "session",
-      {
-        id: user.id,
-      },
-      {
-        httpOnly: true,
-        secure: env.NODE_ENV === "production",
-        sameSite: "lax",
-        maxAge: sessionMaxAgeMs,
-        path: "/",
-      },
-    );
+    const token = sign({ id: user.id }, env.JWT_SECRET, { expiresIn: "30d" });
+
+    res.cookie("session", token, {
+      httpOnly: true,
+      secure: env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: sessionMaxAgeMs,
+      path: "/",
+    });
 
     res.redirect(process.env.CLIENT_URL || "http://localhost:3000/dashboard");
   },
