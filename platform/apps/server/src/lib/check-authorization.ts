@@ -1,6 +1,6 @@
 import { db, eq, userRoles, users } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
-import { verify } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { env } from "./env.js";
 
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
@@ -25,7 +25,7 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
     let id: string;
 
     try {
-      const decoded = verify(session, env.JWT_SECRET);
+      const decoded = jwt.verify(session, env.JWT_SECRET);
 
       if (
         typeof decoded !== "object" ||
