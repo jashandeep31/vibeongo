@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { sign } from "jsonwebtoken";
+import jwt from "jsonwebtoken";
 import { catchAsync } from "../../lib/catch-async.js";
 import { env } from "../../lib/env.js";
 
@@ -101,7 +101,9 @@ export const githubAuthCallbackController = catchAsync(
       throw new Error("Something went wrong on our side");
     }
 
-    const token = sign({ id: user.id }, env.JWT_SECRET, { expiresIn: "30d" });
+    const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
+      expiresIn: "30d",
+    });
 
     res.cookie("session", token, {
       httpOnly: true,
