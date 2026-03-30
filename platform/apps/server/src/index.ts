@@ -12,9 +12,13 @@ import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
 import { githubAppRoutes } from "./routes/github-app.js";
+import { githubAppWebhookMiddleware } from "./webhooks/github/handler.js";
 
 // app config
 const app = express();
+
+app.use("/api/v1/github-app", githubAppWebhookMiddleware);
+
 app.use(express.json());
 app.use(cookieParser());
 app.use(
@@ -45,7 +49,6 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
-app.use("/api/v1/github-app", githubAppRoutes);
 
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);
