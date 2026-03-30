@@ -14,7 +14,7 @@ export const users = pgTable("users", {
   updated_at: timestamp().defaultNow(),
 });
 
-export const accountProviders = pgEnum("account_providers", ["google"]);
+export const accountProviders = pgEnum("account_providers", ["github"]);
 export const acountStatus = pgEnum("account_status", [
   "active",
   "banned",
@@ -27,6 +27,7 @@ export const accounts = pgTable("accounts", {
 
   provider: accountProviders().notNull(),
   status: acountStatus().notNull().default("active"),
+  token: varchar({ length: 255 }).notNull(),
 
   deleted_at: timestamp(),
 
