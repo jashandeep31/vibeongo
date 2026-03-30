@@ -16,6 +16,8 @@ const envSchema = z.object({
   GOOGLE_AUTH_SECRET_KEY: z.string(),
   ALLOWED_ORIGINS: z.string().transform((val) => val.split(",")),
   GOOGLE_AUTH_REDIRECT_URI: z.string(),
+  GITHUB_CLIENT_ID: z.string(),
+  GITHUB_CLIENT_SECRET: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);
 
