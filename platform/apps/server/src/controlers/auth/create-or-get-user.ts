@@ -1,41 +1,88 @@
-import { accounts, db, eq, users } from "@repo/db";
+import { accounts, and, db, eq, users } from "@repo/db";
 
 interface CreateUser {
   email: string;
   name?: string | undefined;
-  avatar?: string | undefined;
-  password?: string | undefined;
-  provider: ["google"][number];
+  token: string;
 }
+
+const provider: typeof accounts.$inferInsert.provider = "github";
+const internalError = "Something went wrong on our side";
+
+const ensureId = (id: string | null | undefined) => {
+  if (!id) throw new Error(internalError);
+  return id;
+};
+
+const upsertGithubAccount = async (userId: string, token: string) => {
+  const [existingAccount] = await db
+    .select({ id: accounts.id })
+    .from(accounts)
+    .where(and(eq(accounts.user_id, userId), eq(accounts.provider, provider)));
+
+  const now = new Date();
+
+  if (existingAccount?.id) {
+    await db
+      .update(accounts)
+      .set({
+        status: "active",
+        token,
+        last_login_at: now,
+        updated_at: now,
+      })
+      .where(eq(accounts.id, existingAccount.id));
+    return;
+  }
+
+  await db.insert(accounts).values({
+    user_id: userId,
+    provider,
+    status: "active",
+    token,
+    last_login_at: now,
+  });
+};
+
 export const createOrGetUser = async ({
   email,
   name,
+  token,
 }: CreateUser): Promise<typeof users.$inferSelect> => {
-  const [isUser] = await db.select().from(users).where(eq(users.email, email));
+  const [existingUser] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email));
 
-  if (isUser) {
-    return isUser;
+  if (existingUser) {
+    await upsertGithubAccount(ensureId(existingUser.id), token);
+    return existingUser;
   }
 
-  const firstName = name?.split(" ")[0];
-  const lastName = name?.split(" ")?.slice(1)?.join(" ");
+  const nameParts = name?.trim().split(/\s+/) ?? [];
+  const firstName = nameParts[0] || "unknown";
+  const lastName = nameParts.slice(1).join(" ") || undefined;
+
   const user = await db.transaction(async (tx) => {
-    const [user] = await tx
+    const [createdUser] = await tx
       .insert(users)
       .values({
-        email: email,
-        first_name: firstName ? firstName : "unkown",
+        email,
+        first_name: firstName,
         last_name: lastName,
       })
       .returning();
-    if (!user) throw new Error("Something went wrong on our side");
+    if (!createdUser) throw new Error(internalError);
+
     await tx.insert(accounts).values({
-      user_id: user.id,
-      provider: "google",
+      user_id: ensureId(createdUser.id),
+      provider,
       status: "active",
+      token,
       last_login_at: new Date(),
     });
-    return user;
+
+    return createdUser;
   });
 
   return user;
