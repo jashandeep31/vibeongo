@@ -19,6 +19,7 @@
     "@repo/shared": "workspace:*",
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
+    "axios": "^1.13.6",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
     "dotenv": "^17.2.4",
