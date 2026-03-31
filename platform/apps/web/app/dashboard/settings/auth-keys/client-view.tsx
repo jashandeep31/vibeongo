@@ -55,8 +55,7 @@ export default function ClientView() {
   const createAuthTokenMutation = useCreateAuthToken();
   const deleteAuthTokenMutation = useDeleteAuthToken();
   const [newCredentials, setNewCredentials] = useState<{
-    api_key: string;
-    api_secret: string;
+    token: string;
   } | null>(null);
 
   const handleDelete = async (id: string) => {
@@ -121,37 +120,17 @@ export default function ClientView() {
               <div className="space-y-3">
                 <div>
                   <p className="text-muted-foreground mb-1 text-xs font-medium">
-                    API Key
+                    API Token
                   </p>
                   <div className="flex items-center gap-2">
                     <code className="bg-background flex-1 rounded-md border px-3 py-2 text-xs sm:text-sm">
-                      {newCredentials.api_key}
+                      {newCredentials.token}
                     </code>
                     <Button
                       variant="outline"
                       size="icon"
                       onClick={() =>
-                        copyToClipboard(newCredentials.api_key, "API key")
-                      }
-                    >
-                      <Copy className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div>
-                  <p className="text-muted-foreground mb-1 text-xs font-medium">
-                    API Secret
-                  </p>
-                  <div className="flex items-center gap-2">
-                    <code className="bg-background flex-1 rounded-md border px-3 py-2 text-xs sm:text-sm">
-                      {newCredentials.api_secret}
-                    </code>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() =>
-                        copyToClipboard(newCredentials.api_secret, "API secret")
+                        copyToClipboard(newCredentials.token, "API token")
                       }
                     >
                       <Copy className="h-4 w-4" />
@@ -204,7 +183,7 @@ export default function ClientView() {
                       </div>
 
                       <p className="text-muted-foreground font-mono text-sm break-all">
-                        {token.key_id}
+                        {token.id}
                       </p>
                     </div>
 
