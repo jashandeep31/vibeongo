@@ -46,6 +46,8 @@ export const createInstance = catchAsync(
     const instanceRegion = z.enum(awsSupportedRegions).parse(row.region.slug);
     const awsRes = await createEc2Instance({
       region: instanceRegion,
+      instanceType: row.instanceType.slug,
+      userData: "row.project.user_data",
     });
 
     const awsInstance = awsRes?.Instances?.[0];
