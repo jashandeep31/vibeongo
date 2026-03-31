@@ -8,6 +8,7 @@ import {
 import { getUserMetadata } from "../controlers/user/metadata.js";
 import {
   createAuthToken,
+  deleteAuthToken,
   getAuthTokens,
 } from "../controlers/user/auth-tokens-controller.js";
 
@@ -32,4 +33,8 @@ routes
   .route("/auth-tokens")
   .get(checkAuthorization(["all"]), getAuthTokens)
   .post(checkAuthorization(["all"]), createAuthToken);
+
+routes
+  .route("/auth-tokens/:id")
+  .delete(checkAuthorization(["all"]), deleteAuthToken);
 export const userRoutes = routes;
