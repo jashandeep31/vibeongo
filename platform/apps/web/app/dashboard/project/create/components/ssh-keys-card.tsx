@@ -54,12 +54,12 @@ const SshKeysCard = React.memo(() => {
       </div>
       <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         {sshKeys.map((sshKey) => {
-          const isSelected = selectedKeys.includes(sshKey.value);
+          const isSelected = selectedKeys.includes(sshKey.id);
           return (
             <button
               type="button"
               key={sshKey.id}
-              onClick={() => toggleKey(sshKey.value)}
+              onClick={() => toggleKey(sshKey.id)}
               className={`hover:bg-muted/50 flex items-center space-x-3 rounded-lg border p-3 text-left transition-colors ${
                 isSelected
                   ? "border-primary bg-primary/5 ring-primary ring-1"
@@ -68,7 +68,7 @@ const SshKeysCard = React.memo(() => {
             >
               <Checkbox
                 checked={isSelected}
-                onCheckedChange={() => toggleKey(sshKey.value)}
+                onCheckedChange={() => toggleKey(sshKey.id)}
                 onClick={(e) => e.stopPropagation()}
                 aria-label={`Select ${sshKey.name}`}
               />
