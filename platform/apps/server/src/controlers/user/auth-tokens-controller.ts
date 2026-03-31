@@ -17,7 +17,6 @@ export const getAuthTokens = catchAsync(async (req: Request, res: Response) => {
       id: authTokens.id,
       user_id: authTokens.user_id,
       name: authTokens.name,
-      key_id: authTokens.key_id,
       permission: authTokens.permission,
       valid_till: authTokens.valid_till,
       terminated_at: authTokens.terminated_at,
@@ -39,15 +38,12 @@ export const createAuthToken = catchAsync(
     const body = createAuthTokenSchema.parse(req.body);
     const { name, permission } = body;
 
-    const id = `vibe_` + createId();
-
-    const secret = crypto.randomBytes(32).toString("base64");
-    const hash = crypto.createHash("sha256").update(secret).digest("hex");
+    const token = `vibe_` + createId() + crypto.randomBytes(16).toString("hex");
+    const hash = crypto.createHash("sha256").update(token).digest("hex");
 
     await db.insert(authTokens).values({
       user_id: user.id,
       name,
-      key_id: id,
       secret: hash,
       permission,
       valid_till: null,
@@ -57,8 +53,7 @@ export const createAuthToken = catchAsync(
     res.status(201).json({
       message: "Auth token created successfully",
       data: {
-        api_secret: secret,
-        api_key: id,
+        token,
       },
     });
   },
