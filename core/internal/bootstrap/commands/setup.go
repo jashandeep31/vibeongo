@@ -6,7 +6,6 @@ import (
 	"os/exec"
 
 	"github.com/fatih/color"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gh"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
@@ -40,7 +39,7 @@ func runSetup() error {
 
 	fmt.Println(cfg.Tasks)
 
-	gh.Setup()
+	// gh.Setup()
 	// NOTE: uses the older way
 	// if cfg.Docker != nil {
 	// 	docker.Setup(cfg.Docker)
