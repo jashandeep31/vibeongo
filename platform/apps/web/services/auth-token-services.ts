@@ -6,8 +6,7 @@ import axios from "axios";
 export type AuthToken = Omit<typeof authTokens.$inferSelect, "secret">;
 
 export interface CreateAuthTokenResponse {
-  api_key: string;
-  api_secret: string;
+  token: string;
 }
 
 export const getAuthTokens = async (): Promise<AuthToken[]> => {
