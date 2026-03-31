@@ -5,8 +5,10 @@ import { useConfigStore } from "@/store/config-store";
 import { useCreateProject } from "@/hooks/use-project";
 import { projectConfigValidator, z } from "@repo/shared";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function ConfigPreviewAndCreate() {
+  const router = useRouter();
   const {
     gitRepos,
     projectName,
@@ -77,6 +79,7 @@ export default function ConfigPreviewAndCreate() {
               });
               //TODO: reset the form or even better redirect to the project dashboard
               toast.success("Project created", { id: toastId });
+              router.push("/dashboard");
             } catch {
               toast.error("Failed to create project", { id: toastId });
             }
