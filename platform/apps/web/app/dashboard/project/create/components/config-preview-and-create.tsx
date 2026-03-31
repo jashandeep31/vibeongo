@@ -25,8 +25,8 @@ export default function ConfigPreviewAndCreate() {
     description: "coming soon feature",
     regionId: instanceRegionId,
     instanceTypeId: instanceTypeId,
+    sshKeyIds: sshKeys,
     config: {
-      sshKeys: sshKeys.map((key) => key),
       ports: portRules.map((rule) => ({
         port: parseInt(rule.port, 10),
         protocol: rule.protocol,
