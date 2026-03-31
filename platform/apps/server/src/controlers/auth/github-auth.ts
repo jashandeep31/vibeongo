@@ -12,6 +12,7 @@ const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 const githubProfileSchema = z.object({
   email: z.string().nullable().optional(),
   name: z.string().nullable().optional(),
+  login: z.string().nullable().optional(),
 });
 
 const githubEmailsSchema = z.array(
@@ -91,10 +92,17 @@ export const githubAuthCallbackController = catchAsync(
       return;
     }
 
+    if (!profile.login) {
+      res
+        .status(400)
+        .json({ error: "No username found for this github account" });
+      return;
+    }
     const user = await createOrGetUser({
       email,
       name: profile.name ?? undefined,
       token: accessToken,
+      username: profile.login,
     });
 
     if (!user.id) {
