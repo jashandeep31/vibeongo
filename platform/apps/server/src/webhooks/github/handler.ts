@@ -9,7 +9,7 @@ const filepath = path.join(BASE_DIR, "vibeongo.2026-03-28.private-key.pem");
 const privateKey = await fs.readFile(filepath, "utf8");
 
 // ------ octokitApp Setup ------
-const octokitApp = new App({
+export const octokitApp: App = new App({
   appId: env.GITHUB_APP_ID,
   privateKey: privateKey,
   webhooks: {
@@ -35,8 +35,8 @@ octokitApp.webhooks.on("issues.opened", async (event) => {
 octokitApp.webhooks.on("issue_comment", async (event) => {
   const payload = event.payload;
   const username = payload.issue.user.login;
-  if (username === "jashandeep31") {
-  }
+  //what we need to check here
+  // 1. comment user is allowed to manage that repo means admin of it
 });
 
 // --- Any webhook handling ------
