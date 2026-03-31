@@ -1,6 +1,5 @@
 import { db, eq, userRoles, users, authTokens } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
-import * as crypto from "crypto";
 
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
@@ -23,12 +22,10 @@ export const checkApiAuthorization = (allowedRoles: userRole[]) => {
       });
     }
 
-    const hashedKey = crypto.createHash("sha256").update(apiKey).digest("hex");
-
     const [token] = await db
       .select()
       .from(authTokens)
-      .where(eq(authTokens.secret, hashedKey));
+      .where(eq(authTokens.secret, apiKey));
 
     if (!token) {
       return res.status(401).json({

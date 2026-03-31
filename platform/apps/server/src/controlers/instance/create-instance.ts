@@ -65,18 +65,20 @@ export const createInstance = catchAsync(
     const intialScript = setupInstanceScript({
       sshKey: sshKeysArray[0] || " ",
       authToken: authToken.secret,
+      projectId: base.project.id,
     });
 
     console.log(intialScript);
-    if (1 == 1) throw new AppError("Project not found", 404);
+    // if (1 == 1) throw new AppError("test", 500);
     const awsRes = await createEc2Instance({
       region: instanceRegion,
       instanceType: base.instanceType.slug,
-      userData: "row.project.user_data",
+      userData: intialScript,
     });
 
     const awsInstance = awsRes?.Instances?.[0];
 
+    //TODO: hanle this as if server crash after creation a instance can keep running
     if (!awsInstance?.InstanceId || !awsInstance)
       throw new AppError("Failed to create the ec2", 500);
 
