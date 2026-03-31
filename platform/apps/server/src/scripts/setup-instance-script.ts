@@ -1,16 +1,19 @@
 interface SetupInstanceScriptOptions {
   sshKey: string;
   authToken: string;
+  projectId: string;
 }
 
 export const setupInstanceScript = ({
   sshKey,
   authToken,
+  projectId,
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
 exec > /var/log/user-data.log 2>&1
 
+date
 # Create the swap file
 sudo fallocate -l 3G /swapfile
 
@@ -53,7 +56,10 @@ curl -fL https://frank-bull-partly.ngrok-free.app/install-api -o "$VIBEONGO_HOME
 
 echo "Step 3: Download config"
 
-curl -fL https://frank-bull-partly.ngrok-free.app/config -o "$VIBEONGO_HOME/config.json"
+curl --request GET \
+  --url "https://frank-bull-partly.ngrok-free.app/api/v1/projects/${projectId}/config" \
+  --header "Authorization: Bearer ${authToken}" \
+  | jq '.data' > "$VIBEONGO_HOME/config.json"
 
 chmod +x "$VIBEONGO_HOME/install"
 chmod +x "$VIBEONGO_HOME/server"
@@ -94,6 +100,8 @@ systemctl enable myserver
 systemctl start myserver
 
 cd $VIBEONGO_HOME
+date
 ./install task
+
 `;
 };
