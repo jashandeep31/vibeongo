@@ -10,7 +10,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@repo/ui/components/sidebar";
-import { FolderOpen, Server } from "lucide-react";
+import { ArrowLeft, Server } from "lucide-react";
 import Link from "next/link";
 
 // Mock data representing connected servers (projects)
@@ -30,7 +30,7 @@ export function ProjectsSidebar() {
                   className="active:bg-background data-active:bg-background cursor-pointer"
                 >
                   <Link href="/dashboard">
-                    <FolderOpen className="h-4 w-4" />
+                    <ArrowLeft className="h-4 w-4" />
                     <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>

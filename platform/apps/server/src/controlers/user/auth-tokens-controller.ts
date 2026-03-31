@@ -42,12 +42,13 @@ export const createAuthToken = catchAsync(
     const id = `vibe_` + createId();
 
     const secret = crypto.randomBytes(32).toString("base64");
+    const hash = crypto.createHash("sha256").update(secret).digest("hex");
 
     await db.insert(authTokens).values({
       user_id: user.id,
       name,
       key_id: id,
-      secret,
+      secret: hash,
       permission,
       valid_till: null,
       terminated_at: null,
