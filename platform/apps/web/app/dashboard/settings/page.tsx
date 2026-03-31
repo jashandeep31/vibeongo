@@ -1,5 +1,9 @@
-import ClientView from "./client-view";
+import { SettingsNavigation } from "@/components/settings/settings-navigation";
 
 export default function page() {
-  return <ClientView />;
+  return (
+    <div className="p-8">
+      <SettingsNavigation />
+    </div>
+  );
 }
