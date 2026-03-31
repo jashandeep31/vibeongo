@@ -5,7 +5,7 @@ import { db, eq, projects } from "@repo/db";
 
 export const getProjectConfigById = catchAsync(
   async (req: Request, res: Response) => {
-    const X_API_KEY = req.headers["x-api-key"];
+    const X_API_KEY = req.headers["x-api-id"];
     const X_API_SECRET = req.headers["x-api-secret"];
     if (!X_API_KEY || !X_API_SECRET)
       throw new AppError("Authnatication is required", 400);

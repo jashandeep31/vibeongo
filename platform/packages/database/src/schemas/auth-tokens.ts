@@ -13,7 +13,6 @@ export const authTokens = pgTable("auth_tokens", {
 
   name: varchar({ length: 255 }).notNull(),
 
-  key_id: varchar({ length: 32 }).notNull().unique(),
   secret: varchar({ length: 255 }).notNull(),
   permission: authTokenPermissions().notNull().default("read"),
 
