@@ -28,18 +28,6 @@ octokitApp.webhooks.on("issues.opened", async (event) => {
     // 1. create task to do as per the test
     // 2. load the vps
     // 3. create the commeno
-    await octokit.request(
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-      {
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        issue_number: payload.issue.number,
-        body: `thanks @jashandeep31 i am looking into it`,
-        headers: {
-          "x-github-api-version": "2026-03-10",
-        },
-      },
-    );
   }
 });
 
@@ -62,3 +50,17 @@ export const githubAppWebhookMiddleware = createNodeMiddleware(
     path: "/webhook",
   },
 );
+
+// --- sending the comment from bot ---
+// await octokit.request(
+//   "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+//   {
+//     owner: payload.repository.owner.login,
+//     repo: payload.repository.name,
+//     issue_number: payload.issue.number,
+//     body: `thanks @jashandeep31 i am looking into it`,
+//     headers: {
+//       "x-github-api-version": "2026-03-10",
+//     },
+//   },
+// );
