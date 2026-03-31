@@ -1,10 +1,10 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/appError.js";
-import { authTokens, db, eq } from "@repo/db";
+import { and, authTokens, db, eq } from "@repo/db";
 import * as crypto from "crypto";
 import { createId } from "@paralleldrive/cuid2";
-import { z } from "zod";
+import { createAuthTokenSchema } from "@repo/shared";
 
 // --- Get all the auth tokens for user ---
 export const getAuthTokens = catchAsync(async (req: Request, res: Response) => {
@@ -13,17 +13,23 @@ export const getAuthTokens = catchAsync(async (req: Request, res: Response) => {
   if (!user) throw new AppError("Authentication is required", 400);
 
   const rows = await db
-    .select()
+    .select({
+      id: authTokens.id,
+      user_id: authTokens.user_id,
+      name: authTokens.name,
+      key_id: authTokens.key_id,
+      permission: authTokens.permission,
+      valid_till: authTokens.valid_till,
+      terminated_at: authTokens.terminated_at,
+      created_at: authTokens.created_at,
+      updated_at: authTokens.updated_at,
+    })
     .from(authTokens)
     .where(eq(authTokens.user_id, user.id));
 
   res.status(200).json({ data: rows });
 });
 
-const createAuthTokenSchema = z.object({
-  name: z.string().max(255).min(3),
-  permission: z.enum(["read", "write"]),
-});
 // --- Create the auth token for user to get used by apis ---
 export const createAuthToken = catchAsync(
   async (req: Request, res: Response) => {
@@ -43,16 +49,39 @@ export const createAuthToken = catchAsync(
       key_id: id,
       secret,
       permission,
-      valid_till: new Date(),
+      valid_till: null,
       terminated_at: null,
     });
 
     res.status(201).json({
-      message: "Successfully had created the project intance",
+      message: "Auth token created successfully",
       data: {
         api_secret: secret,
         api_key: id,
       },
     });
+  },
+);
+
+export const deleteAuthToken = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 400);
+
+    const id = req.params.id;
+    if (!id || typeof id !== "string") {
+      throw new AppError("Auth token ID is required", 400);
+    }
+
+    const result = await db
+      .delete(authTokens)
+      .where(and(eq(authTokens.id, id), eq(authTokens.user_id, user.id)))
+      .returning({ id: authTokens.id });
+
+    if (result.length === 0) {
+      throw new AppError("Auth key not found", 404);
+    }
+
+    res.status(200).json({ message: "Auth key deleted successfully" });
   },
 );
