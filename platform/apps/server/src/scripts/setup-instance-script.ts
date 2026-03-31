@@ -1,6 +1,12 @@
-import { env } from "../lib/env.js";
+interface SetupInstanceScriptOptions {
+  sshKey: string;
+  authToken: string;
+}
 
-export const setupInstanceScript = (): string => {
+export const setupInstanceScript = ({
+  sshKey,
+  authToken,
+}: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
 exec > /var/log/user-data.log 2>&1
@@ -29,7 +35,7 @@ echo "Step 1: Setup SSH"
 
 mkdir -p "$USER_HOME/.ssh"
 
-echo "${env.SSH_KEY}" >> "$USER_HOME/.ssh/authorized_keys"
+echo "${sshKey}" >> "$USER_HOME/.ssh/authorized_keys"
 
 chmod 700 "$USER_HOME/.ssh"
 chmod 600 "$USER_HOME/.ssh/authorized_keys"
