@@ -7,9 +7,17 @@ type userRole = (typeof userRolesArray)[number];
 
 export const checkApiAuthorization = (allowedRoles: userRole[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const apiKey = req.headers["x-api-key"];
+    const authHeader = req.headers.authorization;
 
-    if (!apiKey || typeof apiKey !== "string") {
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({
+        error: "Authentication is required",
+      });
+    }
+
+    const apiKey = authHeader.split(" ")[1];
+
+    if (!apiKey) {
       return res.status(401).json({
         error: "Authentication is required",
       });
@@ -31,6 +39,12 @@ export const checkApiAuthorization = (allowedRoles: userRole[]) => {
     if (token.terminated_at) {
       return res.status(401).json({
         error: "API key is revoked",
+      });
+    }
+
+    if (!token.user_id) {
+      return res.status(401).json({
+        error: "Invalid token mapping",
       });
     }
 
