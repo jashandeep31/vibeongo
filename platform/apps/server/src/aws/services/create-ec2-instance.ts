@@ -10,8 +10,12 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
  */
 export const createEc2Instance = async ({
   region,
+  instanceType,
+  userData,
 }: {
   region: (typeof awsSupportedRegions)[number];
+  instanceType: string;
+  userData: string;
 }) => {
   const imageConfig = ec2RegionImageIds.find((item) => item.region === region);
   if (!imageConfig)
