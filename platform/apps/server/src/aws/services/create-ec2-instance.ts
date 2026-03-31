@@ -31,7 +31,7 @@ export const createEc2Instance = async ({
     Monitoring: {
       Enabled: false, // enable in future it's paid
     },
-    UserData: Buffer.from(setupInstanceScript()).toString("base64"),
+    // UserData: Buffer.from(setupInstanceScript()).toString("base64"),
   });
   const client = getEc2Client(region);
 
