@@ -6,6 +6,10 @@ import { env } from "./env.js";
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
 
+const clearCookies = (res: Response) => {
+  res.clearCookie("session");
+};
+
 export const checkAuthorization = (allowedRoles: userRole[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const { session } = req.cookies;
@@ -32,6 +36,7 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
         decoded === null ||
         typeof decoded.id !== "string"
       ) {
+        clearCookies(res);
         return res.status(401).json({
           error: "failed to authenticate",
         });
@@ -39,6 +44,7 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
 
       id = decoded.id;
     } catch {
+      clearCookies(res);
       return res.status(401).json({
         error: "failed to authenticate",
       });
@@ -47,6 +53,7 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
     const [user] = await db.select().from(users).where(eq(users.id, id));
 
     if (!user) {
+      clearCookies(res);
       return res.status(401).json({
         error: "failed to authenticate",
       });

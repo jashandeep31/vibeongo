@@ -31,9 +31,9 @@ export const projectConfigValidator = z.object({
   description: z.string().optional(),
   regionId: z.uuid(),
   instanceTypeId: z.uuid(),
+  sshKeyIds: z.array(z.uuid()),
 
   config: z.object({
-    sshKeys: z.array(z.string()),
     ports: z.array(
       z.object({
         port: z.number(),
