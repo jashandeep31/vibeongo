@@ -7,10 +7,14 @@ import {
 } from "../controlers/project/get-projects.js";
 import { getProjectConfigById } from "../controlers/project/get-project-config.js";
 
+import { checkApiAuthorization } from "../lib/check-api-authorization.js";
+
 const routes: Router = Router();
 
 routes.route("/:id").get(checkAuthorization(["all"]), getProjectById);
-routes.route("/:id/config").get(getProjectConfigById);
+routes
+  .route("/:id/config")
+  .get(checkApiAuthorization(["all"]), getProjectConfigById);
 
 routes
   .route("/")
