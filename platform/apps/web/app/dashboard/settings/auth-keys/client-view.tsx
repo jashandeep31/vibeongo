@@ -229,15 +229,13 @@ export default function ClientView() {
             })}
           </div>
         ) : (
-          <Card>
-            <CardContent className="text-muted-foreground p-8 text-center">
-              <KeyRound className="mx-auto mb-3 h-8 w-8 opacity-60" />
-              <p>No auth keys found.</p>
-              <p className="text-sm">
-                Create an auth key to access APIs securely.
-              </p>
-            </CardContent>
-          </Card>
+          <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
+            <KeyRound className="mx-auto mb-3 h-8 w-8 opacity-50" />
+            <p>No auth keys found.</p>
+            <p className="text-sm">
+              Create an auth key to access APIs securely.
+            </p>
+          </div>
         )}
       </div>
     </div>
