@@ -1,4 +1,11 @@
-import { pgTable, timestamp, uuid, varchar, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  timestamp,
+  uuid,
+  varchar,
+  unique,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { projects } from "./projects.js";
 
@@ -16,6 +23,7 @@ export const githubRepos = pgTable(
       })
       .unique(),
 
+    public: boolean().default(false),
     full_name: varchar({ length: 255 }).notNull(), // Full name refers to the username/reponame example "jashandeep31/vibeongo"
     repo_owner_username: varchar({ length: 255 }).notNull(), // username refers to the github username  example "jashandeep31"
 
