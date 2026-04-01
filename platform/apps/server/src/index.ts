@@ -12,6 +12,7 @@ import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/handler.js";
+import { githubRepoRoutes } from "./routes/github-repo-routes.js";
 
 const app = express();
 
@@ -51,6 +52,7 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
+app.use("/api/v1/github-repos", githubRepoRoutes);
 
 // --- Server ---
 app.listen(env.PORT, () => {
