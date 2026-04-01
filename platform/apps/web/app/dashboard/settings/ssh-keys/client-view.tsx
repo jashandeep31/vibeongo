@@ -47,8 +47,8 @@ export default function ClientView() {
                 >
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-[200px]" />
-                    <Skeleton className="h-3 w-[300px]" />
+                    <Skeleton className="h-4 w-75" />
+                    <Skeleton className="h-3 w-100" />
                   </div>
                 </div>
               ))}
@@ -57,7 +57,7 @@ export default function ClientView() {
             sshKeys.map((key) => (
               <div
                 key={key.id}
-                className="bg-card flex h-full items-center justify-between rounded-lg border px-2"
+                className="bg-card flex h-full items-center justify-between rounded-lg border px-2 py-6"
               >
                 <div className="flex items-center gap-4">
                   <div className="bg-primary/10 rounded-full p-2">
