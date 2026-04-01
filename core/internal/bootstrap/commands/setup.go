@@ -6,8 +6,6 @@ import (
 	"os/exec"
 
 	"github.com/fatih/color"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
 	"github.com/spf13/cobra"
@@ -58,7 +56,7 @@ func runSetup() error {
 	script := `#!/usr/bin/env bash`
 
 	// utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
-	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
+	// utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
 
 	cmd := exec.Command("bash", "-c", script)
 	stdout, err := cmd.StdoutPipe()
