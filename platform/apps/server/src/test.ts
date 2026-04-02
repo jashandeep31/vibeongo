@@ -1,16 +1,12 @@
 import { db, eq, githubRepos, users } from "@repo/db";
 import { octokitApp } from "./webhooks/github/handler.js";
-import { checkAppInstallationInRepo } from "./github-app-functions/check-appinstallation.js";
+import { getRepoAccessDetails } from "./github-app-functions/get-repo-access-details.js";
 
 export default async function test() {
   console.log(`Test server in running`);
 
   // things to here :-> create the token to clone the repo
   //
-  await checkAppInstallationInRepo({
-    repo: "aichat",
-    owner: "jashandeep31",
-  });
 
   // const repoUrl = "https://github.com/jashandeep31/aichat";
   // const repoFullName = "jashandeep31/aichat";
