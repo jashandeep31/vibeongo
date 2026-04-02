@@ -37,7 +37,7 @@ octokitApp.webhooks.on("issues.opened", async (event) => {
     })
     .from(githubRepos)
     .innerJoin(users, eq(githubRepos.user_id, users.id))
-    .leftJoin(projects, eq(githubRepos.project_id, projects.id))
+    .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
     .where(eq(githubRepos.full_name, full_name));
 
   console.log(full_name);
