@@ -41,7 +41,8 @@ export function CreateGithubRepoDialog() {
     } catch (error: any) {
       console.error(error);
       const message =
-        error?.response?.data?.message || "Failed to add GitHub repository";
+        error?.response?.data?.message ||
+        "Failed to add GitHub repository. Make sure you are the owner and have granted access.";
       toast.error(message, { id: toastId });
     }
   };
