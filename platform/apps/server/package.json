@@ -16,6 +16,7 @@
   "dependencies": {
     "@aws-sdk/client-ec2": "^3.988.0",
     "@google/genai": "^1.47.0",
+    "@octokit/types": "^16.0.0",
     "@octokit/webhooks": "^14.2.0",
     "@paralleldrive/cuid2": "^3.3.0",
     "@repo/db": "workspace:*",
