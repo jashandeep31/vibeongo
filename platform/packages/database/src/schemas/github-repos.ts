@@ -13,9 +13,11 @@ export const githubRepos = pgTable(
   "github_repos",
   {
     id: uuid().primaryKey().defaultRandom(),
-    user_id: uuid().references(() => users.id, {
-      onDelete: "cascade",
-    }),
+    user_id: uuid()
+      .references(() => users.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
 
     default_project_id: uuid()
       .references(() => projects.id, {
