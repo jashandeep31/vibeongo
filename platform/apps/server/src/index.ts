@@ -13,6 +13,8 @@ import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/handler.js";
 import { githubRepoRoutes } from "./routes/github-repo-routes.js";
+import { AppError } from "./lib/appError.js";
+import { NextFunction } from "express";
 
 const app = express();
 
@@ -53,6 +55,25 @@ app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 app.use("/api/v1/github-repos", githubRepoRoutes);
+
+// --- Global Error Handler ---
+app.use((err: Error, req: Request, res: Response) => {
+  let statusCode = 500;
+  let message = "Internal Server Error";
+
+  if (err instanceof AppError) {
+    statusCode = err.status;
+    message = err.message;
+  } else if (err.name === "ZodError") {
+    statusCode = 400;
+    message = "Validation Error";
+  }
+
+  res.status(statusCode).json({
+    message,
+    ...(env.NODE_ENV === "development" && { stack: err.stack }),
+  });
+});
 
 // --- Server ---
 app.listen(env.PORT, () => {
