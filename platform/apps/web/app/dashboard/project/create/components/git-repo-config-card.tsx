@@ -28,7 +28,7 @@ const GitRepoConfigCard = React.memo(() => {
           </div>
         ) : !userRepos || userRepos.length === 0 ? (
           <div className="text-muted-foreground bg-muted/50 rounded-lg border p-4 text-sm">
-            You don't have any connected GitHub repositories. Connect them in
+            You do not have any connected GitHub repositories. Connect them in
             the dashboard.
           </div>
         ) : (
@@ -40,7 +40,7 @@ const GitRepoConfigCard = React.memo(() => {
                   type="button"
                   key={repo.id}
                   onClick={() => toggleGitRepoId(repo.id)}
-                  className={`hover:bg-muted/50 flex items-center space-x-3 rounded-lg border p-3 text-left transition-colors ${
+                  className={`hover:bg-muted/50 flex items-start space-x-3 rounded-lg border p-3 text-left transition-colors ${
                     isSelected
                       ? "border-primary bg-primary/5 ring-primary ring-1"
                       : "bg-card border-border"
@@ -52,12 +52,20 @@ const GitRepoConfigCard = React.memo(() => {
                     onClick={(e) => e.stopPropagation()}
                     aria-label={`Select ${repo.full_name}`}
                   />
-                  <div
-                    className={`truncate text-sm font-medium ${
-                      isSelected ? "text-foreground" : "text-muted-foreground"
-                    }`}
-                  >
-                    {repo.full_name}
+                  <div className="min-w-0 flex-1">
+                    <div
+                      className={`truncate text-sm font-medium ${
+                        isSelected ? "text-foreground" : "text-muted-foreground"
+                      }`}
+                    >
+                      {repo.full_name}
+                    </div>
+                    <p className="text-muted-foreground mt-1 text-xs font-medium">
+                      Setup Script
+                    </p>
+                    <pre className="bg-muted/50 mt-1 max-h-28 overflow-auto rounded-md border p-2 font-mono text-xs break-words whitespace-pre-wrap">
+                      {repo.setup_script || "No setup script configured."}
+                    </pre>
                   </div>
                 </button>
               );

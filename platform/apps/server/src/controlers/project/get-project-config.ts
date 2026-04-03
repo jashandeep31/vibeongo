@@ -68,6 +68,7 @@ type ProjectReadyGithubRepo = {
   auth_token: string | null;
   public: boolean;
   folder_name: string;
+  setup_script: string;
 };
 const getProjectReadyGithubRepos = async (
   repos: (typeof githubRepos.$inferSelect)[],
@@ -94,6 +95,7 @@ const getProjectReadyGithubRepos = async (
       auth_token,
       public: repo.public || false,
       folder_name: repo.full_name.split("/").pop()!,
+      setup_script: repo.setup_script,
     });
   }
   return response;

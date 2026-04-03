@@ -1,11 +1,12 @@
 {
   "repos": [
     {
-      "clone_url": "https://github.com/jashandeep31/mailstudio.git",
-      "repo_url": "https://github.com/jashandeep31/mailstudio",
-      "auth_token": null,
-      "public": true,
-      "folder_name": "mailstudio"
+      "clone_url": "https://github.com/jashandeep31/aichat.git",
+      "repo_url": "https://github.com/jashandeep31/aichat",
+      "auth_token": "ghs_D7F9v5J5uH3tS6MXfiGosrWVUdUPlT0bQOqw",
+      "public": false,
+      "folder_name": "aichat",
+      "setup_script": "npm i -g pnpm \nnpm i"
     }
   ],
   "ssh_keys": [],
