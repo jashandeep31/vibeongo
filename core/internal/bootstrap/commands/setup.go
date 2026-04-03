@@ -3,6 +3,7 @@ package commands
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"os/exec"
 
 	"github.com/fatih/color"
@@ -36,6 +37,12 @@ func runSetup() error {
 	}
 
 	fmt.Println(cfg.Tasks)
+
+	fmt.Println(cfg.Repos)
+	if 1 == 1 {
+		log.Fatal("development mode")
+		return nil
+	}
 
 	// gh.Setup()
 	// NOTE: uses the older way
