@@ -11,6 +11,7 @@ import {
   projectSshKeys,
   sshKeys,
 } from "@repo/db";
+import { getGithubRepoReadonlyToken } from "../../github-app-functions/get-github-repo-readonly-token.js";
 
 export const getProjectConfigById = catchAsync(
   async (req: Request, res: Response) => {
@@ -71,11 +72,25 @@ const getProjectReadyGithubRepos = async (
   repos: (typeof githubRepos.$inferSelect)[],
 ): Promise<ProjectReadyGithubRepo[]> => {
   const response: ProjectReadyGithubRepo[] = [];
+
   for (const repo of repos) {
+    let auth_token = null;
+    if (!repo.public) {
+      // NOTE: batch request can be used to get the readonly token
+      // We aren't using it because due to not having clearity on the on which direction our project is going :(
+      const token = await getGithubRepoReadonlyToken(
+        repo.full_name.split("/").pop()!,
+        repo.installation_id,
+      );
+
+      if (token) {
+        auth_token = token;
+      }
+    }
     response.push({
       clone_url: `https://github.com/${repo.full_name}.git`,
       repo_url: `https://github.com/${repo.full_name}`,
-      auth_token: null,
+      auth_token,
       public: repo.public || false,
     });
   }

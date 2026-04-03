@@ -56,6 +56,7 @@ export const createGithubRepo = catchAsync(
       .insert(githubRepos)
       .values({
         user_id: user.id,
+        installation_id: result.installationId,
         full_name: repoData.full_name as string,
         repo_owner_username: repoData.owner.login as string,
         public: isPublic,

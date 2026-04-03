@@ -9,11 +9,13 @@ type RepoAccessResult =
       hasAppAccess: false;
       isPublic: null;
       repoData: null;
+      installationId: null;
     }
   | {
       hasAppAccess: true;
       isPublic: boolean;
       repoData: RepoAccessDetails;
+      installationId: number;
     };
 
 export const getRepoAccessDetails = async ({
@@ -32,7 +34,12 @@ export const getRepoAccessDetails = async ({
       },
     );
     if (data.id === null || data.client_id === null) {
-      return { hasAppAccess: false, isPublic: null, repoData: null };
+      return {
+        hasAppAccess: false,
+        isPublic: null,
+        repoData: null,
+        installationId: null,
+      };
     }
 
     const installationOctokit = await octokitApp.getInstallationOctokit(
@@ -48,9 +55,15 @@ export const getRepoAccessDetails = async ({
       hasAppAccess: true,
       isPublic: repoData.private ? false : true,
       repoData: repoData,
+      installationId: data.id,
     };
   } catch (e) {
     console.error("Error fetching repo access details:", e);
-    return { hasAppAccess: false, isPublic: null, repoData: null };
+    return {
+      hasAppAccess: false,
+      isPublic: null,
+      repoData: null,
+      installationId: null,
+    };
   }
 };
