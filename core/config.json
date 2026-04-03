@@ -1,12 +1,11 @@
 {
   "repos": [
     {
-      "clone_url": "https://github.com/jashandeep31/aichat.git",
-      "repo_url": "https://github.com/jashandeep31/aichat",
-      "auth_token": "ghs_D7F9v5J5uH3tS6MXfiGosrWVUdUPlT0bQOqw",
+      "full_name": "jashandeep31/aichat",
+      "access_token": "ghs_D7F9v5J5uH3tS6MXfiGosrWVUdUPlT0bQOqw",
       "public": false,
       "folder_name": "aichat",
-      "setup_script": "npm i -g pnpm \nnpm i"
+      "setup_script": "npm i -g pnpm \npnpm i"
     }
   ],
   "ssh_keys": [],
