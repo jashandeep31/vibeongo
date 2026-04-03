@@ -2,6 +2,7 @@ import { and, db, eq, instances, projects } from "@repo/db";
 import { AppError } from "../../lib/appError.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
+import { env } from "../../lib/env.js";
 
 export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
@@ -50,7 +51,7 @@ export const deleteProjectById = catchAsync(
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
 
-    if (1 === 1) {
+    if (1 === 1 && env.NODE_ENV !== "development") {
       // TODO: enable this feature
       // the reason if the user had created the instance but before getting allocated as aws takes little time to allocate the ip4 address
       // but user instantely delete the project and the instance is still running

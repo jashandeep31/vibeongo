@@ -1,12 +1,14 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
+import { createInstances } from "./seed/instances.seed.js";
 
 // --- database connection ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
 });
 export const db = drizzle({ client: pool });
+createInstances();
 export * from "drizzle-orm";
 export * from "./schemas/temp-ec2.js";
 export * from "./schemas/user.js";

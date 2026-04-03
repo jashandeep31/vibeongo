@@ -5,6 +5,7 @@ import {
   varchar,
   unique,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { projects } from "./projects.js";
@@ -24,6 +25,8 @@ export const githubRepos = pgTable(
         onDelete: "set null",
       })
       .unique(),
+
+    installation_id: integer().notNull(),
 
     public: boolean().default(false).notNull(),
     full_name: varchar({ length: 255 }).notNull(), // Full name refers to the username/reponame example "jashandeep31/vibeongo"
