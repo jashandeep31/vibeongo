@@ -5,6 +5,7 @@ import { Copy, Check, Loader2, Trash2, RotateCw } from "lucide-react";
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { OpencodeWebCard } from "@/components/opencode-web-card";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
@@ -151,27 +152,34 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           SSH
         </Button>
 
-        <Button
-          size="lg"
-          variant="destructive"
-          type="button"
-          disabled={isPending || isTerminated}
-          onClick={() => {
+        <ConfirmationDialog
+          title="Terminate instance"
+          description="Are you sure you want to terminate this instance? This action cannot be undone."
+          confirmText="Terminate"
+          isDestructive
+          onConfirm={() => {
             void handleTerminate();
           }}
         >
-          <Trash2 className="h-3 w-3" />
-          {isPending ? (
-            <>
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Terminating...
-            </>
-          ) : isTerminated ? (
-            "Terminated"
-          ) : (
-            "Terminate"
-          )}
-        </Button>
+          <Button
+            size="lg"
+            variant="destructive"
+            type="button"
+            disabled={isPending || isTerminated}
+          >
+            <Trash2 className="h-3 w-3" />
+            {isPending ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                Terminating...
+              </>
+            ) : isTerminated ? (
+              "Terminated"
+            ) : (
+              "Terminate"
+            )}
+          </Button>
+        </ConfirmationDialog>
       </div>
     );
   };
