@@ -83,7 +83,7 @@ systemctl start myserver
 
 cd $VIBEONGO_HOME
 date
+./install repo_setup
 ./install task
-
 `;
 };
