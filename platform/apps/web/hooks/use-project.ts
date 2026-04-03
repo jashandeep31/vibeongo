@@ -1,9 +1,10 @@
 import {
   createProject,
+  deleteProject,
   getProjectById,
   getProjects,
 } from "@/services/project-services";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useCreateProject = () =>
   useMutation({
@@ -28,3 +29,15 @@ export const useGetProjectById = (id: string | null) =>
     },
     enabled: !!id,
   });
+
+export const useDeleteProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProject,
+    onSuccess: (_, projectId) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+};
