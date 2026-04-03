@@ -44,16 +44,18 @@ export const createInstance = catchAsync(
         eq(instanceTypes.region_id, instanceRegions.id),
       )
       .leftJoin(projectSshKeys, eq(projectSshKeys.project_id, projects.id))
-      .innerJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
+      .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
       .where(
         and(eq(projects.user_id, user.id), eq(projects.id, body.projectId)),
       );
 
     const base = row[0];
+    console.log(base, row);
     if (!row || !base) throw new AppError("Project not found", 404);
 
-    const sshKeysArray = row.map((row) => row.sshKeys.value);
-
+    const sshKeysArray = row
+      .filter((r) => r.sshKeys !== null)
+      .map((r) => r.sshKeys!.value);
     const instanceRegion = z.enum(awsSupportedRegions).parse(base.region.slug);
 
     const [authToken] = await db
