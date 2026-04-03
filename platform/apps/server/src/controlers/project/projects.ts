@@ -40,3 +40,22 @@ export const getProjectById = catchAsync(
     });
   },
 );
+
+export const deleteProjectById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+
+    const { id } = req.params;
+    if (!id || typeof id !== "string")
+      throw new AppError("project id is required", 400);
+
+    await db
+      .delete(projects)
+      .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
+
+    res.status(200).json({
+      message: "Project deleted successfully",
+    });
+  },
+);
