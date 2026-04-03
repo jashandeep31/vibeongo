@@ -1,4 +1,4 @@
-package opencode
+package provision
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 )
 
-func Setup(cfg *config.OpenCodeConfig) {
+func SetupOpenCode(cfg *config.OpenCodeConfig) {
 	color.Green("Setting up the opencode")
 	// what we have to do is run the bash command
 	// we have to copy hte auth.json file
