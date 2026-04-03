@@ -1,4 +1,4 @@
-package nvim
+package provision
 
 import (
 	"fmt"
@@ -6,7 +6,6 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 )
 
-func Setup(cfg *config.NvimConfig) {
+func SetupNvim(cfg *config.NvimConfig) {
 	fmt.Println("Setting up the nvim")
-
 }

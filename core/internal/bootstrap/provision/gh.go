@@ -1,11 +1,11 @@
-package gh
+package provision
 
 import (
 	"fmt"
 	"os/exec"
 )
 
-func Setup() {
+func SetupGitHubCLI() {
 	script := `#!/usr/bin/env bash
 
 (type -p wget >/dev/null || (sudo apt update && sudo apt install wget -y)) \
