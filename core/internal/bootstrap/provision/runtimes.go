@@ -1,4 +1,4 @@
-package runtimes
+package provision
 
 func NodeJSSetup() string {
 	script := `
