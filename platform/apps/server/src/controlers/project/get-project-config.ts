@@ -56,6 +56,12 @@ export const getProjectConfigById = catchAsync(
       repos: await getProjectReadyGithubRepos(github_repos),
       ssh_keys: ssh_keys,
       ...(project.config as any),
+      tasks: [
+        {
+          folder_name: "aichat",
+          task: "can please fix the current landing page create a plan.md that what we can imporove ",
+        },
+      ],
     };
 
     res.status(200).json({ data: config });

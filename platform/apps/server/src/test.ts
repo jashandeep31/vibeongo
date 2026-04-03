@@ -9,17 +9,17 @@ export default async function test() {
   // things to here :-> create the token to clone the repo
   //
 
-  // const repoUrl = "https://github.com/jashandeep31/aichat";
-  // const repoFullName = "jashandeep31/aichat";
-  // const [owner, repo] = repoFullName.split("/");
-  // if (!owner || !repo) return;
-  // const { data: installation } = await octokitApp.octokit.request(
-  //   "GET /repos/{owner}/{repo}/installation",
-  //   { owner, repo },
-  // );
-  // console.log(installation);
-  // const tokenData = await getGithubRepoReadonlyToken("aichat", installation.id);
-  // console.log(tokenData, "token");
+  const repoUrl = "https://github.com/jashandeep31/aichat";
+  const repoFullName = "jashandeep31/aichat";
+  const [owner, repo] = repoFullName.split("/");
+  if (!owner || !repo) return;
+  const { data: installation } = await octokitApp.octokit.request(
+    "GET /repos/{owner}/{repo}/installation",
+    { owner, repo },
+  );
+  console.log(installation);
+  const tokenData = await getGithubRepoReadonlyToken("aichat", installation.id);
+  console.log(tokenData, "token");
   // --- Please remove this line if you wanna run the function ----
   if (1 === 1) return;
 
