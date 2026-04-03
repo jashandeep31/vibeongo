@@ -84,6 +84,6 @@ systemctl start myserver
 cd $VIBEONGO_HOME
 date
 ./install repo_setup
-./install task
+sudo -u ubuntu bash -c "cd $VIBEONGO_HOME && ./install task"
 `;
 };
