@@ -1,4 +1,4 @@
-package gitrepos
+package provision
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 )
 
-func Setup(gitRepos []config.GitRepoConfig) string {
+func SetupGitRepos(gitRepos []config.GitRepoConfig) string {
 	script := ``
 	path := "/home/ubuntu/code"
 	utils.AppendToBashScript(&script, `mkdir -p `+path)
@@ -22,18 +22,18 @@ func Setup(gitRepos []config.GitRepoConfig) string {
 
 		utils.AppendToBashScript(&script, getGitRepoCloneCommand(repo)+" "+projectFolderPath)
 	}
+
 	return script
 }
 
-// getGitRepoCloneCommand
-
-// Returns the command to clone the git repo with the access token if it is provided
+// Returns the command to clone the git repo with the access token if it is provided.
 func getGitRepoCloneCommand(repo config.GitRepoConfig) string {
 	cmd := "git clone"
 	if repo.AccessToken != "" {
 		cmd += " " + "https://x-access-token:" + repo.AccessToken + "@github.com/" + repo.FullName + ".git"
 		return cmd
 	}
+
 	cmd += " " + "https://github.com/" + repo.FullName + ".git"
 	return cmd
 }
