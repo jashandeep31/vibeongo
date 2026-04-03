@@ -25,7 +25,7 @@ export const githubRepos = pgTable(
       })
       .unique(),
 
-    public: boolean().default(false),
+    public: boolean().default(false).notNull(),
     full_name: varchar({ length: 255 }).notNull(), // Full name refers to the username/reponame example "jashandeep31/vibeongo"
     repo_owner_username: varchar({ length: 255 }).notNull(), // username refers to the github username  example "jashandeep31"
 
