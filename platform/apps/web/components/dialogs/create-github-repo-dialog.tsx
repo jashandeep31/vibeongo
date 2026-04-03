@@ -50,7 +50,7 @@ export function CreateGithubRepoDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button>
+        <Button variant="outline" size="sm">
           <PlusCircle className="mr-2 h-4 w-4" />
           Add Repository
         </Button>

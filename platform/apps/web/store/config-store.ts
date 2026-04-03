@@ -80,16 +80,7 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   instanceRegionId: "",
   setInstanceRegion: (region) => set(() => ({ instanceRegionId: region })),
 
-  //TODO: remove the demo data in the production
-  gitRepos: [
-    {
-      id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
-      git_url: "https://github.com/jashandeep31/mailstudio.git",
-      access_token: "",
-      folder_name: "mailstudio",
-      setup_script: "",
-    },
-  ],
+  gitRepos: [],
   setGitRepos: (repos) => set(() => ({ gitRepos: repos })),
   addGitRepo: (rep) => set((state) => ({ gitRepos: [...state.gitRepos, rep] })),
   removeGitRepo: (id) =>
