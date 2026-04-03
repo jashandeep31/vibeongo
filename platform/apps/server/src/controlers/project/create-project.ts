@@ -1,7 +1,17 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/appError.js";
-import { db, projects, projectSshKeys } from "@repo/db";
+import {
+  db,
+  githubRepos,
+  projectGithubRepos,
+  projects,
+  projectSshKeys,
+  and,
+  eq,
+  inArray,
+  sshKeys,
+} from "@repo/db";
 import { projectConfigValidator } from "@repo/shared";
 
 export const createProject = catchAsync(async (req: Request, res: Response) => {
@@ -9,9 +19,44 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
   if (!user) {
     throw new AppError("authentication is required", 401);
   }
-  const { body } = req;
 
+  const { body } = req;
   const parsedData = projectConfigValidator.parse(body);
+
+  const validRepos = await db
+    .select()
+    .from(githubRepos)
+    .where(
+      and(
+        eq(githubRepos.user_id, user.id),
+        inArray(githubRepos.id, parsedData.githubRepoIds),
+      ),
+    );
+
+  const validSshKeys = await db
+    .select()
+    .from(sshKeys)
+    .where(
+      and(
+        eq(sshKeys.user_id, user.id),
+        inArray(sshKeys.id, parsedData.sshKeyIds),
+      ),
+    );
+  const githubRepoData: { project_id: string; github_repo_id: string }[] =
+    validRepos.map((item) => {
+      return {
+        project_id: project.id,
+        github_repo_id: item.id,
+      };
+    });
+
+  const sshKeyData: { project_id: string; ssh_key_id: string }[] =
+    validSshKeys.map((item) => {
+      return {
+        project_id: project.id,
+        ssh_key_id: item.id,
+      };
+    });
 
   const project = await db.transaction(async (tx) => {
     const [project] = await tx
@@ -27,12 +72,9 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
       .returning();
     if (!project) throw new AppError("project not created", 400);
 
-    for (const sshKeyId of parsedData.sshKeyIds) {
-      await tx.insert(projectSshKeys).values({
-        project_id: project.id,
-        ssh_key_id: sshKeyId,
-      });
-    }
+    // --- Linking the repective github repos and ssh keys to the project ---
+    await tx.insert(projectGithubRepos).values(githubRepoData);
+    await tx.insert(projectSshKeys).values(sshKeyData);
 
     return project;
   });

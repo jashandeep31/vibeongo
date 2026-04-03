@@ -6,9 +6,9 @@ import { getSession } from "@/lib/getSession";
 import { redirect } from "next/navigation";
 
 export default async function ProjectsPage() {
-  const session = await getSession()
-  if(!session || !session.id){
-    redirect("/login")
+  const session = await getSession();
+  if (!session || !session.id) {
+    redirect("/login");
   }
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
