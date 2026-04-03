@@ -4,14 +4,6 @@ import {
   createPortRule,
 } from "@/app/dashboard/project/create/types";
 
-interface GitRepo {
-  id: string;
-  git_url: string;
-  access_token: string;
-  folder_name: string;
-  setup_script: string;
-}
-
 interface ContainerConfig {
   id: string;
   name: string;
@@ -42,10 +34,9 @@ interface ConfigStore {
   instanceRegionId: string;
   setInstanceRegion: (region: string) => void;
 
-  gitRepos: GitRepo[];
-  setGitRepos: (repos: GitRepo[]) => void;
-  addGitRepo: (rep: GitRepo) => void;
-  removeGitRepo: (id: string) => void;
+  gitRepoIds: string[];
+  setGitRepoIds: (ids: string[]) => void;
+  toggleGitRepoId: (id: string) => void;
 
   sshKeys: string[];
   setSshKeys: (keys: string[]) => void;
@@ -71,8 +62,8 @@ interface ConfigStore {
 }
 
 export const useConfigStore = create<ConfigStore>((set) => ({
-  projectName: "Demo project dummy name",
   setProjectName: (name) => set(() => ({ projectName: name })),
+  projectName: "Demo project dummy name",
 
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
@@ -80,12 +71,13 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   instanceRegionId: "",
   setInstanceRegion: (region) => set(() => ({ instanceRegionId: region })),
 
-  gitRepos: [],
-  setGitRepos: (repos) => set(() => ({ gitRepos: repos })),
-  addGitRepo: (rep) => set((state) => ({ gitRepos: [...state.gitRepos, rep] })),
-  removeGitRepo: (id) =>
+  gitRepoIds: [],
+  setGitRepoIds: (ids) => set(() => ({ gitRepoIds: ids })),
+  toggleGitRepoId: (id) =>
     set((state) => ({
-      gitRepos: state.gitRepos.filter((repo) => repo.id !== id),
+      gitRepoIds: state.gitRepoIds.includes(id)
+        ? state.gitRepoIds.filter((repoId) => repoId !== id)
+        : [...state.gitRepoIds, id],
     })),
 
   sshKeys: [],
