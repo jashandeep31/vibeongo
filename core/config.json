@@ -1,28 +1,22 @@
 {
-  "token": "thissecretToke",
-  "sshKeys": [],
-  "ports": [
-    {
-      "port": 80,
-      "protocol": "TCP"
-    },
-    {
-      "port": 443,
-      "protocol": "TCP"
-    }
-  ],
   "repos": [
     {
-      "git_url": "https://github.com/jashandeep31/mailstudio.git",
-      "access_token": "",
-      "folder_name": "mailstudio",
-      "setup_script": "touch test.txt\necho \"hello world\" >> test.txt\nnode -v\nnpm i -g pnpm \npnpm i"
+      "clone_url": "https://github.com/jashandeep31/mailstudio.git",
+      "repo_url": "https://github.com/jashandeep31/mailstudio",
+      "auth_token": null,
+      "public": true,
+      "folder_name": "mailstudio"
     }
+  ],
+  "ssh_keys": [],
+  "ports": [
+    { "port": 80, "protocol": "TCP" },
+    { "port": 443, "protocol": "TCP" }
   ],
   "packages": [
     {
       "name": "docker",
-      "enabled": true,
+      "enabled": false,
       "config": {
         "containers": [
           {
@@ -35,14 +29,7 @@
     {
       "name": "opencode",
       "enabled": true,
-      "config": {
-        "auth_json": {
-          "google": {
-            "type": "api",
-            "key": "Please change the key from the google api console its leaked due to comment push "
-          }
-        }
-      }
+      "config": { "auth_json": "{\"auths\":{}}" }
     },
     {
       "name": "nvim",
@@ -50,15 +37,6 @@
       "config": {
         "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
       }
-    }
-  ],
-  "tasks": [
-    {
-      "folder_name": "mailstudio",
-      "task": "pnpm i"
-    },
-    {
-      "task": "pnpm i"
     }
   ]
 }
