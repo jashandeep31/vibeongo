@@ -42,24 +42,8 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
         inArray(sshKeys.id, parsedData.sshKeyIds),
       ),
     );
-  const githubRepoData: { project_id: string; github_repo_id: string }[] =
-    validRepos.map((item) => {
-      return {
-        project_id: project.id,
-        github_repo_id: item.id,
-      };
-    });
-
-  const sshKeyData: { project_id: string; ssh_key_id: string }[] =
-    validSshKeys.map((item) => {
-      return {
-        project_id: project.id,
-        ssh_key_id: item.id,
-      };
-    });
-
-  const project = await db.transaction(async (tx) => {
-    const [project] = await tx
+  const databaseRow = await db.transaction(async (tx) => {
+    const [projectRow] = await tx
       .insert(projects)
       .values({
         name: parsedData.name,
@@ -70,17 +54,35 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
         config: parsedData.config,
       })
       .returning();
-    if (!project) throw new AppError("project not created", 400);
+    if (!projectRow) throw new AppError("project not created", 400);
+
+    const githubRepoData: { project_id: string; github_repo_id: string }[] =
+      validRepos.map((item) => {
+        return {
+          project_id: projectRow.id,
+          github_repo_id: item.id,
+        };
+      });
+
+    const sshKeyData: { project_id: string; ssh_key_id: string }[] =
+      validSshKeys.map((item) => {
+        return {
+          project_id: projectRow.id,
+          ssh_key_id: item.id,
+        };
+      });
 
     // --- Linking the repective github repos and ssh keys to the project ---
-    await tx.insert(projectGithubRepos).values(githubRepoData);
-    await tx.insert(projectSshKeys).values(sshKeyData);
+    if (githubRepoData.length)
+      await tx.insert(projectGithubRepos).values(githubRepoData);
 
-    return project;
+    if (sshKeyData.length) await tx.insert(projectSshKeys).values(sshKeyData);
+
+    return projectRow;
   });
 
   res.status(200).json({
     message: "Project created successfully",
-    data: project,
+    data: databaseRow,
   });
 });

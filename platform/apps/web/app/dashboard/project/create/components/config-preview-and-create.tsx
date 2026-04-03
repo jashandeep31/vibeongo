@@ -10,7 +10,7 @@ import { useRouter } from "next/navigation";
 export default function ConfigPreviewAndCreate() {
   const router = useRouter();
   const {
-    gitRepos,
+    gitRepoIds,
     projectName,
     sshKeys,
     portRules,
@@ -26,17 +26,11 @@ export default function ConfigPreviewAndCreate() {
     regionId: instanceRegionId,
     instanceTypeId: instanceTypeId,
     sshKeyIds: sshKeys,
+    githubRepoIds: gitRepoIds,
     config: {
       ports: portRules.map((rule) => ({
         port: parseInt(rule.port, 10),
         protocol: rule.protocol,
-      })),
-
-      repos: gitRepos.map((repo) => ({
-        git_url: repo.git_url,
-        access_token: repo.access_token,
-        folder_name: repo.folder_name,
-        setup_script: repo.setup_script || "",
       })),
       packages: [
         {
