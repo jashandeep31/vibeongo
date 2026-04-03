@@ -71,7 +71,6 @@ export const createInstance = catchAsync(
     });
 
     console.log(intialScript);
-    // if (1 == 1) throw new AppError("test", 500);
     const awsRes = await createEc2Instance({
       region: instanceRegion,
       instanceType: base.instanceType.slug,
