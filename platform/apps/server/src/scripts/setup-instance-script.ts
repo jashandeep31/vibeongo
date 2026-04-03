@@ -13,24 +13,6 @@ export const setupInstanceScript = ({
 set -euxo pipefail
 exec > /var/log/user-data.log 2>&1
 
-date
-# Create the swap file
-sudo fallocate -l 3G /swapfile
-
-# Set permissions
-sudo chmod 600 /swapfile
-
-# Make it a swap
-sudo mkswap /swapfile
-
-# Enable it
-sudo swapon /swapfile
-
-# Make it permanent across reboots
-
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-
-
 USER_HOME="/home/ubuntu"
 VIBEONGO_HOME="$USER_HOME/vibeongo"
 
