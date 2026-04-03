@@ -47,12 +47,13 @@ export default async function test() {
       .from(githubRepos)
       .where(eq(githubRepos.full_name, repo.repository.full_name));
 
-    if (!isRepo) {
-      await db.insert(githubRepos).values({
-        user_id: user.id,
-        full_name: repo.repository.full_name,
-        repo_owner_username: repo.repository.owner.login,
-      });
-    }
+    // if (!isRepo) {
+    //   await db.insert(githubRepos).values({
+    //     user_id: user.id,
+    //     installation_id: installation.id,
+    //     full_name: repo.repository.full_name,
+    //     repo_owner_username: repo.repository.owner.login,
+    //   });
+    // }
   });
 }
