@@ -17,10 +17,10 @@ export const getGithubRepoReadonlyToken = async (
       installation_id: installationId,
       repositories: [repo_name],
       permissions: {
-        contents: "write", // read-only to contents
+        contents: "read", // read-only to contents
         metadata: "read", // required by GitHub alongside contents
-        issues: "write",
-        pull_requests: "write",
+        // issues: "write",
+        // pull_requests: "write",
       },
     },
   );
