@@ -63,9 +63,8 @@ export const getProjectConfigById = catchAsync(
 );
 
 type ProjectReadyGithubRepo = {
-  clone_url: string;
-  repo_url: string;
-  auth_token: string | null;
+  full_name: string;
+  access_token: string | null;
   public: boolean;
   folder_name: string;
   setup_script: string;
@@ -90,9 +89,8 @@ const getProjectReadyGithubRepos = async (
       }
     }
     response.push({
-      clone_url: `https://github.com/${repo.full_name}.git`,
-      repo_url: `https://github.com/${repo.full_name}`,
-      auth_token,
+      full_name: repo.full_name,
+      access_token: auth_token,
       public: repo.public || false,
       folder_name: repo.full_name.split("/").pop()!,
       setup_script: repo.setup_script,

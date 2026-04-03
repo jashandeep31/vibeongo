@@ -37,8 +37,7 @@ type DockerConfig struct {
 }
 
 type GitRepoConfig struct {
-	URL         string `json:"clone_url"`
-	RepoUrl     string `json:"repo_url"`
+	FullName    string `json:"full_name"`
 	SetupScript string `json:"setup_script"`
 	FolderName  string `json:"folder_name"`
 	AccessToken string `json:"access_token"`
