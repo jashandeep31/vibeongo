@@ -4,6 +4,7 @@ import {
   createGithubRepo,
   getUserGitRepos,
   deleteGithubRepo,
+  updateGithubRepoById,
 } from "../controlers/github-repo/github-repo-controller.js";
 
 const routes: Router = Router();
@@ -12,6 +13,9 @@ routes
   .post(checkAuthorization(["all"]), createGithubRepo)
   .get(checkAuthorization(["all"]), getUserGitRepos);
 
-routes.route("/:id").delete(checkAuthorization(["all"]), deleteGithubRepo);
+routes
+  .route("/:id")
+  .delete(checkAuthorization(["all"]), deleteGithubRepo)
+  .post(checkAuthorization(["all"]), updateGithubRepoById);
 
 export const githubRepoRoutes = routes;

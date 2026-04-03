@@ -3,7 +3,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { db, githubRepos, eq, and } from "@repo/db";
-import { createGithubRepoSchema } from "@repo/shared";
+import { createGithubRepoSchema, z } from "@repo/shared";
 
 export const getUserGitRepos = catchAsync(
   async (req: Request, res: Response) => {
@@ -25,7 +25,7 @@ export const createGithubRepo = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("Authnatication is required", 400);
 
-    const { url } = createGithubRepoSchema.parse(req.body);
+    const { url, setup_script } = createGithubRepoSchema.parse(req.body);
 
     let owner = "";
     let repoName = "";
@@ -59,6 +59,7 @@ export const createGithubRepo = catchAsync(
         installation_id: result.installationId,
         full_name: repoData.full_name as string,
         repo_owner_username: repoData.owner.login as string,
+        setup_script: setup_script,
         public: isPublic,
       })
       .returning();
@@ -96,6 +97,34 @@ export const deleteGithubRepo = catchAsync(
     res.status(200).json({
       message: "Successfully deleted the github repo",
       data: deletedRepo[0],
+    });
+  },
+);
+
+export const updateGithubRepoById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authnatication is required", 400);
+
+    const { id } = req.params;
+    if (!id || typeof id !== "string")
+      throw new AppError("Repo id is required", 400);
+
+    const { setup_script } = z
+      .object({
+        setup_script: z.string().default(""),
+      })
+      .parse(req.body);
+
+    await db
+      .update(githubRepos)
+      .set({
+        setup_script,
+      })
+      .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
+
+    res.status(200).json({
+      message: "Successfully updated the github repo",
     });
   },
 );
