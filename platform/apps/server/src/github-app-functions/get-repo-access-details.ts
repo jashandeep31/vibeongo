@@ -1,4 +1,4 @@
-import { octokitApp } from "../webhooks/github/handler.js";
+import { octokitApp } from "../webhooks/github/index.js";
 import { Endpoints } from "@octokit/types";
 
 export type RepoAccessDetails =

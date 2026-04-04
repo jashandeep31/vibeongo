@@ -2,7 +2,7 @@ import { AppError } from "../../lib/appError.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
-import { db, githubRepos, eq, and } from "@repo/db";
+import { db, githubRepos, eq, and, projects } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 
 export const getUserGitRepos = catchAsync(
@@ -110,16 +110,32 @@ export const updateGithubRepoById = catchAsync(
     if (!id || typeof id !== "string")
       throw new AppError("Repo id is required", 400);
 
-    const { setup_script } = z
+    const { setup_script, default_project_id } = z
       .object({
         setup_script: z.string().default(""),
+        default_project_id: z.string().nullable(),
       })
       .parse(req.body);
 
+    let project = null;
+    if (default_project_id) {
+      const [projectRow] = await db
+        .select()
+        .from(projects)
+        .where(
+          and(
+            eq(projects.id, default_project_id),
+            eq(projects.user_id, user.id),
+          ),
+        );
+      if (!projectRow) throw new AppError("Project not found", 404);
+      project = projectRow;
+    }
     await db
       .update(githubRepos)
       .set({
         setup_script,
+        default_project_id: project?.id || null,
       })
       .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
 

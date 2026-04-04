@@ -1,4 +1,4 @@
-import { octokitApp } from "../webhooks/github/handler.js";
+import { octokitApp } from "../webhooks/github/index.js";
 
 /**
  * Function allow to get the readonly token for the github repo
