@@ -40,13 +40,13 @@ octokitApp.webhooks.on("issues.opened", async (event) => {
     .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
     .where(eq(githubRepos.full_name, full_name));
 
-  console.log(full_name);
   if (!row || !row.repo || !row.user || !row.project || !payload.issue.body) {
     console.log(row?.repo, row?.user, row?.project, payload.issue.body);
     return;
   }
-  console.log("We are in the right repo");
   const task = await getRefinedTaskFromUserIssuesComment(payload.issue.body);
+  console.log(row);
+
   console.log(task);
   //1. spin the vps
   //2. pass as the task
