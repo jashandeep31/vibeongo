@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { getProjectSessionConfig } from "../controllers/project-sessions/project-session-config.js";
+import { getProjectSessionConfig } from "../controllers/project-sessions/get-project-session-config.js";
 
 const routes: Router = Router();
 
