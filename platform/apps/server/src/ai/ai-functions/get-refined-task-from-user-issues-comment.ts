@@ -11,5 +11,5 @@ export const getRefinedTaskFromUserIssuesComment = async (comment: string) => {
     },
     contents: comment,
   });
-  return res.text;
+  return res.text!;
 };
