@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   serveBootstrapServer,
   serveServer,
-} from "../controlers/miscellaneous-controller.js";
+} from "../controllers/miscellaneous-controller.js";
 
 const routes: Router = Router();
 

@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { createProject } from "../controlers/project/create-project.js";
+import { createProject } from "../controllers/project/create-project.js";
 import { checkAuthorization } from "../lib/check-authorization.js";
 import {
   deleteProjectById,
   getProjectById,
   getProjects,
-} from "../controlers/project/projects.js";
-import { getProjectConfigById } from "../controlers/project/get-project-config.js";
+} from "../controllers/project/projects.js";
+import { getProjectConfigById } from "../controllers/project/get-project-config.js";
 
 import { checkApiAuthorization } from "../lib/check-api-authorization.js";
 

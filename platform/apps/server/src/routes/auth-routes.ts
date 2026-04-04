@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   githubAuthCallbackController,
   githubAuthUrl,
-} from "../controlers/auth/github-auth.js";
+} from "../controllers/auth/github-auth.js";
 
 const routes: Router = Router();
 routes.route("/github").get(githubAuthUrl);
