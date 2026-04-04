@@ -1,6 +1,14 @@
 import { App, IssuesOpenedEvent } from "@octokit/webhooks-types";
 import { WebhookHandler } from "../types.js";
-import { db, eq, githubRepos, projects, users } from "@repo/db";
+import {
+  db,
+  eq,
+  githubRepos,
+  projects,
+  projectSessions,
+  projectSesssionTasks,
+  users,
+} from "@repo/db";
 import { getRefinedTaskFromUserIssuesComment } from "../../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
 
 export const issueOpenedHandler = async (
@@ -27,14 +35,29 @@ export const issueOpenedHandler = async (
     console.log(row?.repo, row?.user, row?.project, payload.issue.body);
     return;
   }
+  const { project, user, repo } = row;
+  // Refining the task given by the user
   const task = await getRefinedTaskFromUserIssuesComment(payload.issue.body);
-  const tasks: {
-    folderName: string;
-    task: string;
-  }[] = [];
+  console.log({
+    folder: row.repo.full_name.split("/")[1],
+    task,
+  });
+  await db.transaction(async (tx) => {
+    const [session] = await tx
+      .insert(projectSessions)
+      .values({
+        user_id: row.user.id,
+        project_id: project.id,
+      })
+      .returning();
+    if (!session) return;
 
-  tasks.push({
-    folderName: row.repo.full_name.split("/")[1]!,
-    task: task,
+    await tx.insert(projectSesssionTasks).values({
+      folder_name: row.repo.full_name.split("/")[1]!,
+      task: task,
+      done: false,
+      project_session_id: session.id,
+    });
+    return session;
   });
 };

@@ -2,7 +2,7 @@ import { Router } from "express";
 import {
   getIntanceRegions,
   getInstanceTypesByRegion,
-} from "../controlers/instance-metadata-controllers.js";
+} from "../controllers/instance-metadata-controllers.js";
 
 const routes: Router = Router();
 

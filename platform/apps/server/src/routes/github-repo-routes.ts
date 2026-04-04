@@ -5,7 +5,7 @@ import {
   getUserGitRepos,
   deleteGithubRepo,
   updateGithubRepoById,
-} from "../controlers/github-repo/github-repo-controller.js";
+} from "../controllers/github-repo/github-repo-controller.js";
 
 const routes: Router = Router();
 routes
