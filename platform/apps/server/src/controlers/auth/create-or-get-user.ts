@@ -4,6 +4,7 @@ interface CreateUser {
   email: string;
   name?: string | undefined;
   token: string;
+  username: string;
 }
 
 const provider: typeof accounts.$inferInsert.provider = "github";
@@ -48,6 +49,7 @@ export const createOrGetUser = async ({
   email,
   name,
   token,
+  username,
 }: CreateUser): Promise<typeof users.$inferSelect> => {
   const [existingUser] = await db
     .select()
@@ -70,6 +72,7 @@ export const createOrGetUser = async ({
         email,
         first_name: firstName,
         last_name: lastName,
+        username,
       })
       .returning();
     if (!createdUser) throw new Error(internalError);

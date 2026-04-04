@@ -20,6 +20,7 @@ func init() {
 	rootCmd.AddCommand(commands.SetupCmd())
 	rootCmd.AddCommand(commands.UpdateCmd())
 	rootCmd.AddCommand(commands.TaskCmd())
+	rootCmd.AddCommand(commands.RepoSetupCmd())
 }
 
 func Execute() {

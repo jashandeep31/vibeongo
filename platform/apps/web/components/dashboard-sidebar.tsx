@@ -16,6 +16,8 @@ import {
   PlusCircle,
   Settings,
   FolderOpen,
+  Home,
+  GitFork,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -28,7 +30,7 @@ const sidebarLinks: {
   {
     title: "Dashboard",
     url: "/dashboard",
-    icon: FolderOpen,
+    icon: Home,
   },
 
   {
@@ -40,6 +42,11 @@ const sidebarLinks: {
     title: "Create Project",
     url: "/dashboard/project/create",
     icon: PlusCircle,
+  },
+  {
+    title: "Repos",
+    url: "/dashboard/repos",
+    icon: GitFork,
   },
   {
     title: "Billing",

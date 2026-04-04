@@ -12,6 +12,7 @@ import {
 } from "@repo/ui/components/card";
 import { instances } from "@repo/db";
 import { useTerminateInstance } from "@/hooks/use-instance";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { toast } from "sonner";
 
 type ProjectInstance = typeof instances.$inferSelect;
@@ -191,26 +192,33 @@ export function ProjectInstanceCard({
         </div>
 
         <div className="mt-4 flex justify-end gap-2">
-          <Button
-            size="sm"
-            variant="destructive"
-            type="button"
-            disabled={isPending || isTerminated}
-            onClick={() => {
+          <ConfirmationDialog
+            title="Terminate instance"
+            description="Are you sure you want to terminate this instance? This action cannot be undone."
+            confirmText="Terminate"
+            isDestructive
+            onConfirm={() => {
               void handleTerminate();
             }}
           >
-            {isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Terminating...
-              </>
-            ) : isTerminated ? (
-              "Terminated"
-            ) : (
-              "Terminate"
-            )}
-          </Button>
+            <Button
+              size="sm"
+              variant="destructive"
+              type="button"
+              disabled={isPending || isTerminated}
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Terminating...
+                </>
+              ) : isTerminated ? (
+                "Terminated"
+              ) : (
+                "Terminate"
+              )}
+            </Button>
+          </ConfirmationDialog>
           {!isTerminated ? (
             <Button asChild size="sm">
               <Link href={`/projects/${projectId}/instances/${instance.id}`}>
