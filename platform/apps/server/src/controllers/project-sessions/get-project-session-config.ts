@@ -13,7 +13,7 @@ import {
   sshKeys,
 } from "@repo/db";
 import { AppError } from "../../lib/appError.js";
-import { getGithubRepoReadonlyToken } from "../../github-app-functions/get-github-repo-readonly-token.js";
+import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 
 export const getProjectSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -61,7 +61,7 @@ export const getProjectSessionConfig = catchAsync(
 
     const config = {
       ...(project.config as any),
-      repos: await getProjectReadyGithubRepos(validRepos),
+      repos: await getConfigReadyGithubRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
         folder_name: t.folder_name,
@@ -72,35 +72,3 @@ export const getProjectSessionConfig = catchAsync(
     res.status(200).json({ data: { config } });
   },
 );
-
-type ProjectReadyGithubRepo = {
-  full_name: string;
-  access_token: string | null;
-  public: boolean;
-  folder_name: string;
-  setup_script: string;
-};
-
-const getProjectReadyGithubRepos = async (
-  repos: (typeof githubRepos.$inferSelect)[],
-): Promise<ProjectReadyGithubRepo[]> => {
-  return Promise.all(
-    repos.map(async (repo) => {
-      const folder_name = repo.full_name.split("/").pop()!;
-      const access_token = repo.public
-        ? null
-        : ((await getGithubRepoReadonlyToken(
-            folder_name,
-            repo.installation_id,
-          )) ?? null);
-
-      return {
-        full_name: repo.full_name,
-        access_token,
-        public: repo.public ?? false,
-        folder_name,
-        setup_script: repo.setup_script,
-      };
-    }),
-  );
-};
