@@ -27,3 +27,10 @@ export const getProjectById = async (
   });
   return res.data.data;
 };
+
+export const deleteProject = async (id: string) => {
+  const res = await axios.delete(BACKEND_URL + `/api/v1/projects/${id}`, {
+    withCredentials: true,
+  });
+  return res.data;
+};

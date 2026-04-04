@@ -37,10 +37,11 @@ type DockerConfig struct {
 }
 
 type GitRepoConfig struct {
-	URL         string `json:"git_url"`
-	AccessToken string `json:"access_token"`
-	FolderName  string `json:"folder_name"`
+	FullName    string `json:"full_name"`
 	SetupScript string `json:"setup_script"`
+	FolderName  string `json:"folder_name"`
+	AccessToken string `json:"access_token"`
+	Public      bool   `json:"public"`
 }
 
 type OpenCodeConfig struct {

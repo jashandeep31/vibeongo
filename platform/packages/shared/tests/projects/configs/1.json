@@ -1,50 +1,61 @@
 {
-  "ssh_keys": ["ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC3..."],
-  "ports": [
-    {
-      "port": 8080,
-      "protocol": "TCP"
-    }
-  ],
-  "repos": [
-    {
-      "git_url": "https://github.com/example/repo.git"
-    }
-  ],
-  "packages": [
-    {
-      "name": "opencode",
-      "config": {
-        "command": "echo 'Hello World'"
+  "name": "Test Project",
+  "description": "A test project",
+  "regionId": "123e4567-e89b-12d3-a456-426614174000",
+  "instanceTypeId": "123e4567-e89b-12d3-a456-426614174001",
+  "sshKeyIds": ["123e4567-e89b-12d3-a456-426614174002"],
+  "config": {
+    "ports": [
+      {
+        "port": 8080,
+        "protocol": "TCP"
       }
-    },
-    {
-      "name": "docker",
-      "config": {
-        "containers": [
-          {
-            "name": "web-server",
-            "filename": "Dockerfile.web",
-            "file_content": "FROM node:18\nWORKDIR /app\nCOPY package.json .\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]"
-          }
-        ]
+    ],
+    "repos": [
+      {
+        "git_url": "https://github.com/example/repo.git",
+        "folder_name": "repo"
       }
-    },
-    {
-      "name": "tmux",
-      "config": {}
-    },
-    {
-      "name": "neovim",
-      "config": {
-        "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
+    ],
+    "packages": [
+      {
+        "name": "opencode",
+        "enabled": true,
+        "config": {
+          "auth_json": "{\"auths\":{}}"
+        }
+      },
+      {
+        "name": "docker",
+        "enabled": true,
+        "config": {
+          "containers": [
+            {
+              "name": "web-server",
+              "content": "FROM node:18\nWORKDIR /app\nCOPY package.json .\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]"
+            }
+          ]
+        }
+      },
+      {
+        "name": "tmux",
+        "enabled": true,
+        "config": {}
+      },
+      {
+        "name": "nvim",
+        "enabled": true,
+        "config": {
+          "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
+        }
+      },
+      {
+        "name": "nodejs",
+        "enabled": true,
+        "config": {
+          "version": 25
+        }
       }
-    },
-    {
-      "name": "nodejs",
-      "config": {
-        "version": 25
-      }
-    }
-  ]
+    ]
+  }
 }

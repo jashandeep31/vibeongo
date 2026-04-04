@@ -5,10 +5,12 @@ import { useConfigStore } from "@/store/config-store";
 import { useCreateProject } from "@/hooks/use-project";
 import { projectConfigValidator, z } from "@repo/shared";
 import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 export default function ConfigPreviewAndCreate() {
+  const router = useRouter();
   const {
-    gitRepos,
+    gitRepoIds,
     projectName,
     sshKeys,
     portRules,
@@ -23,18 +25,12 @@ export default function ConfigPreviewAndCreate() {
     description: "coming soon feature",
     regionId: instanceRegionId,
     instanceTypeId: instanceTypeId,
+    sshKeyIds: sshKeys,
+    githubRepoIds: gitRepoIds,
     config: {
-      sshKeys: sshKeys.map((key) => key),
       ports: portRules.map((rule) => ({
         port: parseInt(rule.port, 10),
         protocol: rule.protocol,
-      })),
-
-      repos: gitRepos.map((repo) => ({
-        git_url: repo.git_url,
-        access_token: repo.access_token,
-        folder_name: repo.folder_name,
-        setup_script: repo.setup_script || "",
       })),
       packages: [
         {
@@ -77,6 +73,7 @@ export default function ConfigPreviewAndCreate() {
               });
               //TODO: reset the form or even better redirect to the project dashboard
               toast.success("Project created", { id: toastId });
+              router.push("/dashboard");
             } catch {
               toast.error("Failed to create project", { id: toastId });
             }

@@ -1,8 +1,9 @@
 "use client";
 
-import { useSshKeys, useDeleteSshKey } from "@/hooks/use-ssh-keys";
+import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { SettingsNavigation } from "@/components/settings/settings-navigation";
 import { Key, Trash2 } from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Button } from "@repo/ui/components/button";
@@ -26,6 +27,8 @@ export default function ClientView() {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
+      <SettingsNavigation />
+
       <div className="mt-8">
         <div className="flex items-center justify-between">
           <h2 className="text-muted-foreground text-lg font-semibold">
@@ -44,8 +47,8 @@ export default function ClientView() {
                 >
                   <Skeleton className="h-10 w-10 rounded-full" />
                   <div className="space-y-2">
-                    <Skeleton className="h-4 w-[200px]" />
-                    <Skeleton className="h-3 w-[300px]" />
+                    <Skeleton className="h-4 w-75" />
+                    <Skeleton className="h-3 w-100" />
                   </div>
                 </div>
               ))}
@@ -54,7 +57,7 @@ export default function ClientView() {
             sshKeys.map((key) => (
               <div
                 key={key.id}
-                className="bg-card flex h-full items-center justify-between rounded-lg border px-2"
+                className="bg-card flex h-full items-center justify-between rounded-lg border px-2 py-6"
               >
                 <div className="flex items-center gap-4">
                   <div className="bg-primary/10 rounded-full p-2">

@@ -19,6 +19,9 @@ const envSchema = z.object({
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   JWT_SECRET: z.string(),
+  GITHUB_APP_ID: z.string(),
+  GITHUB_WEBHOOK_SECRET: z.string(),
+  GOOGLE_GEN_AI_API: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);
 
