@@ -7,7 +7,19 @@ const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
 
 const clearCookies = (res: Response) => {
-  res.clearCookie("session");
+  res.clearCookie("session", {
+    httpOnly: true,
+    secure: env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+  });
+};
+
+const failedToAuthenticate = (res: Response) => {
+  clearCookies(res);
+  return res.status(401).json({
+    error: "failed to authenticate",
+  });
 };
 
 export const checkAuthorization = (allowedRoles: userRole[]) => {
@@ -15,15 +27,11 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
     const { session } = req.cookies;
 
     if (!session) {
-      return res.status(401).json({
-        error: "failed to authenticate",
-      });
+      return failedToAuthenticate(res);
     }
 
     if (typeof session !== "string") {
-      return res.status(401).json({
-        error: "failed to authenticate",
-      });
+      return failedToAuthenticate(res);
     }
 
     let id: string;
@@ -36,27 +44,18 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
         decoded === null ||
         typeof decoded.id !== "string"
       ) {
-        clearCookies(res);
-        return res.status(401).json({
-          error: "failed to authenticate",
-        });
+        return failedToAuthenticate(res);
       }
 
       id = decoded.id;
     } catch {
-      clearCookies(res);
-      return res.status(401).json({
-        error: "failed to authenticate",
-      });
+      return failedToAuthenticate(res);
     }
 
     const [user] = await db.select().from(users).where(eq(users.id, id));
 
     if (!user) {
-      clearCookies(res);
-      return res.status(401).json({
-        error: "failed to authenticate",
-      });
+      return failedToAuthenticate(res);
     }
 
     if (!allowedRoles.includes("all") && !allowedRoles.includes(user.role)) {
