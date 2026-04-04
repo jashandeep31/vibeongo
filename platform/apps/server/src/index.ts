@@ -44,6 +44,7 @@ app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
     message: "Platform server is running",
     uptime: `${hours}h ${minutes}m ${seconds}s`,
   });
+  return;
 });
 
 // --- Application Routes ---
@@ -57,7 +58,7 @@ app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 app.use("/api/v1/github-repos", githubRepoRoutes);
 
 // --- Global Error Handler ---
-app.use((err: Error, req: Request, res: Response) => {
+app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   let statusCode = 500;
   let message = "Internal Server Error";
 
