@@ -11,7 +11,7 @@ import { projectRoutes } from "./routes/project-routes.js";
 import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
-import { githubAppWebhookMiddleware } from "./webhooks/github/handler.js";
+import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { githubRepoRoutes } from "./routes/github-repo-routes.js";
 import { AppError } from "./lib/appError.js";
 import { NextFunction } from "express";

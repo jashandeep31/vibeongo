@@ -1,5 +1,5 @@
 import { db, eq, githubRepos, users } from "@repo/db";
-import { octokitApp } from "./webhooks/github/handler.js";
+import { octokitApp } from "./webhooks/github/index.js";
 import { getRepoAccessDetails } from "./github-app-functions/get-repo-access-details.js";
 import { getGithubRepoReadonlyToken } from "./github-app-functions/get-github-repo-readonly-token.js";
 
