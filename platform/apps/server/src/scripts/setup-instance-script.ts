@@ -32,14 +32,14 @@ sudo chown -R ubuntu:ubuntu $VIBEONGO_HOME
 
 echo "Step 2: Downloading the bootstrap scripts adnd api server"
 
-curl -fL https://frank-bull-partly.ngrok-free.app/install -o "$VIBEONGO_HOME/install"
+curl -fL https://l1.devsradar.com/install -o "$VIBEONGO_HOME/install"
 
-curl -fL https://frank-bull-partly.ngrok-free.app/install-api -o "$VIBEONGO_HOME/server"
+curl -fL https://l1.devsradar.com/install-api -o "$VIBEONGO_HOME/server"
 
 echo "Step 3: Download config"
 
 curl --request GET \
-  --url "https://frank-bull-partly.ngrok-free.app/api/v1/projects/${projectId}/config" \
+  --url "https://l1.devsradar.com/api/v1/projects/${projectId}/config" \
   --header "Authorization: Bearer ${authToken}" \
   | jq '.data' > "$VIBEONGO_HOME/config.json"
 
