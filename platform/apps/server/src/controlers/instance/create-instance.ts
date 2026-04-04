@@ -3,17 +3,21 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/appError.js";
 import {
   and,
+  authTokens,
   db,
   eq,
   instanceRegions,
   instances,
   instanceTypes,
   projects,
+  projectSshKeys,
+  sshKeys,
 } from "@repo/db";
 import { z } from "zod";
 import { createEc2Instance } from "../../aws/services/create-ec2-instance.js";
 import { awsSupportedRegions } from "../../aws/configs/aws-supported-regions-configs.js";
 import { getInstancePublicAddress } from "../../aws/services/get-instance-public-address.js";
+import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 
 const createInstanceBodySchema = z.object({
   projectId: z.string(),
@@ -26,11 +30,12 @@ export const createInstance = catchAsync(
 
     const body = createInstanceBodySchema.parse(req.body);
 
-    const [row] = await db
+    const row = await db
       .select({
         project: projects,
         instanceType: instanceTypes,
         region: instanceRegions,
+        sshKeys: sshKeys,
       })
       .from(projects)
       .innerJoin(instanceTypes, eq(projects.instance_type_id, instanceTypes.id))
@@ -38,18 +43,43 @@ export const createInstance = catchAsync(
         instanceRegions,
         eq(instanceTypes.region_id, instanceRegions.id),
       )
+      .leftJoin(projectSshKeys, eq(projectSshKeys.project_id, projects.id))
+      .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
       .where(
         and(eq(projects.user_id, user.id), eq(projects.id, body.projectId)),
       );
 
-    if (!row) throw new AppError("Project not found", 404);
-    const instanceRegion = z.enum(awsSupportedRegions).parse(row.region.slug);
+    const base = row[0];
+    console.log(base, row);
+    if (!row || !base) throw new AppError("Project not found", 404);
+
+    const sshKeysArray = row
+      .filter((r) => r.sshKeys !== null)
+      .map((r) => r.sshKeys!.value);
+    const instanceRegion = z.enum(awsSupportedRegions).parse(base.region.slug);
+
+    const [authToken] = await db
+      .select()
+      .from(authTokens)
+      .where(eq(authTokens.user_id, user.id));
+    if (!authToken) throw new AppError("Auth token not found", 404);
+
+    const intialScript = setupInstanceScript({
+      sshKey: sshKeysArray[0] || " ",
+      authToken: authToken.secret,
+      projectId: base.project.id,
+    });
+
+    console.log(intialScript);
     const awsRes = await createEc2Instance({
       region: instanceRegion,
+      instanceType: base.instanceType.slug,
+      userData: intialScript,
     });
 
     const awsInstance = awsRes?.Instances?.[0];
 
+    //TODO: hanle this as if server crash after creation a instance can keep running
     if (!awsInstance?.InstanceId || !awsInstance)
       throw new AppError("Failed to create the ec2", 500);
 
@@ -61,9 +91,9 @@ export const createInstance = catchAsync(
     );
 
     await db.insert(instances).values({
-      project_id: row.project.id,
+      project_id: base.project.id,
       user_id: user.id,
-      instance_type_id: row.project.instance_type_id,
+      instance_type_id: base.project.instance_type_id,
       aws_instance_id: awsInstance.InstanceId,
       terminated_at: null,
       started_at: new Date(),

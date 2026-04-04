@@ -10,8 +10,12 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
  */
 export const createEc2Instance = async ({
   region,
+  instanceType,
+  userData,
 }: {
   region: (typeof awsSupportedRegions)[number];
+  instanceType: string;
+  userData: string;
 }) => {
   const imageConfig = ec2RegionImageIds.find((item) => item.region === region);
   if (!imageConfig)
@@ -20,14 +24,16 @@ export const createEc2Instance = async ({
   const command = new RunInstancesCommand({
     // ImageId: imageConfig.linuxImageId, //the version of os,
     ImageId: "ami-0836b2031958216a3", //the version of os,
-    InstanceType: "t3.small",
+    // InstanceType: "t3.small",
+    InstanceType: "m6i.large",
     MinCount: 1,
     MaxCount: 1,
 
     Monitoring: {
       Enabled: false, // enable in future it's paid
     },
-    UserData: Buffer.from(setupInstanceScript()).toString("base64"),
+    // UserData: Buffer.from(setupInstanceScript()).toString("base64"),
+    UserData: Buffer.from(userData).toString("base64"),
   });
   const client = getEc2Client(region);
 

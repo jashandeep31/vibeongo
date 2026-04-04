@@ -6,7 +6,7 @@ export default function Page() {
   return (
     <div className="bg-background relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
       {/* Background glow effects */}
-      <div className="bg-primary/20 pointer-events-none absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]" />
+      <div className="bg-primary/20 pointer-events-none absolute top-1/2 left-1/2 h-150 w-150 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]" />
 
       <div className="z-10 w-full max-w-5xl text-center">
         {/* Badge */}
@@ -187,7 +187,7 @@ export default function Page() {
           </div>
 
           {/* Decorative lines behind the cards */}
-          <div className="via-primary/30 absolute top-1/2 left-0 -z-10 hidden h-[1px] w-full bg-gradient-to-r from-transparent to-transparent md:block" />
+          <div className="via-primary/30 absolute top-1/2 left-0 -z-10 hidden h-px w-full bg-linear-to-r from-transparent to-transparent md:block" />
         </div>
       </div>
     </div>

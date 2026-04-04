@@ -10,6 +10,8 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
+import { sshKeys } from "./ssh-key.js";
+import { githubRepos } from "./github-repos.js";
 
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -48,6 +50,44 @@ export const projectFileData = pgTable("project_file_data", {
   project_file_id: uuid().references(() => projectFiles.id, {
     onDelete: "cascade",
   }),
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
+
+export const projectSshKeys = pgTable("project_ssh_keys", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  project_id: uuid()
+    .references(() => projects.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+
+  ssh_key_id: uuid()
+    .references(() => sshKeys.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
+
+export const projectGithubRepos = pgTable("project_github_repos", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  project_id: uuid()
+    .references(() => projects.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+
+  github_repo_id: uuid()
+    .references(() => githubRepos.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
+
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
 });

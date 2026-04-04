@@ -1,26 +1,17 @@
-import { env } from "../lib/env.js";
+interface SetupInstanceScriptOptions {
+  sshKey: string;
+  authToken: string;
+  projectId: string;
+}
 
-export const setupInstanceScript = (): string => {
+export const setupInstanceScript = ({
+  sshKey,
+  authToken,
+  projectId,
+}: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
 exec > /var/log/user-data.log 2>&1
-
-# Create the swap file
-sudo fallocate -l 3G /swapfile
-
-# Set permissions
-sudo chmod 600 /swapfile
-
-# Make it a swap
-sudo mkswap /swapfile
-
-# Enable it
-sudo swapon /swapfile
-
-# Make it permanent across reboots
-
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
-
 
 USER_HOME="/home/ubuntu"
 VIBEONGO_HOME="$USER_HOME/vibeongo"
@@ -29,7 +20,7 @@ echo "Step 1: Setup SSH"
 
 mkdir -p "$USER_HOME/.ssh"
 
-echo "${env.SSH_KEY}" >> "$USER_HOME/.ssh/authorized_keys"
+echo "${sshKey}" >> "$USER_HOME/.ssh/authorized_keys"
 
 chmod 700 "$USER_HOME/.ssh"
 chmod 600 "$USER_HOME/.ssh/authorized_keys"
@@ -47,7 +38,10 @@ curl -fL https://frank-bull-partly.ngrok-free.app/install-api -o "$VIBEONGO_HOME
 
 echo "Step 3: Download config"
 
-curl -fL https://frank-bull-partly.ngrok-free.app/config -o "$VIBEONGO_HOME/config.json"
+curl --request GET \
+  --url "https://frank-bull-partly.ngrok-free.app/api/v1/projects/${projectId}/config" \
+  --header "Authorization: Bearer ${authToken}" \
+  | jq '.data' > "$VIBEONGO_HOME/config.json"
 
 chmod +x "$VIBEONGO_HOME/install"
 chmod +x "$VIBEONGO_HOME/server"
@@ -88,6 +82,8 @@ systemctl enable myserver
 systemctl start myserver
 
 cd $VIBEONGO_HOME
-./install task
+date
+./install repo_setup
+sudo -u ubuntu bash -c "cd $VIBEONGO_HOME && ./install task"
 `;
 };

@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
   useCreateInstance,
   useGetInstancesByProjectId,
 } from "@/hooks/use-instance";
-import { useGetProjectById } from "@/hooks/use-project";
+import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
 import {
   Card,
@@ -15,7 +16,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import { Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import axios from "axios";
 
 type InstanceFilter = "running" | "terminated" | "pending" | "all";
 
@@ -29,6 +33,7 @@ const formatDate = (value: unknown) => {
 };
 
 export default function ClientView({ projectId }: { projectId: string }) {
+  const router = useRouter();
   const { data: project, isLoading, isError } = useGetProjectById(projectId);
   const {
     data: instances,
@@ -36,6 +41,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
     isError: isInstancesError,
     refetch: refetchInstances,
   } = useGetInstancesByProjectId(projectId);
+  const deleteProjectMutation = useDeleteProject();
   const { mutateAsync: createInstance } = useCreateInstance();
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
@@ -48,6 +54,21 @@ export default function ClientView({ projectId }: { projectId: string }) {
       toast.success("created", { id: toastId });
     } catch {
       toast.error("failed", { id: toastId });
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    const toastId = toast.loading("Deleting project...");
+    try {
+      await deleteProjectMutation.mutateAsync(projectId);
+      toast.success("Project deleted successfully", { id: toastId });
+      router.push("/projects");
+    } catch (error: unknown) {
+      console.error(error);
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to delete project")
+        : "Failed to delete project";
+      toast.error(message, { id: toastId });
     }
   };
 
@@ -83,13 +104,32 @@ export default function ClientView({ projectId }: { projectId: string }) {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <Button
-            onClick={() => {
-              void handleCreate();
-            }}
-          >
-            Create Instance
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => {
+                void handleCreate();
+              }}
+            >
+              Create Instance
+            </Button>
+            <ConfirmationDialog
+              title="Delete project"
+              description="Are you sure you want to delete this project? This action cannot be undone."
+              confirmText="Delete"
+              isDestructive
+              onConfirm={handleDeleteProject}
+            >
+              <Button
+                variant="destructive"
+                disabled={deleteProjectMutation.isPending}
+              >
+                <Trash2 className="mr-2 h-4 w-4" />
+                {deleteProjectMutation.isPending
+                  ? "Deleting..."
+                  : "Delete Project"}
+              </Button>
+            </ConfirmationDialog>
+          </div>
         </div>
         <p className="text-muted-foreground mt-2">
           {project.description || "No description provided."}

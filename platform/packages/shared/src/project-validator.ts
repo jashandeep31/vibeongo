@@ -31,9 +31,10 @@ export const projectConfigValidator = z.object({
   description: z.string().optional(),
   regionId: z.uuid(),
   instanceTypeId: z.uuid(),
+  sshKeyIds: z.array(z.uuid()),
+  githubRepoIds: z.array(z.uuid()),
 
   config: z.object({
-    sshKeys: z.array(z.string()),
     ports: z.array(
       z.object({
         port: z.number(),
@@ -41,13 +42,6 @@ export const projectConfigValidator = z.object({
       }),
     ),
 
-    repos: z.array(
-      z.object({
-        git_url: z.string(),
-        access_token: z.string().optional(),
-        folder_name: z.string(),
-      }),
-    ),
     packages: z.array(
       z.discriminatedUnion("name", [
         z.object({

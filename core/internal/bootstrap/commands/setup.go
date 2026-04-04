@@ -6,8 +6,7 @@ import (
 	"os/exec"
 
 	"github.com/fatih/color"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gh"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision/gitrepos"
+	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/provision"
 	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/scripts"
@@ -38,30 +37,32 @@ func runSetup() error {
 		return fmt.Errorf("config has error: %w", err)
 	}
 
-	fmt.Println(cfg.Tasks)
-
-	gh.Setup()
+	// provision.SetupGitHubCLI()
 	// NOTE: uses the older way
 	// if cfg.Docker != nil {
 	// 	docker.Setup(cfg.Docker)
 	// }
 
 	// if cfg.OpenCode != nil {
-	// 	opencode.Setup(cfg.OpenCode)
+	// 	provision.SetupOpenCode(cfg.OpenCode)
 	// }
 
 	// if cfg.Nvim != nil {
-	// 	nvim.Setup(cfg.Nvim)
+	// 	provision.SetupNvim(cfg.Nvim)
 	// }
 
 	scripts.WriteScripts()
 
-	script := `#!/usr/bin/env bash`
+	script := `#!/usr/bin/env bash
 
-	// utils.AppendToBashScript(&script, runtimes.NodeJSSetup())
-	utils.AppendToBashScript(&script, gitrepos.Setup(cfg.Repos))
+source /home/ubuntu/.bashrc
+pwd
+whoami`
 
-	cmd := exec.Command("bash", "-c", script)
+	// utils.AppendToBashScript(&script, provision.NodeJSSetup())
+	utils.AppendToBashScript(&script, provision.SetupGitRepos(cfg.Repos))
+
+	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-lc", script)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		return fmt.Errorf("failed to capture stdout: %w", err)
