@@ -28,7 +28,7 @@ export const projectSessions = pgTable("project_session", {
 
 // --- Projects tasks
 // --- example: add the support to the google auth
-export const projectSesssionTasks = pgTable("project_tasks", {
+export const projectSessionTasks = pgTable("project_session_tasks", {
   id: uuid().defaultRandom().primaryKey(),
 
   folder_name: varchar(),

@@ -6,7 +6,7 @@ import {
   githubRepos,
   projects,
   projectSessions,
-  projectSesssionTasks,
+  projectSessionTasks,
   users,
 } from "@repo/db";
 import { getRefinedTaskFromUserIssuesComment } from "../../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
@@ -52,7 +52,7 @@ export const issueOpenedHandler = async (
       .returning();
     if (!session) return;
 
-    await tx.insert(projectSesssionTasks).values({
+    await tx.insert(projectSessionTasks).values({
       folder_name: row.repo.full_name.split("/")[1]!,
       task: task,
       done: false,
