@@ -1,4 +1,4 @@
-import { db, eq, projectSessions, projectSesssionTasks } from "@repo/db";
+import { db, eq, projectSessions, projectSessionTasks } from "@repo/db";
 
 export default async function test() {
   console.log(`Test server in running`);
@@ -6,8 +6,8 @@ export default async function test() {
     .select()
     .from(projectSessions)
     .leftJoin(
-      projectSesssionTasks,
-      eq(projectSesssionTasks.project_session_id, projectSessions.id),
+      projectSessionTasks,
+      eq(projectSessionTasks.project_session_id, projectSessions.id),
     );
 
   // console.log(rows);

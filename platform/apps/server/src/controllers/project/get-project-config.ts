@@ -12,54 +12,53 @@ import {
   sshKeys,
 } from "@repo/db";
 import { getGithubRepoReadonlyToken } from "../../github-app-functions/get-github-repo-readonly-token.js";
+import { z } from "zod";
 
 export const getProjectConfigById = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authentication is required", 400);
 
-    const id = req.params.id;
-    if (!id || typeof id !== "string") throw new AppError("Invalid id ", 400);
+    const { id } = z.object({ id: z.string() }).parse(req.params);
 
-    const rows = await db
-      .select({
-        project: projects,
-        github_repos: githubRepos,
-        ssh_keys: sshKeys,
-      })
+    const [projectRow] = await db
+      .select({ project: projects })
       .from(projects)
-      .leftJoin(
-        projectGithubRepos,
-        eq(projectGithubRepos.project_id, projects.id),
-      )
-      .leftJoin(
-        githubRepos,
-        eq(githubRepos.id, projectGithubRepos.github_repo_id),
-      )
-      .leftJoin(projectSshKeys, eq(projectSshKeys.id, projects.id))
-      .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
       .where(and(eq(projects.id, id), eq(projects.user_id, user.id)));
 
-    const project = rows[0]?.project;
-    if (!project) throw new AppError("Project not found", 404);
+    if (!projectRow?.project) throw new AppError("Project not found", 404);
 
-    const github_repos: (typeof githubRepos.$inferSelect)[] = rows
-      .map((row) => row.github_repos)
+    const { project } = projectRow;
+
+    const [repos, keys] = await Promise.all([
+      db
+        .select({ repo: githubRepos })
+        .from(projectGithubRepos)
+        .leftJoin(
+          githubRepos,
+          eq(githubRepos.id, projectGithubRepos.github_repo_id),
+        )
+        .where(eq(projectGithubRepos.project_id, project.id)),
+
+      db
+        .select({ value: sshKeys.value })
+        .from(projectSshKeys)
+        .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
+        .where(eq(projectSshKeys.project_id, project.id)),
+    ]);
+
+    const validRepos = repos
+      .map((r) => r.repo)
       .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
 
-    const ssh_keys: string[] = rows
-      .map((row) => row.ssh_keys?.value ?? "")
-      .filter((ssh_key) => ssh_key);
-
-    console.log(github_repos);
     const config = {
-      repos: await getProjectReadyGithubRepos(github_repos),
-      ssh_keys: ssh_keys,
       ...(project.config as any),
+      repos: await getProjectReadyGithubRepos(validRepos),
+      ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: [
         {
           folder_name: "aichat",
-          task: "can please fix the current landing page create a plan.md that what we can imporove ",
+          task: "can please fix the current landing page create a plan.md that what we can imporove",
         },
       ],
     };
@@ -75,32 +74,27 @@ type ProjectReadyGithubRepo = {
   folder_name: string;
   setup_script: string;
 };
+
 const getProjectReadyGithubRepos = async (
   repos: (typeof githubRepos.$inferSelect)[],
 ): Promise<ProjectReadyGithubRepo[]> => {
-  const response: ProjectReadyGithubRepo[] = [];
+  return Promise.all(
+    repos.map(async (repo) => {
+      const folder_name = repo.full_name.split("/").pop()!;
+      const access_token = repo.public
+        ? null
+        : ((await getGithubRepoReadonlyToken(
+            folder_name,
+            repo.installation_id,
+          )) ?? null);
 
-  for (const repo of repos) {
-    let auth_token = null;
-    if (!repo.public) {
-      // NOTE: batch request can be used to get the readonly token
-      // We aren't using it because due to not having clearity on the on which direction our project is going :(
-      const token = await getGithubRepoReadonlyToken(
-        repo.full_name.split("/").pop()!,
-        repo.installation_id,
-      );
-
-      if (token) {
-        auth_token = token;
-      }
-    }
-    response.push({
-      full_name: repo.full_name,
-      access_token: auth_token,
-      public: repo.public || false,
-      folder_name: repo.full_name.split("/").pop()!,
-      setup_script: repo.setup_script,
-    });
-  }
-  return response;
+      return {
+        full_name: repo.full_name,
+        access_token,
+        public: repo.public ?? false,
+        folder_name,
+        setup_script: repo.setup_script,
+      };
+    }),
+  );
 };
