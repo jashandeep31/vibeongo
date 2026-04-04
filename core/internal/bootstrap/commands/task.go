@@ -36,9 +36,7 @@ func runTask() error {
 		if (task.FolderName != "") && (task.FolderName != ".") {
 			taskFolder = path.Join(taskFolder, task.FolderName)
 		}
-		// opencodeCommand := fmt.Sprintf("/home/ubuntu/.opencode/bin/opencode run %s", task.Task)
 		opencodeCommand := fmt.Sprintf("opencode run %s", task.Task)
-
 		env := os.Environ()
 		env = append(env, "PATH=/home/ubuntu/.opencode/bin:/usr/local/bin:/usr/bin:/bin")
 		env = append(env, "HOME=/home/ubuntu")
