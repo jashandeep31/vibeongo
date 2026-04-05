@@ -12,7 +12,7 @@ import {
   projects,
   sshKeys,
 } from "@repo/db";
-import { AppError } from "../../lib/appError.js";
+import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 
 export const getRuntimeSessionConfig = catchAsync(

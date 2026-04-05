@@ -13,7 +13,7 @@ import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { githubRepoRoutes } from "./routes/github-repo-routes.js";
-import { AppError } from "./lib/appError.js";
+import { AppError } from "./lib/app-error.js";
 import { NextFunction } from "express";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 

@@ -1,9 +1,8 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
-import { AppError } from "../../lib/appError.js";
+import { AppError } from "../../lib/app-error.js";
 import {
   and,
-  authTokens,
   db,
   eq,
   instanceRegions,
@@ -58,48 +57,42 @@ export const createInstance = catchAsync(
       .map((r) => r.sshKeys!.value);
     const instanceRegion = z.enum(awsSupportedRegions).parse(base.region.slug);
 
-    const [authToken] = await db
-      .select()
-      .from(authTokens)
-      .where(eq(authTokens.user_id, user.id));
-    if (!authToken) throw new AppError("Auth token not found", 404);
+    // const intialScript = setupInstanceScript({
+    //   sshKey: sshKeysArray[0] || " ",
+    //   authToken: "",
+    //   projectId: base.project.id,
+    // });
+    //
+    // console.log(intialScript);
+    // const awsRes = await createEc2Instance({
+    //   region: instanceRegion,
+    //   instanceType: base.instanceType.slug,
+    //   userData: intialScript,
+    // });
 
-    const intialScript = setupInstanceScript({
-      sshKey: sshKeysArray[0] || " ",
-      authToken: authToken.secret,
-      projectId: base.project.id,
-    });
-
-    console.log(intialScript);
-    const awsRes = await createEc2Instance({
-      region: instanceRegion,
-      instanceType: base.instanceType.slug,
-      userData: intialScript,
-    });
-
-    const awsInstance = awsRes?.Instances?.[0];
+    // const awsInstance = awsRes?.Instances?.[0];
 
     //TODO: hanle this as if server crash after creation a instance can keep running
-    if (!awsInstance?.InstanceId || !awsInstance)
-      throw new AppError("Failed to create the ec2", 500);
-
-    //NOTE: temp solution for waiting till ip4 get allocated
-    await new Promise<void>((res) => setTimeout(res, 5000));
-    const publicIpAddress = await getInstancePublicAddress(
-      awsInstance.InstanceId,
-      instanceRegion,
-    );
-
-    await db.insert(instances).values({
-      project_id: base.project.id,
-      user_id: user.id,
-      instance_type_id: base.project.instance_type_id,
-      aws_instance_id: awsInstance.InstanceId,
-      terminated_at: null,
-      started_at: new Date(),
-      public_ip: publicIpAddress,
-      state: "running",
-    });
+    // if (!awsInstance?.InstanceId || !awsInstance)
+    //   throw new AppError("Failed to create the ec2", 500);
+    //
+    // //NOTE: temp solution for waiting till ip4 get allocated
+    // await new Promise<void>((res) => setTimeout(res, 5000));
+    // const publicIpAddress = await getInstancePublicAddress(
+    //   awsInstance.InstanceId,
+    //   instanceRegion,
+    // );
+    //
+    // await db.insert(instances).values({
+    //   project_id: base.project.id,
+    //   user_id: user.id,
+    //   instance_type_id: base.project.instance_type_id,
+    //   aws_instance_id: awsInstance.InstanceId,
+    //   terminated_at: null,
+    //   started_at: new Date(),
+    //   public_ip: publicIpAddress,
+    //   state: "running",
+    // });
 
     res.status(201).json({
       message: "Successfully had created the project intance",

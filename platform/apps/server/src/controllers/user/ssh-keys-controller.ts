@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
-import { AppError } from "../../lib/appError.js";
+import { AppError } from "../../lib/app-error.js";
 import { z } from "zod";
 import { db, eq, and, sshKeys } from "@repo/db";
 import { createSshKeySchema } from "@repo/shared";

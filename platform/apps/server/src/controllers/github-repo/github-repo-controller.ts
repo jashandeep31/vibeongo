@@ -1,4 +1,4 @@
-import { AppError } from "../../lib/appError.js";
+import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
