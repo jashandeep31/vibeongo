@@ -15,7 +15,6 @@ import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { githubRepoRoutes } from "./routes/github-repo-routes.js";
 import { AppError } from "./lib/appError.js";
 import { NextFunction } from "express";
-import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 
 const app = express();
@@ -58,7 +57,6 @@ app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 app.use("/api/v1/github-repos", githubRepoRoutes);
-app.use("/api/v1/project-sessions", projectSessionRoutes);
 app.use("/api/v1/runtime", runtimeRoutes);
 
 // --- Global Error Handler ---
