@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { createProject } from "../controllers/project/create-project.js";
-import { checkAuthorization } from "../lib/check-authorization.js";
+import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   deleteProjectById,
   getProjectById,
@@ -8,7 +8,7 @@ import {
 } from "../controllers/project/projects.js";
 import { getProjectConfigById } from "../controllers/project/get-project-config.js";
 
-import { checkApiAuthorization } from "../lib/check-api-authorization.js";
+import { checkApiAuthorization } from "../middlewares/check-api-authorization.js";
 
 const routes: Router = Router();
 

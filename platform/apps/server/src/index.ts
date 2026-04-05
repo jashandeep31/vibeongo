@@ -5,7 +5,7 @@ import { env } from "./lib/env.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { authRoutes } from "./routes/auth-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
-import { checkAuthorization } from "./lib/check-authorization.js";
+import { checkAuthorization } from "./middlewares/check-authorization.js";
 import cookieParser from "cookie-parser";
 import { projectRoutes } from "./routes/project-routes.js";
 import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
