@@ -69,6 +69,6 @@ export const getRuntimeSessionConfig = catchAsync(
       })),
     };
 
-    res.status(200).json({ data: { config } });
+    res.status(200).json({ data: config });
   },
 );
