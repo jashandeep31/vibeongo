@@ -30,8 +30,6 @@ const NavCommandBox = () => {
     { label: "My Projects", href: "/projects" },
     { label: "Create Project", href: "/dashboard/project/create" },
     { label: "Repos", href: "/dashboard/repos" },
-    { label: "SSH keys", href: "/dashboard/settings/ssh-keys" },
-    { label: "Auth Keys", href: "/dashboard/settings/auth-keys" },
     { label: "Settings", href: "/dashboard/settings" },
   ];
 

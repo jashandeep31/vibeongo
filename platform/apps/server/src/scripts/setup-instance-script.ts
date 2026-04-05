@@ -1,13 +1,13 @@
 interface SetupInstanceScriptOptions {
   sshKey: string;
   authToken: string;
-  projectId: string;
+  projectSessionId: string;
 }
 
 export const setupInstanceScript = ({
   sshKey,
   authToken,
-  projectId,
+  projectSessionId,
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
@@ -39,8 +39,8 @@ curl -fL https://l1.devsradar.com/install-api -o "$VIBEONGO_HOME/server"
 echo "Step 3: Download config"
 
 curl --request GET \
-  --url "https://l1.devsradar.com/api/v1/projects/${projectId}/config" \
-  --header "Authorization: Bearer ${authToken}" \
+  --url https://l1.devsradar.com/api/v1/runtime/sessions/${projectSessionId}/config \
+  --header 'Authorization: Bearer ${authToken}' \
   | jq '.data' > "$VIBEONGO_HOME/config.json"
 
 chmod +x "$VIBEONGO_HOME/install"

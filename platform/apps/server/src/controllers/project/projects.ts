@@ -1,5 +1,5 @@
 import { and, db, eq, instances, projects } from "@repo/db";
-import { AppError } from "../../lib/appError.js";
+import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { env } from "../../lib/env.js";
