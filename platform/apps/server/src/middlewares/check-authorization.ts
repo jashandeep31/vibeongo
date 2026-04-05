@@ -1,7 +1,7 @@
 import { db, eq, userRoles, users } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { env } from "./env.js";
+import { env } from "../lib/env.js";
 
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
