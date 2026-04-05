@@ -61,9 +61,6 @@ whoami`
 	utils.AppendToBashScript(&script, provision.SetupGitRepos(cfg.Repos))
 
 	fmt.Println(script)
-	if 1 == 1 {
-		return nil
-	}
 	scripts.WriteScripts()
 	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-lc", script)
 	stdout, err := cmd.StdoutPipe()
