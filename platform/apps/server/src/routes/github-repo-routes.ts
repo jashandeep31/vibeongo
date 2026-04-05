@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { checkAuthorization } from "../lib/check-authorization.js";
+import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   createGithubRepo,
   getUserGitRepos,
