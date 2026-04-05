@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
-import { AppError } from "../../lib/appError.js";
+import { AppError } from "../../lib/app-error.js";
 import { and, db, eq, instances } from "@repo/db";
 
 export const getUserInstances = catchAsync(

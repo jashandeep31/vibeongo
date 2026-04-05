@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../lib/catch-async.js";
 import { db, instanceRegions, eq, instanceTypes } from "@repo/db";
-import { AppError } from "../lib/appError.js";
+import { AppError } from "../lib/app-error.js";
 
 export const getIntanceRegions = catchAsync(
   async (_req: Request, res: Response) => {

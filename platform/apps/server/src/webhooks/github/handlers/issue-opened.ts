@@ -4,13 +4,20 @@ import {
   db,
   eq,
   githubRepos,
+  instanceRegions,
+  instances,
+  instanceTypes,
   projects,
   projectSessions,
   projectSessionTasks,
+  projectSshKeys,
+  sshKeys,
   users,
 } from "@repo/db";
 import { getRefinedTaskFromUserIssuesComment } from "../../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
 import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
+import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
+import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
 
 export const issueOpenedHandler = async (
   event: WebhookHandler<IssuesOpenedEvent>,
@@ -33,16 +40,19 @@ export const issueOpenedHandler = async (
     .where(eq(githubRepos.full_name, full_name));
 
   if (!row || !row.repo || !row.user || !row.project || !payload.issue.body) {
+    if (!row?.project)
+      console.log(`
+                                 
+Please add hte default project to the github repo
+                                 
+`);
     console.log(row?.repo, row?.user, row?.project, payload.issue.body);
     return;
   }
   const { project, user, repo } = row;
   // Refining the task given by the user
   const task = await getRefinedTaskFromUserIssuesComment(payload.issue.body);
-  console.log({
-    folder: row.repo.full_name.split("/")[1],
-    task,
-  });
+
   const session = await db.transaction(async (tx) => {
     const [session] = await tx
       .insert(projectSessions)
@@ -63,5 +73,38 @@ export const issueOpenedHandler = async (
     return session;
   });
   if (!session) return;
-  const token = await createSessionAuthToken(session.id);
+  const authToken = await createSessionAuthToken(session.id);
+
+  const sshKeysArray = await db
+    .select()
+    .from(projectSshKeys)
+    .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id));
+
+  // --- intialScript that we run after the vps setup ---
+  const intialScript = setupInstanceScript({
+    sshKey: sshKeysArray
+      .map((s) => s.shh_keys?.value || "")
+      .filter((s) => s)
+      .join("\n"),
+    authToken: authToken,
+    projectSessionId: session.id,
+  });
+
+  // Till we have ->
+  // 1. Project session that we wanna run
+  // 2. Issue
+  // await creat
+  const [regionRow] = await db
+    .select()
+    .from(instanceTypes)
+    .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
+    .where(eq(instanceTypes.id, project.instance_type_id));
+  if (!regionRow || !regionRow.instance_regions) return;
+
+  const instance = await spinUpAndSaveInstance({
+    setupScript: intialScript,
+    project,
+    userId: user.id,
+  });
+  console.log(instance);
 };
