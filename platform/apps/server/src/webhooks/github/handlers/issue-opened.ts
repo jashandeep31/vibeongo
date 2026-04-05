@@ -10,6 +10,7 @@ import {
   users,
 } from "@repo/db";
 import { getRefinedTaskFromUserIssuesComment } from "../../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
+import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
 
 export const issueOpenedHandler = async (
   event: WebhookHandler<IssuesOpenedEvent>,
@@ -42,7 +43,7 @@ export const issueOpenedHandler = async (
     folder: row.repo.full_name.split("/")[1],
     task,
   });
-  await db.transaction(async (tx) => {
+  const session = await db.transaction(async (tx) => {
     const [session] = await tx
       .insert(projectSessions)
       .values({
@@ -58,6 +59,9 @@ export const issueOpenedHandler = async (
       done: false,
       project_session_id: session.id,
     });
+
     return session;
   });
+  if (!session) return;
+  const token = await createSessionAuthToken(session.id);
 };
