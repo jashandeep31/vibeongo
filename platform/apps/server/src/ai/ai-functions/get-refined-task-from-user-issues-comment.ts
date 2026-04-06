@@ -18,22 +18,7 @@ export const getRefinedTaskFromUserIssuesComment = async (comment: string) => {
           tasks: {
             type: Type.ARRAY,
             items: {
-              type: Type.OBJECT,
-              required: ["task"],
-              properties: {
-                task: {
-                  type: Type.OBJECT,
-                  required: ["name", "details"],
-                  properties: {
-                    name: {
-                      type: Type.STRING,
-                    },
-                    details: {
-                      type: Type.STRING,
-                    },
-                  },
-                },
-              },
+              type: Type.STRING,
             },
           },
         },
