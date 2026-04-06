@@ -51,8 +51,6 @@ func runSetup() error {
 	// 	provision.SetupNvim(cfg.Nvim)
 	// }
 
-	scripts.WriteScripts()
-
 	script := `#!/usr/bin/env bash
 
 source /home/ubuntu/.bashrc
@@ -62,6 +60,8 @@ whoami`
 	// utils.AppendToBashScript(&script, provision.NodeJSSetup())
 	utils.AppendToBashScript(&script, provision.SetupGitRepos(cfg.Repos))
 
+	fmt.Println(script)
+	scripts.WriteScripts()
 	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-lc", script)
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {

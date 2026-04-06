@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs/promises";
 import { db, eq, githubRepos, projects, users } from "@repo/db";
 import { getRefinedTaskFromUserIssuesComment } from "../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
+import { issueOpenedHandler } from "./handlers/issue-opened.js";
 
 const BASE_DIR = process.cwd();
 const filepath = path.join(BASE_DIR, "vibeongo.2026-03-28.private-key.pem");
@@ -20,37 +21,7 @@ export const octokitApp: App = new App({
 });
 
 // ------ Issue opening handling ------
-octokitApp.webhooks.on("issues.opened", async (event) => {
-  const payload = event.payload;
-  const octokit = event.octokit;
-
-  const issueOpnerUsername = payload.issue?.user?.login;
-  const full_name = payload.repository?.full_name;
-  if (!issueOpnerUsername || !full_name) {
-    return;
-  }
-  const [row] = await db
-    .select({
-      repo: githubRepos,
-      user: users,
-      project: projects,
-    })
-    .from(githubRepos)
-    .innerJoin(users, eq(githubRepos.user_id, users.id))
-    .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
-    .where(eq(githubRepos.full_name, full_name));
-
-  console.log(full_name);
-  if (!row || !row.repo || !row.user || !row.project || !payload.issue.body) {
-    console.log(row?.repo, row?.user, row?.project, payload.issue.body);
-    return;
-  }
-  console.log("We are in the right repo");
-  const task = await getRefinedTaskFromUserIssuesComment(payload.issue.body);
-  console.log(task);
-  //1. spin the vps
-  //2. pass as the task
-});
+octokitApp.webhooks.on("issues.opened", issueOpenedHandler as any);
 
 // ------ Issue comment handling ------
 octokitApp.webhooks.on("issue_comment", async (event) => {
