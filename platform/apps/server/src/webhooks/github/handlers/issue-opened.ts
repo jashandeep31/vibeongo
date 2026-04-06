@@ -51,7 +51,11 @@ Please add hte default project to the github repo
   }
   const { project, user, repo } = row;
   // Refining the task given by the user
-  const task = await getRefinedTaskFromUserIssuesComment(payload.issue.body);
+  const task = await getRefinedTaskFromUserIssuesComment(`
+Issue Url: ${payload.issue.url}
+Issue title: ${payload.issue.title}
+Issue body: ${payload.issue.body}
+`);
 
   const session = await db.transaction(async (tx) => {
     const [session] = await tx
@@ -90,10 +94,6 @@ Please add hte default project to the github repo
     projectSessionId: session.id,
   });
 
-  // Till we have ->
-  // 1. Project session that we wanna run
-  // 2. Issue
-  // await creat
   const [regionRow] = await db
     .select()
     .from(instanceTypes)
@@ -106,5 +106,5 @@ Please add hte default project to the github repo
     project,
     userId: user.id,
   });
-  console.log(instance);
+  return;
 };
