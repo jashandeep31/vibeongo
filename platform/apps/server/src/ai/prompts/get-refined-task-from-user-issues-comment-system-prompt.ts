@@ -11,6 +11,9 @@ The input may contain:
 - Mentions (e.g., @bot, @username)
 - Noise (greetings, thanks, unrelated text)
 - Poor grammar or unclear phrasing
+- first task should be get the overview of pjoect it doesn't shoudl mean to clone and setup the project no just go through the project files 
+- second should contain all the info that had user asked 
+- creating a pr or making changes too github shouild be the new task 
 
 You MUST:
 1. Remove all irrelevant content (mentions, greetings, filler text).
