@@ -31,14 +31,17 @@ export const deleteGithubRepo = async (id: string) => {
 export const updateGithubRepoById = async ({
   id,
   setup_script,
+  default_project_id,
 }: {
   id: string;
   setup_script: string;
+  default_project_id: string | null;
 }) => {
   const res = await axios.post(
     BACKEND_URL + `/api/v1/github-repos/${id}`,
     {
       setup_script,
+      default_project_id,
     },
     {
       withCredentials: true,

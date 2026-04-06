@@ -1,12 +1,12 @@
 import { Router } from "express";
-import { checkAuthorization } from "../lib/check-authorization.js";
-import { createInstance } from "../controlers/instance/create-instance.js";
+import { checkAuthorization } from "../middlewares/check-authorization.js";
+import { createInstance } from "../controllers/instance/create-instance.js";
 import {
   getInstanceById,
   getInstancesByProjectId,
   getUserInstances,
-} from "../controlers/instance/get-instances.js";
-import { terminateByIdInstance } from "../controlers/instance/terminate-by-id-instance.js";
+} from "../controllers/instance/get-instances.js";
+import { terminateByIdInstance } from "../controllers/instance/terminate-by-id-instance.js";
 
 const routes: Router = Router();
 routes

@@ -3,7 +3,6 @@
 import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { SettingsNavigation } from "@/components/settings/settings-navigation";
 import { Key, Trash2 } from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Button } from "@repo/ui/components/button";
@@ -27,7 +26,6 @@ export default function ClientView() {
   return (
     <div className="p-8">
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
-      <SettingsNavigation />
 
       <div className="mt-8">
         <div className="flex items-center justify-between">

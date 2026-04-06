@@ -5,16 +5,17 @@ import { env } from "./lib/env.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { authRoutes } from "./routes/auth-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
-import { checkAuthorization } from "./lib/check-authorization.js";
+import { checkAuthorization } from "./middlewares/check-authorization.js";
 import cookieParser from "cookie-parser";
 import { projectRoutes } from "./routes/project-routes.js";
 import { instanceMetadataRoutes } from "./routes/instance-metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { instanceRoutes } from "./routes/instance-routes.js";
-import { githubAppWebhookMiddleware } from "./webhooks/github/handler.js";
+import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { githubRepoRoutes } from "./routes/github-repo-routes.js";
-import { AppError } from "./lib/appError.js";
+import { AppError } from "./lib/app-error.js";
 import { NextFunction } from "express";
+import { runtimeRoutes } from "./routes/runtime-routes.js";
 
 const app = express();
 
@@ -56,6 +57,7 @@ app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 app.use("/api/v1/github-repos", githubRepoRoutes);
+app.use("/api/v1/runtime", runtimeRoutes);
 
 // --- Global Error Handler ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {

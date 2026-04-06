@@ -1,16 +1,11 @@
 import { Router } from "express";
-import { checkAuthorization } from "../lib/check-authorization.js";
+import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   createSshKey,
   getSshKeys,
   deleteSshKey,
-} from "../controlers/user/ssh-keys-controller.js";
-import { getUserMetadata } from "../controlers/user/metadata.js";
-import {
-  createAuthToken,
-  deleteAuthToken,
-  getAuthTokens,
-} from "../controlers/user/auth-tokens-controller.js";
+} from "../controllers/user/ssh-keys-controller.js";
+import { getUserMetadata } from "../controllers/user/metadata.js";
 
 const routes: Router = Router();
 
@@ -29,12 +24,4 @@ routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 routes.route("/ssh-keys/:id").delete(checkAuthorization(["all"]), deleteSshKey);
 routes.route("/ssh-key/:id").delete(checkAuthorization(["all"]), deleteSshKey);
 
-routes
-  .route("/auth-tokens")
-  .get(checkAuthorization(["all"]), getAuthTokens)
-  .post(checkAuthorization(["all"]), createAuthToken);
-
-routes
-  .route("/auth-tokens/:id")
-  .delete(checkAuthorization(["all"]), deleteAuthToken);
 export const userRoutes = routes;

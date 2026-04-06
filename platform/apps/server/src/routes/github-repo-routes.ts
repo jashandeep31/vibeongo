@@ -1,11 +1,11 @@
 import { Router } from "express";
-import { checkAuthorization } from "../lib/check-authorization.js";
+import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   createGithubRepo,
   getUserGitRepos,
   deleteGithubRepo,
   updateGithubRepoById,
-} from "../controlers/github-repo/github-repo-controller.js";
+} from "../controllers/github-repo/github-repo-controller.js";
 
 const routes: Router = Router();
 routes

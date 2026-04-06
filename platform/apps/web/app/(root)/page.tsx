@@ -1,8 +1,14 @@
 import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
 import { CheckCircle2, Zap } from "lucide-react";
+import { getSession } from "@/lib/getSession";
+import { redirect } from "next/navigation";
 
-export default function Page() {
+export default async function Page() {
+  const session = await getSession();
+  if (session) {
+    redirect("/dashboard");
+  }
   return (
     <div className="bg-background relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
       {/* Background glow effects */}
