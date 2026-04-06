@@ -32,15 +32,16 @@ func runTask() error {
 	}
 
 	for _, task := range cfg.Tasks {
+		fmt.Println(task.Task)
 		taskFolder := path.Join("/home/ubuntu/code")
-		if (task.FolderName != "") && (task.FolderName != ".") {
-			taskFolder = path.Join(taskFolder, task.FolderName)
-		}
-		opencodeCommand := fmt.Sprintf("opencode run \"%s\"", task.Task)
+		// if (task.FolderName != "") && (task.FolderName != ".") {
+		// 	taskFolder = path.Join(taskFolder, task.FolderName)
+		// }
+		// opencodeCommand := fmt.Sprintf("opencode run \"%s\"", task.Task)
 		env := os.Environ()
 		env = append(env, "PATH=/home/ubuntu/.opencode/bin:/usr/local/bin:/usr/bin:/bin")
 		env = append(env, "HOME=/home/ubuntu")
-		cmd := exec.Command("bash", "-c", opencodeCommand)
+		cmd := exec.Command("opencode", "run", task.Task)
 		cmd.Dir = taskFolder
 		cmd.Env = env
 		cmd.Stdout = os.Stdout
