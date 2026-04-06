@@ -31,12 +31,29 @@ func runTask() error {
 		return nil
 	}
 
-	for _, task := range cfg.Tasks {
+	for i, task := range cfg.Tasks {
 		taskFolder := path.Join("/home/ubuntu/code")
 		if (task.FolderName != "") && (task.FolderName != ".") {
 			taskFolder = path.Join(taskFolder, task.FolderName)
 		}
-		opencodeCommand := fmt.Sprintf("opencode run \"%s\"", task.Task)
+
+		tmpFile, err := os.CreateTemp("", "vibeongo-task-*.txt")
+		if err != nil {
+			return fmt.Errorf("failed to create temp file: %w", err)
+		}
+		defer os.Remove(tmpFile.Name())
+
+		if _, err := tmpFile.WriteString(task.Task); err != nil {
+			return fmt.Errorf("failed to write task: %w", err)
+		}
+		tmpFile.Close()
+
+		opencodeCommand := ""
+		if i == 0 {
+			opencodeCommand = fmt.Sprintf("opencode run \"$(cat %s)\"", tmpFile.Name())
+		} else {
+			opencodeCommand = fmt.Sprintf("opencode run --continue \"$(cat %s)\"", tmpFile.Name())
+		}
 		env := os.Environ()
 		env = append(env, "PATH=/home/ubuntu/.opencode/bin:/usr/local/bin:/usr/bin:/bin")
 		env = append(env, "HOME=/home/ubuntu")
@@ -45,11 +62,7 @@ func runTask() error {
 		cmd.Env = env
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("failed to start update command: %w", err)
-		}
-		if err := cmd.Wait(); err != nil {
+		if err := cmd.Run(); err != nil {
 			return fmt.Errorf("update command failed: %w", err)
 		}
 	}

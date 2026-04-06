@@ -4,6 +4,7 @@ interface SetupInstanceScriptOptions {
   projectSessionId: string;
 }
 
+//TODO: please fix the next ami with removing port 8000 and adding 8080
 export const setupInstanceScript = ({
   sshKey,
   authToken,
@@ -26,6 +27,10 @@ chmod 700 "$USER_HOME/.ssh"
 chmod 600 "$USER_HOME/.ssh/authorized_keys"
 
 chown -R ubuntu:ubuntu "$USER_HOME/.ssh"
+
+
+sudo ufw allow 8080
+sudo ufw deny 8000
 
 mkdir -p "$VIBEONGO_HOME"
 sudo chown -R ubuntu:ubuntu $VIBEONGO_HOME
@@ -50,6 +55,7 @@ echo "Step 4: Run install script"
 
 sudo -u ubuntu bash -c "cd $VIBEONGO_HOME && ./install setup"
 
+sudo chown -R ubuntu:ubuntu "$VIBEONGO_HOME"
 echo "Step 5: Done"
 
 source /home/ubuntu/.bashrc
