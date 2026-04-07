@@ -1,16 +1,11 @@
 package server
 
 import (
-	"database/sql"
 	"embed"
-	"log"
-
-	"github.com/golang-migrate/migrate/v4"
 
 	// _ "github.com/golang-migrate/migrate/v4/database/sqlite"
 	_ "github.com/golang-migrate/migrate/v4/database/sqlite3"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/golang-migrate/migrate/v4/source/iofs"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/routes"
 	"github.com/labstack/echo/v5"
@@ -23,9 +18,9 @@ var migrationsFS embed.FS
 // Start
 
 // Start starts the application.
-func Start() {
+func Start() error {
 	if _, err := config.LoadAndValidate("config.json"); err != nil {
-		log.Fatalf("application startup failed: %v", err)
+		return err
 	}
 
 	e := echo.New()
@@ -41,37 +36,13 @@ func Start() {
 
 	e.Use(middleware.RequestLogger())
 
-	dbConn, err := sql.Open("sqlite", "./test.db")
-	if err != nil {
-		log.Fatalf("Failed to connect the db")
-	}
-	defer dbConn.Close()
 	// routes of app
-	routes.Register(e, dbConn)
+	routes.Register(e)
 
 	// address := ":" + config.ENV.PORT
 	address := ":" + "8080"
 	if err := e.Start(address); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}
-}
-
-func runMigrations() {
-	d, err := iofs.New(migrationsFS, "internal/db/migrations")
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	m, err := migrate.NewWithSourceInstance(
-		"iofs",
-		d,
-		"sqlite3:///home/ubuntu/test.db", // IMPORTANT: absolute path
-	)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		log.Fatal(err)
-	}
+	return nil
 }
