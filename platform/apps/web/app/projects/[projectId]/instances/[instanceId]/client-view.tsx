@@ -4,6 +4,7 @@ import { Copy, Check, Loader2, Trash2, RotateCw } from "lucide-react";
 
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
+import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
 import { OpencodeWebCard } from "@/components/opencode-web-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
@@ -206,7 +207,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
       <ProjectInstanceInfoCard instance={instance} />
 
-      <div>VPS stats</div>
+      <ProjectInstanceStats />
       <OpencodeWebCard publicIp={Instance_IP} isTerminated={isTerminated} />
 
       <ProjectInstanceTerminal publicIp={Instance_IP} hideControls />

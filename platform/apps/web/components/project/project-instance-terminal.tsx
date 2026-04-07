@@ -140,6 +140,17 @@ export function ProjectInstanceTerminal({
 
     ws.onmessage = async (event) => {
       if (typeof event.data === "string") {
+        try {
+          const parsed = JSON.parse(event.data);
+          if (parsed.type === "stats") {
+            // we could emit this to a prop or custom event
+            const customEvent = new CustomEvent("vps-stats", { detail: parsed.data });
+            window.dispatchEvent(customEvent);
+            return;
+          }
+        } catch {
+          // not json, fall through
+        }
         term.write(event.data);
         return;
       }
