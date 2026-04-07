@@ -24,11 +24,13 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
 
+  // const Instance_IP = instance?.public_ip || "localhost";
+  const Instance_IP = "localhost";
   const terminalHealthCheckUrl = instance?.public_ip
-    ? `http://${instance.public_ip}:8080`
+    ? `http://${Instance_IP}:8080`
     : null;
   const sshCommand = instance?.public_ip
-    ? `ssh ubuntu@${String(instance.public_ip)}`
+    ? `ssh ubuntu@${String(Instance_IP)}`
     : null;
 
   const handleTerminate = async () => {
@@ -64,10 +66,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       return;
     }
     try {
-      const res = await axios.post(
-        `http://${instance.public_ip}:8080/reboot`,
-        {},
-      );
+      const res = await axios.post(`http://${Instance_IP}:8080/reboot`, {});
       if (res.status === 200) {
         toast.success("Server rebooted successfully");
         await new Promise((res) => setTimeout(res, 2000));
@@ -207,12 +206,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
       <ProjectInstanceInfoCard instance={instance} />
 
-      <OpencodeWebCard
-        publicIp={instance.public_ip}
-        isTerminated={isTerminated}
-      />
+      <div>VPS stats</div>
+      <OpencodeWebCard publicIp={Instance_IP} isTerminated={isTerminated} />
 
-      <ProjectInstanceTerminal publicIp={instance.public_ip} hideControls />
+      <ProjectInstanceTerminal publicIp={Instance_IP} hideControls />
     </div>
   );
 }
