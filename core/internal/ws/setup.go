@@ -19,7 +19,7 @@ type sizeData struct {
 	Cols uint16 `json:"cols"`
 }
 
-type wsMessage struct {
+type SsMessage struct {
 	Type string   `json:"type"`
 	Data sizeData `json:"data"`
 }
@@ -45,7 +45,8 @@ func WebSocket(c *echo.Context) error {
 	}
 	defer conn.Close()
 
-	wsfunctions.StatsHanlder(conn)
+	go wsfunctions.StatsHandler(conn)
+
 	cmd := exec.Command("bash", "-l")
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
@@ -87,7 +88,7 @@ func pipeWebSocketToPTY(conn *websocket.Conn, ptmx *os.File) error {
 			return err
 		}
 
-		var m wsMessage
+		var m SsMessage
 		if err := json.Unmarshal(msg, &m); err != nil || m.Type == "" {
 			// Not a JSON control message — raw terminal input, write directly
 			if _, err := ptmx.Write(msg); err != nil {
@@ -95,7 +96,6 @@ func pipeWebSocketToPTY(conn *websocket.Conn, ptmx *os.File) error {
 			}
 			continue
 		}
-
 		switch m.Type {
 		case "size":
 			if err := pty.Setsize(ptmx, &pty.Winsize{

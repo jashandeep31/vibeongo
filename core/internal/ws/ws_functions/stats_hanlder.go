@@ -9,7 +9,7 @@ import (
 	"github.com/shirou/gopsutil/v4/mem"
 )
 
-type StatsMessage struct {
+type StatsData struct {
 	Total       uint64  `json:"total"`
 	Used        uint64  `json:"used"`
 	Free        uint64  `json:"free"`
@@ -19,7 +19,7 @@ type StatsMessage struct {
 }
 
 func StatsHandler(c *websocket.Conn) {
-	memT := time.NewTicker(time.Second)
+	memT := time.NewTicker(1 * time.Second)
 	defer memT.Stop()
 
 	defer c.Close()
@@ -41,13 +41,20 @@ func StatsHandler(c *websocket.Conn) {
 				return
 			}
 
-			msg := StatsMessage{
+			statsData := StatsData{
 				Total:       m.Total,
 				Used:        m.Used,
 				Free:        m.Free,
 				UsedPercent: m.UsedPercent,
 				CPUPercent:  cpuPercent[0],
 				Time:        time.Now().Format(time.RFC3339),
+			}
+			msg := struct {
+				Type string `json:"type"`
+				Data any    `json:"data"`
+			}{
+				Type: "stats",
+				Data: statsData,
 			}
 
 			// send JSON directly
