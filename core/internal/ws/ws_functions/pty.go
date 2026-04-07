@@ -28,28 +28,51 @@ type SsMessage struct {
 	Data sizeData `json:"data"`
 }
 
+// saving bufs of terminal session
+
+type TerminalSession struct {
+	buffer []byte
+	ptmx   *os.File
+	mu     sync.Mutex
+}
+
+var session = &TerminalSession{}
+
 func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
 	cmd := exec.Command("bash", "-l")
-	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
-	if err != nil {
-		writeMu.Lock()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
-		writeMu.Unlock()
-		return err
-	}
-	defer func() {
-		if cmd.Process != nil {
-			_ = cmd.Process.Kill()
-		}
-		_ = ptmx.Close()
-	}()
 
-	go pipePTYToWebSocket(conn, ptmx, writeMu)
+	if session.ptmx == nil {
+		ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
+		session.ptmx = ptmx
+		if err != nil {
+			writeMu.Lock()
+			_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
+			writeMu.Unlock()
+			return err
+		}
+	}
+
+	ptmx := session.ptmx
+
+	if len(session.buffer) > 0 {
+		session.mu.Lock()
+		_ = conn.WriteMessage(websocket.BinaryMessage, session.buffer)
+		session.mu.Unlock()
+	}
+
+	// defer func() {
+	// 	if cmd.Process != nil {
+	// 		_ = cmd.Process.Kill()
+	// 	}
+	// 	_ = ptmx.Close()
+	// }()
+
+	go pipePTYToWebSocket(conn, ptmx, writeMu, session)
 
 	return pipeWebSocketToPTY(conn, ptmx)
 }
 
-func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex) {
+func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex, session *TerminalSession) {
 	buf := make([]byte, ptyBufSize)
 	for {
 		n, err := ptmx.Read(buf)
@@ -59,8 +82,14 @@ func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex
 			}
 			return
 		}
+
+		session.mu.Lock()
+		session.buffer = append(session.buffer, buf[:n]...)
+		session.mu.Unlock()
+
 		writeMu.Lock()
 		writeErr := conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+		fmt.Println(string(buf[:n]))
 		writeMu.Unlock()
 		if writeErr != nil {
 			return
