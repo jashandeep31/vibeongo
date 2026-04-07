@@ -60,6 +60,8 @@ func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
 		session.mu.Unlock()
 	}
 
+	// NOTE: no deletion is needed
+
 	// defer func() {
 	// 	if cmd.Process != nil {
 	// 		_ = cmd.Process.Kill()
@@ -89,7 +91,6 @@ func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex
 
 		writeMu.Lock()
 		writeErr := conn.WriteMessage(websocket.BinaryMessage, buf[:n])
-		fmt.Println(string(buf[:n]))
 		writeMu.Unlock()
 		if writeErr != nil {
 			return
