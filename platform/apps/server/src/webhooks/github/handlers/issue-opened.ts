@@ -51,7 +51,7 @@ Please add hte default project to the github repo
   }
   const { project, user, repo } = row;
   // Refining the task given by the user
-  const task = await getRefinedTaskFromUserIssuesComment(`
+  const tasks = await getRefinedTaskFromUserIssuesComment(`
 Issue Url: ${payload.issue.url}
 Issue title: ${payload.issue.title}
 Issue body: ${payload.issue.body}
@@ -67,12 +67,16 @@ Issue body: ${payload.issue.body}
       .returning();
     if (!session) return;
 
-    await tx.insert(projectSessionTasks).values({
-      folder_name: row.repo.full_name.split("/")[1]!,
-      task: task,
-      done: false,
-      project_session_id: session.id,
-    });
+    await tx.insert(projectSessionTasks).values(
+      tasks.map((t) => {
+        return {
+          folder_name: row.repo.full_name.split("/")[1]!,
+          task: t,
+          done: false,
+          project_session_id: session.id,
+        };
+      }),
+    );
 
     return session;
   });
