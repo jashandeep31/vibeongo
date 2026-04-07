@@ -14,3 +14,4 @@ node_modules
 # Testing
 core/api
 core/test.db
+core/config.json
