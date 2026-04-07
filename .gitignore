@@ -13,5 +13,6 @@ node_modules
 
 # Testing
 core/api
+core/vibeongo
 core/test.db
 core/config.json
