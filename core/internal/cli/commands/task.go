@@ -10,6 +10,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Run the tasks using the opencode run command
 func TaskCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "task",
