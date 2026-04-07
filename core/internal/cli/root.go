@@ -17,13 +17,20 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	// rootCmd.AddCommand(commands.SetupCmd())
 	// rootCmd.AddCommand(commands.UpdateCmd())
-	rootCmd.AddCommand(commands.TaskCmd())
-	rootCmd.AddCommand(commands.RepoSetupCmd())
+
+	// setup the vps and config the things
+	rootCmd.AddCommand(commands.VpsSetup())
+	// start the echo server
 	rootCmd.AddCommand(commands.ServeCmd())
+	// setup the repo like insatlling the dependencies
+	rootCmd.AddCommand(commands.RepoSetupCmd())
+	// run the tasks in the opencode
+	rootCmd.AddCommand(commands.TaskCmd())
 }
 
+// Execute
+// execute the first command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)

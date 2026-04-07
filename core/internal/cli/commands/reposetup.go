@@ -11,6 +11,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Setup the working env for the project as per the users script goes through the each github repo in the config file
 func RepoSetupCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "repo_setup",
@@ -51,8 +52,7 @@ npm -v
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	cmd.Run()
-
+	err = cmd.Run()
 	if err != nil {
 		fmt.Println("failed to run command: ", err)
 	}

@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
+// Start the echo server at the port 8080
 func ServeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
