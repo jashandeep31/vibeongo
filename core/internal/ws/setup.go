@@ -1,12 +1,14 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"os/exec"
+	"sync"
 
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
@@ -45,12 +47,19 @@ func WebSocket(c *echo.Context) error {
 	}
 	defer conn.Close()
 
-	go wsfunctions.StatsHandler(conn)
+	ctx, cancel := context.WithCancel(c.Request().Context())
+	defer cancel()
+
+	var writeMu sync.Mutex
+
+	go wsfunctions.StatsHandler(ctx, conn, &writeMu)
 
 	cmd := exec.Command("bash", "-l")
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
+		writeMu.Lock()
 		_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
+		writeMu.Unlock()
 		return err
 	}
 	defer func() {
@@ -60,12 +69,12 @@ func WebSocket(c *echo.Context) error {
 		_ = ptmx.Close()
 	}()
 
-	go pipePTYToWebSocket(conn, ptmx)
+	go pipePTYToWebSocket(conn, ptmx, &writeMu)
 
 	return pipeWebSocketToPTY(conn, ptmx)
 }
 
-func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File) {
+func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex) {
 	buf := make([]byte, ptyBufSize)
 	for {
 		n, err := ptmx.Read(buf)
@@ -75,7 +84,10 @@ func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File) {
 			}
 			return
 		}
-		if err := conn.WriteMessage(websocket.BinaryMessage, buf[:n]); err != nil {
+		writeMu.Lock()
+		writeErr := conn.WriteMessage(websocket.BinaryMessage, buf[:n])
+		writeMu.Unlock()
+		if writeErr != nil {
 			return
 		}
 	}
