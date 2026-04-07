@@ -10,6 +10,7 @@ import (
 
 	"github.com/creack/pty"
 	"github.com/gorilla/websocket"
+	wsfunctions "github.com/jashandeep31/vibeongo/core/internal/ws/ws_functions"
 	"github.com/labstack/echo/v5"
 )
 
@@ -44,6 +45,7 @@ func WebSocket(c *echo.Context) error {
 	}
 	defer conn.Close()
 
+	wsfunctions.StatsHanlder(conn)
 	cmd := exec.Command("bash", "-l")
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
