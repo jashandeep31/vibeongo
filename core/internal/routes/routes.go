@@ -8,12 +8,9 @@ import (
 
 func Register(e *echo.Echo) {
 	e.GET("/", handlers.Health)
-	e.GET("/stats", handlers.StatsHandler)
 	e.GET("/ws", ws.WebSocket)
-	// e.POST("/reboot", handlers.RebootServer)
+	e.POST("/reboot", handlers.RebootServer)
 
-	// opencode related routes
-	// e.GET("/opencode", handlers.LaunchOpenCodeWeb)
 	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
 	e.POST("/opencode/web", handlers.OpenCodeWeb)
 }
