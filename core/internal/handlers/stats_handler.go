@@ -2,39 +2,53 @@ package handlers
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"time"
 
-	"github.com/jashandeep31/vibeongo/core/internal/sse"
 	"github.com/labstack/echo/v5"
+	"github.com/shirou/gopsutil/v4/mem"
 )
 
 func StatsHandler(c *echo.Context) error {
-	// Headers for the server side events
-	w := c.Response()
-	w.Header().Set("Content-Type", "text/event-stream")
-	w.Header().Set("Cache-Control", "no-cache")
-	w.Header().Set("Connection", "keep-alive")
-	fmt.Println("hi stats are working")
+	res := c.Response()
+	req := c.Request()
 
-	ticker := time.NewTicker(1 * time.Second)
-	defer ticker.Stop()
-	count := uint64(0)
+	// SSE headers
+	res.Header().Set("Content-Type", "text/event-stream")
+	res.Header().Set("Cache-Control", "no-cache")
+	res.Header().Set("Connection", "keep-alive")
+
+	memT := time.NewTicker(1 * time.Second)
+	defer memT.Stop()
+	cpuT := time.NewTicker(1 * time.Second)
+	defer cpuT.Stop()
+
 	for {
 		select {
-		case <-c.Request().Context().Done():
-			log.Printf("SSE client disconnected, ip: %v", c.RealIP())
+		case <-req.Context().Done():
+			fmt.Println("Client disconnected")
 			return nil
-		case <-ticker.C:
-			count++
-			event := sse.Event{
-				Data: []byte(fmt.Sprintf("count: %d, time: %s\n\n", count, time.Now().Format(time.RFC3339Nano))),
-			}
-			if err := event.MarshalTo(w); err != nil {
+
+		case <-memT.C:
+			m, err := mem.VirtualMemory()
+			if err != nil {
 				return err
 			}
-			if err := http.NewResponseController(w).Flush(); err != nil {
+
+			data := fmt.Sprintf(
+				"data: RAM: %.2f%% Used: %vMB Free: %vMB Time: %s\n\n",
+				m.UsedPercent,
+				m.Used/1024/1024,
+				m.Free/1024/1024,
+				time.Now().Format(time.RFC3339),
+			)
+
+			if _, err := res.Write([]byte(data)); err != nil {
+				return err
+			}
+
+			// flush immediately
+			if err := http.NewResponseController(res).Flush(); err != nil {
 				return err
 			}
 		}
