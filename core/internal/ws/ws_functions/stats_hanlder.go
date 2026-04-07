@@ -1,7 +1,9 @@
 package wsfunctions
 
 import (
+	"context"
 	"log"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -18,14 +20,14 @@ type StatsData struct {
 	Time        string  `json:"time"`
 }
 
-func StatsHandler(c *websocket.Conn) {
+func StatsHandler(ctx context.Context, c *websocket.Conn, writeMu *sync.Mutex) {
 	memT := time.NewTicker(1 * time.Second)
 	defer memT.Stop()
 
-	defer c.Close()
-
 	for {
 		select {
+		case <-ctx.Done():
+			return
 		case <-memT.C:
 			// RAM
 			m, err := mem.VirtualMemory()
@@ -58,8 +60,11 @@ func StatsHandler(c *websocket.Conn) {
 			}
 
 			// send JSON directly
-			if err := c.WriteJSON(msg); err != nil {
-				log.Println("write error:", err)
+			writeMu.Lock()
+			writeErr := c.WriteJSON(msg)
+			writeMu.Unlock()
+			if writeErr != nil {
+				log.Println("write error:", writeErr)
 				return
 			}
 		}
