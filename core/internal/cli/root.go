@@ -20,7 +20,7 @@ func init() {
 	// rootCmd.AddCommand(commands.UpdateCmd())
 
 	// setup the vps and config the things
-	rootCmd.AddCommand(commands.VpsSetup())
+	rootCmd.AddCommand(commands.VpsSetupCmd())
 	// start the echo server
 	rootCmd.AddCommand(commands.ServeCmd())
 	// setup the repo like insatlling the dependencies
@@ -29,8 +29,6 @@ func init() {
 	rootCmd.AddCommand(commands.TaskCmd())
 }
 
-// Execute
-// execute the first command
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
 		fmt.Println(err)
