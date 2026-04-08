@@ -39,7 +39,9 @@ After=network.target
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/vibeongo 
+User=ubuntu
+Environment="HOME=/home/ubuntu"
+ExecStart=/usr/local/bin/vibeongo serve
 Restart=always
 RestartSec=3
 
@@ -49,10 +51,9 @@ EOF
 
 
 
-systemctl daemon-reexec
-systemctl daemon-reload
-systemctl enable  vibeongo
-systemctl start vibeongo
+sudo systemctl daemon-reload
+sudo systemctl enable vibeongo
+sudo systemctl start vibeongo
                                             `);
   },
 );
