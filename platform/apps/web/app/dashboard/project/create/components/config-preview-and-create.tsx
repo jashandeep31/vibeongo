@@ -46,9 +46,7 @@ export default function ConfigPreviewAndCreate() {
         {
           name: "opencode",
           enabled: additionalServices.opencodeConfig.enabled || false,
-          config: {
-            auth_json: additionalServices.opencodeConfig.authJson,
-          },
+          config: JSON.parse(additionalServices.opencodeConfig.authJson),
         },
         {
           name: "nvim",

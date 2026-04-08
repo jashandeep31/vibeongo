@@ -85,22 +85,18 @@ func ValidateConfig(file []byte) (Config, error) {
 	return cfg, nil
 }
 
-var (
-	home, _   = os.UserHomeDir()
-	configDir = filepath.Join(home, ".config")
-)
+var configPath = filepath.Join("/home/ubuntu/.config/vibeongo", "config.json")
 
-// LoadAndValidate loads the config file and validates it.
 func LoadAndValidate(filename string) (Config, error) {
-	configPath := filepath.Join(configDir, "vibeongo", "config.json")
 	fmt.Println(configPath)
+
 	file, err := os.ReadFile(configPath)
 	if err != nil {
-		localfile, err := os.ReadFile("config.json")
+		tempfile, err := os.ReadFile("config.json")
 		if err != nil {
-			return Config{}, err
+			return Config{}, fmt.Errorf("config not found at %s", configPath)
 		}
-		return ValidateConfig(localfile)
+		return ValidateConfig(tempfile)
 	}
 
 	return ValidateConfig(file)

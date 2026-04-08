@@ -2,6 +2,7 @@ package commands
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/spf13/cobra"
@@ -24,13 +25,17 @@ func getconfig() error {
 		return err
 	}
 
-	response := ""
+	var b strings.Builder
+	b.WriteString("API auth token: ")
+	b.WriteString(cfg.Token)
 
-	response += fmt.Sprintf("API auth token: %s", cfg.Token)
 	for _, repo := range cfg.Repos {
-		formatedString := fmt.Sprintf("\nreponame: %s  token: %s", repo.FullName, repo.AccessToken)
-		response += formatedString
+		b.WriteString("\nreponame: ")
+		b.WriteString(repo.FullName)
+		b.WriteString(" token: ")
+		b.WriteString(repo.AccessToken)
 	}
-	fmt.Println(response)
+
+	fmt.Println(b.String())
 	return nil
 }

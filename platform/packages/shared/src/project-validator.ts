@@ -1,4 +1,4 @@
-import { config, z } from "zod";
+import { z } from "zod";
 
 export const dockerConfigValidator = z.object({
   containers: z.array(
@@ -10,7 +10,7 @@ export const dockerConfigValidator = z.object({
 });
 
 export const opencodeConfigValidator = z.object({
-  auth_json: z.string(),
+  auth_json: z.json(),
 });
 
 export const tmuxConfigValidator = z.object({});
