@@ -5,18 +5,15 @@ import {
   and,
   db,
   eq,
-  instanceRegions,
-  instances,
-  instanceTypes,
   projects,
+  projectSessions,
   projectSshKeys,
   sshKeys,
 } from "@repo/db";
 import { z } from "zod";
-import { createEc2Instance } from "../../aws/services/create-ec2-instance.js";
-import { awsSupportedRegions } from "../../aws/configs/aws-supported-regions-configs.js";
-import { getInstancePublicAddress } from "../../aws/services/get-instance-public-address.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
+import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
+import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 
 const createInstanceBodySchema = z.object({
   projectId: z.string(),
@@ -28,72 +25,54 @@ export const createInstance = catchAsync(
     if (!user) throw new AppError("Authnatication is required", 400);
 
     const body = createInstanceBodySchema.parse(req.body);
+    // Things to do
+    // 1. create a project session
+    // 2. allot the instance
 
-    const row = await db
+    // getting project
+    const rows = await db
       .select({
         project: projects,
-        instanceType: instanceTypes,
-        region: instanceRegions,
-        sshKeys: sshKeys,
+        sshKey: sshKeys,
       })
       .from(projects)
-      .innerJoin(instanceTypes, eq(projects.instance_type_id, instanceTypes.id))
-      .innerJoin(
-        instanceRegions,
-        eq(instanceTypes.region_id, instanceRegions.id),
-      )
       .leftJoin(projectSshKeys, eq(projectSshKeys.project_id, projects.id))
       .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
       .where(
         and(eq(projects.user_id, user.id), eq(projects.id, body.projectId)),
       );
 
-    const base = row[0];
-    console.log(base, row);
-    if (!row || !base) throw new AppError("Project not found", 404);
+    const project = rows[0]?.project;
 
-    const sshKeysArray = row
-      .filter((r) => r.sshKeys !== null)
-      .map((r) => r.sshKeys!.value);
-    const instanceRegion = z.enum(awsSupportedRegions).parse(base.region.slug);
+    const sshKeysArray = rows
+      .map((row) => row.sshKey!.value)
+      .filter((key) => key !== null);
 
-    // const intialScript = setupInstanceScript({
-    //   sshKey: sshKeysArray[0] || " ",
-    //   authToken: "",
-    //   projectId: base.project.id,
-    // });
-    //
-    // console.log(intialScript);
-    // const awsRes = await createEc2Instance({
-    //   region: instanceRegion,
-    //   instanceType: base.instanceType.slug,
-    //   userData: intialScript,
-    // });
+    if (!project) throw new AppError("Project not found", 404);
 
-    // const awsInstance = awsRes?.Instances?.[0];
+    // creating a project session
+    const [projectSession] = await db
+      .insert(projectSessions)
+      .values({
+        user_id: user.id,
+        project_id: project.id,
+      })
+      .returning();
 
-    //TODO: hanle this as if server crash after creation a instance can keep running
-    // if (!awsInstance?.InstanceId || !awsInstance)
-    //   throw new AppError("Failed to create the ec2", 500);
-    //
-    // //NOTE: temp solution for waiting till ip4 get allocated
-    // await new Promise<void>((res) => setTimeout(res, 5000));
-    // const publicIpAddress = await getInstancePublicAddress(
-    //   awsInstance.InstanceId,
-    //   instanceRegion,
-    // );
-    //
-    // await db.insert(instances).values({
-    //   project_id: base.project.id,
-    //   user_id: user.id,
-    //   instance_type_id: base.project.instance_type_id,
-    //   aws_instance_id: awsInstance.InstanceId,
-    //   terminated_at: null,
-    //   started_at: new Date(),
-    //   public_ip: publicIpAddress,
-    //   state: "running",
-    // });
+    if (!projectSession)
+      throw new AppError("Failed to create a project session", 500);
 
+    const authToken = await createSessionAuthToken(projectSession.id);
+    const setupScript = setupInstanceScript({
+      sshKey: sshKeysArray.join("\n"),
+      authToken: authToken,
+      projectSessionId: projectSession.id,
+    });
+    await spinUpAndSaveInstance({
+      setupScript,
+      project,
+      userId: user.id,
+    });
     res.status(201).json({
       message: "Successfully had created the project intance",
     });
