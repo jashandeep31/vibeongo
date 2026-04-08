@@ -17,6 +17,9 @@ interface SpinUpAndSaveInstance {
   userId: string;
 }
 
+/**
+ * Create a aws ec2 instance as per the specs and save it to the user database. So after the response you are ready to no db saving is needed
+ */
 export const spinUpAndSaveInstance = async ({
   setupScript,
   project,

@@ -25,8 +25,8 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
 
-  // const Instance_IP = instance?.public_ip || "localhost";
-  const Instance_IP = "localhost";
+  const Instance_IP = instance?.public_ip || "localhost";
+  // const Instance_IP = "localhost";
   const terminalHealthCheckUrl = instance?.public_ip
     ? `http://${Instance_IP}:8080`
     : null;

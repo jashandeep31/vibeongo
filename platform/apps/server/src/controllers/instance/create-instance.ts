@@ -25,9 +25,6 @@ export const createInstance = catchAsync(
     if (!user) throw new AppError("Authnatication is required", 400);
 
     const body = createInstanceBodySchema.parse(req.body);
-    // Things to do
-    // 1. create a project session
-    // 2. allot the instance
 
     // getting project
     const rows = await db
@@ -68,11 +65,13 @@ export const createInstance = catchAsync(
       authToken: authToken,
       projectSessionId: projectSession.id,
     });
+
     await spinUpAndSaveInstance({
       setupScript,
       project,
       userId: user.id,
     });
+
     res.status(201).json({
       message: "Successfully had created the project intance",
     });

@@ -1,12 +1,12 @@
 import { Router } from "express";
 import {
-  serveBootstrapServer,
+  installScript,
   serveServer,
 } from "../controllers/miscellaneous-controller.js";
 
 const routes: Router = Router();
 
-routes.route("/install").get(serveBootstrapServer);
+routes.route("/install").get(installScript);
 routes.route("/install-api").get(serveServer);
 routes.route("/vibeongo").get(serveServer);
 // routes.route("/install/:id").get();
