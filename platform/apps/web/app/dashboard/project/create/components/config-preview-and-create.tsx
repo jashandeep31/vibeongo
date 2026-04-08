@@ -80,9 +80,6 @@ export default function ConfigPreviewAndCreate() {
           Create Project
         </Button>
       </div>
-      <div className="bg-muted w-[80vw] overflow-auto rounded-md p-4 text-xs">
-        <pre>{JSON.stringify(config, null, 2)}</pre>
-      </div>
     </>
   );
 }
