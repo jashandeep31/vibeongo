@@ -20,6 +20,8 @@ echo "Installing $APP..."
 sudo curl -# -L https://l1.devsradar.com/vibeongo -o "$BINARY_PATH"
 
 # Make executable
+
+sudo chown $USER "$BINARY_PATH"   # user can overwrite it
 sudo chmod +x "$BINARY_PATH"
 
 sudo tee /etc/systemd/system/vibeongo.service > /dev/null <<EOF
