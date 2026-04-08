@@ -12,7 +12,7 @@ var rootCmd = &cobra.Command{
 	Use:   "vibeongo",
 	Short: "Bootstrap and maintenance commands",
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println("Please use a subcommand like: setup, update, task")
+		fmt.Println("Please use a subcommand like: init-workspace, init-repos, run-tasks, serve")
 	},
 }
 

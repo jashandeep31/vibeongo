@@ -14,9 +14,9 @@ import (
 
 func VpsSetupCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "vpssetup",
-		Short: "Install and setup",
-		Long:  "Install configure, setup the thins like auth for opencode and much installing basic tool and much more ",
+		Use:   "init-workspace",
+		Short: "Initialize the VPS environment and clone repositories",
+		Long:  "Reads the configuration and sets up the base environment by cloning required Git repositories into the workspace.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			vpsSetup()
 			return nil

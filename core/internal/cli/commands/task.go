@@ -13,9 +13,9 @@ import (
 // Run the tasks using the opencode run command
 func TaskCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "task",
-		Short: "Perform configured task",
-		Long:  "Run the configured task through OpenCode",
+		Use:   "run-tasks",
+		Short: "Execute configured opencode tasks",
+		Long:  "Reads the tasks from the configuration and executes them sequentially using the opencode CLI tool.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runTask()
 		},

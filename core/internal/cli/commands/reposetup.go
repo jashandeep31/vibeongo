@@ -14,9 +14,9 @@ import (
 // Setup the working env for the project as per the users script goes through the each github repo in the config file
 func RepoSetupCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "repo_setup",
-		Short: "Setup the repo",
-		Long:  "Setup the repo from scratch",
+		Use:   "init-repos",
+		Short: "Initialize and install dependencies for repositories",
+		Long:  "Executes the setup scripts (like npm install, build) for each cloned repository as defined in the configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return runRepoSetup()
 		},
