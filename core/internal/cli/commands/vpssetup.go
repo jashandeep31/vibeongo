@@ -36,6 +36,7 @@ func vpsSetup() error {
 	if err != nil {
 		return fmt.Errorf("config has error: %w", err)
 	}
+	provisions.SetupOpenCode(cfg.OpenCode)
 
 	script := `#!/usr/bin/env bash
 source /home/ubuntu/.bashrc`
