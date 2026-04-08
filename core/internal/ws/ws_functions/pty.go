@@ -29,7 +29,6 @@ type SsMessage struct {
 }
 
 // saving bufs of terminal session
-
 type TerminalSession struct {
 	buffer []byte
 	ptmx   *os.File
