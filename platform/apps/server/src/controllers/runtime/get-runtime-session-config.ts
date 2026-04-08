@@ -11,6 +11,7 @@ import {
   projectSshKeys,
   projects,
   sshKeys,
+  sessionAuthTokens,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
@@ -59,8 +60,15 @@ export const getRuntimeSessionConfig = catchAsync(
       .map((r) => r.repo)
       .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
 
+    const [token] = await db
+      .select()
+      .from(sessionAuthTokens)
+      .where(eq(sessionAuthTokens.session_id, sessionRow.project_session.id))
+      .orderBy(sessionAuthTokens.created_at);
+
     const config = {
       ...(project.config as any),
+      token: token?.token || "",
       repos: await getConfigReadyGithubRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
