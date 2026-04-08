@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
 )
 
 type Config struct {
@@ -84,22 +85,19 @@ func ValidateConfig(file []byte) (Config, error) {
 	return cfg, nil
 }
 
-// LoadAndValidate
+var (
+	home, _   = os.UserHomeDir()
+	configDir = filepath.Join(home, ".config")
+)
 
 // LoadAndValidate loads the config file and validates it.
 func LoadAndValidate(filename string) (Config, error) {
-	file, err := loadConfig(filename)
+	configPath := filepath.Join(configDir, "vibeongo", "config.json")
+	fmt.Println(configPath)
+	file, err := os.ReadFile(configPath)
 	if err != nil {
 		return Config{}, err
 	}
 
 	return ValidateConfig(file)
-}
-
-func loadConfig(filename string) ([]byte, error) {
-	file, err := os.ReadFile(filename)
-	if err != nil {
-		return nil, fmt.Errorf("Failed to load the config: %w", err)
-	}
-	return file, nil
 }
