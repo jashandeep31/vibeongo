@@ -14,25 +14,50 @@ export const setupInstanceScript = ({
 set -euxo pipefail
 exec > /var/log/user-data.log 2>&1
 
+date
+
 USER_HOME="/home/ubuntu"
 
 echo "Step 1: Setup SSH"
 
 mkdir -p "$USER_HOME/.ssh"
-
 echo "${sshKey}" >> "$USER_HOME/.ssh/authorized_keys"
 
 chmod 700 "$USER_HOME/.ssh"
 chmod 600 "$USER_HOME/.ssh/authorized_keys"
 chown -R ubuntu:ubuntu "$USER_HOME/.ssh"
 
-sudo ufw allow 8080
-sudo ufw deny 8000
+# Firewall (root)
+ufw allow 8080
+ufw deny 8000
 
+# Create ubuntu user script
+cat <<SCRIPT > /tmp/ubuntu-setup.sh
+#!/usr/bin/env bash
+set -euxo pipefail
 
+CONFIG_DIR="\\$HOME/.config/vibeongo"
+mkdir -p "\\$CONFIG_DIR"
 
+curl --request GET \\
+  --url https://l1.devsradar.com/api/v1/runtime/sessions/${projectSessionId}/config \\
+  --header "Authorization: Bearer ${authToken}" \\
+  | jq '.data' > "\\$CONFIG_DIR/config.json"
+
+curl -fsSL https://l1.devsradar.com/install | bash
+
+vibeongo init-workspace
+SCRIPT
+
+chmod +x /tmp/ubuntu-setup.sh
+
+# Run as ubuntu
+sudo -u ubuntu /tmp/ubuntu-setup.sh
+
+date
 `;
 };
+
 // const temp = `
 //
 // echo "Step 2: Downloading the bootstrap scripts adnd api server"

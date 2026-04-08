@@ -40,6 +40,7 @@ var session = &TerminalSession{}
 
 func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
 	cmd := exec.Command("bash", "-l")
+	cmd.Dir = os.Getenv("HOME")
 
 	if session.ptmx == nil {
 		ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
@@ -59,15 +60,6 @@ func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
 		_ = conn.WriteMessage(websocket.BinaryMessage, session.buffer)
 		session.mu.Unlock()
 	}
-
-	// NOTE: no deletion is needed
-
-	// defer func() {
-	// 	if cmd.Process != nil {
-	// 		_ = cmd.Process.Kill()
-	// 	}
-	// 	_ = ptmx.Close()
-	// }()
 
 	go pipePTYToWebSocket(conn, ptmx, writeMu, session)
 
