@@ -27,6 +27,8 @@ func init() {
 	rootCmd.AddCommand(commands.RepoSetupCmd())
 	// run the tasks in the opencode
 	rootCmd.AddCommand(commands.TaskCmd())
+	// getting config
+	rootCmd.AddCommand(commands.GetconfigCmd())
 }
 
 func Execute() {

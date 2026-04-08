@@ -92,7 +92,8 @@ var (
 
 // LoadAndValidate loads the config file and validates it.
 func LoadAndValidate(filename string) (Config, error) {
-	configPath := filepath.Join(configDir, "vibeongo", "config.json")
+	// configPath := filepath.Join(configDir, "vibeongo", "config.json")
+	configPath := "config.json"
 	fmt.Println(configPath)
 	file, err := os.ReadFile(configPath)
 	if err != nil {
