@@ -12,13 +12,15 @@ var rootCmd = &cobra.Command{
 	Use:   "vibeongo",
 	Short: "Bootstrap and maintenance commands",
 	Run: func(cmd *cobra.Command, args []string) {
+		version := "0.0.2"
+		fmt.Println(version)
 		fmt.Println("Please use a subcommand like: init-workspace, init-repos, run-tasks, serve")
 	},
 }
 
 func init() {
-	// rootCmd.AddCommand(commands.UpdateCmd())
-
+	// update the vibeongo
+	rootCmd.AddCommand(commands.UpdateCmd())
 	// setup the vps and config the things
 	rootCmd.AddCommand(commands.VpsSetupCmd())
 	// start the echo server
