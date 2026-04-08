@@ -8,9 +8,6 @@ const RootPath = process.cwd();
 export const serveBootstrapServer = catchAsync(
   async (_req: Request, res: Response) => {
     const binaryPath = path.join(RootPath, "../../../core/bootstrap-script");
-
-    console.log(binaryPath);
-
     const stat = fs.statSync(binaryPath);
 
     res.writeHead(200, {
@@ -26,9 +23,6 @@ export const serveBootstrapServer = catchAsync(
 
 export const serveServer = catchAsync(async (_req: Request, res: Response) => {
   const binaryPath = path.join(RootPath, "../../../core/api");
-
-  console.log(binaryPath);
-
   const stat = fs.statSync(binaryPath);
 
   res.writeHead(200, {
@@ -40,3 +34,18 @@ export const serveServer = catchAsync(async (_req: Request, res: Response) => {
 
   stream.pipe(res);
 });
+export const serveVibeongoServer = catchAsync(
+  async (_req: Request, res: Response) => {
+    const binaryPath = path.join(RootPath, "../../../core/vibeongo");
+    const stat = fs.statSync(binaryPath);
+
+    res.writeHead(200, {
+      "Content-Type": "",
+      "Content-Length": stat.size,
+    });
+
+    const stream = fs.createReadStream(binaryPath);
+
+    stream.pipe(res);
+  },
+);
