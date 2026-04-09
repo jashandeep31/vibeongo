@@ -6,8 +6,8 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 	"github.com/spf13/cobra"
 )
 
