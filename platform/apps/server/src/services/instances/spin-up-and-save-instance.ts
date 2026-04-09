@@ -15,6 +15,7 @@ interface SpinUpAndSaveInstance {
   setupScript: string;
   project: typeof projects.$inferSelect;
   userId: string;
+  sessionId: null | string;
 }
 
 /**
@@ -24,6 +25,7 @@ export const spinUpAndSaveInstance = async ({
   setupScript,
   project,
   userId,
+  sessionId = null,
 }: SpinUpAndSaveInstance) => {
   const [row] = await db
     .select({ region: instanceRegions })
@@ -64,6 +66,7 @@ export const spinUpAndSaveInstance = async ({
       started_at: new Date(),
       public_ip: publicIpAddress,
       state: "running",
+      project_session_id: sessionId,
     })
     .returning();
 

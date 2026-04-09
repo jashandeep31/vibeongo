@@ -70,6 +70,7 @@ export const createInstance = catchAsync(
       setupScript,
       project,
       userId: user.id,
+      sessionId: projectSession.id,
     });
 
     res.status(201).json({
