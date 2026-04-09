@@ -13,7 +13,6 @@ import {
   sshKeys,
   users,
 } from "@repo/db";
-import { getRefinedTaskFromUserIssuesComment } from "../../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
 import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
 import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
@@ -23,6 +22,29 @@ export const issueOpenedHandler = async (
   event: WebhookHandler<IssuesOpenedEvent>,
 ) => {
   const { payload, octokit } = event;
+
+  // checking if the body contains the tagging
+  const body = payload?.issue?.body;
+  if (!body) return;
+
+  // if (!body.includes("@vibeongo")) return;
+
+  const res = await octokit.request(
+    "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+    {
+      owner: payload.repository.owner.login,
+      repo: payload.repository.name,
+      issue_number: payload.issue.number,
+      body: `👋 Got it! I'm on it.
+🛠️ Fetching live logs for this issue — this can take up to 5 minutes.  
+🌐 You can monitor progress on the live website.`,
+      headers: {
+        "x-github-api-version": "2026-03-10",
+      },
+    },
+  );
+  const commentId = res.data.id;
+
   const issueOpnerUsername = payload.issue?.user?.login;
   const full_name = payload.repository?.full_name;
   if (!issueOpnerUsername || !full_name) {
@@ -42,11 +64,10 @@ export const issueOpenedHandler = async (
   if (!row || !row.repo || !row.user || !row.project || !payload.issue.body) {
     if (!row?.project)
       console.log(`
-                                 
+                                
 Please add hte default project to the github repo
                                  
 `);
-    console.log(row?.repo, row?.user, row?.project, payload.issue.body);
     return;
   }
   const { project, user, repo } = row;

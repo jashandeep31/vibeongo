@@ -192,26 +192,28 @@ export default function ClientView() {
                       </span>
                     </div>
 
-                    <div className="bg-muted/50 mt-3 rounded-md border p-2">
-                      <p className="text-muted-foreground text-xs font-medium">
-                        Setup Script
-                      </p>
-                      <pre className="mt-1 max-h-28 overflow-auto font-mono text-xs break-words whitespace-pre-wrap">
-                        {repo.setup_script || "No setup script configured."}
-                      </pre>
-                    </div>
-
-                    <div className="bg-muted/50 mt-3 rounded-md border p-2">
-                      <p className="text-muted-foreground text-xs font-medium">
-                        Default Project
-                      </p>
-                      <p
-                        className="mt-1 truncate text-xs"
-                        title={defaultProjectName}
-                      >
-                        {defaultProjectName}
-                      </p>
-                    </div>
+                    {repo.default_project_id ? (
+                      <div className="bg-muted/50 mt-3 rounded-md border p-2">
+                        <p className="text-muted-foreground text-xs font-medium">
+                          Default Project
+                        </p>
+                        <p
+                          className="mt-1 truncate text-xs"
+                          title={defaultProjectName}
+                        >
+                          {defaultProjectName}
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-md border border-yellow-500/20 bg-yellow-500/10 p-2 text-yellow-700 dark:text-yellow-400">
+                        <p className="text-xs font-medium">
+                          No Default Project
+                        </p>
+                        <p className="mt-1 text-xs">
+                          Assign a project to use this repository.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
 

@@ -3,8 +3,6 @@ import { createNodeMiddleware } from "@octokit/webhooks";
 import { env } from "../../lib/env.js";
 import path from "path";
 import fs from "fs/promises";
-import { db, eq, githubRepos, projects, users } from "@repo/db";
-import { getRefinedTaskFromUserIssuesComment } from "../../ai/ai-functions/get-refined-task-from-user-issues-comment.js";
 import { issueOpenedHandler } from "./handlers/issue-opened.js";
 
 const BASE_DIR = process.cwd();
@@ -22,6 +20,8 @@ export const octokitApp: App = new App({
 
 // ------ Issue opening handling ------
 octokitApp.webhooks.on("issues.opened", issueOpenedHandler as any);
+// ------ Pull request opening handling ------
+octokitApp.webhooks.on("pull_request.opened", issueOpenedHandler as any);
 
 // ------ Issue comment handling ------
 octokitApp.webhooks.on("issue_comment", async (event) => {
@@ -44,7 +44,7 @@ export const githubAppWebhookMiddleware = createNodeMiddleware(
 );
 
 // --- sending the comment from bot ---
-// await octokit.request(
+// await octokitApp.request(
 //   "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
 //   {
 //     owner: payload.repository.owner.login,
