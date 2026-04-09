@@ -103,8 +103,8 @@ export function ProjectSessionsList({
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Clock3 className="text-muted-foreground h-5 w-5" />
-                <CardTitle className="truncate text-base" title={session.id}>
-                  Session
+                <CardTitle className="truncate text-base" title={session.name}>
+                  {session.name}
                 </CardTitle>
               </div>
               {runningInstance ? (
@@ -117,21 +117,18 @@ export function ProjectSessionsList({
                 </Badge>
               )}
             </div>
-            <CardDescription className="truncate pt-1 font-mono text-xs">
-              {session.id}
+            <CardDescription className="line-clamp-2 pt-1 text-xs">
+              {session.description || "No description provided."}
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-4">
             <div className="space-y-3 text-sm">
               <div>
                 <span className="text-muted-foreground mb-1 block text-xs">
-                  Project ID
+                  Session ID
                 </span>
-                <span
-                  className="block truncate font-mono"
-                  title={session.project_id}
-                >
-                  {session.project_id}
+                <span className="block truncate font-mono" title={session.id}>
+                  {session.id}
                 </span>
               </div>
 
