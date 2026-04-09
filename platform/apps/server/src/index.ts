@@ -16,6 +16,7 @@ import { githubRepoRoutes } from "./routes/github-repo-routes.js";
 import { AppError } from "./lib/app-error.js";
 import { NextFunction } from "express";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
+import { projectSessionRoutes } from "./routes/project-session-routes.js";
 
 const app = express();
 
@@ -58,6 +59,7 @@ app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 app.use("/api/v1/github-repos", githubRepoRoutes);
 app.use("/api/v1/runtime", runtimeRoutes);
+app.use("/api/v1/project-sessions", projectSessionRoutes);
 
 // --- Global Error Handler ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
