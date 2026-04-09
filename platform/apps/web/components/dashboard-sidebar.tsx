@@ -10,6 +10,7 @@ import {
 } from "@repo/ui/components/sidebar";
 import {
   ArrowUpRight,
+  Clock3,
   CreditCard,
   Github,
   LucideIcon,
@@ -47,6 +48,11 @@ const sidebarLinks: {
     title: "Repos",
     url: "/dashboard/repos",
     icon: GitFork,
+  },
+  {
+    title: "Sessions",
+    url: "/dashboard/sessions",
+    icon: Clock3,
   },
   {
     title: "Billing",
