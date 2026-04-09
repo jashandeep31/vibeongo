@@ -110,6 +110,7 @@ File placement rules:
 - You have to create hte file on your own vibengoplan.md
 - The vibengoplan.md file must be created.
 - Before the please add it to .gitignore file too
+- If the comment on the pr or issues in theri by your name vibeongobot then please update it to the things are done look at theri okay because it coould be hte confirmation thing so add thsi peroply to hte plan.md
 
 Planning expectations:
 - Act like a senior developer who has just received this task.
