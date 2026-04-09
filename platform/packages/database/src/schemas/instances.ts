@@ -9,6 +9,7 @@ import {
 import { projects } from "./projects.js";
 import { instanceTypes } from "./instances-metadata.js";
 import { users } from "./user.js";
+import { projectSessions } from "./project-sessions.js";
 
 export const instanceState = pgEnum("instance_state", [
   "running",
@@ -25,6 +26,9 @@ export const instances = pgTable("instances", {
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
   instance_type_id: uuid().references(() => instanceTypes.id),
+  project_session_id: uuid().references(() => projectSessions.id, {
+    onDelete: "set null",
+  }),
 
   terminated_at: timestamp(),
   started_at: timestamp(),

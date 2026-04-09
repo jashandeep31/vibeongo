@@ -8,4 +8,5 @@ routes
   .route("/sessions/:id/config")
   .get(checkRuntimeAuthorization, getRuntimeSessionConfig);
 
+routes.route("/sessions/:id/stop/:instanceId").get(checkRuntimeAuthorization);
 export const runtimeRoutes = routes;
