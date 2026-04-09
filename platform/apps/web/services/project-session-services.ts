@@ -44,3 +44,14 @@ export const getProjectSessions = async (): Promise<
     return acc;
   }, []);
 };
+
+export const resumeProjectSession = async (id: string) => {
+  const res = await axios.post(
+    `${BACKEND_URL}/api/v1/project-sessions/${id}`,
+    {},
+    {
+      withCredentials: true,
+    },
+  );
+  return res.data;
+};
