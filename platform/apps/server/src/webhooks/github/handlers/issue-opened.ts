@@ -17,6 +17,7 @@ import { getRefinedTaskFromUserIssuesComment } from "../../../ai/ai-functions/ge
 import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
 import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
+import { getSessionNameAndDescription } from "../../../ai/ai-functions/get-session-name-and-description.js";
 
 export const issueOpenedHandler = async (
   event: WebhookHandler<IssuesOpenedEvent>,
@@ -56,10 +57,16 @@ Please add hte default project to the github repo
   // Issue body: ${payload.issue.body}
   // `);
 
+  const sessionMeta = await getSessionNameAndDescription(
+    payload.issue.title + "\n" + payload.issue.body,
+  );
+
   const session = await db.transaction(async (tx) => {
     const [session] = await tx
       .insert(projectSessions)
       .values({
+        name: sessionMeta.name || "New Session",
+        description: sessionMeta.description || "",
         user_id: row.user.id,
         project_id: project.id,
       })

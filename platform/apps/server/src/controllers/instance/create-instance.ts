@@ -17,6 +17,8 @@ import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 
 const createInstanceBodySchema = z.object({
   projectId: z.string(),
+  sessionName: z.string().optional(),
+  sessionDescription: z.string().optional(),
 });
 
 export const createInstance = catchAsync(
@@ -51,6 +53,8 @@ export const createInstance = catchAsync(
     const [projectSession] = await db
       .insert(projectSessions)
       .values({
+        name: body.sessionName || project.name,
+        description: body.sessionDescription || "",
         user_id: user.id,
         project_id: project.id,
       })

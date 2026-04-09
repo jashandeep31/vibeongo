@@ -73,6 +73,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     statusCode = 400;
     message = "Validation Error";
   }
+  console.log(err);
 
   res.status(statusCode).json({
     message,

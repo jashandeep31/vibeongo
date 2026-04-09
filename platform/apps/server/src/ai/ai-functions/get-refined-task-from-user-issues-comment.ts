@@ -1,7 +1,6 @@
 import { Type } from "@google/genai";
 import { aiModels, googleAiClient } from "../config.js";
 import { prompts } from "../prompts/index.js";
-import { getRefinedTaskFromUserIssuesCommentSystemPrompt } from "../prompts/get-refined-task-from-user-issues-comment-system-prompt.js";
 
 // --- Gets the raw message and convert it to refined message to get passed to the opencode run command ---
 export const getRefinedTaskFromUserIssuesComment = async (
@@ -26,7 +25,7 @@ export const getRefinedTaskFromUserIssuesComment = async (
         },
       },
     },
-    contents: comment,
+    contents: [{ role: "user", parts: [{ text: comment }] }],
   });
 
   const parsedResponse = JSON.parse(res.text || "");
