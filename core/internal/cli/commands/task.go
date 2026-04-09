@@ -40,20 +40,24 @@ func runTask() error {
 	)
 
 	for _, task := range cfg.Tasks {
+		taskFolderPath := path.Join(codeFolderPath, task.FolderName)
+
+		fmt.Println("--------------------------------------------------")
+		fmt.Println("Running task in:", taskFolderPath)
+		fmt.Println("--------------------------------------------------")
 
 		// asking to create a plan
-		taskFolderpath := path.Join(codeFolderPath, task.FolderName)
-		if err := runOpencodeTask(taskFolderpath, env, systemPrompt+task.Task, false); err != nil {
+		if err := runOpencodeTask(taskFolderPath, env, systemPrompt+task.Task, false); err != nil {
 			return err
 		}
 
 		// Working on the plan file
-		if err := runOpencodeTask(taskFolderpath, env, "check vibeongoplan.md and complete all the tasks. and the most imprtant theirs is not one ot tell you which is write path and how you can handle this so be a independent do all at your no questions asked", true); err != nil {
+		if err := runOpencodeTask(taskFolderPath, env, "check vibeongoplan.md and complete all the tasks. and the most imprtant theirs is not one ot tell you which is write path and how you can handle this so be a independent do all at your no questions asked", true); err != nil {
 			return err
 		}
 
 		// check what is pending
-		if err := runOpencodeTask(taskFolderpath, env, "Please confirm onces after checking vibengoplan.md if anyting is left please compelte it ", true); err != nil {
+		if err := runOpencodeTask(taskFolderPath, env, "Please confirm onces after checking vibengoplan.md if anyting is left please compelte it ", true); err != nil {
 			return err
 		}
 	}
