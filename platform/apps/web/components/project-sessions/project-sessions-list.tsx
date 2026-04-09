@@ -27,6 +27,13 @@ const formatDate = (value: string | Date | null | undefined) => {
   return date.toLocaleString();
 };
 
+const truncateWords = (str: string | null | undefined, maxWords: number) => {
+  if (!str) return "";
+  const words = str.split(/\s+/);
+  if (words.length <= maxWords) return str;
+  return words.slice(0, maxWords).join(" ") + "...";
+};
+
 type ProjectSessionsListProps = {
   sessions: ProjectSessionWithRunningInstance[];
   isLoading: boolean;
@@ -125,10 +132,11 @@ export function ProjectSessionsList({
             <div className="space-y-3 text-sm">
               <div>
                 <span className="text-muted-foreground mb-1 block text-xs">
-                  Session ID
+                  Overview
                 </span>
-                <span className="block truncate font-mono" title={session.id}>
-                  {session.id}
+                <span className="block text-xs" title={session.overview || ""}>
+                  {truncateWords(session.overview, 20) ||
+                    "No overview available."}
                 </span>
               </div>
 

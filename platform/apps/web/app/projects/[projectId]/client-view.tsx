@@ -3,10 +3,8 @@
 import { useState } from "react";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import {
-  useCreateInstance,
-  useGetInstancesByProjectId,
-} from "@/hooks/use-instance";
+import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialog";
+import { useGetInstancesByProjectId } from "@/hooks/use-instance";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -42,20 +40,8 @@ export default function ClientView({ projectId }: { projectId: string }) {
     refetch: refetchInstances,
   } = useGetInstancesByProjectId(projectId);
   const deleteProjectMutation = useDeleteProject();
-  const { mutateAsync: createInstance } = useCreateInstance();
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
-
-  const handleCreate = async () => {
-    const toastId = toast.loading("Creating the new instance");
-    try {
-      await createInstance({ projectId: projectId });
-      await refetchInstances();
-      toast.success("created", { id: toastId });
-    } catch {
-      toast.error("failed", { id: toastId });
-    }
-  };
 
   const handleDeleteProject = async () => {
     const toastId = toast.loading("Deleting project...");
@@ -105,13 +91,13 @@ export default function ClientView({ projectId }: { projectId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
           <div className="flex items-center gap-2">
-            <Button
-              onClick={() => {
-                void handleCreate();
+            <CreateInstanceDialog
+              projectId={projectId}
+              projectName={project.name}
+              onSuccess={() => {
+                void refetchInstances();
               }}
-            >
-              Create Instance
-            </Button>
+            />
             <ConfirmationDialog
               title="Delete project"
               description="Are you sure you want to delete this project? This action cannot be undone."
