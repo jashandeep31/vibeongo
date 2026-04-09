@@ -1,6 +1,6 @@
 "use client";
 
-import { ProjectSessionsTable } from "@/components/project-sessions/project-sessions-table";
+import { ProjectSessionsList } from "@/components/project-sessions/project-sessions-list";
 import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 
 export default function ClientView() {
@@ -16,7 +16,7 @@ export default function ClientView() {
       </div>
 
       <div className="mt-8">
-        <ProjectSessionsTable
+        <ProjectSessionsList
           sessions={data ?? []}
           isLoading={isLoading}
           isError={isError}

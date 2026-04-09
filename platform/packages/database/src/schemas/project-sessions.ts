@@ -12,6 +12,9 @@ import { users } from "./user.js";
 export const projectSessions = pgTable("project_session", {
   id: uuid().defaultRandom().primaryKey(),
 
+  name: varchar().notNull(),
+  description: text(),
+
   started_at: timestamp().defaultNow(),
 
   user_id: uuid().references(() => users.id, { onDelete: "cascade" }),
