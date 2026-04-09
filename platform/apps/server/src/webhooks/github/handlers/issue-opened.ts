@@ -109,6 +109,7 @@ Please add hte default project to the github repo
     setupScript: intialScript,
     project,
     userId: user.id,
+    sessionId: session.id,
   });
   return;
 };
