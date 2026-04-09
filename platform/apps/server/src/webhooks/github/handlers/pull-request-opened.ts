@@ -1,4 +1,4 @@
-import { App, IssuesOpenedEvent } from "@octokit/webhooks-types";
+import { App, PullRequestOpenedEvent } from "@octokit/webhooks-types";
 import { WebhookHandler } from "../types.js";
 import {
   db,
@@ -18,25 +18,23 @@ import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
 import { getSessionNameAndDescription } from "../../../ai/ai-functions/get-session-name-and-description.js";
 
-export const issueOpenedHandler = async (
-  event: WebhookHandler<IssuesOpenedEvent>,
+export const pullRequestOpenedHandler = async (
+  event: WebhookHandler<PullRequestOpenedEvent>,
 ) => {
   const { payload, octokit } = event;
 
   // checking if the body contains the tagging
-  const body = payload?.issue?.body;
+  const body = payload?.pull_request?.body;
   if (!body) return;
-
-  // if (!body.includes("@vibeongo")) return;
 
   //   const res = await octokit.request(
   //     "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
   //     {
   //       owner: payload.repository.owner.login,
   //       repo: payload.repository.name,
-  //       issue_number: payload.issue.number,
+  //       issue_number: payload.pull_request.number,
   //       body: `👋 Got it! I'm on it.
-  // 🛠️ Fetching live logs for this issue — this can take up to 5 minutes.
+  // 🛠️ Fetching live logs for this pull request — this can take up to 5 minutes.
   // 🌐 You can monitor progress on the live website.`,
   //       headers: {
   //         "x-github-api-version": "2026-03-10",
@@ -44,12 +42,13 @@ export const issueOpenedHandler = async (
   //     },
   //   );
   //   const commentId = res.data.id;
-  //
-  const issueOpnerUsername = payload.issue?.user?.login;
+
+  const prOpenerUsername = payload.pull_request?.user?.login;
   const full_name = payload.repository?.full_name;
-  if (!issueOpnerUsername || !full_name) {
+  if (!prOpenerUsername || !full_name) {
     return;
   }
+
   const [row] = await db
     .select({
       repo: githubRepos,
@@ -61,7 +60,13 @@ export const issueOpenedHandler = async (
     .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
     .where(eq(githubRepos.full_name, full_name));
 
-  if (!row || !row.repo || !row.user || !row.project || !payload.issue.body) {
+  if (
+    !row ||
+    !row.repo ||
+    !row.user ||
+    !row.project ||
+    !payload.pull_request.body
+  ) {
     if (!row?.project)
       console.log(`
                                 
@@ -71,15 +76,9 @@ Please add hte default project to the github repo
     return;
   }
   const { project, user, repo } = row;
-  // Refining the task given by the user
-  //   const tasks = await getRefinedTaskFromUserIssuesComment(`
-  // Issue Url: ${payload.issue.url}
-  // Issue title: ${payload.issue.title}
-  // Issue body: ${payload.issue.body}
-  // `);
 
   const sessionMeta = await getSessionNameAndDescription(
-    payload.issue.title + "\n" + payload.issue.body,
+    payload.pull_request.title + "\n" + payload.pull_request.body,
   );
 
   const session = await db.transaction(async (tx) => {
@@ -97,10 +96,10 @@ Please add hte default project to the github repo
     await tx.insert(projectSessionTasks).values({
       folder_name: repo.full_name.split("/")[1],
       task: `
-      Hi the issue is opended up with the following details:
-      Title: ${payload.issue.title}
-      URL: ${payload.issue.url}
-      Body: ${payload.issue.body}
+      Hi the pull request is opened up with the following details:
+      Title: ${payload.pull_request.title}
+      URL: ${payload.pull_request.url}
+      Body: ${payload.pull_request.body}
       `,
       done: false,
       project_session_id: session.id,
