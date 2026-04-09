@@ -4,6 +4,7 @@ import { env } from "../../lib/env.js";
 import path from "path";
 import fs from "fs/promises";
 import { issueOpenedHandler } from "./handlers/issue-opened.js";
+import { pullRequestOpenedHandler } from "./handlers/pull-request-opened.js";
 
 const BASE_DIR = process.cwd();
 const filepath = path.join(BASE_DIR, "vibeongo.2026-03-28.private-key.pem");
@@ -21,7 +22,7 @@ export const octokitApp: App = new App({
 // ------ Issue opening handling ------
 octokitApp.webhooks.on("issues.opened", issueOpenedHandler as any);
 // ------ Pull request opening handling ------
-octokitApp.webhooks.on("pull_request.opened", issueOpenedHandler as any);
+octokitApp.webhooks.on("pull_request.opened", pullRequestOpenedHandler as any);
 
 // ------ Issue comment handling ------
 octokitApp.webhooks.on("issue_comment", async (event) => {

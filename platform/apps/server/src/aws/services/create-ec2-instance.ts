@@ -32,6 +32,16 @@ export const createEc2Instance = async ({
       Enabled: false, // enable in future it's paid
     },
     UserData: Buffer.from(userData).toString("base64"),
+    BlockDeviceMappings: [
+      {
+        DeviceName: "/dev/sda1", // root volume device name for Ubuntu AMIs
+        Ebs: {
+          VolumeSize: 20, // GB
+          VolumeType: "gp3",
+          DeleteOnTermination: true,
+        },
+      },
+    ],
   });
   const client = getEc2Client(region);
 
