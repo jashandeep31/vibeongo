@@ -67,7 +67,7 @@ Please add hte default project to the github repo
     if (!session) return;
 
     await tx.insert(projectSessionTasks).values({
-      folder_name: "",
+      folder_name: repo.full_name.split("/")[1],
       task: `
       Hi the issue is opended up with the following details:
       Title: ${payload.issue.title}
