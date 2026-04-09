@@ -46,7 +46,20 @@ export default function ConfigPreviewAndCreate() {
         {
           name: "opencode",
           enabled: additionalServices.opencodeConfig.enabled || false,
-          config: JSON.parse(additionalServices.opencodeConfig.authJson),
+          config: {
+            auth_json: (() => {
+              try {
+                return JSON.parse(
+                  additionalServices.opencodeConfig.authJson || "{}",
+                );
+              } catch {
+                return {
+                  error: "Invalid JSON",
+                  raw: additionalServices.opencodeConfig.authJson,
+                };
+              }
+            })(),
+          },
         },
         {
           name: "nvim",
@@ -72,7 +85,8 @@ export default function ConfigPreviewAndCreate() {
               //TODO: reset the form or even better redirect to the project dashboard
               toast.success("Project created", { id: toastId });
               router.push("/dashboard");
-            } catch {
+            } catch (error) {
+              console.error(error);
               toast.error("Failed to create project", { id: toastId });
             }
           }}

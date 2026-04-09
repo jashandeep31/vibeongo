@@ -3,7 +3,7 @@
 import { Checkbox } from "@repo/ui/components/checkbox";
 import { Label } from "@repo/ui/components/label";
 import { Terminal } from "lucide-react";
-import { Input } from "@repo/ui/components/input";
+import { Textarea } from "@repo/ui/components/textarea";
 import { memo } from "react";
 import { useConfigStore } from "@/store/config-store";
 
@@ -17,7 +17,7 @@ function OpencodeConfigCard() {
     updateOpencodeConfig({ enabled, authJson });
   };
 
-  const onAuthJsonChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onAuthJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     updateOpencodeConfig({
       enabled: opencodeEnabled,
       authJson: e.target.value,
@@ -64,12 +64,12 @@ function OpencodeConfigCard() {
                 >
                   Auth JSON Configuration
                 </Label>
-                <Input
+                <Textarea
                   id="opencode-authjson"
                   value={authJson}
                   onChange={onAuthJsonChange}
                   placeholder='{"token": "xyz..."}'
-                  className="font-mono text-sm"
+                  className="min-h-[100px] font-mono text-sm"
                 />
                 <p className="text-muted-foreground text-xs">
                   Provide auth configuration in JSON format for Opencode.
