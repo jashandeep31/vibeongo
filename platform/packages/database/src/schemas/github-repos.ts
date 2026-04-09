@@ -21,21 +21,22 @@ export const githubRepos = pgTable(
       })
       .notNull(),
 
-    default_project_id: uuid()
-      .references(() => projects.id, {
-        onDelete: "set null",
-      })
-      .unique(),
+    default_project_id: uuid().references(() => projects.id, {
+      onDelete: "set null",
+    }),
 
     installation_id: integer().notNull(),
 
     public: boolean().default(false).notNull(),
-    full_name: varchar({ length: 255 }).notNull(), // Full name refers to the username/reponame example "jashandeep31/vibeongo"
-    repo_owner_username: varchar({ length: 255 }).notNull(), // username refers to the github username  example "jashandeep31"
+    full_name: varchar({ length: 255 }).notNull(),
+    repo_owner_username: varchar({ length: 255 }).notNull(),
     setup_script: text().notNull().default(""),
 
     created_at: timestamp().defaultNow(),
     updated_at: timestamp().defaultNow(),
   },
-  (t) => [unique().on(t.full_name, t.user_id)],
+  (t) => [
+    unique("github_repos_default_project_id_unique").on(t.default_project_id),
+    unique("github_repos_full_name_user_id_unique").on(t.full_name, t.user_id),
+  ],
 );
