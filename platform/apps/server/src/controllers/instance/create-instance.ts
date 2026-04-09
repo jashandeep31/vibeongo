@@ -14,19 +14,14 @@ import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
-
-const createInstanceBodySchema = z.object({
-  projectId: z.string(),
-  sessionName: z.string().optional(),
-  sessionDescription: z.string().optional(),
-});
+import { createInstanceSchema } from "@repo/shared";
 
 export const createInstance = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authnatication is required", 400);
 
-    const body = createInstanceBodySchema.parse(req.body);
+    const body = createInstanceSchema.parse(req.body);
 
     // getting project
     const rows = await db
@@ -53,7 +48,7 @@ export const createInstance = catchAsync(
     const [projectSession] = await db
       .insert(projectSessions)
       .values({
-        name: body.sessionName || project.name,
+        name: body.sessionName,
         description: body.sessionDescription || "",
         user_id: user.id,
         project_id: project.id,

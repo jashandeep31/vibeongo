@@ -74,3 +74,11 @@ export const projectConfigValidator = z.object({
     ),
   }),
 });
+
+export const createInstanceSchema = z.object({
+  projectId: z.string().uuid("Invalid Project ID"),
+  sessionName: z
+    .string()
+    .min(4, "Session name must be at least 4 characters long"),
+  sessionDescription: z.string().optional(),
+});

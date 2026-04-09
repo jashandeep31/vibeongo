@@ -1,10 +1,14 @@
 import { BACKEND_URL } from "@/lib/constants";
 import axios from "axios";
 import { instances } from "@repo/db";
+import { z } from "@repo/shared";
+import { createInstanceSchema } from "@repo/shared";
 
 type Instance = typeof instances.$inferSelect;
+type CreateInstanceData = z.infer<typeof createInstanceSchema>;
+
 export const createInstance = async (
-  data: unknown,
+  data: CreateInstanceData,
 ): Promise<{ message: string }> => {
   const res = await axios.post(`${BACKEND_URL}/api/v1/instances`, data, {
     withCredentials: true,
