@@ -34,6 +34,7 @@ func getconfig() error {
 		b.WriteString(repo.FullName)
 		b.WriteString(" token: ")
 		b.WriteString(repo.AccessToken)
+		b.WriteString("this x-access-token is valid for 1 hour so use like:git youaction https://x-access-token:YOUR_TOKEN@github.com/owner/repo.git")
 	}
 
 	fmt.Println(b.String())
