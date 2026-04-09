@@ -5,7 +5,6 @@ import {
   eq,
   githubRepos,
   instanceRegions,
-  instances,
   instanceTypes,
   projects,
   projectSessions,
@@ -51,11 +50,11 @@ Please add hte default project to the github repo
   }
   const { project, user, repo } = row;
   // Refining the task given by the user
-  const tasks = await getRefinedTaskFromUserIssuesComment(`
-Issue Url: ${payload.issue.url}
-Issue title: ${payload.issue.title}
-Issue body: ${payload.issue.body}
-`);
+  //   const tasks = await getRefinedTaskFromUserIssuesComment(`
+  // Issue Url: ${payload.issue.url}
+  // Issue title: ${payload.issue.title}
+  // Issue body: ${payload.issue.body}
+  // `);
 
   const session = await db.transaction(async (tx) => {
     const [session] = await tx
@@ -67,16 +66,17 @@ Issue body: ${payload.issue.body}
       .returning();
     if (!session) return;
 
-    await tx.insert(projectSessionTasks).values(
-      tasks.map((t) => {
-        return {
-          folder_name: row.repo.full_name.split("/")[1]!,
-          task: t,
-          done: false,
-          project_session_id: session.id,
-        };
-      }),
-    );
+    await tx.insert(projectSessionTasks).values({
+      folder_name: "",
+      task: `
+      Hi the issue is opended up with the following details:
+      Title: ${payload.issue.title}
+      URL: ${payload.issue.url}
+      Body: ${payload.issue.body}
+      `,
+      done: false,
+      project_session_id: session.id,
+    });
 
     return session;
   });
@@ -105,7 +105,7 @@ Issue body: ${payload.issue.body}
     .where(eq(instanceTypes.id, project.instance_type_id));
   if (!regionRow || !regionRow.instance_regions) return;
 
-  const instance = await spinUpAndSaveInstance({
+  await spinUpAndSaveInstance({
     setupScript: intialScript,
     project,
     userId: user.id,
