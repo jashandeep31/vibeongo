@@ -3,8 +3,8 @@ package provisions
 import (
 	"path/filepath"
 
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 // Create a and return a script to clone the github repo on their respective paths

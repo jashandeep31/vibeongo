@@ -6,9 +6,9 @@ import (
 	"os/exec"
 
 	"github.com/fatih/color"
-	"github.com/jashandeep31/vibeongo/core/internal/bootstrap/utils"
 	"github.com/jashandeep31/vibeongo/core/internal/cli/provisions"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 	"github.com/spf13/cobra"
 )
 
