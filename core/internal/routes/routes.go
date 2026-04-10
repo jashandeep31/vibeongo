@@ -9,6 +9,7 @@ import (
 func Register(e *echo.Echo) {
 	e.GET("/", handlers.Health)
 	e.GET("/ws", ws.WebSocket)
+	e.GET("/ufw", handlers.GetAllowedPorts)
 	e.POST("/reboot", handlers.RebootServer)
 
 	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
