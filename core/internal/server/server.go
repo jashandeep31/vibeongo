@@ -13,6 +13,7 @@ func Start() error {
 		return err
 	}
 
+	// go handlers.GetAllowedPortsTestfunc()
 	e := echo.New()
 	// TODO: please use the proper cors way
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
