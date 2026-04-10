@@ -1,5 +1,5 @@
 {
-  "id": "4410d54d-3b10-4c74-85a2-9e4ffa837c9a",
+  "id": "835ab74b-3928-4c98-aec1-363115d5a145",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -60,6 +60,127 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.github_repos": {
+      "name": "github_repos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_project_id": {
+          "name": "default_project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "installation_id": {
+          "name": "installation_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "public": {
+          "name": "public",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "full_name": {
+          "name": "full_name",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "repo_owner_username": {
+          "name": "repo_owner_username",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "setup_script": {
+          "name": "setup_script",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "github_repos_user_id_users_id_fk": {
+          "name": "github_repos_user_id_users_id_fk",
+          "tableFrom": "github_repos",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "github_repos_default_project_id_projects_id_fk": {
+          "name": "github_repos_default_project_id_projects_id_fk",
+          "tableFrom": "github_repos",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "default_project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "github_repos_default_project_id_unique": {
+          "name": "github_repos_default_project_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "default_project_id"
+          ]
+        },
+        "github_repos_full_name_user_id_unique": {
+          "name": "github_repos_full_name_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "full_name",
+            "user_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -239,14 +360,33 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'instance'"
+        },
         "project_id": {
           "name": "project_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
         },
-        "instance_type": {
-          "name": "instance_type",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "instance_type_id": {
+          "name": "instance_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "project_session_id": {
+          "name": "project_session_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -270,6 +410,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "overview": {
+          "name": "overview",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "public_ip": {
           "name": "public_ip",
           "type": "varchar",
@@ -282,8 +428,8 @@
           "primaryKey": false,
           "notNull": false
         },
-        "instance_id": {
-          "name": "instance_id",
+        "aws_instance_id": {
+          "name": "aws_instance_id",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
@@ -318,17 +464,116 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "instances_instance_type_instance_types_id_fk": {
-          "name": "instances_instance_type_instance_types_id_fk",
+        "instances_user_id_users_id_fk": {
+          "name": "instances_user_id_users_id_fk",
+          "tableFrom": "instances",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "instances_instance_type_id_instance_types_id_fk": {
+          "name": "instances_instance_type_id_instance_types_id_fk",
           "tableFrom": "instances",
           "tableTo": "instance_types",
           "columnsFrom": [
-            "instance_type"
+            "instance_type_id"
           ],
           "columnsTo": [
             "id"
           ],
           "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "instances_project_session_id_project_session_id_fk": {
+          "name": "instances_project_session_id_project_session_id_fk",
+          "tableFrom": "instances",
+          "tableTo": "project_session",
+          "columnsFrom": [
+            "project_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_session_tasks": {
+      "name": "project_session_tasks",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "folder_name": {
+          "name": "folder_name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "task": {
+          "name": "task",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "done": {
+          "name": "done",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "project_session_id": {
+          "name": "project_session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_session_tasks_project_session_id_project_session_id_fk": {
+          "name": "project_session_tasks_project_session_id_project_session_id_fk",
+          "tableFrom": "project_session_tasks",
+          "tableTo": "project_session",
+          "columnsFrom": [
+            "project_session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -349,15 +594,20 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "started_at": {
           "name": "started_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": false,
-          "default": "now()"
-        },
-        "ended_at": {
-          "name": "ended_at",
           "type": "timestamp",
           "primaryKey": false,
           "notNull": false,
@@ -375,11 +625,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "charges": {
-          "name": "charges",
-          "type": "integer",
+        "overview": {
+          "name": "overview",
+          "type": "text",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -537,6 +787,152 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.project_github_repos": {
+      "name": "project_github_repos",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "github_repo_id": {
+          "name": "github_repo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_github_repos_project_id_projects_id_fk": {
+          "name": "project_github_repos_project_id_projects_id_fk",
+          "tableFrom": "project_github_repos",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "project_github_repos_github_repo_id_github_repos_id_fk": {
+          "name": "project_github_repos_github_repo_id_github_repos_id_fk",
+          "tableFrom": "project_github_repos",
+          "tableTo": "github_repos",
+          "columnsFrom": [
+            "github_repo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_ssh_keys": {
+      "name": "project_ssh_keys",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ssh_key_id": {
+          "name": "ssh_key_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_ssh_keys_project_id_projects_id_fk": {
+          "name": "project_ssh_keys_project_id_projects_id_fk",
+          "tableFrom": "project_ssh_keys",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "project_ssh_keys_ssh_key_id_shh_keys_id_fk": {
+          "name": "project_ssh_keys_ssh_key_id_shh_keys_id_fk",
+          "tableFrom": "project_ssh_keys",
+          "tableTo": "shh_keys",
+          "columnsFrom": [
+            "ssh_key_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.projects": {
       "name": "projects",
       "schema": "",
@@ -560,10 +956,15 @@
           "primaryKey": false,
           "notNull": false
         },
-        "status": {
-          "name": "status",
-          "type": "project_status",
-          "typeSchema": "public",
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "instance_type_id": {
+          "name": "instance_type_id",
+          "type": "uuid",
           "primaryKey": false,
           "notNull": true
         },
@@ -574,8 +975,8 @@
           "notNull": true,
           "default": 0
         },
-        "ports_config": {
-          "name": "ports_config",
+        "config": {
+          "name": "config",
           "type": "json",
           "primaryKey": false,
           "notNull": true
@@ -596,7 +997,100 @@
         }
       },
       "indexes": {},
-      "foreignKeys": {},
+      "foreignKeys": {
+        "projects_user_id_users_id_fk": {
+          "name": "projects_user_id_users_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "projects_instance_type_id_instance_types_id_fk": {
+          "name": "projects_instance_type_id_instance_types_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "instance_types",
+          "columnsFrom": [
+            "instance_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.session_auth_tokens": {
+      "name": "session_auth_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "session_auth_tokens_session_id_project_session_id_fk": {
+          "name": "session_auth_tokens_session_id_project_session_id_fk",
+          "tableFrom": "session_auth_tokens",
+          "tableTo": "project_session",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
@@ -769,6 +1263,12 @@
           "notNull": true,
           "default": "'active'"
         },
+        "token": {
+          "name": "token",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
         "deleted_at": {
           "name": "deleted_at",
           "type": "timestamp",
@@ -834,11 +1334,17 @@
           "name": "id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false,
+          "notNull": true,
           "default": "gen_random_uuid()"
         },
         "email": {
           "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
@@ -894,6 +1400,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "email"
+          ]
+        },
+        "users_username_unique": {
+          "name": "users_username_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username"
           ]
         }
       },
@@ -987,14 +1500,6 @@
         "terminated"
       ]
     },
-    "public.project_status": {
-      "name": "project_status",
-      "schema": "public",
-      "values": [
-        "running",
-        "terminated"
-      ]
-    },
     "public.ec2_status": {
       "name": "ec2_status",
       "schema": "public",
@@ -1007,7 +1512,7 @@
       "name": "account_providers",
       "schema": "public",
       "values": [
-        "google"
+        "github"
       ]
     },
     "public.account_status": {
