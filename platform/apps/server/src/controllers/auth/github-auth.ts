@@ -27,7 +27,7 @@ export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
   const requestUrl = "https://github.com/login/oauth/authorize";
   const params = {
     client_id: env.GITHUB_CLIENT_ID,
-    redirect_uri: "http://localhost:8000/api/v1/auth/github/callback",
+    redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
     scope: "user:email",
   };
 
