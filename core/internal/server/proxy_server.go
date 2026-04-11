@@ -27,7 +27,19 @@ func ProxyServerStart() {
 	// basic http handler
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// status route
-		if r.URL.Path == "/status" && r.Method == "POST" {
+		if r.URL.Path == "/status" && r.Method == "GET" {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("OK"))
+			return
+		}
+		if r.URL.Path == "/add" && r.Method == "POST" {
+			authToken := r.Header.Get("x-token")
+			if authToken != "secret" {
+				w.WriteHeader(http.StatusUnauthorized)
+				w.Write([]byte("Unauthorized"))
+				return
+			}
+			proxyStore.AddProxy(r.FormValue("host"), r.FormValue("target"))
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 			return
