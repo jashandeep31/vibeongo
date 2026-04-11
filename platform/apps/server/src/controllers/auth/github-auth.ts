@@ -49,7 +49,7 @@ export const githubAuthCallbackController = catchAsync(
         client_id: env.GITHUB_CLIENT_ID,
         client_secret: env.GITHUB_CLIENT_SECRET,
         code,
-        redirect_uri: "http://localhost:8000/api/v1/auth/github/callback",
+        redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
       }).toString(),
       {
         headers: {
