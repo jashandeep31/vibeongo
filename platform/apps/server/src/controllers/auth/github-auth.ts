@@ -119,6 +119,7 @@ export const githubAuthCallbackController = catchAsync(
       sameSite: "lax",
       maxAge: sessionMaxAgeMs,
       path: "/",
+      ...(env.NODE_ENV === "production" ? { domain: ".vibeongo.com" } : {}),
     });
 
     res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
