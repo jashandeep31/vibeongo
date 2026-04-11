@@ -121,6 +121,6 @@ export const githubAuthCallbackController = catchAsync(
       path: "/",
     });
 
-    res.redirect(process.env.CLIENT_URL || "http://localhost:3000/dashboard");
+    res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
   },
 );
