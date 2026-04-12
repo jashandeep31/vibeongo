@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/http/httputil"
 
@@ -17,6 +18,7 @@ func ProxyServerStart() {
 	proxy := &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
 			proxyData, ok := proxyStore.GetProxyByHost(r.Host)
+			fmt.Println("proxyData", proxyData)
 			if !ok {
 				r.Header.Set("proxy-error", "404")
 				return
@@ -40,7 +42,7 @@ func ProxyServerStart() {
 
 	mux := http.NewServeMux()
 	mux.Handle(
-		"GET /status/",
+		"GET /proxy/status/",
 		middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(
 			func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
@@ -49,8 +51,9 @@ func ProxyServerStart() {
 					ProxyTo string `json:"proxyTo"`
 				}
 
-				proxies := make([]proxyItem, 0, len(proxyStore.Proxies))
-				for _, proxy := range proxyStore.Proxies {
+				mappedProxies := proxyStore.GetAllProxies()
+				proxies := make([]proxyItem, 0, len(mappedProxies))
+				for _, proxy := range mappedProxies {
 					proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String()})
 				}
 
@@ -60,13 +63,29 @@ func ProxyServerStart() {
 		)),
 	)
 
-	mux.Handle("POST /add", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxyStore.AddProxy(r.FormValue("host"), r.FormValue("url"))
+	mux.Handle("POST /proxy/add", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var data struct {
+			Host      string `json:"host"`
+			TargetUrl string `json:"target_url"`
+		}
+
+		err := json.NewDecoder(r.Body).Decode(&data)
+		if err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("url and host are required"))
+			return
+		}
+		if (data.Host == "") || (data.TargetUrl == "") {
+			w.WriteHeader(http.StatusBadRequest)
+			w.Write([]byte("400"))
+			return
+		}
+		proxyStore.AddProxy(data.Host, data.TargetUrl)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("OK"))
 	}))
 
-	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("GET /proxy/login", func(w http.ResponseWriter, r *http.Request) {
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session",
 			Value:    "secret",
