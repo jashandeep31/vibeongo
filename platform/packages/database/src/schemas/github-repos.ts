@@ -24,7 +24,6 @@ export const githubRepos = pgTable(
     default_project_id: uuid().references(() => projects.id, {
       onDelete: "set null",
     }),
-
     installation_id: integer().notNull(),
 
     public: boolean().default(false).notNull(),
@@ -35,8 +34,5 @@ export const githubRepos = pgTable(
     created_at: timestamp().defaultNow(),
     updated_at: timestamp().defaultNow(),
   },
-  (t) => [
-    unique("github_repos_default_project_id_unique").on(t.default_project_id),
-    unique("github_repos_full_name_user_id_unique").on(t.full_name, t.user_id),
-  ],
+  (t) => [unique().on(t.user_id, t.full_name)],
 );
