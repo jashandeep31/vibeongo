@@ -6,35 +6,35 @@ import (
 	"time"
 )
 
-type proxy struct {
+type Proxy struct {
 	Host      string
 	TargetUrl *url.URL
 	ExpiresAt time.Time
 }
 
-type proxyManager struct {
-	mu      sync.RWMutex
-	proxies map[string]*proxy
+type ProxyManager struct {
+	Mu      sync.RWMutex
+	Proxies map[string]*Proxy
 }
 
-func NewProxyManager() *proxyManager {
-	pm := &proxyManager{
-		proxies: make(map[string]*proxy),
+func NewProxyManager() *ProxyManager {
+	pm := &ProxyManager{
+		Proxies: make(map[string]*Proxy),
 	}
 	go pm.cleanup()
 	return pm
 }
 
-func (pm *proxyManager) AddProxy(hostUrl string, targetUrl string) error {
+func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string) error {
 	t, err := url.Parse(targetUrl)
 	if err != nil {
 		return err
 	}
 
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
+	pm.Mu.Lock()
+	defer pm.Mu.Unlock()
 
-	pm.proxies[hostUrl] = &proxy{
+	pm.Proxies[hostUrl] = &Proxy{
 		Host:      hostUrl,
 		TargetUrl: t,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
@@ -42,25 +42,25 @@ func (pm *proxyManager) AddProxy(hostUrl string, targetUrl string) error {
 	return nil
 }
 
-func (pm *proxyManager) GetProxyByHost(host string) (*proxy, bool) {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
+func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
+	pm.Mu.RLock()
+	defer pm.Mu.RUnlock()
 
-	p, ok := pm.proxies[host]
+	p, ok := pm.Proxies[host]
 	return p, ok
 }
 
-func (pm *proxyManager) cleanup() {
+func (pm *ProxyManager) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
 	for range ticker.C {
 		now := time.Now()
-		pm.mu.Lock()
-		for host, p := range pm.proxies {
+		pm.Mu.Lock()
+		for host, p := range pm.Proxies {
 			if now.After(p.ExpiresAt) {
-				delete(pm.proxies, host)
+				delete(pm.Proxies, host)
 			}
 		}
-		pm.mu.Unlock()
+		pm.Mu.Unlock()
 	}
 }
