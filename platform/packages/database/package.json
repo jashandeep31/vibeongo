@@ -10,7 +10,8 @@
     "build": "tsx node_modules/drizzle-kit/bin.cjs generate && npx tsc",
     "drizzle:generate": "tsx node_modules/drizzle-kit/bin.cjs generate",
     "drizzle:push": "tsx node_modules/drizzle-kit/bin.cjs push",
-    "drizzle:studio": "tsx node_modules/drizzle-kit/bin.cjs studio"
+    "drizzle:studio": "tsx node_modules/drizzle-kit/bin.cjs studio",
+    "drizzle:migrate": "tsx node_modules/drizzle-kit/bin.cjs migrate"
   },
   "exports": {
     ".": "./dist/index.js"
