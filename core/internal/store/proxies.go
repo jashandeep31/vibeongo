@@ -13,13 +13,13 @@ type Proxy struct {
 }
 
 type ProxyManager struct {
-	Mu      sync.RWMutex
-	Proxies map[string]*Proxy
+	mu      sync.RWMutex
+	proxies map[string]*Proxy
 }
 
 func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
-		Proxies: make(map[string]*Proxy),
+		proxies: make(map[string]*Proxy),
 	}
 	go pm.cleanup()
 	return pm
@@ -31,10 +31,10 @@ func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string) error {
 		return err
 	}
 
-	pm.Mu.Lock()
-	defer pm.Mu.Unlock()
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
 
-	pm.Proxies[hostUrl] = &Proxy{
+	pm.proxies[hostUrl] = &Proxy{
 		Host:      hostUrl,
 		TargetUrl: t,
 		ExpiresAt: time.Now().Add(5 * time.Minute),
@@ -43,10 +43,10 @@ func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string) error {
 }
 
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
-	pm.Mu.RLock()
-	defer pm.Mu.RUnlock()
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
 
-	p, ok := pm.Proxies[host]
+	p, ok := pm.proxies[host]
 	return p, ok
 }
 
@@ -55,12 +55,16 @@ func (pm *ProxyManager) cleanup() {
 	defer ticker.Stop()
 	for range ticker.C {
 		now := time.Now()
-		pm.Mu.Lock()
-		for host, p := range pm.Proxies {
+		pm.mu.Lock()
+		for host, p := range pm.proxies {
 			if now.After(p.ExpiresAt) {
-				delete(pm.Proxies, host)
+				delete(pm.proxies, host)
 			}
 		}
-		pm.Mu.Unlock()
+		pm.mu.Unlock()
 	}
+}
+
+func (pm *ProxyManager) GetAllProxies() map[string]*Proxy {
+	return pm.proxies
 }
