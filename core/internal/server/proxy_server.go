@@ -10,14 +10,83 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
-func ProxyServerStart() {
-	proxyStore := store.NewProxyManager()
-	proxyStore.AddProxy("d1.devsradar.com", "http://localhost:8000")
+type ProxyServer struct {
+	store *store.ProxyManager
+}
 
-	// proxy handler
-	proxy := &httputil.ReverseProxy{
+func NewProxyServer(store *store.ProxyManager) *ProxyServer {
+	return &ProxyServer{store: store}
+}
+
+func (s *ProxyServer) Start(addr string) error {
+	s.store.AddProxy("d1.devsradar.com", "http://localhost:8000")
+
+	mux := http.NewServeMux()
+
+	mux.Handle("GET /proxy/status/", middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(s.handleStatus)))
+	mux.HandleFunc("POST /proxy/add", s.handleAdd)
+	mux.HandleFunc("GET /proxy/login", s.handleLogin)
+	mux.Handle("/", s.reverseProxy())
+
+	return http.ListenAndServe(addr, mux)
+}
+
+func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+	type proxyItem struct {
+		Url     string `json:"url"`
+		ProxyTo string `json:"proxyTo"`
+	}
+
+	mappedProxies := s.store.GetAllProxies()
+	proxies := make([]proxyItem, 0, len(mappedProxies))
+	for _, proxy := range mappedProxies {
+		proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String()})
+	}
+
+	json.NewEncoder(w).Encode(proxies)
+}
+
+func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Host      string `json:"host"`
+		TargetUrl string `json:"target_url"`
+	}
+
+	err := json.NewDecoder(r.Body).Decode(&data)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("url and host are required"))
+		return
+	}
+	if (data.Host == "") || (data.TargetUrl == "") {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400"))
+		return
+	}
+	s.store.AddProxy(data.Host, data.TargetUrl)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
+func (s *ProxyServer) handleLogin(w http.ResponseWriter, r *http.Request) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session",
+		Value:    "secret",
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   false,
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   3600,
+	})
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Login success"))
+}
+
+func (s *ProxyServer) reverseProxy() http.Handler {
+	return &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
-			proxyData, ok := proxyStore.GetProxyByHost(r.Host)
+			proxyData, ok := s.store.GetProxyByHost(r.Host)
 			fmt.Println("proxyData", proxyData)
 			if !ok {
 				r.Header.Set("proxy-error", "404")
@@ -39,66 +108,4 @@ func ProxyServerStart() {
 			}
 		},
 	}
-
-	mux := http.NewServeMux()
-	mux.Handle(
-		"GET /proxy/status/",
-		middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Content-Type", "application/json")
-				type proxyItem struct {
-					Url     string `json:"url"`
-					ProxyTo string `json:"proxyTo"`
-				}
-
-				mappedProxies := proxyStore.GetAllProxies()
-				proxies := make([]proxyItem, 0, len(mappedProxies))
-				for _, proxy := range mappedProxies {
-					proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String()})
-				}
-
-				w.Header().Set("Content-Type", "application/json")
-				json.NewEncoder(w).Encode(proxies)
-			},
-		)),
-	)
-
-	mux.Handle("POST /proxy/add", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		var data struct {
-			Host      string `json:"host"`
-			TargetUrl string `json:"target_url"`
-		}
-
-		err := json.NewDecoder(r.Body).Decode(&data)
-		if err != nil {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("url and host are required"))
-			return
-		}
-		if (data.Host == "") || (data.TargetUrl == "") {
-			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("400"))
-			return
-		}
-		proxyStore.AddProxy(data.Host, data.TargetUrl)
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	}))
-
-	mux.HandleFunc("GET /proxy/login", func(w http.ResponseWriter, r *http.Request) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session",
-			Value:    "secret",
-			Path:     "/",
-			HttpOnly: true,
-			Secure:   false,
-			SameSite: http.SameSiteLaxMode,
-			MaxAge:   3600,
-		})
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Login success"))
-	})
-
-	mux.Handle("/", proxy)
-	http.ListenAndServe(":5000", mux)
 }
