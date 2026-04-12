@@ -1,9 +1,11 @@
 package server
 
 import (
+	"encoding/json"
 	"net/http"
 	"net/http/httputil"
 
+	"github.com/jashandeep31/vibeongo/core/internal/middlewares"
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
@@ -16,6 +18,7 @@ func ProxyServerStart() {
 		Director: func(r *http.Request) {
 			proxyData, ok := proxyStore.GetProxyByHost(r.Host)
 			if !ok {
+				r.Header.Set("proxy-error", "404")
 				return
 			}
 			r.URL.Scheme = "http"
@@ -23,45 +26,60 @@ func ProxyServerStart() {
 			r.URL.Host = proxyData.TargetUrl.Host
 			// req.Header.Set("x-token", time.Now().UTC().Format(time.RFC1123))
 		},
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			errorHeader := r.Header.Get("proxy-error")
+			if errorHeader == "404" {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte("404"))
+			} else {
+				w.WriteHeader(http.StatusInternalServerError)
+				w.Write([]byte("500"))
+			}
+		},
 	}
 
-	// basic http handler
-	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// status route
-		if r.URL.Path == "/status" && r.Method == "GET" {
-			w.Write([]byte("OK"))
-			return
-		}
-		if r.URL.Path == "/add" && r.Method == "POST" {
-			authToken := r.Header.Get("x-token")
-			if authToken != "secret" {
-				w.WriteHeader(http.StatusUnauthorized)
-				w.Write([]byte("Unauthorized"))
-				return
-			}
-			proxyStore.AddProxy(r.FormValue("host"), r.FormValue("target"))
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("OK"))
-			return
-		}
-		if r.URL.Path == "/login" && r.Method == "GET" {
-			http.SetCookie(w, &http.Cookie{
-				Name:     "session",
-				Value:    "secret",
-				Path:     "/",
-				HttpOnly: true,
-				Secure:   false,
-				SameSite: http.SameSiteLaxMode,
-				MaxAge:   3600,
-			})
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Login success"))
-			return
-		}
+	mux := http.NewServeMux()
+	mux.Handle(
+		"GET /status/",
+		middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+				type proxyItem struct {
+					Url     string `json:"url"`
+					ProxyTo string `json:"proxyTo"`
+				}
 
-		// setting up the proxy
-		proxy.ServeHTTP(w, r)
+				proxies := make([]proxyItem, 0, len(proxyStore.Proxies))
+				for _, proxy := range proxyStore.Proxies {
+					proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String()})
+				}
+
+				w.Header().Set("Content-Type", "application/json")
+				json.NewEncoder(w).Encode(proxies)
+			},
+		)),
+	)
+
+	mux.Handle("POST /add", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyStore.AddProxy(r.FormValue("host"), r.FormValue("url"))
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("OK"))
+	}))
+
+	mux.HandleFunc("GET /login", func(w http.ResponseWriter, r *http.Request) {
+		http.SetCookie(w, &http.Cookie{
+			Name:     "session",
+			Value:    "secret",
+			Path:     "/",
+			HttpOnly: true,
+			Secure:   false,
+			SameSite: http.SameSiteLaxMode,
+			MaxAge:   3600,
+		})
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Login success"))
 	})
 
-	http.ListenAndServe(":5000", handler)
+	mux.Handle("/", proxy)
+	http.ListenAndServe(":5000", mux)
 }
