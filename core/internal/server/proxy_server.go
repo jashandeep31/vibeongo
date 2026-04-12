@@ -9,8 +9,9 @@ import (
 
 func ProxyServerStart() {
 	proxyStore := store.NewProxyManager()
-	proxyStore.AddProxy("d1.devsradar.com", "http://localhost:8080")
+	proxyStore.AddProxy("d1.devsradar.com", "http://localhost:8000")
 
+	// proxy handler
 	proxy := &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
 			proxyData, ok := proxyStore.GetProxyByHost(r.Host)
@@ -28,7 +29,6 @@ func ProxyServerStart() {
 	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// status route
 		if r.URL.Path == "/status" && r.Method == "GET" {
-			w.WriteHeader(http.StatusOK)
 			w.Write([]byte("OK"))
 			return
 		}
@@ -44,6 +44,21 @@ func ProxyServerStart() {
 			w.Write([]byte("OK"))
 			return
 		}
+		if r.URL.Path == "/login" && r.Method == "GET" {
+			http.SetCookie(w, &http.Cookie{
+				Name:     "session",
+				Value:    "secret",
+				Path:     "/",
+				HttpOnly: true,
+				Secure:   false,
+				SameSite: http.SameSiteLaxMode,
+				MaxAge:   3600,
+			})
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Login success"))
+			return
+		}
+
 		// setting up the proxy
 		proxy.ServeHTTP(w, r)
 	})
