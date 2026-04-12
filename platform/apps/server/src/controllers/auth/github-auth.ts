@@ -112,10 +112,9 @@ export const githubAuthCallbackController = catchAsync(
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
       expiresIn: "30d",
     });
-
     res.cookie("session", token, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production",
+      secure: env.NODE_ENV === "production", // false in dev
       sameSite: "lax",
       maxAge: sessionMaxAgeMs,
       path: "/",
