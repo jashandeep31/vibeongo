@@ -7,6 +7,7 @@ import {
   projectDomainRouting,
   projects,
   proxyDomains,
+  sql,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -59,58 +60,40 @@ export const getProjectDomainsById = catchAsync(
     const { id } = req.params;
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
-
-    const rows = await db
-      .select({
-        domains: proxyDomains,
-        allowedIPs: domainAllowedIPs,
-        projectDomainRouting,
-      })
-      .from(projectDomainRouting)
-      .leftJoin(
-        proxyDomains,
-        eq(proxyDomains.routing_id, projectDomainRouting.id),
+    const dbRes = await db.execute(sql`      SELECT 
+  jsonb_agg(
+    to_jsonb(pdr) || jsonb_build_object(
+      'proxy_domains', 
+      COALESCE(
+        (
+          SELECT 
+            jsonb_agg(
+              to_jsonb(pd) || jsonb_build_object( 
+                'allowed_ips', 
+                COALESCE(
+                  (
+                    SELECT 
+                      jsonb_agg(to_jsonb(dai))
+                    FROM domain_allowed_ips dai 
+                    WHERE dai.proxy_domain_id = pd.id
+                  ), 
+                  '[]'::jsonb
+                )
+              )
+            ) 
+          FROM proxy_domains pd 
+          WHERE pd.routing_id = pdr.id
+        ), 
+        '[]'::jsonb
       )
-      .leftJoin(
-        domainAllowedIPs,
-        eq(domainAllowedIPs.proxy_domain_id, proxyDomains.id),
-      )
-      .where(
-        and(
-          eq(projectDomainRouting.project_id, id),
-          eq(projectDomainRouting.user_id, user.id),
-        ),
-      );
+    )
+  ) AS result
+FROM project_domain_routing pdr 
+WHERE pdr.project_id = ${id};`);
 
-    const projectRouting = rows[0]?.projectDomainRouting;
-    if (!projectRouting) throw new AppError("project not found", 404);
+    //NOTE: make it typesafe but its working too as we not using type can't check even looking for review on this
+    const refinedData = (dbRes.rows[0]?.result as any)[0];
 
-    const proxyMap = new Map<
-      string,
-      typeof proxyDomains.$inferSelect & {
-        allowedIPs: (typeof domainAllowedIPs.$inferSelect)[];
-      }
-    >();
-    for (const row of rows) {
-      const proxy = row.domains;
-      const ip = row.allowedIPs;
-      if (!proxy) continue;
-      if (!proxyMap.has(proxy.id)) {
-        proxyMap.set(proxy.id, {
-          ...proxy,
-          allowedIPs: [],
-        });
-      }
-      if (ip) {
-        proxyMap.get(proxy.id)!.allowedIPs.push(ip);
-      }
-    }
-    const refinedData = {
-      projectRouting: {
-        ...projectRouting,
-        proxyDomains: Array.from(proxyMap.values()),
-      },
-    };
     res.status(200).json({
       data: refinedData,
     });

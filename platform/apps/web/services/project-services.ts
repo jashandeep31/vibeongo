@@ -40,12 +40,10 @@ export const deleteProject = async (id: string) => {
   return res.data;
 };
 
-type GetProjectDomains = {
-  projectRouting: typeof projectDomainRouting.$inferSelect & {
-    proxyDomains: (typeof proxyDomains.$inferSelect & {
-      allowedIPs: (typeof domainAllowedIPs.$inferSelect)[];
-    })[];
-  };
+type GetProjectDomains = typeof projectDomainRouting.$inferSelect & {
+  proxy_domains: (typeof proxyDomains.$inferSelect & {
+    allowed_ips: (typeof domainAllowedIPs.$inferSelect)[];
+  })[];
 };
 export const getProjectDomainsById = async (
   id: string,
@@ -53,6 +51,5 @@ export const getProjectDomainsById = async (
   const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}/domain`, {
     withCredentials: true,
   });
-  console.log(res.data.data);
   return res.data.data;
 };
