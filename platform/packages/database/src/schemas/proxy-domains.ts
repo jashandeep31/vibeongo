@@ -18,8 +18,7 @@ export const proxyDomains = pgTable(
     // domain full like xyz.vibeongo.one
     domain: varchar("domain").notNull().unique(),
 
-    // instance based redirecting
-    target_host: varchar(),
+    // domain-level port mapping; host is chosen from project_domain_routing
     target_port: integer().notNull(),
     allow_any: boolean().notNull().default(false),
 
