@@ -6,12 +6,14 @@ const BASE_DOMAIN = "vibeongo.one";
 interface CreateDomainForProjectProps {
   projectId: string;
   ports: number[];
+  userId: string;
 }
 type Domain = typeof proxyDomains.$inferSelect;
 
 export const createDomainsForProject = async ({
   projectId,
   ports,
+  userId,
 }: CreateDomainForProjectProps): Promise<Domain[]> => {
   const MAX_RETRIES = 5;
 
@@ -25,6 +27,7 @@ export const createDomainsForProject = async ({
           target_port: port,
           allow_any: true,
           project_id: projectId,
+          user_id: userId,
         };
       });
 
