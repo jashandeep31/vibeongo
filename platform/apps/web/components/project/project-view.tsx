@@ -3,6 +3,7 @@ import { ProjectHeader } from "./project-header";
 import { SystemInformation } from "./system-information";
 import { ProjectTabs } from "./project-tabs";
 import { UsageBilling } from "./usage-billing";
+import { ProjectDomainsCard } from "./project-domains-card";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
@@ -87,6 +88,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
         {/* Right Side: Usage & Billing (25%) */}
         <div className="space-y-6 lg:w-1/4">
           <UsageBilling project={project} instances={instances} />
+          <ProjectDomainsCard projectId={projectId} />
         </div>
       </div>
       {/* <pre className="text-xs">{JSON.stringify(project.config, null, 2)}</pre> */}

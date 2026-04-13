@@ -2,6 +2,7 @@ import {
   createProject,
   deleteProject,
   getProjectById,
+  getProjectDomainsById,
   getProjects,
 } from "@/services/project-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -41,3 +42,13 @@ export const useDeleteProject = () => {
     },
   });
 };
+
+export const useGetProjectDomainsById = (id: string | null) =>
+  useQuery({
+    queryKey: ["project", id!, "domains"],
+    queryFn: async () => {
+      const domains = await getProjectDomainsById(id!);
+      return domains;
+    },
+    enabled: !!id,
+  });
