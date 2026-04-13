@@ -15,6 +15,20 @@
       "when": 1776076936397,
       "tag": "0001_reflective_groot",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1776078714044,
+      "tag": "0002_steady_maginty",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1776079057784,
+      "tag": "0003_regular_lorna_dane",
+      "breakpoints": true
     }
   ]
 }
