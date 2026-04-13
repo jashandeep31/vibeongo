@@ -1,5 +1,10 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { projects, proxyDomains } from "@repo/db";
+import {
+  domainAllowedIPs,
+  projectDomainRouting,
+  projects,
+  proxyDomains,
+} from "@repo/db";
 import axios from "axios";
 
 export const createProject = async (projectData: unknown) => {
@@ -35,11 +40,19 @@ export const deleteProject = async (id: string) => {
   return res.data;
 };
 
+type GetProjectDomains = {
+  projectRouting: typeof projectDomainRouting.$inferSelect & {
+    proxyDomains: (typeof proxyDomains.$inferSelect & {
+      allowedIPs: (typeof domainAllowedIPs.$inferSelect)[];
+    })[];
+  };
+};
 export const getProjectDomainsById = async (
   id: string,
-): Promise<(typeof proxyDomains.$inferSelect)[]> => {
+): Promise<GetProjectDomains> => {
   const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}/domain`, {
     withCredentials: true,
   });
+  console.log(res.data.data);
   return res.data.data;
 };

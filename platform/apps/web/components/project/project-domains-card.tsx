@@ -15,7 +15,8 @@ interface ProjectDomainsCardProps {
 }
 
 export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
-  const { data: domains, isLoading } = useGetProjectDomainsById(projectId);
+  const { data, isLoading } = useGetProjectDomainsById(projectId);
+  const proxyDomains = data?.projectRouting?.proxyDomains ?? [];
 
   return (
     <div className="space-y-6">
@@ -36,9 +37,9 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
             <div className="text-muted-foreground text-sm">
               Loading domains...
             </div>
-          ) : domains && domains.length > 0 ? (
+          ) : proxyDomains.length > 0 ? (
             <div className="space-y-3">
-              {domains.map((domainRow) => (
+              {proxyDomains.map((domainRow) => (
                 <div
                   key={domainRow.id}
                   className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
