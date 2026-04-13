@@ -1,17 +1,19 @@
 import { createId } from "@paralleldrive/cuid2";
-import { db, proxyDomains } from "@repo/db";
+import { proxyDomains, Transaction } from "@repo/db";
 import { AppError } from "./app-error.js";
 
 const BASE_DOMAIN = "vibeongo.one";
 interface CreateDomainForProjectProps {
-  projectId: string;
+  tx: Transaction;
+  routingId: string;
   ports: number[];
   userId: string;
 }
 type Domain = typeof proxyDomains.$inferSelect;
 
 export const createDomainsForProject = async ({
-  projectId,
+  tx,
+  routingId,
   ports,
   userId,
 }: CreateDomainForProjectProps): Promise<Domain[]> => {
@@ -26,21 +28,11 @@ export const createDomainsForProject = async ({
           domain: `${sub}.${BASE_DOMAIN}`,
           target_port: port,
           allow_any: true,
-          project_id: projectId,
+          routing_id: routingId,
           user_id: userId,
         };
       });
-
-      const result = await db.transaction(async (tx) => {
-        const inserted = await tx
-          .insert(proxyDomains)
-          .values(values)
-          .returning();
-
-        if (!inserted.length) throw new Error("domains not created");
-        return inserted;
-      });
-
+      const result = await tx.insert(proxyDomains).values(values).returning();
       return result;
     } catch (err: any) {
       console.log(err);
