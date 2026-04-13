@@ -11,6 +11,7 @@ export const db = drizzle({ client: pool });
 createInstances();
 export * from "drizzle-orm";
 export * from "./schemas/temp-ec2.js";
+export * from "./schemas/proxy-domains.js";
 export * from "./schemas/user.js";
 export * from "./schemas/github-repos.js";
 export * from "./schemas/environments.js";

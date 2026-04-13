@@ -13,6 +13,7 @@ import {
   sshKeys,
 } from "@repo/db";
 import { projectConfigValidator } from "@repo/shared";
+import { createDomainsForProject } from "../../lib/create-domain-for-project.js";
 
 export const createProject = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
@@ -77,8 +78,12 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
       await tx.insert(projectGithubRepos).values(githubRepoData);
 
     if (sshKeyData.length) await tx.insert(projectSshKeys).values(sshKeyData);
-
     return projectRow;
+  });
+  // adding some default domaing
+  await createDomainsForProject({
+    projectId: databaseRow.id,
+    ports: [8080, 3000, 4096, 8000, 80],
   });
 
   res.status(200).json({

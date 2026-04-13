@@ -20,9 +20,7 @@ export const projects = pgTable("projects", {
   description: text(),
 
   user_id: uuid()
-    .references(() => users.id, {
-      onDelete: "cascade",
-    })
+    .references(() => users.id, {})
     .notNull(),
 
   instance_type_id: uuid()
@@ -88,16 +86,6 @@ export const projectGithubRepos = pgTable("project_github_repos", {
       onDelete: "cascade",
     })
     .notNull(),
-
-  created_at: timestamp().defaultNow(),
-  updated_at: timestamp().defaultNow(),
-});
-
-export const projectDomains = pgTable("project_domains", {
-  id: uuid("id").defaultRandom().primaryKey(),
-
-  project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
-  domain: varchar().notNull().unique(),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),

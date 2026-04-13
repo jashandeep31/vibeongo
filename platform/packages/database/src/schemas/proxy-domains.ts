@@ -5,6 +5,7 @@ import {
   timestamp,
   boolean,
   uniqueIndex,
+  integer,
 } from "drizzle-orm/pg-core";
 import { projects } from "./projects.js";
 
@@ -17,8 +18,8 @@ export const proxyDomains = pgTable(
     domain: varchar("domain").notNull().unique(),
 
     // instance based redirecting
-    target_host: varchar().notNull(),
-    target_port: varchar().notNull(),
+    target_host: varchar(),
+    target_port: integer().notNull(),
     allow_any: boolean().notNull().default(false),
 
     project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
