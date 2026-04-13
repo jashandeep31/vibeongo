@@ -19,8 +19,8 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 }
 
 func (s *ProxyServer) Start(addr string) error {
-	s.store.AddProxy("d1.devsradar.com", "http://localhost:8000")
-	s.store.AddProxy("localhost:5000", "http://localhost:8000")
+	s.store.AddProxy("d1.devsradar.com", "http://localhost:8000", []string{"0.0.0.0"})
+	s.store.AddProxy("localhost:5000", "http://localhost:8000", []string{"0.0.0.0"})
 
 	mux := http.NewServeMux()
 
@@ -37,35 +37,27 @@ func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	if ip != "" {
 		w.Header().Set("X-Real-IP", "temp")
 	}
-
-	fmt.Println(r.Header)
 	w.Header().Set("Content-Type", "application/json")
 	type proxyItem struct {
-		Url     string `json:"url"`
-		ProxyTo string `json:"proxyTo"`
+		Url        string   `json:"url"`
+		ProxyTo    string   `json:"proxyTo"`
+		AllowedIPs []string `json:"allowedIPs"`
 	}
 
 	mappedProxies := s.store.GetAllProxies()
 	proxies := make([]proxyItem, 0, len(mappedProxies))
 	for _, proxy := range mappedProxies {
-		proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String()})
+		proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String(), AllowedIPs: proxy.AllowedIPs})
 	}
 
-	json.NewEncoder(w).Encode(struct {
-		Proxies []proxyItem `json:"proxies"`
-		Host    string      `json:"host"`
-		Version string      `json:"version"`
-	}{
-		Proxies: proxies,
-		Host:    ip,
-		Version: "1.0.0",
-	})
+	json.NewEncoder(w).Encode(proxies)
 }
 
 func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
 	var data struct {
-		Host      string `json:"host"`
-		TargetUrl string `json:"target_url"`
+		Host       string   `json:"host"`
+		TargetUrl  string   `json:"targetUrl"`
+		AllowedIPs []string `json:"allowedIPs"`
 	}
 
 	err := json.NewDecoder(r.Body).Decode(&data)
@@ -79,7 +71,7 @@ func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("400"))
 		return
 	}
-	s.store.AddProxy(data.Host, data.TargetUrl)
+	s.store.AddProxy(data.Host, data.TargetUrl, data.AllowedIPs)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }

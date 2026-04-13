@@ -7,9 +7,10 @@ import (
 )
 
 type Proxy struct {
-	Host      string
-	TargetUrl *url.URL
-	ExpiresAt time.Time
+	Host       string
+	TargetUrl  *url.URL
+	AllowedIPs []string
+	ExpiresAt  time.Time
 }
 
 type ProxyManager struct {
@@ -25,7 +26,7 @@ func NewProxyManager() *ProxyManager {
 	return pm
 }
 
-func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string) error {
+func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string, allowedIPs []string) error {
 	t, err := url.Parse(targetUrl)
 	if err != nil {
 		return err
@@ -35,9 +36,10 @@ func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string) error {
 	defer pm.mu.Unlock()
 
 	pm.proxies[hostUrl] = &Proxy{
-		Host:      hostUrl,
-		TargetUrl: t,
-		ExpiresAt: time.Now().Add(5 * time.Minute),
+		Host:       hostUrl,
+		TargetUrl:  t,
+		AllowedIPs: allowedIPs,
+		ExpiresAt:  time.Now().Add(5 * time.Minute),
 	}
 	return nil
 }
