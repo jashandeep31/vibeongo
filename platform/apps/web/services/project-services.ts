@@ -1,5 +1,5 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { projects } from "@repo/db";
+import { projects, proxyDomains } from "@repo/db";
 import axios from "axios";
 
 export const createProject = async (projectData: unknown) => {
@@ -33,4 +33,13 @@ export const deleteProject = async (id: string) => {
     withCredentials: true,
   });
   return res.data;
+};
+
+export const getProjectDomainsById = async (
+  id: string,
+): Promise<(typeof proxyDomains.$inferSelect)[]> => {
+  const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}/domain`, {
+    withCredentials: true,
+  });
+  return res.data.data;
 };
