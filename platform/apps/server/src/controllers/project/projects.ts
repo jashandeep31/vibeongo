@@ -60,8 +60,12 @@ export const getProjectDomainsById = catchAsync(
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
 
-    const projectDomains = await db
-      .select()
+    const rows = await db
+      .select({
+        domains: proxyDomains,
+        allowedIPs: domainAllowedIPs,
+        projectDomainRouting,
+      })
       .from(projectDomainRouting)
       .leftJoin(
         proxyDomains,
@@ -78,8 +82,37 @@ export const getProjectDomainsById = catchAsync(
         ),
       );
 
+    const projectRouting = rows[0]?.projectDomainRouting;
+    if (!projectRouting) throw new AppError("project not found", 404);
+
+    const proxyMap = new Map<
+      string,
+      typeof proxyDomains.$inferSelect & {
+        allowedIPs: (typeof domainAllowedIPs.$inferSelect)[];
+      }
+    >();
+    for (const row of rows) {
+      const proxy = row.domains;
+      const ip = row.allowedIPs;
+      if (!proxy) continue;
+      if (!proxyMap.has(proxy.id)) {
+        proxyMap.set(proxy.id, {
+          ...proxy,
+          allowedIPs: [],
+        });
+      }
+      if (ip) {
+        proxyMap.get(proxy.id)!.allowedIPs.push(ip);
+      }
+    }
+    const refinedData = {
+      projectRouting: {
+        ...projectRouting,
+        proxyDomains: Array.from(proxyMap.values()),
+      },
+    };
     res.status(200).json({
-      data: projectDomains,
+      data: refinedData,
     });
   },
 );
