@@ -7,6 +7,7 @@ import {
   integer,
   text,
   json,
+  pgTableCreator,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
@@ -87,6 +88,16 @@ export const projectGithubRepos = pgTable("project_github_repos", {
       onDelete: "cascade",
     })
     .notNull(),
+
+  created_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow(),
+});
+
+export const projectDomains = pgTable("project_domains", {
+  id: uuid("id").defaultRandom().primaryKey(),
+
+  project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
+  domain: varchar().notNull().unique(),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),

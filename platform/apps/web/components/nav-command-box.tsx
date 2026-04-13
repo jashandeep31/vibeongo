@@ -29,12 +29,13 @@ const NavCommandBox = () => {
     { label: "Dashboard", href: "/dashboard" },
     { label: "My Projects", href: "/projects" },
     { label: "Create Project", href: "/dashboard/project/create" },
+    { label: "Sessions", href: "/dashboard/sessions" },
     { label: "Repos", href: "/dashboard/repos" },
     { label: "Settings", href: "/dashboard/settings" },
   ];
 
   return (
-    <CommandDialog open={open} onOpenChange={setOpen} className="min-w-[500px]">
+    <CommandDialog open={open} onOpenChange={setOpen} className="min-w-125">
       <Command>
         <CommandInput placeholder="Type a command or search..." />
         <CommandList>
