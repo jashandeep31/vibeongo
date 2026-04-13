@@ -1,4 +1,4 @@
-import { and, db, eq, instances, projects } from "@repo/db";
+import { and, db, eq, instances, projects, proxyDomains } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
@@ -38,6 +38,28 @@ export const getProjectById = catchAsync(
 
     res.status(200).json({
       data: projectRow,
+    });
+  },
+);
+
+export const getProjectDomainsById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+
+    const { id } = req.params;
+    if (!id || typeof id !== "string")
+      throw new AppError("project id is required", 400);
+
+    const projectDomains = await db
+      .select()
+      .from(proxyDomains)
+      .where(
+        and(eq(proxyDomains.project_id, id), eq(proxyDomains.user_id, user.id)),
+      );
+
+    res.status(200).json({
+      data: projectDomains,
     });
   },
 );
