@@ -16,7 +16,7 @@ interface ProjectDomainsCardProps {
 
 export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
   const { data, isLoading } = useGetProjectDomainsById(projectId);
-  const proxyDomains = data?.projectRouting?.proxyDomains ?? [];
+  const proxyDomains = data?.proxy_domains ?? [];
 
   return (
     <div className="space-y-6">
