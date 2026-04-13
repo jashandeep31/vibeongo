@@ -20,6 +20,7 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 
 func (s *ProxyServer) Start(addr string) error {
 	s.store.AddProxy("d1.devsradar.com", "http://localhost:8000")
+	s.store.AddProxy("localhost:5000", "http://localhost:8000")
 
 	mux := http.NewServeMux()
 
@@ -32,6 +33,12 @@ func (s *ProxyServer) Start(addr string) error {
 }
 
 func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
+	ip := r.Header.Get("X-Real-IP")
+	if ip != "" {
+		w.Header().Set("X-Real-IP", "temp")
+	}
+
+	fmt.Println(r.Header)
 	w.Header().Set("Content-Type", "application/json")
 	type proxyItem struct {
 		Url     string `json:"url"`
@@ -44,7 +51,15 @@ func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 		proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String()})
 	}
 
-	json.NewEncoder(w).Encode(proxies)
+	json.NewEncoder(w).Encode(struct {
+		Proxies []proxyItem `json:"proxies"`
+		Host    string      `json:"host"`
+		Version string      `json:"version"`
+	}{
+		Proxies: proxies,
+		Host:    ip,
+		Version: "1.0.0",
+	})
 }
 
 func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
