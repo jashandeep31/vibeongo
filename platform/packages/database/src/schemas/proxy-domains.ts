@@ -8,6 +8,7 @@ import {
   integer,
 } from "drizzle-orm/pg-core";
 import { projects } from "./projects.js";
+import { users } from "./user.js";
 
 export const proxyDomains = pgTable(
   "proxy_domains",
@@ -22,7 +23,12 @@ export const proxyDomains = pgTable(
     target_port: integer().notNull(),
     allow_any: boolean().notNull().default(false),
 
-    project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
+    project_id: uuid()
+      .references(() => projects.id, { onDelete: "cascade" })
+      .notNull(),
+    user_id: uuid()
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
 
     created_at: timestamp().defaultNow(),
     updated_at: timestamp().defaultNow(),

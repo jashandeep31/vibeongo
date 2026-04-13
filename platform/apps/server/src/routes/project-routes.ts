@@ -3,6 +3,7 @@ import { createProject } from "../controllers/project/create-project.js";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   deleteProjectById,
+  getProjectDomainsById,
   getProjectById,
   getProjects,
 } from "../controllers/project/projects.js";
@@ -14,6 +15,9 @@ routes
   .get(checkAuthorization(["all"]), getProjectById)
   .delete(checkAuthorization(["all"]), deleteProjectById);
 
+routes
+  .route("/:id/domain")
+  .get(checkAuthorization(["all"]), getProjectDomainsById);
 routes
   .route("/")
   .post(checkAuthorization(["all"]), createProject)
