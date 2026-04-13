@@ -1,4 +1,13 @@
-import { and, db, eq, instances, projects, proxyDomains } from "@repo/db";
+import {
+  and,
+  db,
+  domainAllowedIPs,
+  eq,
+  instances,
+  projectDomainRouting,
+  projects,
+  proxyDomains,
+} from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
@@ -53,9 +62,20 @@ export const getProjectDomainsById = catchAsync(
 
     const projectDomains = await db
       .select()
-      .from(proxyDomains)
+      .from(projectDomainRouting)
+      .leftJoin(
+        proxyDomains,
+        eq(proxyDomains.routing_id, projectDomainRouting.id),
+      )
+      .leftJoin(
+        domainAllowedIPs,
+        eq(domainAllowedIPs.proxy_domain_id, proxyDomains.id),
+      )
       .where(
-        and(eq(proxyDomains.project_id, id), eq(proxyDomains.user_id, user.id)),
+        and(
+          eq(projectDomainRouting.project_id, id),
+          eq(projectDomainRouting.user_id, user.id),
+        ),
       );
 
     res.status(200).json({

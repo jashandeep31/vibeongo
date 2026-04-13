@@ -1,5 +1,4 @@
 import {
-  pgEnum,
   pgTable,
   timestamp,
   uuid,
@@ -7,7 +6,6 @@ import {
   integer,
   text,
   json,
-  pgTableCreator,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";

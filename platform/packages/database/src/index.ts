@@ -3,6 +3,9 @@ import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { createInstances } from "./seed/instances.seed.js";
 
+export type Transaction = Parameters<
+  Parameters<(typeof db)["transaction"]>[0]
+>[0];
 // --- database connection ---
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,

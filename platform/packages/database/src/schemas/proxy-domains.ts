@@ -7,7 +7,7 @@ import {
   uniqueIndex,
   integer,
 } from "drizzle-orm/pg-core";
-import { projects } from "./projects.js";
+import { projectDomainRouting } from "./project-domain-routing.js";
 import { users } from "./user.js";
 
 export const proxyDomains = pgTable(
@@ -22,8 +22,10 @@ export const proxyDomains = pgTable(
     target_port: integer().notNull(),
     allow_any: boolean().notNull().default(false),
 
-    project_id: uuid()
-      .references(() => projects.id, { onDelete: "cascade" })
+    routing_id: uuid()
+      .references(() => projectDomainRouting.id, {
+        onDelete: "cascade",
+      })
       .notNull(),
     user_id: uuid()
       .references(() => users.id, { onDelete: "cascade" })
@@ -35,7 +37,7 @@ export const proxyDomains = pgTable(
   (t) => [uniqueIndex("domain_idx").on(t.domain)],
 );
 
-export const allowedIps = pgTable("allowed_ips", {
+export const domainAllowedIPs = pgTable("domain_allowed_ips", {
   id: uuid("id").defaultRandom().primaryKey(),
 
   proxy_domain_id: uuid()

@@ -11,6 +11,7 @@ import {
   eq,
   inArray,
   sshKeys,
+  projectDomainRouting,
 } from "@repo/db";
 import { projectConfigValidator } from "@repo/shared";
 import { createDomainsForProject } from "../../lib/create-domain-for-project.js";
@@ -78,14 +79,25 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
       await tx.insert(projectGithubRepos).values(githubRepoData);
 
     if (sshKeyData.length) await tx.insert(projectSshKeys).values(sshKeyData);
+    const [projectRouting] = await tx
+      .insert(projectDomainRouting)
+      .values({
+        project_id: projectRow.id,
+        user_id: user.id,
+      })
+      .returning();
+    if (!projectRouting) throw new AppError("project routing not created", 400);
+
+    await createDomainsForProject({
+      tx: tx,
+      routingId: projectRouting.id,
+      ports: [8080, 3000, 4096, 8000, 80],
+      userId: user.id,
+    });
+
     return projectRow;
   });
   // adding some default domaing
-  await createDomainsForProject({
-    projectId: databaseRow.id,
-    ports: [8080, 3000, 4096, 8000, 80],
-    userId: user.id,
-  });
 
   res.status(200).json({
     message: "Project created successfully",
