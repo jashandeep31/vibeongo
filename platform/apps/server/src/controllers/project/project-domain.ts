@@ -103,7 +103,9 @@ export const addAllowedIPToProject = catchAsync(
     const { id, ip } = z
       .object({
         id: z.string(),
-        ip: z.string(),
+        ip: z
+          .string()
+          .regex(/^(?:(?:25[0-5]|2[0-4]\d|1?\d{1,2})(?:\.(?!$)|$)){4}$/),
       })
       .parse({ ...req.params, ...req.body });
 
