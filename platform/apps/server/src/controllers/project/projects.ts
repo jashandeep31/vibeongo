@@ -56,7 +56,7 @@ export const getProjectDomainsById = catchAsync(
       'proxy_domains', 
       COALESCE(
         (
-          SELECT jsonb_agg(to_jsonb(pd))
+          SELECT jsonb_agg(to_jsonb(pd) )
           FROM proxy_domains pd 
           WHERE pd.routing_id = pdr.id
         ), 
@@ -75,7 +75,6 @@ export const getProjectDomainsById = catchAsync(
   ) AS result
 FROM project_domain_routing pdr  
 WHERE pdr.project_id = ${id};`);
-
     //NOTE: make it typesafe but its working too as we not using type can't check even looking for review on this
     const refinedData = (dbRes.rows[0]?.result as any)[0];
 

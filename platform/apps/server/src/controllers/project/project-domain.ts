@@ -15,19 +15,42 @@ export const updateProxyDomainPort = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("authentication is required", 401);
-    const { id, port } = z
+
+    const { id, domainId, target_port } = z
       .object({
-        id: z.string(),
-        port: z.number(),
+        id: z.string().uuid(),
+        domainId: z.string().uuid(),
+        target_port: z.coerce.number().int().min(1).max(65535),
       })
       .parse({ ...req.params, ...req.body });
 
-    await db
+    const [projectRouting] = await db
+      .select()
+      .from(projectDomainRouting)
+      .where(
+        and(
+          eq(projectDomainRouting.user_id, user.id),
+          eq(projectDomainRouting.project_id, id),
+        ),
+      );
+
+    if (!projectRouting) throw new AppError("routing not found", 404);
+
+    const updatedRows = await db
       .update(proxyDomains)
       .set({
-        target_port: port,
+        target_port,
       })
-      .where(and(eq(proxyDomains.user_id, user.id), eq(proxyDomains.id, id)));
+      .where(
+        and(
+          eq(proxyDomains.user_id, user.id),
+          eq(proxyDomains.id, domainId),
+          eq(proxyDomains.routing_id, projectRouting.id),
+        ),
+      )
+      .returning({ id: proxyDomains.id });
+
+    if (!updatedRows.length) throw new AppError("domain not found", 404);
 
     res.status(200).json({
       message: "port updated successfully",

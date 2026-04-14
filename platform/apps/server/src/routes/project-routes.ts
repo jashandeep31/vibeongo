@@ -10,6 +10,7 @@ import {
 import {
   addAllowedIPToProject,
   deleteAllowedIPFromProject,
+  updateProxyDomainPort,
 } from "../controllers/project/project-domain.js";
 
 const routes: Router = Router();
@@ -22,6 +23,9 @@ routes
 routes
   .route("/:id/domains")
   .get(checkAuthorization(["all"]), getProjectDomainsById);
+routes
+  .route("/:id/domains/:domainId")
+  .patch(checkAuthorization(["all"]), updateProxyDomainPort);
 
 routes
   .route("/:id/allowed-ips")
