@@ -1,6 +1,12 @@
 package store
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
+	"io"
+	"log"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -47,9 +53,46 @@ func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string, allowedIPs []
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
-
+	getProxyFromServerCall(host)
 	p, ok := pm.proxies[host]
 	return p, ok
+}
+
+type Response struct {
+	Data struct {
+		ID      string `json:"id"`
+		Routing struct {
+			Ip         string `json:"ip"`
+			AllowedIPs []struct {
+				Ip string `json:"ip"`
+			} `json:"allowed_ips"`
+		} `json:"routing"`
+	} `json:"data"`
+}
+
+func getProxyFromServerCall(host string) {
+	jsonData, _ := json.Marshal(map[string]string{
+		"domain": "onwtwcx7ip.vibeongo.one",
+	})
+	response, err := http.Post(
+		"http://localhost:8000/api/v1/internal/proxy/target-host/resolve",
+		"application/json",
+		bytes.NewBuffer(jsonData),
+	)
+	if err != nil {
+		fmt.Println("failed to make api request")
+	}
+	responseData, err := io.ReadAll(response.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var parsedResponse Response
+	if err := json.Unmarshal(responseData, &parsedResponse); err != nil {
+		fmt.Println("failed to parse json")
+	}
+	if b, err := json.Marshal(parsedResponse.Data); err == nil {
+		fmt.Println(string(b))
+	}
 }
 
 func (pm *ProxyManager) cleanup() {
