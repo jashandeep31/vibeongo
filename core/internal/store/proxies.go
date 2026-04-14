@@ -1,15 +1,12 @@
 package store
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"log"
-	"net/http"
 	"net/url"
 	"sync"
 	"time"
+
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 type Proxy struct {
@@ -23,6 +20,8 @@ type ProxyManager struct {
 	mu      sync.RWMutex
 	proxies map[string]*Proxy
 }
+
+var apiClient = utils.APIClient{BaseURL: "http://localhost:8000"}
 
 func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
@@ -51,10 +50,15 @@ func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string, allowedIPs []
 }
 
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
-	pm.mu.RLock()
-	defer pm.mu.RUnlock()
-	getProxyFromServerCall(host)
 	p, ok := pm.proxies[host]
+	if !ok {
+		proxy, err := getProxyFromServerCall(host)
+		if err != nil {
+			return nil, false
+		}
+		pm.AddProxy(host, proxy.TargetUrl.String(), proxy.AllowedIPs)
+		return proxy, true
+	}
 	return p, ok
 }
 
@@ -70,29 +74,34 @@ type Response struct {
 	} `json:"data"`
 }
 
-func getProxyFromServerCall(host string) {
-	jsonData, _ := json.Marshal(map[string]string{
-		"domain": "onwtwcx7ip.vibeongo.one",
-	})
-	response, err := http.Post(
-		"http://localhost:8000/api/v1/internal/proxy/target-host/resolve",
-		"application/json",
-		bytes.NewBuffer(jsonData),
-	)
-	if err != nil {
-		fmt.Println("failed to make api request")
-	}
-	responseData, err := io.ReadAll(response.Body)
-	if err != nil {
-		log.Fatal(err)
-	}
+func getProxyFromServerCall(host string) (*Proxy, error) {
 	var parsedResponse Response
-	if err := json.Unmarshal(responseData, &parsedResponse); err != nil {
-		fmt.Println("failed to parse json")
+	if err := apiClient.Post(
+		"/api/v1/internal/proxy/target-host/resolve",
+		struct {
+			Domain string `json:"domain"`
+		}{Domain: host},
+		&parsedResponse,
+	); err != nil {
+		return nil, err
 	}
-	if b, err := json.Marshal(parsedResponse.Data); err == nil {
-		fmt.Println(string(b))
+
+	allowedIPs := make([]string, 0, len(parsedResponse.Data.Routing.AllowedIPs))
+	for _, ip := range parsedResponse.Data.Routing.AllowedIPs {
+		allowedIPs = append(allowedIPs, ip.Ip)
 	}
+
+	targetUrl, err := url.Parse("http://" + parsedResponse.Data.Routing.Ip)
+	if err != nil {
+		return nil, fmt.Errorf("invalid target IP from server: %w", err)
+	}
+
+	return &Proxy{
+		Host:       host,
+		TargetUrl:  targetUrl,
+		AllowedIPs: allowedIPs,
+		ExpiresAt:  time.Now().Add(5 * time.Minute),
+	}, nil
 }
 
 func (pm *ProxyManager) cleanup() {
