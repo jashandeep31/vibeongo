@@ -13,10 +13,8 @@ import (
 type Proxy struct {
 	// The domain the that i am proxing to ex: test.vibeongo.one -> 192.168.1.1
 	Host string
-	// TargetIp IP the on which we redirecting the request ex: 192.168.1.1
-	TargetIp   string
-	Port       int
-	FullTarget *url.URL
+	// Target is the upstream destination URL, ex: http://192.168.1.1:8080
+	Target     *url.URL
 	AllowedIPs []string
 	ExpiresAt  time.Time
 }
@@ -47,9 +45,7 @@ func (pm *ProxyManager) AddProxy(hostUrl string, target string, port int, allowe
 	defer pm.mu.Unlock()
 	pm.proxies[hostUrl] = &Proxy{
 		Host:       hostUrl,
-		TargetIp:   target,
-		FullTarget: t,
-		Port:       port,
+		Target:     t,
 		AllowedIPs: allowedIPs,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 	}
@@ -66,7 +62,9 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 			return nil, false
 		}
 		fmt.Println("proxy", proxy)
-		pm.AddProxy(host, proxy.TargetIp, proxy.Port, proxy.AllowedIPs)
+		pm.mu.Lock()
+		pm.proxies[host] = proxy
+		pm.mu.Unlock()
 		return proxy, true
 	}
 	return p, ok
@@ -132,9 +130,7 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 	}
 	return &Proxy{
 		Host:       host,
-		TargetIp:   parsedResponse.Data.Routing.Ip,
-		Port:       parsedResponse.Data.Port,
-		FullTarget: fullTargetUrl,
+		Target:     fullTargetUrl,
 		AllowedIPs: allowedIPs,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 	}, nil
