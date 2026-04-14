@@ -82,13 +82,13 @@ export function ProjectView({ projectId }: { projectId: string }) {
         {/* Left Side: Configuration (75%) */}
         <div className="space-y-6 lg:w-3/4">
           <SystemInformation project={project} instances={instances} />
+          <ProjectDomainsCard projectId={projectId} />
           <ProjectTabs project={project} />
         </div>
 
         {/* Right Side: Usage & Billing (25%) */}
         <div className="space-y-6 lg:w-1/4">
           <UsageBilling project={project} instances={instances} />
-          <ProjectDomainsCard projectId={projectId} />
         </div>
       </div>
       {/* <pre className="text-xs">{JSON.stringify(project.config, null, 2)}</pre> */}

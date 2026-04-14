@@ -1,6 +1,8 @@
 import {
+  addAllowedIpToProject,
   createProject,
   deleteProject,
+  deleteAllowedIpFromProject,
   getProjectById,
   getProjectDomainsById,
   getProjects,
@@ -52,3 +54,29 @@ export const useGetProjectDomainsById = (id: string | null) =>
     },
     enabled: !!id,
   });
+
+export const useAddAllowedIpToProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addAllowedIpToProject,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "domains"],
+      });
+    },
+  });
+};
+
+export const useDeleteAllowedIpFromProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteAllowedIpFromProject,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "domains"],
+      });
+    },
+  });
+};

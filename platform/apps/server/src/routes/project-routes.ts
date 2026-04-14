@@ -7,6 +7,10 @@ import {
   getProjectById,
   getProjects,
 } from "../controllers/project/projects.js";
+import {
+  addAllowedIPToProject,
+  deleteAllowedIPFromProject,
+} from "../controllers/project/project-domain.js";
 
 const routes: Router = Router();
 
@@ -16,8 +20,15 @@ routes
   .delete(checkAuthorization(["all"]), deleteProjectById);
 
 routes
-  .route("/:id/domain")
+  .route("/:id/domains")
   .get(checkAuthorization(["all"]), getProjectDomainsById);
+
+routes
+  .route("/:id/allowed-ips")
+  .post(checkAuthorization(["all"]), addAllowedIPToProject);
+routes
+  .route("/:id/allowed-ips/:ipId")
+  .delete(checkAuthorization(["all"]), deleteAllowedIPFromProject);
 routes
   .route("/")
   .post(checkAuthorization(["all"]), createProject)

@@ -44,11 +44,51 @@ type GetProjectDomains = typeof projectDomainRouting.$inferSelect & {
   proxy_domains: (typeof proxyDomains.$inferSelect)[];
   allowed_ips: (typeof routingAllowedIps.$inferSelect)[];
 };
+
+type AddAllowedIpInput = {
+  id: string;
+  ip: string;
+};
+
+type DeleteAllowedIpInput = {
+  id: string;
+  ipId: string;
+};
+
 export const getProjectDomainsById = async (
   id: string,
 ): Promise<GetProjectDomains> => {
-  const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}/domain`, {
+  const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}/domains`, {
     withCredentials: true,
   });
   return res.data.data;
+};
+
+export const addAllowedIpToProject = async ({
+  id,
+  ip,
+}: AddAllowedIpInput): Promise<{ message: string }> => {
+  const res = await axios.post(
+    BACKEND_URL + `/api/v1/projects/${id}/allowed-ips`,
+    { ip },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const deleteAllowedIpFromProject = async ({
+  id,
+  ipId,
+}: DeleteAllowedIpInput): Promise<{ message: string }> => {
+  const res = await axios.delete(
+    BACKEND_URL + `/api/v1/projects/${id}/allowed-ips/${ipId}`,
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
 };
