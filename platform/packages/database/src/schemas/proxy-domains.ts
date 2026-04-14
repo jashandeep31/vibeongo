@@ -3,7 +3,6 @@ import {
   varchar,
   uuid,
   timestamp,
-  boolean,
   uniqueIndex,
   integer,
 } from "drizzle-orm/pg-core";
@@ -20,7 +19,6 @@ export const proxyDomains = pgTable(
 
     // domain-level port mapping; host is chosen from project_domain_routing
     target_port: integer().notNull(),
-    allow_any: boolean().notNull().default(false),
 
     routing_id: uuid()
       .references(() => projectDomainRouting.id, {
