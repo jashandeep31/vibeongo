@@ -1,3 +1,5 @@
+import { env } from "../lib/env.js";
+
 interface SetupInstanceScriptOptions {
   sshKey: string;
   authToken: string;
@@ -50,7 +52,7 @@ CONFIG_DIR="\\$HOME/.config/vibeongo"
 mkdir -p "\\$CONFIG_DIR"
 
 curl --request GET \\
-  --url https://l1.devsradar.com/api/v1/runtime/sessions/${projectSessionId}/config \\
+  --url  ${env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config \\
   --header "Authorization: Bearer ${authToken}" \\
   | jq '.data' > "\\$CONFIG_DIR/config.json"
 
