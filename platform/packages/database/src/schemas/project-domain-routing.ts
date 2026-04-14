@@ -25,8 +25,6 @@ export const projectDomainRouting = pgTable("project_domain_routing", {
     onDelete: "set null",
   }),
 
-  updated_by: uuid().references(() => users.id, { onDelete: "set null" }),
-
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
 });
