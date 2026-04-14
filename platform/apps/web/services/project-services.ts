@@ -55,6 +55,12 @@ type DeleteAllowedIpInput = {
   ipId: string;
 };
 
+type UpdateProjectDomainPortInput = {
+  id: string;
+  domainId: string;
+  target_port: number;
+};
+
 export const getProjectDomainsById = async (
   id: string,
 ): Promise<GetProjectDomains> => {
@@ -85,6 +91,22 @@ export const deleteAllowedIpFromProject = async ({
 }: DeleteAllowedIpInput): Promise<{ message: string }> => {
   const res = await axios.delete(
     BACKEND_URL + `/api/v1/projects/${id}/allowed-ips/${ipId}`,
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const updateProjectDomainPort = async ({
+  id,
+  domainId,
+  target_port,
+}: UpdateProjectDomainPortInput): Promise<{ message: string }> => {
+  const res = await axios.patch(
+    BACKEND_URL + `/api/v1/projects/${id}/domains/${domainId}`,
+    { target_port },
     {
       withCredentials: true,
     },

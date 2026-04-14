@@ -15,6 +15,7 @@ import {
   useAddAllowedIpToProject,
   useDeleteAllowedIpFromProject,
   useGetProjectDomainsById,
+  useUpdateProjectDomainPort,
 } from "@/hooks/use-project";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -27,9 +28,12 @@ interface ProjectDomainsCardProps {
 export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
   const [newIp, setNewIp] = useState("");
   const [deletingIpId, setDeletingIpId] = useState<string | null>(null);
+  const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
+  const [portInputs, setPortInputs] = useState<Record<string, string>>({});
   const { data, isLoading } = useGetProjectDomainsById(projectId);
   const addAllowedIpMutation = useAddAllowedIpToProject();
   const deleteAllowedIpMutation = useDeleteAllowedIpFromProject();
+  const updateDomainPortMutation = useUpdateProjectDomainPort();
   const proxyDomains = data?.proxy_domains ?? [];
   const allowedIps = data?.allowed_ips ?? [];
 
@@ -63,6 +67,40 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
       toast.error("Failed to remove allowed IP", { id: toastId });
     } finally {
       setDeletingIpId(null);
+    }
+  };
+
+  const handleUpdatePort = async (
+    domainId: string,
+    fallbackPort: number,
+  ) => {
+    const inputValue = (portInputs[domainId] ?? String(fallbackPort)).trim();
+    const parsedPort = Number(inputValue);
+
+    if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+      toast.error("Please enter a valid port between 1 and 65535");
+      return;
+    }
+
+    const toastId = toast.loading("Updating domain port...");
+    setUpdatingDomainId(domainId);
+
+    try {
+      await updateDomainPortMutation.mutateAsync({
+        id: projectId,
+        domainId,
+        target_port: parsedPort,
+      });
+      setPortInputs((prev) => {
+        const next = { ...prev };
+        delete next[domainId];
+        return next;
+      });
+      toast.success("Domain port updated", { id: toastId });
+    } catch {
+      toast.error("Failed to update domain port", { id: toastId });
+    } finally {
+      setUpdatingDomainId(null);
     }
   };
 
@@ -114,9 +152,33 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                         <span className="truncate">{domainRow.domain}</span>
                         <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                       </a>
-                      <span className="bg-muted text-muted-foreground shrink-0 rounded border px-2 py-0.5 font-mono text-xs">
-                        :{domainRow.target_port}
-                      </span>
+                      <div className="flex shrink-0 items-center gap-2">
+                        <Input
+                          type="number"
+                          min={1}
+                          max={65535}
+                          className="h-8 w-24 font-mono text-xs"
+                          value={portInputs[domainRow.id] ?? String(domainRow.target_port)}
+                          onChange={(event) =>
+                            setPortInputs((prev) => ({
+                              ...prev,
+                              [domainRow.id]: event.target.value,
+                            }))
+                          }
+                          disabled={updatingDomainId === domainRow.id}
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={updatingDomainId === domainRow.id}
+                          onClick={() => {
+                            void handleUpdatePort(domainRow.id, domainRow.target_port);
+                          }}
+                        >
+                          {updatingDomainId === domainRow.id ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
                     </div>
                   ))
                 ) : (
