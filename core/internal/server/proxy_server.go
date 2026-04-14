@@ -19,11 +19,12 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 }
 
 func (s *ProxyServer) Start(addr string) error {
-	s.store.AddProxy("d1.devsradar.com", "http://localhost:8000", []string{"0.0.0.0"})
-	s.store.AddProxy("localhost:5000", "http://localhost:8000", []string{"0.0.0.0"})
-
+	proxyData, ok := s.store.GetProxyByHost("localhost:5000")
+	if !ok {
+		fmt.Println("failed to get proxy")
+	}
+	fmt.Println("proxyData", proxyData)
 	mux := http.NewServeMux()
-
 	mux.Handle("GET /proxy/status/", middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(s.handleStatus)))
 	mux.HandleFunc("POST /proxy/add", s.handleAdd)
 	mux.HandleFunc("GET /proxy/login", s.handleLogin)
