@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Globe, ExternalLink, X } from "lucide-react";
+import { Globe, ExternalLink, X, Lock } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -70,10 +70,7 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
     }
   };
 
-  const handleUpdatePort = async (
-    domainId: string,
-    fallbackPort: number,
-  ) => {
+  const handleUpdatePort = async (domainId: string, fallbackPort: number) => {
     const inputValue = (portInputs[domainId] ?? String(fallbackPort)).trim();
     const parsedPort = Number(inputValue);
 
@@ -132,7 +129,9 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="text-muted-foreground text-sm">Loading domains...</div>
+            <div className="text-muted-foreground text-sm">
+              Loading domains...
+            </div>
           ) : (
             <div className="space-y-6">
               <div className="space-y-3">
@@ -158,25 +157,43 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                           min={1}
                           max={65535}
                           className="h-8 w-24 font-mono text-xs"
-                          value={portInputs[domainRow.id] ?? String(domainRow.target_port)}
+                          value={
+                            portInputs[domainRow.id] ??
+                            String(domainRow.target_port)
+                          }
                           onChange={(event) =>
                             setPortInputs((prev) => ({
                               ...prev,
                               [domainRow.id]: event.target.value,
                             }))
                           }
-                          disabled={updatingDomainId === domainRow.id}
+                          disabled={
+                            updatingDomainId === domainRow.id ||
+                            !domainRow.is_editable
+                          }
                         />
                         <Button
                           type="button"
                           size="sm"
                           variant="outline"
-                          disabled={updatingDomainId === domainRow.id}
+                          disabled={
+                            updatingDomainId === domainRow.id ||
+                            !domainRow.is_editable
+                          }
                           onClick={() => {
-                            void handleUpdatePort(domainRow.id, domainRow.target_port);
+                            void handleUpdatePort(
+                              domainRow.id,
+                              domainRow.target_port,
+                            );
                           }}
                         >
-                          {updatingDomainId === domainRow.id ? "Saving..." : "Save"}
+                          {!domainRow.is_editable ? (
+                            <Lock className="h-4 w-4" />
+                          ) : updatingDomainId === domainRow.id ? (
+                            "Saving..."
+                          ) : (
+                            "Save"
+                          )}
                         </Button>
                       </div>
                     </div>

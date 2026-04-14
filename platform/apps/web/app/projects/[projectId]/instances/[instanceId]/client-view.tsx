@@ -6,6 +6,7 @@ import { ProjectInstanceTerminal } from "@/components/project/project-instance-t
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
 import { OpencodeWebCard } from "@/components/opencode-web-card";
+import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import { Button } from "@repo/ui/components/button";
@@ -208,9 +209,15 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       <ProjectInstanceInfoCard instance={instance} />
 
       <ProjectInstanceStats />
-      <OpencodeWebCard publicIp={Instance_IP} isTerminated={isTerminated} />
+      <OpencodeWebCard
+        projectId={instance.project_id || ""}
+        publicIp={Instance_IP}
+        isTerminated={isTerminated}
+      />
 
       <ProjectInstanceTerminal publicIp={Instance_IP} hideControls />
+
+      <ProjectDomainsCard projectId={instance.project_id || ""} />
     </div>
   );
 }

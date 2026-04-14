@@ -18,8 +18,8 @@ export const updateProxyDomainPort = catchAsync(
 
     const { id, domainId, target_port } = z
       .object({
-        id: z.string().uuid(),
-        domainId: z.string().uuid(),
+        id: z.uuid(),
+        domainId: z.uuid(),
         target_port: z.coerce.number().int().min(1).max(65535),
       })
       .parse({ ...req.params, ...req.body });
@@ -33,7 +33,6 @@ export const updateProxyDomainPort = catchAsync(
           eq(projectDomainRouting.project_id, id),
         ),
       );
-
     if (!projectRouting) throw new AppError("routing not found", 404);
 
     const updatedRows = await db
@@ -46,6 +45,7 @@ export const updateProxyDomainPort = catchAsync(
           eq(proxyDomains.user_id, user.id),
           eq(proxyDomains.id, domainId),
           eq(proxyDomains.routing_id, projectRouting.id),
+          eq(proxyDomains.is_editable, true),
         ),
       )
       .returning({ id: proxyDomains.id });
