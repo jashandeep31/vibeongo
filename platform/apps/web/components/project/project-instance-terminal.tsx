@@ -12,17 +12,27 @@ type TerminalConnectionStatus = "checking" | "connected" | "disconnected";
 
 interface ProjectInstanceTerminalProps {
   publicIp?: string | null;
+  domain?: string | null;
   hideControls?: boolean;
   showConnectionButton?: boolean;
 }
 
 export function ProjectInstanceTerminal({
   publicIp,
+  domain,
   hideControls = false,
   showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
-  const serverUrl = publicIp ? `ws://${String(publicIp)}:8080/ws` : null;
-  const healthCheckUrl = publicIp ? `http://${String(publicIp)}:8080` : null;
+  const serverUrl = domain
+    ? `wss://${domain}/ws`
+    : publicIp
+      ? `ws://${String(publicIp)}:8080/ws`
+      : null;
+  const healthCheckUrl = domain
+    ? `https://${domain}`
+    : publicIp
+      ? `http://${String(publicIp)}:8080`
+      : null;
   const sshCommand = publicIp ? `ssh ubuntu@${String(publicIp)}` : null;
 
   const terminalRef = useRef<HTMLDivElement | null>(null);
@@ -144,7 +154,9 @@ export function ProjectInstanceTerminal({
           const parsed = JSON.parse(event.data);
           if (parsed.type === "stats") {
             // we could emit this to a prop or custom event
-            const customEvent = new CustomEvent("vps-stats", { detail: parsed.data });
+            const customEvent = new CustomEvent("vps-stats", {
+              detail: parsed.data,
+            });
             window.dispatchEvent(customEvent);
             return;
           }
