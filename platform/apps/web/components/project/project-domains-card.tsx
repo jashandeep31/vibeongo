@@ -117,7 +117,7 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                 project is targeted to{" "}
                 <Link
                   className="text-blue-500 hover:underline"
-                  href={`http://localhost:3000/projects/${projectId}/instances/${data.target_instance_id}`}
+                  href={`/projects/${projectId}/instances/${data.target_instance_id}`}
                 >
                   Instance
                 </Link>
