@@ -5,6 +5,7 @@ import {
   timestamp,
   uniqueIndex,
   integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { projectDomainRouting } from "./project-domain-routing.js";
 import { users } from "./user.js";
@@ -28,6 +29,8 @@ export const proxyDomains = pgTable(
     user_id: uuid()
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
+
+    is_editable: boolean("is_editable").default(true).notNull(),
 
     created_at: timestamp().defaultNow(),
     updated_at: timestamp().defaultNow(),

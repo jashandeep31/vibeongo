@@ -2,13 +2,16 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Globe, Square } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
+import { useGetProjectDomainsById } from "@/hooks/use-project";
 
 interface OpencodeWebCardProps {
+  projectId: string;
   publicIp: string | null;
   isTerminated: boolean;
 }
 
 export function OpencodeWebCard({
+  projectId,
   publicIp,
   isTerminated,
 }: OpencodeWebCardProps) {
@@ -16,13 +19,22 @@ export function OpencodeWebCard({
   const [isStoppingOpenCodeWeb, setIsStoppingOpenCodeWeb] = useState(false);
   const [isOpenCodeConnected, setIsOpenCodeConnected] = useState(false);
 
+  const { data: projectDomainsData } = useGetProjectDomainsById(projectId);
+  const domainFor4096 = projectDomainsData?.proxy_domains?.find(
+    (domain) => domain.target_port === 4096,
+  )?.domain;
+
   const opencodeApiUrl = publicIp
     ? `http://${publicIp}:8080/opencode/web`
     : null;
   const opencodeStatusApiUrl = publicIp
     ? `http://${publicIp}:8080/opencode/web/status`
     : null;
-  const opencodeWebUrl = publicIp ? `http://${publicIp}:4096` : null;
+  const opencodeWebUrl = domainFor4096
+    ? `https://${domainFor4096}`
+    : publicIp
+      ? `http://${publicIp}:4096`
+      : null;
 
   const getOpenCodeStatus = useCallback(async (): Promise<{
     running: boolean;
