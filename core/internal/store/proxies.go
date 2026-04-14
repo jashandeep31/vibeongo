@@ -21,7 +21,7 @@ type ProxyManager struct {
 	proxies map[string]*Proxy
 }
 
-var apiClient = utils.APIClient{BaseURL: "http://localhost:8000"}
+var apiClient = utils.APIClient{BaseURL: "https://l1.devsradar.com"}
 
 func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
