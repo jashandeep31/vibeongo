@@ -1,9 +1,9 @@
 import { BACKEND_URL } from "@/lib/constants";
 import {
-  domainAllowedIPs,
   projectDomainRouting,
   projects,
   proxyDomains,
+  routingAllowedIps,
 } from "@repo/db";
 import axios from "axios";
 
@@ -41,9 +41,8 @@ export const deleteProject = async (id: string) => {
 };
 
 type GetProjectDomains = typeof projectDomainRouting.$inferSelect & {
-  proxy_domains: (typeof proxyDomains.$inferSelect & {
-    allowed_ips: (typeof domainAllowedIPs.$inferSelect)[];
-  })[];
+  proxy_domains: (typeof proxyDomains.$inferSelect)[];
+  allowed_ips: (typeof routingAllowedIps.$inferSelect)[];
 };
 export const getProjectDomainsById = async (
   id: string,

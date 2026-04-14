@@ -36,18 +36,3 @@ export const proxyDomains = pgTable(
   },
   (t) => [uniqueIndex("domain_idx").on(t.domain)],
 );
-
-export const domainAllowedIPs = pgTable("domain_allowed_ips", {
-  id: uuid("id").defaultRandom().primaryKey(),
-
-  proxy_domain_id: uuid()
-    .references(() => proxyDomains.id, {
-      onDelete: "cascade",
-    })
-    .notNull(),
-
-  ip: varchar("ip").notNull(),
-
-  created_at: timestamp().defaultNow(),
-  updated_at: timestamp().defaultNow(),
-});

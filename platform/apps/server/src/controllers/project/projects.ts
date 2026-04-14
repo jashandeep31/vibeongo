@@ -1,14 +1,4 @@
-import {
-  and,
-  db,
-  domainAllowedIPs,
-  eq,
-  instances,
-  projectDomainRouting,
-  projects,
-  proxyDomains,
-  sql,
-} from "@repo/db";
+import { and, db, eq, instances, projects, sql } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
@@ -60,35 +50,30 @@ export const getProjectDomainsById = catchAsync(
     const { id } = req.params;
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
-    const dbRes = await db.execute(sql`      SELECT 
+    const dbRes = await db.execute(sql`SELECT 
   jsonb_agg(
     to_jsonb(pdr) || jsonb_build_object(
       'proxy_domains', 
       COALESCE(
         (
-          SELECT 
-            jsonb_agg(
-              to_jsonb(pd) || jsonb_build_object( 
-                'allowed_ips', 
-                COALESCE(
-                  (
-                    SELECT 
-                      jsonb_agg(to_jsonb(dai))
-                    FROM domain_allowed_ips dai 
-                    WHERE dai.proxy_domain_id = pd.id
-                  ), 
-                  '[]'::jsonb
-                )
-              )
-            ) 
+          SELECT jsonb_agg(to_jsonb(pd))
           FROM proxy_domains pd 
           WHERE pd.routing_id = pdr.id
         ), 
         '[]'::jsonb
+      ),
+      'allowed_ips',
+      COALESCE(
+        (
+          SELECT jsonb_agg(to_jsonb(rai))
+          FROM routing_allowed_ips rai
+          WHERE rai.routing_id = pdr.id
+        ),
+        '[]'::jsonb
       )
     )
   ) AS result
-FROM project_domain_routing pdr 
+FROM project_domain_routing pdr  
 WHERE pdr.project_id = ${id};`);
 
     //NOTE: make it typesafe but its working too as we not using type can't check even looking for review on this
