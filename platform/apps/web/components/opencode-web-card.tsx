@@ -2,45 +2,35 @@
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, Globe, Square } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
-import { useGetProjectDomainsById } from "@/hooks/use-project";
 
 interface OpencodeWebCardProps {
-  projectId: string;
-  publicIp: string | null;
+  domainFor8080: string | null;
+  domainFor4096: string | null;
   isTerminated: boolean;
 }
 
 export function OpencodeWebCard({
-  projectId,
-  publicIp,
+  domainFor8080,
+  domainFor4096,
   isTerminated,
 }: OpencodeWebCardProps) {
   const [isOpeningOpenCodeWeb, setIsOpeningOpenCodeWeb] = useState(false);
   const [isStoppingOpenCodeWeb, setIsStoppingOpenCodeWeb] = useState(false);
   const [isOpenCodeConnected, setIsOpenCodeConnected] = useState(false);
 
-  const { data: projectDomainsData } = useGetProjectDomainsById(projectId);
-  const domainFor4096 = projectDomainsData?.proxy_domains?.find(
-    (domain) => domain.target_port === 4096,
-  )?.domain;
-
-  const opencodeApiUrl = publicIp
-    ? `http://${publicIp}:8080/opencode/web`
+  const opencodeApiUrl = domainFor8080
+    ? `https://${domainFor8080}/opencode/web`
     : null;
-  const opencodeStatusApiUrl = publicIp
-    ? `http://${publicIp}:8080/opencode/web/status`
+  const opencodeStatusApiUrl = domainFor8080
+    ? `https://${domainFor8080}/opencode/web/status`
     : null;
-  const opencodeWebUrl = domainFor4096
-    ? `https://${domainFor4096}`
-    : publicIp
-      ? `http://${publicIp}:4096`
-      : null;
+  const opencodeWebUrl = domainFor4096 ? `https://${domainFor4096}` : null;
 
   const getOpenCodeStatus = useCallback(async (): Promise<{
     running: boolean;
   }> => {
     if (!opencodeStatusApiUrl) {
-      throw new Error("Instance public IP not available");
+      throw new Error("Instance domain not available");
     }
 
     const response = await fetch(opencodeStatusApiUrl, {
@@ -92,7 +82,7 @@ export function OpencodeWebCard({
 
   const startOpenCodeWeb = async (): Promise<void> => {
     if (!opencodeApiUrl) {
-      throw new Error("Instance public IP not available");
+      throw new Error("Instance domain not available");
     }
 
     const response = await fetch(opencodeApiUrl, {
@@ -114,7 +104,7 @@ export function OpencodeWebCard({
 
   const stopOpenCodeWeb = async (): Promise<void> => {
     if (!opencodeApiUrl) {
-      throw new Error("Instance public IP not available");
+      throw new Error("Instance domain not available");
     }
 
     const response = await fetch(opencodeApiUrl, {
@@ -198,7 +188,7 @@ export function OpencodeWebCard({
               isTerminated ||
               isOpeningOpenCodeWeb ||
               isStoppingOpenCodeWeb ||
-              !publicIp
+              !domainFor8080
             }
             onClick={() => {
               handleOpenOpenCodeWeb();
@@ -225,7 +215,7 @@ export function OpencodeWebCard({
               isTerminated ||
               isStoppingOpenCodeWeb ||
               isOpeningOpenCodeWeb ||
-              !publicIp ||
+              !domainFor8080 ||
               !isOpenCodeConnected
             }
             onClick={() => {

@@ -9,6 +9,7 @@ import { OpencodeWebCard } from "@/components/opencode-web-card";
 import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
+import { useGetProjectDomainsById } from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { toast } from "sonner";
@@ -16,6 +17,8 @@ import axios from "axios";
 
 export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: instance } = useGetInstanceById(instanceId);
+  const { data: projectDomainsData, isLoading: isLoadingDomains } =
+    useGetProjectDomainsById(instance?.project_id || "");
   const { mutateAsync: terminateInstance, isPending } = useTerminateInstance(
     instance?.project_id || "",
   );
@@ -26,10 +29,25 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
 
+  const isTargetInstance =
+    projectDomainsData?.target_instance_id === instanceId;
+
+  const domainFor8080 = isTargetInstance
+    ? projectDomainsData?.proxy_domains?.find(
+        (domain) => domain.target_port === 8080,
+      )?.domain
+    : null;
+
+  const domainFor4096 = isTargetInstance
+    ? projectDomainsData?.proxy_domains?.find(
+        (domain) => domain.target_port === 4096,
+      )?.domain
+    : null;
+
   const Instance_IP = instance?.public_ip || "localhost";
   // const Instance_IP = "localhost";
-  const terminalHealthCheckUrl = instance?.public_ip
-    ? `http://${Instance_IP}:8080`
+  const terminalHealthCheckUrl = domainFor8080
+    ? `https://${domainFor8080}`
     : null;
   const sshCommand = instance?.public_ip
     ? `ssh ubuntu@${String(Instance_IP)}`
@@ -68,7 +86,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       return;
     }
     try {
-      const res = await axios.post(`http://${Instance_IP}:8080/reboot`, {});
+      const rebootUrl = domainFor8080
+        ? `https://${domainFor8080}/reboot`
+        : `http://${Instance_IP}:8080/reboot`;
+      const res = await axios.post(rebootUrl, {});
       if (res.status === 200) {
         toast.success("Server rebooted successfully");
         await new Promise((res) => setTimeout(res, 2000));
@@ -132,7 +153,12 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const Controls = () => {
     return (
       <div className="flex items-center gap-2">
-        <Button size={"lg"} variant="outline" onClick={handleReboot}>
+        <Button
+          size={"lg"}
+          variant="outline"
+          onClick={handleReboot}
+          disabled={!domainFor8080}
+        >
           <RotateCw className="h-4 w-4" />
           Reboot
         </Button>
@@ -208,14 +234,31 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
       <ProjectInstanceInfoCard instance={instance} />
 
-      <ProjectInstanceStats />
-      <OpencodeWebCard
-        projectId={instance.project_id || ""}
-        publicIp={Instance_IP}
-        isTerminated={isTerminated}
-      />
-
-      <ProjectInstanceTerminal publicIp={Instance_IP} hideControls />
+      {isLoadingDomains ? (
+        <Card className="text-muted-foreground flex items-center justify-center p-6 text-center">
+          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+          Loading instance routing...
+        </Card>
+      ) : !domainFor8080 ? (
+        <Card className="text-muted-foreground p-6 text-center">
+          To view the Terminal, CPU Usage, and Opencode Web, please make this
+          instance the default for the project. You need to assign domains to
+          this instance.
+        </Card>
+      ) : (
+        <>
+          <ProjectInstanceStats />
+          <OpencodeWebCard
+            domainFor8080={domainFor8080 || null}
+            domainFor4096={domainFor4096 || null}
+            isTerminated={isTerminated}
+          />
+          <ProjectInstanceTerminal
+            domain={domainFor8080 || null}
+            hideControls
+          />
+        </>
+      )}
 
       <ProjectDomainsCard projectId={instance.project_id || ""} />
     </div>
