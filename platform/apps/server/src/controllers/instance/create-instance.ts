@@ -5,6 +5,7 @@ import {
   and,
   db,
   eq,
+  projectDomainRouting,
   projects,
   projectSessions,
   projectSshKeys,
@@ -65,11 +66,16 @@ export const createInstance = catchAsync(
       projectSessionId: projectSession.id,
     });
 
-    await spinUpAndSaveInstance({
+    const instance = await spinUpAndSaveInstance({
       setupScript,
       project,
       userId: user.id,
       sessionId: projectSession.id,
+    });
+    if (!instance) throw new AppError("Failed to spin up the instance", 500);
+    // setting up the instance id  as default for the project routing
+    await db.update(projectDomainRouting).set({
+      target_instance_id: instance.id,
     });
 
     res.status(201).json({

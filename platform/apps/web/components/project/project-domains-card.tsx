@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@repo/ui/components/card";
 import { useGetProjectDomainsById } from "@/hooks/use-project";
+import Link from "next/link";
 
 interface ProjectDomainsCardProps {
   projectId: string;
@@ -29,7 +30,19 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
         <CardHeader>
           <CardTitle>Project Domains</CardTitle>
           <CardDescription>
-            Domains mapped to this project and their target ports
+            {data?.target_instance_id ? (
+              <span>
+                project is targeted to{" "}
+                <Link
+                  className="text-blue-500 hover:underline"
+                  href={`http://localhost:3000/projects/${projectId}/instances/${data.target_instance_id}`}
+                >
+                  Instance
+                </Link>
+              </span>
+            ) : (
+              "project is not targeted to any instance"
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent>

@@ -26,7 +26,7 @@ export const spinUpAndSaveInstance = async ({
   project,
   userId,
   sessionId = null,
-}: SpinUpAndSaveInstance) => {
+}: SpinUpAndSaveInstance): Promise<null | typeof instances.$inferSelect> => {
   const [row] = await db
     .select({ region: instanceRegions })
     .from(instanceTypes)
@@ -70,5 +70,5 @@ export const spinUpAndSaveInstance = async ({
     })
     .returning();
 
-  return instance;
+  return instance || null;
 };
