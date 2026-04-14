@@ -95,9 +95,9 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 				r.Header.Set("proxy-error", "404")
 				return
 			}
-			r.URL.Scheme = "http"
+			r.URL.Scheme = proxyData.Target.Scheme
 			r.Host = proxyData.Host
-			r.URL.Host = proxyData.FullTarget.Host
+			r.URL.Host = proxyData.Target.Host
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			errorHeader := r.Header.Get("proxy-error")
