@@ -5,6 +5,7 @@ import {
   instanceRegions,
   instances,
   instanceTypes,
+  projectDomainRouting,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -45,6 +46,19 @@ export const terminateByIdInstance = catchAsync(
       .update(instances)
       .set({ terminated_at: new Date(), state: "terminated" })
       .where(eq(instances.id, id));
+    // remove the default routing it if its their
+
+    await db
+      .update(projectDomainRouting)
+      .set({
+        target_instance_id: null,
+      })
+      .where(
+        and(
+          eq(projectDomainRouting.target_instance_id, id),
+          eq(projectDomainRouting.user_id, user.id),
+        ),
+      );
 
     res.status(200).json({
       message: "Instance terminated successfully",
