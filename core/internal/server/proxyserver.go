@@ -6,8 +6,12 @@ import (
 	"net/http"
 	"net/http/httputil"
 
-	"github.com/jashandeep31/vibeongo/core/internal/middlewares"
 	"github.com/jashandeep31/vibeongo/core/internal/store"
+)
+
+var (
+	AppVersion = "v1.0.0-default"
+	BuildTime  = "unknown"
 )
 
 type ProxyServer struct {
@@ -20,44 +24,38 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 
 func (s *ProxyServer) Start(addr string) error {
 	mux := http.NewServeMux()
-	mux.Handle("GET /proxy/status", middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(s.handleStatus)))
-	mux.HandleFunc("POST /proxy/add", s.handleAdd)
+
+	// routes
+	mux.HandleFunc("GET /proxy/version", s.handleStatus)
+	// just for dev purposes
+	mux.HandleFunc("GET /proxy/list", s.listAll)
 	mux.HandleFunc("GET /proxy/login", s.handleLogin)
+	mux.HandleFunc("POST /proxy/add", s.handleAdd)
 	mux.Handle("/", s.reverseProxy())
 
 	return http.ListenAndServe(addr, mux)
 }
 
-func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
-	ip := r.Header.Get("X-Real-IP")
-	if ip != "" {
-		w.Header().Set("X-Real-IP", "temp")
-	}
-	w.Header().Set("Content-Type", "application/json")
-	type proxyItem struct {
-		Url        string   `json:"url"`
-		ProxyTo    string   `json:"proxyTo"`
-		AllowedIPs []string `json:"allowedIPs"`
-	}
+func (s *ProxyServer) listAll(w http.ResponseWriter, r *http.Request) {
+	s.store.GetProxyByHost("fdi0jh1n2u.vibeongo.one")
+	json.NewEncoder(w).Encode(s.store.GetAllProxies())
+}
 
-	mappedProxies := s.store.GetAllProxies()
-	proxies := make([]proxyItem, 0, len(mappedProxies))
-	for _, proxy := range mappedProxies {
-		proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String(), AllowedIPs: proxy.AllowedIPs})
-	}
+// Return the version of the applcation along with the build time
+func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(struct {
-		Proxies []proxyItem
 		Version string
-	}{Proxies: proxies, Version: "1.0.0"})
+		Build   string
+	}{Version: AppVersion, Build: BuildTime})
 }
 
 func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Host       string   `json:"host"`
 		TargetUrl  string   `json:"targetUrl"`
+		Port       int      `json:"port"`
 		AllowedIPs []string `json:"allowedIPs"`
 	}
-
 	err := json.NewDecoder(r.Body).Decode(&data)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
@@ -69,7 +67,7 @@ func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
 		w.Write([]byte("400"))
 		return
 	}
-	s.store.AddProxy(data.Host, data.TargetUrl, data.AllowedIPs)
+	s.store.AddProxy(data.Host, data.TargetUrl, data.Port, data.AllowedIPs)
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
@@ -99,7 +97,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 			}
 			r.URL.Scheme = "http"
 			r.Host = proxyData.Host
-			r.URL.Host = proxyData.TargetUrl.Host
+			r.URL.Host = proxyData.FullTarget.Host
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			errorHeader := r.Header.Get("proxy-error")

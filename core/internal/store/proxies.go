@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"net/http"
 	"net/url"
 	"sync"
 	"time"
@@ -10,8 +11,12 @@ import (
 )
 
 type Proxy struct {
-	Host       string
-	TargetUrl  *url.URL
+	// The domain the that i am proxing to ex: test.vibeongo.one -> 192.168.1.1
+	Host string
+	// TargetIp IP the on which we redirecting the request ex: 192.168.1.1
+	TargetIp   string
+	Port       int
+	FullTarget *url.URL
 	AllowedIPs []string
 	ExpiresAt  time.Time
 }
@@ -27,28 +32,32 @@ func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
 		proxies: make(map[string]*Proxy),
 	}
+	// running the cleanup in bg
 	go pm.cleanup()
 	return pm
 }
 
-func (pm *ProxyManager) AddProxy(hostUrl string, targetUrl string, allowedIPs []string) error {
-	t, err := url.Parse(targetUrl)
+// Add the proxy to the proxies map
+func (pm *ProxyManager) AddProxy(hostUrl string, target string, port int, allowedIPs []string) error {
+	t, err := url.Parse("http://" + target + ":" + fmt.Sprint(port))
 	if err != nil {
 		return err
 	}
-
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-
 	pm.proxies[hostUrl] = &Proxy{
 		Host:       hostUrl,
-		TargetUrl:  t,
+		TargetIp:   target,
+		FullTarget: t,
+		Port:       port,
 		AllowedIPs: allowedIPs,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 	}
 	return nil
 }
 
+// Return the proxy from the array using the domain name
+// if not present then as the ip
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 	p, ok := pm.proxies[host]
 	if !ok {
@@ -56,7 +65,8 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 		if err != nil {
 			return nil, false
 		}
-		pm.AddProxy(host, proxy.TargetUrl.String(), proxy.AllowedIPs)
+		fmt.Println("proxy", proxy)
+		pm.AddProxy(host, proxy.TargetIp, proxy.Port, proxy.AllowedIPs)
 		return proxy, true
 	}
 	return p, ok
@@ -65,6 +75,7 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 type Response struct {
 	Data struct {
 		ID      string `json:"id"`
+		Port    int    `json:"target_port"`
 		Routing struct {
 			Ip         string `json:"ip"`
 			AllowedIPs []struct {
@@ -74,36 +85,62 @@ type Response struct {
 	} `json:"data"`
 }
 
+// Getting the proxy details from the server if not present locally
 func getProxyFromServerCall(host string) (*Proxy, error) {
 	var parsedResponse Response
-	if err := apiClient.Post(
+
+	resp, err := apiClient.Post(
 		"/api/v1/internal/proxy/target-host/resolve",
 		struct {
 			Domain string `json:"domain"`
 		}{Domain: host},
 		&parsedResponse,
-	); err != nil {
-		return nil, err
+	)
+	if err != nil {
+		return nil, fmt.Errorf("request failed: %w", err)
+	}
+
+	if resp == nil {
+		return nil, fmt.Errorf("nil response from server")
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
+
+	if parsedResponse.Data.Routing.Ip == "" {
+		return nil, fmt.Errorf("invalid response: missing routing IP")
+	}
+
+	fmt.Println(parsedResponse.Data)
+	if parsedResponse.Data.Port == 0 {
+		return nil, fmt.Errorf("invalid response: missing port")
 	}
 
 	allowedIPs := make([]string, 0, len(parsedResponse.Data.Routing.AllowedIPs))
 	for _, ip := range parsedResponse.Data.Routing.AllowedIPs {
-		allowedIPs = append(allowedIPs, ip.Ip)
+		if ip.Ip != "" {
+			allowedIPs = append(allowedIPs, ip.Ip)
+		}
 	}
 
-	targetUrl, err := url.Parse("http://" + parsedResponse.Data.Routing.Ip)
+	fmt.Println(parsedResponse.Data.Routing.Ip, parsedResponse.Data.Port)
+	fullTargetUrl, err := url.Parse("http://" + parsedResponse.Data.Routing.Ip + ":" + fmt.Sprint(parsedResponse.Data.Port))
+
+	fmt.Println("proxy", "fas", fullTargetUrl)
 	if err != nil {
-		return nil, fmt.Errorf("invalid target IP from server: %w", err)
+		return nil, err
 	}
-
 	return &Proxy{
 		Host:       host,
-		TargetUrl:  targetUrl,
+		TargetIp:   parsedResponse.Data.Routing.Ip,
+		Port:       parsedResponse.Data.Port,
+		FullTarget: fullTargetUrl,
 		AllowedIPs: allowedIPs,
 		ExpiresAt:  time.Now().Add(5 * time.Minute),
 	}, nil
 }
 
+// Cleanup the expired proxies
 func (pm *ProxyManager) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
 	defer ticker.Stop()
@@ -119,6 +156,7 @@ func (pm *ProxyManager) cleanup() {
 	}
 }
 
+// Return all the proxies
 func (pm *ProxyManager) GetAllProxies() map[string]*Proxy {
 	return pm.proxies
 }
