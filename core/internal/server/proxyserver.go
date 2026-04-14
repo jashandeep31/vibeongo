@@ -19,13 +19,8 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 }
 
 func (s *ProxyServer) Start(addr string) error {
-	proxyData, ok := s.store.GetProxyByHost("localhost:5000")
-	if !ok {
-		fmt.Println("failed to get proxy")
-	}
-	fmt.Println("proxyData", proxyData)
 	mux := http.NewServeMux()
-	mux.Handle("GET /proxy/status/", middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(s.handleStatus)))
+	mux.Handle("GET /proxy/status", middlewares.CheckProxyAuthMiddleware(http.HandlerFunc(s.handleStatus)))
 	mux.HandleFunc("POST /proxy/add", s.handleAdd)
 	mux.HandleFunc("GET /proxy/login", s.handleLogin)
 	mux.Handle("/", s.reverseProxy())
@@ -50,8 +45,10 @@ func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	for _, proxy := range mappedProxies {
 		proxies = append(proxies, proxyItem{Url: proxy.Host, ProxyTo: proxy.TargetUrl.String(), AllowedIPs: proxy.AllowedIPs})
 	}
-
-	json.NewEncoder(w).Encode(proxies)
+	json.NewEncoder(w).Encode(struct {
+		Proxies []proxyItem
+		Version string
+	}{Proxies: proxies, Version: "1.0.0"})
 }
 
 func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +100,6 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 			r.URL.Scheme = "http"
 			r.Host = proxyData.Host
 			r.URL.Host = proxyData.TargetUrl.Host
-			// req.Header.Set("x-token", time.Now().UTC().Format(time.RFC1123))
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			errorHeader := r.Header.Get("proxy-error")
