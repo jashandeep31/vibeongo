@@ -1,6 +1,6 @@
 "use client";
 
-import { ProjectSessionWithRunningInstance } from "@/services/project-session-services";
+import { ProjectSessionWithRunningInstances } from "@/services/project-session-services";
 import { Badge } from "@repo/ui/components/badge";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Button } from "@repo/ui/components/button";
@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@repo/ui/components/card";
-import { Clock3, Play, Terminal, Server } from "lucide-react";
+import { Clock3, Play, Terminal, Server, Plus } from "lucide-react";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -65,7 +65,7 @@ const ActiveDuration = ({ startedAt }: { startedAt: unknown }) => {
 };
 
 type ProjectSessionsListProps = {
-  sessions: ProjectSessionWithRunningInstance[];
+  sessions: ProjectSessionWithRunningInstances[];
   isLoading: boolean;
   isError: boolean;
 };
@@ -78,15 +78,15 @@ export function ProjectSessionsList({
   const resumeSessionMutation = useResumeProjectSession();
 
   const handleResume = async (sessionId: string) => {
-    const toastId = toast.loading("Resuming session...");
+    const toastId = toast.loading("Launching instance...");
     try {
       await resumeSessionMutation.mutateAsync(sessionId);
-      toast.success("Session resumed successfully", { id: toastId });
+      toast.success("Instance launched successfully", { id: toastId });
     } catch (error: unknown) {
       console.error(error);
       const message = axios.isAxiosError<{ message?: string }>(error)
-        ? (error.response?.data?.message ?? "Failed to resume session")
-        : "Failed to resume session";
+        ? (error.response?.data?.message ?? "Failed to launch instance")
+        : "Failed to launch instance";
       toast.error(message, { id: toastId });
     }
   };
@@ -134,91 +134,119 @@ export function ProjectSessionsList({
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {sessions.map(({ session, runningInstance }) => (
-        <Card key={session.id} className="flex flex-col">
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clock3 className="text-muted-foreground h-5 w-5" />
-                <CardTitle className="truncate text-base" title={session.name}>
-                  {session.name}
-                </CardTitle>
-              </div>
-              {runningInstance ? (
-                <Badge className="border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
-                  Running
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="border-0">
-                  Idle
-                </Badge>
-              )}
-            </div>
-            <CardDescription className="line-clamp-2 pt-1 text-xs">
-              {session.description || "No description provided."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="flex-1 pb-4">
-            {runningInstance ? (
-              <div className="bg-muted/50 mt-1 rounded-md border p-3">
-                <div className="mb-2 flex items-center gap-2">
-                  <Server className="h-4 w-4" />
-                  <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                    Active Instance
-                  </span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <span className="text-muted-foreground mb-0.5 block">
-                      IP Address
-                    </span>
-                    <span className="block font-mono">
-                      {runningInstance.public_ip || "Pending..."}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground mb-0.5 block">
-                      Spun Up For
-                    </span>
-                    <ActiveDuration startedAt={runningInstance.started_at} />
-                  </div>
-                </div>
-              </div>
-            ) : (
-              <div className="flex h-full items-center justify-center py-4">
-                <p className="text-muted-foreground text-sm italic">
-                  No active instance.
-                </p>
-              </div>
-            )}
-          </CardContent>
-          <CardFooter className="mt-auto border-t px-6 py-4 pt-4">
-            <div className="flex w-full gap-2">
-              {runningInstance ? (
-                <Button className="w-full" variant="outline" asChild>
-                  <Link
-                    href={`/projects/${session.project_id}/instances/${runningInstance.id}`}
+      {sessions.map((session) => {
+        const runningInstances = session.instances;
+        const isRunning = runningInstances && runningInstances.length > 0;
+
+        return (
+          <Card key={session.id} className="flex flex-col">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Clock3 className="text-muted-foreground h-5 w-5" />
+                  <CardTitle
+                    className="truncate text-base"
+                    title={session.name}
                   >
-                    <Terminal className="mr-2 h-4 w-4" />
-                    Connect
-                  </Link>
-                </Button>
+                    {session.name}
+                  </CardTitle>
+                </div>
+                {isRunning ? (
+                  <Badge className="border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
+                    Running
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="border-0">
+                    Idle
+                  </Badge>
+                )}
+              </div>
+              <CardDescription className="line-clamp-2 pt-1 text-xs">
+                {session.description || "No description provided."}
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 pb-4">
+              {isRunning ? (
+                <div className="space-y-3">
+                  {runningInstances.map((instance) => (
+                    <div
+                      key={instance.id}
+                      className="bg-muted/50 rounded-md border p-3"
+                    >
+                      <div className="mb-2 flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Server className="h-4 w-4" />
+                          <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                            Active Instance
+                          </span>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs"
+                          asChild
+                        >
+                          <Link
+                            href={`/projects/${session.project_id}/instances/${instance.id}`}
+                          >
+                            <Terminal className="mr-1 h-3 w-3" />
+                            Connect
+                          </Link>
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                          <span className="text-muted-foreground mb-0.5 block">
+                            IP Address
+                          </span>
+                          <span className="block font-mono">
+                            {instance.public_ip || "Pending..."}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="text-muted-foreground mb-0.5 block">
+                            Spun Up For
+                          </span>
+                          <ActiveDuration startedAt={instance.started_at} />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
               ) : (
-                <Button
-                  className="w-full"
-                  onClick={() => {
-                    void handleResume(session.id);
-                  }}
-                  disabled={resumeSessionMutation.isPending}
-                >
-                  <Play className="mr-2 h-4 w-4" />
-                  Resume Session
-                </Button>
+                <div className="flex h-full items-center justify-center py-4">
+                  <p className="text-muted-foreground text-sm italic">
+                    No active instance.
+                  </p>
+                </div>
               )}
-            </div>
-          </CardFooter>
-        </Card>
-      ))}
+            </CardContent>
+
+            <CardFooter className="mt-auto border-t px-6 py-4 pt-4">
+              <Button
+                className="w-full"
+                variant={isRunning ? "secondary" : "default"}
+                onClick={() => {
+                  void handleResume(session.id);
+                }}
+                disabled={resumeSessionMutation.isPending}
+              >
+                {isRunning ? (
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Launch Another Instance
+                  </>
+                ) : (
+                  <>
+                    <Play className="mr-2 h-4 w-4" />
+                    Resume Session
+                  </>
+                )}
+              </Button>
+            </CardFooter>
+          </Card>
+        );
+      })}
     </div>
   );
 }
