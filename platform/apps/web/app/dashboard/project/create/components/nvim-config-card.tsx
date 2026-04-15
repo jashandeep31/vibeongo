@@ -25,7 +25,7 @@ function NvimConfigCard() {
     <div
       className={`rounded-lg border p-6 transition-colors ${
         nvimEnabled
-          ? "border-green-500 bg-green-50/50 dark:bg-green-950/20"
+          ? "border-primary bg-primary/5 ring-1 ring-primary"
           : "bg-card border-border"
       }`}
     >

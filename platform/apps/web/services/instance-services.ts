@@ -16,9 +16,14 @@ export const createInstance = async (
   return res.data;
 };
 
-export const getInstances = async (): Promise<Instance[]> => {
+export const getInstances = async ({
+  running = false,
+}: {
+  running?: boolean;
+}): Promise<Instance[]> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/instances`, {
     withCredentials: true,
+    params: { running },
   });
   return res.data.data;
 };

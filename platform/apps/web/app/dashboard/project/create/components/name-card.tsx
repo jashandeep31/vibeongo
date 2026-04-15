@@ -35,7 +35,7 @@ const NameCard = () => {
         placeholder="my-awesome-project"
         className="h-10 max-w-md"
       />
-      <p className="text-sm text-red-500">{localError}</p>
+      <p className="text-sm text-destructive">{localError}</p>
     </div>
   );
 };

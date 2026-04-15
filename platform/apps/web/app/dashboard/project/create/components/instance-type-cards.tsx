@@ -59,14 +59,14 @@ function InstanceTypeCards() {
             onClick={() => setInstanceTypeId(instance.id)}
             className={`hover:border-primary flex flex-col rounded-lg border p-4 text-left transition-colors ${
               instanceTypeId === instance.id
-                ? "border-orange-500 bg-orange-500/5 ring-1 ring-orange-500"
+                ? "border-primary bg-primary/5 ring-1 ring-primary"
                 : "bg-muted hover:bg-muted/80"
             }`}
             key={instance.id}
           >
             <div
               className={`mb-1 font-medium ${
-                instanceTypeId === instance.id ? "text-orange-500" : ""
+                instanceTypeId === instance.id ? "text-primary" : ""
               }`}
             >
               {instance.name}
