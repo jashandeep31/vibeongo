@@ -12,7 +12,6 @@ export const getProjectSessions = async (): Promise<
   const res = await axios.get(`${BACKEND_URL}/api/v1/project-sessions/`, {
     withCredentials: true,
   });
-  console.log(res.data.data);
 
   return res.data.data;
 };
