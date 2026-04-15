@@ -26,7 +26,7 @@ const NavCommandBox = () => {
   }, []);
 
   const commandsList: { label: string; href: string; external?: boolean }[] = [
-    { label: "Dashboard", href: "/dashboard" },
+    { label: "Dashboard (Home)", href: "/dashboard" },
     { label: "My Projects", href: "/projects" },
     { label: "Create Project", href: "/dashboard/project/create" },
     { label: "Sessions", href: "/dashboard/sessions" },

@@ -52,7 +52,7 @@ CONFIG_DIR="\\$HOME/.config/vibeongo"
 mkdir -p "\\$CONFIG_DIR"
 
 curl --request GET \\
-  --url  ${env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config \\
+  --url  ${env.NODE_ENV == "development" ? "https://l1.devsradar.com" : env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config \\
   --header "Authorization: Bearer ${authToken}" \\
   | jq '.data' > "\\$CONFIG_DIR/config.json"
 

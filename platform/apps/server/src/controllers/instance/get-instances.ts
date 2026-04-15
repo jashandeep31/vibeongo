@@ -2,16 +2,31 @@ import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
 import { and, db, eq, instances } from "@repo/db";
+import { z } from "zod";
 
 export const getUserInstances = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
+
+    const { running } = z
+      .object({
+        running: z
+          .enum(["true", "false"])
+          .transform((v) => v === "true")
+          .default(false),
+      })
+      .parse(req.query);
     if (!user) throw new AppError("authentication is required", 400);
 
     const rows = await db
       .select()
       .from(instances)
-      .where(eq(instances.user_id, user.id));
+      .where(
+        and(
+          eq(instances.user_id, user.id),
+          running ? eq(instances.state, "running") : undefined,
+        ),
+      );
 
     res.status(200).json({
       data: rows,

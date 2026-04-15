@@ -17,21 +17,51 @@ import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import { toast } from "sonner";
 import Link from "next/link";
 import axios from "axios";
+import { useEffect, useState } from "react";
 
-const formatDate = (value: string | Date | null | undefined) => {
-  if (!value) return "-";
+const formatDuration = (startedAt: unknown) => {
+  if (!startedAt) return "N/A";
 
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return String(value);
+  const startDate = new Date(String(startedAt));
+  if (Number.isNaN(startDate.getTime())) return "N/A";
 
-  return date.toLocaleString();
+  const endDate = new Date();
+  const durationMs = endDate.getTime() - startDate.getTime();
+  if (durationMs < 0) return "N/A";
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m`;
+  }
+
+  return "< 1m";
 };
 
-const truncateWords = (str: string | null | undefined, maxWords: number) => {
-  if (!str) return "";
-  const words = str.split(/\s+/);
-  if (words.length <= maxWords) return str;
-  return words.slice(0, maxWords).join(" ") + "...";
+// Component to handle the live updating duration
+const ActiveDuration = ({ startedAt }: { startedAt: unknown }) => {
+  const [duration, setDuration] = useState(formatDuration(startedAt));
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDuration(formatDuration(startedAt));
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [startedAt]);
+
+  return <span className="block font-mono">{duration}</span>;
 };
 
 type ProjectSessionsListProps = {
@@ -129,56 +159,38 @@ export function ProjectSessionsList({
             </CardDescription>
           </CardHeader>
           <CardContent className="flex-1 pb-4">
-            <div className="space-y-3 text-sm">
-              <div>
-                <span className="text-muted-foreground mb-1 block text-xs">
-                  Overview
-                </span>
-                <span className="block text-xs" title={session.overview || ""}>
-                  {truncateWords(session.overview, 20) ||
-                    "No overview available."}
-                </span>
-              </div>
-
-              <div>
-                <span className="text-muted-foreground mb-1 block text-xs">
-                  Started At
-                </span>
-                <span>{formatDate(session.started_at)}</span>
-              </div>
-
-              {runningInstance && (
-                <div className="bg-muted/50 mt-3 rounded-md border p-3">
-                  <div className="mb-2 flex items-center gap-2">
-                    <Server className="h-4 w-4" />
-                    <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
-                      Active Instance
+            {runningInstance ? (
+              <div className="bg-muted/50 mt-1 rounded-md border p-3">
+                <div className="mb-2 flex items-center gap-2">
+                  <Server className="h-4 w-4" />
+                  <span className="text-muted-foreground text-xs font-medium tracking-wider uppercase">
+                    Active Instance
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div>
+                    <span className="text-muted-foreground mb-0.5 block">
+                      IP Address
+                    </span>
+                    <span className="block font-mono">
+                      {runningInstance.public_ip || "Pending..."}
                     </span>
                   </div>
-                  <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <span className="text-muted-foreground mb-0.5 block">
-                        Instance ID
-                      </span>
-                      <span
-                        className="block truncate font-mono"
-                        title={runningInstance.id}
-                      >
-                        {runningInstance.id.slice(0, 8)}...
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground mb-0.5 block">
-                        IP Address
-                      </span>
-                      <span className="block font-mono">
-                        {runningInstance.public_ip || "Pending..."}
-                      </span>
-                    </div>
+                  <div>
+                    <span className="text-muted-foreground mb-0.5 block">
+                      Spun Up For
+                    </span>
+                    <ActiveDuration startedAt={runningInstance.started_at} />
                   </div>
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="flex h-full items-center justify-center py-4">
+                <p className="text-muted-foreground text-sm italic">
+                  No active instance.
+                </p>
+              </div>
+            )}
           </CardContent>
           <CardFooter className="mt-auto border-t px-6 py-4 pt-4">
             <div className="flex w-full gap-2">

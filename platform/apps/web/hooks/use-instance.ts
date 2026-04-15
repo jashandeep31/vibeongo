@@ -12,10 +12,10 @@ export const useCreateInstance = () =>
     mutationFn: createInstance,
   });
 
-export const useGetInstances = () =>
+export const useGetInstances = ({ running }: { running: boolean }) =>
   useQuery({
     queryKey: ["instances"],
-    queryFn: getInstances,
+    queryFn: () => getInstances({ running }),
   });
 
 export const useGetInstancesByProjectId = (projectId: string) =>

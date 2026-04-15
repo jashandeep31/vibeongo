@@ -35,7 +35,25 @@ export const getUserProjectSesssion = catchAsync(
       .where(eq(projectSessions.user_id, user.id))
       .orderBy(desc(projectSessions.created_at));
 
-    res.status(200).json({ data: rows });
+    const sessions = new Map<
+      string,
+      typeof projectSessions.$inferSelect & {
+        instances: (typeof instances.$inferSelect)[];
+      }
+    >();
+    for (const row of rows) {
+      const s = row.project_session;
+      if (!sessions.has(s.id)) {
+        sessions.set(s.id, { ...s, instances: [] });
+      }
+      if (row.instances) {
+        sessions.get(row.project_session.id)?.instances.push(row.instances);
+      }
+    }
+
+    const refinedData = Array.from(sessions.values());
+
+    res.status(200).json({ data: refinedData });
   },
 );
 

@@ -16,7 +16,7 @@ function InstanceRegionCards() {
             onClick={() => setInstanceRegion(region.id)}
             className={`hover:border-primary bg-muted hover:text-primary group rounded-md border p-2 text-sm transition-colors ${
               instanceRegion === region.id
-                ? "border-orange-500 text-orange-500"
+                ? "border-primary text-primary ring-1 ring-primary"
                 : ""
             }`}
             key={region.id}
@@ -25,7 +25,7 @@ function InstanceRegionCards() {
             <span
               className={`text-muted-foreground group-hover:text-primary block text-left text-xs transition-colors ${
                 instanceRegion === region.id
-                  ? "text-orange-500 group-hover:text-orange-500"
+                  ? "text-primary group-hover:text-primary"
                   : ""
               }`}
             >
