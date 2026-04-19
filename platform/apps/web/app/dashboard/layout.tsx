@@ -16,8 +16,8 @@ export default async function layout({
   }
   return (
     <div>
-      <DashboardNavbar />
       <SidebarProvider>
+        <DashboardNavbar />
         <DashboardSidebar />
         <div className="mt-12 grid w-full">{children}</div>
       </SidebarProvider>

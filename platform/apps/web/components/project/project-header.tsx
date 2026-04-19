@@ -31,9 +31,6 @@ export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
             </Badge>
           )}
         </div>
-        <p className="text-muted-foreground flex items-center gap-2">
-          <Server className="h-4 w-4" /> ID: {project.id}
-        </p>
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0">
@@ -56,15 +53,7 @@ export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
               Terminate
             </Button>
           </>
-        ) : (
-          <Button
-            className="bg-emerald-600 text-white hover:bg-emerald-700"
-            size="lg"
-          >
-            <Play className="mr-2 h-4 w-4" />
-            Start
-          </Button>
-        )}
+        ) : null}
       </div>
     </div>
   );
