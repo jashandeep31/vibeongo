@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"os"
 	"sync"
 	"time"
 
@@ -24,7 +25,7 @@ type ProxyManager struct {
 	proxies map[string]*Proxy
 }
 
-var apiClient = utils.APIClient{BaseURL: "https://server.vibeongo.com"}
+var apiClient = utils.APIClient{BaseURL: os.Getenv("PROXY_SERVER_URL")}
 
 func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
