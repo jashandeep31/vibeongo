@@ -86,7 +86,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
   });
 
   return (
-    <div className="space-y-8 p-8">
+    <div className="space-y-8 p-6 md:p-8">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>

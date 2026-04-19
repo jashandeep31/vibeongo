@@ -60,7 +60,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
       {/* Header Section */}
       <ProjectHeader project={project} instances={instances} />
 
-      <div className="flex justify-end">
+      <div className="hidden justify-end">
         <ConfirmationDialog
           title="Delete project"
           description="Are you sure you want to delete this project? This action cannot be undone."

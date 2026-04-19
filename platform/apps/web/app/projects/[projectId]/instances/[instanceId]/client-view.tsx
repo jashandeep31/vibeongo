@@ -212,7 +212,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <div className="space-y-12 p-8">
+    <div className="space-y-12 p-6 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
