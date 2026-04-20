@@ -47,6 +47,7 @@ export default function ConfigPreviewAndCreate() {
           name: "opencode",
           enabled: additionalServices.opencodeConfig.enabled || false,
           config: {
+            model: additionalServices.opencodeConfig.model,
             auth_json: (() => {
               try {
                 return JSON.parse(
