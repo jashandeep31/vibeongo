@@ -47,17 +47,17 @@ func runTask() error {
 		fmt.Println("--------------------------------------------------")
 
 		// asking to create a plan
-		if err := runOpencodeTask(taskFolderPath, env, systemPrompt+task.Task, false); err != nil {
+		if err := runOpencodeTask(taskFolderPath, env, systemPrompt+task.Task, false, cfg.OpenCode.Model); err != nil {
 			return err
 		}
 
 		// Working on the plan file
-		if err := runOpencodeTask(taskFolderPath, env, "check vibeongoplan.md and complete all the tasks. and the most imprtant theirs is not one ot tell you which is write path and how you can handle this so be a independent do all at your no questions asked", true); err != nil {
+		if err := runOpencodeTask(taskFolderPath, env, "check vibeongoplan.md and complete all the tasks. and the most imprtant theirs is not one ot tell you which is write path and how you can handle this so be a independent do all at your no questions asked", true, cfg.OpenCode.Model); err != nil {
 			return err
 		}
 
 		// check what is pending
-		if err := runOpencodeTask(taskFolderPath, env, "Please confirm onces after checking vibengoplan.md if anyting is left please compelte it ", true); err != nil {
+		if err := runOpencodeTask(taskFolderPath, env, "Please confirm onces after checking vibengoplan.md if anyting is left please compelte it ", true, cfg.OpenCode.Model); err != nil {
 			return err
 		}
 	}
@@ -65,7 +65,7 @@ func runTask() error {
 	return nil
 }
 
-func runOpencodeTask(dir string, env []string, content string, continueFlag bool) error {
+func runOpencodeTask(dir string, env []string, content string, continueFlag bool, model string) error {
 	tmpFile, err := os.CreateTemp("", "vibeongo-task-*.txt")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
@@ -83,9 +83,17 @@ func runOpencodeTask(dir string, env []string, content string, continueFlag bool
 
 	cmdStr := ""
 	if continueFlag == true {
-		cmdStr = fmt.Sprintf(`opencode run --continue "$(cat %s)"`, tmpFile.Name())
+		if model == "default" || model == "" {
+			cmdStr = fmt.Sprintf(`opencode run --continue "$(cat %s)"`, tmpFile.Name())
+		} else {
+			cmdStr = fmt.Sprintf(`opencode run --model %s --continue "$(cat %s)"`, model, tmpFile.Name())
+		}
 	} else {
-		cmdStr = fmt.Sprintf(`opencode run "$(cat %s)"`, tmpFile.Name())
+		if model == "default" || model == "" {
+			cmdStr = fmt.Sprintf(`opencode run "$(cat %s)"`, tmpFile.Name())
+		} else {
+			cmdStr = fmt.Sprintf(`opencode run --model %s "$(cat %s)"`, model, tmpFile.Name())
+		}
 	}
 
 	cmd := exec.Command("bash", "-c", cmdStr)
