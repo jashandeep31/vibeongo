@@ -18,7 +18,6 @@ import { createSessionAuthToken } from "../../../lib/create-session-auth-token.j
 import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
 import { getSessionNameAndDescription } from "../../../ai/ai-functions/get-session-name-and-description.js";
-import { env } from "../../../lib/env.js";
 
 export const issueOpenedHandler = async (
   event: WebhookHandler<IssuesOpenedEvent>,
@@ -31,23 +30,20 @@ export const issueOpenedHandler = async (
 
   // if (!body.includes("@vibeongo")) return;
 
-  if (env.NODE_ENV !== "development") {
-    const res = await octokit.request(
-      "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-      {
-        owner: payload.repository.owner.login,
-        repo: payload.repository.name,
-        issue_number: payload.issue.number,
-        body: `👋 Got it! I'm on it.
+  await octokit.request(
+    "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+    {
+      owner: payload.repository.owner.login,
+      repo: payload.repository.name,
+      issue_number: payload.issue.number,
+      body: `👋 Got it! I'm on it.
   🛠️ Fetching live logs for this issue — this can take up to 5 minutes.
   🌐 You can monitor progress on the live website.`,
-        headers: {
-          "x-github-api-version": "2026-03-10",
-        },
+      headers: {
+        "x-github-api-version": "2026-03-10",
       },
-    );
-    // const commentId = res.data.id;
-  }
+    },
+  );
 
   const issueOpnerUsername = payload.issue?.user?.login;
   const full_name = payload.repository?.full_name;
