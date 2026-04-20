@@ -25,8 +25,6 @@ type ProxyManager struct {
 	proxies map[string]*Proxy
 }
 
-var apiClient = utils.APIClient{BaseURL: os.Getenv("PROXY_SERVER_URL")}
-
 func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
 		proxies: make(map[string]*Proxy),
@@ -86,6 +84,7 @@ type Response struct {
 
 // Getting the proxy details from the server if not present locally
 func getProxyFromServerCall(host string) (*Proxy, error) {
+	apiClient := utils.APIClient{BaseURL: os.Getenv("PROXY_SERVER_URL")}
 	var parsedResponse Response
 
 	resp, err := apiClient.Post(
