@@ -13,6 +13,7 @@ type APIClient struct {
 
 func (c *APIClient) Post(path string, payload any, out any) (*http.Response, error) {
 	body, err := json.Marshal(payload)
+	fmt.Println("making the request", c.BaseURL+path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
