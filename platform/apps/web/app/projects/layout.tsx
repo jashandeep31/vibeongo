@@ -14,7 +14,7 @@ export default async function layout({
 
   return (
     <SidebarProvider>
-      <span className="Left-0 fixed top-0 z-50">
+      <span className="Left-0 fixed top-0 z-50 block md:hidden">
         <SidebarTrigger className="mt-2 ml-2" />
       </span>
       <ProjectsSidebar />

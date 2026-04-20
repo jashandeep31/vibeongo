@@ -11,7 +11,6 @@ import {
   projectSshKeys,
   sshKeys,
 } from "@repo/db";
-import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -74,9 +73,12 @@ export const createInstance = catchAsync(
     });
     if (!instance) throw new AppError("Failed to spin up the instance", 500);
     // setting up the instance id  as default for the project routing
-    await db.update(projectDomainRouting).set({
-      target_instance_id: instance.id,
-    });
+    await db
+      .update(projectDomainRouting)
+      .set({
+        target_instance_id: instance.id,
+      })
+      .where(eq(projectDomainRouting.project_id, project.id));
 
     res.status(201).json({
       message: "Successfully had created the project intance",
