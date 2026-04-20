@@ -6,6 +6,7 @@ import {
   githubRepos,
   instanceRegions,
   instanceTypes,
+  projectDomainRouting,
   projects,
   projectSessions,
   projectSessionTasks,
@@ -29,22 +30,22 @@ export const issueOpenedHandler = async (
 
   // if (!body.includes("@vibeongo")) return;
 
-  //   const res = await octokit.request(
-  //     "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-  //     {
-  //       owner: payload.repository.owner.login,
-  //       repo: payload.repository.name,
-  //       issue_number: payload.issue.number,
-  //       body: `👋 Got it! I'm on it.
-  // 🛠️ Fetching live logs for this issue — this can take up to 5 minutes.
-  // 🌐 You can monitor progress on the live website.`,
-  //       headers: {
-  //         "x-github-api-version": "2026-03-10",
-  //       },
-  //     },
-  //   );
-  //   const commentId = res.data.id;
-  //
+  const res = await octokit.request(
+    "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
+    {
+      owner: payload.repository.owner.login,
+      repo: payload.repository.name,
+      issue_number: payload.issue.number,
+      body: `👋 Got it! I'm on it.
+  🛠️ Fetching live logs for this issue — this can take up to 5 minutes.
+  🌐 You can monitor progress on the live website.`,
+      headers: {
+        "x-github-api-version": "2026-03-10",
+      },
+    },
+  );
+  const commentId = res.data.id;
+
   const issueOpnerUsername = payload.issue?.user?.login;
   const full_name = payload.repository?.full_name;
   if (!issueOpnerUsername || !full_name) {
@@ -133,11 +134,19 @@ Please add hte default project to the github repo
     .where(eq(instanceTypes.id, project.instance_type_id));
   if (!regionRow || !regionRow.instance_regions) return;
 
-  await spinUpAndSaveInstance({
+  const instance = await spinUpAndSaveInstance({
     setupScript: intialScript,
     project,
     userId: user.id,
     sessionId: session.id,
   });
+  if (instance) {
+    await db
+      .update(projectDomainRouting)
+      .set({
+        target_instance_id: instance.id,
+      })
+      .where(eq(projectDomainRouting.project_id, project.id));
+  }
   return;
 };

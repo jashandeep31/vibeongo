@@ -1,8 +1,11 @@
 import { createId } from "@paralleldrive/cuid2";
 import { proxyDomains, Transaction } from "@repo/db";
 import { AppError } from "./app-error.js";
+import { env } from "./env.js";
 
-const BASE_DOMAIN = "vibeongo.one";
+// NOTE: this needed to be removed this is for the dev purposes else get it from the env
+const BASE_DOMAIN =
+  env.NODE_ENV === "development" ? "a.vibeongo.one" : "vibeongo.one";
 interface CreateDomainForProjectProps {
   tx: Transaction;
   routingId: string;

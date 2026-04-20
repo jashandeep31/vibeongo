@@ -11,6 +11,7 @@ import {
   projects,
   projectSshKeys,
   sshKeys,
+  projectDomainRouting,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -90,12 +91,21 @@ export const resumeProjectSession = catchAsync(
       authToken: authToken,
       projectSessionId: projectSession.id,
     });
-    await spinUpAndSaveInstance({
+    const instance = await spinUpAndSaveInstance({
       setupScript,
       project,
       userId: user.id,
       sessionId: projectSession.id,
     });
+
+    if (!instance) throw new AppError("Failed to spin up the instance", 500);
+
+    await db
+      .update(projectDomainRouting)
+      .set({
+        target_instance_id: instance.id,
+      })
+      .where(eq(projectDomainRouting.project_id, project.id));
 
     res.status(200).json({ message: "Successfully resumed the instance" });
   },
