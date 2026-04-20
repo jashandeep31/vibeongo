@@ -11,9 +11,9 @@ type Config struct {
 	Token    string          `json:"token"`
 	Packages []PackageConfig `json:"packages"`
 	Repos    []GitRepoConfig `json:"repos"`
-	Docker   *DockerConfig   `json:"-"`
-	OpenCode *OpenCodeConfig `json:"-"`
-	Nvim     *NvimConfig     `json:"-"`
+	Docker   *DockerConfig   `json:"docker"`
+	OpenCode *OpenCodeConfig `json:"opencode"`
+	Nvim     *NvimConfig     `json:"nvim"`
 	Tasks    []TaskConfig    `json:"tasks"`
 }
 
@@ -47,6 +47,7 @@ type GitRepoConfig struct {
 
 type OpenCodeConfig struct {
 	AuthJSON json.RawMessage `json:"auth_json"`
+	Model    string          `json:"model"`
 }
 
 type NvimConfig struct {
