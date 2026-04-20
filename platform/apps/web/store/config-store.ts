@@ -17,6 +17,7 @@ interface AdditionalService {
   opencodeConfig: {
     enabled: boolean;
     authJson: string;
+    model: string;
   };
   nvimConfig: {
     enabled: boolean;
@@ -54,6 +55,7 @@ interface ConfigStore {
   updateOpencodeConfig: (opencodeConfig: {
     enabled: boolean;
     authJson: string;
+    model: string;
   }) => void;
   updateNvimConfig: (nvimConfig: { enabled: boolean; config: string }) => void;
 
@@ -102,7 +104,7 @@ export const useConfigStore = create<ConfigStore>((set) => ({
         },
       ],
     },
-    opencodeConfig: { enabled: true, authJson: `{"auths":{}}` },
+    opencodeConfig: { enabled: true, authJson: `{"auths":{}}`, model: "default" },
     nvimConfig: {
       enabled: true,
       config: "https://github.com/nvim-lua/kickstart.nvim.git",

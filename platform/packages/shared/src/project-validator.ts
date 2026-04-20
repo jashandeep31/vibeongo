@@ -11,6 +11,7 @@ export const dockerConfigValidator = z.object({
 
 export const opencodeConfigValidator = z.object({
   auth_json: z.json(),
+  model: z.string().default("default"),
 });
 
 export const tmuxConfigValidator = z.object({});

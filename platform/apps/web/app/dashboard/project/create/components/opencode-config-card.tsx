@@ -4,23 +4,34 @@ import { Checkbox } from "@repo/ui/components/checkbox";
 import { Label } from "@repo/ui/components/label";
 import { Terminal } from "lucide-react";
 import { Textarea } from "@repo/ui/components/textarea";
-import { memo } from "react";
+import { memo, type ChangeEvent } from "react";
 import { useConfigStore } from "@/store/config-store";
+import { Input } from "@repo/ui/components/input";
 
 function OpencodeConfigCard() {
   const additionalServices = useConfigStore((s) => s.additionalServices);
   const updateOpencodeConfig = useConfigStore((s) => s.updateOpencodeConfig);
   const opencodeEnabled = additionalServices.opencodeConfig.enabled;
   const authJson = additionalServices.opencodeConfig.authJson;
+  const model = additionalServices.opencodeConfig.model;
 
   const onOpencodeEnabledChange = (enabled: boolean) => {
-    updateOpencodeConfig({ enabled, authJson });
+    updateOpencodeConfig({ enabled, authJson, model });
   };
 
-  const onAuthJsonChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  const onAuthJsonChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
     updateOpencodeConfig({
       enabled: opencodeEnabled,
       authJson: e.target.value,
+      model,
+    });
+  };
+
+  const onModelChange = (e: ChangeEvent<HTMLInputElement>) => {
+    updateOpencodeConfig({
+      enabled: opencodeEnabled,
+      authJson,
+      model: e.target.value,
     });
   };
 
@@ -28,7 +39,7 @@ function OpencodeConfigCard() {
     <div
       className={`rounded-lg border p-6 transition-colors ${
         opencodeEnabled
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
+          ? "border-primary bg-primary/5 ring-primary ring-1"
           : "bg-card border-border"
       }`}
     >
@@ -57,6 +68,20 @@ function OpencodeConfigCard() {
             <div className="animate-in fade-in slide-in-from-top-4 w-full pt-6 duration-300">
               <div className="border-border mb-6 border-t"></div>
 
+              <div className="mb-6 space-y-4">
+                <Label
+                  htmlFor="opencode-model"
+                  className="text-foreground text-sm font-semibold"
+                >
+                  AI Model
+                </Label>
+                <Input
+                  id="opencode-model"
+                  value={model}
+                  onChange={onModelChange}
+                  placeholder="default"
+                />
+              </div>
               <div className="space-y-4">
                 <Label
                   htmlFor="opencode-authjson"
@@ -69,7 +94,7 @@ function OpencodeConfigCard() {
                   value={authJson}
                   onChange={onAuthJsonChange}
                   placeholder='{"token": "xyz..."}'
-                  className="min-h-[100px] font-mono text-sm"
+                  className="min-h-25 font-mono text-sm"
                 />
                 <p className="text-muted-foreground text-xs">
                   Provide auth configuration in JSON format for Opencode.
