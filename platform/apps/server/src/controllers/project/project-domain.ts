@@ -158,7 +158,7 @@ export const updateProjectRoutingTargetInstance = catchAsync(
     await db
       .update(projectDomainRouting)
       .set({
-        target_instance_id: instance.public_ip,
+        target_instance_id: instance.id,
       })
       .where(
         and(
