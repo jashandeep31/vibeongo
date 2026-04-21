@@ -9,7 +9,10 @@ import { OpencodeWebCard } from "@/components/opencode-web-card";
 import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
-import { useGetProjectDomainsById } from "@/hooks/use-project";
+import {
+  useGetProjectDomainsById,
+  useUpdateProjectRoutingTargetInstance,
+} from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { toast } from "sonner";
@@ -19,6 +22,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: instance } = useGetInstanceById(instanceId);
   const { data: projectDomainsData, isLoading: isLoadingDomains } =
     useGetProjectDomainsById(instance?.project_id || "");
+  const {
+    mutateAsync: assignDomainsToInstance,
+    isPending: isAssigningDomains,
+  } = useUpdateProjectRoutingTargetInstance();
   const { mutateAsync: terminateInstance, isPending } = useTerminateInstance(
     instance?.project_id || "",
   );
@@ -78,6 +85,26 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       setTimeout(() => setSshCopied(false), 1000);
     } catch {
       // Silently handle error, could add visual feedback here if needed
+    }
+  };
+
+  const handleAssignDomains = async () => {
+    if (!instance || isTerminated || isTargetInstance) {
+      return;
+    }
+
+    const toastId = toast.loading("Assigning project domains...");
+
+    try {
+      await assignDomainsToInstance({
+        id: instance.project_id,
+        instanceId: instance.id,
+      });
+      toast.success("Project domains now point to this instance", {
+        id: toastId,
+      });
+    } catch {
+      toast.error("Failed to assign project domains", { id: toastId });
     }
   };
 
@@ -177,6 +204,26 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             <Copy className="h-4 w-4" />
           )}
           SSH
+        </Button>
+        <Button
+          size="lg"
+          variant={isTargetInstance ? "secondary" : "outline"}
+          type="button"
+          disabled={isTerminated || isTargetInstance || isAssigningDomains}
+          onClick={() => {
+            void handleAssignDomains();
+          }}
+        >
+          {isAssigningDomains ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Assigning...
+            </>
+          ) : isTargetInstance ? (
+            "Domains Active"
+          ) : (
+            "Assign Domains"
+          )}
         </Button>
 
         <ConfirmationDialog

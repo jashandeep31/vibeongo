@@ -61,6 +61,11 @@ type UpdateProjectDomainPortInput = {
   target_port: number;
 };
 
+type UpdateProjectRoutingTargetInstanceInput = {
+  id: string;
+  instanceId: string;
+};
+
 export const getProjectDomainsById = async (
   id: string,
 ): Promise<GetProjectDomains> => {
@@ -107,6 +112,21 @@ export const updateProjectDomainPort = async ({
   const res = await axios.patch(
     BACKEND_URL + `/api/v1/projects/${id}/domains/${domainId}`,
     { target_port },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const updateProjectRoutingTargetInstance = async ({
+  id,
+  instanceId,
+}: UpdateProjectRoutingTargetInstanceInput): Promise<{ message: string }> => {
+  const res = await axios.patch(
+    BACKEND_URL + `/api/v1/projects/${id}/routing/target-instance`,
+    { instanceId },
     {
       withCredentials: true,
     },
