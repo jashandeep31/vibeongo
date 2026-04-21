@@ -2,6 +2,7 @@ import {
   and,
   db,
   eq,
+  instances,
   projectDomainRouting,
   proxyDomains,
   routingAllowedIps,
@@ -127,6 +128,47 @@ export const addAllowedIPToProject = catchAsync(
 
     res.status(200).json({
       message: "ip added to routing successfully",
+    });
+  },
+);
+
+export const updateProjectRoutingTargetInstance = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+    const { id: ProjectId, instanceId } = z
+      .object({
+        id: z.string(),
+        instanceId: z.string(),
+      })
+      .parse({ ...req.params, ...req.body });
+
+    const [instance] = await db
+      .select()
+      .from(instances)
+      .where(
+        and(
+          eq(instances.id, instanceId),
+          eq(instances.state, "running"),
+          eq(instances.user_id, user.id),
+        ),
+      );
+
+    if (!instance) throw new AppError("instance not found", 404);
+    await db
+      .update(projectDomainRouting)
+      .set({
+        target_instance_id: instance.public_ip,
+      })
+      .where(
+        and(
+          eq(projectDomainRouting.user_id, user.id),
+          eq(projectDomainRouting.project_id, ProjectId),
+        ),
+      );
+
+    res.status(200).json({
+      message: "instance updated successfully",
     });
   },
 );
