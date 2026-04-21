@@ -6,6 +6,7 @@ import {
   getProjectById,
   getProjectDomainsById,
   getProjects,
+  updateProjectRoutingTargetInstance,
   updateProjectDomainPort,
 } from "@/services/project-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -90,6 +91,25 @@ export const useUpdateProjectDomainPort = () => {
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "domains"],
+      });
+    },
+  });
+};
+
+export const useUpdateProjectRoutingTargetInstance = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProjectRoutingTargetInstance,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "domains"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["instances", "project", variables.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["instance", variables.instanceId],
       });
     },
   });
