@@ -27,6 +27,7 @@ func (s *ProxyServer) Start(addr string) error {
 
 	// routes
 	mux.HandleFunc("GET /proxy/version", s.handleStatus)
+	mux.HandleFunc("POST /proxy/invalidate", s.handleInvalidate)
 	// just for dev purposes
 	mux.HandleFunc("GET /proxy/list", s.listAll)
 	mux.HandleFunc("GET /proxy/login", s.handleLogin)
@@ -47,6 +48,20 @@ func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 		Version string
 		Build   string
 	}{Version: AppVersion, Build: BuildTime})
+}
+
+func (s *ProxyServer) handleInvalidate(w http.ResponseWriter, r *http.Request) {
+	var data struct {
+		Host string `json:"host"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte("400"))
+		return
+	}
+	s.store.InvalidateProxy(data.Host)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
 }
 
 func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
