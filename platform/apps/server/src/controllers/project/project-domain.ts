@@ -12,6 +12,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
 import axios from "axios";
+import { env } from "../../lib/env.js";
 
 export const updateProxyDomainPort = catchAsync(
   async (req: Request, res: Response) => {
@@ -176,11 +177,9 @@ export const updateProjectRoutingTargetInstance = catchAsync(
       .where(eq(proxyDomains.routing_id, updatedRouting.id));
 
     for (const domain of domains) {
-      const proxyRes = await axios.post(
-        "https://test.a.vibeongo.one/proxy/invalidate",
-        { host: domain.domain },
-      );
-      console.log(proxyRes);
+      await axios.post(`${env.PROXY_SERVER_URL}/proxy/invalidate`, {
+        host: domain.domain,
+      });
     }
 
     res.status(200).json({

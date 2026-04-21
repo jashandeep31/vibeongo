@@ -21,6 +21,7 @@ const envSchema = z.object({
   GITHUB_APP_ID: z.string(),
   GITHUB_WEBHOOK_SECRET: z.string(),
   GOOGLE_GEN_AI_API: z.string(),
+  PROXY_SERVER_URL: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);
 

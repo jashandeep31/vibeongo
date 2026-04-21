@@ -96,6 +96,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     const toastId = toast.loading("Assigning project domains...");
 
     try {
+      if (!instance.project_id) return;
       await assignDomainsToInstance({
         id: instance.project_id,
         instanceId: instance.id,
