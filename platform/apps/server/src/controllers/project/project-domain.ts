@@ -11,6 +11,7 @@ import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
+import axios from "axios";
 
 export const updateProxyDomainPort = catchAsync(
   async (req: Request, res: Response) => {
@@ -155,7 +156,7 @@ export const updateProjectRoutingTargetInstance = catchAsync(
       );
 
     if (!instance) throw new AppError("instance not found", 404);
-    await db
+    const [updatedRouting] = await db
       .update(projectDomainRouting)
       .set({
         target_instance_id: instance.id,
@@ -165,7 +166,22 @@ export const updateProjectRoutingTargetInstance = catchAsync(
           eq(projectDomainRouting.user_id, user.id),
           eq(projectDomainRouting.project_id, ProjectId),
         ),
+      )
+      .returning();
+    if (!updatedRouting) throw new AppError("routing not found", 404);
+
+    const domains = await db
+      .select()
+      .from(proxyDomains)
+      .where(eq(proxyDomains.routing_id, updatedRouting.id));
+
+    for (const domain of domains) {
+      const proxyRes = await axios.post(
+        "https://test.a.vibeongo.one/proxy/invalidate",
+        { host: domain.domain },
       );
+      console.log(proxyRes);
+    }
 
     res.status(200).json({
       message: "instance updated successfully",
