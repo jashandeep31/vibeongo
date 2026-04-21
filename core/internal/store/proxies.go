@@ -136,6 +136,12 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 	}, nil
 }
 
+func (pm *ProxyManager) InvalidateProxy(host string) {
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	delete(pm.proxies, host)
+}
+
 // Cleanup the expired proxies
 func (pm *ProxyManager) cleanup() {
 	ticker := time.NewTicker(1 * time.Minute)
