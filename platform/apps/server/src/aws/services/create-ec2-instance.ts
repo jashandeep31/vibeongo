@@ -22,7 +22,7 @@ export const createEc2Instance = async ({
 
   const command = new RunInstancesCommand({
     // ImageId: imageConfig.linuxImageId, //the version of os,
-    ImageId: "ami-0cbff2c08acb02e64", //the version of os,
+    ImageId: "ami-0917123061b090ddc", //the version of os,
     // InstanceType: "t3.small",
     InstanceType: "m6i.large",
     MinCount: 1,
