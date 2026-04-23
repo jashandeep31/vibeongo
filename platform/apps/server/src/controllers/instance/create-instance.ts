@@ -15,6 +15,7 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { createInstanceSchema } from "@repo/shared";
+import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
 export const createInstance = catchAsync(
   async (req: Request, res: Response) => {
@@ -79,6 +80,10 @@ export const createInstance = catchAsync(
         target_instance_id: instance.id,
       })
       .where(eq(projectDomainRouting.project_id, project.id));
+
+    // TODO: fix the hadnling of the removing and creation if no prev instance is their or prev ones have assinged as deafults then user need to change manually
+    // removing all hte prev domain if they are their as the new instance need those
+    await invalidateProjectProxiesByPid(project.id);
 
     res.status(201).json({
       message: "Successfully had created the project intance",
