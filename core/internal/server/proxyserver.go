@@ -50,16 +50,19 @@ func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}{Version: AppVersion, Build: BuildTime})
 }
 
+// Takes the array of of hosts and invalidate all those in  the on go
 func (s *ProxyServer) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 	var data struct {
-		Host string `json:"host"`
+		Hosts []string `json:"hosts"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		w.Write([]byte("400"))
 		return
 	}
-	s.store.InvalidateProxy(data.Host)
+	for _, host := range data.Hosts {
+		s.store.InvalidateProxy(host)
+	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
 }
