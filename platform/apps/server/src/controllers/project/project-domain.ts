@@ -176,11 +176,9 @@ export const updateProjectRoutingTargetInstance = catchAsync(
       .from(proxyDomains)
       .where(eq(proxyDomains.routing_id, updatedRouting.id));
 
-    for (const domain of domains) {
-      await axios.post(`${env.PROXY_SERVER_URL}/proxy/invalidate`, {
-        host: domain.domain,
-      });
-    }
+    await axios.post(`${env.PROXY_SERVER_URL}/proxy/invalidate`, {
+      hosts: domains.map((d) => d.domain),
+    });
 
     res.status(200).json({
       message: "instance updated successfully",
