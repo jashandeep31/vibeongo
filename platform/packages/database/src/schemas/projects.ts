@@ -33,20 +33,22 @@ export const projects = pgTable("projects", {
 
 export const projectFiles = pgTable("project_files", {
   id: uuid().defaultRandom().primaryKey(),
-
+  project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
   name: varchar().notNull(),
   path: varchar().notNull(),
-
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
 });
 
 export const projectFileData = pgTable("project_file_data", {
   id: uuid("id").defaultRandom().primaryKey(),
-  version: integer(),
-  project_file_id: uuid().references(() => projectFiles.id, {
-    onDelete: "cascade",
-  }),
+  version: varchar(),
+  content: text(),
+  project_file_id: uuid()
+    .references(() => projectFiles.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
 });
