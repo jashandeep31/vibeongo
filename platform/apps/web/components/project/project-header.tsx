@@ -2,8 +2,9 @@
 
 import { Globe, Play, RefreshCw, Server, Square, Terminal } from "lucide-react";
 import { Badge } from "@repo/ui/components/badge";
-import { Button } from "@repo/ui/components/button";
+import { Button, buttonVariants } from "@repo/ui/components/button";
 import { Project, DbInstance } from "./types";
+import Link from "next/link";
 
 interface ProjectHeaderProps {
   project: Project;
@@ -53,7 +54,16 @@ export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
               Terminate
             </Button>
           </>
-        ) : null}
+        ) : (
+          <>
+            <Link
+              href={`/dashboard/project/${project.id}/manage/env`}
+              className={buttonVariants()}
+            >
+              Manage ENV&apos;s
+            </Link>
+          </>
+        )}
       </div>
     </div>
   );
