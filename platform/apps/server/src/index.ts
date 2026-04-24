@@ -82,6 +82,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     ...(env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });
+
 // --- Server ---
 app.listen(env.PORT, () => {
   console.log(`Server is running at the port ${env.PORT}`);

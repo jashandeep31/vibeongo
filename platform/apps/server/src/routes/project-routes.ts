@@ -13,6 +13,10 @@ import {
   updateProjectRoutingTargetInstance,
   updateProxyDomainPort,
 } from "../controllers/project/project-domain.js";
+import {
+  createProjectFile,
+  getProjectFiles,
+} from "../controllers/project/project-files.js";
 
 const routes: Router = Router();
 
@@ -42,4 +46,9 @@ routes
   .post(checkAuthorization(["all"]), createProject)
   .get(checkAuthorization(["all"]), getProjects);
 
+routes
+  .route("/:id/project-files")
+  .get(checkAuthorization(["all"]), getProjectFiles)
+  .post(checkAuthorization(["all"]), createProjectFile);
+routes.route("/:id/project-files/:fileId");
 export const projectRoutes = routes;
