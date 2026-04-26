@@ -6,6 +6,7 @@ import {
   integer,
   text,
   json,
+  unique,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
@@ -40,18 +41,22 @@ export const projectFiles = pgTable("project_files", {
   updated_at: timestamp().defaultNow(),
 });
 
-export const projectFileData = pgTable("project_file_data", {
-  id: uuid("id").defaultRandom().primaryKey(),
-  version: varchar(),
-  content: text(),
-  project_file_id: uuid()
-    .references(() => projectFiles.id, {
-      onDelete: "cascade",
-    })
-    .notNull(),
-  created_at: timestamp().defaultNow(),
-  updated_at: timestamp().defaultNow(),
-});
+export const projectFileData = pgTable(
+  "project_file_data",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    version: integer().notNull(),
+    content: text(),
+    project_file_id: uuid()
+      .references(() => projectFiles.id, {
+        onDelete: "cascade",
+      })
+      .notNull(),
+    created_at: timestamp().defaultNow(),
+    updated_at: timestamp().defaultNow(),
+  },
+  (t) => [unique().on(t.version, t.project_file_id)],
+);
 
 export const projectSshKeys = pgTable("project_ssh_keys", {
   id: uuid("id").defaultRandom().primaryKey(),
