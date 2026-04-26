@@ -6,7 +6,8 @@ import { cn } from "@repo/ui/lib/utils";
 import { FileCode2, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import AddFileDialog from "@/components/dialogs/add-file-dialog";
+import AddEnvFileDialog from "@/components/dialogs/add-env-file-dialog";
+import EditEnvFileDialog from "@/components/dialogs/edit-env-file-dialog";
 
 export default function ClientView() {
   const params = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function ClientView() {
           name: entry.projectFiles.name,
           path: entry.projectFiles.path,
           content: entry.projectFileData?.content ?? "",
+          version: entry.projectFileData?.version ?? 1,
         }))
         .filter((file) => file.name.startsWith(".env")),
     [data],
@@ -46,7 +48,7 @@ export default function ClientView() {
           </p>
         </div>
         <div>
-          <AddFileDialog />
+          <AddEnvFileDialog />
         </div>
       </div>
 
@@ -116,11 +118,21 @@ export default function ClientView() {
               <FileText className="text-muted-foreground h-4 w-4" />
               <p className="text-sm font-medium">
                 {selectedFile?.name ?? "No file selected"}
+                {selectedFile?.version ? (
+                  <span className="text-muted-foreground ml-2 text-xs font-normal">
+                    (v{selectedFile.version})
+                  </span>
+                ) : null}
               </p>
             </div>
-            {lineCount > 0 && (
-              <p className="text-muted-foreground text-xs">{lineCount} lines</p>
-            )}
+            {selectedFile ? (
+              <EditEnvFileDialog
+                fileId={selectedFile.id}
+                initialName={selectedFile.name}
+                initialPath={selectedFile.path}
+                initialContent={selectedContent}
+              />
+            ) : null}
           </div>
 
           <div className="flex-1 p-4 md:p-6">

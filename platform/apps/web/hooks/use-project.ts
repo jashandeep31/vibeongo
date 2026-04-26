@@ -1,6 +1,8 @@
 import {
   addAllowedIpToProject,
   createProject,
+  createProjectFile,
+  updateProjectFile,
   deleteProject,
   deleteAllowedIpFromProject,
   getProjectById,
@@ -45,6 +47,32 @@ export const useGetProjectFilesById = (id: string | null) =>
     },
     enabled: !!id,
   });
+
+export const useCreateProjectFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProjectFile,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "files"],
+      });
+    },
+  });
+};
+
+export const useUpdateProjectFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProjectFile,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "files"],
+      });
+    },
+  });
+};
 
 export const useDeleteProject = () => {
   const queryClient = useQueryClient();
