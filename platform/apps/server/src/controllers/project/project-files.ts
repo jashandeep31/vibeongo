@@ -60,6 +60,7 @@ export const createProjectFile = catchAsync(
       await tx.insert(projectFileData).values({
         project_file_id: projectfile.id,
         content: content,
+        version: 1,
       });
     });
 

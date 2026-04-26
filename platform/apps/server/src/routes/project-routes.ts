@@ -21,6 +21,10 @@ import {
 const routes: Router = Router();
 
 routes
+  .route("/")
+  .post(checkAuthorization(["all"]), createProject)
+  .get(checkAuthorization(["all"]), getProjects);
+routes
   .route("/:id")
   .get(checkAuthorization(["all"]), getProjectById)
   .delete(checkAuthorization(["all"]), deleteProjectById);
@@ -41,10 +45,6 @@ routes
 routes
   .route("/:id/allowed-ips/:ipId")
   .delete(checkAuthorization(["all"]), deleteAllowedIPFromProject);
-routes
-  .route("/")
-  .post(checkAuthorization(["all"]), createProject)
-  .get(checkAuthorization(["all"]), getProjects);
 
 routes
   .route("/:id/project-files")
