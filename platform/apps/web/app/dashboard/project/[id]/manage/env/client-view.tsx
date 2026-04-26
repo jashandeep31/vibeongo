@@ -6,6 +6,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { FileCode2, FileText } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useParams } from "next/navigation";
+import AddFileDialog from "@/components/dialogs/add-file-dialog";
 
 export default function ClientView() {
   const params = useParams<{ id: string }>();
@@ -35,13 +36,18 @@ export default function ClientView() {
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Environment Files
-        </h1>
-        <p className="text-muted-foreground mt-1.5 text-sm">
-          Browse environment files saved for this project.
-        </p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Environment Files
+          </h1>
+          <p className="text-muted-foreground mt-1.5 text-sm">
+            Browse environment files saved for this project.
+          </p>
+        </div>
+        <div>
+          <AddFileDialog />
+        </div>
       </div>
 
       <div className="bg-background grid min-h-[600px] overflow-hidden rounded-xl border shadow-sm md:grid-cols-[280px_minmax(0,1fr)]">
