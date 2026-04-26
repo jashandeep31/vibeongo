@@ -16,6 +16,7 @@ import {
 import {
   createProjectFile,
   getProjectFiles,
+  updateProjectFile,
 } from "../controllers/project/project-files.js";
 
 const routes: Router = Router();
@@ -50,5 +51,7 @@ routes
   .route("/:id/project-files")
   .get(checkAuthorization(["all"]), getProjectFiles)
   .post(checkAuthorization(["all"]), createProjectFile);
-routes.route("/:id/project-files/:fileId");
+routes
+  .route("/:id/project-files/:fileId")
+  .patch(checkAuthorization(["all"]), updateProjectFile);
 export const projectRoutes = routes;

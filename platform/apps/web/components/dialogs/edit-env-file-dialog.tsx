@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useParams } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -14,6 +15,7 @@ import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useForm, SubmitHandler } from "react-hook-form";
+import { useUpdateProjectFile } from "@/hooks/use-project";
 
 type FormValues = {
   name: string;
@@ -21,8 +23,18 @@ type FormValues = {
   content: string;
 };
 
-const AddFileDialog = () => {
+type EditEnvFileDialogProps = {
+  fileId: string;
+  initialName: string;
+  initialPath: string;
+  initialContent: string;
+};
+
+const EditEnvFileDialog = ({ fileId, initialName, initialPath, initialContent }: EditEnvFileDialogProps) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { id } = useParams() as { id: string };
+  const { mutate: updateProjectFile, isPending } = useUpdateProjectFile();
+
   const {
     register,
     handleSubmit,
@@ -30,35 +42,58 @@ const AddFileDialog = () => {
     formState: { errors },
   } = useForm<FormValues>({
     defaultValues: {
-      name: "",
-      path: "",
-      content: "",
+      name: initialName,
+      path: initialPath,
+      content: initialContent,
     },
   });
 
   const onSubmit: SubmitHandler<FormValues> = (data) => {
-    console.log("Form data:", data);
-    // No saving for now, just logging and closing
-    setIsOpen(false);
-    reset();
+    updateProjectFile(
+      {
+        id,
+        fileId,
+        name: data.name,
+        path: data.path,
+        content: data.content,
+      },
+      {
+        onSuccess: () => {
+          setIsOpen(false);
+        },
+      }
+    );
   };
+
+  // Effect to reset form when initial values change (e.g. file selection changes)
+  React.useEffect(() => {
+    reset({
+      name: initialName,
+      path: initialPath,
+      content: initialContent,
+    });
+  }, [initialName, initialPath, initialContent, reset]);
 
   const handleOpenChange = (open: boolean) => {
     setIsOpen(open);
     if (!open) {
-      reset();
+      reset({
+        name: initialName,
+        path: initialPath,
+        content: initialContent,
+      });
     }
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>Add File</Button>
+        <Button variant="outline" size="sm">Edit Environment File</Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-125">
         <DialogHeader>
-          <DialogTitle>Add File</DialogTitle>
-          <DialogDescription>Add a new file to your project.</DialogDescription>
+          <DialogTitle>Edit Environment File</DialogTitle>
+          <DialogDescription>Edit your environment file.</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
@@ -109,7 +144,9 @@ const AddFileDialog = () => {
           </div>
 
           <div className="flex justify-end pt-4">
-            <Button type="submit">Submit</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Submitting..." : "Submit"}
+            </Button>
           </div>
         </form>
       </DialogContent>
@@ -117,4 +154,4 @@ const AddFileDialog = () => {
   );
 };
 
-export default AddFileDialog;
+export default EditEnvFileDialog;

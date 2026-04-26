@@ -53,6 +53,52 @@ export const getProjectFilesById = async (
   return res.data.data;
 };
 
+export const createProjectFile = async ({
+  id,
+  name,
+  path,
+  content,
+}: {
+  id: string;
+  name: string;
+  path: string;
+  content: string;
+}): Promise<{ message: string }> => {
+  const res = await axios.post(
+    BACKEND_URL + `/api/v1/projects/${id}/project-files`,
+    { name, path, content },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const updateProjectFile = async ({
+  id,
+  fileId,
+  name,
+  path,
+  content,
+}: {
+  id: string;
+  fileId: string;
+  name?: string;
+  path?: string;
+  content?: string;
+}): Promise<{ message: string }> => {
+  const res = await axios.patch(
+    BACKEND_URL + `/api/v1/projects/${id}/project-files/${fileId}`,
+    { name, path, content },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
 export const deleteProject = async (id: string) => {
   const res = await axios.delete(BACKEND_URL + `/api/v1/projects/${id}`, {
     withCredentials: true,
