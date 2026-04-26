@@ -5,6 +5,7 @@ import {
   deleteAllowedIpFromProject,
   getProjectById,
   getProjectDomainsById,
+  getProjectFilesById,
   getProjects,
   updateProjectRoutingTargetInstance,
   updateProjectDomainPort,
@@ -31,6 +32,16 @@ export const useGetProjectById = (id: string | null) =>
     queryFn: async () => {
       const project = await getProjectById(id!);
       return project;
+    },
+    enabled: !!id,
+  });
+
+export const useGetProjectFilesById = (id: string | null) =>
+  useQuery({
+    queryKey: ["project", id!, "files"],
+    queryFn: async () => {
+      const files = await getProjectFilesById(id!);
+      return files;
     },
     enabled: !!id,
   });
