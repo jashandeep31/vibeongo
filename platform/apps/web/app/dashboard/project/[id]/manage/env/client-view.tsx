@@ -1,194 +1,160 @@
 "use client";
 
-import { ChangeEvent, useMemo, useState } from "react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/components/card";
-import { Textarea } from "@repo/ui/components/textarea";
+import { useGetProjectFilesById } from "@/hooks/use-project";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { FileCode2, FileText, FolderTree } from "lucide-react";
-
-type EnvFile = {
-  name: string;
-  path: string;
-  content?: string;
-};
-
-const files: EnvFile[] = [
-  {
-    name: ".env",
-    path: "/workspace/.env",
-    content: `NODE_ENV=development
-PORT=3000
-DATABASE_URL=postgresql://app:secret@localhost:5432/vibeongo
-REDIS_URL=redis://localhost:6379
-NEXT_PUBLIC_APP_URL=http://localhost:3000`,
-  },
-  {
-    name: ".env.local",
-    path: "/workspace/.env.local",
-    content: `OPENAI_API_KEY=sk-demo-key
-GITHUB_TOKEN=ghp_demo_token
-SESSION_SECRET=replace-with-a-long-random-secret`,
-  },
-  {
-    name: ".env.production",
-    path: "/workspace/.env.production",
-  },
-  {
-    name: ".env.example",
-    path: "/workspace/.env.example",
-    content: `DATABASE_URL=
-REDIS_URL=
-OPENAI_API_KEY=
-NEXT_PUBLIC_APP_URL=`,
-  },
-];
+import { FileCode2, FileText } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 
 export default function ClientView() {
-  const [drafts, setDrafts] = useState<Record<string, string>>(() =>
-    Object.fromEntries(
-      files
-        .filter((file) => file.content !== undefined)
-        .map((file) => [file.path, file.content]),
-    ),
+  const params = useParams<{ id: string }>();
+  const projectId = params?.id ?? null;
+  const { data, isLoading, isError } = useGetProjectFilesById(projectId);
+
+  const files = useMemo(
+    () =>
+      (data ?? [])
+        .map((entry) => ({
+          id: entry.projectFiles.id,
+          name: entry.projectFiles.name,
+          path: entry.projectFiles.path,
+          content: entry.projectFileData?.content ?? "",
+        }))
+        .filter((file) => file.name.startsWith(".env")),
+    [data],
   );
-  const [selectedFileName, setSelectedFileName] = useState(
-    files[0]?.name ?? "",
-  );
+
+  const [selectedFileId, setSelectedFileId] = useState<string | null>(null);
   const selectedFile = useMemo(
-    () => files.find((file) => file.name === selectedFileName) ?? files[0],
-    [selectedFileName],
+    () => files.find((file) => file.id === selectedFileId) ?? files[0] ?? null,
+    [files, selectedFileId],
   );
-  const selectedContent = selectedFile ? (drafts[selectedFile.path] ?? "") : "";
+  const selectedContent = selectedFile?.content ?? "";
   const lineCount = selectedContent ? selectedContent.split("\n").length : 0;
 
-  const handleContentChange = (event: ChangeEvent<HTMLTextAreaElement>) => {
-    if (!selectedFile) {
-      return;
-    }
-
-    setDrafts((current) => ({
-      ...current,
-      [selectedFile.path]: event.target.value,
-    }));
-  };
-
   return (
-    <div className="px-4 py-5 md:px-6 md:py-6">
-      <Card className="overflow-hidden border shadow-sm">
-        <CardHeader className="border-b px-4 py-4 md:px-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-            <div className="space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="bg-muted text-foreground rounded-lg p-2">
-                  <FolderTree className="h-4 w-4" />
-                </div>
-                <div>
-                  <CardTitle>Environment Files</CardTitle>
-                  <CardDescription>
-                    Review sample env files and edit values in one place.
-                  </CardDescription>
-                </div>
-              </div>
-            </div>
+    <div className="flex flex-col gap-6 p-4 md:p-8">
+      <div>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Environment Files
+        </h1>
+        <p className="text-muted-foreground mt-1.5 text-sm">
+          Browse environment files saved for this project.
+        </p>
+      </div>
+
+      <div className="bg-background grid min-h-[600px] overflow-hidden rounded-xl border shadow-sm md:grid-cols-[280px_minmax(0,1fr)]">
+        <aside className="border-b md:border-r md:border-b-0">
+          <div className="border-b px-4 py-3 md:py-4">
+            <p className="text-sm font-medium">Files</p>
           </div>
-        </CardHeader>
 
-        <CardContent className="p-0">
-          <div className="grid min-h-[620px] lg:grid-cols-[320px_minmax(0,1fr)]">
-            <aside className="bg-background border-b lg:border-r lg:border-b-0">
-              <div className="border-b px-4 py-3">
-                <p className="text-sm font-medium">Files</p>
-                <p className="text-muted-foreground text-xs">
-                  Pick a file to preview and update.
-                </p>
-              </div>
-
-              <div className="space-y-1.5 p-2">
-                {files.map((file) => {
-                  const isActive = file.name === selectedFile?.name;
-
-                  return (
-                    <button
-                      key={file.path}
-                      type="button"
-                      onClick={() => setSelectedFileName(file.name)}
-                      className={cn(
-                        "w-full rounded-lg border px-3 py-2.5 text-left transition-colors",
-                        isActive
-                          ? "bg-muted border-border"
-                          : "hover:bg-muted/60 border-transparent bg-transparent",
-                      )}
-                    >
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <FileCode2 className="text-muted-foreground h-4 w-4 shrink-0" />
-                            <p className="truncate text-sm font-medium">
-                              {file.name}
-                            </p>
-                          </div>
-                          <p className="text-muted-foreground mt-1 truncate font-mono text-[11px]">
-                            {file.path}
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </aside>
-
-            <section className="bg-background flex min-h-[620px] flex-col">
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-3 md:px-5">
-                <div className="min-w-0">
-                  <div className="flex items-center gap-2">
-                    <FileText className="text-muted-foreground h-4 w-4" />
-                    <p className="truncate font-medium">{selectedFile?.name}</p>
+          <div className="space-y-1 p-2 md:p-3">
+            {isLoading
+              ? Array.from({ length: 4 }).map((_, index) => (
+                  <div key={index} className="rounded-lg border px-3 py-3">
+                    <Skeleton className="h-4 w-24" />
+                    <Skeleton className="mt-2 h-3 w-full" />
                   </div>
-                  <p className="text-muted-foreground mt-1 truncate font-mono text-xs">
-                    {selectedFile?.path}
-                  </p>
-                </div>
+                ))
+              : null}
 
-                <p className="text-muted-foreground text-sm">
-                  {lineCount} lines
-                </p>
+            {!isLoading && !isError && files.length === 0 ? (
+              <div className="text-muted-foreground p-4 text-center text-sm">
+                No environment files found.
               </div>
+            ) : null}
 
-              <div className="flex flex-1 flex-col p-3 md:p-5">
-                {!selectedFile?.content && !selectedContent ? (
-                  <div className="bg-muted/40 mb-3 flex items-start gap-3 rounded-lg border border-dashed px-4 py-3">
-                    <div className="bg-background flex h-10 w-10 shrink-0 items-center justify-center rounded-full border">
-                      <FileCode2 className="text-muted-foreground h-4 w-4" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Start from scratch</p>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        This preset intentionally has no `content` key. Add only
-                        the values you actually want to save.
+            {!isLoading && isError ? (
+              <div className="text-destructive p-4 text-center text-sm">
+                Failed to load files.
+              </div>
+            ) : null}
+
+            {files.map((file) => {
+              const isActive = file.id === selectedFile?.id;
+
+              return (
+                <button
+                  key={file.id}
+                  type="button"
+                  onClick={() => setSelectedFileId(file.id)}
+                  className={cn(
+                    "w-full rounded-md px-3 py-2.5 text-left transition-colors",
+                    isActive
+                      ? "bg-secondary text-secondary-foreground"
+                      : "hover:bg-secondary/50 text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  <div className="flex items-center gap-2.5">
+                    <FileCode2 className="h-4 w-4 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">
+                        {file.name}
+                      </p>
+                      <p className="mt-0.5 truncate font-mono text-[10px] opacity-80">
+                        {file.path}
                       </p>
                     </div>
                   </div>
-                ) : null}
-
-                <Textarea
-                  value={selectedContent}
-                  onChange={handleContentChange}
-                  spellCheck={false}
-                  placeholder={`APP_NAME=\nAPI_URL=\nSECRET_KEY=`}
-                  className="h-full min-h-[520px] resize-none rounded-lg bg-transparent px-0 py-0 font-mono text-sm leading-6 shadow-none focus-visible:ring-0"
-                />
-              </div>
-            </section>
+                </button>
+              );
+            })}
           </div>
-        </CardContent>
-      </Card>
+        </aside>
+
+        <section className="bg-muted/10 flex min-h-[600px] flex-col">
+          <div className="flex items-center justify-between border-b px-4 py-3 md:px-6 md:py-4">
+            <div className="flex items-center gap-2">
+              <FileText className="text-muted-foreground h-4 w-4" />
+              <p className="text-sm font-medium">
+                {selectedFile?.name ?? "No file selected"}
+              </p>
+            </div>
+            {lineCount > 0 && (
+              <p className="text-muted-foreground text-xs">{lineCount} lines</p>
+            )}
+          </div>
+
+          <div className="flex-1 p-4 md:p-6">
+            {isLoading ? (
+              <div className="space-y-4">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-32 w-full" />
+                <Skeleton className="h-32 w-full" />
+              </div>
+            ) : null}
+
+            {!isLoading && selectedFile && !selectedContent ? (
+              <div className="bg-background flex items-start gap-3 rounded-lg border px-4 py-4 shadow-sm">
+                <div className="bg-muted flex h-9 w-9 shrink-0 items-center justify-center rounded-md">
+                  <FileCode2 className="text-muted-foreground h-4 w-4" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Content unavailable</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    The backend response does not include editable content here
+                    yet.
+                  </p>
+                </div>
+              </div>
+            ) : null}
+
+            {!isLoading && !selectedFile ? (
+              <div className="text-muted-foreground flex h-full min-h-[400px] items-center justify-center text-sm">
+                Select a file from the sidebar to view its contents.
+              </div>
+            ) : null}
+
+            {!isLoading && selectedFile && selectedContent ? (
+              <pre className="bg-background text-foreground h-full min-h-[400px] overflow-auto rounded-lg border p-4 font-mono text-sm leading-relaxed shadow-sm">
+                <code>{selectedContent}</code>
+              </pre>
+            ) : null}
+          </div>
+        </section>
+      </div>
     </div>
   );
 }

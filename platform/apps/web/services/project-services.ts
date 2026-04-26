@@ -1,5 +1,7 @@
 import { BACKEND_URL } from "@/lib/constants";
 import {
+  projectFileData,
+  projectFiles,
   projectDomainRouting,
   projects,
   proxyDomains,
@@ -30,6 +32,24 @@ export const getProjectById = async (
   const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}`, {
     withCredentials: true,
   });
+  return res.data.data;
+};
+
+type GetProjectFilesResponse = {
+  projectFiles: typeof projectFiles.$inferSelect;
+  projectFileData?: typeof projectFileData.$inferSelect | null;
+};
+
+export const getProjectFilesById = async (
+  id: string,
+): Promise<GetProjectFilesResponse[]> => {
+  const res = await axios.get(
+    BACKEND_URL + `/api/v1/projects/${id}/project-files`,
+    {
+      withCredentials: true,
+    },
+  );
+
   return res.data.data;
 };
 
