@@ -15,7 +15,7 @@ import {
 import { AppError } from "../../lib/app-error.js";
 
 type ProjectFileItem = typeof projectFiles.$inferSelect & {
-  projectFileData: typeof projectFileData.$inferSelect | null;
+  project_file_data: typeof projectFileData.$inferSelect | null;
 };
 
 export const getRuntimeProjectFiles = catchAsync(
@@ -31,6 +31,7 @@ export const getRuntimeProjectFiles = catchAsync(
         projectFileData,
         and(
           eq(projectFileData.project_file_id, projectFiles.id),
+
           eq(
             projectFileData.id,
             db
@@ -52,7 +53,7 @@ export const getRuntimeProjectFiles = catchAsync(
         if (projectFilesMap.get(item.projectFiles.id)) continue;
         projectFilesMap.set(item.projectFiles.id, {
           ...item.projectFiles,
-          projectFileData: null,
+          project_file_data: null,
         });
       }
       if (item.projectFileData) {
@@ -60,7 +61,7 @@ export const getRuntimeProjectFiles = catchAsync(
           item.projectFileData.project_file_id,
         );
         if (!projectItem) continue;
-        projectItem.projectFileData = item.projectFileData;
+        projectItem.project_file_data = item.projectFileData;
       }
     }
 
