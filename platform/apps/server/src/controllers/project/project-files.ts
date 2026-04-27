@@ -1,4 +1,12 @@
-import { and, db, eq, desc, projectFileData, projectFiles, projects } from "@repo/db";
+import {
+  and,
+  db,
+  eq,
+  desc,
+  projectFileData,
+  projectFiles,
+  projects,
+} from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
@@ -11,12 +19,26 @@ export const getProjectFiles = catchAsync(
     const { id } = z.object({ id: z.string() }).parse(req.params);
 
     const rows = await db
-      .select({ projectFiles, projectFileData })
+      .select({
+        projectFiles,
+        projectFileData,
+      })
       .from(projectFiles)
       .innerJoin(projects, eq(projectFiles.project_id, projects.id))
       .leftJoin(
         projectFileData,
-        eq(projectFileData.project_file_id, projectFiles.id)
+        and(
+          eq(projectFileData.project_file_id, projectFiles.id),
+          eq(
+            projectFileData.id,
+            db
+              .select({ id: projectFileData.id })
+              .from(projectFileData)
+              .where(eq(projectFileData.project_file_id, projectFiles.id))
+              .orderBy(desc(projectFileData.version))
+              .limit(1),
+          ),
+        ),
       )
       .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
 
@@ -78,8 +100,10 @@ export const updateProjectFile = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("authentication is required", 401);
-    
-    const { id, fileId } = z.object({ id: z.string(), fileId: z.string() }).parse(req.params);
+
+    const { id, fileId } = z
+      .object({ id: z.string(), fileId: z.string() })
+      .parse(req.params);
 
     const { path, name, content } = z
       .object({
@@ -103,10 +127,13 @@ export const updateProjectFile = catchAsync(
         const updateData: any = {};
         if (path !== undefined) updateData.path = path;
         if (name !== undefined) updateData.name = name;
-        
-        await tx.update(projectFiles)
+
+        await tx
+          .update(projectFiles)
           .set(updateData)
-          .where(and(eq(projectFiles.id, fileId), eq(projectFiles.project_id, id)));
+          .where(
+            and(eq(projectFiles.id, fileId), eq(projectFiles.project_id, id)),
+          );
       }
 
       if (content !== undefined) {
@@ -131,5 +158,5 @@ export const updateProjectFile = catchAsync(
     res.status(200).json({
       message: "project file updated successfully",
     });
-  }
+  },
 );
