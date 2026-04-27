@@ -12,7 +12,7 @@ import (
 )
 
 func SetupProjectFiles() error {
-	apiClient := utils.APIClient{BaseURL: "https://l1.devsradar.com"}
+	apiClient := utils.APIClient{BaseURL: "https://server.vibeongo.com"}
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return err

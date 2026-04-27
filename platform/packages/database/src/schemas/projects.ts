@@ -45,7 +45,7 @@ export const projectFileData = pgTable(
   "project_file_data",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    version: integer().notNull(),
+    version: integer().notNull().default(1),
     content: text(),
     project_file_id: uuid()
       .references(() => projectFiles.id, {
