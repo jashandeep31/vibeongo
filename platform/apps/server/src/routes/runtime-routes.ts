@@ -10,5 +10,7 @@ routes
   .get(checkRuntimeAuthorization, getRuntimeSessionConfig);
 
 routes.route("/sessions/:id/stop/:instanceId").get(checkRuntimeAuthorization);
-routes.route("/sessions/:id/get-project-files").get(getRuntimeProjectFiles);
+routes
+  .route("/sessions/:id/get-project-files")
+  .get(checkRuntimeAuthorization, getRuntimeProjectFiles);
 export const runtimeRoutes = routes;
