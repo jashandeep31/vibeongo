@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/jashandeep31/vibeongo/core/internal/cli/provisions"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
 	"github.com/spf13/cobra"
@@ -53,6 +54,11 @@ npm -v
 	cmd.Stderr = os.Stderr
 
 	err = cmd.Run()
+	if err != nil {
+		fmt.Println("failed to run command: ", err)
+	}
+
+	err = provisions.SetupProjectFiles()
 	if err != nil {
 		fmt.Println("failed to run command: ", err)
 	}

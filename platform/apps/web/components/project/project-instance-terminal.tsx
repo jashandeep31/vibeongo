@@ -97,6 +97,11 @@ export function ProjectInstanceTerminal({
     const term = new Terminal({
       cursorBlink: true,
       fontSize: 14,
+      theme: {
+        background: "#1e1e1e",
+        foreground: "#d4d4d4",
+        cursor: "#ffffff",
+      },
     });
 
     const fitAddon = new FitAddon();
@@ -269,7 +274,7 @@ export function ProjectInstanceTerminal({
         <div
           ref={terminalRef}
           id="terminal"
-          className="h-[80vh] w-[80vw] rounded-md bg-black p-2"
+          className="h-[80vh] w-[80vw] rounded-md bg-[#1e1e1e] p-2"
         />
       </div>
     </div>

@@ -66,7 +66,7 @@ export const getRuntimeProjectFiles = catchAsync(
     }
 
     res.json({
-      projectFiles: Array.from(projectFilesMap.values()),
+      data: Array.from(projectFilesMap.values()),
     });
   },
 );
