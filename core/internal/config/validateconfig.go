@@ -89,8 +89,6 @@ func ValidateConfig(file []byte) (Config, error) {
 var configPath = filepath.Join("/home/ubuntu/.config/vibeongo", "config.json")
 
 func LoadAndValidate(filename string) (Config, error) {
-	fmt.Println(configPath)
-
 	file, err := os.ReadFile(configPath)
 	if err != nil {
 		tempfile, err := os.ReadFile("config.json")
