@@ -33,7 +33,7 @@ func SetupProjectFiles() error {
 		"Authorization": "Bearer " + cfg.Token,
 	}
 	resp, err := apiClient.Get(
-		"/api/v1/runtime/sessions/c928f3d1-0785-4acf-96a5-526ea8660cb4/get-project-files",
+		"/api/v1/runtime/sessions/"+cfg.SessionId+"/get-project-files",
 		headers,
 		&res,
 	)
