@@ -10,7 +10,7 @@ export type Transaction = Parameters<
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL!,
 });
-export const db = drizzle({ client: pool, logger: true });
+export const db = drizzle({ client: pool, logger: false });
 createInstances();
 export * from "drizzle-orm";
 export * from "./schemas/temp-ec2.js";

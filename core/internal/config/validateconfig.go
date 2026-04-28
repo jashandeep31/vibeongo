@@ -8,13 +8,15 @@ import (
 )
 
 type Config struct {
-	Token    string          `json:"token"`
-	Packages []PackageConfig `json:"packages"`
-	Repos    []GitRepoConfig `json:"repos"`
-	Docker   *DockerConfig   `json:"docker"`
-	OpenCode *OpenCodeConfig `json:"opencode"`
-	Nvim     *NvimConfig     `json:"nvim"`
-	Tasks    []TaskConfig    `json:"tasks"`
+	SessionId string          `json:"sessionId"`
+	ProjectId string          `json:"projectId"`
+	Token     string          `json:"token"`
+	Packages  []PackageConfig `json:"packages"`
+	Repos     []GitRepoConfig `json:"repos"`
+	Docker    *DockerConfig   `json:"docker"`
+	OpenCode  *OpenCodeConfig `json:"opencode"`
+	Nvim      *NvimConfig     `json:"nvim"`
+	Tasks     []TaskConfig    `json:"tasks"`
 }
 
 type TaskConfig struct {

@@ -69,6 +69,8 @@ export const getRuntimeSessionConfig = catchAsync(
     const config = {
       ...(project.config as any),
       token: token?.token || "",
+      sessionId: sessionRow.project_session.id,
+      projectId: project.id,
       repos: await getConfigReadyGithubRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
