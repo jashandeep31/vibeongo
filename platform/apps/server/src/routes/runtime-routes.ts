@@ -24,7 +24,7 @@ routes
 
 routes
   .route("/sessions/:id/overview")
-  .post(checkRuntimeAuthorization, getSessionOverview)
+  .get(checkRuntimeAuthorization, getSessionOverview)
   .post(checkRuntimeAuthorization, updateSessionOverview);
 
 export const runtimeRoutes = routes;

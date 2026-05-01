@@ -15,6 +15,7 @@ import {
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
+import { env } from "../../lib/env.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -69,6 +70,7 @@ export const getRuntimeSessionConfig = catchAsync(
     const config = {
       ...(project.config as any),
       token: token?.token || "",
+      serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
       projectId: project.id,
       repos: await getConfigReadyGithubRepos(validRepos),

@@ -20,7 +20,7 @@ export const getSessionOverview = catchAsync(
 
     const overview = session.overview;
 
-    res.status(200).json({ data: overview });
+    res.status(200).json({ data: overview ? overview : "" });
   },
 );
 
