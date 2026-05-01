@@ -60,10 +60,12 @@ export const createInstance = catchAsync(
       throw new AppError("Failed to create a project session", 500);
 
     const authToken = await createSessionAuthToken(projectSession.id);
+    const instanceId = crypto.randomUUID();
     const setupScript = setupInstanceScript({
       sshKey: sshKeysArray.join("\n"),
       authToken: authToken,
       projectSessionId: projectSession.id,
+      instanceId,
     });
 
     const instance = await spinUpAndSaveInstance({
@@ -71,6 +73,7 @@ export const createInstance = catchAsync(
       project,
       userId: user.id,
       sessionId: projectSession.id,
+      instanceId,
     });
     if (!instance) throw new AppError("Failed to spin up the instance", 500);
     // setting up the instance id  as default for the project routing

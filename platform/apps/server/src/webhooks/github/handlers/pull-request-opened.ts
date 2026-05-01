@@ -116,6 +116,7 @@ Please add hte default project to the github repo
     .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id));
 
   // --- intialScript that we run after the vps setup ---
+  const instanceId = crypto.randomUUID();
   const intialScript = setupInstanceScript({
     sshKey: sshKeysArray
       .map((s) => s.shh_keys?.value || "")
@@ -123,6 +124,7 @@ Please add hte default project to the github repo
       .join("\n"),
     authToken: authToken,
     projectSessionId: session.id,
+    instanceId,
   });
 
   const [regionRow] = await db
@@ -137,6 +139,7 @@ Please add hte default project to the github repo
     project,
     userId: user.id,
     sessionId: session.id,
+    instanceId,
   });
   return;
 };

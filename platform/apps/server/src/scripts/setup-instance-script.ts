@@ -4,6 +4,7 @@ interface SetupInstanceScriptOptions {
   sshKey: string;
   authToken: string;
   projectSessionId: string;
+  instanceId: string;
 }
 
 //TODO: please fix the next ami with removing port 8000 and adding 8080
@@ -11,6 +12,7 @@ export const setupInstanceScript = ({
   sshKey,
   authToken,
   projectSessionId,
+  instanceId,
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
@@ -38,7 +40,7 @@ CONFIG_DIR="\\$HOME/.config/vibeongo"
 mkdir -p "\\$CONFIG_DIR"
 
 curl --request GET \\
-  --url  ${env.NODE_ENV == "development" ? "https://l1.devsradar.com" : env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config \\
+  --url  ${env.NODE_ENV == "development" ? "https://l1.devsradar.com" : env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
   --header "Authorization: Bearer ${authToken}" \\
   | jq '.data' > "\\$CONFIG_DIR/config.json"
 
