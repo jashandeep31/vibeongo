@@ -86,16 +86,21 @@ export const resumeProjectSession = catchAsync(
     if (!projectSession) throw new AppError("Project session not found", 404);
 
     const authToken = await createSessionAuthToken(projectSession.id);
+    const instanceId = crypto.randomUUID();
+
     const setupScript = setupInstanceScript({
       sshKey: sshKeysArray.join("\n"),
       authToken: authToken,
       projectSessionId: projectSession.id,
+      instanceId,
     });
+
     const instance = await spinUpAndSaveInstance({
       setupScript,
       project,
       userId: user.id,
       sessionId: projectSession.id,
+      instanceId,
     });
 
     if (!instance) throw new AppError("Failed to spin up the instance", 500);

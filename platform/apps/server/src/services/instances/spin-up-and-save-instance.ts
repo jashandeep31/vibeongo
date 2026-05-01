@@ -16,6 +16,7 @@ interface SpinUpAndSaveInstance {
   project: typeof projects.$inferSelect;
   userId: string;
   sessionId: null | string;
+  instanceId: string;
 }
 
 /**
@@ -26,6 +27,7 @@ export const spinUpAndSaveInstance = async ({
   project,
   userId,
   sessionId = null,
+  instanceId,
 }: SpinUpAndSaveInstance): Promise<null | typeof instances.$inferSelect> => {
   const [row] = await db
     .select({ region: instanceRegions })
@@ -58,6 +60,7 @@ export const spinUpAndSaveInstance = async ({
   const [instance] = await db
     .insert(instances)
     .values({
+      id: instanceId,
       project_id: project.id,
       user_id: userId,
       instance_type_id: project.instance_type_id,
