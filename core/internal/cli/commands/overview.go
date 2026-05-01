@@ -12,7 +12,9 @@ import (
 
 func InitializeSessionFromOverviewCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "resume-session",
+		Use:   "resume-session",
+		Short: "Get the overview of last session",
+		Long:  "Fetch the details from the lastt suspended session like: branch working on. feature working  on and more",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return resumeSessionFromOverview()
 		},
@@ -21,7 +23,9 @@ func InitializeSessionFromOverviewCmd() *cobra.Command {
 
 func UpdateSessionFromOverviewCmd() *cobra.Command {
 	return &cobra.Command{
-		Use: "update-session",
+		Use:   "update-session",
+		Short: "Update the overview of current session",
+		Long:  "Update the details of the current session like: branch working on. feature working  on and more",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			overview := strings.Join(args, " ")
 			return updateSessionFromOverview(overview)
@@ -44,8 +48,8 @@ func updateSessionFromOverview(overview string) error {
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to update session: %w", err)
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("failed to update session: unexpected status code %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -69,7 +73,7 @@ func resumeSessionFromOverview() error {
 		return err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to resume session: %w", err)
+		return fmt.Errorf("failed to resume session: unexpected status code %d", resp.StatusCode)
 	}
 
 	return nil
