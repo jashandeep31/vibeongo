@@ -15,7 +15,7 @@ routes
   .get(checkRuntimeAuthorization, getRuntimeSessionConfig);
 
 routes
-  .route("/sessions/:id/stop/:instanceId")
+  .route("/sessions/:id/terminate/:instanceId")
   .get(checkRuntimeAuthorization, suspendSessionInstance);
 
 routes
