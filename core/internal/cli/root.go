@@ -31,6 +31,10 @@ func init() {
 	rootCmd.AddCommand(commands.TaskCmd())
 	// getting config
 	rootCmd.AddCommand(commands.GetconfigCmd())
+	// setting up hte session as per the overview file
+	rootCmd.AddCommand(commands.InitializeSessionFromOverviewCmd())
+	// Updating the overview
+	rootCmd.AddCommand(commands.UpdateSessionFromOverviewCmd())
 }
 
 func Execute() {

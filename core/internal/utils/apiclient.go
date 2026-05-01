@@ -11,16 +11,27 @@ type APIClient struct {
 	BaseURL string
 }
 
-func (c *APIClient) Post(path string, payload any, out any) (*http.Response, error) {
+func (c *APIClient) Post(path string, payload any, headers map[string]string, out any) (*http.Response, error) {
+	fmt.Println(payload)
 	body, err := json.Marshal(payload)
-	fmt.Println("making the request", c.BaseURL+path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	resp, err := http.Post(c.BaseURL+path, "application/json", bytes.NewBuffer(body))
+	fmt.Printf("JSON Payload: %s\n", body)
+	req, err := http.NewRequest("POST", c.BaseURL+path, bytes.NewBuffer(body))
 	if err != nil {
-		return nil, fmt.Errorf("failed to make request: %w", err)
+		return nil, err
+	}
+
+	for k, v := range headers {
+		req.Header.Set(k, v)
+	}
+
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
 	}
 	defer resp.Body.Close()
 	return resp, json.NewDecoder(resp.Body).Decode(out)
