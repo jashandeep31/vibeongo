@@ -92,6 +92,7 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		struct {
 			Domain string `json:"domain"`
 		}{Domain: host},
+		nil,
 		&parsedResponse,
 	)
 	if err != nil {

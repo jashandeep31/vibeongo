@@ -32,6 +32,7 @@ export const updateSessionOverview = catchAsync(
       })
       .parse(req.params);
 
+    console.log(req.body);
     const { overview } = z
       .object({
         overview: z.string(),
