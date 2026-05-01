@@ -193,7 +193,7 @@ const SessionCard = memo(
 
         <CardFooter className="mt-auto border-t px-6 py-4 pt-4">
           <Button
-            className="w-full"
+            className="w-full cursor-pointer"
             variant={isRunning ? "secondary" : "default"}
             onClick={handleResume}
             disabled={isPending}
