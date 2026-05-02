@@ -11,6 +11,7 @@ type Config struct {
 	ServerBaseUrl string          `json:"serverBaseUrl"`
 	SessionId     string          `json:"sessionId"`
 	ProjectId     string          `json:"projectId"`
+	InstanceId    string          `json:"instanceId"`
 	Token         string          `json:"token"`
 	Packages      []PackageConfig `json:"packages"`
 	Repos         []GitRepoConfig `json:"repos"`

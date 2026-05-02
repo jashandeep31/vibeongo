@@ -35,6 +35,8 @@ func init() {
 	rootCmd.AddCommand(commands.InitializeSessionFromOverviewCmd())
 	// Updating the overview
 	rootCmd.AddCommand(commands.UpdateSessionFromOverviewCmd())
+	// terminate the instance
+	rootCmd.AddCommand(commands.TerminateInstanceCmd())
 }
 
 func Execute() {

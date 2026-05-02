@@ -11,7 +11,7 @@ import { suspendSessionInstance } from "../controllers/runtime/suspend-session-i
 const routes: Router = Router();
 
 routes
-  .route("/sessions/:id/config")
+  .route("/sessions/:id/config/:instanceId")
   .get(checkRuntimeAuthorization, getRuntimeSessionConfig);
 
 routes
