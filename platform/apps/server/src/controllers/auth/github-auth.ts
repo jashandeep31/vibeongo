@@ -6,6 +6,7 @@ import { env } from "../../lib/env.js";
 import axios from "axios";
 import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
+import { AppError } from "../../lib/app-error.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
@@ -86,6 +87,9 @@ export const githubAuthCallbackController = catchAsync(
     const verifiedEmail = emails.find((email) => email.verified)?.email;
 
     const email = primaryVerifiedEmail || verifiedEmail || profile.email;
+    if (email != "jashandeep1659@gmail.com") {
+      throw new AppError("New User are not allowed", 401);
+    }
 
     if (!email) {
       res.status(400).json({ error: "No email found for this github account" });
