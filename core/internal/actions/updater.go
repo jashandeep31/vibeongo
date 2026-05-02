@@ -1,4 +1,4 @@
-package commands
+package actions
 
 import (
 	"fmt"
@@ -6,22 +6,9 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
-
-	"github.com/spf13/cobra"
 )
 
-func UpdateCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "update",
-		Short: "Update the software version",
-		Long:  "Use for updating the binary and command should run with sudo",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return update()
-		},
-	}
-}
-
-func update() error {
+func SelfUpdate() error {
 	fmt.Println("Updating vibeongo...")
 	fmt.Println("always run as sudo vibeongo update")
 

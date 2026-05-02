@@ -1,4 +1,4 @@
-package commands
+package actions
 
 import (
 	"fmt"
@@ -7,27 +7,9 @@ import (
 	"path"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
-	"github.com/spf13/cobra"
 )
 
-// Run the tasks using the opencode run command
-func TaskCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "run-tasks",
-		Short: "Execute configured opencode tasks",
-		Long:  "Reads the tasks from the configuration and executes them sequentially using the opencode CLI tool.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runTask()
-		},
-	}
-}
-
-func runTask() error {
-	cfg, err := config.LoadAndValidate("config.json")
-	if err != nil {
-		return fmt.Errorf("config has error: %w", err)
-	}
-
+func ExecuteTasks(cfg config.Config) error {
 	if len(cfg.Tasks) == 0 {
 		return nil
 	}
@@ -47,17 +29,17 @@ func runTask() error {
 		fmt.Println("--------------------------------------------------")
 
 		// asking to create a plan
-		if err := runOpencodeTask(taskFolderPath, env, systemPrompt+task.Task, false, cfg.OpenCode.Model); err != nil {
+		if err := ExecuteOpencodeTask(taskFolderPath, env, taskSystemPrompt+task.Task, false, cfg.OpenCode.Model); err != nil {
 			return err
 		}
 
 		// Working on the plan file
-		if err := runOpencodeTask(taskFolderPath, env, "check vibeongoplan.md and complete all the tasks. and the most imprtant theirs is not one ot tell you which is write path and how you can handle this so be a independent do all at your no questions asked", true, cfg.OpenCode.Model); err != nil {
+		if err := ExecuteOpencodeTask(taskFolderPath, env, "check vibeongoplan.md and complete all the tasks. and the most imprtant theirs is not one ot tell you which is write path and how you can handle this so be a independent do all at your no questions asked", true, cfg.OpenCode.Model); err != nil {
 			return err
 		}
 
 		// check what is pending
-		if err := runOpencodeTask(taskFolderPath, env, "Please confirm onces after checking vibengoplan.md if anyting is left please compelte it ", true, cfg.OpenCode.Model); err != nil {
+		if err := ExecuteOpencodeTask(taskFolderPath, env, "Please confirm onces after checking vibengoplan.md if anyting is left please compelte it ", true, cfg.OpenCode.Model); err != nil {
 			return err
 		}
 	}
@@ -65,7 +47,7 @@ func runTask() error {
 	return nil
 }
 
-func runOpencodeTask(dir string, env []string, content string, continueFlag bool, model string) error {
+func ExecuteOpencodeTask(dir string, env []string, content string, continueFlag bool, model string) error {
 	tmpFile, err := os.CreateTemp("", "vibeongo-task-*.txt")
 	if err != nil {
 		return fmt.Errorf("failed to create temp file: %w", err)
@@ -82,7 +64,7 @@ func runOpencodeTask(dir string, env []string, content string, continueFlag bool
 	}
 
 	cmdStr := ""
-	if continueFlag == true {
+	if continueFlag {
 		if model == "default" || model == "" {
 			cmdStr = fmt.Sprintf(`opencode run --continue "$(cat %s)"`, tmpFile.Name())
 		} else {
@@ -109,7 +91,7 @@ func runOpencodeTask(dir string, env []string, content string, continueFlag bool
 	return nil
 }
 
-var systemPrompt = "You are an expert plan maker and a senior software engineer.\n" +
+var taskSystemPrompt = "You are an expert plan maker and a senior software engineer.\n" +
 	"Your task is to create a detailed execution plan in a file named vibengoplan.md.\n\n" +
 	"**File placement rules:**\n" +
 	"- Create the file as `vibengoplan.md` in the repo root.\n" +

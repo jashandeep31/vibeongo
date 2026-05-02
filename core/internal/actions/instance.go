@@ -1,4 +1,4 @@
-package commands
+package actions
 
 import (
 	"fmt"
@@ -6,25 +6,9 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
-	"github.com/spf13/cobra"
 )
 
-func TerminateInstanceCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "terminate",
-		Short: "Terminate the instance",
-		Long:  "Terminate the instance by calling the API",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return terminateInstance()
-		},
-	}
-}
-
-func terminateInstance() error {
-	cfg, err := config.LoadAndValidate("config.json")
-	if err != nil {
-		return err
-	}
+func TerminateInstance(cfg config.Config) error {
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
 	var apiRes any
 	headers := map[string]string{

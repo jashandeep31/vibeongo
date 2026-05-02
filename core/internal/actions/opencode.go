@@ -1,4 +1,4 @@
-package provisions
+package actions
 
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 )
 
 // Setup the opencode auth.json file
-func SetupOpenCode(cfg *config.OpenCodeConfig) {
+func ProvisionOpenCode(cfg *config.OpenCodeConfig) {
 	// opencode is pre-insatlled in the ami
 	fmt.Println("opencode config")
 	authJSON := cfg.AuthJSON

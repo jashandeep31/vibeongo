@@ -1,4 +1,4 @@
-package commands
+package actions
 
 import (
 	"fmt"
@@ -6,30 +6,11 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/jashandeep31/vibeongo/core/internal/cli/provisions"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
-	"github.com/spf13/cobra"
 )
 
-// Setup the working env for the project as per the users script goes through the each github repo in the config file
-func RepoSetupCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "init-repos",
-		Short: "Initialize and install dependencies for repositories",
-		Long:  "Executes the setup scripts (like npm install, build) for each cloned repository as defined in the configuration.",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return runRepoSetup()
-		},
-	}
-}
-
-func runRepoSetup() error {
-	cfg, err := config.LoadAndValidate("config.json")
-	if err != nil {
-		return fmt.Errorf("config has error: %w", err)
-	}
-
+func InitializeRepositories(cfg config.Config) error {
 	script := `source /home/ubuntu/.bashrc
 # nvm
 export NVM_DIR="/home/ubuntu/.nvm"
@@ -53,12 +34,12 @@ npm -v
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	err = cmd.Run()
+	err := cmd.Run()
 	if err != nil {
 		fmt.Println("failed to run command: ", err)
 	}
 
-	err = provisions.SetupProjectFiles()
+	err = ProvisionProjectFiles()
 	if err != nil {
 		fmt.Println("failed to run command: ", err)
 	}
