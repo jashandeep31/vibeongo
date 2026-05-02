@@ -26,7 +26,10 @@ export function GithubAuthCard({
       <Card className="w-full max-w-sm py-6 shadow-sm">
         <CardHeader className="text-center">
           <CardTitle className="text-base">{title}</CardTitle>
-          <CardDescription>{description}</CardDescription>
+          {/* <CardDescription>{description}</CardDescription> */}
+          <CardDescription className="bg-yellow-500">
+            New user login are disabled
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <a
