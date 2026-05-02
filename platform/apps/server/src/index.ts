@@ -25,6 +25,10 @@ const app = express();
 // Must be before express.json()
 app.use("/api/v1/github-app", githubAppWebhookMiddleware);
 
+app.use((req, res, next) => {
+  console.log(req.url);
+  next();
+});
 // --- App config ---
 app.use(express.json());
 app.use(cookieParser());
