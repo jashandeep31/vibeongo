@@ -24,6 +24,8 @@ func (c *APIClient) Post(path string, payload any, headers map[string]string, ou
 		return nil, err
 	}
 
+	req.Header.Set("Content-Type", "application/json")
+
 	for k, v := range headers {
 		req.Header.Set(k, v)
 	}
