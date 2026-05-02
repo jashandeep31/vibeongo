@@ -125,6 +125,7 @@ Please add hte default project to the github repo
     authToken: authToken,
     projectSessionId: session.id,
     instanceId,
+    terminate: true,
   });
 
   const [regionRow] = await db

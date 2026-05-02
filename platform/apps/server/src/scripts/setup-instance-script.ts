@@ -14,7 +14,7 @@ export const setupInstanceScript = ({
   authToken,
   projectSessionId,
   instanceId,
-  terminate = true,
+  terminate = false,
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
