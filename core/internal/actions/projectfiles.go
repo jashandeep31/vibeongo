@@ -1,4 +1,4 @@
-package provisions
+package actions
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
-func SetupProjectFiles() error {
+func ProvisionProjectFiles() error {
 	cfg, err := config.LoadAndValidate("config.json")
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
 	if err != nil {

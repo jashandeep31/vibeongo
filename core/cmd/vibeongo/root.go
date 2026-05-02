@@ -1,10 +1,9 @@
-package cli
+package main
 
 import (
 	"fmt"
 	"os"
 
-	"github.com/jashandeep31/vibeongo/core/internal/cli/commands"
 	"github.com/spf13/cobra"
 )
 
@@ -20,23 +19,23 @@ var rootCmd = &cobra.Command{
 
 func init() {
 	// update the vibeongo
-	rootCmd.AddCommand(commands.UpdateCmd())
+	rootCmd.AddCommand(UpdateCmd())
 	// setup the vps and config the things
-	rootCmd.AddCommand(commands.VpsSetupCmd())
+	rootCmd.AddCommand(VpsSetupCmd())
 	// start the echo server
-	rootCmd.AddCommand(commands.ServeCmd())
+	rootCmd.AddCommand(ServeCmd())
 	// setup the repo like insatlling the dependencies
-	rootCmd.AddCommand(commands.RepoSetupCmd())
+	rootCmd.AddCommand(RepoSetupCmd())
 	// run the tasks in the opencode
-	rootCmd.AddCommand(commands.TaskCmd())
+	rootCmd.AddCommand(TaskCmd())
 	// getting config
-	rootCmd.AddCommand(commands.GetconfigCmd())
+	rootCmd.AddCommand(GetconfigCmd())
 	// setting up hte session as per the overview file
-	rootCmd.AddCommand(commands.InitializeSessionFromOverviewCmd())
+	rootCmd.AddCommand(InitializeSessionFromOverviewCmd())
 	// Updating the overview
-	rootCmd.AddCommand(commands.UpdateSessionFromOverviewCmd())
+	rootCmd.AddCommand(UpdateSessionFromOverviewCmd())
 	// terminate the instance
-	rootCmd.AddCommand(commands.TerminateInstanceCmd())
+	rootCmd.AddCommand(TerminateInstanceCmd())
 }
 
 func Execute() {
