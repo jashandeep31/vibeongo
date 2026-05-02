@@ -1,7 +1,6 @@
 "use client";
 
-import { Globe, Play, RefreshCw, Server, Square, Terminal } from "lucide-react";
-import { Badge } from "@repo/ui/components/badge";
+import { Globe, RefreshCw, Square, Terminal } from "lucide-react";
 import { Button, buttonVariants } from "@repo/ui/components/button";
 import { Project, DbInstance } from "./types";
 import Link from "next/link";
@@ -19,18 +18,6 @@ export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
       <div>
         <div className="mb-2 flex items-center gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          {isRunning ? (
-            <Badge className="border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
-              Running
-            </Badge>
-          ) : (
-            <Badge
-              variant="secondary"
-              className="text-muted-foreground border-0"
-            >
-              Terminated
-            </Badge>
-          )}
         </div>
       </div>
 
