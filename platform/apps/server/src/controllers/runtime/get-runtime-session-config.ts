@@ -19,7 +19,9 @@ import { env } from "../../lib/env.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
-    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { id, instanceId } = z
+      .object({ id: z.string(), instanceId: z.string() })
+      .parse(req.params);
 
     const [sessionRow] = await db
       .select({
@@ -72,6 +74,7 @@ export const getRuntimeSessionConfig = catchAsync(
       token: token?.token || "",
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
+      instanceId,
       projectId: project.id,
       repos: await getConfigReadyGithubRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
