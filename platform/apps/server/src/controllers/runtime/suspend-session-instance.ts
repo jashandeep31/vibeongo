@@ -3,6 +3,7 @@ import {
   eq,
   instanceRegions,
   instances,
+  instanceState,
   instanceTypes,
   projectSessions,
 } from "@repo/db";
@@ -30,7 +31,6 @@ export const suspendSessionInstance = catchAsync(
         eq(instanceRegions.id, instanceTypes.region_id),
       )
       .where(eq(instances.id, instanceId));
-
     if (!row) throw new AppError("Instance not found", 404);
 
     const awsResponse = await terminateEc2Instance(row.instance_regions.slug, [
@@ -42,6 +42,6 @@ export const suspendSessionInstance = catchAsync(
       .set({ terminated_at: new Date(), state: "terminated" })
       .where(eq(instances.id, instanceId));
 
-    res.status(200).json({});
+    res.status(200).json({ data: "Instance suspended" });
   },
 );

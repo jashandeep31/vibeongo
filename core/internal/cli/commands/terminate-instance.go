@@ -31,7 +31,7 @@ func terminateInstance() error {
 		"Content-Type":  "application/json",
 		"Authorization": "Bearer " + cfg.Token,
 	}
-	resp, err := apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/terminate/"+cfg.InstanceId, nil, headers, &apiRes)
+	resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionId+"/terminate/"+cfg.InstanceId, headers, &apiRes)
 	if err != nil {
 		return err
 	}
