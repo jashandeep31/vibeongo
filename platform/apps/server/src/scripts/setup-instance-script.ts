@@ -5,6 +5,7 @@ interface SetupInstanceScriptOptions {
   authToken: string;
   projectSessionId: string;
   instanceId: string;
+  terminate?: boolean;
 }
 
 //TODO: please fix the next ami with removing port 8000 and adding 8080
@@ -13,6 +14,7 @@ export const setupInstanceScript = ({
   authToken,
   projectSessionId,
   instanceId,
+  terminate = true,
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
@@ -56,6 +58,9 @@ sudo -u ubuntu /tmp/ubuntu-setup.sh
 vibeongo init-workspace
 vibeongo init-repos
 vibeongo run-tasks  
+${terminate ? "vibeongo terminate" : ""}
+
+
 date
 `;
 };
