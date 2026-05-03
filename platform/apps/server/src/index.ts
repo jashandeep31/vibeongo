@@ -18,6 +18,7 @@ import { NextFunction } from "express";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { internalRoutes } from "./routes/internal-routes.js";
+import "./lib/cron.js";
 
 const app = express();
 
