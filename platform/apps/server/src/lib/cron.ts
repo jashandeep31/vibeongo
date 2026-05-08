@@ -12,7 +12,7 @@ import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js"
 
 console.log("cron started");
 
-cron.schedule("*/3 * * * * *", async () => {
+cron.schedule("*/5 * * * *", async () => {
   try {
     console.log("cron job initiated");
     const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000); // instances older than 2hrs
