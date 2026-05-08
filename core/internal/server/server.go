@@ -17,7 +17,7 @@ func Start() error {
 	e := echo.New()
 	// TODO: please use the proper cors way
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000", "https://vibeongo.com", "https://www.vibeongo.com"},
+		AllowOrigins: []string{"http://localhost:3000", "https://vibeongo.com", "https://www.vibeongo.com", "https://l2.devsradar.com"},
 		AllowHeaders: []string{
 			echo.HeaderOrigin,
 			echo.HeaderContentType,
