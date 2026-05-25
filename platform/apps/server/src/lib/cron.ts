@@ -6,17 +6,13 @@ import {
   instances,
   instanceTypes,
   lt,
+  sql,
 } from "@repo/db";
 import cron from "node-cron";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
 
-console.log("cron started");
-
 cron.schedule("*/5 * * * *", async () => {
   try {
-    console.log("cron job initiated");
-    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000); // instances older than 2hrs
-
     const rows = await db
       .select({ instanceRegions, instances })
       .from(instances)
@@ -26,7 +22,10 @@ cron.schedule("*/5 * * * *", async () => {
         eq(instanceRegions.id, instanceTypes.region_id),
       )
       .where(
-        and(lt(instances.created_at, cutoff), eq(instances.state, "running")),
+        and(
+          lt(instances.created_at, sql`NOW() - INTERVAL '2 hours'`),
+          eq(instances.state, "running"),
+        ),
       );
 
     for (const row of rows) {
@@ -39,5 +38,7 @@ cron.schedule("*/5 * * * *", async () => {
         .set({ terminated_at: new Date(), state: "terminated" })
         .where(eq(instances.id, row.instances.id));
     }
-  } catch {}
+  } catch (e) {
+    console.log(e);
+  }
 });
