@@ -12,7 +12,12 @@ export default async function Page() {
   return (
     <section>
       <div className="bg-yellow-200">
-        <p className="p-1 text-center">New user login are disabled</p>
+        <p className="p-1 text-center">
+          New user login are disabled
+          <br /> Due to buget constraints development is going slow
+          <br />
+          Freshers are not getting Job
+        </p>
       </div>
       <div className="bg-background relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
         {/* Background glow effects */}
