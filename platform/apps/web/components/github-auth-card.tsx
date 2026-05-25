@@ -29,6 +29,9 @@ export function GithubAuthCard({
           {/* <CardDescription>{description}</CardDescription> */}
           <CardDescription className="bg-yellow-500">
             New user login are disabled
+            <br /> Due to buget constraints development is going slow
+            <br />
+            Freshers are not getting Job
           </CardDescription>
         </CardHeader>
         <CardContent>
