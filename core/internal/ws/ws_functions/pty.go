@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/creack/pty"
+	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
 )
 
@@ -33,6 +34,40 @@ type TerminalSession struct {
 	buffer []byte
 	ptmx   *os.File
 	mu     sync.Mutex
+}
+
+type SessionsStore struct {
+	mu       sync.Mutex
+	sessions map[string]*TerminalSession
+}
+
+var store = &SessionsStore{
+	sessions: make(map[string]*TerminalSession),
+}
+
+func (s *SessionsStore) GetSession(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return nil
+}
+
+func (s *SessionsStore) DelSession(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return nil
+}
+
+func (s *SessionsStore) CreateSession() (*TerminalSession, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	id := uuid.New()
+	sess := &TerminalSession{
+		buffer: make([]byte, 0),
+		ptmx:   nil,
+		mu:     sync.Mutex{},
+	}
+	s.sessions[id.String()] = sess
+	return sess, nil
 }
 
 var session = &TerminalSession{}
