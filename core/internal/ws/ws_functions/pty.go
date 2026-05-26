@@ -19,48 +19,38 @@ const (
 	ptyBufSize  = 4096
 )
 
-type sizeData struct {
-	Rows uint16 `json:"rows"`
-	Cols uint16 `json:"cols"`
+type PTYMessage struct {
+	Type string `json:"type"`
+	Data struct {
+		Rows uint16 `json:"rows"`
+		Cols uint16 `json:"cols"`
+	} `json:"data"`
 }
 
-type SsMessage struct {
-	Type string   `json:"type"`
-	Data sizeData `json:"data"`
-}
+func StartPTY(session *store.TerminalSession) error {
+	session.Mu.Lock()
+	defer session.Mu.Unlock()
 
-func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex, session *store.TerminalSession) error {
+	if session.Ptmx != nil {
+		return nil
+	}
+
 	cmd := exec.Command("bash", "-l")
 	cmd.Dir = os.Getenv("HOME")
 
-	if session.Ptmx == nil {
-		ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
-		session.Ptmx = ptmx
-		if err != nil {
-			writeMu.Lock()
-			_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
-			writeMu.Unlock()
-			return err
-		}
+	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
+	if err != nil {
+		return fmt.Errorf("failed to start pty: %w", err)
 	}
 
-	ptmx := session.Ptmx
-
-	if len(session.Buffer) > 0 {
-		session.Mu.Lock()
-		_ = conn.WriteMessage(websocket.BinaryMessage, session.Buffer)
-		session.Mu.Unlock()
-	}
-
-	go pipePTYToWebSocket(conn, ptmx, writeMu, session)
-
+	session.Ptmx = ptmx
 	return nil
 }
 
-func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex, session *store.TerminalSession) {
+func PipePTYToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, session *store.TerminalSession) {
 	buf := make([]byte, ptyBufSize)
 	for {
-		n, err := ptmx.Read(buf)
+		n, err := session.Ptmx.Read(buf)
 		if err != nil {
 			if err != io.EOF {
 				fmt.Printf("pty read error: %v\n", err)
@@ -81,25 +71,22 @@ func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex
 	}
 }
 
-func PipeWebSocketToPTY(ptmx *os.File, msg []byte) error {
-	var m SsMessage
+func HandlePTYInput(session *store.TerminalSession, msg []byte) error {
+	var m PTYMessage
 	if err := json.Unmarshal(msg, &m); err != nil || m.Type == "" {
 		// Not a JSON control message — raw terminal input, write directly
-		if _, err := ptmx.Write(msg); err != nil {
-			return err
-		}
+		_, err := session.Ptmx.Write(msg)
+		return err
 	}
+
 	switch m.Type {
 	case "size":
-		if err := pty.Setsize(ptmx, &pty.Winsize{
+		return pty.Setsize(session.Ptmx, &pty.Winsize{
 			Rows: m.Data.Rows,
 			Cols: m.Data.Cols,
-		}); err != nil {
-			fmt.Printf("failed to resize pty: %v\n", err)
-		}
+		})
 	default:
-		fmt.Printf("Unknown message type: %s\n", m.Type)
+		return nil
 	}
-	// }
-	return nil
 }
+

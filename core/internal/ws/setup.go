@@ -1,9 +1,7 @@
 package ws
 
 import (
-	"context"
 	"net/http"
-	"sync"
 
 	"github.com/gorilla/websocket"
 	"github.com/jashandeep31/vibeongo/core/internal/store"
@@ -28,43 +26,6 @@ func WebSocket(c *echo.Context) error {
 	}
 	defer conn.Close()
 
-	ctx, cancel := context.WithCancel(c.Request().Context())
-	defer cancel()
-
-	var writeMu sync.Mutex
-
-	// function to serve the terminal
-	session, err := TerminalStore.GetOrCreateSession()
-	sessions := TerminalStore.GetSessions()
-
-	sessionIds := []string{}
-	for id := range sessions {
-		sessionIds = append(sessionIds, id)
-	}
-
-	conn.WriteJSON(struct {
-		Type     string   `json:"type"`
-		Ids      []string `json:"ids"`
-		ActiveId string   `json:"activeId"`
-	}{
-		Type:     "sessionIds",
-		Ids:      sessionIds,
-		ActiveId: TerminalStore.ActiveId,
-	})
-
-	wsfunctions.PtyHandler(conn, &writeMu, session)
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
-			return err
-		}
-		wsfunctions.StoreWsHandler(ctx, conn, &writeMu, msg)
-
-		wsfunctions.PipeWebSocketToPTY(session.Ptmx, msg)
-	}
-
-	// function to send the stats to the web ui
-	// wsfunctions.StatsHandler(ctx, conn, &writeMu)
-
-	return nil
+	return wsfunctions.HandleConnection(c.Request().Context(), conn, TerminalStore)
 }
+
