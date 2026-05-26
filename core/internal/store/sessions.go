@@ -3,15 +3,17 @@ package store
 import (
 	"os"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 )
 
 // TerminalSession saving bufs of terminal session
 type TerminalSession struct {
-	Buffer []byte
-	Ptmx   *os.File
-	Mu     sync.Mutex
+	Buffer    []byte
+	Ptmx      *os.File
+	Mu        sync.Mutex
+	CreatedAt time.Time
 }
 
 type SessionStore struct {
@@ -50,9 +52,10 @@ func (s *SessionStore) createSession() (*TerminalSession, error) {
 	id := uuid.New().String()
 
 	sess := &TerminalSession{
-		Buffer: make([]byte, 0),
-		Ptmx:   nil,
-		Mu:     sync.Mutex{},
+		Buffer:    make([]byte, 0),
+		Ptmx:      nil,
+		Mu:        sync.Mutex{},
+		CreatedAt: time.Now(),
 	}
 
 	s.ActiveId = id
@@ -76,4 +79,11 @@ func (s *SessionStore) GetOrCreateSession() (*TerminalSession, error) {
 		}
 	}
 	return s.createSession()
+}
+
+func (s *SessionStore) SwitchSession(id string) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.ActiveId = id
+	return nil
 }
