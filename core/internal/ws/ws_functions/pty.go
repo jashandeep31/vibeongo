@@ -54,7 +54,7 @@ func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex, session *store.Termin
 
 	go pipePTYToWebSocket(conn, ptmx, writeMu, session)
 
-	return pipeWebSocketToPTY(conn, ptmx)
+	return nil
 }
 
 func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex, session *store.TerminalSession) {
@@ -81,31 +81,25 @@ func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex
 	}
 }
 
-func pipeWebSocketToPTY(conn *websocket.Conn, ptmx *os.File) error {
-	for {
-		_, msg, err := conn.ReadMessage()
-		if err != nil {
+func PipeWebSocketToPTY(ptmx *os.File, msg []byte) error {
+	var m SsMessage
+	if err := json.Unmarshal(msg, &m); err != nil || m.Type == "" {
+		// Not a JSON control message — raw terminal input, write directly
+		if _, err := ptmx.Write(msg); err != nil {
 			return err
 		}
-
-		var m SsMessage
-		if err := json.Unmarshal(msg, &m); err != nil || m.Type == "" {
-			// Not a JSON control message — raw terminal input, write directly
-			if _, err := ptmx.Write(msg); err != nil {
-				return err
-			}
-			continue
-		}
-		switch m.Type {
-		case "size":
-			if err := pty.Setsize(ptmx, &pty.Winsize{
-				Rows: m.Data.Rows,
-				Cols: m.Data.Cols,
-			}); err != nil {
-				fmt.Printf("failed to resize pty: %v\n", err)
-			}
-		default:
-			fmt.Printf("Unknown message type: %s\n", m.Type)
-		}
 	}
+	switch m.Type {
+	case "size":
+		if err := pty.Setsize(ptmx, &pty.Winsize{
+			Rows: m.Data.Rows,
+			Cols: m.Data.Cols,
+		}); err != nil {
+			fmt.Printf("failed to resize pty: %v\n", err)
+		}
+	default:
+		fmt.Printf("Unknown message type: %s\n", m.Type)
+	}
+	// }
+	return nil
 }

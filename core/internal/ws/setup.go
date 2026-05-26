@@ -33,10 +33,6 @@ func WebSocket(c *echo.Context) error {
 
 	var writeMu sync.Mutex
 
-	// function to send the stats to the web ui
-	go wsfunctions.StatsHandler(ctx, conn, &writeMu)
-
-	go wsfunctions.StoreWsHandler(ctx, conn, &writeMu)
 	// function to serve the terminal
 	session, err := TerminalStore.GetOrCreateSession()
 	sessions := TerminalStore.GetSessions()
@@ -56,5 +52,19 @@ func WebSocket(c *echo.Context) error {
 		ActiveId: TerminalStore.ActiveId,
 	})
 
-	return wsfunctions.PtyHandler(conn, &writeMu, session)
+	wsfunctions.PtyHandler(conn, &writeMu, session)
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+		wsfunctions.StoreWsHandler(ctx, conn, &writeMu, msg)
+
+		wsfunctions.PipeWebSocketToPTY(session.Ptmx, msg)
+	}
+
+	// function to send the stats to the web ui
+	// wsfunctions.StatsHandler(ctx, conn, &writeMu)
+
+	return nil
 }
