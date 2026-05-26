@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/jashandeep31/vibeongo/core/internal/store"
 	wsfunctions "github.com/jashandeep31/vibeongo/core/internal/ws/ws_functions"
 	"github.com/labstack/echo/v5"
 )
@@ -17,6 +18,8 @@ var upgrader = websocket.Upgrader{
 		return true
 	},
 }
+
+var TerminalStore = store.NewSessionStore()
 
 func WebSocket(c *echo.Context) error {
 	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
@@ -33,6 +36,25 @@ func WebSocket(c *echo.Context) error {
 	// function to send the stats to the web ui
 	go wsfunctions.StatsHandler(ctx, conn, &writeMu)
 
+	go wsfunctions.StoreWsHandler(ctx, conn, &writeMu)
 	// function to serve the terminal
-	return wsfunctions.PtyHandler(conn, &writeMu)
+	session, err := TerminalStore.GetOrCreateSession()
+	sessions := TerminalStore.GetSessions()
+
+	sessionIds := []string{}
+	for id := range sessions {
+		sessionIds = append(sessionIds, id)
+	}
+
+	conn.WriteJSON(struct {
+		Type     string   `json:"type"`
+		Ids      []string `json:"ids"`
+		ActiveId string   `json:"activeId"`
+	}{
+		Type:     "sessionIds",
+		Ids:      sessionIds,
+		ActiveId: TerminalStore.ActiveId,
+	})
+
+	return wsfunctions.PtyHandler(conn, &writeMu, session)
 }
