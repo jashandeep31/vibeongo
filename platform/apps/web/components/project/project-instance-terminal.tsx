@@ -182,8 +182,12 @@ export function ProjectInstanceTerminal({
                 "Parsed ids are not here , Error in the  backend server",
               );
             }
-          } else if (parsed.type == "ptyUpdate") {
-            console.log("Received ptyUpdate:", parsed);
+          } else if (parsed.type === "ptyUpdate") {
+            if (typeof parsed.sessionId === "string") {
+              setActiveTerminalSessionId(parsed.sessionId);
+            }
+            term.reset();
+            scheduleFit();
             return;
           }
           console.log("Received:", parsed);
@@ -210,6 +214,7 @@ export function ProjectInstanceTerminal({
     };
 
     ws.onclose = () => {
+      setWebSocketConnection((current) => (current === ws ? null : current));
       term.write("\r\nConnection closed\r\n");
     };
 
@@ -299,7 +304,7 @@ export function ProjectInstanceTerminal({
               key={id}
               variant={id === activeTerminalSessionId ? "default" : "outline"}
               onClick={() => {
-                console.log("Switching to session", id);
+                setActiveTerminalSessionId(id);
                 webSocketConnection?.send(
                   JSON.stringify({
                     type: "switchSession",

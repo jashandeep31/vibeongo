@@ -29,9 +29,16 @@ type PTYMessage struct {
 
 func StartPTY(session *store.TerminalSession) error {
 	session.Mu.Lock()
-	defer session.Mu.Unlock()
 
 	if session.Ptmx != nil {
+		if !session.ReaderStarted {
+			session.ReaderStarted = true
+			ptmx := session.Ptmx
+			session.Mu.Unlock()
+			go readPTYOutput(session, ptmx)
+			return nil
+		}
+		session.Mu.Unlock()
 		return nil
 	}
 
@@ -40,17 +47,22 @@ func StartPTY(session *store.TerminalSession) error {
 
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
+		session.Mu.Unlock()
 		return fmt.Errorf("failed to start pty: %w", err)
 	}
 
 	session.Ptmx = ptmx
+	session.ReaderStarted = true
+	session.Mu.Unlock()
+
+	go readPTYOutput(session, ptmx)
 	return nil
 }
 
-func PipePTYToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, session *store.TerminalSession) {
+func readPTYOutput(session *store.TerminalSession, ptmx *os.File) {
 	buf := make([]byte, ptyBufSize)
 	for {
-		n, err := session.Ptmx.Read(buf)
+		n, err := ptmx.Read(buf)
 		if err != nil {
 			if err != io.EOF {
 				fmt.Printf("pty read error: %v\n", err)
@@ -58,20 +70,50 @@ func PipePTYToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, session *stor
 			return
 		}
 
-		session.Mu.Lock()
-		session.Buffer = append(session.Buffer, buf[:n]...)
-		session.Mu.Unlock()
+		session.AppendOutput(buf[:n])
+	}
+}
 
-		writeMu.Lock()
-		writeErr := conn.WriteMessage(websocket.BinaryMessage, buf[:n])
-		writeMu.Unlock()
-		if writeErr != nil {
-			return
+func PipePTYToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, session *store.TerminalSession, isActive func(string) bool) func() {
+	output, unsubscribe := session.Subscribe()
+
+	go func() {
+		for data := range output {
+			if !isActive(session.ID) {
+				continue
+			}
+
+			writeMu.Lock()
+			writeErr := conn.WriteMessage(websocket.BinaryMessage, data)
+			writeMu.Unlock()
+			if writeErr != nil {
+				return
+			}
 		}
+	}()
+
+	return func() {
+		unsubscribe()
+	}
+}
+
+func WritePTYBufferToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, session *store.TerminalSession) {
+	session.Mu.Lock()
+	buffer := append([]byte(nil), session.Buffer...)
+	session.Mu.Unlock()
+
+	if len(buffer) > 0 {
+		writeMu.Lock()
+		_ = conn.WriteMessage(websocket.BinaryMessage, buffer)
+		writeMu.Unlock()
 	}
 }
 
 func HandlePTYInput(session *store.TerminalSession, msg []byte) error {
+	if session == nil || session.Ptmx == nil {
+		return nil
+	}
+
 	var m PTYMessage
 	if err := json.Unmarshal(msg, &m); err != nil || m.Type == "" {
 		// Not a JSON control message — raw terminal input, write directly
@@ -89,4 +131,3 @@ func HandlePTYInput(session *store.TerminalSession, msg []byte) error {
 		return nil
 	}
 }
-
