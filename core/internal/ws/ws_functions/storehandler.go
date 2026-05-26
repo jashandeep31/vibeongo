@@ -54,9 +54,11 @@ func SendPtyUpdate(session *store.TerminalSession, conn *websocket.Conn, writeMu
 	err := conn.WriteJSON(struct {
 		Type      string `json:"type"`
 		SessionId string `json:"sessionId"`
+		HasBuffer bool   `json:"hasBuffer"`
 	}{
 		Type:      "ptyUpdate",
 		SessionId: session.ID,
+		HasBuffer: session.HasBuffer(),
 	})
 	writeMu.Unlock()
 	if err != nil {

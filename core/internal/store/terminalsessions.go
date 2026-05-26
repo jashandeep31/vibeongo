@@ -92,6 +92,12 @@ func (s *TerminalSession) AppendOutput(output []byte) {
 	}
 }
 
+func (s *TerminalSession) HasBuffer() bool {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	return len(s.Buffer) > 0
+}
+
 func (s *TerminalSession) Subscribe() (<-chan []byte, func()) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
