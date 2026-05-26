@@ -39,6 +39,7 @@ type TerminalSession struct {
 type SessionsStore struct {
 	mu       sync.Mutex
 	sessions map[string]*TerminalSession
+	activeId string
 }
 
 var store = &SessionsStore{
@@ -57,22 +58,51 @@ func (s *SessionsStore) DelSession(id string) error {
 	return nil
 }
 
-func (s *SessionsStore) CreateSession() (*TerminalSession, error) {
+func (s *SessionsStore) GetSessions() map[string]*TerminalSession {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	id := uuid.New()
+	return s.sessions
+}
+
+func (s *SessionsStore) createSession() (*TerminalSession, error) {
+	id := uuid.New().String()
+
 	sess := &TerminalSession{
 		buffer: make([]byte, 0),
 		ptmx:   nil,
 		mu:     sync.Mutex{},
 	}
-	s.sessions[id.String()] = sess
+
+	s.activeId = id
+	s.sessions[id] = sess
 	return sess, nil
 }
 
-var session = &TerminalSession{}
+func (s *SessionsStore) CreateSession() (*TerminalSession, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	return s.createSession()
+}
+
+func (s *SessionsStore) GetOrCreateSession() (*TerminalSession, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.activeId != "" {
+		if s.sessions[s.activeId] != nil {
+			return s.sessions[s.activeId], nil
+		}
+	}
+	return s.createSession()
+}
 
 func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
+	session, err := store.GetOrCreateSession()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+
 	cmd := exec.Command("bash", "-l")
 	cmd.Dir = os.Getenv("HOME")
 
