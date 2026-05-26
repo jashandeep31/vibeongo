@@ -24,12 +24,12 @@ export function ProjectInstanceTerminal({
   showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
   const serverUrl = domain
-    ? `ws://${domain}/ws`
+    ? `wss://${domain}/ws`
     : publicIp
       ? `ws://${String(publicIp)}:8080/ws`
       : null;
   const healthCheckUrl = domain
-    ? `http://${domain}`
+    ? `https://${domain}`
     : publicIp
       ? `http://${String(publicIp)}:8080`
       : null;

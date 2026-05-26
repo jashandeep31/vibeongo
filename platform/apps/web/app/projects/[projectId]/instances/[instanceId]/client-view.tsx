@@ -39,24 +39,25 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const isTargetInstance =
     projectDomainsData?.target_instance_id === instanceId;
 
-  // const domainFor8080 = isTargetInstance
-  //   ? projectDomainsData?.proxy_domains?.find(
-  //       (domain) => domain.target_port === 8080,
-  //     )?.domain
-  //   : null;
-  //
-  // const domainFor4096 = isTargetInstance
-  //   ? projectDomainsData?.proxy_domains?.find(
-  //       (domain) => domain.target_port === 4096,
-  //     )?.domain
-  //   : null;
-  //
-  // const Instance_IP = instance?.public_ip || "localhost";
-  const domainFor8080 = "localhost:8080";
-  const domainFor4096 = "localhost:4096";
-  const Instance_IP = "localhost";
+  const domainFor8080 = isTargetInstance
+    ? projectDomainsData?.proxy_domains?.find(
+        (domain) => domain.target_port === 8080,
+      )?.domain
+    : null;
 
-  console.log(domainFor4096, domainFor8080, Instance_IP);
+  const domainFor4096 = isTargetInstance
+    ? projectDomainsData?.proxy_domains?.find(
+        (domain) => domain.target_port === 4096,
+      )?.domain
+    : null;
+
+  const Instance_IP = instance?.public_ip || "localhost";
+
+  // NOTE: for local test
+  //
+  // const domainFor8080 = "localhost:8080";
+  // const domainFor4096 = "localhost:4096";
+  // const Instance_IP = "localhost";
   // const Instance_IP = "localhost";
   const terminalHealthCheckUrl = domainFor8080
     ? `http://${domainFor8080}`
