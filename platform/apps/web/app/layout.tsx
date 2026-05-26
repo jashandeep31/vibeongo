@@ -37,6 +37,7 @@ export default function RootLayout({
         "font-sans",
         geist.variable,
         instrumentSansHeading.variable,
+        "dark",
       )}
     >
       <body>

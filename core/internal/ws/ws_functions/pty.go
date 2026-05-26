@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/creack/pty"
-	"github.com/google/uuid"
 	"github.com/gorilla/websocket"
+	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
 const (
@@ -29,86 +29,13 @@ type SsMessage struct {
 	Data sizeData `json:"data"`
 }
 
-// saving bufs of terminal session
-type TerminalSession struct {
-	buffer []byte
-	ptmx   *os.File
-	mu     sync.Mutex
-}
-
-type SessionsStore struct {
-	mu       sync.Mutex
-	sessions map[string]*TerminalSession
-	activeId string
-}
-
-var store = &SessionsStore{
-	sessions: make(map[string]*TerminalSession),
-}
-
-func (s *SessionsStore) GetSession(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return nil
-}
-
-func (s *SessionsStore) DelSession(id string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return nil
-}
-
-func (s *SessionsStore) GetSessions() map[string]*TerminalSession {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.sessions
-}
-
-func (s *SessionsStore) createSession() (*TerminalSession, error) {
-	id := uuid.New().String()
-
-	sess := &TerminalSession{
-		buffer: make([]byte, 0),
-		ptmx:   nil,
-		mu:     sync.Mutex{},
-	}
-
-	s.activeId = id
-	s.sessions[id] = sess
-	return sess, nil
-}
-
-func (s *SessionsStore) CreateSession() (*TerminalSession, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	return s.createSession()
-}
-
-func (s *SessionsStore) GetOrCreateSession() (*TerminalSession, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	if s.activeId != "" {
-		if s.sessions[s.activeId] != nil {
-			return s.sessions[s.activeId], nil
-		}
-	}
-	return s.createSession()
-}
-
-func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
-	session, err := store.GetOrCreateSession()
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-
+func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex, session *store.TerminalSession) error {
 	cmd := exec.Command("bash", "-l")
 	cmd.Dir = os.Getenv("HOME")
 
-	if session.ptmx == nil {
+	if session.Ptmx == nil {
 		ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
-		session.ptmx = ptmx
+		session.Ptmx = ptmx
 		if err != nil {
 			writeMu.Lock()
 			_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
@@ -117,12 +44,12 @@ func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
 		}
 	}
 
-	ptmx := session.ptmx
+	ptmx := session.Ptmx
 
-	if len(session.buffer) > 0 {
-		session.mu.Lock()
-		_ = conn.WriteMessage(websocket.BinaryMessage, session.buffer)
-		session.mu.Unlock()
+	if len(session.Buffer) > 0 {
+		session.Mu.Lock()
+		_ = conn.WriteMessage(websocket.BinaryMessage, session.Buffer)
+		session.Mu.Unlock()
 	}
 
 	go pipePTYToWebSocket(conn, ptmx, writeMu, session)
@@ -130,7 +57,7 @@ func PtyHandler(conn *websocket.Conn, writeMu *sync.Mutex) error {
 	return pipeWebSocketToPTY(conn, ptmx)
 }
 
-func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex, session *TerminalSession) {
+func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex, session *store.TerminalSession) {
 	buf := make([]byte, ptyBufSize)
 	for {
 		n, err := ptmx.Read(buf)
@@ -141,9 +68,9 @@ func pipePTYToWebSocket(conn *websocket.Conn, ptmx *os.File, writeMu *sync.Mutex
 			return
 		}
 
-		session.mu.Lock()
-		session.buffer = append(session.buffer, buf[:n]...)
-		session.mu.Unlock()
+		session.Mu.Lock()
+		session.Buffer = append(session.Buffer, buf[:n]...)
+		session.Mu.Unlock()
 
 		writeMu.Lock()
 		writeErr := conn.WriteMessage(websocket.BinaryMessage, buf[:n])

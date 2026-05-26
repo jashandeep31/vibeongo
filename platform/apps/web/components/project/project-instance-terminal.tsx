@@ -24,17 +24,23 @@ export function ProjectInstanceTerminal({
   showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
   const serverUrl = domain
-    ? `wss://${domain}/ws`
+    ? `ws://${domain}/ws`
     : publicIp
       ? `ws://${String(publicIp)}:8080/ws`
       : null;
   const healthCheckUrl = domain
-    ? `https://${domain}`
+    ? `http://${domain}`
     : publicIp
       ? `http://${String(publicIp)}:8080`
       : null;
   const sshCommand = publicIp ? `ssh ubuntu@${String(publicIp)}` : null;
 
+  const [webSocketConnection, setWebSocketConnection] =
+    useState<WebSocket | null>(null);
+  const [terminalSessionIds, setTerminalSessionIds] = useState<string[]>([]);
+  const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
+    string | null
+  >(null);
   const terminalRef = useRef<HTMLDivElement | null>(null);
   const [connectionStatus, setConnectionStatus] =
     useState<TerminalConnectionStatus>("checking");
@@ -110,6 +116,9 @@ export function ProjectInstanceTerminal({
 
     const ws = new WebSocket(serverUrl);
 
+    ws.onopen = () => {
+      setWebSocketConnection(ws);
+    };
     const sendTerminalSize = () => {
       if (ws.readyState !== WebSocket.OPEN) return;
       ws.send(
@@ -164,7 +173,19 @@ export function ProjectInstanceTerminal({
             });
             window.dispatchEvent(customEvent);
             return;
+          } else if (parsed.type === "sessionIds") {
+            if (parsed.ids) {
+              setTerminalSessionIds(parsed.ids);
+              setActiveTerminalSessionId(parsed.activeId);
+              console.log(parsed.ids, parsed.activeId);
+              return;
+            } else {
+              console.log(
+                "Parsed ids are not here , Error in the  backend server",
+              );
+            }
           }
+          console.log("Received:", parsed);
         } catch {
           // not json, fall through
         }
@@ -271,6 +292,25 @@ export function ProjectInstanceTerminal({
       </div>
 
       <div>
+        <div>
+          {terminalSessionIds.map((id, index) => (
+            <Button
+              key={id}
+              variant={id === activeTerminalSessionId ? "default" : "outline"}
+              onClick={() => {
+                console.log("Switching to session", id);
+                webSocketConnection?.send(
+                  JSON.stringify({
+                    type: "switchSession",
+                    sessionId: id,
+                  }),
+                );
+              }}
+            >
+              Terminal {index}
+            </Button>
+          ))}
+        </div>
         <div
           ref={terminalRef}
           id="terminal"

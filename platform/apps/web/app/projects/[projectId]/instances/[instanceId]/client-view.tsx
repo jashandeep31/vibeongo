@@ -39,22 +39,27 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const isTargetInstance =
     projectDomainsData?.target_instance_id === instanceId;
 
-  const domainFor8080 = isTargetInstance
-    ? projectDomainsData?.proxy_domains?.find(
-        (domain) => domain.target_port === 8080,
-      )?.domain
-    : null;
+  // const domainFor8080 = isTargetInstance
+  //   ? projectDomainsData?.proxy_domains?.find(
+  //       (domain) => domain.target_port === 8080,
+  //     )?.domain
+  //   : null;
+  //
+  // const domainFor4096 = isTargetInstance
+  //   ? projectDomainsData?.proxy_domains?.find(
+  //       (domain) => domain.target_port === 4096,
+  //     )?.domain
+  //   : null;
+  //
+  // const Instance_IP = instance?.public_ip || "localhost";
+  const domainFor8080 = "localhost:8080";
+  const domainFor4096 = "localhost:4096";
+  const Instance_IP = "localhost";
 
-  const domainFor4096 = isTargetInstance
-    ? projectDomainsData?.proxy_domains?.find(
-        (domain) => domain.target_port === 4096,
-      )?.domain
-    : null;
-
-  const Instance_IP = instance?.public_ip || "localhost";
+  console.log(domainFor4096, domainFor8080, Instance_IP);
   // const Instance_IP = "localhost";
   const terminalHealthCheckUrl = domainFor8080
-    ? `https://${domainFor8080}`
+    ? `http://${domainFor8080}`
     : null;
   const sshCommand = instance?.public_ip
     ? `ssh ubuntu@${String(Instance_IP)}`
@@ -115,7 +120,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     }
     try {
       const rebootUrl = domainFor8080
-        ? `https://${domainFor8080}/reboot`
+        ? `http://${domainFor8080}/reboot`
         : `http://${Instance_IP}:8080/reboot`;
       const res = await axios.post(rebootUrl, {});
       if (res.status === 200) {
