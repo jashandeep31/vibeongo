@@ -1,9 +1,8 @@
 package wsfunctions
 
 import (
-	"context"
 	"encoding/json"
-	"fmt"
+	"os"
 	"sort"
 	"sync"
 
@@ -11,13 +10,12 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
-func StoreWsHandler(ctx context.Context, c *websocket.Conn, writeMu *sync.Mutex, msg []byte, store *store.SessionStore) {
+func StoreWsHandler(c *websocket.Conn, writeMu *sync.Mutex, msg []byte, store *store.SessionStore) (*store.TerminalSession, bool, error) {
 	var parsedBaseMesasge struct {
 		Type string          `json:"type"`
 		Data json.RawMessage `json:"data"`
 	}
 	err := json.Unmarshal(msg, &parsedBaseMesasge)
-	fmt.Println(parsedBaseMesasge)
 	if err == nil {
 		switch parsedBaseMesasge.Type {
 		case "switchSession":
@@ -27,46 +25,44 @@ func StoreWsHandler(ctx context.Context, c *websocket.Conn, writeMu *sync.Mutex,
 
 			err := json.Unmarshal(parsedBaseMesasge.Data, &parsedData)
 			if err != nil {
-				return
+				return nil, true, err
 			}
-			fmt.Println(parsedData.SessionId, "parsed id")
-			store.SwitchSession(parsedData.SessionId)
+			if err := store.SwitchSession(parsedData.SessionId); err != nil {
+				return nil, true, err
+			}
+			session, ok := store.GetSession(parsedData.SessionId)
+			if !ok {
+				return nil, true, os.ErrNotExist
+			}
 			SendSessions(c, store, writeMu)
-			UpdatePty(store, c, writeMu, msg)
+			return session, true, nil
 
 		case "newSession":
-			store.CreateSession()
-			fmt.Println(store.ActiveId)
+			session, err := store.CreateSession()
+			if err != nil {
+				return nil, true, err
+			}
 			SendSessions(c, store, writeMu)
-			fmt.Println(store.ActiveId)
-			UpdatePty(store, c, writeMu, msg)
+			return session, true, nil
 		}
 	}
+	return nil, false, nil
 }
 
-func UpdatePty(store *store.SessionStore, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte) error {
+func SendPtyUpdate(session *store.TerminalSession, conn *websocket.Conn, writeMu *sync.Mutex) error {
 	writeMu.Lock()
-	defer writeMu.Unlock()
-	conn.WriteJSON(struct {
-		Type string `json:"type"`
+	err := conn.WriteJSON(struct {
+		Type      string `json:"type"`
+		SessionId string `json:"sessionId"`
 	}{
-		Type: "ptyUpdate",
+		Type:      "ptyUpdate",
+		SessionId: session.ID,
 	})
-	session, _ := store.GetSession(store.ActiveId)
-	if err := StartPTY(session); err != nil {
-		writeMu.Lock()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
-		writeMu.Unlock()
+	writeMu.Unlock()
+	if err != nil {
 		return err
 	}
 
-	session.Mu.Lock()
-	if len(session.Buffer) > 0 {
-		writeMu.Lock()
-		_ = conn.WriteMessage(websocket.BinaryMessage, session.Buffer)
-		writeMu.Unlock()
-	}
-	session.Mu.Unlock()
 	return nil
 }
 
@@ -90,7 +86,6 @@ func SendSessions(c *websocket.Conn, store *store.SessionStore, writeMu *sync.Mu
 	}{
 		Type:     "sessionIds",
 		Ids:      sessionIds,
-		ActiveId: store.ActiveId,
+		ActiveId: store.GetActiveID(),
 	})
-	fmt.Println(store.ActiveId)
 }
