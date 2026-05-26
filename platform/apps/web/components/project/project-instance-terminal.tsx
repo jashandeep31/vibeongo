@@ -116,9 +116,6 @@ export function ProjectInstanceTerminal({
 
     const ws = new WebSocket(serverUrl);
 
-    ws.onopen = () => {
-      setWebSocketConnection(ws);
-    };
     const sendTerminalSize = () => {
       if (ws.readyState !== WebSocket.OPEN) return;
       ws.send(
@@ -159,6 +156,7 @@ export function ProjectInstanceTerminal({
     window.addEventListener("resize", scheduleFit);
 
     ws.onopen = () => {
+      setWebSocketConnection(ws);
       scheduleFit();
     };
 
