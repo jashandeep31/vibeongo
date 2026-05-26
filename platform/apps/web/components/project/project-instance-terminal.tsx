@@ -42,6 +42,7 @@ export function ProjectInstanceTerminal({
     string | null
   >(null);
   const terminalRef = useRef<HTMLDivElement | null>(null);
+  const isReplayingPtyBufferRef = useRef(false);
   const [connectionStatus, setConnectionStatus] =
     useState<TerminalConnectionStatus>("checking");
   const [refreshToken, setRefreshToken] = useState(0);
@@ -155,6 +156,18 @@ export function ProjectInstanceTerminal({
 
     window.addEventListener("resize", scheduleFit);
 
+    const writeToTerminal = (
+      data: string | Uint8Array,
+      options?: { replay?: boolean },
+    ) => {
+      term.write(data, () => {
+        if (options?.replay) {
+          isReplayingPtyBufferRef.current = false;
+          scheduleFit();
+        }
+      });
+    };
+
     ws.onopen = () => {
       setWebSocketConnection(ws);
       scheduleFit();
@@ -186,6 +199,7 @@ export function ProjectInstanceTerminal({
             if (typeof parsed.sessionId === "string") {
               setActiveTerminalSessionId(parsed.sessionId);
             }
+            isReplayingPtyBufferRef.current = parsed.hasBuffer === true;
             term.reset();
             scheduleFit();
             return;
@@ -194,18 +208,20 @@ export function ProjectInstanceTerminal({
         } catch {
           // not json, fall through
         }
-        term.write(event.data);
+        writeToTerminal(event.data);
         return;
       }
 
       if (event.data instanceof ArrayBuffer) {
-        term.write(new Uint8Array(event.data));
+        const isReplay = isReplayingPtyBufferRef.current;
+        writeToTerminal(new Uint8Array(event.data), { replay: isReplay });
         return;
       }
 
       if (event.data instanceof Blob) {
         const buffer = await event.data.arrayBuffer();
-        term.write(new Uint8Array(buffer));
+        const isReplay = isReplayingPtyBufferRef.current;
+        writeToTerminal(new Uint8Array(buffer), { replay: isReplay });
       }
     };
 
@@ -219,6 +235,10 @@ export function ProjectInstanceTerminal({
     };
 
     term.onData((data) => {
+      if (isReplayingPtyBufferRef.current) {
+        return;
+      }
+
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(data);
       }

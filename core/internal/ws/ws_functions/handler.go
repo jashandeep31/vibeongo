@@ -64,11 +64,14 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 		return err
 	}
 
-	// pipe the pty to the websocket meand sending the output of the pty/terminal to hte websocket
-	pipeSession(session)
+	SendSessions(conn, terminalStore, &writeMu)
+	if err := SendPtyUpdate(session, conn, &writeMu); err != nil {
+		return err
+	}
 	WritePTYBufferToWebSocket(conn, &writeMu, session)
 
-	SendSessions(conn, terminalStore, &writeMu)
+	// pipe the pty to the websocket meand sending the output of the pty/terminal to hte websocket
+	pipeSession(session)
 	// handling all the messages
 	for {
 		_, msg, err := conn.ReadMessage()
@@ -88,11 +91,11 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 				writeMu.Unlock()
 				return err
 			}
-			pipeSession(selectedSession)
 			if err := SendPtyUpdate(selectedSession, conn, &writeMu); err != nil {
 				return err
 			}
 			WritePTYBufferToWebSocket(conn, &writeMu, selectedSession)
+			pipeSession(selectedSession)
 		}
 		if handled {
 			continue
