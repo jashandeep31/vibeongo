@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { Copy, RotateCcw } from "lucide-react";
+import { Copy, Plus, RotateCcw } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { toast } from "sonner";
 import "@xterm/xterm/css/xterm.css";
@@ -182,6 +182,9 @@ export function ProjectInstanceTerminal({
                 "Parsed ids are not here , Error in the  backend server",
               );
             }
+          } else if (parsed.type == "ptyUpdate") {
+            console.log("Received ptyUpdate:", parsed);
+            return;
           }
           console.log("Received:", parsed);
         } catch {
@@ -300,7 +303,9 @@ export function ProjectInstanceTerminal({
                 webSocketConnection?.send(
                   JSON.stringify({
                     type: "switchSession",
-                    sessionId: id,
+                    data: {
+                      sessionId: id,
+                    },
                   }),
                 );
               }}
@@ -308,6 +313,18 @@ export function ProjectInstanceTerminal({
               Terminal {index}
             </Button>
           ))}
+          <Button
+            variant={"outline"}
+            onClick={() => {
+              webSocketConnection?.send(
+                JSON.stringify({
+                  type: "newSession",
+                }),
+              );
+            }}
+          >
+            Add <Plus className="h-4 w-4" />
+          </Button>
         </div>
         <div
           ref={terminalRef}
