@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
+import { ProjectSessionsList } from "@/components/project-sessions/project-sessions-list";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialog";
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
@@ -18,6 +19,7 @@ import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
+import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 
 type InstanceFilter = "running" | "terminated" | "pending" | "all";
 
@@ -39,6 +41,14 @@ export default function ClientView({ projectId }: { projectId: string }) {
     isError: isInstancesError,
     refetch: refetchInstances,
   } = useGetInstancesByProjectId(projectId);
+
+  const {
+    data: sessions,
+    isLoading: isSessionsLoading,
+    isError: isSessionsError,
+    refetch: refetchSessions,
+  } = useGetProjectSessions();
+
   const deleteProjectMutation = useDeleteProject();
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
@@ -73,6 +83,9 @@ export default function ClientView({ projectId }: { projectId: string }) {
   }
 
   const projectInstances = Array.isArray(instances) ? instances : [];
+  const projectSessions = Array.isArray(sessions)
+    ? sessions.filter((session) => session.project_id === projectId)
+    : [];
   const filteredInstances = projectInstances.filter((instance) => {
     if (instanceFilter === "all") {
       return true;
@@ -96,6 +109,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
               projectName={project.name}
               onSuccess={() => {
                 void refetchInstances();
+                void refetchSessions();
               }}
             />
             <ConfirmationDialog
@@ -199,6 +213,21 @@ export default function ClientView({ projectId }: { projectId: string }) {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <h2 className="text-2xl font-semibold tracking-tight">Sessions</h2>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Project sessions and their currently running instances.
+          </p>
+        </div>
+
+        <ProjectSessionsList
+          sessions={projectSessions}
+          isLoading={isSessionsLoading}
+          isError={isSessionsError}
+        />
       </div>
     </div>
   );
