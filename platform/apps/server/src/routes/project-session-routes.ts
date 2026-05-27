@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
+  getProjectSessionById,
   getUserProjectSessions,
   resumeProjectSession,
 } from "../controllers/project-sessions/project-sessions.js";
@@ -8,6 +9,9 @@ import {
 const routes: Router = Router();
 
 routes.route("/").get(checkAuthorization(["all"]), getUserProjectSessions);
-routes.route("/:id").post(checkAuthorization(["all"]), resumeProjectSession);
+routes
+  .route("/:id")
+  .post(checkAuthorization(["all"]), resumeProjectSession)
+  .get(checkAuthorization(["all"]), getProjectSessionById);
 
 export const projectSessionRoutes = routes;

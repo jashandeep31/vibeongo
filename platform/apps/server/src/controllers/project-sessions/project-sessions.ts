@@ -13,6 +13,7 @@ import {
   sshKeys,
   projectDomainRouting,
   withPagination,
+  projectSessionTasks,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -140,5 +141,49 @@ export const resumeProjectSession = catchAsync(
       .where(eq(projectDomainRouting.project_id, project.id));
 
     res.status(200).json({ message: "Successfully resumed the instance" });
+  },
+);
+
+export const getProjectSessionById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication failed", 401);
+
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse({
+        ...req.params,
+      });
+
+    const rows = await db
+      .select()
+      .from(projectSessions)
+      .leftJoin(
+        projectSessionTasks,
+        eq(projectSessionTasks.project_session_id, id),
+      )
+      .leftJoin(
+        instances,
+        and(
+          eq(instances.project_session_id, id),
+          eq(instances.state, "running"),
+        ),
+      )
+      .where(
+        and(eq(projectSessions.user_id, user.id), eq(projectSessions.id, id)),
+      );
+
+    const session = rows[0]?.project_session;
+    if (!session) throw new AppError("Project session not found", 404);
+
+    const sessionWithTasks = {
+      ...session,
+      instances: rows.map((row) => row.instances).filter(Boolean),
+      tasks: rows.map((row) => row.project_session_tasks).filter(Boolean),
+    };
+
+    res.status(200).json({ data: sessionWithTasks });
   },
 );
