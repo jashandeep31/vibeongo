@@ -29,7 +29,7 @@ func init() {
 	// run the tasks in the opencode
 	rootCmd.AddCommand(TaskCmd())
 	// getting config
-	rootCmd.AddCommand(GetconfigCmd())
+	rootCmd.AddCommand(GetKeysCmd())
 	// setting up hte session as per the overview file
 	rootCmd.AddCommand(InitializeSessionFromOverviewCmd())
 	// Updating the overview

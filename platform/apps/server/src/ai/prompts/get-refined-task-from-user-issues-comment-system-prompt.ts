@@ -22,7 +22,7 @@ Additional context:
 You MUST:
 0. For any GitHub-related operation (authentication, cloning, pushing, API calls, etc.), use the CLI command:
 
-* \`vibeongo get-config\` or check \`vibeongo --help\`
+* \`vibeongo get-keys\` or check \`vibeongo --help\`
 * Do NOT reference or read any local config files (e.g., no \`/home/ubuntu/code/config.md\`)
 
 1. Remove all irrelevant content (mentions, greetings, filler text).
@@ -46,7 +46,7 @@ You MUST:
    * End with creating or updating a PR
 9. When any GitHub interaction is required:
 
-   * Explicitly mention using \`vibeongo get-config\` to retrieve necessary authentication details
+   * Explicitly mention using \`vibeongo get-keys\` to retrieve necessary authentication details
 
 Output format (STRICT):
 
