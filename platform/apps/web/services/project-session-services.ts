@@ -1,11 +1,16 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { instances, projectSessions } from "@repo/db";
+import { instances, projectSessionTasks, projectSessions } from "@repo/db";
 import axios from "axios";
 
 export type ProjectSessionWithRunningInstances =
   typeof projectSessions.$inferSelect & {
     instances: (typeof instances.$inferSelect)[];
   };
+
+export type ProjectSessionDetails = typeof projectSessions.$inferSelect & {
+  instances: (typeof instances.$inferSelect)[];
+  tasks: (typeof projectSessionTasks.$inferSelect)[];
+};
 
 export type GetProjectSessionsParams = {
   projectId?: string;
@@ -45,4 +50,12 @@ export const resumeProjectSession = async (id: string) => {
     },
   );
   return res.data;
+};
+export const getProjectSessionById = async (
+  id: string,
+): Promise<ProjectSessionDetails> => {
+  const res = await axios.get(`${BACKEND_URL}/api/v1/project-sessions/${id}`, {
+    withCredentials: true,
+  });
+  return res.data.data;
 };
