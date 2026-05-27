@@ -10,10 +10,10 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// GetconfigCmd gives token and other config related to workspace
-func GetconfigCmd() *cobra.Command {
+// GetKeysCmd gives token and other config related to workspace
+func GetKeysCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get-config",
+		Use:   "get-keys",
 		Short: "Display workspace configuration and authentication tokens",
 		Long:  "Retrieve and display the current workspace configuration, including the API authentication token and repository-specific access tokens. Use this to manually authenticate Git or other services.",
 		RunE: func(cmd *cobra.Command, args []string) error {

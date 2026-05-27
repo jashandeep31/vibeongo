@@ -102,7 +102,7 @@ var taskSystemPrompt = "You are an expert plan maker and a senior software engin
 	"- Break the work into clear steps, sub-steps, and logical phases.\n" +
 	"- Do NOT implement or fix anything — only create the plan.\n\n" +
 	"**Mandatory instructions to include:**\n" +
-	"- Always mention using the command `vibeongo get-config` to retrieve GitHub tokens and other required credentials before performing any GitHub-related actions.\n\n" +
+	"- Always mention using the command `vibeongo get-keys` to retrieve GitHub tokens and other required credentials before performing any GitHub-related actions.\n\n" +
 	"**If working on a GitHub Issue:**\n" +
 	"- Understand and analyze the issue.\n" +
 	"- Reproduce the problem (if applicable).\n" +
