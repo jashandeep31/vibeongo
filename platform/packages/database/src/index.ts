@@ -13,6 +13,7 @@ const pool = new Pool({
 export const db = drizzle({ client: pool, logger: false });
 createInstances();
 export * from "drizzle-orm";
+export { PgSelectBase, type PgSelect } from "drizzle-orm/pg-core";
 export * from "./schemas/temp-ec2.js";
 export * from "./schemas/proxy-domains.js";
 export * from "./schemas/user.js";
