@@ -56,3 +56,34 @@ export const deleteSshKey = catchAsync(async (req: Request, res: Response) => {
     message: "SSH key deleted successfully",
   });
 });
+
+export const updateSshKey = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) throw new AppError("Authentication is required", 401);
+
+  const { id, value } = z
+    .object({
+      id: z.string(),
+      value: z.string(),
+    })
+    .parse({
+      value: req.body.value,
+      id: req.params.id,
+    });
+
+  const result = await db
+    .update(sshKeys)
+    .set({
+      value,
+    })
+    .where(and(eq(sshKeys.user_id, user.id), eq(sshKeys.id, id)))
+    .returning();
+
+  if (result.length === 0) {
+    throw new AppError("SSH key not found or unauthorized", 404);
+  }
+
+  res.status(201).json({
+    message: "SSH key is updated successfully",
+  });
+});

@@ -24,3 +24,20 @@ export const deleteSshKey = async (id: string) => {
   });
   return res.status;
 };
+
+export const updateSshKey = async ({
+  id,
+  value,
+}: {
+  id: string;
+  value: string;
+}) => {
+  const res = await axios.post(
+    `${BACKEND_URL}/api/v1/users/ssh-keys/${id}`,
+    { value },
+    {
+      withCredentials: true,
+    },
+  );
+  return res.status;
+};
