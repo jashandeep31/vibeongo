@@ -12,18 +12,35 @@ import {
   projectSshKeys,
   sshKeys,
   projectDomainRouting,
+  PgSelect,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
+import { commonFilterSchema } from "@repo/shared";
 
-export const getUserProjectSesssion = catchAsync(
+// TODO: Move to the cursor based its heavy for db
+function withPagination<T extends PgSelect>(q: T, page: number, limit: number) {
+  return q.limit(limit).offset((page - 1) * limit);
+}
+
+export const getUserProjectSessions = catchAsync(
   async (req: Request, res: Response) => {
+    const filters = commonFilterSchema
+      .extend({
+        projectId: z.string().optional(),
+      })
+      .parse(req.query);
+
     const user = req.user;
     if (!user) throw new AppError("User not found", 404);
 
-    const rows = await db
+    const where = [];
+    if (filters.projectId) {
+      where.push(eq(projects.id, filters.projectId));
+    }
+    const query = db
       .select()
       .from(projectSessions)
       .leftJoin(
@@ -31,10 +48,15 @@ export const getUserProjectSesssion = catchAsync(
         and(
           eq(instances.project_session_id, projectSessions.id),
           eq(instances.state, "running"),
+          ...where,
         ),
       )
       .where(eq(projectSessions.user_id, user.id))
-      .orderBy(desc(projectSessions.created_at));
+      .orderBy(desc(projectSessions.created_at))
+      .$dynamic();
+
+    withPagination(query, filters.page, filters.limit);
+    const rows = await query;
 
     const sessions = new Map<
       string,
