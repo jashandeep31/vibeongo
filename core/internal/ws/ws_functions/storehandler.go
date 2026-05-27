@@ -44,6 +44,19 @@ func StoreWsHandler(c *websocket.Conn, writeMu *sync.Mutex, msg []byte, store *s
 			}
 			SendSessions(c, store, writeMu)
 			return session, true, nil
+
+		case "endSession":
+			var parsedData struct {
+				SessionId string `json:"sessionId"`
+			}
+			err := json.Unmarshal(parsedBaseMesasge.Data, &parsedData)
+			if err != nil {
+				return nil, true, err
+			}
+			store.DelSession(parsedData.SessionId)
+			session, err := store.GetOrCreateSession()
+			SendSessions(c, store, writeMu)
+			return session, true, nil
 		}
 	}
 	return nil, false, nil

@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { Copy, Plus, RotateCcw } from "lucide-react";
+import { Copy, Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
+import { ButtonGroup } from "@repo/ui/components/button-group";
 import { toast } from "sonner";
 import "@xterm/xterm/css/xterm.css";
 
@@ -24,12 +25,12 @@ export function ProjectInstanceTerminal({
   showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
   const serverUrl = domain
-    ? `wss://${domain}/ws`
+    ? `ws://${domain}/ws`
     : publicIp
       ? `ws://${String(publicIp)}:8080/ws`
       : null;
   const healthCheckUrl = domain
-    ? `https://${domain}`
+    ? `http://${domain}`
     : publicIp
       ? `http://${String(publicIp)}:8080`
       : null;
@@ -310,36 +311,20 @@ export function ProjectInstanceTerminal({
         </div>
       )}
 
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight">Terminal</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Interactive session connected through WebSocket.
-        </p>
-      </div>
-
-      <div>
-        <div>
-          {terminalSessionIds.map((id, index) => (
-            <Button
-              key={id}
-              variant={id === activeTerminalSessionId ? "default" : "outline"}
-              onClick={() => {
-                setActiveTerminalSessionId(id);
-                webSocketConnection?.send(
-                  JSON.stringify({
-                    type: "switchSession",
-                    data: {
-                      sessionId: id,
-                    },
-                  }),
-                );
-              }}
-            >
-              Terminal {index}
-            </Button>
-          ))}
+      <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
+        <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h2 className="text-base font-semibold tracking-tight">
+              Terminal
+            </h2>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              Interactive session connected through WebSocket.
+            </p>
+          </div>
           <Button
-            variant={"outline"}
+            variant="outline"
+            size="sm"
+            className="w-fit"
             onClick={() => {
               webSocketConnection?.send(
                 JSON.stringify({
@@ -348,14 +333,67 @@ export function ProjectInstanceTerminal({
               );
             }}
           >
-            Add <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4" />
+            Add terminal
           </Button>
         </div>
-        <div
-          ref={terminalRef}
-          id="terminal"
-          className="h-[80vh] w-[80vw] rounded-md bg-[#1e1e1e] p-2"
-        />
+
+        <div className="border-b bg-muted/40 px-3 py-2">
+          <div className="flex flex-wrap items-center gap-1.5">
+            {terminalSessionIds.map((id, index) => {
+              const isActive = id === activeTerminalSessionId;
+
+              return (
+                <ButtonGroup key={id}>
+                  <Button
+                    variant={isActive ? "default" : "ghost"}
+                    size="sm"
+                    className="min-w-24 justify-start"
+                    onClick={() => {
+                      setActiveTerminalSessionId(id);
+                      webSocketConnection?.send(
+                        JSON.stringify({
+                          type: "switchSession",
+                          data: {
+                            sessionId: id,
+                          },
+                        }),
+                      );
+                    }}
+                  >
+                    Terminal {index + 1}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={isActive ? "default" : "ghost"}
+                    size="icon-sm"
+                    aria-label={`Close terminal ${index + 1}`}
+                    onClick={() => {
+                      webSocketConnection?.send(
+                        JSON.stringify({
+                          type: "endSession",
+                          data: {
+                            sessionId: id,
+                          },
+                        }),
+                      );
+                    }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </ButtonGroup>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="bg-[#111111] p-2">
+          <div
+            ref={terminalRef}
+            id="terminal"
+            className="h-[min(70vh,720px)] min-h-[420px] w-full rounded-md bg-[#1e1e1e] p-2"
+          />
+        </div>
       </div>
     </div>
   );

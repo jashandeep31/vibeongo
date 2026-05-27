@@ -135,6 +135,13 @@ func (s *SessionStore) GetOrCreateSession() (*TerminalSession, error) {
 			return s.sessions[s.ActiveId], nil
 		}
 	}
+	// getting random session if we can
+	for id := range s.sessions {
+		if s.sessions[id] != nil {
+			s.ActiveId = id
+			return s.sessions[id], nil
+		}
+	}
 	return s.createSession()
 }
 
