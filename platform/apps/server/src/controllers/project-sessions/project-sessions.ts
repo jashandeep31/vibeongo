@@ -22,7 +22,7 @@ import { commonFilterSchema } from "@repo/shared";
 
 // TODO: Move to the cursor based its heavy for db
 function withPagination<T extends PgSelect>(q: T, page: number, limit: number) {
-  return q.limit(limit).offset((page - 1) * limit);
+  return q.limit(limit + 1).offset((page - 1) * limit);
 }
 
 export const getUserProjectSessions = catchAsync(
@@ -76,7 +76,11 @@ export const getUserProjectSessions = catchAsync(
 
     const refinedData = Array.from(sessions.values());
 
-    res.status(200).json({ data: refinedData });
+    res.status(200).json({
+      data: refinedData,
+      page: filters.page,
+      hasNext: refinedData.length > filters.limit,
+    });
   },
 );
 
