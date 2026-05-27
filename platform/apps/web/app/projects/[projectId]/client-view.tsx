@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
 import { ProjectSessionsList } from "@/components/project-sessions/project-sessions-list";
+import { PaginationControls } from "@/components/pagination-controls";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialog";
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
@@ -22,6 +23,7 @@ import axios from "axios";
 import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 
 type InstanceFilter = "running" | "terminated" | "pending" | "all";
+const PROJECT_SESSIONS_LIMIT = 10;
 
 const formatDate = (value: unknown) => {
   if (!value) return "N/A";
@@ -34,6 +36,7 @@ const formatDate = (value: unknown) => {
 
 export default function ClientView({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const [sessionPage, setSessionPage] = useState(1);
   const { data: project, isLoading, isError } = useGetProjectById(projectId);
   const {
     data: instances,
@@ -47,7 +50,11 @@ export default function ClientView({ projectId }: { projectId: string }) {
     isLoading: isSessionsLoading,
     isError: isSessionsError,
     refetch: refetchSessions,
-  } = useGetProjectSessions();
+  } = useGetProjectSessions({
+    projectId,
+    page: sessionPage,
+    limit: PROJECT_SESSIONS_LIMIT,
+  });
 
   const deleteProjectMutation = useDeleteProject();
   const [instanceFilter, setInstanceFilter] =
@@ -83,9 +90,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
   }
 
   const projectInstances = Array.isArray(instances) ? instances : [];
-  const projectSessions = Array.isArray(sessions)
-    ? sessions.filter((session) => session.project_id === projectId)
-    : [];
+  const projectSessions = sessions?.data ?? [];
   const filteredInstances = projectInstances.filter((instance) => {
     if (instanceFilter === "all") {
       return true;
@@ -227,6 +232,17 @@ export default function ClientView({ projectId }: { projectId: string }) {
           sessions={projectSessions}
           isLoading={isSessionsLoading}
           isError={isSessionsError}
+        />
+        <PaginationControls
+          page={sessions?.page ?? sessionPage}
+          hasNext={sessions?.hasNext}
+          isLoading={isSessionsLoading}
+          onPrevious={() => {
+            setSessionPage((page) => Math.max(1, page - 1));
+          }}
+          onNext={() => {
+            setSessionPage((page) => page + 1);
+          }}
         />
       </div>
     </div>

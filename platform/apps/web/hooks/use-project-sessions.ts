@@ -1,13 +1,14 @@
 import {
+  GetProjectSessionsParams,
   getProjectSessions,
   resumeProjectSession,
 } from "@/services/project-session-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-export const useGetProjectSessions = () =>
+export const useGetProjectSessions = (params: GetProjectSessionsParams = {}) =>
   useQuery({
-    queryKey: ["project-sessions"],
-    queryFn: getProjectSessions,
+    queryKey: ["project-sessions", params],
+    queryFn: () => getProjectSessions(params),
   });
 
 export const useResumeProjectSession = () => {

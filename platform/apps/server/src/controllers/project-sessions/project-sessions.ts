@@ -12,18 +12,13 @@ import {
   projectSshKeys,
   sshKeys,
   projectDomainRouting,
-  PgSelect,
+  withPagination,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema } from "@repo/shared";
-
-// TODO: Move to the cursor based its heavy for db
-function withPagination<T extends PgSelect>(q: T, page: number, limit: number) {
-  return q.limit(limit + 1).offset((page - 1) * limit);
-}
 
 export const getUserProjectSessions = catchAsync(
   async (req: Request, res: Response) => {
@@ -36,26 +31,31 @@ export const getUserProjectSessions = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("User not found", 404);
 
-    const where = [];
+    const where = [eq(projectSessions.user_id, user.id)];
     if (filters.projectId) {
-      where.push(eq(projects.id, filters.projectId));
+      where.push(eq(projectSessions.project_id, filters.projectId));
     }
-    const query = db
-      .select()
-      .from(projectSessions)
-      .leftJoin(
-        instances,
-        and(
-          eq(instances.project_session_id, projectSessions.id),
-          eq(instances.state, "running"),
-          ...where,
-        ),
-      )
-      .where(eq(projectSessions.user_id, user.id))
-      .orderBy(desc(projectSessions.created_at))
-      .$dynamic();
 
-    withPagination(query, filters.page, filters.limit);
+    const query = withPagination(
+      db
+        .select({
+          projectSession: projectSessions,
+          instance: instances,
+        })
+        .from(projectSessions)
+        .leftJoin(
+          instances,
+          and(
+            eq(instances.project_session_id, projectSessions.id),
+            eq(instances.state, "running"),
+          ),
+        )
+        .where(and(...where))
+        .orderBy(desc(projectSessions.created_at))
+        .$dynamic(),
+      filters.page,
+      filters.limit,
+    );
     const rows = await query;
 
     const sessions = new Map<
@@ -65,21 +65,22 @@ export const getUserProjectSessions = catchAsync(
       }
     >();
     for (const row of rows) {
-      const s = row.project_session;
+      const s = row.projectSession;
       if (!sessions.has(s.id)) {
         sessions.set(s.id, { ...s, instances: [] });
       }
-      if (row.instances) {
-        sessions.get(row.project_session.id)?.instances.push(row.instances);
+      if (row.instance) {
+        sessions.get(s.id)?.instances.push(row.instance);
       }
     }
 
-    const refinedData = Array.from(sessions.values());
+    const sessionsWithExtra = Array.from(sessions.values());
+    const refinedData = sessionsWithExtra.slice(0, filters.limit);
 
     res.status(200).json({
       data: refinedData,
       page: filters.page,
-      hasNext: refinedData.length > filters.limit,
+      hasNext: sessionsWithExtra.length > filters.limit,
     });
   },
 );
