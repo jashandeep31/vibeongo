@@ -6,6 +6,7 @@ import { Terminal } from "@xterm/xterm";
 import { Copy, Plus, RotateCcw, X } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { ButtonGroup } from "@repo/ui/components/button-group";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { toast } from "sonner";
 import "@xterm/xterm/css/xterm.css";
 
@@ -363,12 +364,12 @@ export function ProjectInstanceTerminal({
                   >
                     Terminal {index + 1}
                   </Button>
-                  <Button
-                    type="button"
-                    variant={isActive ? "default" : "ghost"}
-                    size="icon-sm"
-                    aria-label={`Close terminal ${index + 1}`}
-                    onClick={() => {
+                  <ConfirmationDialog
+                    title={`Close terminal ${index + 1}?`}
+                    description="This will end the terminal session. Any running command in this terminal will be stopped."
+                    confirmText="Close terminal"
+                    isDestructive
+                    onConfirm={() => {
                       webSocketConnection?.send(
                         JSON.stringify({
                           type: "endSession",
@@ -379,8 +380,15 @@ export function ProjectInstanceTerminal({
                       );
                     }}
                   >
-                    <X className="h-3.5 w-3.5" />
-                  </Button>
+                    <Button
+                      type="button"
+                      variant={isActive ? "default" : "ghost"}
+                      size="icon-sm"
+                      aria-label={`Close terminal ${index + 1}`}
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </ConfirmationDialog>
                 </ButtonGroup>
               );
             })}
