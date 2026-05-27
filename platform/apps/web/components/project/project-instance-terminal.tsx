@@ -26,14 +26,14 @@ export function ProjectInstanceTerminal({
   showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
   const serverUrl = domain
-    ? `ws://${domain}/ws`
+    ? `wss://${domain}/ws`
     : publicIp
-      ? `ws://${String(publicIp)}:8080/ws`
+      ? `wss://${String(publicIp)}:8080/ws`
       : null;
   const healthCheckUrl = domain
-    ? `http://${domain}`
+    ? `https://${domain}`
     : publicIp
-      ? `http://${String(publicIp)}:8080`
+      ? `https://${String(publicIp)}:8080`
       : null;
   const sshCommand = publicIp ? `ssh ubuntu@${String(publicIp)}` : null;
 
@@ -312,34 +312,17 @@ export function ProjectInstanceTerminal({
         </div>
       )}
 
-      <div className="overflow-hidden rounded-lg border bg-background shadow-sm">
-        <div className="flex flex-col gap-3 border-b px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="bg-background overflow-hidden rounded-lg border shadow-sm">
+        <div className="border-b px-4 py-3">
           <div>
-            <h2 className="text-base font-semibold tracking-tight">
-              Terminal
-            </h2>
+            <h2 className="text-base font-semibold tracking-tight">Terminal</h2>
             <p className="text-muted-foreground mt-0.5 text-sm">
               Interactive session connected through WebSocket.
             </p>
           </div>
-          <Button
-            variant="outline"
-            size="sm"
-            className="w-fit"
-            onClick={() => {
-              webSocketConnection?.send(
-                JSON.stringify({
-                  type: "newSession",
-                }),
-              );
-            }}
-          >
-            <Plus className="h-4 w-4" />
-            Add terminal
-          </Button>
         </div>
 
-        <div className="border-b bg-muted/40 px-3 py-2">
+        <div className="bg-muted/40 border-b px-3 py-2">
           <div className="flex flex-wrap items-center gap-1.5">
             {terminalSessionIds.map((id, index) => {
               const isActive = id === activeTerminalSessionId;
@@ -392,6 +375,20 @@ export function ProjectInstanceTerminal({
                 </ButtonGroup>
               );
             })}
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                webSocketConnection?.send(
+                  JSON.stringify({
+                    type: "newSession",
+                  }),
+                );
+              }}
+            >
+              <Plus className="h-4 w-4" />
+              Add terminal
+            </Button>
           </div>
         </div>
 

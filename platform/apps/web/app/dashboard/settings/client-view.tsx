@@ -2,8 +2,9 @@
 
 import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
+import { EditSshKeyDialog } from "@/components/dialogs/edit-ssh-key-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { Key, Trash2 } from "lucide-react";
+import { Key, Pencil, Trash2 } from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Button } from "@repo/ui/components/button";
 import { toast } from "sonner";
@@ -65,21 +66,33 @@ export default function ClientView() {
                     <h3 className="font-medium">{key.name}</h3>
                   </div>
                 </div>
-                <ConfirmationDialog
-                  title="Delete SSH Key"
-                  description="Are you sure you want to delete this SSH key? This action cannot be undone."
-                  confirmText="Delete"
-                  isDestructive
-                  onConfirm={() => handleDelete(key.id)}
-                >
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                <div className="flex items-center gap-1">
+                  <EditSshKeyDialog
+                    sshKeyId={key.id}
+                    sshKeyName={key.name}
+                    initialValue={key.value}
                   >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </ConfirmationDialog>
+                    <Button variant="ghost" size="icon" aria-label="Edit SSH key">
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                  </EditSshKeyDialog>
+                  <ConfirmationDialog
+                    title="Delete SSH Key"
+                    description="Are you sure you want to delete this SSH key? This action cannot be undone."
+                    confirmText="Delete"
+                    isDestructive
+                    onConfirm={() => handleDelete(key.id)}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      aria-label="Delete SSH key"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </ConfirmationDialog>
+                </div>
               </div>
             ))
           ) : (

@@ -4,6 +4,7 @@ import {
   createSshKey,
   getSshKeys,
   deleteSshKey,
+  updateSshKey,
 } from "../controllers/user/ssh-keys-controller.js";
 import { getUserMetadata } from "../controllers/user/metadata.js";
 
@@ -14,14 +15,11 @@ routes
   .post(checkAuthorization(["all"]), createSshKey)
   .get(checkAuthorization(["all"]), getSshKeys);
 
-routes
-  .route("/ssh-key")
-  .post(checkAuthorization(["all"]), createSshKey)
-  .get(checkAuthorization(["all"]), getSshKeys);
-
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 
-routes.route("/ssh-keys/:id").delete(checkAuthorization(["all"]), deleteSshKey);
-routes.route("/ssh-key/:id").delete(checkAuthorization(["all"]), deleteSshKey);
+routes
+  .route("/ssh-keys/:id")
+  .delete(checkAuthorization(["all"]), deleteSshKey)
+  .post(checkAuthorization(["all"]), updateSshKey);
 
 export const userRoutes = routes;
