@@ -12,7 +12,7 @@ import {
   CardTitle,
   CardFooter,
 } from "@repo/ui/components/card";
-import { Clock3, Play, Terminal, Server, Plus } from "lucide-react";
+import { ArrowUpRight, Clock3, Play, Terminal, Server, Plus } from "lucide-react";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -154,7 +154,12 @@ const SessionCard = memo(
             <div className="flex items-center gap-2">
               <Clock3 className="text-muted-foreground h-5 w-5" />
               <CardTitle className="truncate text-base" title={session.name}>
-                {session.name}
+                <Link
+                  href={`/dashboard/sessions/${session.id}`}
+                  className="hover:text-primary focus-visible:ring-ring rounded-sm outline-none focus-visible:ring-2"
+                >
+                  {session.name}
+                </Link>
               </CardTitle>
             </div>
             {isRunning ? (
@@ -191,7 +196,7 @@ const SessionCard = memo(
           )}
         </CardContent>
 
-        <CardFooter className="mt-auto border-t px-6 py-4 pt-4">
+        <CardFooter className="mt-auto grid gap-2 border-t px-6 py-4 pt-4 sm:grid-cols-[1fr_auto]">
           <Button
             className="w-full cursor-pointer"
             variant={isRunning ? "secondary" : "default"}
@@ -209,6 +214,12 @@ const SessionCard = memo(
                 Resume Session
               </>
             )}
+          </Button>
+          <Button variant="outline" asChild>
+            <Link href={`/dashboard/sessions/${session.id}`}>
+              Details
+              <ArrowUpRight className="h-4 w-4" />
+            </Link>
           </Button>
         </CardFooter>
       </Card>

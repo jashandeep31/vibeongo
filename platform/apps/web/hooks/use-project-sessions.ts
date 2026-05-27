@@ -1,5 +1,6 @@
 import {
   GetProjectSessionsParams,
+  getProjectSessionById,
   getProjectSessions,
   resumeProjectSession,
 } from "@/services/project-session-services";
@@ -9,6 +10,13 @@ export const useGetProjectSessions = (params: GetProjectSessionsParams = {}) =>
   useQuery({
     queryKey: ["project-sessions", params],
     queryFn: () => getProjectSessions(params),
+  });
+
+export const useGetProjectSessionById = (id: string) =>
+  useQuery({
+    queryKey: ["project-session", id],
+    queryFn: () => getProjectSessionById(id),
+    enabled: !!id,
   });
 
 export const useResumeProjectSession = () => {
