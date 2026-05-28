@@ -145,7 +145,7 @@ func (pm *ProxyManager) InvalidateProxy(host string) {
 
 // Cleanup the expired proxies
 func (pm *ProxyManager) cleanup() {
-	ticker := time.NewTicker(1 * time.Minute)
+	ticker := time.NewTicker(30 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {
 		now := time.Now()

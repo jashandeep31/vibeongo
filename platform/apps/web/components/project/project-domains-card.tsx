@@ -272,6 +272,11 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
               </div>
             </div>
           )}
+          <p className="text-muted-foreground mt-4 text-sm">
+            Allowed IPs or Domain changes can take upto{" "}
+            <span className="text-foreground font-bold">30Secs</span> to take
+            effect
+          </p>
         </CardContent>
       </Card>
     </div>
