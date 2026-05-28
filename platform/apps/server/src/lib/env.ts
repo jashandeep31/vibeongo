@@ -10,6 +10,7 @@ const envSchema = z.object({
     .enum(["development", "production", "test"])
     .default("development"),
   BACKEND_URL: z.string(),
+  DOMAIN: z.string(),
   AWS_EC2_ACCESS_KEY_ID: z.string(),
   AWS_EC2_ACCESS_KEY_SECRET: z.string(),
   SSH_KEY: z.string(),

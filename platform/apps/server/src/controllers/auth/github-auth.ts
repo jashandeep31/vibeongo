@@ -24,16 +24,18 @@ const githubEmailsSchema = z.array(
   }),
 );
 
-export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
-  const requestUrl = "https://github.com/login/oauth/authorize";
-  const params = {
-    client_id: env.GITHUB_CLIENT_ID,
-    redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
-    scope: "user:email",
-  };
+export const githubAuthUrl = catchAsync(
+  async (_req: Request, res: Response) => {
+    const requestUrl = "https://github.com/login/oauth/authorize";
+    const params = {
+      client_id: env.GITHUB_CLIENT_ID,
+      redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
+      scope: "user:email",
+    };
 
-  res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
-});
+    res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
+  },
+);
 
 export const githubAuthCallbackController = catchAsync(
   async (req: Request, res: Response) => {
@@ -118,11 +120,11 @@ export const githubAuthCallbackController = catchAsync(
     });
     res.cookie("session", token, {
       httpOnly: true,
-      secure: env.NODE_ENV === "production", // false in dev
+      secure: env.NODE_ENV === "development" ? false : true,
       sameSite: "lax",
       maxAge: sessionMaxAgeMs,
       path: "/",
-      ...(env.NODE_ENV === "production" ? { domain: ".vibeongo.com" } : {}),
+      ...(env.DOMAIN.includes("localhost") ? {} : { domain: `.${env.DOMAIN}` }),
     });
 
     res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");

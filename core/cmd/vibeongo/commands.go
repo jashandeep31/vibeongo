@@ -47,8 +47,10 @@ func InitializeSessionFromOverviewCmd() *cobra.Command {
 func UpdateSessionFromOverviewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update-session",
-		Short: "Save the current session's progress and context",
-		Long:  "Updates the project's session overview with your current progress. Provide a description of what you are working on (e.g., branch name, feature details) to ensure context is preserved for the next session.",
+		Short: "Save the current session's progress and context, after commmand directly pass the overview like vibeongo update-session <overview>",
+		Long: `Description:
+Execute a command on the server using natural language. Just pass the overview directly after the command, and the system will automatically process the arguments and context.
+Note: You only need to provide the task overview after the command. The backend automatically extracts and processes the required arguments from your input.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
