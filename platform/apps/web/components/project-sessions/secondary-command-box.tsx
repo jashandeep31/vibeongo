@@ -1,5 +1,6 @@
 "use client";
-import React, { useEffect } from "react";
+
+import React from "react";
 import {
   Command,
   CommandInput,
@@ -10,13 +11,14 @@ import {
   CommandList,
 } from "@repo/ui/components/command";
 import { useRouter } from "next/navigation";
-const NavCommandBox = () => {
+
+export const SecondaryCommandbox = () => {
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
 
   React.useEffect(() => {
     const down = (e: KeyboardEvent) => {
-      if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
+      if (e.key === "/") {
         e.preventDefault();
         setOpen((open) => !open);
       }
@@ -63,5 +65,3 @@ const NavCommandBox = () => {
     </CommandDialog>
   );
 };
-
-export default NavCommandBox;
