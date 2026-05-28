@@ -1,8 +1,12 @@
 "use client";
 
+import axios from "axios";
 import Link from "next/link";
-import { useMemo } from "react";
-import { useGetProjectSessionById } from "@/hooks/use-project-sessions";
+import { useCallback, useMemo, useState } from "react";
+import {
+  useGetProjectSessionById,
+  useResumeProjectSession,
+} from "@/hooks/use-project-sessions";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -12,7 +16,16 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
-import { CheckCircle2, Circle, Clock3, Server, Terminal } from "lucide-react";
+import {
+  CheckCircle2,
+  Circle,
+  Clock3,
+  Play,
+  Plus,
+  Server,
+  Terminal,
+} from "lucide-react";
+import { toast } from "sonner";
 
 const formatDate = (value: unknown) => {
   if (!value) return "N/A";
@@ -52,6 +65,8 @@ const uniqueById = <T extends { id: string }>(items: T[]) => {
 };
 
 const ClientView = ({ sessionId }: { sessionId: string }) => {
+  const resumeSessionMutation = useResumeProjectSession();
+  const [isResuming, setIsResuming] = useState(false);
   const {
     data: session,
     isLoading,
@@ -66,6 +81,23 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
     () => uniqueById(session?.tasks ?? []),
     [session?.tasks],
   );
+
+  const handleResume = useCallback(async () => {
+    setIsResuming(true);
+    const toastId = toast.loading("Launching instance...");
+    try {
+      await resumeSessionMutation.mutateAsync(sessionId);
+      toast.success("Instance launched successfully", { id: toastId });
+    } catch (error: unknown) {
+      console.error(error);
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to launch instance")
+        : "Failed to launch instance";
+      toast.error(message, { id: toastId });
+    } finally {
+      setIsResuming(false);
+    }
+  }, [resumeSessionMutation, sessionId]);
 
   if (isLoading) {
     return <div className="text-muted-foreground p-8">Loading session...</div>;
@@ -109,6 +141,24 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
             {session.description || "No description provided."}
           </p>
         </div>
+        <Button
+          className="cursor-pointer"
+          variant={isRunning ? "secondary" : "default"}
+          onClick={handleResume}
+          disabled={isResuming}
+        >
+          {isRunning ? (
+            <>
+              <Plus className="mr-2 h-4 w-4" />
+              Launch Another Instance
+            </>
+          ) : (
+            <>
+              <Play className="mr-2 h-4 w-4" />
+              Resume Session
+            </>
+          )}
+        </Button>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
