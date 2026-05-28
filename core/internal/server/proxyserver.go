@@ -2,9 +2,9 @@ package server
 
 import (
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
+	"slices"
 
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
@@ -32,6 +32,8 @@ func (s *ProxyServer) Start(addr string) error {
 	mux.HandleFunc("GET /proxy/list", s.listAll)
 	mux.HandleFunc("GET /proxy/login", s.handleLogin)
 	mux.HandleFunc("POST /proxy/add", s.handleAdd)
+
+	// reverse proxy
 	mux.Handle("/", s.reverseProxy())
 
 	return http.ListenAndServe(addr, mux)
@@ -44,10 +46,14 @@ func (s *ProxyServer) listAll(w http.ResponseWriter, r *http.Request) {
 
 // Return the version of the applcation along with the build time
 func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
+	remoteAddr := r.RemoteAddr
+	headers := r.Header
 	json.NewEncoder(w).Encode(struct {
 		Version string
 		Build   string
-	}{Version: AppVersion, Build: BuildTime})
+		Ip      string
+		Header  map[string][]string
+	}{Version: AppVersion, Build: BuildTime, Ip: remoteAddr, Header: headers})
 }
 
 // Takes the array of of hosts and invalidate all those in  the on go
@@ -108,7 +114,6 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 	return &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
 			proxyData, ok := s.store.GetProxyByHost(r.Host)
-			fmt.Println("proxyData", proxyData)
 			if !ok {
 				r.Header.Set("proxy-error", "404")
 				return
@@ -116,16 +121,47 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 			r.URL.Scheme = proxyData.Target.Scheme
 			r.Host = proxyData.Host
 			r.URL.Host = proxyData.Target.Host
+			allowed := checkIpIsAllowed(r.Header, proxyData.AllowedIPs)
+			if !allowed {
+				r.Header.Set("proxy-error", "403")
+				return
+			}
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			errorHeader := r.Header.Get("proxy-error")
-			if errorHeader == "404" {
+			switch errorHeader {
+			case "404":
 				w.WriteHeader(http.StatusNotFound)
 				w.Write([]byte("404"))
-			} else {
+			case "403":
+				w.WriteHeader(http.StatusForbidden)
+				json.NewEncoder(w).Encode(struct {
+					Error string
+				}{
+					Error: "Ip is not allowed please add to allowed ips, You Ip is " + getRealIp(r.Header),
+				})
+			default:
 				w.WriteHeader(http.StatusInternalServerError)
 				w.Write([]byte("500"))
 			}
 		},
 	}
+}
+
+func getRealIp(headers map[string][]string) string {
+	var XRealIp string
+	for k, v := range headers {
+		if k == "X-Real-Ip" {
+			XRealIp = v[0]
+		}
+	}
+	return XRealIp
+}
+
+func checkIpIsAllowed(headers map[string][]string, allowedIps []string) bool {
+	Ip := getRealIp(headers)
+	if Ip == "" {
+		return false
+	}
+	return slices.Contains(allowedIps, Ip)
 }
