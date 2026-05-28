@@ -1,7 +1,6 @@
 import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
-import { createInstances } from "./seed/instances.seed.js";
 import { PgSelect } from "drizzle-orm/pg-core";
 
 export type Transaction = Parameters<
@@ -26,7 +25,7 @@ export function withPagination<T extends PgSelect>(
   return q.limit(limit + 1).offset((page - 1) * limit);
 }
 export const db = drizzle({ client: pool, logger: false });
-createInstances();
+// createInstances();
 export * from "drizzle-orm";
 export { PgSelectBase, type PgSelect } from "drizzle-orm/pg-core";
 export * from "./schemas/temp-ec2.js";
