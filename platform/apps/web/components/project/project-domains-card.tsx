@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { Globe, ExternalLink, X, Lock } from "lucide-react";
+import { Globe, ExternalLink, X, Lock, Plus } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { useUserMetadata } from "@/hooks/use-user";
 
 interface ProjectDomainsCardProps {
   projectId: string;
@@ -36,6 +37,11 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
   const updateDomainPortMutation = useUpdateProjectDomainPort();
   const proxyDomains = data?.proxy_domains ?? [];
   const allowedIps = data?.allowed_ips ?? [];
+  const { data: userMetadata } = useUserMetadata();
+  const currentIpv4 = userMetadata?.ipv4?.trim() ?? "";
+  const isCurrentIpAllowed =
+    !!currentIpv4 &&
+    allowedIps.some((allowedIp) => allowedIp.ip.trim() === currentIpv4);
 
   const handleAddIp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,6 +59,29 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
       toast.success("Allowed IP added", { id: toastId });
     } catch {
       toast.error("Failed to add allowed IP", { id: toastId });
+    }
+  };
+
+  const handleAddCurrentIp = async () => {
+    if (!currentIpv4) {
+      toast.error("Current IP address is not available");
+      return;
+    }
+
+    if (isCurrentIpAllowed) {
+      toast.info("Current IP is already allowed");
+      return;
+    }
+
+    const toastId = toast.loading("Adding current IP...");
+    try {
+      await addAllowedIpMutation.mutateAsync({
+        id: projectId,
+        ip: currentIpv4,
+      });
+      toast.success("Current IP added", { id: toastId });
+    } catch {
+      toast.error("Failed to add current IP", { id: toastId });
     }
   };
 
@@ -277,6 +306,28 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
             <span className="text-foreground font-bold">30Secs</span> to take
             effect
           </p>
+          {currentIpv4 && !isCurrentIpAllowed ? (
+            <div className="bg-muted/40 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2">
+              <div className="space-y-1">
+                <p className="text-muted-foreground text-sm">
+                  Allow this device to access project domains.
+                </p>
+                <p className="font-mono text-xs">{currentIpv4}</p>
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  void handleAddCurrentIp();
+                }}
+                disabled={addAllowedIpMutation.isPending}
+              >
+                <Plus className="h-4 w-4" />
+                Add my IP
+              </Button>
+            </div>
+          ) : null}
         </CardContent>
       </Card>
     </div>
