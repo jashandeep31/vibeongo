@@ -14,13 +14,15 @@ import {
 } from "@repo/ui/components/alert-dialog";
 
 interface ConfirmationDialogProps {
-  children: ReactNode;
+  children?: ReactNode;
   title: string;
   description: string;
   confirmText?: string;
   cancelText?: string;
   onConfirm: () => void;
   isDestructive?: boolean;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function ConfirmationDialog({
@@ -31,10 +33,14 @@ export function ConfirmationDialog({
   cancelText = "Cancel",
   onConfirm,
   isDestructive = false,
+  open,
+  onOpenChange,
 }: ConfirmationDialogProps) {
   return (
-    <AlertDialog>
-      <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+    <AlertDialog open={open} onOpenChange={onOpenChange}>
+      {children ? (
+        <AlertDialogTrigger asChild>{children}</AlertDialogTrigger>
+      ) : null}
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>

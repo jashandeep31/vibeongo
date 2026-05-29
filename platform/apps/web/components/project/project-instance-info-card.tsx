@@ -155,11 +155,6 @@ export function ProjectInstanceInfoCard({
           {formatDuration(instance.started_at, instance.terminated_at, now)}
         </p>
       </div>
-
-      <div>
-        <p className="text-muted-foreground">Started At</p>
-        <p className="font-medium">{formatDate(instance.started_at)}</p>
-      </div>
     </section>
   );
 }

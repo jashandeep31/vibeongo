@@ -9,9 +9,11 @@ import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import {
+  useAddAllowedIpToProject,
   useGetProjectDomainsById,
   useUpdateProjectRoutingTargetInstance,
 } from "@/hooks/use-project";
+import { useCurrentUserIp } from "@/hooks/use-ip";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { toast } from "sonner";
@@ -22,6 +24,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: instance } = useGetInstanceById(instanceId);
   const { data: projectDomainsData, isLoading: isLoadingDomains } =
     useGetProjectDomainsById(instance?.project_id || "");
+  const { data: currentUserIp, isLoading: isCurrentIpLoading } =
+    useCurrentUserIp();
+  const addAllowedIpMutation = useAddAllowedIpToProject();
   const {
     mutateAsync: assignDomainsToInstance,
     isPending: isAssigningDomains,
@@ -33,6 +38,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     "checking" | "connected" | "disconnected"
   >("checking");
   const [sshCopied, setSshCopied] = useState(false);
+  const [isCurrentIpDialogOpen, setIsCurrentIpDialogOpen] = useState(false);
+  const [hasDismissedCurrentIpDialog, setHasDismissedCurrentIpDialog] =
+    useState(false);
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
 
@@ -52,6 +60,11 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     : null;
 
   const Instance_IP = instance?.public_ip || "localhost";
+  const currentIp = currentUserIp?.trim() ?? "";
+  const allowedIps = projectDomainsData?.allowed_ips ?? [];
+  const isCurrentIpAllowed =
+    !!currentIp &&
+    allowedIps.some((allowedIp) => allowedIp.ip.trim() === currentIp);
   //
   // NOTE: for local test
   //
@@ -112,6 +125,50 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       });
     } catch {
       toast.error("Failed to assign project domains", { id: toastId });
+    }
+  };
+
+  const handleAddAllowedIp = async (ip: string) => {
+    const normalizedIp = ip.trim();
+
+    if (!normalizedIp) {
+      toast.error("Please enter an IP address");
+      return;
+    }
+
+    if (!instance?.project_id) {
+      toast.error("Project is not available");
+      return;
+    }
+
+    const toastId = toast.loading(
+      normalizedIp === currentIp
+        ? "Adding current IP..."
+        : "Adding allowed IP...",
+    );
+
+    try {
+      await addAllowedIpMutation.mutateAsync({
+        id: instance.project_id,
+        ip: normalizedIp,
+      });
+      toast.success(
+        normalizedIp === currentIp ? "Current IP added" : "Allowed IP added",
+        { id: toastId },
+      );
+      if (normalizedIp === currentIp) {
+        setIsCurrentIpDialogOpen(false);
+        setHasDismissedCurrentIpDialog(true);
+      }
+      window.location.reload();
+    } catch {
+      toast.error(
+        normalizedIp === currentIp
+          ? "Failed to add current IP"
+          : "Failed to add allowed IP",
+        { id: toastId },
+      );
+      throw new Error("Failed to add allowed IP");
     }
   };
 
@@ -181,6 +238,30 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       window.clearInterval(intervalId);
     };
   }, [terminalHealthCheckUrl]);
+
+  useEffect(() => {
+    if (
+      isLoadingDomains ||
+      isCurrentIpLoading ||
+      hasDismissedCurrentIpDialog ||
+      !instance?.project_id ||
+      !projectDomainsData ||
+      !currentIp ||
+      isCurrentIpAllowed
+    ) {
+      return;
+    }
+
+    setIsCurrentIpDialogOpen(true);
+  }, [
+    currentIp,
+    hasDismissedCurrentIpDialog,
+    instance?.project_id,
+    isCurrentIpAllowed,
+    isCurrentIpLoading,
+    isLoadingDomains,
+    projectDomainsData,
+  ]);
 
   if (!instance) return <Card>Instance not found</Card>;
 
@@ -292,6 +373,23 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
   return (
     <div className="space-y-12 p-6 md:p-8">
+      <ConfirmationDialog
+        open={isCurrentIpDialogOpen}
+        onOpenChange={(open) => {
+          setIsCurrentIpDialogOpen(open);
+          if (!open) {
+            setHasDismissedCurrentIpDialog(true);
+          }
+        }}
+        title="Allow current IP"
+        description={`Your current IP ${currentIp || "is not available"} is not in this project's allowlist. Add it so project domains can be accessed from this device.`}
+        confirmText="Add current IP"
+        cancelText="Not now"
+        onConfirm={() => {
+          void handleAddAllowedIp(currentIp);
+        }}
+      />
+
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
@@ -339,7 +437,14 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         </>
       )}
 
-      <ProjectDomainsCard projectId={instance.project_id || ""} />
+      <ProjectDomainsCard
+        projectId={instance.project_id || ""}
+        currentIp={currentIp}
+        isCurrentIpLoading={isCurrentIpLoading}
+        isCurrentIpAllowed={isCurrentIpAllowed}
+        isAddingAllowedIp={addAllowedIpMutation.isPending}
+        onAddAllowedIp={handleAddAllowedIp}
+      />
     </div>
   );
 }

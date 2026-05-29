@@ -37,9 +37,13 @@ func StatsHandler(ctx context.Context, c *websocket.Conn, writeMu *sync.Mutex) {
 			}
 
 			// CPU
-			cpuPercent, err := cpu.Percent(0, false)
+			cpuPercent, err := cpu.Percent(500*time.Millisecond, false)
 			if err != nil {
 				log.Println("cpu error:", err)
+				return
+			}
+			if len(cpuPercent) == 0 {
+				log.Println("cpu error: no cpu percent data")
 				return
 			}
 
