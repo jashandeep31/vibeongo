@@ -4,8 +4,6 @@ import { AppError } from "./app-error.js";
 import { env } from "./env.js";
 
 // NOTE: this needed to be removed this is for the dev purposes else get it from the env
-const BASE_DOMAIN =
-  env.NODE_ENV === "development" ? "a.vibeongo.one" : "vibeongo.one";
 interface CreateDomainForProjectProps {
   tx: Transaction;
   routingId: string;
@@ -28,7 +26,7 @@ export const createDomainsForProject = async ({
         const randomCuid = createId();
         const sub = randomCuid.slice(0, 10);
         return {
-          domain: `${sub}.${BASE_DOMAIN}`,
+          domain: `${sub}.${env.PROXY_DOMAIN}`,
           target_port: port,
           allow_any: true,
           routing_id: routingId,
