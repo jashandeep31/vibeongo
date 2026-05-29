@@ -1,8 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Copy, Check, Loader2, Trash2, RotateCw } from "lucide-react";
+import { Check, Copy, Globe, Loader2, RotateCw, Trash2 } from "lucide-react";
 
-import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
 import { OpencodeWebCard } from "@/components/opencode-web-card";
@@ -186,21 +185,27 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
   const Controls = () => {
     return (
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         <Button
-          size={"lg"}
+          size="icon-sm"
           variant="outline"
           onClick={handleReboot}
           disabled={!domainFor8080}
+          aria-label="Reboot"
+          title="Reboot"
+          className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
         >
           <RotateCw className="h-4 w-4" />
-          Reboot
+          <span className="sr-only sm:not-sr-only">Reboot</span>
         </Button>
         <Button
-          size="lg"
+          size="icon-sm"
           variant="outline"
           type="button"
           disabled={!sshCommand}
+          aria-label="Copy SSH command"
+          title="Copy SSH command"
+          className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
           onClick={() => {
             void handleCopySshCommand();
           }}
@@ -210,13 +215,18 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           ) : (
             <Copy className="h-4 w-4" />
           )}
-          SSH
+          <span className="sr-only sm:not-sr-only">SSH</span>
         </Button>
         <Button
-          size="lg"
+          size="icon-sm"
           variant={isTargetInstance ? "secondary" : "outline"}
           type="button"
           disabled={isTerminated || isTargetInstance || isAssigningDomains}
+          aria-label={
+            isTargetInstance ? "Domains active" : "Assign project domains"
+          }
+          title={isTargetInstance ? "Domains active" : "Assign project domains"}
+          className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
           onClick={() => {
             void handleAssignDomains();
           }}
@@ -224,12 +234,18 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           {isAssigningDomains ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Assigning...
+              <span className="sr-only sm:not-sr-only">Assigning...</span>
             </>
           ) : isTargetInstance ? (
-            "Domains Active"
+            <>
+              <Check className="h-4 w-4" />
+              <span className="sr-only sm:not-sr-only">Domains Active</span>
+            </>
           ) : (
-            "Assign Domains"
+            <>
+              <Globe className="h-4 w-4" />
+              <span className="sr-only sm:not-sr-only">Assign Domains</span>
+            </>
           )}
         </Button>
 
@@ -243,21 +259,29 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           }}
         >
           <Button
-            size="lg"
+            size="icon-sm"
             variant="destructive"
             type="button"
             disabled={isPending || isTerminated}
+            aria-label={isTerminated ? "Terminated" : "Terminate instance"}
+            title={isTerminated ? "Terminated" : "Terminate instance"}
+            className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
           >
-            <Trash2 className="h-3 w-3" />
             {isPending ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Terminating...
+                <span className="sr-only sm:not-sr-only">Terminating...</span>
               </>
             ) : isTerminated ? (
-              "Terminated"
+              <>
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only">Terminated</span>
+              </>
             ) : (
-              "Terminate"
+              <>
+                <Trash2 className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only">Terminate</span>
+              </>
             )}
           </Button>
         </ConfirmationDialog>
@@ -307,10 +331,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             domainFor4096={domainFor4096 || null}
             isTerminated={isTerminated}
           />
-          <ProjectInstanceTerminal
-            domain={domainFor8080 || null}
-            hideControls
-          />
+          {/* <ProjectInstanceTerminal */}
+          {/*   domain={domainFor8080 || null} */}
+          {/*   hideControls */}
+          {/* /> */}
         </>
       )}
 
