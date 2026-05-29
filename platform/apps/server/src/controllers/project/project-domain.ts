@@ -11,8 +11,10 @@ import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
-import axios from "axios";
-import { env } from "../../lib/env.js";
+import {
+  invalidateProjectProxiesByRoutingId,
+  invalidateProxyHosts,
+} from "../../lib/invalidate-project-proxies-by-pid.js";
 
 export const updateProxyDomainPort = catchAsync(
   async (req: Request, res: Response) => {
@@ -51,9 +53,11 @@ export const updateProxyDomainPort = catchAsync(
           eq(proxyDomains.is_editable, true),
         ),
       )
-      .returning({ id: proxyDomains.id });
+      .returning({ id: proxyDomains.id, domain: proxyDomains.domain });
 
     if (!updatedRows.length) throw new AppError("domain not found", 404);
+
+    await invalidateProxyHosts(updatedRows.map((row) => row.domain));
 
     res.status(200).json({
       message: "port updated successfully",
@@ -91,7 +95,10 @@ export const deleteAllowedIPFromProject = catchAsync(
           eq(routingAllowedIps.id, ipId),
           eq(routingAllowedIps.routing_id, projectRouting.id),
         ),
-      );
+      )
+      .returning({ id: routingAllowedIps.id });
+
+    await invalidateProjectProxiesByRoutingId(projectRouting.id);
 
     res.status(200).json({
       message: "ip removed from routing successfully",
@@ -127,6 +134,8 @@ export const addAllowedIPToProject = catchAsync(
       ip,
       routing_id: projectRouting.id,
     });
+
+    await invalidateProjectProxiesByRoutingId(projectRouting.id);
 
     res.status(200).json({
       message: "ip added to routing successfully",
@@ -171,14 +180,7 @@ export const updateProjectRoutingTargetInstance = catchAsync(
       .returning();
     if (!updatedRouting) throw new AppError("routing not found", 404);
 
-    const domains = await db
-      .select()
-      .from(proxyDomains)
-      .where(eq(proxyDomains.routing_id, updatedRouting.id));
-
-    await axios.post(`${env.PROXY_SERVER_URL}/proxy/invalidate`, {
-      hosts: domains.map((d) => d.domain),
-    });
+    await invalidateProjectProxiesByRoutingId(updatedRouting.id);
 
     res.status(200).json({
       message: "instance updated successfully",

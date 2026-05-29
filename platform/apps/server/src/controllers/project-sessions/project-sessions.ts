@@ -20,6 +20,7 @@ import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema } from "@repo/shared";
+import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
 export const getUserProjectSessions = catchAsync(
   async (req: Request, res: Response) => {
@@ -139,6 +140,8 @@ export const resumeProjectSession = catchAsync(
         target_instance_id: instance.id,
       })
       .where(eq(projectDomainRouting.project_id, project.id));
+
+    await invalidateProjectProxiesByPid(project.id);
 
     res.status(200).json({ message: "Successfully resumed the instance" });
   },
