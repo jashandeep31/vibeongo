@@ -16,6 +16,7 @@ import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { toast } from "sonner";
 import axios from "axios";
+import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 
 export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: instance } = useGetInstanceById(instanceId);
@@ -331,10 +332,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             domainFor4096={domainFor4096 || null}
             isTerminated={isTerminated}
           />
-          {/* <ProjectInstanceTerminal */}
-          {/*   domain={domainFor8080 || null} */}
-          {/*   hideControls */}
-          {/* /> */}
+          <ProjectInstanceTerminal
+            domain={domainFor8080 || null}
+            hideControls
+          />
         </>
       )}
 
