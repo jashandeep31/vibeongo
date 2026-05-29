@@ -6,10 +6,12 @@ import {
   instances,
   instanceTypes,
   lt,
+  projectDomainRouting,
   sql,
 } from "@repo/db";
 import cron from "node-cron";
 import { terminateEc2Instance } from "../aws/services/terminate-ec2-instance.js";
+import { invalidateProjectProxiesByRoutingId } from "./invalidate-project-proxies-by-pid.js";
 
 cron.schedule("*/5 * * * *", async () => {
   try {
@@ -37,6 +39,18 @@ cron.schedule("*/5 * * * *", async () => {
         .update(instances)
         .set({ terminated_at: new Date(), state: "terminated" })
         .where(eq(instances.id, row.instances.id));
+
+      const updatedRoutings = await db
+        .update(projectDomainRouting)
+        .set({
+          target_instance_id: null,
+        })
+        .where(eq(projectDomainRouting.target_instance_id, row.instances.id))
+        .returning({ id: projectDomainRouting.id });
+
+      for (const routing of updatedRoutings) {
+        await invalidateProjectProxiesByRoutingId(routing.id);
+      }
     }
   } catch (e) {
     console.log(e);
