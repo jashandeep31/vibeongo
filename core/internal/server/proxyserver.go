@@ -1,7 +1,10 @@
 package server
 
 import (
+	"bufio"
 	"encoding/json"
+	"fmt"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"slices"
@@ -13,6 +16,11 @@ var (
 	AppVersion = "v1.0.0-default"
 	BuildTime  = "unknown"
 )
+
+var allowedCORSOrigins = map[string]struct{}{
+	"https://vibeongo.com":     {},
+	"https://l2.devsradar.com": {},
+}
 
 type ProxyServer struct {
 	store *store.ProxyManager
@@ -28,20 +36,70 @@ func (s *ProxyServer) Start(addr string) error {
 	// routes
 	mux.HandleFunc("GET /proxy/version", s.handleStatus)
 	mux.HandleFunc("POST /proxy/invalidate", s.handleInvalidate)
-	// just for dev purposes
-	mux.HandleFunc("GET /proxy/list", s.listAll)
-	mux.HandleFunc("GET /proxy/login", s.handleLogin)
-	mux.HandleFunc("POST /proxy/add", s.handleAdd)
+	mux.HandleFunc("GET /proxy/my-ip", s.handleMyIP)
 
 	// reverse proxy
 	mux.Handle("/", s.reverseProxy())
 
-	return http.ListenAndServe(addr, mux)
+	return http.ListenAndServe(addr, withCORS(mux))
 }
 
-func (s *ProxyServer) listAll(w http.ResponseWriter, r *http.Request) {
-	s.store.GetProxyByHost("fdi0jh1n2u.vibeongo.one")
-	json.NewEncoder(w).Encode(s.store.GetAllProxies())
+func withCORS(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		origin := r.Header.Get("Origin")
+		_, isAllowedOrigin := allowedCORSOrigins[origin]
+
+		if r.Method == http.MethodOptions {
+			if isAllowedOrigin {
+				setCORSHeaders(w.Header(), origin)
+			}
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+
+		next.ServeHTTP(&corsResponseWriter{
+			ResponseWriter: w,
+			origin:         origin,
+			allowed:        isAllowedOrigin,
+		}, r)
+	})
+}
+
+type corsResponseWriter struct {
+	http.ResponseWriter
+	origin  string
+	allowed bool
+	wrote   bool
+}
+
+func (w *corsResponseWriter) WriteHeader(statusCode int) {
+	if !w.wrote {
+		if w.allowed {
+			setCORSHeaders(w.Header(), w.origin)
+		}
+		w.wrote = true
+	}
+	w.ResponseWriter.WriteHeader(statusCode)
+}
+
+func (w *corsResponseWriter) Write(data []byte) (int, error) {
+	if !w.wrote {
+		w.WriteHeader(http.StatusOK)
+	}
+	return w.ResponseWriter.Write(data)
+}
+
+func (w *corsResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	hijacker, ok := w.ResponseWriter.(http.Hijacker)
+	if !ok {
+		return nil, nil, fmt.Errorf("response writer does not support hijacking")
+	}
+	return hijacker.Hijack()
+}
+
+func setCORSHeaders(headers http.Header, origin string) {
+	headers.Del("Access-Control-Allow-Origin")
+	headers.Set("Access-Control-Allow-Origin", origin)
 }
 
 // Return the version of the applcation along with the build time
@@ -73,41 +131,13 @@ func (s *ProxyServer) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("OK"))
 }
 
-func (s *ProxyServer) handleAdd(w http.ResponseWriter, r *http.Request) {
-	var data struct {
-		Host       string   `json:"host"`
-		TargetUrl  string   `json:"targetUrl"`
-		Port       int      `json:"port"`
-		AllowedIPs []string `json:"allowedIPs"`
-	}
-	err := json.NewDecoder(r.Body).Decode(&data)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("url and host are required"))
-		return
-	}
-	if (data.Host == "") || (data.TargetUrl == "") {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("400"))
-		return
-	}
-	s.store.AddProxy(data.Host, data.TargetUrl, data.Port, data.AllowedIPs)
+func (s *ProxyServer) handleMyIP(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("OK"))
-}
-
-func (s *ProxyServer) handleLogin(w http.ResponseWriter, r *http.Request) {
-	http.SetCookie(w, &http.Cookie{
-		Name:     "session",
-		Value:    "secret",
-		Path:     "/",
-		HttpOnly: true,
-		Secure:   false,
-		SameSite: http.SameSiteLaxMode,
-		MaxAge:   3600,
+	json.NewEncoder(w).Encode(struct {
+		IP string `json:"ip"`
+	}{
+		IP: getRealIp(r.Header),
 	})
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte("Login success"))
 }
 
 func (s *ProxyServer) reverseProxy() http.Handler {
