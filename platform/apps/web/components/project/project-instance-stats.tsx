@@ -21,13 +21,25 @@ function formatBytes(bytes: number) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
+function normalizePercent(value: unknown) {
+  const percent = typeof value === "number" ? value : Number(value);
+
+  if (!Number.isFinite(percent)) {
+    return null;
+  }
+
+  return Math.min(100, Math.max(0, percent));
+}
+
 export function ProjectInstanceStats() {
   const [stats, setStats] = useState<StatsData | null>(null);
 
   useEffect(() => {
     const handleStats = (event: Event) => {
       const customEvent = event as CustomEvent<StatsData>;
-      setStats(customEvent.detail);
+      if (customEvent.detail) {
+        setStats(customEvent.detail);
+      }
     };
 
     window.addEventListener("vps-stats", handleStats);
@@ -37,11 +49,8 @@ export function ProjectInstanceStats() {
     };
   }, []);
 
-  const cpuPercent = stats ? stats.cpu_percent : null;
-  const memoryPercent = stats ? stats.used_percent : null;
-  const memoryUsage = stats
-    ? `${formatBytes(stats.used)} / ${formatBytes(stats.total)}`
-    : "Waiting";
+  const cpuPercent = normalizePercent(stats?.cpu_percent);
+  const memoryPercent = normalizePercent(stats?.used_percent);
 
   return (
     <div className="bg-muted/30 grid grid-cols-2 overflow-hidden rounded-lg border">
@@ -68,9 +77,7 @@ export function ProjectInstanceStats() {
             {memoryPercent === null ? "--%" : `${memoryPercent.toFixed(0)}%`}
           </div>
         </div>
-        <div className="text-muted-foreground mt-1 truncate text-[11px]">
-          {memoryUsage}
-        </div>
+        <div className="text-muted-foreground mt-1 truncate text-[11px]"></div>
         <Progress value={memoryPercent ?? 0} className="mt-1.5 h-1.5" />
       </div>
     </div>
