@@ -19,9 +19,14 @@ import { Card } from "@repo/ui/components/card";
 import { toast } from "sonner";
 import axios from "axios";
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
+import { InstancePageState } from "./instance-page-state";
 
 export default function ClientView({ instanceId }: { instanceId: string }) {
-  const { data: instance } = useGetInstanceById(instanceId);
+  const {
+    data: instance,
+    isLoading: isInstanceLoading,
+    isError: isInstanceError,
+  } = useGetInstanceById(instanceId);
   const { data: projectDomainsData, isLoading: isLoadingDomains } =
     useGetProjectDomainsById(instance?.project_id || "");
   const { data: currentUserIp, isLoading: isCurrentIpLoading } =
@@ -178,7 +183,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     }
     try {
       const rebootUrl = domainFor8080
-        ? `http://${domainFor8080}/reboot`
+        ? `https://${domainFor8080}/reboot`
         : `http://${Instance_IP}:8080/reboot`;
       const res = await axios.post(rebootUrl, {});
       if (res.status === 200) {
@@ -263,7 +268,13 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     projectDomainsData,
   ]);
 
-  if (!instance) return <Card>Instance not found</Card>;
+  if (isInstanceLoading) {
+    return <InstancePageState type="loading" />;
+  }
+
+  if (isInstanceError || !instance) {
+    return <InstancePageState type="not-found" />;
+  }
 
   const Controls = () => {
     return (

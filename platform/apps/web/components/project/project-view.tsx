@@ -4,6 +4,7 @@ import { SystemInformation } from "./system-information";
 import { ProjectTabs } from "./project-tabs";
 import { UsageBilling } from "./usage-billing";
 import { ProjectDomainsCard } from "./project-domains-card";
+import { ProjectViewSkeleton } from "./project-view-skeleton";
 import {
   useAddAllowedIpToProject,
   useDeleteProject,
@@ -30,7 +31,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
     useGetInstancesByProjectId(projectId);
 
   if (isProjectLoading || isInstanceLoading) {
-    return <div className="p-8 text-center">Loading project...</div>;
+    return <ProjectViewSkeleton />;
   }
 
   if (!projectRaw) {
@@ -108,7 +109,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* Left Side: Configuration (75%) */}
         <div className="space-y-6 lg:w-3/4">
-          <SystemInformation project={project} instances={instances} />
+          <SystemInformation instances={instances} />
           <ProjectDomainsCard
             projectId={projectId}
             isAddingAllowedIp={addAllowedIpMutation.isPending}
