@@ -12,7 +12,6 @@ import {
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import {
-  useAddAllowedIpToProject,
   useDeleteAllowedIpFromProject,
   useGetProjectDomainsById,
   useUpdateProjectDomainPort,
@@ -20,29 +19,33 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { useCurrentUserIp } from "@/hooks/use-ip";
 
 interface ProjectDomainsCardProps {
   projectId: string;
+  currentIp?: string;
+  isCurrentIpLoading?: boolean;
+  isCurrentIpAllowed?: boolean;
+  isAddingAllowedIp?: boolean;
+  onAddAllowedIp?: (ip: string) => Promise<void>;
 }
 
-export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
+export function ProjectDomainsCard({
+  projectId,
+  currentIp = "",
+  isCurrentIpLoading = false,
+  isCurrentIpAllowed = false,
+  isAddingAllowedIp = false,
+  onAddAllowedIp,
+}: ProjectDomainsCardProps) {
   const [newIp, setNewIp] = useState("");
   const [deletingIpId, setDeletingIpId] = useState<string | null>(null);
   const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
   const [portInputs, setPortInputs] = useState<Record<string, string>>({});
   const { data, isLoading } = useGetProjectDomainsById(projectId);
-  const addAllowedIpMutation = useAddAllowedIpToProject();
   const deleteAllowedIpMutation = useDeleteAllowedIpFromProject();
   const updateDomainPortMutation = useUpdateProjectDomainPort();
-  const { data: currentUserIp, isLoading: isCurrentUserIpLoading } =
-    useCurrentUserIp();
   const proxyDomains = data?.proxy_domains ?? [];
   const allowedIps = data?.allowed_ips ?? [];
-  const currentIp = currentUserIp?.trim() ?? "";
-  const isCurrentIpAllowed =
-    !!currentIp &&
-    allowedIps.some((allowedIp) => allowedIp.ip.trim() === currentIp);
 
   const handleAddIp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -53,13 +56,16 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
       return;
     }
 
-    const toastId = toast.loading("Adding allowed IP...");
+    if (!onAddAllowedIp) {
+      toast.error("Adding allowed IPs is not available here");
+      return;
+    }
+
     try {
-      await addAllowedIpMutation.mutateAsync({ id: projectId, ip });
+      await onAddAllowedIp(ip);
       setNewIp("");
-      toast.success("Allowed IP added", { id: toastId });
     } catch {
-      toast.error("Failed to add allowed IP", { id: toastId });
+      // Toast handling lives with the owner of the add-IP mutation.
     }
   };
 
@@ -88,12 +94,15 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
       return;
     }
 
-    const toastId = toast.loading("Adding current IP...");
+    if (!onAddAllowedIp) {
+      toast.error("Adding allowed IPs is not available here");
+      return;
+    }
+
     try {
-      await addAllowedIpMutation.mutateAsync({ id: projectId, ip: currentIp });
-      toast.success("Current IP added", { id: toastId });
+      await onAddAllowedIp(currentIp);
     } catch {
-      toast.error("Failed to add current IP", { id: toastId });
+      // Toast handling lives with the owner of the add-IP mutation.
     }
   };
 
@@ -248,7 +257,7 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                 <div className="text-muted-foreground text-sm">
                   Your current IP:{" "}
                   <span className="text-foreground font-mono">
-                    {isCurrentUserIpLoading
+                    {isCurrentIpLoading
                       ? "Loading..."
                       : currentIp || "Unavailable"}
                   </span>
@@ -262,14 +271,14 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                       autoComplete="off"
                       value={newIp}
                       onChange={(event) => setNewIp(event.target.value)}
-                      disabled={addAllowedIpMutation.isPending}
+                      disabled={isAddingAllowedIp}
                     />
                     <Button
                       type="submit"
                       className="sm:w-auto"
-                      disabled={addAllowedIpMutation.isPending}
+                      disabled={isAddingAllowedIp || !onAddAllowedIp}
                     >
-                      {addAllowedIpMutation.isPending ? "Adding..." : "Add IP"}
+                      {isAddingAllowedIp ? "Adding..." : "Add IP"}
                     </Button>
                   </div>
                 </form>
@@ -281,7 +290,7 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                       onClick={() => {
                         void handleAddCurrentIp();
                       }}
-                      disabled={addAllowedIpMutation.isPending}
+                      disabled={isAddingAllowedIp || !onAddAllowedIp}
                       className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-xs text-amber-700 transition-colors hover:bg-amber-500/20 disabled:pointer-events-none disabled:opacity-50 dark:text-amber-400"
                     >
                       <Plus className="h-3 w-3" />

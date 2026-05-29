@@ -4,7 +4,11 @@ import { SystemInformation } from "./system-information";
 import { ProjectTabs } from "./project-tabs";
 import { UsageBilling } from "./usage-billing";
 import { ProjectDomainsCard } from "./project-domains-card";
-import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
+import {
+  useAddAllowedIpToProject,
+  useDeleteProject,
+  useGetProjectById,
+} from "@/hooks/use-project";
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { Button } from "@repo/ui/components/button";
@@ -18,6 +22,7 @@ import { Project } from "./types";
 export function ProjectView({ projectId }: { projectId: string }) {
   const router = useRouter();
   const deleteProjectMutation = useDeleteProject();
+  const addAllowedIpMutation = useAddAllowedIpToProject();
   const { data: projectRaw, isLoading: isProjectLoading } =
     useGetProjectById(projectId);
 
@@ -55,6 +60,28 @@ export function ProjectView({ projectId }: { projectId: string }) {
     }
   };
 
+  const handleAddAllowedIp = async (ip: string) => {
+    const normalizedIp = ip.trim();
+
+    if (!normalizedIp) {
+      toast.error("Please enter an IP address");
+      return;
+    }
+
+    const toastId = toast.loading("Adding allowed IP...");
+
+    try {
+      await addAllowedIpMutation.mutateAsync({
+        id: projectId,
+        ip: normalizedIp,
+      });
+      toast.success("Allowed IP added", { id: toastId });
+    } catch {
+      toast.error("Failed to add allowed IP", { id: toastId });
+      throw new Error("Failed to add allowed IP");
+    }
+  };
+
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
       {/* Header Section */}
@@ -82,7 +109,11 @@ export function ProjectView({ projectId }: { projectId: string }) {
         {/* Left Side: Configuration (75%) */}
         <div className="space-y-6 lg:w-3/4">
           <SystemInformation project={project} instances={instances} />
-          <ProjectDomainsCard projectId={projectId} />
+          <ProjectDomainsCard
+            projectId={projectId}
+            isAddingAllowedIp={addAllowedIpMutation.isPending}
+            onAddAllowedIp={handleAddAllowedIp}
+          />
           <ProjectTabs project={project} />
         </div>
 
