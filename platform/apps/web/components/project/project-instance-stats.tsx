@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@repo/ui/components/card";
 import { Progress } from "@repo/ui/components/progress";
 import { Cpu, HardDrive } from "lucide-react";
 
@@ -38,61 +37,42 @@ export function ProjectInstanceStats() {
     };
   }, []);
 
-  if (!stats) {
-    return (
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
-            <Cpu className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">--%</div>
-            <Progress value={0} className="mt-3 h-2" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
-            <HardDrive className="text-muted-foreground h-4 w-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-muted-foreground">--%</div>
-            <div className="text-muted-foreground mt-1 text-xs">Waiting for data...</div>
-            <Progress value={0} className="mt-2 h-2" />
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
+  const cpuPercent = stats ? stats.cpu_percent : null;
+  const memoryPercent = stats ? stats.used_percent : null;
+  const memoryUsage = stats
+    ? `${formatBytes(stats.used)} / ${formatBytes(stats.total)}`
+    : "Waiting";
 
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">CPU Usage</CardTitle>
-          <Cpu className="text-muted-foreground h-4 w-4" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.cpu_percent.toFixed(2)}%</div>
-          <Progress value={stats.cpu_percent} className="mt-3 h-2" />
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Memory Usage</CardTitle>
-          <HardDrive className="text-muted-foreground h-4 w-4" />
-        </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{stats.used_percent.toFixed(2)}%</div>
-          <div className="text-muted-foreground mt-1 text-xs">
-            {formatBytes(stats.used)} / {formatBytes(stats.total)}
+    <div className="bg-muted/30 grid grid-cols-2 overflow-hidden rounded-lg border">
+      <div className="min-w-0 border-r p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs font-medium">
+            <Cpu className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">CPU</span>
           </div>
-          <Progress value={stats.used_percent} className="mt-2 h-2" />
-        </CardContent>
-      </Card>
+          <div className="text-sm font-semibold tabular-nums">
+            {cpuPercent === null ? "--%" : `${cpuPercent.toFixed(0)}%`}
+          </div>
+        </div>
+        <Progress value={cpuPercent ?? 0} className="mt-2 h-1.5" />
+      </div>
+
+      <div className="min-w-0 p-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="text-muted-foreground flex min-w-0 items-center gap-1.5 text-xs font-medium">
+            <HardDrive className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">Memory</span>
+          </div>
+          <div className="text-sm font-semibold tabular-nums">
+            {memoryPercent === null ? "--%" : `${memoryPercent.toFixed(0)}%`}
+          </div>
+        </div>
+        <div className="text-muted-foreground mt-1 truncate text-[11px]">
+          {memoryUsage}
+        </div>
+        <Progress value={memoryPercent ?? 0} className="mt-1.5 h-1.5" />
+      </div>
     </div>
   );
 }

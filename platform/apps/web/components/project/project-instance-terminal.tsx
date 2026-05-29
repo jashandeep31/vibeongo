@@ -103,9 +103,12 @@ export function ProjectInstanceTerminal({
     const terminalElement = terminalRef.current;
     if (!terminalElement) return;
 
+    const isMobileViewport = window.matchMedia("(max-width: 639px)").matches;
+
     const term = new Terminal({
       cursorBlink: true,
-      fontSize: 14,
+      fontSize: isMobileViewport ? 12 : 14,
+      scrollback: 5000,
       theme: {
         background: "#1e1e1e",
         foreground: "#d4d4d4",
@@ -392,11 +395,11 @@ export function ProjectInstanceTerminal({
           </div>
         </div>
 
-        <div className="bg-[#111111] p-2">
+        <div className="bg-[#111111] p-1.5 sm:p-2">
           <div
             ref={terminalRef}
             id="terminal"
-            className="h-[min(70vh,720px)] min-h-[420px] w-full rounded-md bg-[#1e1e1e] p-2"
+            className="h-[55svh] min-h-[280px] w-full rounded-md bg-[#1e1e1e] p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2"
           />
         </div>
       </div>
