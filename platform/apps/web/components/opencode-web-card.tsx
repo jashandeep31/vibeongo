@@ -159,29 +159,26 @@ export function OpencodeWebCard({
     }
   };
   return (
-    <section className="space-y-3">
-      <div>
-        <h2 className="text-xl font-semibold tracking-tight">Opencode Web</h2>
-        <p className="text-muted-foreground mt-1 text-sm">
-          Manage Opencode web server and open it in a new tab.
-        </p>
-      </div>
-
-      <div className="bg-muted/30 flex flex-wrap items-center justify-between gap-3 rounded-lg p-4">
-        <div className="flex items-center gap-2 text-sm font-medium">
+    <section>
+      <div className="bg-muted/30 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3">
+        <div className="flex items-center gap-2">
+          <h2 className="text-base font-semibold tracking-tight">
+            Opencode Web
+          </h2>
           <span
+            aria-label={isOpenCodeConnected ? "Running" : "Stopped"}
+            title={isOpenCodeConnected ? "Running" : "Stopped"}
             className={
               isOpenCodeConnected
                 ? "h-2.5 w-2.5 rounded-full bg-emerald-500"
                 : "h-2.5 w-2.5 rounded-full bg-red-500"
             }
           />
-          {isOpenCodeConnected ? "Connected" : "Disconnected"}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="flex items-center gap-1.5">
           <Button
-            size="lg"
+            size="icon-sm"
             variant="outline"
             type="button"
             disabled={
@@ -190,25 +187,32 @@ export function OpencodeWebCard({
               isStoppingOpenCodeWeb ||
               !domainFor8080
             }
+            aria-label={
+              isOpenCodeConnected ? "Open Opencode" : "Start Opencode"
+            }
+            title={isOpenCodeConnected ? "Open Opencode" : "Start Opencode"}
+            className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
             onClick={() => {
-              handleOpenOpenCodeWeb();
+              void handleOpenOpenCodeWeb();
             }}
           >
             {isOpeningOpenCodeWeb ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Opening...
+                <span className="sr-only sm:not-sr-only">Opening...</span>
               </>
             ) : (
               <>
                 <Globe className="h-4 w-4" />
-                {isOpenCodeConnected ? "Open Web" : "Start Web"}
+                <span className="sr-only sm:not-sr-only">
+                  {isOpenCodeConnected ? "Open Web" : "Start Web"}
+                </span>
               </>
             )}
           </Button>
 
           <Button
-            size="lg"
+            size="icon-sm"
             variant="outline"
             type="button"
             disabled={
@@ -218,19 +222,22 @@ export function OpencodeWebCard({
               !domainFor8080 ||
               !isOpenCodeConnected
             }
+            aria-label="Stop Opencode"
+            title="Stop Opencode"
+            className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
             onClick={() => {
-              handleStopOpenCodeWeb();
+              void handleStopOpenCodeWeb();
             }}
           >
             {isStoppingOpenCodeWeb ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                Stopping...
+                <span className="sr-only sm:not-sr-only">Stopping...</span>
               </>
             ) : (
               <>
                 <Square className="h-4 w-4" />
-                Stop
+                <span className="sr-only sm:not-sr-only">Stop</span>
               </>
             )}
           </Button>

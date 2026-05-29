@@ -168,19 +168,22 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                     .map((domainRow) => (
                       <div
                         key={domainRow.id}
-                        className="flex items-center justify-between gap-3 rounded-md border px-3 py-2"
+                        className="flex flex-col gap-3 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                       >
                         <a
                           href={`https://${domainRow.domain}`}
                           target="_blank"
                           rel="noreferrer"
-                          className="flex min-w-0 items-center gap-2 text-sm text-blue-500 hover:underline"
+                          title={domainRow.domain}
+                          className="flex min-w-0 items-start gap-2 text-sm text-blue-500 hover:underline sm:items-center"
                         >
                           <Globe className="h-4 w-4 shrink-0" />
-                          <span className="truncate">{domainRow.domain}</span>
+                          <span className="min-w-0 break-all sm:truncate">
+                            {domainRow.domain}
+                          </span>
                           <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                         </a>
-                        <div className="flex shrink-0 items-center gap-2">
+                        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                           <Input
                             type="number"
                             min={1}
@@ -242,31 +245,13 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                   </span>
                 </div>
 
-                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-muted-foreground text-sm">
-                    Your current IP:{" "}
-                    <span className="text-foreground font-mono">
-                      {isCurrentUserIpLoading
-                        ? "Loading..."
-                        : currentIp || "Unavailable"}
-                    </span>
-                  </div>
-                  {currentIp && !isCurrentIpAllowed ? (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      onClick={() => {
-                        void handleAddCurrentIp();
-                      }}
-                      disabled={addAllowedIpMutation.isPending}
-                    >
-                      <Plus className="h-4 w-4" />
-                      {addAllowedIpMutation.isPending
-                        ? "Adding..."
-                        : "Add current IP"}
-                    </Button>
-                  ) : null}
+                <div className="text-muted-foreground text-sm">
+                  Your current IP:{" "}
+                  <span className="text-foreground font-mono">
+                    {isCurrentUserIpLoading
+                      ? "Loading..."
+                      : currentIp || "Unavailable"}
+                  </span>
                 </div>
 
                 <form onSubmit={handleAddIp}>
@@ -289,9 +274,23 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                   </div>
                 </form>
 
-                {allowedIps.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {allowedIps.map((allowedIp) => (
+                <div className="flex flex-wrap gap-2">
+                  {currentIp && !isCurrentIpAllowed ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        void handleAddCurrentIp();
+                      }}
+                      disabled={addAllowedIpMutation.isPending}
+                      className="inline-flex items-center gap-1 rounded border border-amber-500/40 bg-amber-500/10 px-2 py-1 font-mono text-xs text-amber-700 transition-colors hover:bg-amber-500/20 disabled:pointer-events-none disabled:opacity-50 dark:text-amber-400"
+                    >
+                      <Plus className="h-3 w-3" />
+                      <span>{currentIp}</span>
+                    </button>
+                  ) : null}
+
+                  {allowedIps.length > 0 ? (
+                    allowedIps.map((allowedIp) => (
                       <div
                         key={allowedIp.id}
                         className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded border px-2 py-1 font-mono text-xs"
@@ -316,13 +315,13 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                           </button>
                         </ConfirmationDialog>
                       </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="text-muted-foreground text-sm">
-                    No allowed IPs configured.
-                  </div>
-                )}
+                    ))
+                  ) : !currentIp || isCurrentIpAllowed ? (
+                    <div className="text-muted-foreground text-sm">
+                      No allowed IPs configured.
+                    </div>
+                  ) : null}
+                </div>
               </div>
             </div>
           )}

@@ -26,8 +26,16 @@ const app = express();
 // Must be before express.json()
 app.use("/api/v1/github-app", githubAppWebhookMiddleware);
 
-app.use((req, res, next) => {
-  console.log(req.url);
+app.use("/api", (req, res, next) => {
+  const start = performance.now();
+
+  res.on("finish", () => {
+    const durationMs = Math.round((performance.now() - start) * 100) / 100;
+    console.log(
+      `${req.method} ${req.originalUrl} ${res.statusCode} ${durationMs}ms`,
+    );
+  });
+
   next();
 });
 // --- App config ---
