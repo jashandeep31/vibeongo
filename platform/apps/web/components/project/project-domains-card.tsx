@@ -20,7 +20,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { useUserMetadata } from "@/hooks/use-user";
+import { useCurrentUserIp } from "@/hooks/use-ip";
 
 interface ProjectDomainsCardProps {
   projectId: string;
@@ -35,13 +35,14 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
   const addAllowedIpMutation = useAddAllowedIpToProject();
   const deleteAllowedIpMutation = useDeleteAllowedIpFromProject();
   const updateDomainPortMutation = useUpdateProjectDomainPort();
+  const { data: currentUserIp, isLoading: isCurrentUserIpLoading } =
+    useCurrentUserIp();
   const proxyDomains = data?.proxy_domains ?? [];
   const allowedIps = data?.allowed_ips ?? [];
-  const { data: userMetadata } = useUserMetadata();
-  const currentIpv4 = userMetadata?.ipv4?.trim() ?? "";
+  const currentIp = currentUserIp?.trim() ?? "";
   const isCurrentIpAllowed =
-    !!currentIpv4 &&
-    allowedIps.some((allowedIp) => allowedIp.ip.trim() === currentIpv4);
+    !!currentIp &&
+    allowedIps.some((allowedIp) => allowedIp.ip.trim() === currentIp);
 
   const handleAddIp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -62,29 +63,6 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
     }
   };
 
-  const handleAddCurrentIp = async () => {
-    if (!currentIpv4) {
-      toast.error("Current IP address is not available");
-      return;
-    }
-
-    if (isCurrentIpAllowed) {
-      toast.info("Current IP is already allowed");
-      return;
-    }
-
-    const toastId = toast.loading("Adding current IP...");
-    try {
-      await addAllowedIpMutation.mutateAsync({
-        id: projectId,
-        ip: currentIpv4,
-      });
-      toast.success("Current IP added", { id: toastId });
-    } catch {
-      toast.error("Failed to add current IP", { id: toastId });
-    }
-  };
-
   const handleDeleteIp = async (ipId: string) => {
     const toastId = toast.loading("Removing allowed IP...");
     setDeletingIpId(ipId);
@@ -96,6 +74,26 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
       toast.error("Failed to remove allowed IP", { id: toastId });
     } finally {
       setDeletingIpId(null);
+    }
+  };
+
+  const handleAddCurrentIp = async () => {
+    if (!currentIp) {
+      toast.error("Current IP address is not available");
+      return;
+    }
+
+    if (isCurrentIpAllowed) {
+      toast.info("Current IP is already allowed");
+      return;
+    }
+
+    const toastId = toast.loading("Adding current IP...");
+    try {
+      await addAllowedIpMutation.mutateAsync({ id: projectId, ip: currentIp });
+      toast.success("Current IP added", { id: toastId });
+    } catch {
+      toast.error("Failed to add current IP", { id: toastId });
     }
   };
 
@@ -244,6 +242,33 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
                   </span>
                 </div>
 
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="text-muted-foreground text-sm">
+                    Your current IP:{" "}
+                    <span className="text-foreground font-mono">
+                      {isCurrentUserIpLoading
+                        ? "Loading..."
+                        : currentIp || "Unavailable"}
+                    </span>
+                  </div>
+                  {currentIp && !isCurrentIpAllowed ? (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      onClick={() => {
+                        void handleAddCurrentIp();
+                      }}
+                      disabled={addAllowedIpMutation.isPending}
+                    >
+                      <Plus className="h-4 w-4" />
+                      {addAllowedIpMutation.isPending
+                        ? "Adding..."
+                        : "Add current IP"}
+                    </Button>
+                  ) : null}
+                </div>
+
                 <form onSubmit={handleAddIp}>
                   <div className="flex flex-col gap-2 sm:flex-row">
                     <Input
@@ -306,28 +331,6 @@ export function ProjectDomainsCard({ projectId }: ProjectDomainsCardProps) {
             <span className="text-foreground font-bold">30Secs</span> to take
             effect
           </p>
-          {currentIpv4 && !isCurrentIpAllowed ? (
-            <div className="bg-muted/40 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-md border px-3 py-2">
-              <div className="space-y-1">
-                <p className="text-muted-foreground text-sm">
-                  Allow this device to access project domains.
-                </p>
-                <p className="font-mono text-xs">{currentIpv4}</p>
-              </div>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  void handleAddCurrentIp();
-                }}
-                disabled={addAllowedIpMutation.isPending}
-              >
-                <Plus className="h-4 w-4" />
-                Add my IP
-              </Button>
-            </div>
-          ) : null}
         </CardContent>
       </Card>
     </div>
