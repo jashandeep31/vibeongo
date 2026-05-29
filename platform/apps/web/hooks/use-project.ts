@@ -19,13 +19,14 @@ export const useCreateProject = () =>
     mutationFn: createProject,
   });
 
-export const useGetProjects = () =>
+export const useGetProjects = (enabled = true) =>
   useQuery({
     queryKey: ["projects"],
     queryFn: async () => {
       const projects = await getProjects();
       return projects;
     },
+    enabled,
   });
 
 export const useGetProjectById = (id: string | null) =>

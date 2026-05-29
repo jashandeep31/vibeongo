@@ -1,5 +1,7 @@
 "use client";
-import React, { useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useGetProjects } from "@/hooks/use-project";
+import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 import {
   Command,
   CommandInput,
@@ -10,11 +12,22 @@ import {
   CommandList,
 } from "@repo/ui/components/command";
 import { useRouter } from "next/navigation";
+
 const NavCommandBox = () => {
   const router = useRouter();
-  const [open, setOpen] = React.useState(false);
+  const [open, setOpen] = useState(false);
+  const {
+    data: projects,
+    isLoading: isProjectsLoading,
+    error: projectsError,
+  } = useGetProjects(open);
+  const {
+    data: sessions,
+    isLoading: isSessionsLoading,
+    error: sessionsError,
+  } = useGetProjectSessions({ page: 1, limit: 100 }, open);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === "k" && (e.metaKey || e.ctrlKey)) {
         e.preventDefault();
@@ -24,6 +37,14 @@ const NavCommandBox = () => {
     document.addEventListener("keydown", down);
     return () => document.removeEventListener("keydown", down);
   }, []);
+
+  const runningSessions = useMemo(
+    () =>
+      (sessions?.data ?? []).filter(
+        (session) => (session.instances?.length ?? 0) > 0,
+      ),
+    [sessions?.data],
+  );
 
   const commandsList: { label: string; href: string; external?: boolean }[] = [
     { label: "Dashboard (Home)", href: "/dashboard" },
@@ -55,6 +76,66 @@ const NavCommandBox = () => {
                 }}
               >
                 {command.label}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandGroup heading="Projects">
+            {isProjectsLoading && (
+              <CommandItem disabled className="p-1 text-sm">
+                Loading projects...
+              </CommandItem>
+            )}
+            {projectsError && (
+              <CommandItem disabled className="p-1 text-sm text-destructive">
+                Error loading projects.
+              </CommandItem>
+            )}
+            {!isProjectsLoading && !projectsError && projects?.length === 0 && (
+              <CommandItem disabled className="p-1 text-sm">
+                No projects found.
+              </CommandItem>
+            )}
+            {projects?.map((project) => (
+              <CommandItem
+                className="p-1 text-sm"
+                key={project.id}
+                onSelect={() => {
+                  router.push(`/projects/${project.id}`);
+                  setOpen(false);
+                }}
+              >
+                {project.name}
+              </CommandItem>
+            ))}
+          </CommandGroup>
+          <CommandGroup heading="Running Sessions">
+            {isSessionsLoading && (
+              <CommandItem disabled className="p-1 text-sm">
+                Loading sessions...
+              </CommandItem>
+            )}
+            {sessionsError && (
+              <CommandItem disabled className="p-1 text-sm text-destructive">
+                Error loading sessions.
+              </CommandItem>
+            )}
+            {!isSessionsLoading &&
+              !sessionsError &&
+              runningSessions.length === 0 && (
+                <CommandItem disabled className="p-1 text-sm">
+                  No running sessions found.
+                </CommandItem>
+              )}
+            {runningSessions.map((session) => (
+              <CommandItem
+                className="p-1 text-sm"
+                key={session.id}
+                onSelect={() => {
+                  router.push(`/dashboard/sessions/${session.id}`);
+                  setOpen(false);
+                }}
+              >
+                {session.name}
               </CommandItem>
             ))}
           </CommandGroup>
