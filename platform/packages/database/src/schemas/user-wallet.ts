@@ -1,0 +1,58 @@
+import {
+  boolean,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  uuid,
+} from "drizzle-orm/pg-core";
+import { users } from "./user.js";
+
+export const userWallet = pgTable("user_wallet", {
+  id: uuid().primaryKey().defaultRandom(),
+  user_id: uuid("user_id")
+    .references(() => users.id, { onDelete: "cascade" })
+    .defaultRandom()
+    .notNull()
+    .unique(),
+
+  balance: integer().default(0).notNull(),
+
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow().notNull(),
+});
+
+export const userWalletTransactionType = pgEnum(
+  "user_wallet_transaction_type",
+  ["deposit", "spent", "withdrawal"],
+);
+
+export const userWalletCredits = pgTable("user_wallet_credits", {
+  id: uuid().primaryKey().defaultRandom(),
+  total_balance: integer().default(0).notNull(),
+  balance: integer().default(0).notNull(),
+  description: text(),
+  expires_at: timestamp().notNull(),
+  expired: boolean().notNull().default(false),
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow().notNull(),
+});
+
+export const userWalletTransactions = pgTable("user_wallet_transactions", {
+  id: uuid().primaryKey().defaultRandom(),
+  transaction_type: userWalletTransactionType("transaction_type").notNull(),
+
+  wallet_id: uuid()
+    .references(() => userWallet.id, { onDelete: "cascade" })
+    .notNull(),
+
+  description: text(),
+
+  amount: integer().notNull(),
+  user_wallet_credit_id: uuid().references(() => userWalletCredits.id, {
+    onDelete: "cascade",
+  }),
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow().notNull(),
+});
