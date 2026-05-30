@@ -43,9 +43,12 @@ export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
           </>
         ) : (
           <>
+            <Link href={`/projects/${project.id}`} className={buttonVariants()}>
+              Manage Instances
+            </Link>
             <Link
               href={`/dashboard/project/${project.id}/manage/env`}
-              className={buttonVariants()}
+              className={buttonVariants({ variant: "secondary" })}
             >
               Manage ENV&apos;s
             </Link>
