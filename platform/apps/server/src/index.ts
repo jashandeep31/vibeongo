@@ -18,6 +18,7 @@ import { NextFunction } from "express";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { internalRoutes } from "./routes/internal-routes.js";
+import { paymentRoutes } from "./routes/payment-routes.js";
 import "./lib/cron.js";
 
 const app = express();
@@ -74,6 +75,7 @@ app.use("/api/v1/instance-metadata", instanceMetadataRoutes);
 app.use("/api/v1/github-repos", githubRepoRoutes);
 app.use("/api/v1/runtime", runtimeRoutes);
 app.use("/api/v1/internal", internalRoutes);
+app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
 
 // --- Global Error Handler ---
