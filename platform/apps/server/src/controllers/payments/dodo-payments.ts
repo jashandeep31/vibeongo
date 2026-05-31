@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import { env } from "../../lib/env.js";
 import { AppError } from "../../lib/app-error.js";
 import { z } from "zod";
+import { db, paymentGatewayTransactions } from "@repo/db";
 
 export const dodoPaymentClient = new DodoPayments({
   bearerToken: env.DODO_PAYMENT_BEARER_TOKEN,
@@ -22,9 +23,21 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
       .parse(req.body);
 
     const checkoutSession = await dodoPaymentClient.checkoutSessions.create({
+      customer: {
+        email: user.email,
+        name: user.first_name + " " + user.last_name,
+      },
       product_cart: [
         { amount, quantity: 1, product_id: env.DODO_PAYMENT_PRODUCT_ID },
       ],
+    });
+
+    // amount is as per the dollar not as are real *4 one
+    await db.insert(paymentGatewayTransactions).values({
+      user_id: user.id,
+      amount,
+      sessionId: checkoutSession.session_id,
+      status: "pending",
     });
 
     res.status(200).json({

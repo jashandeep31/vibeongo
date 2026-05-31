@@ -6,6 +6,7 @@ import {
   text,
   timestamp,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 
@@ -32,7 +33,11 @@ export const userWalletCredits = pgTable("user_wallet_credits", {
   id: uuid().primaryKey().defaultRandom(),
   total_balance: integer().default(0).notNull(),
   balance: integer().default(0).notNull(),
+  user_id: uuid()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
   description: text(),
+  wallet_id: uuid().references(() => userWallet.id, { onDelete: "cascade" }),
   expires_at: timestamp().notNull(),
   expired: boolean().notNull().default(false),
   created_at: timestamp().defaultNow().notNull(),
@@ -56,3 +61,24 @@ export const userWalletTransactions = pgTable("user_wallet_transactions", {
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow().notNull(),
 });
+
+export const paymentGatewayTransactionStatus = pgEnum(
+  "payment_gateway_transaction_status",
+  ["pending", "success", "failed"],
+);
+export const paymentGatewayTransactions = pgTable(
+  "payment_gateway_transactions",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    user_id: uuid().references(() => users.id, { onDelete: "cascade" }),
+    amount: integer().notNull(),
+
+    sessionId: varchar().unique(),
+    status: paymentGatewayTransactionStatus().default("pending"),
+    completed_at: timestamp(),
+    raw: text(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow().notNull(),
+  },
+);
