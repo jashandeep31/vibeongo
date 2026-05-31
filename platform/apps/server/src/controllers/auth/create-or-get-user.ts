@@ -58,7 +58,7 @@ export const createOrGetUser = async ({
 
   if (existingUser) {
     await upsertGithubAccount(ensureId(existingUser.id), token);
-    const userwalletRow = await db
+    const [userwalletRow] = await db
       .select()
       .from(userWallet)
       .where(eq(userWallet.user_id, existingUser.id));

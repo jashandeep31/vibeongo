@@ -20,12 +20,14 @@ import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { internalRoutes } from "./routes/internal-routes.js";
 import { paymentRoutes } from "./routes/payment-routes.js";
 import "./lib/cron.js";
+import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
 
 const app = express();
 
 // --- GitHub App Webhooks ---
 // Must be before express.json()
 app.use("/api/v1/github-app", githubAppWebhookMiddleware);
+app.use("/v1/webhook/dodo", dodoPaymentsWebhook);
 
 app.use("/api", (req, res, next) => {
   const start = performance.now();
