@@ -83,9 +83,19 @@ export default function ClientView() {
         <CardContent>
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
-              <p className="mt-2 text-4xl font-bold tracking-tight">
-                ${walletBalance} credits
-              </p>
+              {isLoading ? (
+                <div className="mt-2 space-y-3">
+                  <div className="flex items-end gap-2">
+                    <Skeleton className="h-10 w-28 rounded-md" />
+                    <Skeleton className="mb-1 h-5 w-16 rounded-md" />
+                  </div>
+                  <Skeleton className="h-3 w-40 rounded-md" />
+                </div>
+              ) : (
+                <p className="mt-2 text-4xl font-bold tracking-tight">
+                  ${walletBalance} credits
+                </p>
+              )}
             </div>
 
             <BuyCreditsDialog />
