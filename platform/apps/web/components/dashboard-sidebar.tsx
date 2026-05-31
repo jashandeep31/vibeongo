@@ -1,3 +1,5 @@
+"use client";
+
 import {
   Sidebar,
   SidebarContent,
@@ -7,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@repo/ui/components/sidebar";
 import {
   ArrowUpRight,
@@ -21,6 +24,7 @@ import {
   GitFork,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const sidebarLinks: {
   title: string;
@@ -73,6 +77,17 @@ const sidebarLinks: {
 ] as const;
 
 export function DashboardSidebar() {
+  const router = useRouter();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const navigateTo = (url: string) => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+
+    router.push(url);
+  };
+
   return (
     <Sidebar className="bg-background mt-14 h-[calc(100vh-56px)]">
       <SidebarContent className="bg-background">
@@ -86,17 +101,30 @@ export function DashboardSidebar() {
                     asChild
                     className="active:bg-background data-active:bg-background cursor-pointer"
                   >
-                    <Link
-                      href={item.url}
-                      target={item.external ? "_blank" : undefined}
-                      rel={item.external ? "noopener noreferrer" : undefined}
-                    >
-                      <item.icon />
-                      <span>{item.title}</span>
-                      {item.external && (
+                    {item.external ? (
+                      <Link
+                        href={item.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => {
+                          if (isMobile) {
+                            setOpenMobile(false);
+                          }
+                        }}
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
                         <ArrowUpRight className="text-muted-foreground h-4 w-4" />
-                      )}
-                    </Link>
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => navigateTo(item.url)}
+                      >
+                        <item.icon />
+                        <span>{item.title}</span>
+                      </button>
+                    )}
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
