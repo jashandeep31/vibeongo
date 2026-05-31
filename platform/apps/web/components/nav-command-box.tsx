@@ -52,6 +52,7 @@ const NavCommandBox = () => {
     { label: "Create Project", href: "/dashboard/project/create" },
     { label: "Sessions", href: "/dashboard/sessions" },
     { label: "Repos", href: "/dashboard/repos" },
+    { label: "Wallet", href: "/dashboard/wallet" },
     { label: "Settings", href: "/dashboard/settings" },
   ];
 
@@ -86,7 +87,7 @@ const NavCommandBox = () => {
               </CommandItem>
             )}
             {projectsError && (
-              <CommandItem disabled className="p-1 text-sm text-destructive">
+              <CommandItem disabled className="text-destructive p-1 text-sm">
                 Error loading projects.
               </CommandItem>
             )}
@@ -115,7 +116,7 @@ const NavCommandBox = () => {
               </CommandItem>
             )}
             {sessionsError && (
-              <CommandItem disabled className="p-1 text-sm text-destructive">
+              <CommandItem disabled className="text-destructive p-1 text-sm">
                 Error loading sessions.
               </CommandItem>
             )}

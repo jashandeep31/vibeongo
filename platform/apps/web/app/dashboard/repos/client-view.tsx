@@ -129,8 +129,8 @@ export default function ClientView() {
 
   return (
     <div className="p-8">
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">
             GitHub Repositories
           </h1>
@@ -138,7 +138,9 @@ export default function ClientView() {
             Connect and manage your GitHub repositories.
           </p>
         </div>
-        <CreateGithubRepoDialog />
+        <div className="shrink-0">
+          <CreateGithubRepoDialog />
+        </div>
       </div>
 
       <div className="mt-8 grid gap-4 space-y-4 md:grid-cols-2 lg:grid-cols-3">
@@ -170,86 +172,89 @@ export default function ClientView() {
             return (
               <div
                 key={repo.id}
-                className="bg-card flex h-full items-start justify-between rounded-lg border p-6 shadow-sm"
+                className="bg-card flex h-full min-w-0 flex-col gap-4 rounded-lg border p-4 shadow-sm sm:p-6"
               >
-                <div className="flex items-start gap-4">
-                  <div className="bg-primary/10 rounded-full p-2">
-                    <GitFork className="text-primary h-5 w-5" />
-                  </div>
-                  <div className="flex-1 overflow-hidden">
-                    <h3 className="truncate font-medium" title={repo.full_name}>
-                      {repo.full_name}
-                    </h3>
-                    <div className="mt-2 flex items-center gap-2">
-                      <span
-                        className={`rounded-full px-2 py-0.5 text-xs ${
-                          repo.public
-                            ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
-                            : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
-                        }`}
-                      >
-                        {repo.public ? "Public" : "Private"}
-                      </span>
+                <div className="flex min-w-0 flex-col gap-3 sm:flex-row sm:items-start">
+                  <div className="flex min-w-0 flex-1 items-start gap-3">
+                    <div className="bg-primary/10 shrink-0 rounded-full p-2">
+                      <GitFork className="text-primary h-5 w-5" />
                     </div>
-
-                    {repo.default_project_id ? (
-                      <div className="bg-muted/50 mt-3 rounded-md border p-2">
-                        <p className="text-muted-foreground text-xs font-medium">
-                          Default Project
-                        </p>
-                        <p
-                          className="mt-1 truncate text-xs"
-                          title={defaultProjectName}
+                    <div className="min-w-0 flex-1">
+                      <h3
+                        className="[display:-webkit-box] overflow-hidden leading-5 font-medium break-all [-webkit-box-orient:vertical] [-webkit-line-clamp:2]"
+                        title={repo.full_name}
+                      >
+                        {repo.full_name}
+                      </h3>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span
+                          className={`rounded-full px-2 py-0.5 text-xs ${
+                            repo.public
+                              ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                              : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                          }`}
                         >
-                          {defaultProjectName}
-                        </p>
+                          {repo.public ? "Public" : "Private"}
+                        </span>
                       </div>
-                    ) : (
-                      <div className="mt-3 rounded-md border border-yellow-500/20 bg-yellow-500/10 p-2 text-yellow-700 dark:text-yellow-400">
-                        <p className="text-xs font-medium">
-                          No Default Project
-                        </p>
-                        <p className="mt-1 text-xs">
-                          Assign a project to use this repository.
-                        </p>
-                      </div>
-                    )}
+                    </div>
                   </div>
-                </div>
 
-                <div className="flex shrink-0 items-center gap-1">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="hover:bg-muted"
-                    onClick={() =>
-                      openEditDialog({
-                        id: repo.id,
-                        full_name: repo.full_name,
-                        setup_script: repo.setup_script ?? "",
-                        default_project_id: repo.default_project_id ?? null,
-                      })
-                    }
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </Button>
-
-                  <ConfirmationDialog
-                    title="Delete Repository"
-                    description="Are you sure you want to remove this GitHub repository from your platform account? This won't delete the repository on GitHub, only your connection to it here."
-                    confirmText="Delete"
-                    isDestructive
-                    onConfirm={() => handleDelete(repo.id)}
-                  >
+                  <div className="flex shrink-0 items-center justify-end gap-1 sm:justify-start">
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      className="hover:bg-muted"
+                      onClick={() =>
+                        openEditDialog({
+                          id: repo.id,
+                          full_name: repo.full_name,
+                          setup_script: repo.setup_script ?? "",
+                          default_project_id: repo.default_project_id ?? null,
+                        })
+                      }
                     >
-                      <Trash2 className="h-4 w-4" />
+                      <Edit2 className="h-4 w-4" />
                     </Button>
-                  </ConfirmationDialog>
+
+                    <ConfirmationDialog
+                      title="Delete Repository"
+                      description="Are you sure you want to remove this GitHub repository from your platform account? This won't delete the repository on GitHub, only your connection to it here."
+                      confirmText="Delete"
+                      isDestructive
+                      onConfirm={() => handleDelete(repo.id)}
+                    >
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </ConfirmationDialog>
+                  </div>
                 </div>
+
+                {repo.default_project_id ? (
+                  <div className="bg-muted/50 rounded-md border p-2">
+                    <p className="text-muted-foreground text-xs font-medium">
+                      Default Project
+                    </p>
+                    <p
+                      className="mt-1 truncate text-xs"
+                      title={defaultProjectName}
+                    >
+                      {defaultProjectName}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="rounded-md border border-yellow-500/20 bg-yellow-500/10 p-2 text-yellow-700 dark:text-yellow-400">
+                    <p className="text-xs font-medium">No Default Project</p>
+                    <p className="mt-1 text-xs">
+                      Assign a project to use this repository.
+                    </p>
+                  </div>
+                )}
               </div>
             );
           })
