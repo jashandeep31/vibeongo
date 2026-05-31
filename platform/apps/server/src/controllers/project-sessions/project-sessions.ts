@@ -12,7 +12,7 @@ import {
   projectSshKeys,
   sshKeys,
   projectDomainRouting,
-  withPagination,
+  customQuery,
   projectSessionTasks,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
@@ -38,7 +38,7 @@ export const getUserProjectSessions = catchAsync(
       where.push(eq(projectSessions.project_id, filters.projectId));
     }
 
-    const query = withPagination(
+    const query = customQuery(
       db
         .select({
           projectSession: projectSessions,

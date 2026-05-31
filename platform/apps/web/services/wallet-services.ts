@@ -1,14 +1,39 @@
 import { BACKEND_URL } from "@/lib/constants";
+import { userWallet, userWalletTransactions } from "@repo/db";
 import axios from "axios";
 
-export const getWallet = async (): Promise<{
-  id: string;
-  balance: number;
-}> => {
-  const res = await axios.get(`${BACKEND_URL}/api/v1/users/metadata`, {
+export type Wallet = typeof userWallet.$inferSelect;
+export type WalletTransaction = typeof userWalletTransactions.$inferSelect;
+
+export type GetWalletParams = {
+  page?: number;
+  limit?: number;
+  transactions?: boolean;
+};
+
+export type WalletResponse = {
+  data: {
+    wallet?: Wallet;
+    transactions: WalletTransaction[];
+  };
+  page?: number;
+  hasNext?: boolean;
+};
+
+export const getWallet = async ({
+  page,
+  limit,
+  transactions,
+}: GetWalletParams = {}): Promise<WalletResponse> => {
+  const res = await axios.get(`${BACKEND_URL}/api/v1/payments`, {
+    params: {
+      page,
+      limit,
+      transactions,
+    },
     withCredentials: true,
   });
-  return res.data.data;
+  return res.data;
 };
 
 export const addCredits = async (
