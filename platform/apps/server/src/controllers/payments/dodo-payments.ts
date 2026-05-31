@@ -37,6 +37,7 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
         email: user.email,
         name: user.first_name + " " + user.last_name,
       },
+      return_url: env.FRONTEND_URL + "/dashboard/wallet",
       product_cart: [
         { amount, quantity: 1, product_id: env.DODO_PAYMENT_PRODUCT_ID },
       ],

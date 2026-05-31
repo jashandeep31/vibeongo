@@ -92,7 +92,7 @@ export default function ClientView() {
                   <Skeleton className="h-3 w-40 rounded-md" />
                 </div>
               ) : (
-                <p className="mt-2 text-4xl font-bold tracking-tight">
+                <p className="mt-2 text-lg font-bold tracking-tight lg:text-4xl">
                   ${walletBalance} credits
                 </p>
               )}
@@ -110,14 +110,14 @@ export default function ClientView() {
           </h2>
         </div>
 
-        <div className="mt-6 rounded-lg border">
-          <Table>
+        <div className="mt-6 grid overflow-auto rounded-lg border">
+          <Table className="min-w-[760px] table-fixed">
             <TableHeader>
               <TableRow>
-                <TableHead>Date</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead className="w-28">Type</TableHead>
                 <TableHead>Description</TableHead>
-                <TableHead className="text-right">Amount</TableHead>
+                <TableHead className="w-32 text-right">Amount</TableHead>
+                <TableHead className="w-44">Date</TableHead>
               </TableRow>
             </TableHeader>
 
@@ -126,18 +126,18 @@ export default function ClientView() {
                 Array.from({ length: 5 }).map((_, index) => (
                   <TableRow key={index}>
                     <TableCell>
-                      <Skeleton className="h-4 w-36" />
-                    </TableCell>
-                    <TableCell>
                       <Skeleton className="h-5 w-20" />
                     </TableCell>
                     <TableCell>
-                      <Skeleton className="h-4 w-48" />
+                      <Skeleton className="h-4 w-full max-w-xl" />
                     </TableCell>
                     <TableCell>
                       <div className="flex justify-end">
                         <Skeleton className="h-4 w-20" />
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-36" />
                     </TableCell>
                   </TableRow>
                 ))
@@ -148,9 +148,6 @@ export default function ClientView() {
 
                   return (
                     <TableRow key={transaction.id}>
-                      <TableCell className="whitespace-nowrap">
-                        {formatDate(transaction.created_at)}
-                      </TableCell>
                       <TableCell>
                         <Badge
                           variant={isDeposit ? "secondary" : "outline"}
@@ -159,11 +156,15 @@ export default function ClientView() {
                           {transaction.transaction_type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="max-w-md truncate">
+                      <TableCell className="whitespace-normal break-words">
                         {transaction.description ?? "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium whitespace-nowrap">
                         {amountPrefix}${formatCredits(transaction.amount)}
+                      </TableCell>
+
+                      <TableCell className="whitespace-nowrap">
+                        {formatDate(transaction.created_at)}
                       </TableCell>
                     </TableRow>
                   );
