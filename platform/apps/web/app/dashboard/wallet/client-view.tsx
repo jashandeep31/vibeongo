@@ -13,7 +13,8 @@ import { CreditCard } from "lucide-react";
 
 export default function ClientView() {
   const { data: wallet } = useGetWallet();
-  const walletBalance = ((wallet?.balance ?? 0) / 100).toFixed(2);
+  // Note: wallet returns the precision so divide by 10**4
+  const walletBalance = ((wallet?.balance ?? 0) / 10000).toFixed(2);
 
   return (
     <div className="p-8">
