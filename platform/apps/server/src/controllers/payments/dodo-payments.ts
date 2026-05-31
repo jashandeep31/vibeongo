@@ -5,9 +5,10 @@ import { env } from "../../lib/env.js";
 import { AppError } from "../../lib/app-error.js";
 import { z } from "zod";
 
-const dodoPaymentClient = new DodoPayments({
+export const dodoPaymentClient = new DodoPayments({
   bearerToken: env.DODO_PAYMENT_BEARER_TOKEN,
   environment: env.NODE_ENV == "development" ? "test_mode" : "live_mode",
+  webhookKey: env.DODO_PAYMENTS_WEBHOOK_SECRET,
 });
 export const getDodoPaymentCheckoutUrl = catchAsync(
   async (req: Request, res: Response) => {
