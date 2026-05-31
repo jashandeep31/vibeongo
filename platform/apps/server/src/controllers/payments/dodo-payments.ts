@@ -16,7 +16,7 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
 
     const { amount } = z
       .object({
-        amount: z.number(),
+        amount: z.number().min(500),
       })
       .parse(req.body);
 
@@ -26,7 +26,6 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
       ],
     });
 
-    console.log(JSON.stringify(checkoutSession));
     res.redirect(checkoutSession.checkout_url!);
   },
 );

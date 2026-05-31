@@ -55,8 +55,8 @@ const sidebarLinks: {
     icon: Clock3,
   },
   {
-    title: "Billing",
-    url: "/billing",
+    title: "Wallet",
+    url: "/dashboard/wallet",
     icon: CreditCard,
   },
   {
