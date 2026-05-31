@@ -44,7 +44,7 @@ export const addCredits = async (
   const res = await axios.post(
     `${BACKEND_URL}/api/v1/payments/add-credits`,
     {
-      amount: amount * 100,
+      amount,
     },
     {
       withCredentials: true,

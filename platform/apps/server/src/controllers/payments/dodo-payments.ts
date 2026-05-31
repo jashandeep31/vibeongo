@@ -15,6 +15,10 @@ import {
 } from "@repo/db";
 import { commonFilterSchema } from "@repo/shared";
 
+const MIN_CREDIT_AMOUNT_DOLLARS = 5;
+const MAX_CREDIT_AMOUNT_DOLLARS = 300;
+const CENTS_PER_DOLLAR = 100;
+
 export const dodoPaymentClient = new DodoPayments({
   bearerToken: env.DODO_PAYMENT_BEARER_TOKEN,
   environment: env.NODE_ENV == "development" ? "test_mode" : "live_mode",
@@ -77,11 +81,16 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("User not found", 401);
 
-    const { amount } = z
+    const { amount: amountInDollars } = z
       .object({
-        amount: z.number().min(500),
+        amount: z
+          .number()
+          .int()
+          .min(MIN_CREDIT_AMOUNT_DOLLARS)
+          .max(MAX_CREDIT_AMOUNT_DOLLARS),
       })
       .parse(req.body);
+    const amount = amountInDollars * CENTS_PER_DOLLAR;
 
     const checkoutSession = await dodoPaymentClient.checkoutSessions.create({
       customer: {
