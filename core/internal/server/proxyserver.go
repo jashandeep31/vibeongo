@@ -100,6 +100,9 @@ func (w *corsResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 func setCORSHeaders(headers http.Header, origin string) {
 	headers.Del("Access-Control-Allow-Origin")
 	headers.Set("Access-Control-Allow-Origin", origin)
+	headers.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+	headers.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+	headers.Add("Vary", "Origin")
 }
 
 // Return the version of the applcation along with the build time
