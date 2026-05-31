@@ -1,6 +1,7 @@
 "use client";
 
 import { BuyCreditsDialog } from "@/components/dialogs/buy-credits-dialog";
+import { useGetWallet } from "@/hooks/use-wallet";
 import {
   Card,
   CardAction,
@@ -11,6 +12,9 @@ import {
 import { CreditCard } from "lucide-react";
 
 export default function ClientView() {
+  const { data: wallet } = useGetWallet();
+  const walletBalance = ((wallet?.balance ?? 0) / 100).toFixed(2);
+
   return (
     <div className="p-8">
       <div className="flex flex-col gap-2">
@@ -33,7 +37,7 @@ export default function ClientView() {
           <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <p className="mt-2 text-4xl font-bold tracking-tight">
-                $0 credits
+                ${walletBalance} credits
               </p>
             </div>
 

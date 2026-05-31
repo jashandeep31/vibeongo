@@ -26,6 +26,7 @@ const envSchema = z.object({
   PROXY_SERVER_URL: z.string(),
   DODO_PAYMENT_PRODUCT_ID: z.string(),
   DODO_PAYMENT_BEARER_TOKEN: z.string(),
+  DODO_PAYMENTS_WEBHOOK_SECRET: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);
 

@@ -26,6 +26,8 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
       ],
     });
 
-    res.redirect(checkoutSession.checkout_url!);
+    res.status(200).json({
+      checkoutUrl: checkoutSession.checkout_url,
+    });
   },
 );

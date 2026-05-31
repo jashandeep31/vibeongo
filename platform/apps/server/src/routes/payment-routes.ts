@@ -5,7 +5,7 @@ import { checkAuthorization } from "../middlewares/check-authorization.js";
 const routes: Router = Router();
 
 routes
-  .route("/wallet-recharge")
+  .route("/add-credits")
   .post(checkAuthorization(["all"]), getDodoPaymentCheckoutUrl);
 
 export const paymentRoutes = routes;

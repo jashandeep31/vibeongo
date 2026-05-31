@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useAddCredits } from "@/hooks/use-wallet";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
@@ -15,6 +16,7 @@ import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { z } from "@repo/shared";
 import { PlusCircle } from "lucide-react";
+import { toast } from "sonner";
 
 const MIN_CREDIT_AMOUNT = 5;
 const MAX_CREDIT_AMOUNT = 300;
@@ -30,18 +32,29 @@ const buyCreditsSchema = z.object({
 export function BuyCreditsDialog() {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(MIN_CREDIT_AMOUNT));
+  const addCreditsMutation = useAddCredits();
 
   const parsedAmount = buyCreditsSchema.safeParse({ amount });
   const amountError = parsedAmount.success
     ? null
     : parsedAmount.error.issues[0]?.message;
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!parsedAmount.success) {
       return;
     }
 
-    setOpen(false);
+    const toastId = toast.loading("Creating checkout session...");
+    try {
+      const { checkoutUrl } = await addCreditsMutation.mutateAsync(
+        parsedAmount.data.amount,
+      );
+      toast.success("Redirecting to checkout", { id: toastId });
+      window.location.href = checkoutUrl;
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to create checkout session", { id: toastId });
+    }
   };
 
   const handleOpenChange = (nextOpen: boolean) => {
@@ -107,9 +120,9 @@ export function BuyCreditsDialog() {
           <Button
             type="button"
             onClick={handleSubmit}
-            disabled={!parsedAmount.success}
+            disabled={!parsedAmount.success || addCreditsMutation.isPending}
           >
-            Continue
+            {addCreditsMutation.isPending ? "Creating..." : "Continue"}
           </Button>
         </DialogFooter>
       </DialogContent>
