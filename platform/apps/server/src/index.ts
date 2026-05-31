@@ -24,10 +24,17 @@ import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhoo
 
 const app = express();
 
+// --- dodopayments  Webhooks ---
+// Must be before express.json()
+app.post(
+  "/v1/webhook/dodo",
+  express.raw({ type: "application/json" }),
+  dodoPaymentsWebhook,
+);
+
 // --- GitHub App Webhooks ---
 // Must be before express.json()
 app.use("/api/v1/github-app", githubAppWebhookMiddleware);
-app.use("/v1/webhook/dodo", dodoPaymentsWebhook);
 
 app.use("/api", (req, res, next) => {
   const start = performance.now();
