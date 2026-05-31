@@ -1,4 +1,4 @@
-import { accounts, and, db, eq, users } from "@repo/db";
+import { accounts, and, db, eq, users, userWallet } from "@repo/db";
 
 interface CreateUser {
   email: string;
@@ -58,6 +58,17 @@ export const createOrGetUser = async ({
 
   if (existingUser) {
     await upsertGithubAccount(ensureId(existingUser.id), token);
+    const userwalletRow = await db
+      .select()
+      .from(userWallet)
+      .where(eq(userWallet.user_id, existingUser.id));
+
+    if (!userwalletRow) {
+      await db.insert(userWallet).values({
+        user_id: existingUser.id,
+        balance: 0,
+      });
+    }
     return existingUser;
   }
 
@@ -66,7 +77,7 @@ export const createOrGetUser = async ({
   const lastName = nameParts.slice(1).join(" ") || undefined;
 
   const user = await db.transaction(async (tx) => {
-    const [createdUser] = await tx
+    const [dbUser] = await tx
       .insert(users)
       .values({
         email,
@@ -75,17 +86,24 @@ export const createOrGetUser = async ({
         username,
       })
       .returning();
-    if (!createdUser) throw new Error(internalError);
+    if (!dbUser) throw new Error(internalError);
 
+    // create account for user
     await tx.insert(accounts).values({
-      user_id: ensureId(createdUser.id),
+      user_id: ensureId(dbUser.id),
       provider,
       status: "active",
       token,
       last_login_at: new Date(),
     });
 
-    return createdUser;
+    // creating the  user wallet
+    await tx.insert(userWallet).values({
+      user_id: dbUser.id,
+      balance: 0,
+    });
+
+    return dbUser;
   });
 
   return user;

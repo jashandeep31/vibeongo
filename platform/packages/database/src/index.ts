@@ -31,6 +31,7 @@ export { PgSelectBase, type PgSelect } from "drizzle-orm/pg-core";
 export * from "./schemas/temp-ec2.js";
 export * from "./schemas/proxy-domains.js";
 export * from "./schemas/user.js";
+export * from "./schemas/user-wallet.js";
 export * from "./schemas/github-repos.js";
 export * from "./schemas/environments.js";
 export * from "./schemas/instances.js";
