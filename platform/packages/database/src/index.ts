@@ -17,7 +17,7 @@ const pool = new Pool({
  * @params page page number
  * @params limit items per page
  */
-export function withPagination<T extends PgSelect>(
+export function customQuery<T extends PgSelect>(
   q: T,
   page: number,
   limit: number,
