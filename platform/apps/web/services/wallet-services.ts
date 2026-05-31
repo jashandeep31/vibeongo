@@ -25,7 +25,7 @@ export const getWallet = async ({
   limit,
   transactions,
 }: GetWalletParams = {}): Promise<WalletResponse> => {
-  const res = await axios.get(`${BACKEND_URL}/api/v1/payments`, {
+  const res = await axios.get(`${BACKEND_URL}/api/v1/users/wallet`, {
     params: {
       page,
       limit,
