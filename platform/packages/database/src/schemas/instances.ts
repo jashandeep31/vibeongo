@@ -5,6 +5,7 @@ import {
   uuid,
   varchar,
   text,
+  integer,
 } from "drizzle-orm/pg-core";
 import { projects } from "./projects.js";
 import { instanceTypes } from "./instances-metadata.js";
@@ -33,6 +34,7 @@ export const instances = pgTable("instances", {
   terminated_at: timestamp(),
   started_at: timestamp(),
   state: instanceState().notNull(),
+  session_cost: integer().notNull().default(0),
 
   // Overview by the ai so if needed then we can resume the session with context
   overview: text(),

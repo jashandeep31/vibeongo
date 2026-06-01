@@ -31,7 +31,10 @@ import { CreditCard } from "lucide-react";
 
 const TRANSACTIONS_LIMIT = 10;
 
-const formatCredits = (amount: number) => (amount / 10000).toFixed(2);
+const formatWalletCredits = (amount: number) => {
+  const realamount = amount / 10000;
+  return (Math.trunc(realamount * 100) / 100).toFixed(2);
+};
 
 const formatDate = (value: unknown) => {
   if (!value) return "-";
@@ -56,7 +59,7 @@ export default function ClientView() {
   const wallet = data?.data.wallet;
   const transactions = data?.data.transactions ?? [];
   // Note: wallet returns the precision so divide by 10**4
-  const walletBalance = formatCredits(wallet?.balance ?? 0);
+  const walletBalance = formatWalletCredits(wallet?.balance ?? 0);
   const currentPage = data?.page ?? page;
   const hasNext = data?.hasNext ?? false;
   const previousDisabled = isLoading || currentPage <= 1;
@@ -156,11 +159,11 @@ export default function ClientView() {
                           {transaction.transaction_type}
                         </Badge>
                       </TableCell>
-                      <TableCell className="whitespace-normal break-words">
+                      <TableCell className="break-words whitespace-normal">
                         {transaction.description ?? "-"}
                       </TableCell>
                       <TableCell className="text-right font-medium whitespace-nowrap">
-                        {amountPrefix}${formatCredits(transaction.amount)}
+                        {amountPrefix}${(transaction.amount / 10000).toFixed(4)}
                       </TableCell>
 
                       <TableCell className="whitespace-nowrap">

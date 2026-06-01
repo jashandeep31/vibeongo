@@ -3,7 +3,6 @@ import {
   and,
   instances,
   db,
-  users,
   eq,
   instanceRegions,
   instanceTypes,
@@ -49,13 +48,14 @@ export const terminateInstanceAndChargeUsage = async ({
   );
 
   const coastEachMin = Math.ceil(row.instance_types.price_per_hour / 60);
-  console.log(coastEachMin, uptimeInMin);
 
   const totalCostWithProfit = (): number => {
     const totalCost = coastEachMin * uptimeInMin;
     const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
     const totalCostWithProfit = totalCost + profit;
-    return totalCostWithProfit < 0.0002 * 10000 ? 2 : totalCostWithProfit;
+    return totalCostWithProfit < 0.0002 * 10000
+      ? 2
+      : Math.ceil(totalCostWithProfit);
   };
 
   await db.transaction(async (tx) => {
@@ -95,14 +95,18 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: "Instance usage",
+        description: `Instance usage ${instanceId}`,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
     }
     await tx
       .update(instances)
-      .set({ terminated_at: new Date(), state: "terminated" })
+      .set({
+        terminated_at: new Date(),
+        state: "terminated",
+        session_cost: totalCost,
+      })
       .where(eq(instances.id, instanceId));
   });
   const updatedRoutings = await db
