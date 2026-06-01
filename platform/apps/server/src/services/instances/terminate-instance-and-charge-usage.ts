@@ -23,31 +23,67 @@ interface terminateInstanceAndChargeUsageProps {
   userId: string;
 }
 
+interface terminateInstanceAndChargeUsageWithInstanceIdAndSessionId {
+  instanceId: string;
+  sessionId: string;
+}
+export const terminateInstanceAndChargeUsageWithInstanceIdAndSessionId =
+  async ({
+    instanceId,
+    sessionId,
+  }: terminateInstanceAndChargeUsageWithInstanceIdAndSessionId) => {
+    const where =
+      sessionId === "iawareofshit"
+        ? eq(instances.id, instanceId)
+        : and(
+            eq(instances.id, instanceId),
+            eq(instances.project_session_id, sessionId),
+          );
+
+    const [instance] = await db.select().from(instances).where(where);
+    if (!instance) throw new AppError("Instance not found", 404);
+
+    return await terminateInstanceAndChargeUsage({
+      instanceId: instanceId,
+      userId: instance.user_id,
+    });
+  };
+
 export const terminateInstanceAndChargeUsage = async ({
   instanceId,
   userId,
 }: terminateInstanceAndChargeUsageProps) => {
-  const [row] = await db
+  const [instanceWithTypeAndRegion] = await db
     .select()
     .from(instances)
     .innerJoin(instanceTypes, eq(instances.instance_type_id, instanceTypes.id))
     .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
 
-  if (!row || !row?.instances || !row?.instance_regions || !row?.instance_types)
+  if (
+    !instanceWithTypeAndRegion ||
+    !instanceWithTypeAndRegion?.instances ||
+    !instanceWithTypeAndRegion?.instance_regions ||
+    !instanceWithTypeAndRegion?.instance_types
+  )
     throw new AppError("Instance not found", 404);
 
-  const awsResponse = await terminateEc2Instance(row.instance_regions.slug, [
-    row.instances.aws_instance_id,
-  ]);
+  const awsResponse = await terminateEc2Instance(
+    instanceWithTypeAndRegion.instance_regions.slug,
+    [instanceWithTypeAndRegion.instances.aws_instance_id],
+  );
   if (awsResponse.$metadata.httpStatusCode !== 200)
     throw new AppError("Failed to terminate instance", 500);
 
   const uptimeInMin = Math.ceil(
-    (Date.now() - row.instances.started_at!.getTime()) / 1000 / 60,
+    (Date.now() - instanceWithTypeAndRegion.instances.started_at!.getTime()) /
+      1000 /
+      60,
   );
 
-  const coastEachMin = Math.ceil(row.instance_types.price_per_hour / 60);
+  const coastEachMin = Math.ceil(
+    instanceWithTypeAndRegion.instance_types.price_per_hour / 60,
+  );
 
   const totalCostWithProfit = (): number => {
     const totalCost = coastEachMin * uptimeInMin;
