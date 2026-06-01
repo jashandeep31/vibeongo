@@ -65,7 +65,7 @@ interface ConfigStore {
 
 export const useConfigStore = create<ConfigStore>((set) => ({
   setProjectName: (name) => set(() => ({ projectName: name })),
-  projectName: "Demo project dummy name",
+  projectName: "",
 
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
@@ -85,7 +85,7 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   sshKeys: [],
   setSshKeys: (keys) => set(() => ({ sshKeys: keys })),
 
-  portRules: [createPortRule("80"), createPortRule("443")],
+  portRules: [],
   setPortRules: (updater) =>
     set((state) => ({
       portRules:
@@ -94,20 +94,24 @@ export const useConfigStore = create<ConfigStore>((set) => ({
 
   additionalServices: {
     dockerConfig: {
-      enabled: true,
+      enabled: false,
       containers: [
-        {
-          id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
-          name: "PostgreSQL Database",
-          content:
-            "version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:",
-        },
+        // {
+        //   id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
+        //   name: "PostgreSQL Database",
+        //   content:
+        //     "version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:",
+        // },
       ],
     },
-    opencodeConfig: { enabled: true, authJson: `{"auths":{}}`, model: "default" },
-    nvimConfig: {
+    opencodeConfig: {
       enabled: true,
-      config: "https://github.com/nvim-lua/kickstart.nvim.git",
+      authJson: ``,
+      model: "",
+    },
+    nvimConfig: {
+      enabled: false,
+      config: "",
     },
   },
 

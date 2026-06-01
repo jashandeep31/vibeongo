@@ -23,7 +23,7 @@ export default function ClientView() {
       <InstanceTypeCards />
       <GitRepoConfigCard />
       <SshKeysCard />
-      <NetworkFirewallCard />
+      {/* <NetworkFirewallCard /> */}
       <AdditionalServices />
       <ConfigPreviewAndCreate />
     </div>

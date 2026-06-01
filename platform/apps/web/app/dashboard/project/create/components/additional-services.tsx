@@ -16,9 +16,9 @@ function AdditionalServices() {
         </Label>
       </div>
       <div className="space-y-4">
-        <DockerConfigCard />
+        {/* <DockerConfigCard /> */}
         <OpencodeConfigCard />
-        <NvimConfigCard />
+        {/* <NvimConfigCard /> */}
       </div>
     </div>
   );
