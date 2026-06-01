@@ -30,19 +30,20 @@ export const spinUpAndSaveInstance = async ({
   instanceId,
 }: SpinUpAndSaveInstance): Promise<null | typeof instances.$inferSelect> => {
   const [row] = await db
-    .select({ region: instanceRegions })
+    .select({ instanceType: instanceTypes, region: instanceRegions })
     .from(instanceTypes)
     .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
     .where(eq(instanceTypes.id, project.instance_type_id));
 
-  if (!row?.region) {
+  if (!row?.region || !row.instanceType) {
     return null;
   }
   const region = row.region;
+  const instanceType = row.instanceType;
 
   const awsRes = await createEc2Instance({
     region: region.slug as (typeof awsSupportedRegions)[number],
-    instanceType: project.instance_type_id,
+    instanceType: instanceType.name,
     userData: setupScript,
   });
 

@@ -17,6 +17,10 @@ const clearCookies = (res: Response) => {
 
 const failedToAuthenticate = (res: Response) => {
   clearCookies(res);
+  res.clearCookie("session", {
+    path: "/",
+    ...(env.DOMAIN.includes("localhost") ? {} : { domain: `.${env.DOMAIN}` }),
+  });
   return res.status(401).json({
     error: "failed to authenticate",
   });

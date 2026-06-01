@@ -1,11 +1,21 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import { useConfigStore } from "@/store/config-store";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
+import { CircleHelp } from "lucide-react";
 
 const formatHourlyPrice = (pricePerHour: number) =>
   `$${(pricePerHour / 10000).toFixed(4)}/hr`;
+
+const formatAverageMonthlyPrice = (pricePerHour: number) =>
+  `$${((pricePerHour / 10000) * 8 * 30).toFixed(2)}/mo`;
 
 function InstanceTypeCards() {
   const {
@@ -33,6 +43,10 @@ function InstanceTypeCards() {
                 <div className="flex justify-between">
                   <Skeleton className="h-3 w-8" />
                   <Skeleton className="h-3 w-12" />
+                </div>
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-16" />
+                  <Skeleton className="h-3 w-14" />
                 </div>
                 <div className="flex justify-between">
                   <Skeleton className="h-3 w-8" />
@@ -86,16 +100,33 @@ function InstanceTypeCards() {
                   {formatHourlyPrice(instance.price_per_hour)}
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span>CPU:</span>
+              <div className="flex justify-between gap-3">
+                <span className="inline-flex items-center gap-1.5">
+                  Avg monthly:
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="text-muted-foreground hover:text-foreground inline-flex"
+                          onClick={(event) => event.stopPropagation()}
+                        >
+                          <CircleHelp className="size-3.5" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        Calculated as hourly price x 8 hours/day x 30 days.
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </span>
                 <span className="text-foreground font-medium">
-                  {instance.cpu}
+                  {formatAverageMonthlyPrice(instance.price_per_hour)}
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>RAM:</span>
+                <span>CPU/RAM:</span>
                 <span className="text-foreground font-medium">
-                  {instance.ram}
+                  {instance.cpu} / {instance.ram}
                 </span>
               </div>
             </div>
