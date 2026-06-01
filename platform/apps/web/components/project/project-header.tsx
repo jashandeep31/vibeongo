@@ -1,18 +1,14 @@
 "use client";
 
-import { Globe, RefreshCw, Square, Terminal } from "lucide-react";
-import { Button, buttonVariants } from "@repo/ui/components/button";
-import { Project, DbInstance } from "./types";
+import { buttonVariants } from "@repo/ui/components/button";
+import { Project } from "./types";
 import Link from "next/link";
 
 interface ProjectHeaderProps {
   project: Project;
-  instances?: DbInstance[];
 }
 
-export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
-  const isRunning = instances.some((instance) => instance.state === "running");
-
+export function ProjectHeader({ project }: ProjectHeaderProps) {
   return (
     <div className="flex flex-col justify-between gap-4 md:flex-row md:items-start">
       <div>
@@ -22,38 +18,15 @@ export function ProjectHeader({ project, instances = [] }: ProjectHeaderProps) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0">
-        {isRunning ? (
-          <>
-            <Button variant="outline" size="lg">
-              <Terminal className="mr-2 h-4 w-4" />
-              SSH
-            </Button>
-            <Button variant="outline" size="lg">
-              <Globe className="mr-2 h-4 w-4" />
-              Opencode Web
-            </Button>
-            <Button variant="outline" size="lg">
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Restart
-            </Button>
-            <Button variant="destructive" size="lg">
-              <Square className="mr-2 h-4 w-4" />
-              Terminate
-            </Button>
-          </>
-        ) : (
-          <>
-            <Link href={`/projects/${project.id}`} className={buttonVariants()}>
-              Manage Instances
-            </Link>
-            <Link
-              href={`/dashboard/project/${project.id}/manage/env`}
-              className={buttonVariants({ variant: "secondary" })}
-            >
-              Manage ENV&apos;s
-            </Link>
-          </>
-        )}
+        <Link href={`/projects/${project.id}`} className={buttonVariants()}>
+          Manage Instances
+        </Link>
+        <Link
+          href={`/dashboard/project/${project.id}/manage/env`}
+          className={buttonVariants({ variant: "secondary" })}
+        >
+          Manage ENV&apos;s
+        </Link>
       </div>
     </div>
   );

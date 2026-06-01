@@ -12,6 +12,7 @@ import {
   asc,
   userWalletTransactions,
   projectDomainRouting,
+  projects,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
@@ -68,17 +69,17 @@ export const terminateInstanceAndChargeUsage = async ({
   )
     throw new AppError("Instance not found", 404);
 
+  const instance = instanceWithTypeAndRegion.instances;
+
   const awsResponse = await terminateEc2Instance(
     instanceWithTypeAndRegion.instance_regions.slug,
-    [instanceWithTypeAndRegion.instances.aws_instance_id],
+    [instance.aws_instance_id],
   );
   if (awsResponse.$metadata.httpStatusCode !== 200)
     throw new AppError("Failed to terminate instance", 500);
 
   const uptimeInMin = Math.ceil(
-    (Date.now() - instanceWithTypeAndRegion.instances.started_at!.getTime()) /
-      1000 /
-      60,
+    (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
 
   const coastEachMin = Math.ceil(
@@ -144,6 +145,14 @@ export const terminateInstanceAndChargeUsage = async ({
         session_cost: totalCost,
       })
       .where(eq(instances.id, instanceId));
+    if (instance.project_id) {
+      await tx
+        .update(projects)
+        .set({
+          total_charges: sql`${projects.total_charges} + ${totalCost}`,
+        })
+        .where(eq(projects.id, instance.project_id));
+    }
   });
   const updatedRoutings = await db
     .update(projectDomainRouting)
