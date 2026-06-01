@@ -54,6 +54,6 @@ export const checkRuntimeAuthorization = async (
       error: "Not authorized",
     });
   }
-
+  req.sessionToken = sessionToken;
   next();
 };
