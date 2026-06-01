@@ -3,18 +3,16 @@ import {
   instanceRegions,
   instanceTypes,
 } from "../schemas/instances-metadata.js";
+import { instancesData } from "./instances-data.js";
 
 /**
  * Convert dollars → micro dollars
  * example:
  * $5 -> 50000
  */
-const micro = (price: number) => Math.round(price * 10000);
-
-/**
- * convert hourly price → per second
- */
-const perSec = (microPerHour: number) => Math.round(microPerHour / 3600);
+const getRoundedPrice = (price: number): number => {
+  return Math.ceil(price * 10000);
+};
 
 const awsRegions = [
   // { slug: "af-south-1", name: "Africa (Cape Town)" },
@@ -63,26 +61,14 @@ export const regionsSeed: (typeof instanceRegions.$inferInsert)[] =
     provider: "aws",
   }));
 
-const instanceTemplates = [
-  {
-    name: "t3.micro",
-    slug_prefix: "t3-micro",
-    description: "General purpose burstable instance",
-    cpu: "2 vCPU",
-    ram: "1 GiB",
-    price_per_hour_dollars: 10,
-  },
-] as const;
-
 type RegionRecord = Pick<typeof instanceRegions.$inferSelect, "id" | "slug">;
 
 const buildInstancesSeed = (
   regions: RegionRecord[],
 ): (typeof instanceTypes.$inferInsert)[] =>
   regions.flatMap((region) =>
-    instanceTemplates.map((template) => {
-      const pricePerHour = micro(template.price_per_hour_dollars);
-
+    instancesData.map((template) => {
+      const pricePerHour = getRoundedPrice(template.price_per_hour_dollars);
       return {
         name: template.name,
         slug: `${template.slug_prefix}-${region.slug}`,
@@ -92,7 +78,6 @@ const buildInstancesSeed = (
         provider: "aws",
         region_id: region.id,
         price_per_hour: pricePerHour,
-        price_per_sec: perSec(pricePerHour),
       };
     }),
   );
