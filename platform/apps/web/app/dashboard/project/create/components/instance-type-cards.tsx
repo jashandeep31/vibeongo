@@ -4,6 +4,9 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { useConfigStore } from "@/store/config-store";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
 
+const formatHourlyPrice = (pricePerHour: number) =>
+  `$${(pricePerHour / 10000).toFixed(4)}/hr`;
+
 function InstanceTypeCards() {
   const {
     instanceRegionId: instanceRegion,
@@ -59,7 +62,7 @@ function InstanceTypeCards() {
             onClick={() => setInstanceTypeId(instance.id)}
             className={`hover:border-primary flex flex-col rounded-lg border p-4 text-left transition-colors ${
               instanceTypeId === instance.id
-                ? "border-primary bg-primary/5 ring-1 ring-primary"
+                ? "border-primary bg-primary/5 ring-primary ring-1"
                 : "bg-muted hover:bg-muted/80"
             }`}
             key={instance.id}
@@ -77,6 +80,12 @@ function InstanceTypeCards() {
               </div>
             )}
             <div className="text-muted-foreground mt-auto w-full space-y-2 text-xs">
+              <div className="flex justify-between">
+                <span>Price:</span>
+                <span className="text-foreground font-medium">
+                  {formatHourlyPrice(instance.price_per_hour)}
+                </span>
+              </div>
               <div className="flex justify-between">
                 <span>CPU:</span>
                 <span className="text-foreground font-medium">
