@@ -86,7 +86,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
       {/* Header Section */}
-      <ProjectHeader project={project} instances={instances} />
+      <ProjectHeader project={project} />
 
       <div className="hidden justify-end">
         <ConfirmationDialog
