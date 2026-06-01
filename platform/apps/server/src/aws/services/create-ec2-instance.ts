@@ -1,6 +1,5 @@
-import { RunInstancesCommand } from "@aws-sdk/client-ec2";
+import { _InstanceType, RunInstancesCommand } from "@aws-sdk/client-ec2";
 import { getEc2Client } from "../ec2-client.js";
-import { env } from "../../lib/env.js";
 import { awsSupportedRegions } from "../configs/aws-supported-regions-configs.js";
 import { ec2RegionImageIds } from "../configs/ec2-region-image-config.js";
 
@@ -20,11 +19,14 @@ export const createEc2Instance = async ({
   if (!imageConfig)
     throw new Error("Regions isn't suppported yet for ec2 deployment");
 
+  if (!Object.values(_InstanceType).includes(instanceType as _InstanceType)) {
+    throw new Error(`Unsupported EC2 instance type: ${instanceType}`);
+  }
+
   const command = new RunInstancesCommand({
     // ImageId: imageConfig.linuxImageId, //the version of os,
     ImageId: "ami-0917123061b090ddc", //the version of os,
-    // InstanceType: "t3.small",
-    InstanceType: "m6i.large",
+    InstanceType: instanceType as _InstanceType,
     MinCount: 1,
     MaxCount: 1,
 
