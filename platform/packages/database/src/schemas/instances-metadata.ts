@@ -37,7 +37,6 @@ export const instanceTypes = pgTable("instance_types", {
   region_id: uuid().references(() => instanceRegions.id),
 
   price_per_hour: integer().notNull(),
-  price_per_sec: integer().notNull(),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),
