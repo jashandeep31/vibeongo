@@ -3,9 +3,11 @@ import { createProject } from "../controllers/project/create-project.js";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   deleteProjectById,
+  getProjectConfigForEdit,
   getProjectDomainsById,
   getProjectById,
   getProjects,
+  updateProjectById,
 } from "../controllers/project/projects.js";
 import {
   addAllowedIPToProject,
@@ -28,7 +30,11 @@ routes
 routes
   .route("/:id")
   .get(checkAuthorization(["all"]), getProjectById)
+  .patch(checkAuthorization(["all"]), updateProjectById)
   .delete(checkAuthorization(["all"]), deleteProjectById);
+routes
+  .route("/:id/get-project-config")
+  .get(checkAuthorization(["all"]), getProjectConfigForEdit);
 
 routes
   .route("/:id/domains")

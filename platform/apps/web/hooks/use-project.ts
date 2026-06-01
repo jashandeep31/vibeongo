@@ -6,9 +6,11 @@ import {
   deleteProject,
   deleteAllowedIpFromProject,
   getProjectById,
+  getProjectConfigForEdit,
   getProjectDomainsById,
   getProjectFilesById,
   getProjects,
+  updateProject,
   updateProjectRoutingTargetInstance,
   updateProjectDomainPort,
 } from "@/services/project-services";
@@ -18,6 +20,21 @@ export const useCreateProject = () =>
   useMutation({
     mutationFn: createProject,
   });
+
+export const useUpdateProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProject,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      queryClient.invalidateQueries({ queryKey: ["project", variables.id] });
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "edit-config"],
+      });
+    },
+  });
+};
 
 export const useGetProjects = (enabled = true) =>
   useQuery({
@@ -35,6 +52,16 @@ export const useGetProjectById = (id: string | null) =>
     queryFn: async () => {
       const project = await getProjectById(id!);
       return project;
+    },
+    enabled: !!id,
+  });
+
+export const useGetProjectConfigForEdit = (id: string | null) =>
+  useQuery({
+    queryKey: ["project", id!, "edit-config"],
+    queryFn: async () => {
+      const projectConfig = await getProjectConfigForEdit(id!);
+      return projectConfig;
     },
     enabled: !!id,
   });

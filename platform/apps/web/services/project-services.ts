@@ -1,5 +1,6 @@
 import { BACKEND_URL } from "@/lib/constants";
 import {
+  instanceRegions,
   projectFileData,
   projectFiles,
   projectDomainRouting,
@@ -14,6 +15,23 @@ export const createProject = async (projectData: unknown) => {
   const res = await axios.post(BACKEND_URL + "/api/v1/projects", projectData, {
     withCredentials: true,
   });
+  return res.data;
+};
+
+export const updateProject = async ({
+  id,
+  projectData,
+}: {
+  id: string;
+  projectData: unknown;
+}) => {
+  const res = await axios.patch(
+    BACKEND_URL + `/api/v1/projects/${id}`,
+    projectData,
+    {
+      withCredentials: true,
+    },
+  );
   return res.data;
 };
 
@@ -32,6 +50,27 @@ export const getProjectById = async (
   const res = await axios.get(BACKEND_URL + `/api/v1/projects/${id}`, {
     withCredentials: true,
   });
+  return res.data.data;
+};
+
+export type ProjectConfigForEdit = {
+  project: typeof projects.$inferSelect;
+  instanceRegionId: (typeof instanceRegions.$inferSelect)["id"] | null;
+  instanceTypeId: (typeof projects.$inferSelect)["instance_type_id"];
+  sshKeyIds: string[];
+  githubRepoIds: string[];
+  config: (typeof projects.$inferSelect)["config"];
+};
+
+export const getProjectConfigForEdit = async (
+  id: string,
+): Promise<ProjectConfigForEdit> => {
+  const res = await axios.get(
+    BACKEND_URL + `/api/v1/projects/${id}/get-project-config`,
+    {
+      withCredentials: true,
+    },
+  );
   return res.data.data;
 };
 

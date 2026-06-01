@@ -23,22 +23,11 @@ export function UsageBilling({ project }: UsageBillingProps) {
               Total Charges
             </p>
             <p className="text-3xl font-bold">
-              ${(project.total_charges / 100).toFixed(2)}
+              ${(project.total_charges / 10000).toFixed(4)}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
               Current billing cycle
             </p>
-          </div>
-
-          <div className="space-y-3 border-t pt-4">
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground flex items-center gap-2">
-                <Server className="h-4 w-4" /> Compute
-              </span>
-              <span className="font-medium">
-                ${(project.total_charges / 100).toFixed(2)}
-              </span>
-            </div>
           </div>
         </CardContent>
       </Card>
