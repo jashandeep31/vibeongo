@@ -27,6 +27,5 @@ export const getInstanceTypesByRegion = catchAsync(
     res.status(200).json({
       data: instanceTypesData,
     });
-    return;
   },
 );
