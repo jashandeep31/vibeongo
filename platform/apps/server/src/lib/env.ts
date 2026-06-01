@@ -27,6 +27,7 @@ const envSchema = z.object({
   DODO_PAYMENT_PRODUCT_ID: z.string(),
   DODO_PAYMENT_BEARER_TOKEN: z.string(),
   DODO_PAYMENTS_WEBHOOK_SECRET: z.string(),
+  PROFIT_PRECENTAGE: z.coerce.number().min(10).max(100),
 });
 const parsed = envSchema.safeParse(process.env);
 
