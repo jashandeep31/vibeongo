@@ -3,16 +3,57 @@ import { githubRepos } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import axios from "axios";
 
-export const getGithubRepoById = async (
+export type GithubRepoIssue = {
+  url: string;
+  html_url: string;
+  id: number;
+  number: number;
+  repository_url: string;
+  title: string;
+  state: string;
+  body: string | null;
+  comments: number;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  user?: {
+    login: string;
+    avatar_url: string;
+  };
+  labels: {
+    id?: number;
+    name: string | null;
+    color: string | null;
+  }[];
+};
+
+export type GithubRepo = typeof githubRepos.$inferSelect;
+
+export type GithubRepoWithIssues = GithubRepo & {
+  issues: GithubRepoIssue[];
+};
+
+export type GithubRepoInclude = "issues" | "pull_requests";
+
+export function getGithubRepoById(
   id: string,
-  include?: "issues" | "pull_request",
-): Promise<typeof githubRepos.$inferSelect> => {
+  include: "issues",
+): Promise<GithubRepoWithIssues>;
+export function getGithubRepoById(
+  id: string,
+  include?: Exclude<GithubRepoInclude, "issues">,
+): Promise<GithubRepo>;
+
+export async function getGithubRepoById(
+  id: string,
+  include?: GithubRepoInclude,
+): Promise<GithubRepo | GithubRepoWithIssues> {
   const res = await axios.get(BACKEND_URL + `/api/v1/github-repos/${id}`, {
     withCredentials: true,
     params: { include: include },
   });
   return res.data.data;
-};
+}
 
 export const createGithubRepo = async (
   data: z.infer<typeof createGithubRepoSchema>,
@@ -23,9 +64,7 @@ export const createGithubRepo = async (
   return res.data;
 };
 
-export const getGithubRepos = async (): Promise<
-  (typeof githubRepos.$inferSelect)[]
-> => {
+export const getGithubRepos = async (): Promise<GithubRepo[]> => {
   const res = await axios.get(BACKEND_URL + "/api/v1/github-repos/", {
     withCredentials: true,
   });

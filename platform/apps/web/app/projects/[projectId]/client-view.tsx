@@ -152,7 +152,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
           <div className="grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
             <div>
               <p className="text-muted-foreground">Total Charges</p>
-              <p className="font-medium">{project.total_charges}</p>
+              <p className="font-medium">${project.total_charges / 10000}</p>
             </div>
             <div>
               <p className="text-muted-foreground">Created At</p>
