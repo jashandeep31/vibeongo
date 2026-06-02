@@ -3,6 +3,17 @@ import { githubRepos } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import axios from "axios";
 
+export const getGithubRepoById = async (
+  id: string,
+  include?: "issues" | "pull_request",
+): Promise<typeof githubRepos.$inferSelect> => {
+  const res = await axios.get(BACKEND_URL + `/api/v1/github-repos/${id}`, {
+    withCredentials: true,
+    params: { include: include },
+  });
+  return res.data.data;
+};
+
 export const createGithubRepo = async (
   data: z.infer<typeof createGithubRepoSchema>,
 ) => {

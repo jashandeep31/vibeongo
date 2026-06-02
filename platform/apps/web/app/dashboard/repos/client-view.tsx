@@ -11,7 +11,7 @@ import { CreateGithubRepoDialog } from "@/components/dialogs/create-github-repo-
 import { Edit2, GitFork, Trash2 } from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { Button } from "@repo/ui/components/button";
+import { Button, buttonVariants } from "@repo/ui/components/button";
 import {
   Dialog,
   DialogContent,
@@ -30,6 +30,7 @@ import {
 import { Textarea } from "@repo/ui/components/textarea";
 import { toast } from "sonner";
 import axios from "axios";
+import Link from "next/link";
 
 const NO_DEFAULT_PROJECT = "__none__";
 
@@ -142,7 +143,6 @@ export default function ClientView() {
           <CreateGithubRepoDialog />
         </div>
       </div>
-
       <div className="mt-8 grid gap-4 space-y-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <>
@@ -255,6 +255,20 @@ export default function ClientView() {
                     </p>
                   </div>
                 )}
+                <div className="flex items-center gap-2">
+                  <Link
+                    href={`/dashboard/repos/${repo.id}/issues`}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    Issues
+                  </Link>
+                  <Link
+                    href={""}
+                    className={buttonVariants({ variant: "outline" })}
+                  >
+                    Pull requests
+                  </Link>
+                </div>
               </div>
             );
           })
@@ -268,7 +282,6 @@ export default function ClientView() {
           </div>
         )}
       </div>
-
       <Dialog
         open={!!editingRepo}
         onOpenChange={(open) => !open && closeEditDialog()}

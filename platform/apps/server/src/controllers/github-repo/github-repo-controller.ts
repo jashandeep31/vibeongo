@@ -4,6 +4,7 @@ import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { db, githubRepos, eq, and, projects } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
+import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
 
 export const getUserGitRepos = catchAsync(
   async (req: Request, res: Response) => {
@@ -16,6 +17,61 @@ export const getUserGitRepos = catchAsync(
       .where(eq(githubRepos.user_id, user.id));
 
     res.status(200).json({ data: rows });
+  },
+);
+
+export const getGithubRepoById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authnatication is required", 400);
+
+    const { id } = z
+      .object({
+        id: z.string(),
+      })
+      .parse(req.params);
+
+    const { include } = z
+      .object({
+        include: z.enum(["issues", "pull_requests"]).optional().nullable(),
+      })
+      .parse(req.query);
+
+    const [githubRepo] = await db
+      .select()
+      .from(githubRepos)
+      .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
+
+    if (!githubRepo) throw new AppError("Repo not found", 404);
+    let issues: any = [];
+    if (include === "issues") {
+      const rawIssues = await getGithubRepoIssues(githubRepo);
+      issues = rawIssues.map((issue) => {
+        return {
+          url: issue.url,
+          id: issue.id,
+          repository_url: issue.repository_url,
+          title: issue.title,
+          state: issue.state,
+          body: issue.body,
+          created_at: issue.created_at,
+          updated_at: issue.updated_at,
+          closed_at: issue.closed_at,
+          ...(issue.user && {
+            user: {
+              login: issue.user.login,
+              avatar_url: issue.user.avatar_url,
+            },
+          }),
+        };
+      });
+    }
+    res.status(200).json({
+      data: {
+        ...githubRepo,
+        issues,
+      },
+    });
   },
 );
 
