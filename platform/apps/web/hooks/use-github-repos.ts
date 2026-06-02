@@ -4,8 +4,16 @@ import {
   deleteGithubRepo,
   updateGithubRepoById,
   getGithubRepoById,
+  type GithubRepo,
+  type GithubRepoInclude,
+  type GithubRepoWithIssues,
 } from "@/services/github-repo-services";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryResult,
+} from "@tanstack/react-query";
 
 export const useCreateGithubRepo = () => {
   const queryClient = useQueryClient();
@@ -17,17 +25,29 @@ export const useCreateGithubRepo = () => {
   });
 };
 
-export const useGetGithubRepoById = (
+export function useGetGithubRepoById(
   id: string,
-  include?: "issues" | "pull_request",
-) =>
-  useQuery({
-    queryKey: ["github-repo", id],
+  include: "issues",
+): UseQueryResult<GithubRepoWithIssues>;
+export function useGetGithubRepoById(
+  id: string,
+  include?: Exclude<GithubRepoInclude, "issues">,
+): UseQueryResult<GithubRepo>;
+export function useGetGithubRepoById(
+  id: string,
+  include?: GithubRepoInclude,
+) {
+  return useQuery({
+    queryKey: ["github-repo", id, include],
     queryFn: async () => {
-      const repo = await getGithubRepoById(id, include);
-      return repo;
+      if (include === "issues") {
+        return getGithubRepoById(id, include);
+      }
+
+      return getGithubRepoById(id, include);
     },
   });
+}
 
 export const useGetGithubRepos = () =>
   useQuery({

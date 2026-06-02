@@ -6,6 +6,30 @@ import { db, githubRepos, eq, and, projects } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
 
+type GithubRepoIssueResponse = {
+  url: string;
+  html_url: string;
+  id: number;
+  number: number;
+  repository_url: string;
+  title: string;
+  state: string;
+  body: string | null;
+  comments: number;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  user?: {
+    login: string;
+    avatar_url: string;
+  };
+  labels: {
+    id?: number;
+    name: string | null;
+    color: string | null;
+  }[];
+};
+
 export const getUserGitRepos = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
@@ -43,20 +67,37 @@ export const getGithubRepoById = catchAsync(
       .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
 
     if (!githubRepo) throw new AppError("Repo not found", 404);
-    let issues: any = [];
+    let issues: GithubRepoIssueResponse[] = [];
     if (include === "issues") {
       const rawIssues = await getGithubRepoIssues(githubRepo);
       issues = rawIssues.map((issue) => {
         return {
           url: issue.url,
+          html_url: issue.html_url,
           id: issue.id,
+          number: issue.number,
           repository_url: issue.repository_url,
           title: issue.title,
           state: issue.state,
-          body: issue.body,
+          body: issue.body ?? null,
+          comments: issue.comments,
           created_at: issue.created_at,
           updated_at: issue.updated_at,
           closed_at: issue.closed_at,
+          labels: (issue.labels ?? []).map((label) => {
+            if (typeof label === "string") {
+              return {
+                name: label,
+                color: null,
+              };
+            }
+
+            return {
+              ...(label.id === undefined ? {} : { id: label.id }),
+              name: label.name ?? null,
+              color: label.color ?? null,
+            };
+          }),
           ...(issue.user && {
             user: {
               login: issue.user.login,
