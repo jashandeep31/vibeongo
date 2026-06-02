@@ -3,6 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useGetGithubRepoById } from "@/hooks/use-github-repos";
+import { RepoResourceSwitch } from "@/components/repo-resource-switch";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
@@ -92,6 +93,8 @@ const ClientView = ({ id }: { id: string }) => {
         </div>
       </div>
 
+      <RepoResourceSwitch id={id} active="issues" />
+
       {issues.length > 0 ? (
         <div className="space-y-3">
           {issues.map((issue) => {
@@ -125,7 +128,7 @@ const ClientView = ({ id }: { id: string }) => {
                             className={
                               issue.state === "open"
                                 ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-                                : "border-0 bg-muted text-muted-foreground hover:bg-muted"
+                                : "bg-muted text-muted-foreground hover:bg-muted border-0"
                             }
                           >
                             {issue.state}

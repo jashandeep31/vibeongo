@@ -263,7 +263,7 @@ export default function ClientView() {
                     Issues
                   </Link>
                   <Link
-                    href={""}
+                    href={`/dashboard/repos/${repo.id}/pull-requests`}
                     className={buttonVariants({ variant: "outline" })}
                   >
                     Pull requests
