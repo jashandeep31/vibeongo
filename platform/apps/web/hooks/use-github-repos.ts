@@ -7,6 +7,7 @@ import {
   type GithubRepo,
   type GithubRepoInclude,
   type GithubRepoWithIssues,
+  type GithubRepoWithPullRequests,
 } from "@/services/github-repo-services";
 import {
   useMutation,
@@ -31,19 +32,27 @@ export function useGetGithubRepoById(
 ): UseQueryResult<GithubRepoWithIssues>;
 export function useGetGithubRepoById(
   id: string,
-  include?: Exclude<GithubRepoInclude, "issues">,
+  include: "pull_requests",
+): UseQueryResult<GithubRepoWithPullRequests>;
+export function useGetGithubRepoById(
+  id: string,
+  include?: undefined,
 ): UseQueryResult<GithubRepo>;
 export function useGetGithubRepoById(
   id: string,
   include?: GithubRepoInclude,
-) {
+): UseQueryResult<
+  GithubRepo | GithubRepoWithIssues | GithubRepoWithPullRequests
+>;
+export function useGetGithubRepoById(
+  id: string,
+  include?: GithubRepoInclude,
+): UseQueryResult<
+  GithubRepo | GithubRepoWithIssues | GithubRepoWithPullRequests
+> {
   return useQuery({
     queryKey: ["github-repo", id, include],
     queryFn: async () => {
-      if (include === "issues") {
-        return getGithubRepoById(id, include);
-      }
-
       return getGithubRepoById(id, include);
     },
   });

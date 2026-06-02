@@ -5,6 +5,7 @@ import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access
 import { db, githubRepos, eq, and, projects } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
+import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
 
 type GithubRepoIssueResponse = {
   url: string;
@@ -28,6 +29,33 @@ type GithubRepoIssueResponse = {
     name: string | null;
     color: string | null;
   }[];
+};
+
+type GithubRepoPullRequestResponse = {
+  url: string;
+  html_url: string;
+  id: number;
+  number: number;
+  title: string;
+  state: string;
+  body: string | null;
+  draft: boolean;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  user?: {
+    login: string;
+    avatar_url: string;
+  };
+  head: {
+    ref: string;
+    sha: string;
+  };
+  base: {
+    ref: string;
+    sha: string;
+  };
 };
 
 export const getUserGitRepos = catchAsync(
@@ -68,6 +96,7 @@ export const getGithubRepoById = catchAsync(
 
     if (!githubRepo) throw new AppError("Repo not found", 404);
     let issues: GithubRepoIssueResponse[] = [];
+    let pull_requests: GithubRepoPullRequestResponse[] = [];
     if (include === "issues") {
       const rawIssues = await getGithubRepoIssues(githubRepo);
       issues = rawIssues.map((issue) => {
@@ -107,10 +136,46 @@ export const getGithubRepoById = catchAsync(
         };
       });
     }
+
+    if (include === "pull_requests") {
+      const rawPullRequests = await getGithubRepoPullRequests(githubRepo);
+      pull_requests = rawPullRequests.map((pullRequest) => {
+        return {
+          url: pullRequest.url,
+          html_url: pullRequest.html_url,
+          id: pullRequest.id,
+          number: pullRequest.number,
+          title: pullRequest.title,
+          state: pullRequest.state,
+          body: pullRequest.body ?? null,
+          draft: pullRequest.draft ?? false,
+          created_at: pullRequest.created_at,
+          updated_at: pullRequest.updated_at,
+          closed_at: pullRequest.closed_at,
+          merged_at: pullRequest.merged_at,
+          head: {
+            ref: pullRequest.head.ref,
+            sha: pullRequest.head.sha,
+          },
+          base: {
+            ref: pullRequest.base.ref,
+            sha: pullRequest.base.sha,
+          },
+          ...(pullRequest.user && {
+            user: {
+              login: pullRequest.user.login,
+              avatar_url: pullRequest.user.avatar_url,
+            },
+          }),
+        };
+      });
+    }
+
     res.status(200).json({
       data: {
         ...githubRepo,
         issues,
+        pull_requests,
       },
     });
   },

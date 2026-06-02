@@ -33,6 +33,37 @@ export type GithubRepoWithIssues = GithubRepo & {
   issues: GithubRepoIssue[];
 };
 
+export type GithubRepoPullRequest = {
+  url: string;
+  html_url: string;
+  id: number;
+  number: number;
+  title: string;
+  state: string;
+  body: string | null;
+  draft: boolean;
+  created_at: string;
+  updated_at: string;
+  closed_at: string | null;
+  merged_at: string | null;
+  user?: {
+    login: string;
+    avatar_url: string;
+  };
+  head: {
+    ref: string;
+    sha: string;
+  };
+  base: {
+    ref: string;
+    sha: string;
+  };
+};
+
+export type GithubRepoWithPullRequests = GithubRepo & {
+  pull_requests: GithubRepoPullRequest[];
+};
+
 export type GithubRepoInclude = "issues" | "pull_requests";
 
 export function getGithubRepoById(
@@ -41,13 +72,21 @@ export function getGithubRepoById(
 ): Promise<GithubRepoWithIssues>;
 export function getGithubRepoById(
   id: string,
-  include?: Exclude<GithubRepoInclude, "issues">,
+  include: "pull_requests",
+): Promise<GithubRepoWithPullRequests>;
+export function getGithubRepoById(
+  id: string,
+  include?: undefined,
 ): Promise<GithubRepo>;
+export function getGithubRepoById(
+  id: string,
+  include?: GithubRepoInclude,
+): Promise<GithubRepo | GithubRepoWithIssues | GithubRepoWithPullRequests>;
 
 export async function getGithubRepoById(
   id: string,
   include?: GithubRepoInclude,
-): Promise<GithubRepo | GithubRepoWithIssues> {
+): Promise<GithubRepo | GithubRepoWithIssues | GithubRepoWithPullRequests> {
   const res = await axios.get(BACKEND_URL + `/api/v1/github-repos/${id}`, {
     withCredentials: true,
     params: { include: include },
