@@ -27,7 +27,7 @@ octokitApp.webhooks.on("pull_request.opened", pullRequestOpenedHandler as any);
 // ------ Issue comment handling ------
 octokitApp.webhooks.on("issue_comment", async (event) => {
   const payload = event.payload;
-  const username = payload.issue.user.login;
+  // const username = payload.issue.user.login;
   //what we need to check here
   // 1. comment user is allowed to manage that repo means admin of it
 });
