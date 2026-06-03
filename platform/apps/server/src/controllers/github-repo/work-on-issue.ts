@@ -4,6 +4,7 @@ import { AppError } from "../../lib/app-error.js";
 import { z } from "zod";
 import { and, db, eq, githubRepos } from "@repo/db";
 import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
+import { issueAndPullRequestHandler } from "../../services/github/issue-hanlder.js";
 
 export const workOnIssueByIssueId = catchAsync(
   async (req: Request, res: Response) => {
@@ -28,6 +29,12 @@ export const workOnIssueByIssueId = catchAsync(
       installation_id: githubRepo.installation_id,
       issue_number: issueNumber,
       full_repo_name: githubRepo.full_name,
+    });
+
+    // working on the issue
+    await issueAndPullRequestHandler({
+      gitRepoId: githubRepo.id,
+      issue: issueDetails,
     });
 
     res.status(200).json({

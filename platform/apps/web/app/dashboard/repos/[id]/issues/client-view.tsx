@@ -2,17 +2,24 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useGetGithubRepoById } from "@/hooks/use-github-repos";
+import {
+  useGenerateFixForIssue,
+  useGetGithubRepoById,
+} from "@/hooks/use-github-repos";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { RepoResourceSwitch } from "@/components/repo-resource-switch";
+import type { GithubRepoIssue } from "@/services/github-repo-services";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import axios from "axios";
 import {
   ArrowLeft,
   ExternalLink,
   GitPullRequest,
   MessageSquare,
 } from "lucide-react";
+import { toast } from "sonner";
 
 const formatDate = (value: string | Date | null) => {
   if (!value) return "Not closed";
@@ -22,6 +29,133 @@ const formatDate = (value: string | Date | null) => {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+};
+
+const IssueCard = ({
+  repoId,
+  issue,
+}: {
+  repoId: string;
+  issue: GithubRepoIssue;
+}) => {
+  const labels = issue.labels ?? [];
+  const generateFixMutation = useGenerateFixForIssue(repoId, issue.number);
+
+  const handleGenerateFix = async () => {
+    const toastId = toast.loading("Generating fix...");
+
+    try {
+      await generateFixMutation.mutateAsync();
+      toast.success("Fix generation started", { id: toastId });
+    } catch (error: unknown) {
+      console.error(error);
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to generate fix")
+        : "Failed to generate fix";
+      toast.error(message, { id: toastId });
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-lg border p-4 shadow-sm">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start gap-3">
+            {issue.user?.avatar_url ? (
+              <Image
+                src={issue.user.avatar_url}
+                alt={issue.user.login}
+                width={32}
+                height={32}
+                className="mt-0.5 h-8 w-8 shrink-0 rounded-full"
+              />
+            ) : (
+              <div className="bg-muted mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                <GitPullRequest className="text-muted-foreground h-4 w-4" />
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  className={
+                    issue.state === "open"
+                      ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground hover:bg-muted border-0"
+                  }
+                >
+                  {issue.state}
+                </Badge>
+                <span className="text-muted-foreground text-sm">
+                  #{issue.number}
+                </span>
+              </div>
+
+              <h2 className="mt-2 text-base font-semibold break-words">
+                {issue.title}
+              </h2>
+              {issue.body ? (
+                <p className="text-muted-foreground mt-2 line-clamp-2 text-sm break-words">
+                  {issue.body}
+                </p>
+              ) : null}
+
+              <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                {issue.user?.login ? <span>{issue.user.login}</span> : null}
+                <span>Opened {formatDate(issue.created_at)}</span>
+                <span>Updated {formatDate(issue.updated_at)}</span>
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  {issue.comments}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {labels.length > 0 ? (
+            <div className="mt-4 flex flex-wrap gap-2 pl-11">
+              {labels.map((label, index) => (
+                <Badge
+                  key={`${label.id ?? label.name ?? "label"}-${index}`}
+                  variant="outline"
+                  className="max-w-full truncate"
+                >
+                  {label.name ?? "Label"}
+                </Badge>
+              ))}
+            </div>
+          ) : null}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ConfirmationDialog
+            title="Generate fix"
+            description={`Do you want to generate a fix for issue #${issue.number}? This will start automated work for this issue.`}
+            confirmText="Generate Fix"
+            onConfirm={() => {
+              void handleGenerateFix();
+            }}
+          >
+            <Button size="sm" disabled={generateFixMutation.isPending}>
+              {generateFixMutation.isPending ? "Generating..." : "Generate Fix"}
+            </Button>
+          </ConfirmationDialog>
+
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={issue.html_url}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open
+            </a>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const ClientView = ({ id }: { id: string }) => {
@@ -97,100 +231,9 @@ const ClientView = ({ id }: { id: string }) => {
 
       {issues.length > 0 ? (
         <div className="space-y-3">
-          {issues.map((issue) => {
-            const labels = issue.labels ?? [];
-
-            return (
-              <div
-                key={issue.id}
-                className="bg-card rounded-lg border p-4 shadow-sm"
-              >
-                <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex min-w-0 items-start gap-3">
-                      {issue.user?.avatar_url ? (
-                        <Image
-                          src={issue.user.avatar_url}
-                          alt={issue.user.login}
-                          width={32}
-                          height={32}
-                          className="mt-0.5 h-8 w-8 shrink-0 rounded-full"
-                        />
-                      ) : (
-                        <div className="bg-muted mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                          <GitPullRequest className="text-muted-foreground h-4 w-4" />
-                        </div>
-                      )}
-
-                      <div className="min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <Badge
-                            className={
-                              issue.state === "open"
-                                ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-                                : "bg-muted text-muted-foreground hover:bg-muted border-0"
-                            }
-                          >
-                            {issue.state}
-                          </Badge>
-                          <span className="text-muted-foreground text-sm">
-                            #{issue.number}
-                          </span>
-                        </div>
-
-                        <h2 className="mt-2 text-base font-semibold break-words">
-                          {issue.title}
-                        </h2>
-                        {issue.body ? (
-                          <p className="text-muted-foreground mt-2 line-clamp-2 text-sm break-words">
-                            {issue.body}
-                          </p>
-                        ) : null}
-
-                        <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                          {issue.user?.login ? (
-                            <span>{issue.user.login}</span>
-                          ) : null}
-                          <span>Opened {formatDate(issue.created_at)}</span>
-                          <span>Updated {formatDate(issue.updated_at)}</span>
-                          <span className="inline-flex items-center gap-1">
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            {issue.comments}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    {labels.length > 0 ? (
-                      <div className="mt-4 flex flex-wrap gap-2 pl-11">
-                        {labels.map((label, index) => (
-                          <Badge
-                            key={`${label.id ?? label.name ?? "label"}-${index}`}
-                            variant="outline"
-                            className="max-w-full truncate"
-                          >
-                            {label.name ?? "Label"}
-                          </Badge>
-                        ))}
-                      </div>
-                    ) : null}
-                  </div>
-
-                  <Button variant="outline" size="sm" asChild>
-                    <a
-                      href={issue.html_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="shrink-0"
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                      Open
-                    </a>
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
+          {issues.map((issue) => (
+            <IssueCard key={issue.id} repoId={id} issue={issue} />
+          ))}
         </div>
       ) : (
         <div className="text-muted-foreground rounded-lg border border-dashed p-12 text-center">
