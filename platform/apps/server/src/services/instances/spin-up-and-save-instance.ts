@@ -18,6 +18,9 @@ interface SpinUpAndSaveInstance {
   sessionId: null | string;
   instanceId: string;
 }
+export type spinUpAndSaveInstanceResponse =
+  | typeof instances.$inferSelect
+  | null;
 
 /**
  * Create a aws ec2 instance as per the specs and save it to the user database. So after the response you are ready to no db saving is needed
@@ -28,7 +31,7 @@ export const spinUpAndSaveInstance = async ({
   userId,
   sessionId = null,
   instanceId,
-}: SpinUpAndSaveInstance): Promise<null | typeof instances.$inferSelect> => {
+}: SpinUpAndSaveInstance): Promise<spinUpAndSaveInstanceResponse> => {
   const [row] = await db
     .select({ instanceType: instanceTypes, region: instanceRegions })
     .from(instanceTypes)

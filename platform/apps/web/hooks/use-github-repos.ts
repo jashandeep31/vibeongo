@@ -8,6 +8,7 @@ import {
   type GithubRepoInclude,
   type GithubRepoWithIssues,
   type GithubRepoWithPullRequests,
+  generateFixForIssue,
 } from "@/services/github-repo-services";
 import {
   useMutation,
@@ -87,3 +88,8 @@ export const useUpdateGithubRepoById = () => {
     },
   });
 };
+
+export const useGenerateFixForIssue = (id: string, issueNumber: number) =>
+  useMutation({
+    mutationFn: () => generateFixForIssue(id, issueNumber),
+  });

@@ -13,13 +13,24 @@ import {
 } from "@repo/db";
 import { getSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
-import { spinUpAndSaveInstance } from "../instances/spin-up-and-save-instance.js";
+import {
+  spinUpAndSaveInstance,
+  spinUpAndSaveInstanceResponse,
+} from "../instances/spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
+import { GithubIssueDetail } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 
+interface issueHandlerProps {
+  gitRepoId: string;
+  issue: GithubIssueDetail;
+}
 /**
  * Receives the issue_id, then proccess as per that issue
  */
-export const issueHandler = async (full_name: string) => {
+export const issueAndPullRequestHandler = async ({
+  gitRepoId,
+  issue,
+}: issueHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubReposWithUserAndProject] = await db
     .select({
       repo: githubRepos,
@@ -29,14 +40,14 @@ export const issueHandler = async (full_name: string) => {
     .from(githubRepos)
     .innerJoin(users, eq(githubRepos.user_id, users.id))
     .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
-    .where(eq(githubRepos.full_name, full_name));
-  if (!githubReposWithUserAndProject) throw new Error("repo not found");
+    .where(eq(githubRepos.id, gitRepoId));
 
+  if (!githubReposWithUserAndProject) throw new Error("repo not found");
   const { project, user, repo } = githubReposWithUserAndProject;
   if (!project || !user || !repo) throw new Error("repo not found");
 
   const sessionMeta = await getSessionNameAndDescription(
-    "this is needed to update",
+    issue.title + "\n" + issue.body,
   );
 
   const session = await db.transaction(async (tx) => {
@@ -55,6 +66,9 @@ export const issueHandler = async (full_name: string) => {
       folder_name: repo.full_name.split("/")[1],
       task: `
       Hi the issue is opended up with the following details:
+      Title: ${issue.title}
+      URL: ${issue.url}
+      Body: ${issue.body}
       `,
       done: false,
       project_session_id: session.id,
@@ -62,7 +76,7 @@ export const issueHandler = async (full_name: string) => {
 
     return session;
   });
-  if (!session) return;
+  if (!session) return null;
   const authToken = await createSessionAuthToken(session.id);
 
   const sshKeysArray = await db
@@ -88,7 +102,7 @@ export const issueHandler = async (full_name: string) => {
     .from(instanceTypes)
     .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
     .where(eq(instanceTypes.id, project.instance_type_id));
-  if (!regionRow || !regionRow.instance_regions) return;
+  if (!regionRow || !regionRow.instance_regions) return null;
 
   const instance = await spinUpAndSaveInstance({
     setupScript: intialScript,
@@ -97,6 +111,7 @@ export const issueHandler = async (full_name: string) => {
     sessionId: session.id,
     instanceId,
   });
+  return instance;
 };
 
 // Title: ${payload.issue.title}
