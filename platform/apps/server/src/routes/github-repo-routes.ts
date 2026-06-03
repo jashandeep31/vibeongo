@@ -8,6 +8,7 @@ import {
   getGithubRepoById,
 } from "../controllers/github-repo/github-repo-controller.js";
 import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.js";
+import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-pullrequest.js";
 
 const routes: Router = Router();
 routes
@@ -24,5 +25,8 @@ routes
 routes
   .route("/:id/issue/:issueNumber")
   .post(checkAuthorization(["all"]), workOnIssueByIssueId);
+routes
+  .route("/:id/pull-request/:prNumber")
+  .post(checkAuthorization(["all"]), workOnPullRequestByPrNumber);
 
 export const githubRepoRoutes = routes;

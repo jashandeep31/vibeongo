@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   useGenerateFixForIssue,
   useGetGithubRepoById,
@@ -38,15 +39,19 @@ const IssueCard = ({
   repoId: string;
   issue: GithubRepoIssue;
 }) => {
+  const router = useRouter();
   const labels = issue.labels ?? [];
   const generateFixMutation = useGenerateFixForIssue(repoId, issue.number);
 
   const handleGenerateFix = async () => {
-    const toastId = toast.loading("Generating fix...");
+    const toastId = toast.loading("Launching Instance", {
+      description: "It might take a few seconds",
+    });
 
     try {
-      await generateFixMutation.mutateAsync();
+      const res = await generateFixMutation.mutateAsync();
       toast.success("Fix generation started", { id: toastId });
+      router.push(`/projects/${res.projectId}/instances/${res.instanceId}`);
     } catch (error: unknown) {
       console.error(error);
       const message = axios.isAxiosError<{ message?: string }>(error)

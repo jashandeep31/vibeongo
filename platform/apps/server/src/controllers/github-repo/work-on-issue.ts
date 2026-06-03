@@ -32,14 +32,17 @@ export const workOnIssueByIssueId = catchAsync(
     });
 
     // working on the issue
-    await issueAndPullRequestHandler({
+    const instance = await issueAndPullRequestHandler({
       gitRepoId: githubRepo.id,
       issue: issueDetails,
     });
+    if (!instance) throw new AppError("Failed to work on the issue", 500);
 
     res.status(200).json({
-      message: "Successfully updated the issue",
-      data: issueDetails,
+      data: {
+        instanceId: instance.id,
+        projectId: instance.project_id,
+      },
     });
   },
 );
