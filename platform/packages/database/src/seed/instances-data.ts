@@ -1,14 +1,5 @@
 export const instancesData = [
   {
-    name: "t3.micro",
-    slug_prefix: "t3-micro",
-    description:
-      "Burstable general purpose instance for low-traffic apps, dev environments, and small services.",
-    cpu: "2 vCPU",
-    ram: "1 GiB",
-    price_per_hour_dollars: 0.0112,
-  },
-  {
     name: "t3.small",
     slug_prefix: "t3-small",
     description:

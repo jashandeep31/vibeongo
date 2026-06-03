@@ -20,6 +20,7 @@ import {
   CheckCircle2,
   Circle,
   Clock3,
+  FolderIcon,
   Play,
   Plus,
   Server,
@@ -253,11 +254,16 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
                     <Circle className="text-muted-foreground mt-0.5 h-4 w-4" />
                   )}
                   <div className="min-w-0">
-                    <p className="text-sm leading-5">{task.task}</p>
+                    <p className="text-sm leading-5">
+                      {task.task.slice(0, 100)}
+                    </p>
                     {task.folder_name ? (
-                      <p className="text-muted-foreground mt-1 font-mono text-xs">
-                        {task.folder_name}
-                      </p>
+                      <div className="flex items-center gap-1">
+                        <FolderIcon className="text-muted-foreground h-3 w-3" />
+                        <p className="text-muted-foreground mt-1 font-mono text-xs">
+                          {task.folder_name}
+                        </p>
+                      </div>
                     ) : null}
                   </div>
                 </div>

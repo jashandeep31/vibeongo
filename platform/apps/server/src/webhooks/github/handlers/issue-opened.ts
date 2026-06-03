@@ -6,7 +6,6 @@ import {
   githubRepos,
   instanceRegions,
   instanceTypes,
-  projectDomainRouting,
   projects,
   projectSessions,
   projectSessionTasks,
@@ -143,13 +142,13 @@ Please add hte default project to the github repo
     sessionId: session.id,
     instanceId,
   });
-  if (instance) {
-    await db
-      .update(projectDomainRouting)
-      .set({
-        target_instance_id: instance.id,
-      })
-      .where(eq(projectDomainRouting.project_id, project.id));
-  }
+  // if (instance) {
+  //   await db
+  //     .update(projectDomainRouting)
+  //     .set({
+  //       target_instance_id: instance.id,
+  //     })
+  //     .where(eq(projectDomainRouting.project_id, project.id));
+  // }
   return;
 };
