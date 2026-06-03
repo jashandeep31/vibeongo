@@ -20,5 +20,5 @@ export const getGithubRepoIssues = async (
     },
   );
 
-  return data;
+  return data.filter((issue) => !issue.pull_request);
 };
