@@ -140,7 +140,13 @@ export const updateGithubRepoById = async ({
   return res.data;
 };
 
-export const generateFixForIssue = async (id: string, issueNumber: number) => {
+export const generateFixForIssue = async (
+  id: string,
+  issueNumber: number,
+): Promise<{
+  instanceId: string;
+  projectId: string;
+}> => {
   const res = await axios.post(
     BACKEND_URL + `/api/v1/github-repos/${id}/issue/${issueNumber}`,
     {},
