@@ -27,6 +27,7 @@ export const getUserProjectSessions = catchAsync(
     const filters = commonFilterSchema
       .extend({
         projectId: z.string().optional(),
+        archived: z.coerce.boolean().default(false),
       })
       .parse(req.query);
 
@@ -35,7 +36,7 @@ export const getUserProjectSessions = catchAsync(
 
     const where = [
       eq(projectSessions.user_id, user.id),
-      eq(projectSessions.archived, false),
+      eq(projectSessions.archived, filters.archived),
     ];
     if (filters.projectId) {
       where.push(eq(projectSessions.project_id, filters.projectId));

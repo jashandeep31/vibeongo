@@ -9,7 +9,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
-import { Badge } from "@repo/ui/components/badge";
 import { useGetProjects } from "@/hooks/use-project";
 import { projects as IProject } from "@repo/db";
 

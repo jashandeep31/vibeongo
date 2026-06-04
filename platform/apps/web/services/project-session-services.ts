@@ -53,8 +53,9 @@ export const resumeProjectSession = async (id: string) => {
 };
 
 export const archiveProjectSession = async (id: string) => {
-  const res = await axios.delete(
-    `${BACKEND_URL}/api/v1/project-sessions/${id}`,
+  const res = await axios.post(
+    `${BACKEND_URL}/api/v1/project-sessions/${id}/archive`,
+    {},
     {
       withCredentials: true,
     },
