@@ -13,7 +13,11 @@ routes.route("/").get(checkAuthorization(["all"]), getUserProjectSessions);
 routes
   .route("/:id")
   .post(checkAuthorization(["all"]), resumeProjectSession)
-  .get(checkAuthorization(["all"]), getProjectSessionById)
-  .delete(checkAuthorization(["all"]), archiveProjectSession);
+  .get(checkAuthorization(["all"]), getProjectSessionById);
+// .delete(checkAuthorization(["all"]), archiveProjectSession);
+
+routes
+  .route("/:id/archive")
+  .post(checkAuthorization(["all"]), archiveProjectSession);
 
 export const projectSessionRoutes = routes;

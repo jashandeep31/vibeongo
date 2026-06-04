@@ -19,6 +19,8 @@ type Config struct {
 	OpenCode      *OpenCodeConfig `json:"opencode"`
 	Nvim          *NvimConfig     `json:"nvim"`
 	Tasks         []TaskConfig    `json:"tasks"`
+	InitialScript string          `json:"initialScript"`
+	FinalScript   string          `json:"finalScript"`
 }
 
 type TaskConfig struct {

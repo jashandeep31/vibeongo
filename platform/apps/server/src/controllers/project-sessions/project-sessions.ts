@@ -205,10 +205,15 @@ export const archiveProjectSession = catchAsync(
       })
       .parse(req.params);
 
+    const { action } = z
+      .object({
+        action: z.coerce.boolean().default(true),
+      })
+      .parse(req.body);
     await db
       .update(projectSessions)
       .set({
-        archived: true,
+        archived: action,
       })
       .where(
         and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
