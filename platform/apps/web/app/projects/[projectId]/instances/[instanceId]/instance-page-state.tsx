@@ -15,8 +15,8 @@ export function InstancePageState({ type }: InstancePageStateProps) {
   }
 
   return (
-    <div className="p-6 md:p-8">
-      <Card className="flex min-h-[320px] items-center justify-center p-8 text-center">
+    <div className="p-4 md:p-8">
+      <Card className="flex min-h-[320px] items-center justify-center p-4 text-center md:p-8">
         <div className="flex max-w-sm flex-col items-center gap-3">
           <ServerOff className="text-muted-foreground h-8 w-8" />
           <div>
@@ -33,7 +33,7 @@ export function InstancePageState({ type }: InstancePageStateProps) {
 
 function InstancePageSkeleton() {
   return (
-    <div className="space-y-12 p-6 md:p-8">
+    <div className="space-y-12 p-4 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="space-y-2">
           <div className="flex items-center gap-2">

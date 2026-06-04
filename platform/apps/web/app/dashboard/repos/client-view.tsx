@@ -129,7 +129,7 @@ export default function ClientView() {
         : defaultProjectIdDraft) !== (editingRepo.default_project_id ?? null));
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="min-w-0">
           <h1 className="text-3xl font-bold tracking-tight">

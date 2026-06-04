@@ -101,12 +101,16 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
   }, [resumeSessionMutation, sessionId]);
 
   if (isLoading) {
-    return <div className="text-muted-foreground p-8">Loading session...</div>;
+    return (
+      <div className="text-muted-foreground p-4 md:p-8">
+        Loading session...
+      </div>
+    );
   }
 
   if (isError || !session) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <Card className="border-destructive/30 bg-destructive/5 text-destructive p-6">
           Failed to load session.
         </Card>
@@ -117,7 +121,7 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
   const isRunning = runningInstances.length > 0;
 
   return (
-    <div className="space-y-6 p-6 md:p-8">
+    <div className="space-y-6 p-4 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
           <div className="mb-3 flex items-center gap-2">
@@ -197,7 +201,7 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
           </CardHeader>
           <CardContent className="space-y-3">
             {runningInstances.length === 0 ? (
-              <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
+              <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center md:p-8">
                 No running instances for this session.
               </div>
             ) : (
@@ -242,7 +246,7 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
           </CardHeader>
           <CardContent className="space-y-3">
             {tasks.length === 0 ? (
-              <div className="text-muted-foreground rounded-lg border border-dashed p-8 text-center">
+              <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center md:p-8">
                 No tasks recorded.
               </div>
             ) : (

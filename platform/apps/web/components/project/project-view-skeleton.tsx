@@ -3,7 +3,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 
 export function ProjectViewSkeleton() {
   return (
-    <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
+    <div className="mx-auto w-full flex-1 space-y-8 p-4 md:p-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
         <div className="space-y-3">
           <Skeleton className="h-8 w-56" />
