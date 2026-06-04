@@ -2,6 +2,7 @@ import { _InstanceType, RunInstancesCommand } from "@aws-sdk/client-ec2";
 import { getEc2Client } from "../ec2-client.js";
 import { awsSupportedRegions } from "../configs/aws-supported-regions-configs.js";
 import { ec2RegionImageIds } from "../configs/ec2-region-image-config.js";
+import { env } from "../../lib/env.js";
 
 /**
  * Create a ec2 instance depending upon the user requirnments
@@ -25,7 +26,7 @@ export const createEc2Instance = async ({
 
   const command = new RunInstancesCommand({
     // ImageId: imageConfig.linuxImageId, //the version of os,
-    ImageId: "ami-0917123061b090ddc", //the version of os,
+    ImageId: env.AMI_ID, //the version of os,
     InstanceType: instanceType as _InstanceType,
     MinCount: 1,
     MaxCount: 1,
