@@ -121,15 +121,15 @@ const PullRequestCard = ({
 
         <div className="flex items-center gap-2">
           <ConfirmationDialog
-            title="Generate fix"
-            description={`Do you want to generate a fix for pull request #${pullRequest.number}? This will start automated work for this pull request.`}
-            confirmText="Generate Fix"
+            title="Review Pr"
+            description={`Do you want to review pull request #${pullRequest.number}? This will start automated work for this pull request.`}
+            confirmText="Review"
             onConfirm={() => {
               void handleGenerateFix();
             }}
           >
             <Button size="sm" disabled={generateFixMutation.isPending}>
-              {generateFixMutation.isPending ? "Generating..." : "Generate Fix"}
+              {generateFixMutation.isPending ? "Launching.." : "Review Pr"}
             </Button>
           </ConfirmationDialog>
 

@@ -12,7 +12,15 @@ import {
   CardTitle,
   CardFooter,
 } from "@repo/ui/components/card";
-import { ArrowUpRight, Clock3, Play, Terminal, Server, Plus } from "lucide-react";
+import {
+  ArrowUpRight,
+  Clock3,
+  Play,
+  Terminal,
+  Server,
+  Plus,
+  Archive,
+} from "lucide-react";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import { toast } from "sonner";
 import Link from "next/link";
@@ -150,24 +158,27 @@ const SessionCard = memo(
     return (
       <Card className="flex flex-col">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock3 className="text-muted-foreground h-5 w-5" />
-              <CardTitle className="truncate text-base" title={session.name}>
+          <div className="flex min-w-0 items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2">
+              <Clock3 className="text-muted-foreground h-5 w-5 shrink-0" />
+              <CardTitle
+                className="min-w-0 truncate text-sm sm:text-base"
+                title={session.name}
+              >
                 <Link
                   href={`/dashboard/sessions/${session.id}`}
-                  className="hover:text-primary focus-visible:ring-ring rounded-sm outline-none focus-visible:ring-2"
+                  className="hover:text-primary focus-visible:ring-ring block truncate rounded-sm outline-none focus-visible:ring-2"
                 >
                   {session.name}
                 </Link>
               </CardTitle>
             </div>
             {isRunning ? (
-              <Badge className="border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
+              <Badge className="shrink-0 border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
                 Running
               </Badge>
             ) : (
-              <Badge variant="secondary" className="border-0">
+              <Badge variant="secondary" className="shrink-0 border-0">
                 Idle
               </Badge>
             )}
@@ -196,7 +207,7 @@ const SessionCard = memo(
           )}
         </CardContent>
 
-        <CardFooter className="mt-auto grid gap-2 border-t px-6 py-4 pt-4 sm:grid-cols-[1fr_auto]">
+        <CardFooter className="mt-auto grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 border-t px-6 py-4 pt-4">
           <Button
             className="w-full cursor-pointer"
             variant={isRunning ? "secondary" : "default"}
@@ -211,15 +222,22 @@ const SessionCard = memo(
             ) : (
               <>
                 <Play className="mr-2 h-4 w-4" />
-                Resume Session
+                Resume
               </>
             )}
           </Button>
-          <Button variant="outline" asChild>
+          <Button variant="outline" size="icon" aria-label="View details" asChild>
             <Link href={`/dashboard/sessions/${session.id}`}>
-              Details
               <ArrowUpRight className="h-4 w-4" />
             </Link>
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            aria-label="Archive session"
+          >
+            <Archive className="h-4 w-4" />
           </Button>
         </CardFooter>
       </Card>

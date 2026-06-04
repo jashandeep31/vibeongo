@@ -16,6 +16,7 @@ export const projectSessions = pgTable("project_session", {
   description: text(),
 
   started_at: timestamp().defaultNow(),
+  archived: boolean().default(false).notNull(),
 
   user_id: uuid().references(() => users.id, { onDelete: "cascade" }),
   project_id: uuid()
