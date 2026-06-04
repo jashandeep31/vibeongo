@@ -33,8 +33,8 @@ function ProjectScriptsCard() {
           value={initialScript}
           onChange={onInitialScriptChange}
           maxLength={500}
-          placeholder="Commands to run before project setup"
-          className="min-h-32 max-w-3xl font-mono text-sm"
+          placeholder="Script of things like copy this thing before start, build this folder etc."
+          className="min-h-32 w-full max-w-full font-mono text-sm"
         />
       </div>
 
@@ -50,8 +50,8 @@ function ProjectScriptsCard() {
           value={finalScript}
           onChange={onFinalScriptChange}
           maxLength={500}
-          placeholder="Commands to run after project setup"
-          className="min-h-32 max-w-3xl font-mono text-sm"
+          placeholder="Scripts of thins like starting a server and more "
+          className="min-h-32 w-full max-w-full font-mono text-sm"
         />
       </div>
     </div>
