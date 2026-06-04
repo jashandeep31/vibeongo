@@ -1,4 +1,5 @@
 import {
+  archiveProjectSession,
   GetProjectSessionsParams,
   getProjectSessionById,
   getProjectSessions,
@@ -32,6 +33,17 @@ export const useResumeProjectSession = () => {
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       // Depending on structure, you might invalidate instances or projects here too
       queryClient.invalidateQueries({ queryKey: ["instances"] });
+    },
+  });
+};
+
+export const useArchiveProjectSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveProjectSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
     },
   });
 };
