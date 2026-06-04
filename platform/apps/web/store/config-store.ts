@@ -29,6 +29,11 @@ interface ConfigStore {
   projectName: string;
   setProjectName: (name: string) => void;
 
+  initialScript: string;
+  setInitialScript: (script: string) => void;
+  finalScript: string;
+  setFinalScript: (script: string) => void;
+
   instanceTypeId: string;
   setInstanceTypeId: (id: string) => void;
 
@@ -67,6 +72,11 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   setProjectName: (name) => set(() => ({ projectName: name })),
   projectName: "",
 
+  setInitialScript: (script) => set(() => ({ initialScript: script })),
+  initialScript: "",
+
+  finalScript: "",
+  setFinalScript: (script) => set(() => ({ finalScript: script })),
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
 

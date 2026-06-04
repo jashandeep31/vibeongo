@@ -32,6 +32,8 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   const setInstanceRegion = useConfigStore((state) => state.setInstanceRegion);
   const setGitRepoIds = useConfigStore((state) => state.setGitRepoIds);
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
+  const setInitialScript = useConfigStore((state) => state.setInitialScript);
+  const setFinalScript = useConfigStore((state) => state.setFinalScript);
   const setPortRules = useConfigStore((state) => state.setPortRules);
   const updateDockerConfig = useConfigStore((state) => state.updateDockerConfig);
   const updateOpencodeConfig = useConfigStore(
@@ -53,6 +55,8 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setInstanceRegion(projectConfig.instanceRegionId ?? "");
     setGitRepoIds(projectConfig.githubRepoIds);
     setSshKeys(projectConfig.sshKeyIds);
+    setInitialScript(projectConfig.project.initial_script ?? "");
+    setFinalScript(projectConfig.project.final_script ?? "");
     setPortRules(
       config.ports?.map((rule) => ({
         id: crypto.randomUUID(),
@@ -99,6 +103,8 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setInstanceRegion,
     setPortRules,
     setProjectName,
+    setInitialScript,
+    setFinalScript,
     setSshKeys,
     updateDockerConfig,
     updateNvimConfig,

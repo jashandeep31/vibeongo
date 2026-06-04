@@ -12,6 +12,8 @@ export const buildProjectConfigPayload = (
   instanceTypeId: state.instanceTypeId,
   sshKeyIds: state.sshKeys,
   githubRepoIds: state.gitRepoIds,
+  initial_script: state.initialScript,
+  final_script: state.finalScript,
   config: {
     ports: state.portRules.map((rule) => ({
       port: parseInt(rule.port, 10),
