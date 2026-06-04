@@ -383,7 +383,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <div className="space-y-12 p-6 md:p-8">
+    <div className="space-y-12 p-4 md:p-8">
       <ConfirmationDialog
         open={isCurrentIpDialogOpen}
         onOpenChange={(open) => {

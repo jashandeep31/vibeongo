@@ -76,12 +76,16 @@ export default function ClientView({ projectId }: { projectId: string }) {
   };
 
   if (isLoading) {
-    return <div className="text-muted-foreground p-8">Loading project...</div>;
+    return (
+      <div className="text-muted-foreground p-4 md:p-8">
+        Loading project...
+      </div>
+    );
   }
 
   if (isError || !project) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-md border p-4">
           Failed to load project details.
         </div>
@@ -104,7 +108,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
   });
 
   return (
-    <div className="space-y-8 p-6 md:p-8">
+    <div className="space-y-8 p-4 md:p-8">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>

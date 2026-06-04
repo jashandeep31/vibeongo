@@ -106,12 +106,16 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   ]);
 
   if (isLoading) {
-    return <div className="text-muted-foreground p-8">Loading project...</div>;
+    return (
+      <div className="text-muted-foreground p-4 md:p-8">
+        Loading project...
+      </div>
+    );
   }
 
   if (isError || !projectConfig) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <div className="border-destructive/30 bg-destructive/5 text-destructive rounded-md border p-4">
           Failed to load project details.
         </div>

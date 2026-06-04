@@ -159,15 +159,15 @@ const ClientView = ({ id }: { id: string }) => {
 
   if (isLoading) {
     return (
-      <div className="space-y-6 p-8">
+      <div className="w-full max-w-full min-w-0 space-y-6 overflow-hidden p-4 md:p-8">
         <Skeleton className="h-9 w-32" />
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-72 max-w-full" />
-          <Skeleton className="h-4 w-96 max-w-full" />
+        <div className="w-full max-w-full min-w-0 space-y-2">
+          <Skeleton className="h-8 w-full max-w-72" />
+          <Skeleton className="h-4 w-full max-w-96" />
         </div>
-        <div className="space-y-3">
+        <div className="w-full max-w-full min-w-0 space-y-3">
           {[1, 2, 3].map((row) => (
-            <div key={row} className="rounded-lg border p-4">
+            <div key={row} className="w-full max-w-full min-w-0 rounded-lg border p-4">
               <Skeleton className="h-5 w-2/3" />
               <Skeleton className="mt-3 h-4 w-full" />
               <Skeleton className="mt-2 h-4 w-1/2" />
@@ -180,7 +180,7 @@ const ClientView = ({ id }: { id: string }) => {
 
   if (isError || !repo) {
     return (
-      <div className="p-8">
+      <div className="p-4 md:p-8">
         <Button variant="outline" size="sm" asChild>
           <Link href="/dashboard/repos">
             <ArrowLeft className="h-4 w-4" />
@@ -201,7 +201,7 @@ const ClientView = ({ id }: { id: string }) => {
   const closedPullRequests = pullRequests.length - openPullRequests.length;
 
   return (
-    <div className="space-y-6 p-8">
+    <div className="space-y-6 p-4 md:p-8">
       <Button variant="outline" size="sm" asChild>
         <Link href="/dashboard/repos">
           <ArrowLeft className="h-4 w-4" />

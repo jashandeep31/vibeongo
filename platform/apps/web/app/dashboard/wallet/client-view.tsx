@@ -66,7 +66,7 @@ export default function ClientView() {
   const nextDisabled = isLoading || !hasNext;
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold tracking-tight">Wallet</h1>
         <p className="text-muted-foreground">

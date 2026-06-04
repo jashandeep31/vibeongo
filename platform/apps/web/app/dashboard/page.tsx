@@ -11,7 +11,7 @@ export default async function ProjectsPage() {
     redirect("/login");
   }
   return (
-    <div className="mx-auto w-full flex-1 space-y-8 p-6 md:p-8">
+    <div className="mx-auto w-full flex-1 space-y-8 p-4 md:p-8">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div className="flex flex-col gap-2">
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
