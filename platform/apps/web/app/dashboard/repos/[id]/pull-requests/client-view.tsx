@@ -2,12 +2,20 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { RepoResourceSwitch } from "@/components/repo-resource-switch";
-import { useGetGithubRepoById } from "@/hooks/use-github-repos";
+import {
+  useGenerateFixForPullRequest,
+  useGetGithubRepoById,
+} from "@/hooks/use-github-repos";
+import type { GithubRepoPullRequest } from "@/services/github-repo-services";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import axios from "axios";
 import { ArrowLeft, ExternalLink, GitPullRequest } from "lucide-react";
+import { toast } from "sonner";
 
 const formatDate = (value: string | Date | null) => {
   if (!value) return "Not closed";
@@ -17,6 +25,129 @@ const formatDate = (value: string | Date | null) => {
     day: "numeric",
     year: "numeric",
   }).format(new Date(value));
+};
+
+const PullRequestCard = ({
+  repoId,
+  pullRequest,
+}: {
+  repoId: string;
+  pullRequest: GithubRepoPullRequest;
+}) => {
+  const router = useRouter();
+  const generateFixMutation = useGenerateFixForPullRequest(
+    repoId,
+    pullRequest.number,
+  );
+
+  const handleGenerateFix = async () => {
+    const toastId = toast.loading("Launching Instance", {
+      description: "It might take a few seconds",
+    });
+
+    try {
+      const res = await generateFixMutation.mutateAsync();
+      toast.success("Fix generation started", { id: toastId });
+      router.push(`/projects/${res.projectId}/instances/${res.instanceId}`);
+    } catch (error: unknown) {
+      console.error(error);
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to generate fix")
+        : "Failed to generate fix";
+      toast.error(message, { id: toastId });
+    }
+  };
+
+  return (
+    <div className="bg-card rounded-lg border p-4 shadow-sm">
+      <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1">
+          <div className="flex min-w-0 items-start gap-3">
+            {pullRequest.user?.avatar_url ? (
+              <Image
+                src={pullRequest.user.avatar_url}
+                alt={pullRequest.user.login}
+                width={32}
+                height={32}
+                className="mt-0.5 h-8 w-8 shrink-0 rounded-full"
+              />
+            ) : (
+              <div className="bg-muted mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
+                <GitPullRequest className="text-muted-foreground h-4 w-4" />
+              </div>
+            )}
+
+            <div className="min-w-0">
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge
+                  className={
+                    pullRequest.state === "open"
+                      ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
+                      : "bg-muted text-muted-foreground hover:bg-muted border-0"
+                  }
+                >
+                  {pullRequest.state}
+                </Badge>
+                {pullRequest.draft ? (
+                  <Badge variant="outline">Draft</Badge>
+                ) : null}
+                <span className="text-muted-foreground text-sm">
+                  #{pullRequest.number}
+                </span>
+              </div>
+
+              <h2 className="mt-2 text-base font-semibold break-words">
+                {pullRequest.title}
+              </h2>
+              {pullRequest.body ? (
+                <p className="text-muted-foreground mt-2 line-clamp-2 text-sm break-words">
+                  {pullRequest.body}
+                </p>
+              ) : null}
+
+              <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
+                {pullRequest.user?.login ? (
+                  <span>{pullRequest.user.login}</span>
+                ) : null}
+                <span>Opened {formatDate(pullRequest.created_at)}</span>
+                <span>Updated {formatDate(pullRequest.updated_at)}</span>
+                <span>
+                  {pullRequest.head.ref} into {pullRequest.base.ref}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <ConfirmationDialog
+            title="Generate fix"
+            description={`Do you want to generate a fix for pull request #${pullRequest.number}? This will start automated work for this pull request.`}
+            confirmText="Generate Fix"
+            onConfirm={() => {
+              void handleGenerateFix();
+            }}
+          >
+            <Button size="sm" disabled={generateFixMutation.isPending}>
+              {generateFixMutation.isPending ? "Generating..." : "Generate Fix"}
+            </Button>
+          </ConfirmationDialog>
+
+          <Button variant="outline" size="sm" asChild>
+            <a
+              href={pullRequest.html_url}
+              target="_blank"
+              rel="noreferrer"
+              className="shrink-0"
+            >
+              <ExternalLink className="h-4 w-4" />
+              Open
+            </a>
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
 };
 
 const ClientView = ({ id }: { id: string }) => {
@@ -100,84 +231,11 @@ const ClientView = ({ id }: { id: string }) => {
       {pullRequests.length > 0 ? (
         <div className="space-y-3">
           {pullRequests.map((pullRequest) => (
-            <div
+            <PullRequestCard
               key={pullRequest.id}
-              className="bg-card rounded-lg border p-4 shadow-sm"
-            >
-              <div className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex min-w-0 items-start gap-3">
-                    {pullRequest.user?.avatar_url ? (
-                      <Image
-                        src={pullRequest.user.avatar_url}
-                        alt={pullRequest.user.login}
-                        width={32}
-                        height={32}
-                        className="mt-0.5 h-8 w-8 shrink-0 rounded-full"
-                      />
-                    ) : (
-                      <div className="bg-muted mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full">
-                        <GitPullRequest className="text-muted-foreground h-4 w-4" />
-                      </div>
-                    )}
-
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge
-                          className={
-                            pullRequest.state === "open"
-                              ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400"
-                              : "bg-muted text-muted-foreground hover:bg-muted border-0"
-                          }
-                        >
-                          {pullRequest.state}
-                        </Badge>
-                        {pullRequest.draft ? (
-                          <Badge variant="outline">Draft</Badge>
-                        ) : null}
-                        <span className="text-muted-foreground text-sm">
-                          #{pullRequest.number}
-                        </span>
-                      </div>
-
-                      <h2 className="mt-2 text-base font-semibold break-words">
-                        {pullRequest.title}
-                      </h2>
-                      {pullRequest.body ? (
-                        <p className="text-muted-foreground mt-2 line-clamp-2 text-sm break-words">
-                          {pullRequest.body}
-                        </p>
-                      ) : null}
-
-                      <div className="text-muted-foreground mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-                        {pullRequest.user?.login ? (
-                          <span>{pullRequest.user.login}</span>
-                        ) : null}
-                        <span>Opened {formatDate(pullRequest.created_at)}</span>
-                        <span>
-                          Updated {formatDate(pullRequest.updated_at)}
-                        </span>
-                        <span>
-                          {pullRequest.head.ref} into {pullRequest.base.ref}
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <Button variant="outline" size="sm" asChild>
-                  <a
-                    href={pullRequest.html_url}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="shrink-0"
-                  >
-                    <ExternalLink className="h-4 w-4" />
-                    Open
-                  </a>
-                </Button>
-              </div>
-            </div>
+              repoId={id}
+              pullRequest={pullRequest}
+            />
           ))}
         </div>
       ) : (

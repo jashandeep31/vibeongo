@@ -9,6 +9,7 @@ import {
   type GithubRepoWithIssues,
   type GithubRepoWithPullRequests,
   generateFixForIssue,
+  generateFixForPullRequest,
 } from "@/services/github-repo-services";
 import {
   useMutation,
@@ -92,4 +93,12 @@ export const useUpdateGithubRepoById = () => {
 export const useGenerateFixForIssue = (id: string, issueNumber: number) =>
   useMutation({
     mutationFn: () => generateFixForIssue(id, issueNumber),
+  });
+
+export const useGenerateFixForPullRequest = (
+  id: string,
+  pullRequestNumber: number,
+) =>
+  useMutation({
+    mutationFn: () => generateFixForPullRequest(id, pullRequestNumber),
   });
