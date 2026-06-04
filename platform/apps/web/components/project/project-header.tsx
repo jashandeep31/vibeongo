@@ -18,6 +18,12 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-2 md:mt-0">
+        <Link
+          href={`/dashboard/project/${project.id}/edit`}
+          className={buttonVariants()}
+        >
+          Edit Config
+        </Link>
         <Link href={`/projects/${project.id}`} className={buttonVariants()}>
           Manage Instances
         </Link>

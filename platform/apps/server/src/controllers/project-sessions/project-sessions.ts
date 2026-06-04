@@ -21,6 +21,7 @@ import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
+import { appendFile } from "node:fs";
 
 export const getUserProjectSessions = catchAsync(
   async (req: Request, res: Response) => {
@@ -188,5 +189,28 @@ export const getProjectSessionById = catchAsync(
     };
 
     res.status(200).json({ data: sessionWithTasks });
+  },
+);
+
+// TODO: Either delete the project session or for the safer side
+// instead of deleting the projectseesion just hide them
+export const deleteProjectSessionById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication failed", 401);
+
+    const { id } = z
+      .object({
+        id: z.string(),
+      })
+      .parse(req.params);
+
+    await db
+      .select()
+      .from(projectSessions)
+      .where(
+        and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
+      );
+    res.status(200).json({});
   },
 );

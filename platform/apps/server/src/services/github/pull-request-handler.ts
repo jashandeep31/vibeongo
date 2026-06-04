@@ -11,7 +11,7 @@ import {
   sshKeys,
   users,
 } from "@repo/db";
-import { GithubPullRequestDetail } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
+import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { getSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import {
@@ -22,11 +22,11 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
-  pr: GithubPullRequestDetail;
+  prNumber: number;
 }
 export const pullRequestOpenedHandler = async ({
   gitRepoId,
-  pr,
+  prNumber,
 }: pullRequestOpenedHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubReposWithUserAndProject] = await db
     .select({
@@ -42,7 +42,14 @@ export const pullRequestOpenedHandler = async ({
   if (!githubReposWithUserAndProject) throw new Error("repo not found");
   const { project, user, repo } = githubReposWithUserAndProject;
 
-  if (!project || !user || !repo) throw new Error("repo not found");
+  if (!project || !user || !repo || !repo.default_project_id)
+    throw new Error("repo not found");
+
+  const pr = await getPullRequestDetailByPullNumber({
+    installation_id: repo.installation_id,
+    full_repo_name: repo.full_name,
+    pull_number: prNumber,
+  });
 
   const sessionMeta = await getSessionNameAndDescription(
     pr.title + "\n" + pr.body,

@@ -18,18 +18,18 @@ import {
   spinUpAndSaveInstanceResponse,
 } from "../instances/spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
-import { GithubIssueDetail } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
+import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 
 interface issueHandlerProps {
   gitRepoId: string;
-  issue: GithubIssueDetail;
+  issueNumber: number;
 }
 /**
  * Receives the issue_id, then proccess as per that issue
  */
 export const issueAndPullRequestHandler = async ({
   gitRepoId,
-  issue,
+  issueNumber,
 }: issueHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubReposWithUserAndProject] = await db
     .select({
@@ -45,6 +45,12 @@ export const issueAndPullRequestHandler = async ({
   if (!githubReposWithUserAndProject) throw new Error("repo not found");
   const { project, user, repo } = githubReposWithUserAndProject;
   if (!project || !user || !repo) throw new Error("repo not found");
+
+  const issue = await getIssueDetailByIssueNumber({
+    installation_id: repo.installation_id,
+    issue_number: issueNumber,
+    full_repo_name: repo.full_name,
+  });
 
   const sessionMeta = await getSessionNameAndDescription(
     issue.title + "\n" + issue.body,
