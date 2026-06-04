@@ -5,10 +5,15 @@ import {
   text,
   varchar,
   boolean,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { projects } from "./projects.js";
 import { users } from "./user.js";
 
+export const projectSessionsCategory = pgEnum("project_session_category", [
+  "manual",
+  "auto",
+]);
 export const projectSessions = pgTable("project_session", {
   id: uuid().defaultRandom().primaryKey(),
 
@@ -17,6 +22,7 @@ export const projectSessions = pgTable("project_session", {
 
   started_at: timestamp().defaultNow(),
   archived: boolean().default(false).notNull(),
+  category: projectSessionsCategory().notNull().default("manual"),
 
   user_id: uuid().references(() => users.id, { onDelete: "cascade" }),
   project_id: uuid()

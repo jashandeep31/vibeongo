@@ -21,7 +21,11 @@ import {
   Plus,
   Archive,
 } from "lucide-react";
-import { useResumeProjectSession } from "@/hooks/use-project-sessions";
+import {
+  useArchiveProjectSession,
+  useResumeProjectSession,
+} from "@/hooks/use-project-sessions";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { toast } from "sonner";
 import Link from "next/link";
 import axios from "axios";
@@ -143,17 +147,29 @@ RunningInstanceCard.displayName = "RunningInstanceCard";
 type SessionCardProps = {
   session: ProjectSessionWithRunningInstances;
   onResume: (sessionId: string) => void;
+  onArchive: (sessionId: string) => void;
   isPending: boolean;
+  isArchiving: boolean;
 };
 
 const SessionCard = memo(
-  ({ session, onResume, isPending }: SessionCardProps) => {
+  ({
+    session,
+    onResume,
+    onArchive,
+    isPending,
+    isArchiving,
+  }: SessionCardProps) => {
     const runningInstances = session.instances;
     const isRunning = runningInstances && runningInstances.length > 0;
 
     const handleResume = useCallback(() => {
       onResume(session.id);
     }, [session.id, onResume]);
+
+    const handleArchive = useCallback(() => {
+      onArchive(session.id);
+    }, [session.id, onArchive]);
 
     return (
       <Card className="flex flex-col">
@@ -231,14 +247,22 @@ const SessionCard = memo(
               <ArrowUpRight className="h-4 w-4" />
             </Link>
           </Button>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            aria-label="Archive session"
+          <ConfirmationDialog
+            title="Archive session"
+            description={`Archive "${session.name}"? It will be hidden from your active sessions list.`}
+            confirmText="Archive"
+            onConfirm={handleArchive}
           >
-            <Archive className="h-4 w-4" />
-          </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon"
+              aria-label="Archive session"
+              disabled={isArchiving}
+            >
+              <Archive className="h-4 w-4" />
+            </Button>
+          </ConfirmationDialog>
         </CardFooter>
       </Card>
     );
@@ -259,7 +283,11 @@ export function ProjectSessionsList({
   isError,
 }: ProjectSessionsListProps) {
   const resumeSessionMutation = useResumeProjectSession();
+  const archiveSessionMutation = useArchiveProjectSession();
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+  const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
+    null,
+  );
 
   const handleResume = useCallback(
     async (sessionId: string) => {
@@ -281,6 +309,26 @@ export function ProjectSessionsList({
     [resumeSessionMutation],
   );
 
+  const handleArchive = useCallback(
+    async (sessionId: string) => {
+      setArchivingSessionId(sessionId);
+      const toastId = toast.loading("Archiving session...");
+      try {
+        await archiveSessionMutation.mutateAsync(sessionId);
+        toast.success("Session archived successfully", { id: toastId });
+      } catch (error: unknown) {
+        console.error(error);
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? (error.response?.data?.message ?? "Failed to archive session")
+          : "Failed to archive session";
+        toast.error(message, { id: toastId });
+      } finally {
+        setArchivingSessionId(null);
+      }
+    },
+    [archiveSessionMutation],
+  );
+
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
   if (sessions.length === 0) return <EmptyState />;
@@ -292,7 +340,9 @@ export function ProjectSessionsList({
           key={session.id}
           session={session}
           onResume={handleResume}
+          onArchive={handleArchive}
           isPending={pendingSessionId === session.id}
+          isArchiving={archivingSessionId === session.id}
         />
       ))}
     </div>
