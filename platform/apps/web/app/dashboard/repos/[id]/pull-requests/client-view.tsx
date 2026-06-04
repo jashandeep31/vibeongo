@@ -167,7 +167,10 @@ const ClientView = ({ id }: { id: string }) => {
         </div>
         <div className="w-full max-w-full min-w-0 space-y-3">
           {[1, 2, 3].map((row) => (
-            <div key={row} className="w-full max-w-full min-w-0 rounded-lg border p-4">
+            <div
+              key={row}
+              className="w-full max-w-full min-w-0 rounded-lg border p-4"
+            >
               <Skeleton className="h-5 w-2/3" />
               <Skeleton className="mt-3 h-4 w-full" />
               <Skeleton className="mt-2 h-4 w-1/2" />
@@ -202,7 +205,7 @@ const ClientView = ({ id }: { id: string }) => {
 
   return (
     <div className="space-y-6 p-4 md:p-8">
-      <Button variant="outline" size="sm" asChild>
+      <Button variant="ghost" size="sm" asChild>
         <Link href="/dashboard/repos">
           <ArrowLeft className="h-4 w-4" />
           Repositories

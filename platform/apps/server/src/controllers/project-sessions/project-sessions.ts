@@ -34,7 +34,10 @@ export const getUserProjectSessions = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("User not found", 404);
 
-    const where = [eq(projectSessions.user_id, user.id)];
+    const where = [
+      eq(projectSessions.user_id, user.id),
+      eq(projectSessions.archived, false),
+    ];
     if (filters.projectId) {
       where.push(eq(projectSessions.project_id, filters.projectId));
     }
@@ -192,9 +195,7 @@ export const getProjectSessionById = catchAsync(
   },
 );
 
-// TODO: Either delete the project session or for the safer side
-// instead of deleting the projectseesion just hide them
-export const deleteProjectSessionById = catchAsync(
+export const archiveProjectSession = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authentication failed", 401);
@@ -206,11 +207,16 @@ export const deleteProjectSessionById = catchAsync(
       .parse(req.params);
 
     await db
-      .select()
-      .from(projectSessions)
+      .update(projectSessions)
+      .set({
+        archived: true,
+      })
       .where(
         and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
       );
-    res.status(200).json({});
+
+    res.status(200).json({
+      message: "Successfully archived the project session",
+    });
   },
 );
