@@ -28,8 +28,8 @@ export const projects = pgTable("projects", {
   total_charges: integer().notNull().default(0),
   config: json().notNull(),
 
-  initial_script: text(),
-  final_script: text(),
+  initial_script: text().notNull().default(""),
+  final_script: text().notNull().default(""),
 
   created_at: timestamp().defaultNow(),
   updated_at: timestamp().defaultNow(),

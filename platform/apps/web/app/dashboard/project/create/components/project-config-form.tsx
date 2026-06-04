@@ -6,6 +6,7 @@ import GitRepoConfigCard from "./git-repo-config-card";
 import InstanceRegionCards from "./instance-region-cards";
 import InstanceTypeCards from "./instance-type-cards";
 import NameCard from "./name-card";
+import ProjectScriptsCard from "./project-scripts-card";
 import SshKeysCard from "./ssh-keys-card";
 
 interface ProjectConfigFormProps {
@@ -31,6 +32,7 @@ export default function ProjectConfigForm({
       <GitRepoConfigCard />
       <SshKeysCard />
       <AdditionalServices />
+      <ProjectScriptsCard />
       {submitAction}
     </div>
   );

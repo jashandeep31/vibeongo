@@ -64,10 +64,14 @@ sudo apt install neovim
 # fzf install
 sudo apt install fzf
  
-rm ./script.sh
 
 rm -f ~/.ssh/authorized_keys
 rm -f ~/.ssh/known_hosts
+
+
+# I am using ./script.sh in root to run it 
+# so just clearing the file
+rm ./script.sh
 
 
 
