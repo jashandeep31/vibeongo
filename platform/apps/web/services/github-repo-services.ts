@@ -156,3 +156,21 @@ export const generateFixForIssue = async (
   );
   return res.data.data;
 };
+
+export const generateFixForPullRequest = async (
+  id: string,
+  pullRequestNumber: number,
+): Promise<{
+  instanceId: string;
+  projectId: string;
+}> => {
+  const res = await axios.post(
+    BACKEND_URL +
+      `/api/v1/github-repos/${id}/pull-request/${pullRequestNumber}`,
+    {},
+    {
+      withCredentials: true,
+    },
+  );
+  return res.data.data;
+};
