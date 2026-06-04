@@ -6,6 +6,7 @@ import {
   instanceTypes,
   projects,
   projectSessions,
+  projectSessionsCategory,
   projectSessionTasks,
   projectSshKeys,
   sshKeys,
@@ -23,13 +24,15 @@ import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issu
 interface issueHandlerProps {
   gitRepoId: string;
   issueNumber: number;
+  sessionCat?: (typeof projectSessionsCategory.enumValues)[number];
 }
 /**
  * Receives the issue_id, then proccess as per that issue
  */
-export const issueAndPullRequestHandler = async ({
+export const issueRequestHandler = async ({
   gitRepoId,
   issueNumber,
+  sessionCat = "manual",
 }: issueHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubReposWithUserAndProject] = await db
     .select({
@@ -64,6 +67,7 @@ export const issueAndPullRequestHandler = async ({
         description: sessionMeta.description || "",
         user_id: githubReposWithUserAndProject.user.id,
         project_id: project.id,
+        category: sessionCat,
       })
       .returning();
     if (!session) return;

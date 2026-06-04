@@ -21,7 +21,6 @@ import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
-import { appendFile } from "node:fs";
 
 export const getUserProjectSessions = catchAsync(
   async (req: Request, res: Response) => {

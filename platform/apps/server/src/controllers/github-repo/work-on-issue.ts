@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
 import { z } from "zod";
-import { issueAndPullRequestHandler } from "../../services/github/issue-hanlder.js";
+import { issueRequestHandler } from "../../services/github/issue-hanlder.js";
 
 export const workOnIssueByIssueId = catchAsync(
   async (req: Request, res: Response) => {
@@ -16,7 +16,7 @@ export const workOnIssueByIssueId = catchAsync(
       })
       .parse(req.params);
 
-    const instance = await issueAndPullRequestHandler({
+    const instance = await issueRequestHandler({
       gitRepoId: id,
       issueNumber,
     });
