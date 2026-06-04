@@ -6,6 +6,7 @@ import {
   instanceTypes,
   projects,
   projectSessions,
+  projectSessionsCategory,
   projectSessionTasks,
   projectSshKeys,
   sshKeys,
@@ -23,10 +24,12 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
   prNumber: number;
+  sessionCat?: (typeof projectSessionsCategory.enumValues)[number];
 }
 export const pullRequestOpenedHandler = async ({
   gitRepoId,
   prNumber,
+  sessionCat = "manual",
 }: pullRequestOpenedHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubReposWithUserAndProject] = await db
     .select({
@@ -63,6 +66,7 @@ export const pullRequestOpenedHandler = async ({
         description: sessionMeta.description || "",
         user_id: githubReposWithUserAndProject.user.id,
         project_id: project.id,
+        category: sessionCat,
       })
       .returning();
     if (!session) return;
