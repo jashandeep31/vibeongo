@@ -1,5 +1,6 @@
 "use client";
 
+import { useGetGithubRepos } from "@/hooks/use-github-repos";
 import {
   Sidebar,
   SidebarContent,
@@ -79,6 +80,9 @@ const sidebarLinks: {
 export function DashboardSidebar() {
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { data: repos } = useGetGithubRepos();
+
+  const reposWithNoDefaultProject = repos?.filter((r) => !r.default_project_id);
 
   const navigateTo = (url: string) => {
     if (isMobile) {
@@ -122,7 +126,16 @@ export function DashboardSidebar() {
                         onClick={() => navigateTo(item.url)}
                       >
                         <item.icon />
-                        <span>{item.title}</span>
+                        <span>
+                          {item.title}{" "}
+                          {(item.title === "Repos" &&
+                            reposWithNoDefaultProject?.length) ||
+                          0 > 0 ? (
+                            <span className="rounded-full bg-yellow-500 p-2">
+                              {reposWithNoDefaultProject?.length}
+                            </span>
+                          ) : null}
+                        </span>
                       </button>
                     )}
                   </SidebarMenuButton>

@@ -2,7 +2,7 @@ import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
-import { db, githubRepos, eq, and, projects } from "@repo/db";
+import { db, githubRepos, eq, and, projects, desc } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
 import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
@@ -66,7 +66,8 @@ export const getUserGitRepos = catchAsync(
     const rows = await db
       .select()
       .from(githubRepos)
-      .where(eq(githubRepos.user_id, user.id));
+      .where(eq(githubRepos.user_id, user.id))
+      .orderBy(desc(githubRepos.created_at));
 
     res.status(200).json({ data: rows });
   },
