@@ -36,6 +36,8 @@ func init() {
 	rootCmd.AddCommand(UpdateSessionFromOverviewCmd())
 	// terminate the instance
 	rootCmd.AddCommand(TerminateInstanceCmd())
+	// running the final script
+	rootCmd.AddCommand(ExecuteFinalScriptCmd())
 }
 
 func main() {

@@ -58,6 +58,7 @@ sudo -u ubuntu /tmp/ubuntu-setup.sh
 vibeongo init-workspace
 vibeongo init-repos
 vibeongo run-tasks  
+vibeongo start
 ${terminate ? "vibeongo terminate" : ""}
 
 
