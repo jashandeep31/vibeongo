@@ -11,6 +11,7 @@ import {
   projectSshKeys,
   sshKeys,
   sql,
+  desc,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -26,7 +27,8 @@ export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const dbProjects = await db
     .select()
     .from(projects)
-    .where(eq(projects.user_id, user.id));
+    .where(eq(projects.user_id, user.id))
+    .orderBy(desc(projects.created_at));
 
   res.status(200).json({
     message: "Projects retrieved successfully",
@@ -74,8 +76,7 @@ export const getProjectConfigForEdit = catchAsync(
       .innerJoin(instanceTypes, eq(instanceTypes.id, projects.instance_type_id))
       .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
 
-    if (!projectWithInstanceType)
-      throw new AppError("project not found", 404);
+    if (!projectWithInstanceType) throw new AppError("project not found", 404);
 
     const sshKeyRows = await db
       .select({ sshKeyId: projectSshKeys.ssh_key_id })
@@ -140,10 +141,7 @@ export const updateProjectById = catchAsync(
           .select({ id: sshKeys.id })
           .from(sshKeys)
           .where(
-            and(
-              eq(sshKeys.user_id, user.id),
-              inArray(sshKeys.id, sshKeyIds),
-            ),
+            and(eq(sshKeys.user_id, user.id), inArray(sshKeys.id, sshKeyIds)),
           )
       : [];
 
@@ -165,8 +163,7 @@ export const updateProjectById = catchAsync(
         .where(and(eq(projects.user_id, user.id), eq(projects.id, id)))
         .returning();
 
-      if (!updatedProjectRow)
-        throw new AppError("project not updated", 400);
+      if (!updatedProjectRow) throw new AppError("project not updated", 400);
 
       await tx
         .delete(projectGithubRepos)

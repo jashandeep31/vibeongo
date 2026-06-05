@@ -27,6 +27,12 @@ export const issueOpenedHandler = async (
     return;
   }
 
+  await issueRequestHandler({
+    gitRepoId: githubRepo.id,
+    issueNumber: payload.issue.number!,
+    sessionCat: "auto",
+  });
+
   await octokit.request(
     "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
     {
@@ -34,18 +40,13 @@ export const issueOpenedHandler = async (
       repo: payload.repository.name,
       issue_number: payload.issue.number,
       body: `👋 Got it! I'm on it.
-  🛠️ Fetching live logs for this issue — this can take up to 5 minutes.
-  🌐 You can monitor progress on the live website.`,
+        🛠️ Fetching live logs for this issue — this can take up to 5 minutes.
+        🌐 You can monitor progress on the live website.`,
       headers: {
         "x-github-api-version": "2026-03-10",
       },
     },
   );
 
-  await issueRequestHandler({
-    gitRepoId: githubRepo.id,
-    issueNumber: payload.issue.number!,
-    sessionCat: "auto",
-  });
   return;
 };
