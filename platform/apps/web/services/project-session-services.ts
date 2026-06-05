@@ -16,6 +16,7 @@ export type GetProjectSessionsParams = {
   projectId?: string;
   page?: number;
   limit?: number;
+  archived?: boolean;
 };
 
 export type ProjectSessionsResponse = {
@@ -28,12 +29,14 @@ export const getProjectSessions = async ({
   projectId,
   page,
   limit,
+  archived = false,
 }: GetProjectSessionsParams = {}): Promise<ProjectSessionsResponse> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/project-sessions/`, {
     params: {
       projectId,
       page,
       limit,
+      archived: archived,
     },
     withCredentials: true,
   });
