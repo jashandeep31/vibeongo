@@ -60,7 +60,15 @@ export const getInstancesByProjectId = catchAsync(
     if (typeof projectId !== "string") {
       throw new AppError("projectId should be string", 400);
     }
-
+    const { state } = z
+      .object({
+        state: z.enum(["terminated", "running", "all"]).default("running"),
+      })
+      .parse(req.query);
+    const filters = [];
+    if (state !== "all") {
+      filters.push(eq(instances.state, state));
+    }
     const user = req.user;
     if (!user) throw new AppError("authentication is required", 400);
 
@@ -71,6 +79,7 @@ export const getInstancesByProjectId = catchAsync(
         and(
           eq(instances.user_id, user.id),
           eq(instances.project_id, projectId),
+          ...filters,
         ),
       );
 

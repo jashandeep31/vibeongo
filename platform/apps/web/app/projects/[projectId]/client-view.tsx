@@ -7,6 +7,7 @@ import { PaginationControls } from "@/components/pagination-controls";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialog";
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
+import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -22,7 +23,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 
-type InstanceFilter = "running" | "terminated" | "pending" | "all";
+type InstanceFilter = ProjectInstanceStateFilter;
 const PROJECT_SESSIONS_LIMIT = 10;
 
 const formatDate = (value: unknown) => {
@@ -37,13 +38,15 @@ const formatDate = (value: unknown) => {
 export default function ClientView({ projectId }: { projectId: string }) {
   const router = useRouter();
   const [sessionPage, setSessionPage] = useState(1);
+  const [instanceFilter, setInstanceFilter] =
+    useState<InstanceFilter>("running");
   const { data: project, isLoading, isError } = useGetProjectById(projectId);
   const {
     data: instances,
     isLoading: isInstancesLoading,
     isError: isInstancesError,
     refetch: refetchInstances,
-  } = useGetInstancesByProjectId(projectId);
+  } = useGetInstancesByProjectId(projectId, instanceFilter);
 
   const {
     data: sessions,
@@ -57,8 +60,6 @@ export default function ClientView({ projectId }: { projectId: string }) {
   });
 
   const deleteProjectMutation = useDeleteProject();
-  const [instanceFilter, setInstanceFilter] =
-    useState<InstanceFilter>("running");
 
   const handleDeleteProject = async () => {
     const toastId = toast.loading("Deleting project...");
@@ -95,17 +96,6 @@ export default function ClientView({ projectId }: { projectId: string }) {
 
   const projectInstances = Array.isArray(instances) ? instances : [];
   const projectSessions = sessions?.data ?? [];
-  const filteredInstances = projectInstances.filter((instance) => {
-    if (instanceFilter === "all") {
-      return true;
-    }
-
-    if (instanceFilter === "terminated") {
-      return instance.state === "terminated" || !!instance.terminated_at;
-    }
-
-    return instance.state === instanceFilter;
-  });
 
   return (
     <div className="space-y-8 p-4 md:p-8">
@@ -175,7 +165,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
           <h2 className="text-2xl font-semibold tracking-tight">Instances</h2>
           <div className="flex flex-wrap gap-2">
             {(
-              ["running", "terminated", "pending", "all"] as InstanceFilter[]
+              ["running", "terminated", "all"] as InstanceFilter[]
             ).map((filter) => (
               <Button
                 key={filter}
@@ -204,7 +194,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
               Failed to load instances.
             </CardContent>
           </Card>
-        ) : filteredInstances.length === 0 ? (
+        ) : projectInstances.length === 0 ? (
           <Card>
             <CardContent className="text-muted-foreground py-8 text-center">
               No {instanceFilter === "all" ? "" : `${instanceFilter} `}
@@ -213,7 +203,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
           </Card>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
-            {filteredInstances.map((instance) => (
+            {projectInstances.map((instance) => (
               <ProjectInstanceCard
                 key={instance.id}
                 instance={instance}

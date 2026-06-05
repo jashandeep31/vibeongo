@@ -1,18 +1,15 @@
 "use client";
+import { useState } from "react";
 import { ProjectHeader } from "./project-header";
-import { SystemInformation } from "./system-information";
-import { ProjectTabs } from "./project-tabs";
 import { UsageBilling } from "./usage-billing";
-import { ProjectDomainsCard } from "./project-domains-card";
 import { ProjectViewSkeleton } from "./project-view-skeleton";
-import {
-  useAddAllowedIpToProject,
-  useDeleteProject,
-  useGetProjectById,
-} from "@/hooks/use-project";
+import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
+import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { ProjectInstanceCard } from "@/components/project/project-instance-card";
 import { Button } from "@repo/ui/components/button";
+import { Card, CardContent } from "@repo/ui/components/card";
 import { Trash2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -20,15 +17,21 @@ import axios from "axios";
 
 import { Project } from "./types";
 
+type InstanceFilter = ProjectInstanceStateFilter;
+
 export function ProjectView({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const [instanceFilter, setInstanceFilter] =
+    useState<InstanceFilter>("running");
   const deleteProjectMutation = useDeleteProject();
-  const addAllowedIpMutation = useAddAllowedIpToProject();
   const { data: projectRaw, isLoading: isProjectLoading } =
     useGetProjectById(projectId);
 
-  const { data: instancesData, isLoading: isInstanceLoading } =
-    useGetInstancesByProjectId(projectId);
+  const {
+    data: instancesData,
+    isLoading: isInstanceLoading,
+    isError: isInstancesError,
+  } = useGetInstancesByProjectId(projectId, instanceFilter);
 
   if (isProjectLoading || isInstanceLoading) {
     return <ProjectViewSkeleton />;
@@ -61,28 +64,6 @@ export function ProjectView({ projectId }: { projectId: string }) {
     }
   };
 
-  const handleAddAllowedIp = async (ip: string) => {
-    const normalizedIp = ip.trim();
-
-    if (!normalizedIp) {
-      toast.error("Please enter an IP address");
-      return;
-    }
-
-    const toastId = toast.loading("Adding allowed IP...");
-
-    try {
-      await addAllowedIpMutation.mutateAsync({
-        id: projectId,
-        ip: normalizedIp,
-      });
-      toast.success("Allowed IP added", { id: toastId });
-    } catch {
-      toast.error("Failed to add allowed IP", { id: toastId });
-      throw new Error("Failed to add allowed IP");
-    }
-  };
-
   return (
     <div className="mx-auto w-full flex-1 space-y-8 p-4 md:p-8">
       {/* Header Section */}
@@ -109,13 +90,63 @@ export function ProjectView({ projectId }: { projectId: string }) {
       <div className="flex flex-col gap-8 lg:flex-row">
         {/* Left Side: Configuration (75%) */}
         <div className="space-y-6 lg:w-3/4">
-          <SystemInformation instances={instances} />
-          <ProjectDomainsCard
-            projectId={projectId}
-            isAddingAllowedIp={addAllowedIpMutation.isPending}
-            onAddAllowedIp={handleAddAllowedIp}
-          />
-          <ProjectTabs project={project} />
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <h2 className="text-2xl font-semibold tracking-tight">
+                Instances
+              </h2>
+              <div className="flex flex-wrap gap-2">
+                {(["running", "terminated", "all"] as InstanceFilter[]).map(
+                  (filter) => (
+                    <Button
+                      key={filter}
+                      type="button"
+                      size="sm"
+                      variant={
+                        instanceFilter === filter ? "default" : "outline"
+                      }
+                      onClick={() => {
+                        setInstanceFilter(filter);
+                      }}
+                    >
+                      {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                    </Button>
+                  ),
+                )}
+              </div>
+            </div>
+
+            {isInstanceLoading ? (
+              <Card>
+                <CardContent className="text-muted-foreground py-8 text-center">
+                  Loading instances...
+                </CardContent>
+              </Card>
+            ) : isInstancesError ? (
+              <Card>
+                <CardContent className="text-destructive py-8 text-center">
+                  Failed to load instances.
+                </CardContent>
+              </Card>
+            ) : instances.length === 0 ? (
+              <Card>
+                <CardContent className="text-muted-foreground py-8 text-center">
+                  No {instanceFilter === "all" ? "" : `${instanceFilter} `}
+                  instances found for this project.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="grid gap-4 lg:grid-cols-2">
+                {instances.map((instance) => (
+                  <ProjectInstanceCard
+                    key={instance.id}
+                    instance={instance}
+                    projectId={project.id}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Right Side: Usage & Billing (25%) */}
