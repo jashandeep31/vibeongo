@@ -208,7 +208,11 @@ export const archiveProjectSession = catchAsync(
 
     const { action } = z
       .object({
-        action: z.string().transform((v) => v === "true"),
+        action: z
+          .union([z.boolean(), z.string()])
+          .transform((value) =>
+            typeof value === "boolean" ? value : value === "true",
+          ),
       })
       .parse(req.body);
     await db

@@ -20,6 +20,7 @@ import {
   Server,
   Plus,
   Archive,
+  RotateCcw,
 } from "lucide-react";
 import {
   useArchiveProjectSession,
@@ -150,6 +151,7 @@ type SessionCardProps = {
   onArchive: (sessionId: string) => void;
   isPending: boolean;
   isArchiving: boolean;
+  isArchivedView: boolean;
 };
 
 const SessionCard = memo(
@@ -159,6 +161,7 @@ const SessionCard = memo(
     onArchive,
     isPending,
     isArchiving,
+    isArchivedView,
   }: SessionCardProps) => {
     const runningInstances = session.instances;
     const isRunning = runningInstances && runningInstances.length > 0;
@@ -248,19 +251,27 @@ const SessionCard = memo(
             </Link>
           </Button>
           <ConfirmationDialog
-            title="Archive session"
-            description={`Archive "${session.name}"? It will be hidden from your active sessions list.`}
-            confirmText="Archive"
+            title={isArchivedView ? "Restore session" : "Archive session"}
+            description={
+              isArchivedView
+                ? `Restore "${session.name}" to your active sessions list?`
+                : `Archive "${session.name}"? It will be hidden from your active sessions list.`
+            }
+            confirmText={isArchivedView ? "Restore" : "Archive"}
             onConfirm={handleArchive}
           >
             <Button
               type="button"
               variant="outline"
               size="icon"
-              aria-label="Archive session"
+              aria-label={isArchivedView ? "Restore session" : "Archive session"}
               disabled={isArchiving}
             >
-              <Archive className="h-4 w-4" />
+              {isArchivedView ? (
+                <RotateCcw className="h-4 w-4" />
+              ) : (
+                <Archive className="h-4 w-4" />
+              )}
             </Button>
           </ConfirmationDialog>
         </CardFooter>
@@ -275,12 +286,14 @@ type ProjectSessionsListProps = {
   sessions: ProjectSessionWithRunningInstances[];
   isLoading: boolean;
   isError: boolean;
+  isArchivedView?: boolean;
 };
 
 export function ProjectSessionsList({
   sessions,
   isLoading,
   isError,
+  isArchivedView = false,
 }: ProjectSessionsListProps) {
   const resumeSessionMutation = useResumeProjectSession();
   const archiveSessionMutation = useArchiveProjectSession();
@@ -312,21 +325,32 @@ export function ProjectSessionsList({
   const handleArchive = useCallback(
     async (sessionId: string) => {
       setArchivingSessionId(sessionId);
-      const toastId = toast.loading("Archiving session...");
+      const action = !isArchivedView;
+      const toastId = toast.loading(
+        action ? "Archiving session..." : "Restoring session...",
+      );
       try {
-        await archiveSessionMutation.mutateAsync(sessionId);
-        toast.success("Session archived successfully", { id: toastId });
+        await archiveSessionMutation.mutateAsync({ id: sessionId, action });
+        toast.success(
+          action
+            ? "Session archived successfully"
+            : "Session restored successfully",
+          { id: toastId },
+        );
       } catch (error: unknown) {
         console.error(error);
         const message = axios.isAxiosError<{ message?: string }>(error)
-          ? (error.response?.data?.message ?? "Failed to archive session")
-          : "Failed to archive session";
+          ? (error.response?.data?.message ??
+            (action ? "Failed to archive session" : "Failed to restore session"))
+          : action
+            ? "Failed to archive session"
+            : "Failed to restore session";
         toast.error(message, { id: toastId });
       } finally {
         setArchivingSessionId(null);
       }
     },
-    [archiveSessionMutation],
+    [archiveSessionMutation, isArchivedView],
   );
 
   if (isLoading) return <LoadingState />;
@@ -343,6 +367,7 @@ export function ProjectSessionsList({
           onArchive={handleArchive}
           isPending={pendingSessionId === session.id}
           isArchiving={archivingSessionId === session.id}
+          isArchivedView={isArchivedView}
         />
       ))}
     </div>
