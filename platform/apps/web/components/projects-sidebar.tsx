@@ -9,6 +9,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@repo/ui/components/sidebar";
 import { ArrowLeft, Server } from "lucide-react";
 import Link from "next/link";
@@ -17,6 +18,14 @@ import Link from "next/link";
 
 export function ProjectsSidebar() {
   const { data: projects } = useGetProjects();
+  const { isMobile, setOpenMobile } = useSidebar();
+
+  const closeMobileSidebar = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
+  };
+
   return (
     <Sidebar className="">
       <SidebarContent className="bg-background">
@@ -29,7 +38,7 @@ export function ProjectsSidebar() {
                   asChild
                   className="active:bg-background data-active:bg-background cursor-pointer"
                 >
-                  <Link href="/dashboard">
+                  <Link href="/dashboard" onClick={closeMobileSidebar}>
                     <ArrowLeft className="h-4 w-4" />
                     <span>Dashboard</span>
                   </Link>
@@ -49,7 +58,10 @@ export function ProjectsSidebar() {
                     asChild
                     className="active:bg-background data-active:bg-background cursor-pointer"
                   >
-                    <Link href={`/projects/${server.id}`}>
+                    <Link
+                      href={`/projects/${server.id}`}
+                      onClick={closeMobileSidebar}
+                    >
                       <Server className="h-4 w-4" />
                       <span>{server.name}</span>
                     </Link>
