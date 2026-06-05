@@ -1,4 +1,5 @@
 import {
+  and,
   db,
   eq,
   instanceRegions,
@@ -62,6 +63,15 @@ export const spinUpAndSaveInstance = async ({
 
   if (userWalletRow.balance < requiredBalance) {
     throw new AppError("Insufficient balance", 400);
+  }
+  // TODO: Another temp fix
+  const runningInstances = await db
+    .select()
+    .from(instances)
+    .where(and(eq(instances.user_id, userId), eq(instances.state, "running")));
+
+  if (runningInstances.length > 4) {
+    throw new AppError("You can only have 4 instances running at a time", 400);
   }
 
   const awsRes = await createEc2Instance({
