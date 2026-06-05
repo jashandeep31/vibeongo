@@ -32,7 +32,7 @@ export const proxyDomains = pgTable(
 
     is_editable: boolean("is_editable").default(true).notNull(),
 
-    created_at: timestamp().defaultNow(),
+    created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },
   (t) => [uniqueIndex("domain_idx").on(t.domain)],

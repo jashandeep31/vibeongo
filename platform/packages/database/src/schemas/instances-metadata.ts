@@ -19,7 +19,7 @@ export const instanceRegions = pgTable("instance_regions", {
   slug: varchar().notNull(),
 
   provider: instanceProvidersEnum().notNull(),
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -38,6 +38,6 @@ export const instanceTypes = pgTable("instance_types", {
 
   price_per_hour: integer().notNull(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

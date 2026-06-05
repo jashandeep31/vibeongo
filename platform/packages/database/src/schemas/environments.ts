@@ -9,6 +9,6 @@ export const environments = pgTable("environments", {
 
   config: text().notNull(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
