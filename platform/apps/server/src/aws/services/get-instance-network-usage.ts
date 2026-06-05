@@ -3,7 +3,7 @@ import { awsSupportedRegions } from "../../aws/configs/aws-supported-regions-con
 import { getCloudWatchClient } from "../ec2-client.js";
 
 interface getInstanceNetworkUsageProps {
-  region: (typeof awsSupportedRegions)[number];
+  region: string;
   instanceId: string;
   metricName: "NetworkIn" | "NetworkOut";
   startTime: Date;
@@ -15,24 +15,36 @@ export const getEc2InstanceNetworkUsage = async ({
   metricName,
   startTime,
   endTime,
-}: getInstanceNetworkUsageProps) => {
-  const client = getCloudWatchClient(region);
-
+}: getInstanceNetworkUsageProps): Promise<number> => {
+  const client = getCloudWatchClient(
+    region as (typeof awsSupportedRegions)[number],
+  );
   const res = await client.send(
     new GetMetricStatisticsCommand({
       Namespace: "AWS/EC2",
       MetricName: metricName,
       Dimensions: [
         {
-          Name: "InstaceId",
+          Name: "InstanceId",
           Value: instanceId,
         },
       ],
       StartTime: startTime,
       EndTime: endTime,
-      Period: 60,
+      Period: 60 * 5,
       Statistics: ["Sum"],
     }),
   );
-  return res;
+  const toGB = (bytes: number) => bytes / 1_073_741_824;
+  if (!res?.Datapoints?.length) {
+    return 0;
+    // TODO: This may needed to be changed in fture
+  }
+
+  const bytes = res.Datapoints.reduce((sum, datapoint) => {
+    return sum + (datapoint.Sum ?? 0);
+  }, 0);
+
+  console.log({ bytes, gigabytes: toGB(bytes), datapoints: res.Datapoints });
+  return toGB(bytes);
 };
