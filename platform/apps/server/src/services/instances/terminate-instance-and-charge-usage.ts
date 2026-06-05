@@ -79,10 +79,6 @@ export const terminateInstanceAndChargeUsage = async ({
     startTime: instance.started_at ?? instance.created_at,
     endTime: new Date(),
   });
-  // source: https://aws.amazon.com/ec2/pricing/on-demand/
-  // TODO: make the network charges dynamic
-  const networkCharges = netWorkOutInGB * 0.13 * 10000;
-  // multiply by 10000 for cents that we use in our system
 
   const awsResponse = await terminateEc2Instance(
     instanceWithTypeAndRegion.instance_regions.slug,
@@ -99,6 +95,12 @@ export const terminateInstanceAndChargeUsage = async ({
     instanceWithTypeAndRegion.instance_types.price_per_hour / 60,
   );
 
+  // This returns the price in are you format means 1.0001 is 10001 cents
+
+  // source: https://aws.amazon.com/ec2/pricing/on-demand/
+  // TODO: make the network charges dynamic
+  const networkCharges = netWorkOutInGB * 0.13 * 10000;
+  // multiply by 10000 for cents that we use in our system
   const totalCostWithProfit = (): number => {
     console.log(networkCharges, netWorkOutInGB);
     const totalCost = coastEachMin * uptimeInMin + networkCharges;
