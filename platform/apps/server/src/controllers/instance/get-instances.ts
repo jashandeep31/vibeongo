@@ -3,6 +3,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
 import { and, db, eq, instances } from "@repo/db";
 import { z } from "zod";
+import { getEc2InstanceNetworkUsage } from "../../aws/services/get-instance-network-usage.js";
 
 export const getUserInstances = catchAsync(
   async (req: Request, res: Response) => {
@@ -47,6 +48,14 @@ export const getInstanceById = catchAsync(
       .where(and(eq(instances.user_id, user.id), eq(instances.id, id)));
 
     if (!row) throw new AppError("instance not found", 404);
+    const usage = await getEc2InstanceNetworkUsage({
+      region: "us-east-1",
+      instanceId: id,
+      metricName: "NetworkOut",
+      startTime: row.created_at!,
+      endTime: new Date(),
+    });
+    console.log("i am getting called", usage);
 
     res.status(200).json({
       data: row,
