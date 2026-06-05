@@ -383,7 +383,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <div className="space-y-12 p-4 md:p-8">
+    <div className="w-full min-w-0 max-w-full space-y-12 overflow-x-hidden p-4 md:p-8">
       <ConfirmationDialog
         open={isCurrentIpDialogOpen}
         onOpenChange={(open) => {
@@ -401,9 +401,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         }}
       />
 
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
+      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="flex min-w-0 items-center gap-2 text-3xl font-bold tracking-tight">
             Instance
             <span
               className={

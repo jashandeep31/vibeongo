@@ -272,7 +272,7 @@ export function ProjectInstanceTerminal({
   };
 
   return (
-    <div className="space-y-4">
+    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
       {!hideControls && (
         <div className="flex flex-wrap items-center gap-2">
           {showConnectionButton && (
@@ -315,7 +315,7 @@ export function ProjectInstanceTerminal({
         </div>
       )}
 
-      <div className="bg-background overflow-hidden rounded-lg border shadow-sm">
+      <div className="bg-background min-w-0 max-w-full overflow-hidden rounded-lg border shadow-sm">
         <div className="border-b px-4 py-3">
           <div>
             <h2 className="text-base font-semibold tracking-tight">Terminal</h2>
@@ -325,8 +325,8 @@ export function ProjectInstanceTerminal({
           </div>
         </div>
 
-        <div className="bg-muted/40 border-b px-3 py-2">
-          <div className="flex flex-wrap items-center gap-1.5">
+        <div className="bg-muted/40 min-w-0 overflow-x-hidden border-b px-3 py-2">
+          <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {terminalSessionIds.map((id, index) => {
               const isActive = id === activeTerminalSessionId;
 
@@ -395,11 +395,11 @@ export function ProjectInstanceTerminal({
           </div>
         </div>
 
-        <div className="bg-[#111111] p-1.5 sm:p-2">
+        <div className="min-w-0 max-w-full overflow-hidden bg-[#111111] p-1.5 sm:p-2">
           <div
             ref={terminalRef}
             id="terminal"
-            className="h-[55svh] min-h-[280px] w-full rounded-md bg-[#1e1e1e] p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2"
+            className="h-[55svh] min-h-[280px] w-full min-w-0 max-w-full overflow-hidden rounded-md bg-[#1e1e1e] p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2 [&_.xterm-screen]:max-w-full [&_.xterm-viewport]:max-w-full [&_.xterm]:max-w-full"
           />
         </div>
       </div>

@@ -20,7 +20,9 @@ export default async function layout({
         </span>
       </div>
       <ProjectsSidebar />
-      <main className="grid w-full pt-12">{children}</main>
+      <main className="grid min-w-0 w-full overflow-x-hidden pt-12">
+        {children}
+      </main>
     </SidebarProvider>
   );
 }
