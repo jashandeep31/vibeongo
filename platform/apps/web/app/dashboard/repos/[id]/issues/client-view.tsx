@@ -10,6 +10,11 @@ import {
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { RepoResourceSwitch } from "@/components/repo-resource-switch";
 import type { GithubRepoIssue } from "@/services/github-repo-services";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
@@ -19,6 +24,7 @@ import {
   ExternalLink,
   GitPullRequest,
   MessageSquare,
+  TriangleAlert,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -236,6 +242,17 @@ const ClientView = ({ id }: { id: string }) => {
       </div>
 
       <RepoResourceSwitch id={id} active="issues" />
+
+      {!repo.default_project_id ? (
+        <Alert>
+          <TriangleAlert className="h-4 w-4" />
+          <AlertTitle>Default project required</AlertTitle>
+          <AlertDescription>
+            <Link href="/dashboard/repos">Connect a default project</Link> to
+            start using AI for this repository.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       {issues.length > 0 ? (
         <div className="space-y-3">

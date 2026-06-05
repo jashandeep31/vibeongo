@@ -21,9 +21,11 @@ export const githubRepos = pgTable(
       })
       .notNull(),
 
-    default_project_id: uuid().references(() => projects.id, {
-      onDelete: "set null",
-    }),
+    default_project_id: uuid()
+      .references(() => projects.id, {
+        onDelete: "set null",
+      })
+      .unique(),
     installation_id: integer().notNull(),
 
     public: boolean().default(false).notNull(),
