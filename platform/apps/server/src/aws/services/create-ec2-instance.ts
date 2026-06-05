@@ -32,7 +32,7 @@ export const createEc2Instance = async ({
     MaxCount: 1,
 
     Monitoring: {
-      Enabled: false, // enable in future it's paid
+      Enabled: true, // enable in future it's paid
     },
     UserData: Buffer.from(userData).toString("base64"),
     BlockDeviceMappings: [

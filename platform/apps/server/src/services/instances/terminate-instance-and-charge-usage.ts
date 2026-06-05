@@ -18,6 +18,7 @@ import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { userWallet } from "@repo/db";
 import { invalidateProjectProxiesByRoutingId } from "../../lib/invalidate-project-proxies-by-pid.js";
+import { getEc2InstanceNetworkUsage } from "../../aws/services/get-instance-network-usage.js";
 
 interface terminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -71,6 +72,18 @@ export const terminateInstanceAndChargeUsage = async ({
 
   const instance = instanceWithTypeAndRegion.instances;
 
+  const netWorkOutInGB = await getEc2InstanceNetworkUsage({
+    region: instanceWithTypeAndRegion.instance_regions.slug,
+    instanceId: instance.aws_instance_id,
+    metricName: "NetworkOut",
+    startTime: instance.started_at ?? instance.created_at,
+    endTime: new Date(),
+  });
+  // source: https://aws.amazon.com/ec2/pricing/on-demand/
+  // TODO: make the network charges dynamic
+  const networkCharges = netWorkOutInGB * 0.13 * 10000;
+  // multiply by 10000 for cents that we use in our system
+
   const awsResponse = await terminateEc2Instance(
     instanceWithTypeAndRegion.instance_regions.slug,
     [instance.aws_instance_id],
@@ -87,7 +100,8 @@ export const terminateInstanceAndChargeUsage = async ({
   );
 
   const totalCostWithProfit = (): number => {
-    const totalCost = coastEachMin * uptimeInMin;
+    console.log(networkCharges, netWorkOutInGB);
+    const totalCost = coastEachMin * uptimeInMin + networkCharges;
     const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
     const totalCostWithProfit = totalCost + profit;
     return totalCostWithProfit < 0.0002 * 10000
@@ -132,7 +146,7 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: `Instance usage ${instanceId}`,
+        description: `Instance usage ${instanceId} and network $${(networkCharges / 10000).toFixed(6)}`,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
