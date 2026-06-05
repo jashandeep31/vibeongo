@@ -22,13 +22,17 @@ export function ProjectViewSkeleton() {
       <div className="flex flex-col gap-8 lg:flex-row">
         <div className="space-y-6 lg:w-3/4">
           <div className="space-y-4">
-            <Skeleton className="h-7 w-48" />
+            <Skeleton className="h-8 w-32" />
+            <div className="flex flex-wrap gap-2">
+              <Skeleton className="h-8 w-20" />
+              <Skeleton className="h-8 w-24" />
+              <Skeleton className="h-8 w-16" />
+            </div>
             <Card>
-              <CardContent className="p-4">
-                <div className="space-y-1.5">
-                  <Skeleton className="h-3 w-10" />
-                  <Skeleton className="h-8 w-40" />
-                </div>
+              <CardContent className="space-y-4 p-5">
+                <Skeleton className="h-6 w-44" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-3/4" />
               </CardContent>
             </Card>
           </div>

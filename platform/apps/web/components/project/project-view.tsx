@@ -8,6 +8,9 @@ import { useGetInstancesByProjectId } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
+import { ProjectSessionsList } from "@/components/project-sessions/project-sessions-list";
+import { PaginationControls } from "@/components/pagination-controls";
+import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Trash2 } from "lucide-react";
@@ -18,9 +21,11 @@ import axios from "axios";
 import { Project } from "./types";
 
 type InstanceFilter = ProjectInstanceStateFilter;
+const PROJECT_SESSIONS_LIMIT = 10;
 
 export function ProjectView({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const [sessionPage, setSessionPage] = useState(1);
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
   const deleteProjectMutation = useDeleteProject();
@@ -33,7 +38,18 @@ export function ProjectView({ projectId }: { projectId: string }) {
     isError: isInstancesError,
   } = useGetInstancesByProjectId(projectId, instanceFilter);
 
-  if (isProjectLoading || isInstanceLoading) {
+  const {
+    data: sessions,
+    isLoading: isSessionsLoading,
+    isError: isSessionsError,
+  } = useGetProjectSessions({
+    projectId,
+    page: sessionPage,
+    limit: PROJECT_SESSIONS_LIMIT,
+    archived: false,
+  });
+
+  if (isProjectLoading) {
     return <ProjectViewSkeleton />;
   }
 
@@ -47,6 +63,9 @@ export function ProjectView({ projectId }: { projectId: string }) {
 
   const project = projectRaw as unknown as Project;
   const instances = Array.isArray(instancesData) ? instancesData : [];
+  const projectSessions = (sessions?.data ?? []).filter(
+    (session) => !session.archived,
+  );
 
   const handleDelete = async () => {
     const toastId = toast.loading("Deleting project...");
@@ -146,6 +165,34 @@ export function ProjectView({ projectId }: { projectId: string }) {
                 ))}
               </div>
             )}
+          </div>
+
+          <div className="space-y-4">
+            <div>
+              <h2 className="text-2xl font-semibold tracking-tight">
+                Sessions
+              </h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Project sessions and their currently running instances.
+              </p>
+            </div>
+
+            <ProjectSessionsList
+              sessions={projectSessions}
+              isLoading={isSessionsLoading}
+              isError={isSessionsError}
+            />
+            <PaginationControls
+              page={sessions?.page ?? sessionPage}
+              hasNext={sessions?.hasNext}
+              isLoading={isSessionsLoading}
+              onPrevious={() => {
+                setSessionPage((page) => Math.max(1, page - 1));
+              }}
+              onNext={() => {
+                setSessionPage((page) => page + 1);
+              }}
+            />
           </div>
         </div>
 

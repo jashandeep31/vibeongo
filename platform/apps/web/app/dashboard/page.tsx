@@ -2,6 +2,7 @@ import { PlusCircle } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
 import { ProjectList } from "@/components/project/project-list";
+import { RunningInstancesList } from "@/components/project/running-instances-list";
 import { getSession } from "@/lib/getSession";
 import { redirect } from "next/navigation";
 
@@ -28,6 +29,7 @@ export default async function ProjectsPage() {
       </div>
 
       <ProjectList />
+      <RunningInstancesList />
     </div>
   );
 }
