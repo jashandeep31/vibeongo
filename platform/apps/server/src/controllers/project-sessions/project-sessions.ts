@@ -27,7 +27,7 @@ export const getUserProjectSessions = catchAsync(
     const filters = commonFilterSchema
       .extend({
         projectId: z.string().optional(),
-        archived: z.coerce.boolean().default(false),
+        archived: z.string().transform((v) => v === "true"),
       })
       .parse(req.query);
 
@@ -208,7 +208,7 @@ export const archiveProjectSession = catchAsync(
 
     const { action } = z
       .object({
-        action: z.coerce.boolean().default(true),
+        action: z.string().transform((v) => v === "true"),
       })
       .parse(req.body);
     await db
