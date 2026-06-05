@@ -13,6 +13,7 @@ import { terminateInstanceAndChargeUsageWithInstanceIdAndSessionId } from "../se
 
 cron.schedule("*/5 * * * *", async () => {
   try {
+    console.log("running cron");
     const rows = await db
       .select({ instanceRegions, instances })
       .from(instances)

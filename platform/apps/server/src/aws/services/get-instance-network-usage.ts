@@ -45,6 +45,5 @@ export const getEc2InstanceNetworkUsage = async ({
     return sum + (datapoint.Sum ?? 0);
   }, 0);
 
-  console.log({ bytes, gigabytes: toGB(bytes), datapoints: res.Datapoints });
   return toGB(bytes);
 };

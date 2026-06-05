@@ -56,7 +56,7 @@ curl -fsSL https://opencode.ai/install | bash
 curl -fsSL https://claude.ai/install.sh | bash
 
 # codex
-curl -fsSL https://chatgpt.com/codex/install.sh | sh
+curl -fsSL https://chatgpt.com/codex/install.sh | CODEX_NON_INTERACTIVE=1 sh
 
 # neovim install
 sudo apt install neovim
@@ -64,10 +64,24 @@ sudo apt install neovim
 # fzf install
 sudo apt install fzf
  
+cat > ./config/opencode/openencode.json <<'EOF'
+{
+  "$schema": "https://opencode.ai/config.json",
+  "autoupdate": false,
+  "server": {
+    "port": 4096
+  },
+  "permission": {
+    "*": "allow"
+  }
+}
+EOF
 
-rm -f ~/.ssh/authorized_keys
-rm -f ~/.ssh/known_hosts
+history -c
 
+rm -f ~/.bash_history 
+# Prevent this session from writing history on logout
+unset HISTFILE
 
 # I am using ./script.sh in root to run it 
 # so just clearing the file
