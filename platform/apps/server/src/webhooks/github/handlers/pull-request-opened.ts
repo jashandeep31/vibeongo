@@ -28,6 +28,12 @@ export const pullRequestOpenedWebhookHandler = async (
     return;
   }
 
+  await pullRequestOpenedHandler({
+    gitRepoId: githubRepo.id,
+    prNumber: payload.pull_request.number,
+    sessionCat: "auto",
+  });
+
   await octokit.request(
     "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
     {
@@ -42,12 +48,6 @@ export const pullRequestOpenedWebhookHandler = async (
       },
     },
   );
-
-  await pullRequestOpenedHandler({
-    gitRepoId: githubRepo.id,
-    prNumber: payload.pull_request.number,
-    sessionCat: "auto",
-  });
 
   return;
 };

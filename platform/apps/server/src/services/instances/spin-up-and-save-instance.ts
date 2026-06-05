@@ -5,11 +5,13 @@ import {
   instances,
   instanceTypes,
   projects,
+  userWallet,
 } from "@repo/db";
 import { awsSupportedRegions } from "../../aws/configs/aws-supported-regions-configs.js";
 import { createEc2Instance } from "../../aws/services/create-ec2-instance.js";
 import { AppError } from "../../lib/app-error.js";
 import { getInstancePublicAddress } from "../../aws/services/get-instance-public-address.js";
+import { env } from "../../lib/env.js";
 
 interface SpinUpAndSaveInstance {
   setupScript: string;
@@ -32,6 +34,14 @@ export const spinUpAndSaveInstance = async ({
   sessionId = null,
   instanceId,
 }: SpinUpAndSaveInstance): Promise<spinUpAndSaveInstanceResponse> => {
+  const [userWalletRow] = await db
+    .select()
+    .from(userWallet)
+    .where(eq(userWallet.user_id, userId));
+  if (!userWalletRow) {
+    throw new AppError("User not found", 404);
+  }
+
   const [row] = await db
     .select({ instanceType: instanceTypes, region: instanceRegions })
     .from(instanceTypes)
@@ -41,8 +51,18 @@ export const spinUpAndSaveInstance = async ({
   if (!row?.region || !row.instanceType) {
     return null;
   }
+
   const region = row.region;
   const instanceType = row.instanceType;
+
+  const twoHourCost = row.instanceType.price_per_hour * 2;
+  const requiredBalance = Math.ceil(
+    twoHourCost + twoHourCost * (env.PROFIT_PRECENTAGE / 100),
+  );
+
+  if (userWalletRow.balance < requiredBalance) {
+    throw new AppError("Insufficient balance", 400);
+  }
 
   const awsRes = await createEc2Instance({
     region: region.slug as (typeof awsSupportedRegions)[number],
