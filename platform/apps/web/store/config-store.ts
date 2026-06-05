@@ -72,10 +72,10 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   setProjectName: (name) => set(() => ({ projectName: name })),
   projectName: "",
 
-  initialScript: "#!/bin/bash\n#add from here",
+  initialScript: "",
   setInitialScript: (script) => set(() => ({ initialScript: script })),
 
-  finalScript: "#!/bin/bash\n#add from here",
+  finalScript: "",
   setFinalScript: (script) => set(() => ({ finalScript: script })),
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
