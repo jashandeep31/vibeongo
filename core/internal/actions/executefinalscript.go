@@ -12,17 +12,7 @@ func ExecuteFinalScript() error {
 	if err != nil {
 		return err
 	}
-	//	script := `source /home/ubuntu/.bashrc
-	//
-	// # nvm
-	// export NVM_DIR="/home/ubuntu/.nvm"
-	// [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-	// node -v
-	// npm -v
-	//
-	// `
-	script := ""
-	script += cfg.FinalScript
+	script := cfg.FinalScript
 	path := "/home/ubuntu/code"
 
 	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-l", "-c", script)
