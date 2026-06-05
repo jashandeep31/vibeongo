@@ -6,6 +6,7 @@ import { createInstanceSchema } from "@repo/shared";
 
 type Instance = typeof instances.$inferSelect;
 type CreateInstanceData = z.infer<typeof createInstanceSchema>;
+export type ProjectInstanceStateFilter = "running" | "terminated" | "all";
 
 export const createInstance = async (
   data: CreateInstanceData,
@@ -30,11 +31,13 @@ export const getInstances = async ({
 
 export const getInstancesByProjectId = async (
   projectId: string,
+  state: ProjectInstanceStateFilter = "running",
 ): Promise<Instance[]> => {
   const res = await axios.get(
     `${BACKEND_URL}/api/v1/instances/project/${projectId}`,
     {
       withCredentials: true,
+      params: { state },
     },
   );
   return res.data.data;
