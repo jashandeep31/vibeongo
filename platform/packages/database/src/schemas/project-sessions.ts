@@ -32,7 +32,7 @@ export const projectSessions = pgTable("project_session", {
   // --- overview is going to get used to resume a session it will store all the changes those has been done can be continued from their ---
   overview: text(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -49,6 +49,6 @@ export const projectSessionTasks = pgTable("project_session_tasks", {
     .notNull()
     .references(() => projectSessions.id, { onDelete: "cascade" }),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

@@ -13,6 +13,6 @@ export const sessionAuthTokens = pgTable("session_auth_tokens", {
   token: varchar({ length: 255 }).notNull(),
   expires_at: timestamp(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

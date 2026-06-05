@@ -8,6 +8,6 @@ export const ec2 = pgTable("ec2", {
   region: varchar().notNull(),
   ip: varchar(),
   status: ec2StatusEnum().notNull().default("running"),
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

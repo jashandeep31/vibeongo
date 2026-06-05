@@ -31,7 +31,7 @@ export const projects = pgTable("projects", {
   initial_script: text().notNull().default(""),
   final_script: text().notNull().default(""),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -40,7 +40,7 @@ export const projectFiles = pgTable("project_files", {
   project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
   name: varchar().notNull(),
   path: varchar().notNull(),
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -55,7 +55,7 @@ export const projectFileData = pgTable(
         onDelete: "cascade",
       })
       .notNull(),
-    created_at: timestamp().defaultNow(),
+    created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },
   (t) => [unique().on(t.version, t.project_file_id)],
@@ -76,7 +76,7 @@ export const projectSshKeys = pgTable("project_ssh_keys", {
     })
     .notNull(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -95,6 +95,6 @@ export const projectGithubRepos = pgTable("project_github_repos", {
     })
     .notNull(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

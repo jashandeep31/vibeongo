@@ -11,7 +11,7 @@ export const users = pgTable("users", {
   last_name: varchar(),
   role: userRoles().default("user").notNull(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -34,7 +34,7 @@ export const accounts = pgTable("accounts", {
 
   last_login_at: timestamp(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -44,6 +44,6 @@ export const usersApiKeys = pgTable("users_api_keys", {
 
   expires_at: timestamp().defaultNow(),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

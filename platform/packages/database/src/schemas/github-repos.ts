@@ -33,7 +33,7 @@ export const githubRepos = pgTable(
     repo_owner_username: varchar({ length: 255 }).notNull(),
     setup_script: text().notNull().default(""),
 
-    created_at: timestamp().defaultNow(),
+    created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },
   (t) => [unique().on(t.user_id, t.full_name)],

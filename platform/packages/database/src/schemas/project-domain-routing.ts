@@ -19,7 +19,7 @@ export const projectDomainRouting = pgTable("project_domain_routing", {
     onDelete: "set null",
   }),
 
-  created_at: timestamp().defaultNow(),
+  created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
@@ -34,7 +34,7 @@ export const routingAllowedIps = pgTable(
       })
       .notNull(),
     ip: varchar("ip").notNull(),
-    created_at: timestamp().defaultNow(),
+    created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },
   (t) => [unique("routing_id_ip").on(t.ip, t.routing_id)],
