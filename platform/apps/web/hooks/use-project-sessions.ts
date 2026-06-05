@@ -42,10 +42,10 @@ export const useArchiveProjectSession = () => {
 
   return useMutation({
     mutationFn: archiveProjectSession,
-    onSuccess: (_, sessionId) => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       queryClient.invalidateQueries({
-        queryKey: ["project-session", sessionId],
+        queryKey: ["project-session", variables.id],
       });
     },
   });

@@ -25,6 +25,11 @@ export type ProjectSessionsResponse = {
   hasNext: boolean;
 };
 
+export type ArchiveProjectSessionInput = {
+  id: string;
+  action: boolean;
+};
+
 export const getProjectSessions = async ({
   projectId,
   page,
@@ -55,10 +60,13 @@ export const resumeProjectSession = async (id: string) => {
   return res.data;
 };
 
-export const archiveProjectSession = async (id: string) => {
+export const archiveProjectSession = async ({
+  id,
+  action,
+}: ArchiveProjectSessionInput) => {
   const res = await axios.post(
     `${BACKEND_URL}/api/v1/project-sessions/${id}/archive`,
-    {},
+    { action },
     {
       withCredentials: true,
     },
