@@ -82,7 +82,7 @@ function OpencodeConfigCard() {
                   placeholder="default"
                 />
               </div>
-              <div className="space-y-4">
+              <div className="grid space-y-4 overflow-auto">
                 <Label
                   htmlFor="opencode-authjson"
                   className="text-foreground text-sm font-semibold"
