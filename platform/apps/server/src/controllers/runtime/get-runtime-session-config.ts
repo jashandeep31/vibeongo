@@ -83,6 +83,9 @@ export const getRuntimeSessionConfig = catchAsync(
       tasks: tasks.map((t) => ({
         folder_name: t.folder_name,
         task: t.task,
+        agent: t.agent,
+        model: t.model,
+        done: t.done,
       })),
     };
 
