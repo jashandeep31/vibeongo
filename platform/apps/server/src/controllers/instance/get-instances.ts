@@ -82,7 +82,8 @@ export const getInstancesByProjectId = catchAsync(
           eq(instances.project_id, projectId),
           ...filters,
         ),
-      );
+      )
+      .orderBy(desc(instances.created_at));
 
     res.status(200).json({
       data: rows,
