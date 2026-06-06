@@ -41,6 +41,7 @@ func ExecuteOpencodeTask(dir string, env []string, continueFlag bool, task confi
 	} else {
 		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), task.Task)
 	}
+	fmt.Println(cmdStr)
 	cmd := exec.Command("bash", "-c", cmdStr)
 	cmd.Dir = dir
 	cmd.Env = env
@@ -54,6 +55,7 @@ func ExecuteOpencodeTask(dir string, env []string, continueFlag bool, task confi
 }
 
 func getOpenCodeAgentFlag(agent string) string {
+	fmt.Println(agent)
 	if agent != "" {
 		return fmt.Sprintf("--agent %s", agent)
 	}
@@ -61,6 +63,7 @@ func getOpenCodeAgentFlag(agent string) string {
 }
 
 func getOpenCodeModelFlag(model string) string {
+	fmt.Println(model)
 	if model != "" {
 		return fmt.Sprintf("--model %s", model)
 	}
