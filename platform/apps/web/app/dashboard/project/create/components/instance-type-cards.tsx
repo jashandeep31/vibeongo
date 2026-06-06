@@ -73,8 +73,9 @@ function InstanceTypeCards() {
       <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         {instanceTypes.map((instance) => (
           <button
+            type="button"
             onClick={() => setInstanceTypeId(instance.id)}
-            className={`hover:border-primary flex flex-col rounded-lg border p-4 text-left transition-colors ${
+            className={`hover:border-primary flex w-full min-w-0 flex-col rounded-lg border p-4 text-left transition-colors ${
               instanceTypeId === instance.id
                 ? "border-primary bg-primary/5 ring-primary ring-1"
                 : "bg-muted hover:bg-muted/80"
@@ -93,21 +94,42 @@ function InstanceTypeCards() {
                 {instance.description}
               </div>
             )}
-            <div className="text-muted-foreground mt-auto w-full space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span>Price:</span>
-                <span className="text-foreground font-medium">
-                  {formatHourlyPrice(instance.price_per_hour)}
-                </span>
+            <div className="mt-auto w-full min-w-0 space-y-3">
+              <div className="grid grid-cols-3 gap-2">
+                <div className="min-w-0">
+                  <span className="text-muted-foreground block text-[11px]">
+                    Price
+                  </span>
+                  <span className="text-foreground block break-words text-xs font-medium">
+                    {formatHourlyPrice(instance.price_per_hour)}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <span className="text-muted-foreground block text-[11px]">
+                    CPU
+                  </span>
+                  <span className="text-foreground block break-words text-xs font-medium">
+                    {instance.cpu || "N/A"}
+                  </span>
+                </div>
+                <div className="min-w-0">
+                  <span className="text-muted-foreground block text-[11px]">
+                    RAM
+                  </span>
+                  <span className="text-foreground block break-words text-xs font-medium">
+                    {instance.ram || "N/A"}
+                  </span>
+                </div>
               </div>
-              <div className="flex justify-between gap-3">
-                <span className="inline-flex items-center gap-1.5">
-                  Avg monthly:
+
+              <div className="flex min-w-0 items-center justify-between gap-2 border-t pt-2 text-xs">
+                <span className="text-muted-foreground inline-flex min-w-0 items-center gap-1.5">
+                  Avg monthly
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <span
-                          className="text-muted-foreground hover:text-foreground inline-flex"
+                          className="text-muted-foreground hover:text-foreground inline-flex shrink-0"
                           onClick={(event) => event.stopPropagation()}
                         >
                           <CircleHelp className="size-3.5" />
@@ -119,14 +141,8 @@ function InstanceTypeCards() {
                     </Tooltip>
                   </TooltipProvider>
                 </span>
-                <span className="text-foreground font-medium">
+                <span className="text-foreground shrink-0 font-medium">
                   {formatAverageMonthlyPrice(instance.price_per_hour)}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span>CPU/RAM:</span>
-                <span className="text-foreground font-medium">
-                  {instance.cpu} / {instance.ram}
                 </span>
               </div>
             </div>
