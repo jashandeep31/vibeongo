@@ -9,7 +9,7 @@ import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialo
 import { useGetInstancesByProjectId } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
-import { Button } from "@repo/ui/components/button";
+import { Button, buttonVariants } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
@@ -17,7 +17,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
-import { Trash2 } from "lucide-react";
+import { Settings, Trash2 } from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
@@ -102,7 +103,14 @@ export default function ClientView({ projectId }: { projectId: string }) {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Link
+              href={`/dashboard/project/${projectId}/edit`}
+              className={buttonVariants({ variant: "outline" })}
+            >
+              <Settings className="h-4 w-4" />
+              Edit Config
+            </Link>
             <CreateInstanceDialog
               projectId={projectId}
               projectName={project.name}
