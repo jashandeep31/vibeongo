@@ -18,6 +18,7 @@ var (
 )
 
 var allowedCORSOrigins = map[string]struct{}{
+	"https://www.vibeongo.com": {},
 	"https://vibeongo.com":     {},
 	"https://l2.devsradar.com": {},
 }
