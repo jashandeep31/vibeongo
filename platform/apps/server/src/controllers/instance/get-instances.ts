@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
-import { and, db, eq, instances } from "@repo/db";
+import { and, db, desc, eq, instances } from "@repo/db";
 import { z } from "zod";
 
 export const getUserInstances = catchAsync(
@@ -26,7 +26,8 @@ export const getUserInstances = catchAsync(
           eq(instances.user_id, user.id),
           running ? eq(instances.state, "running") : undefined,
         ),
-      );
+      )
+      .orderBy(desc(instances.created_at));
 
     res.status(200).json({
       data: rows,
