@@ -38,11 +38,19 @@ export const projectSessions = pgTable("project_session", {
 
 // --- Projects tasks
 // --- example: add the support to the google auth
+export const projectSessionTaskAgents = pgEnum("project_session_task_agents", [
+  "build",
+  "plan",
+  "reviewer",
+  "fixer",
+]);
 export const projectSessionTasks = pgTable("project_session_tasks", {
   id: uuid().defaultRandom().primaryKey(),
 
   folder_name: varchar(),
   task: text().notNull(),
+  agent: projectSessionTaskAgents().notNull(),
+  model: text().notNull().default(""),
   done: boolean().default(false).notNull(),
 
   project_session_id: uuid()
