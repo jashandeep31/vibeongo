@@ -3,7 +3,6 @@ import { Button } from "@repo/ui/components/button";
 import { useSidebar } from "@repo/ui/components/sidebar";
 import { Menu, X } from "lucide-react";
 import Link from "next/link";
-import { LogoutButton } from "@/components/logout-button";
 
 export default function DashboardNavbar() {
   const { toggleSidebar, state } = useSidebar();
@@ -14,16 +13,9 @@ export default function DashboardNavbar() {
           <h2 className="text-lg font-bold">VOG </h2>
         </Link>
 
-        <div className="flex items-center gap-1">
-          <LogoutButton />
-          <Button
-            variant={"ghost"}
-            className="md:hidden"
-            onClick={toggleSidebar}
-          >
-            {state === "expanded" ? <Menu /> : <X />}
-          </Button>
-        </div>
+        <Button variant={"ghost"} className="md:hidden" onClick={toggleSidebar}>
+          {state === "expanded" ? <Menu /> : <X />}
+        </Button>
       </div>
     </div>
   );
