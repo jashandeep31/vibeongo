@@ -25,7 +25,7 @@ export const useGetInstanceById = (id: string) =>
     enabled: !!id,
   });
 
-export const useTerminateInstance = (id: string) => {
+export const useTerminateInstance = (id: string, sessionId?: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -34,6 +34,11 @@ export const useTerminateInstance = (id: string) => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       queryClient.invalidateQueries({ queryKey: ["instances"] });
       queryClient.invalidateQueries({ queryKey: ["instance", instanceId] });
+      if (sessionId) {
+        queryClient.invalidateQueries({
+          queryKey: ["project-session", sessionId],
+        });
+      }
     },
   });
 };
