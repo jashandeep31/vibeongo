@@ -16,7 +16,14 @@ const envSchema = z.object({
   AWS_EC2_ACCESS_KEY_SECRET: z.string(),
   SSH_KEY: z.string(),
   DATABASE_URL: z.string(),
-  ALLOWED_ORIGINS: z.string().transform((val) => val.split(",")),
+  ALLOWED_ORIGINS: z.string().transform((value) => [
+    ...new Set(
+      value
+        .split(",")
+        .map((origin) => origin.trim())
+        .filter(Boolean),
+    ),
+  ]),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   JWT_SECRET: z.string(),
