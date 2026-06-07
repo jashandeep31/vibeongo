@@ -214,7 +214,14 @@ export default function ClientView({ projectId }: { projectId: string }) {
             {projectInstances.map((instance) => (
               <ProjectInstanceCard
                 key={instance.id}
-                instance={instance}
+                instance={{
+                  ...instance,
+                  project: {
+                    id: project.id,
+                    name: project.name,
+                    user_id: project.user_id,
+                  },
+                }}
                 projectId={project.id}
               />
             ))}
