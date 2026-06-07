@@ -5,6 +5,14 @@ import { z } from "@repo/shared";
 import { createInstanceSchema } from "@repo/shared";
 
 type Instance = typeof instances.$inferSelect;
+export type InstanceProject = {
+  id: string;
+  name: string;
+  user_id: string;
+};
+export type InstanceWithProject = Instance & {
+  project: InstanceProject | null;
+};
 type CreateInstanceData = z.infer<typeof createInstanceSchema>;
 export type ProjectInstanceStateFilter = "running" | "terminated" | "all";
 
@@ -19,12 +27,17 @@ export const createInstance = async (
 
 export const getInstances = async ({
   running = false,
+  includeProject = false,
 }: {
   running?: boolean;
-}): Promise<Instance[]> => {
+  includeProject?: boolean;
+}): Promise<InstanceWithProject[]> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/instances`, {
     withCredentials: true,
-    params: { running },
+    params: {
+      running,
+      include_project: includeProject,
+    },
   });
   return res.data.data;
 };

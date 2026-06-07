@@ -11,10 +11,13 @@ import {
 } from "@repo/ui/components/card";
 import { instances } from "@repo/db";
 import { useTerminateInstance } from "@/hooks/use-instance";
+import type { InstanceProject } from "@/services/instance-services";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { toast } from "sonner";
 
-type ProjectInstance = typeof instances.$inferSelect;
+type ProjectInstance = typeof instances.$inferSelect & {
+  project?: InstanceProject | null;
+};
 
 const formatDate = (value: unknown) => {
   if (!value) return "N/A";
@@ -128,7 +131,9 @@ export function ProjectInstanceCard({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg">Instance</CardTitle>
+          <CardTitle className="text-lg">
+            {instance.project?.name ?? instance.name}
+          </CardTitle>
 
           <div className="flex items-center gap-3">
             <Badge
