@@ -13,6 +13,7 @@ import {
 } from "@repo/ui/components/sidebar";
 import { ArrowLeft, Server } from "lucide-react";
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
 
 // Mock data representing connected servers (projects)
 
@@ -43,6 +44,9 @@ export function ProjectsSidebar() {
                     <span>Dashboard</span>
                   </Link>
                 </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
+                <LogoutButton />
               </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>

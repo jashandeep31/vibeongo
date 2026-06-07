@@ -2,25 +2,13 @@ import { db, eq, userRoles, users } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../lib/env.js";
+import { clearSessionCookie } from "../lib/session-cookie.js";
 
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
 
-const clearCookies = (res: Response) => {
-  res.clearCookie("session", {
-    httpOnly: true,
-    secure: env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-  });
-};
-
 const failedToAuthenticate = (res: Response) => {
-  clearCookies(res);
-  res.clearCookie("session", {
-    path: "/",
-    ...(env.DOMAIN.includes("localhost") ? {} : { domain: `.${env.DOMAIN}` }),
-  });
+  clearSessionCookie(res);
   return res.status(401).json({
     error: "failed to authenticate",
   });
