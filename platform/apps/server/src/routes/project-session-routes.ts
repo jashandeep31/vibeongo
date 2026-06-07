@@ -20,4 +20,5 @@ routes
   .route("/:id/archive")
   .post(checkAuthorization(["all"]), archiveProjectSession);
 
+routes.route("/:id/tasks").post(checkAuthorization(["all"]));
 export const projectSessionRoutes = routes;

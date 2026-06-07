@@ -14,6 +14,7 @@ import {
   projectDomainRouting,
   customQuery,
   projectSessionTasks,
+  projectSessionTaskAgents,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -22,6 +23,43 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
+export const addTaskToProjectSession = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 404);
+    const { id } = z
+      .object({
+        id: z.string(),
+      })
+      .parse(req.params);
+
+    const { task, model, agent } = z
+      .object({
+        task: z.string(),
+        model: z.string(),
+        agent: z.enum(projectSessionTaskAgents.enumValues),
+      })
+      .parse(req.body);
+
+    const [session] = await db
+      .select()
+      .from(projectSessions)
+      .where(
+        and(eq(projectSessions.user_id, user.id), eq(projectSessions.id, id)),
+      );
+    if (!session) {
+      throw new AppError("Project session not found", 404);
+    }
+    await db.insert(projectSessionTasks).values({
+      task: task,
+      model: model,
+      agent: agent,
+      project_session_id: id,
+    });
+
+    res.status(200).json({ message: "Successfully added the task" });
+  },
+);
 export const getUserProjectSessions = catchAsync(
   async (req: Request, res: Response) => {
     const filters = commonFilterSchema
