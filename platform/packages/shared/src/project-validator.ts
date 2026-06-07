@@ -1,3 +1,4 @@
+import { projectSessionTaskAgents } from "@repo/db";
 import { z } from "zod";
 
 export const dockerConfigValidator = z.object({
@@ -79,10 +80,18 @@ export const projectConfigValidator = z.object({
   }),
 });
 
+export const projectSessionTaskSchema = z.object({
+  task: z.string(),
+  model: z.string().optional(),
+  agent: z.enum(projectSessionTaskAgents.enumValues),
+  repoId: z.string(),
+});
+
 export const createInstanceSchema = z.object({
-  projectId: z.string().uuid("Invalid Project ID"),
+  projectId: z.uuid("Project id must be valid"),
   sessionName: z
     .string()
     .min(4, "Session name must be at least 4 characters long"),
   sessionDescription: z.string().optional(),
+  tasks: z.array(projectSessionTaskSchema),
 });
