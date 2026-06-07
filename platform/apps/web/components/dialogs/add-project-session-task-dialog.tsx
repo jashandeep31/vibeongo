@@ -78,8 +78,8 @@ export function AddProjectSessionTaskDialog({
     const trimmedTask = task.trim();
     const trimmedModel = model.trim();
 
-    if (!trimmedTask || !trimmedModel || !repoId) {
-      toast.error("Task, repository, and model are required");
+    if (!trimmedTask || !repoId) {
+      toast.error("Task and repository are required");
       return;
     }
 
@@ -88,7 +88,7 @@ export function AddProjectSessionTaskDialog({
       await addTask({
         id: sessionId,
         task: trimmedTask,
-        model: trimmedModel,
+        model: trimmedModel || undefined,
         agent,
         repoId,
       });
@@ -186,7 +186,7 @@ export function AddProjectSessionTaskDialog({
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="session-task-model">Model</Label>
+              <Label htmlFor="session-task-model">Model (optional)</Label>
               <Input
                 id="session-task-model"
                 value={model}

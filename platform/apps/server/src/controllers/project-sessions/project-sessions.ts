@@ -38,7 +38,7 @@ export const addTaskToProjectSession = catchAsync(
     const { task, model, agent, repoId } = z
       .object({
         task: z.string(),
-        model: z.string(),
+        model: z.string().optional(),
         agent: z.enum(projectSessionTaskAgents.enumValues),
         repoId: z.string(),
       })
@@ -64,7 +64,7 @@ export const addTaskToProjectSession = catchAsync(
     }
     await db.insert(projectSessionTasks).values({
       task: task,
-      model: model,
+      ...(model !== undefined && { model }),
       agent: agent,
       project_session_id: id,
       folder_name: gitRepo?.full_name.split("/")[1],
