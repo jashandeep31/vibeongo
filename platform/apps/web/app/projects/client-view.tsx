@@ -4,7 +4,10 @@ import { useGetInstances } from "@/hooks/use-instance";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
 
 export default function ClientView() {
-  const { data: instances, isLoading } = useGetInstances({ running: true });
+  const { data: instances, isLoading } = useGetInstances({
+    running: true,
+    includeProject: true,
+  });
   if (isLoading) {
     return (
       <div className="text-muted-foreground flex h-[50vh] items-center justify-center p-6">

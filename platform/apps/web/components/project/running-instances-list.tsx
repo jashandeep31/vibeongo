@@ -5,8 +5,13 @@ import { ProjectInstanceCard } from "@/components/project/project-instance-card"
 import { Card, CardContent } from "@repo/ui/components/card";
 
 export function RunningInstancesList() {
-  const { data: instances, isLoading, isError } = useGetInstances({
+  const {
+    data: instances,
+    isLoading,
+    isError,
+  } = useGetInstances({
     running: true,
+    includeProject: true,
   });
 
   const runningInstances = Array.isArray(instances) ? instances : [];
