@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -157,6 +158,23 @@ func ExecuteFinalScriptCmd() *cobra.Command {
 		Long:  "Runs the configured final script and keeps the command attached until that script exits.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return actions.ExecuteFinalScript()
+		},
+	}
+}
+
+func PrintConfigCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "config",
+		Short: "Print all the config used by vibeongo",
+		Long:  "Print all the config used by vibeongo",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadAndValidate("config.json")
+			if err != nil {
+				return err
+			}
+			marshalCfg, _ := json.Marshal(cfg)
+			fmt.Println(string(marshalCfg))
+			return nil
 		},
 	}
 }
