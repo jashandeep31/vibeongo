@@ -38,6 +38,8 @@ func init() {
 	rootCmd.AddCommand(TerminateInstanceCmd())
 	// running the final script
 	rootCmd.AddCommand(ExecuteFinalScriptCmd())
+	// Print the config
+	rootCmd.AddCommand(PrintConfigCmd())
 }
 
 func main() {
