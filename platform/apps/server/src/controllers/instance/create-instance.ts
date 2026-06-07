@@ -8,6 +8,7 @@ import {
   githubRepos,
   inArray,
   projectDomainRouting,
+  projectGithubRepos,
   projects,
   projectSessions,
   projectSessionTasks,
@@ -62,26 +63,49 @@ export const createInstance = catchAsync(
       if (!projectSession)
         throw new AppError("Failed to create a project session", 500);
 
-      const repoIds = body.tasks.map((i) => i.repoId);
-      const requestedRepo = await db
-        .select()
-        .from(githubRepos)
-        .where(
-          and(
-            eq(githubRepos.user_id, user.id),
-            inArray(githubRepos.id, repoIds),
-          ),
+      if (body.tasks.length > 0) {
+        const repoIds = [...new Set(body.tasks.map((task) => task.repoId))];
+        const requestedRepos = await tx
+          .select({ repo: githubRepos })
+          .from(projectGithubRepos)
+          .innerJoin(
+            githubRepos,
+            eq(githubRepos.id, projectGithubRepos.github_repo_id),
+          )
+          .where(
+            and(
+              eq(projectGithubRepos.project_id, project.id),
+              eq(githubRepos.user_id, user.id),
+              inArray(githubRepos.id, repoIds),
+            ),
+          );
+
+        const reposById = new Map(
+          requestedRepos.map(({ repo }) => [repo.id, repo]),
         );
-      for (const task of body.tasks) {
-        const githubRepo = requestedRepo.find((r) => (r.id = task.repoId));
-        if (!githubRepo) throw new AppError("Repo doesn't found ", 404);
-        await db.insert(projectSessionTasks).values({
-          project_session_id: projectSession.id,
-          task: task.task,
-          model: task.model,
-          folder_name: githubRepo.full_name.split("/")[1],
-          agent: task.agent,
-        });
+        if (reposById.size !== repoIds.length) {
+          throw new AppError(
+            "One or more repositories are not attached to this project",
+            400,
+          );
+        }
+
+        await tx.insert(projectSessionTasks).values(
+          body.tasks.map((task) => {
+            const githubRepo = reposById.get(task.repoId);
+            if (!githubRepo) {
+              throw new AppError("Repository not found", 404);
+            }
+
+            return {
+              project_session_id: projectSession.id,
+              task: task.task,
+              model: task.model || "",
+              folder_name: githubRepo.full_name.split("/").at(-1),
+              agent: task.agent,
+            };
+          }),
+        );
       }
       return projectSession;
     });
