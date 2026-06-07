@@ -24,6 +24,8 @@ type Config struct {
 }
 
 type TaskConfig struct {
+	ID         string `json:"id"`
+	Done       bool   `json:"done"`
 	FolderName string `json:"folder_name"`
 	Agent      string `json:"agent"`
 	Model      string `json:"model"`
