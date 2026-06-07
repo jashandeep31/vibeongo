@@ -4,11 +4,12 @@ import axios from "axios";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { AddProjectSessionTaskDialog } from "@/components/dialogs/add-project-session-task-dialog";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { useTerminateInstance } from "@/hooks/use-instance";
 import {
   useGetProjectSessionById,
   useResumeProjectSession,
 } from "@/hooks/use-project-sessions";
-import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
   Card,
@@ -22,21 +23,14 @@ import {
   Circle,
   Clock3,
   FolderIcon,
+  Loader2,
   Play,
   Plus,
   Server,
   Terminal,
+  Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
-
-const formatDate = (value: unknown) => {
-  if (!value) return "N/A";
-
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return "N/A";
-
-  return date.toLocaleString();
-};
 
 const formatRuntime = (value: unknown) => {
   if (!value) return "N/A";
@@ -74,6 +68,10 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
     isLoading,
     isError,
   } = useGetProjectSessionById(sessionId);
+  const terminateInstanceMutation = useTerminateInstance(
+    session?.project_id ?? "",
+    sessionId,
+  );
 
   const runningInstances = useMemo(
     () => uniqueById(session?.instances ?? []),
@@ -101,6 +99,23 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
     }
   }, [resumeSessionMutation, sessionId]);
 
+  const handleTerminate = useCallback(
+    async (instanceId: string) => {
+      const toastId = toast.loading("Terminating instance...");
+      try {
+        await terminateInstanceMutation.mutateAsync(instanceId);
+        toast.success("Instance terminated", { id: toastId });
+      } catch (error: unknown) {
+        console.error(error);
+        const message = axios.isAxiosError<{ message?: string }>(error)
+          ? (error.response?.data?.message ?? "Failed to terminate instance")
+          : "Failed to terminate instance";
+        toast.error(message, { id: toastId });
+      }
+    },
+    [terminateInstanceMutation],
+  );
+
   if (isLoading) {
     return (
       <div className="text-muted-foreground p-4 md:p-8">Loading session...</div>
@@ -123,21 +138,6 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
     <div className="space-y-6 p-4 md:p-8">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0">
-          <div className="mb-3 flex items-center gap-2">
-            <Badge
-              variant={isRunning ? "default" : "secondary"}
-              className={
-                isRunning
-                  ? "border-0 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/20"
-                  : "border-0"
-              }
-            >
-              {isRunning ? "Running" : "Idle"}
-            </Badge>
-            <span className="text-muted-foreground text-sm">
-              Started {formatDate(session.started_at)}
-            </span>
-          </div>
           <h1 className="truncate text-3xl font-bold tracking-tight">
             {session.name}
           </h1>
@@ -163,31 +163,6 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
             </>
           )}
         </Button>
-      </div>
-
-      <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Running instances</CardDescription>
-            <CardTitle className="text-3xl">
-              {runningInstances.length}
-            </CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Tasks</CardDescription>
-            <CardTitle className="text-3xl">{tasks.length}</CardTitle>
-          </CardHeader>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardDescription>Created</CardDescription>
-            <CardTitle className="text-base">
-              {formatDate(session.created_at)}
-            </CardTitle>
-          </CardHeader>
-        </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
@@ -222,14 +197,42 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
                       </span>
                     </div>
                   </div>
-                  <Button variant="outline" size="sm" asChild>
-                    <Link
-                      href={`/projects/${session.project_id}/instances/${instance.id}`}
+                  <div className="flex items-center gap-2">
+                    <ConfirmationDialog
+                      title="Terminate instance"
+                      description="Are you sure you want to terminate this instance? This action cannot be undone."
+                      confirmText="Terminate"
+                      isDestructive
+                      onConfirm={() => {
+                        void handleTerminate(instance.id);
+                      }}
                     >
-                      <Terminal className="h-4 w-4" />
-                      Open
-                    </Link>
-                  </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={
+                          terminateInstanceMutation.isPending &&
+                          terminateInstanceMutation.variables === instance.id
+                        }
+                      >
+                        {terminateInstanceMutation.isPending &&
+                        terminateInstanceMutation.variables === instance.id ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                        Terminate
+                      </Button>
+                    </ConfirmationDialog>
+                    <Button variant="outline" size="sm" asChild>
+                      <Link
+                        href={`/projects/${session.project_id}/instances/${instance.id}`}
+                      >
+                        <Terminal className="h-4 w-4" />
+                        Open
+                      </Link>
+                    </Button>
+                  </div>
                 </div>
               ))
             )}

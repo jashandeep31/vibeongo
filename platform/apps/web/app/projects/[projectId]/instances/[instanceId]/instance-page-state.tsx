@@ -1,17 +1,118 @@
 "use client";
 
-import { ServerOff } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, ServerOff } from "lucide-react";
 
+import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { Skeleton } from "@repo/ui/components/skeleton";
 
 interface InstancePageStateProps {
-  type: "loading" | "not-found";
+  type: "loading" | "not-found" | "terminated";
+  startedAt?: unknown;
+  terminatedAt?: unknown;
 }
 
-export function InstancePageState({ type }: InstancePageStateProps) {
+const parseDate = (value: unknown) => {
+  if (!value) return null;
+
+  const date = new Date(String(value));
+  return Number.isNaN(date.getTime()) ? null : date;
+};
+
+const formatDate = (value: unknown) => {
+  const date = parseDate(value);
+  return date instanceof Date ? date.toLocaleString() : "N/A";
+};
+
+const formatDuration = (startedAt: unknown, terminatedAt: unknown) => {
+  const startDate = parseDate(startedAt);
+  const endDate = parseDate(terminatedAt);
+
+  if (!(startDate instanceof Date) || !(endDate instanceof Date)) return "N/A";
+
+  const durationMs = endDate.getTime() - startDate.getTime();
+  if (durationMs < 0) return "N/A";
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+};
+
+export function InstancePageState({
+  type,
+  startedAt,
+  terminatedAt,
+}: InstancePageStateProps) {
   if (type === "loading") {
     return <InstancePageSkeleton />;
+  }
+
+  const isTerminated = type === "terminated";
+
+  if (isTerminated) {
+    return (
+      <div className="space-y-6 p-4 md:p-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              Instance terminated
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              This instance is no longer available.
+            </p>
+          </div>
+          <Button variant="secondary" disabled>
+            Terminated
+          </Button>
+        </div>
+
+        <Card className="p-5">
+          <div className="grid gap-5 sm:grid-cols-3">
+            <div>
+              <p className="text-muted-foreground text-sm">Started At</p>
+              <p className="mt-1 font-medium">{formatDate(startedAt)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Terminated At</p>
+              <p className="mt-1 font-medium">{formatDate(terminatedAt)}</p>
+            </div>
+            <div>
+              <p className="text-muted-foreground text-sm">Spun Up For</p>
+              <p className="mt-1 font-medium">
+                {formatDuration(startedAt, terminatedAt)}
+              </p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="flex min-h-56 items-center justify-center border-dashed p-6 text-center">
+          <div className="flex max-w-md flex-col items-center gap-3">
+            <ServerOff className="text-muted-foreground h-10 w-10" />
+            <div>
+              <h2 className="text-2xl font-semibold">Instance terminated</h2>
+              <p className="text-muted-foreground mt-2">
+                This instance has been shut down and its terminal, domains, and
+                services are no longer available.
+              </p>
+            </div>
+            <Button variant="outline" asChild>
+              <Link href="/projects">
+                <ArrowLeft className="h-4 w-4" />
+                Back to projects
+              </Link>
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (

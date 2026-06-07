@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Check, Copy, Globe, Loader2, RotateCw, Trash2 } from "lucide-react";
+import {
+  Check,
+  Copy,
+  Globe,
+  Loader2,
+  RotateCw,
+  Trash2,
+  TriangleAlert,
+} from "lucide-react";
 
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
@@ -16,6 +24,7 @@ import {
 import { useCurrentUserIp } from "@/hooks/use-ip";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { toast } from "sonner";
 import axios from "axios";
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
@@ -276,6 +285,16 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     return <InstancePageState type="not-found" />;
   }
 
+  if (isTerminated) {
+    return (
+      <InstancePageState
+        type="terminated"
+        startedAt={instance.started_at}
+        terminatedAt={instance.terminated_at}
+      />
+    );
+  }
+
   const Controls = () => {
     return (
       <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
@@ -383,7 +402,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <div className="w-full min-w-0 max-w-full space-y-12 overflow-x-hidden p-4 md:p-8">
+    <div className="w-full max-w-full min-w-0 space-y-12 overflow-x-hidden p-4 md:p-8">
       <ConfirmationDialog
         open={isCurrentIpDialogOpen}
         onOpenChange={(open) => {
@@ -419,6 +438,17 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
         <Controls />
       </div>
+
+      {!isLoadingDomains && !isTargetInstance ? (
+        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+          <TriangleAlert />
+          <AlertTitle>Project domains are not assigned</AlertTitle>
+          <AlertDescription>
+            Assign this instance as the project domain target to enable the
+            terminal, usage stats, and web services.
+          </AlertDescription>
+        </Alert>
+      ) : null}
 
       <ProjectInstanceInfoCard instance={instance} />
 
