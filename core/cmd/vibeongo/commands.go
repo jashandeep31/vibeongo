@@ -166,7 +166,7 @@ func PrintConfigCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "config",
 		Short: "Print all the config used by vibeongo",
-		Long:  "Print all the config used by vibeongo",
+		Long:  "Print all the config used by vibeongo. Use with caution as it can reveal the secrets in the console",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
@@ -51,11 +52,14 @@ func ExecuteTasks(cfg config.Config) error {
 }
 
 func ExecuteOpencodeTask(dir string, env []string, continueFlag bool, task config.TaskConfig) error {
+	singleLineString := task.Task
+	singleLineString = strings.ReplaceAll(singleLineString, "\n", " ")
+
 	cmdStr := ""
 	if continueFlag {
-		cmdStr = fmt.Sprintf(`opencode run --continue %s%s%s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), task.Task)
+		cmdStr = fmt.Sprintf(`opencode run --continue %s%s%s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
 	} else {
-		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), task.Task)
+		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
 	}
 	fmt.Println(cmdStr)
 	cmd := exec.Command("bash", "-c", cmdStr)
