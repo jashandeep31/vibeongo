@@ -102,9 +102,7 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
 
   if (isLoading) {
     return (
-      <div className="text-muted-foreground p-4 md:p-8">
-        Loading session...
-      </div>
+      <div className="text-muted-foreground p-4 md:p-8">Loading session...</div>
     );
   }
 
@@ -273,6 +271,7 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
                 </div>
               ))
             )}
+            <Button>Add Task</Button>
           </CardContent>
         </Card>
       </div>

@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
+  addTaskToProjectSession,
   archiveProjectSession,
   getProjectSessionById,
   getUserProjectSessions,
@@ -20,5 +21,7 @@ routes
   .route("/:id/archive")
   .post(checkAuthorization(["all"]), archiveProjectSession);
 
-routes.route("/:id/tasks").post(checkAuthorization(["all"]));
+routes
+  .route("/:id/tasks")
+  .post(checkAuthorization(["all"]), addTaskToProjectSession);
 export const projectSessionRoutes = routes;
