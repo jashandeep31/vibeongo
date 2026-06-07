@@ -6,7 +6,7 @@ import { ProjectSessionsList } from "@/components/project-sessions/project-sessi
 import { PaginationControls } from "@/components/pagination-controls";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialog";
-import { useGetInstancesByProjectId } from "@/hooks/use-instance";
+import { useGetInstances } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { Button, buttonVariants } from "@repo/ui/components/button";
@@ -25,6 +25,7 @@ import axios from "axios";
 import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 
 type InstanceFilter = ProjectInstanceStateFilter;
+const PROJECT_INSTANCES_LIMIT = 10;
 const PROJECT_SESSIONS_LIMIT = 10;
 
 const formatDate = (value: unknown) => {
@@ -38,6 +39,7 @@ const formatDate = (value: unknown) => {
 
 export default function ClientView({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const [instancePage, setInstancePage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
@@ -47,7 +49,12 @@ export default function ClientView({ projectId }: { projectId: string }) {
     isLoading: isInstancesLoading,
     isError: isInstancesError,
     refetch: refetchInstances,
-  } = useGetInstancesByProjectId(projectId, instanceFilter);
+  } = useGetInstances({
+    projectId,
+    state: instanceFilter,
+    page: instancePage,
+    limit: PROJECT_INSTANCES_LIMIT,
+  });
 
   const {
     data: sessions,
@@ -95,7 +102,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
     );
   }
 
-  const projectInstances = Array.isArray(instances) ? instances : [];
+  const projectInstances = instances?.data ?? [];
   const projectSessions = sessions?.data ?? [];
 
   return (
@@ -182,6 +189,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
                 variant={instanceFilter === filter ? "default" : "outline"}
                 onClick={() => {
                   setInstanceFilter(filter);
+                  setInstancePage(1);
                 }}
               >
                 {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -227,6 +235,17 @@ export default function ClientView({ projectId }: { projectId: string }) {
             ))}
           </div>
         )}
+        <PaginationControls
+          page={instances?.page ?? instancePage}
+          hasNext={instances?.hasNext}
+          isLoading={isInstancesLoading}
+          onPrevious={() => {
+            setInstancePage((page) => Math.max(1, page - 1));
+          }}
+          onNext={() => {
+            setInstancePage((page) => page + 1);
+          }}
+        />
       </div>
 
       <div className="space-y-4">
