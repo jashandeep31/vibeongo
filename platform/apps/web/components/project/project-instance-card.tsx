@@ -6,7 +6,6 @@ import { Button } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
@@ -129,9 +128,7 @@ export function ProjectInstanceCard({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg">
-            Instance {formatValue(instance.aws_instance_id)}
-          </CardTitle>
+          <CardTitle className="text-lg">Instance</CardTitle>
 
           <div className="flex items-center gap-3">
             <Badge
@@ -146,10 +143,6 @@ export function ProjectInstanceCard({
             </Badge>
           </div>
         </div>
-
-        <CardDescription className="break-all">
-          Instance Record ID: {instance.id}
-        </CardDescription>
       </CardHeader>
 
       <CardContent>

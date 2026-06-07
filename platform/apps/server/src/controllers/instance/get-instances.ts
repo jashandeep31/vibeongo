@@ -1,16 +1,21 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
-import { and, db, desc, eq, instances } from "@repo/db";
+import { and, customQuery, db, desc, eq, instances, projects } from "@repo/db";
 import { z } from "zod";
+import { commonFilterSchema } from "@repo/shared";
 
 export const getUserInstances = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
 
-    const { running } = z
-      .object({
+    const { running, include_project, page, limit } = commonFilterSchema
+      .extend({
         running: z
+          .enum(["true", "false"])
+          .transform((v) => v === "true")
+          .default(false),
+        include_project: z
           .enum(["true", "false"])
           .transform((v) => v === "true")
           .default(false),
@@ -18,19 +23,78 @@ export const getUserInstances = catchAsync(
       .parse(req.query);
     if (!user) throw new AppError("authentication is required", 400);
 
-    const rows = await db
-      .select()
-      .from(instances)
-      .where(
-        and(
-          eq(instances.user_id, user.id),
-          running ? eq(instances.state, "running") : undefined,
-        ),
-      )
-      .orderBy(desc(instances.created_at));
+    const where = and(
+      eq(instances.user_id, user.id),
+      running ? eq(instances.state, "running") : undefined,
+    );
+
+    if (include_project) {
+      const rows = await customQuery(
+        db
+          .select({
+            instance: instances,
+            project: {
+              id: projects.id,
+              name: projects.name,
+              user_id: projects.user_id,
+            },
+          })
+          .from(instances)
+          .leftJoin(projects, eq(instances.project_id, projects.id))
+          .where(where)
+          .orderBy(desc(instances.created_at))
+          .$dynamic(),
+        page,
+        limit,
+      );
+
+      const refinedData = new Map<
+        string,
+        typeof instances.$inferSelect & {
+          project: Pick<
+            typeof projects.$inferSelect,
+            "id" | "name" | "user_id"
+          > | null;
+        }
+      >();
+
+      for (const { instance, project } of rows) {
+        const existingInstance = refinedData.get(instance.id);
+
+        refinedData.set(instance.id, {
+          ...(existingInstance ?? instance),
+          project: project ?? existingInstance?.project ?? null,
+        });
+      }
+
+      const data = Array.from(refinedData.values());
+
+      res.status(200).json({
+        data: data.slice(0, limit),
+        page,
+        hasNext: data.length > limit,
+      });
+      return;
+    }
+
+    const rows = await customQuery(
+      db
+        .select()
+        .from(instances)
+        .where(where)
+        .orderBy(desc(instances.created_at))
+        .$dynamic(),
+      page,
+      limit,
+    );
 
     res.status(200).json({
-      data: rows,
+      data: rows.slice(0, limit).map((instance) => ({
+        ...instance,
+        project: null,
+      })),
+      page,
+      hasNext: rows.length > limit,
     });
   },
 );
