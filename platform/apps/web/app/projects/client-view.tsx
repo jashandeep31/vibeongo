@@ -4,10 +4,12 @@ import { useGetInstances } from "@/hooks/use-instance";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
 
 export default function ClientView() {
-  const { data: instances, isLoading } = useGetInstances({
-    running: true,
+  const { data: response, isLoading } = useGetInstances({
+    state: "running",
     includeProject: true,
   });
+  const instances = response?.data ?? [];
+
   if (isLoading) {
     return (
       <div className="text-muted-foreground flex h-[50vh] items-center justify-center p-6">
@@ -16,7 +18,7 @@ export default function ClientView() {
     );
   }
 
-  if (!instances || instances.length === 0) {
+  if (instances.length === 0) {
     return (
       <div className="text-muted-foreground flex h-[50vh] items-center justify-center p-6">
         No running instances found.

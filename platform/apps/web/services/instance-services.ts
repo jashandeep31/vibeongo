@@ -15,6 +15,19 @@ export type InstanceWithProject = Instance & {
 };
 type CreateInstanceData = z.infer<typeof createInstanceSchema>;
 export type ProjectInstanceStateFilter = "running" | "terminated" | "all";
+export type GetInstancesFilters = {
+  projectId?: string;
+  sessionId?: string;
+  state?: ProjectInstanceStateFilter;
+  includeProject?: boolean;
+  page?: number;
+  limit?: number;
+};
+export type GetInstancesResponse = {
+  data: InstanceWithProject[];
+  page: number;
+  hasNext: boolean;
+};
 
 export const createInstance = async (
   data: CreateInstanceData,
@@ -26,34 +39,25 @@ export const createInstance = async (
 };
 
 export const getInstances = async ({
-  running = false,
+  projectId,
+  sessionId,
+  state = "all",
   includeProject = false,
-}: {
-  running?: boolean;
-  includeProject?: boolean;
-}): Promise<InstanceWithProject[]> => {
+  page = 1,
+  limit = 10,
+}: GetInstancesFilters = {}): Promise<GetInstancesResponse> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/instances`, {
     withCredentials: true,
     params: {
-      running,
+      project_id: projectId,
+      session_id: sessionId,
+      state,
       include_project: includeProject,
+      page,
+      limit,
     },
   });
-  return res.data.data;
-};
-
-export const getInstancesByProjectId = async (
-  projectId: string,
-  state: ProjectInstanceStateFilter = "running",
-): Promise<Instance[]> => {
-  const res = await axios.get(
-    `${BACKEND_URL}/api/v1/instances/project/${projectId}`,
-    {
-      withCredentials: true,
-      params: { state },
-    },
-  );
-  return res.data.data;
+  return res.data;
 };
 
 export const getInstanceById = async (id: string): Promise<Instance> => {

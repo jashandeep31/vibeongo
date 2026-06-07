@@ -2,10 +2,9 @@ import {
   createInstance,
   getInstanceById,
   getInstances,
-  getInstancesByProjectId,
   terminateInstance,
 } from "@/services/instance-services";
-import type { ProjectInstanceStateFilter } from "@/services/instance-services";
+import type { GetInstancesFilters } from "@/services/instance-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useCreateInstance = () =>
@@ -13,26 +12,10 @@ export const useCreateInstance = () =>
     mutationFn: createInstance,
   });
 
-export const useGetInstances = ({
-  running,
-  includeProject = false,
-}: {
-  running: boolean;
-  includeProject?: boolean;
-}) =>
+export const useGetInstances = (filters: GetInstancesFilters = {}) =>
   useQuery({
-    queryKey: ["instances", { running, includeProject }],
-    queryFn: () => getInstances({ running, includeProject }),
-  });
-
-export const useGetInstancesByProjectId = (
-  projectId: string,
-  state: ProjectInstanceStateFilter = "running",
-) =>
-  useQuery({
-    queryKey: ["instances", "project", projectId, state],
-    queryFn: () => getInstancesByProjectId(projectId, state),
-    enabled: !!projectId,
+    queryKey: ["instances", filters],
+    queryFn: () => getInstances(filters),
   });
 
 export const useGetInstanceById = (id: string) =>
@@ -50,7 +33,6 @@ export const useTerminateInstance = (id: string) => {
     onSuccess: (_, instanceId) => {
       queryClient.invalidateQueries({ queryKey: ["project", id] });
       queryClient.invalidateQueries({ queryKey: ["instances"] });
-      queryClient.invalidateQueries({ queryKey: ["instances", "project", id] });
       queryClient.invalidateQueries({ queryKey: ["instance", instanceId] });
     },
   });

@@ -9,23 +9,25 @@ export const getUserInstances = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
 
-    const { running, include_project, page, limit } = commonFilterSchema
-      .extend({
-        running: z
-          .enum(["true", "false"])
-          .transform((v) => v === "true")
-          .default(false),
-        include_project: z
-          .enum(["true", "false"])
-          .transform((v) => v === "true")
-          .default(false),
-      })
-      .parse(req.query);
+    const { state, include_project, page, limit, project_id, session_id } =
+      commonFilterSchema
+        .extend({
+          state: z.enum(["running", "terminated", "all"]).default("all"),
+          include_project: z
+            .enum(["true", "false"])
+            .transform((v) => v === "true")
+            .default(false),
+          project_id: z.string().optional(),
+          session_id: z.string().optional(),
+        })
+        .parse(req.query);
     if (!user) throw new AppError("authentication is required", 400);
 
     const where = and(
       eq(instances.user_id, user.id),
-      running ? eq(instances.state, "running") : undefined,
+      state !== "all" ? eq(instances.state, state) : undefined,
+      project_id ? eq(instances.project_id, project_id) : undefined,
+      session_id ? eq(instances.project_session_id, session_id) : undefined,
     );
 
     if (include_project) {
@@ -115,42 +117,6 @@ export const getInstanceById = catchAsync(
 
     res.status(200).json({
       data: row,
-    });
-  },
-);
-
-export const getInstancesByProjectId = catchAsync(
-  async (req: Request, res: Response) => {
-    const { projectId } = req.params;
-    if (typeof projectId !== "string") {
-      throw new AppError("projectId should be string", 400);
-    }
-    const { state } = z
-      .object({
-        state: z.enum(["terminated", "running", "all"]).default("running"),
-      })
-      .parse(req.query);
-    const filters = [];
-    if (state !== "all") {
-      filters.push(eq(instances.state, state));
-    }
-    const user = req.user;
-    if (!user) throw new AppError("authentication is required", 400);
-
-    const rows = await db
-      .select()
-      .from(instances)
-      .where(
-        and(
-          eq(instances.user_id, user.id),
-          eq(instances.project_id, projectId),
-          ...filters,
-        ),
-      )
-      .orderBy(desc(instances.created_at));
-
-    res.status(200).json({
-      data: rows,
     });
   },
 );

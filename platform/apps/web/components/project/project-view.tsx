@@ -4,7 +4,7 @@ import { ProjectHeader } from "./project-header";
 import { UsageBilling } from "./usage-billing";
 import { ProjectViewSkeleton } from "./project-view-skeleton";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
-import { useGetInstancesByProjectId } from "@/hooks/use-instance";
+import { useGetInstances } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { ProjectInstanceCard } from "@/components/project/project-instance-card";
@@ -21,10 +21,12 @@ import axios from "axios";
 import { Project } from "./types";
 
 type InstanceFilter = ProjectInstanceStateFilter;
+const PROJECT_INSTANCES_LIMIT = 10;
 const PROJECT_SESSIONS_LIMIT = 10;
 
 export function ProjectView({ projectId }: { projectId: string }) {
   const router = useRouter();
+  const [instancePage, setInstancePage] = useState(1);
   const [sessionPage, setSessionPage] = useState(1);
   const [instanceFilter, setInstanceFilter] =
     useState<InstanceFilter>("running");
@@ -36,7 +38,12 @@ export function ProjectView({ projectId }: { projectId: string }) {
     data: instancesData,
     isLoading: isInstanceLoading,
     isError: isInstancesError,
-  } = useGetInstancesByProjectId(projectId, instanceFilter);
+  } = useGetInstances({
+    projectId,
+    state: instanceFilter,
+    page: instancePage,
+    limit: PROJECT_INSTANCES_LIMIT,
+  });
 
   const {
     data: sessions,
@@ -62,7 +69,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
   }
 
   const project = projectRaw as unknown as Project;
-  const instances = Array.isArray(instancesData) ? instancesData : [];
+  const instances = instancesData?.data ?? [];
   const projectSessions = (sessions?.data ?? []).filter(
     (session) => !session.archived,
   );
@@ -126,6 +133,7 @@ export function ProjectView({ projectId }: { projectId: string }) {
                       }
                       onClick={() => {
                         setInstanceFilter(filter);
+                        setInstancePage(1);
                       }}
                     >
                       {filter.charAt(0).toUpperCase() + filter.slice(1)}
@@ -159,12 +167,30 @@ export function ProjectView({ projectId }: { projectId: string }) {
                 {instances.map((instance) => (
                   <ProjectInstanceCard
                     key={instance.id}
-                    instance={instance}
+                    instance={{
+                      ...instance,
+                      project: {
+                        id: project.id,
+                        name: project.name,
+                        user_id: project.user_id,
+                      },
+                    }}
                     projectId={project.id}
                   />
                 ))}
               </div>
             )}
+            <PaginationControls
+              page={instancesData?.page ?? instancePage}
+              hasNext={instancesData?.hasNext}
+              isLoading={isInstanceLoading}
+              onPrevious={() => {
+                setInstancePage((page) => Math.max(1, page - 1));
+              }}
+              onNext={() => {
+                setInstancePage((page) => page + 1);
+              }}
+            />
           </div>
 
           <div className="space-y-4">

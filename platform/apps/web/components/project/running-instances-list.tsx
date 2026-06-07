@@ -6,15 +6,15 @@ import { Card, CardContent } from "@repo/ui/components/card";
 
 export function RunningInstancesList() {
   const {
-    data: instances,
+    data: response,
     isLoading,
     isError,
   } = useGetInstances({
-    running: true,
+    state: "running",
     includeProject: true,
   });
 
-  const runningInstances = Array.isArray(instances) ? instances : [];
+  const runningInstances = response?.data ?? [];
 
   return (
     <div className="space-y-4">
