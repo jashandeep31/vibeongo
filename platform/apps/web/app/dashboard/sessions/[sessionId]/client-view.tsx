@@ -3,6 +3,7 @@
 import axios from "axios";
 import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
+import { AddProjectSessionTaskDialog } from "@/components/dialogs/add-project-session-task-dialog";
 import {
   useGetProjectSessionById,
   useResumeProjectSession,
@@ -271,7 +272,10 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
                 </div>
               ))
             )}
-            <Button>Add Task</Button>
+            <AddProjectSessionTaskDialog
+              sessionId={sessionId}
+              projectId={session.project_id}
+            />
           </CardContent>
         </Card>
       </div>
