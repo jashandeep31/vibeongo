@@ -1,5 +1,10 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { instances, projectSessionTasks, projectSessions } from "@repo/db";
+import {
+  instances,
+  projectSessionTaskAgents,
+  projectSessionTasks,
+  projectSessions,
+} from "@repo/db";
 import axios from "axios";
 
 export type ProjectSessionWithRunningInstances =
@@ -28,6 +33,14 @@ export type ProjectSessionsResponse = {
 export type ArchiveProjectSessionInput = {
   id: string;
   action: boolean;
+};
+
+export type AddTaskToProjectSessionInput = {
+  id: string;
+  task: string;
+  model: string;
+  agent: (typeof projectSessionTaskAgents.enumValues)[number];
+  repoId: string;
 };
 
 export const getProjectSessions = async ({
@@ -71,6 +84,24 @@ export const archiveProjectSession = async ({
       withCredentials: true,
     },
   );
+  return res.data;
+};
+
+export const addTaskToProjectSession = async ({
+  id,
+  task,
+  model,
+  agent,
+  repoId,
+}: AddTaskToProjectSessionInput) => {
+  const res = await axios.post(
+    `${BACKEND_URL}/api/v1/project-sessions/${id}/tasks`,
+    { task, model, agent, repoId },
+    {
+      withCredentials: true,
+    },
+  );
+
   return res.data;
 };
 

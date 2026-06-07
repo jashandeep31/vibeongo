@@ -1,4 +1,5 @@
 import {
+  addTaskToProjectSession,
   archiveProjectSession,
   GetProjectSessionsParams,
   getProjectSessionById,
@@ -42,6 +43,20 @@ export const useArchiveProjectSession = () => {
 
   return useMutation({
     mutationFn: archiveProjectSession,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-session", variables.id],
+      });
+    },
+  });
+};
+
+export const useAddTaskToProjectSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: addTaskToProjectSession,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       queryClient.invalidateQueries({

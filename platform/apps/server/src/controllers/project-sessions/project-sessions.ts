@@ -15,6 +15,7 @@ import {
   customQuery,
   projectSessionTasks,
   projectSessionTaskAgents,
+  githubRepos,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -22,6 +23,7 @@ import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
+import { githubRepoRoutes } from "../../routes/github-repo-routes.js";
 
 export const addTaskToProjectSession = catchAsync(
   async (req: Request, res: Response) => {
@@ -33,11 +35,12 @@ export const addTaskToProjectSession = catchAsync(
       })
       .parse(req.params);
 
-    const { task, model, agent } = z
+    const { task, model, agent, repoId } = z
       .object({
         task: z.string(),
         model: z.string(),
         agent: z.enum(projectSessionTaskAgents.enumValues),
+        repoId: z.string(),
       })
       .parse(req.body);
 
@@ -50,11 +53,21 @@ export const addTaskToProjectSession = catchAsync(
     if (!session) {
       throw new AppError("Project session not found", 404);
     }
+
+    const [gitRepo] = await db
+      .select()
+      .from(githubRepos)
+      .where(and(eq(githubRepos.user_id, user.id), eq(githubRepos.id, repoId)));
+
+    if (!gitRepo) {
+      throw new AppError("Github repo not found", 404);
+    }
     await db.insert(projectSessionTasks).values({
       task: task,
       model: model,
       agent: agent,
       project_session_id: id,
+      folder_name: gitRepo?.full_name.split("/")[1],
     });
 
     res.status(200).json({ message: "Successfully added the task" });
