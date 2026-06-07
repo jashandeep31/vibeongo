@@ -7,6 +7,7 @@ import axios from "axios";
 import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
 import { AppError } from "../../lib/app-error.js";
+import { sessionCookieOptions } from "../../lib/session-cookie.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
@@ -119,12 +120,8 @@ export const githubAuthCallbackController = catchAsync(
       expiresIn: "30d",
     });
     res.cookie("session", token, {
-      httpOnly: true,
-      secure: env.NODE_ENV === "development" ? false : true,
-      sameSite: "lax",
+      ...sessionCookieOptions,
       maxAge: sessionMaxAgeMs,
-      path: "/",
-      ...(env.DOMAIN.includes("localhost") ? {} : { domain: `.${env.DOMAIN}` }),
     });
 
     res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
