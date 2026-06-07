@@ -1,6 +1,5 @@
 import { getSession } from "@/lib/getSession";
 import { redirect } from "next/navigation";
-import { ProjectView } from "@/components/project/project-view";
 
 export default async function ProjectPage({
   params,
@@ -13,6 +12,6 @@ export default async function ProjectPage({
   }
 
   const resolvedParams = await params;
-  
-  return <ProjectView projectId={resolvedParams.id} />;
+
+  redirect(`/projects/${resolvedParams.id}`);
 }

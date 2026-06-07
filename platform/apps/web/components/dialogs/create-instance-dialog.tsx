@@ -57,12 +57,16 @@ interface CreateInstanceDialogProps {
   projectId: string;
   projectName: string;
   onSuccess?: () => void;
+  triggerLabel?: string;
+  triggerIcon?: React.ReactNode;
 }
 
 export function CreateInstanceDialog({
   projectId,
   projectName,
   onSuccess,
+  triggerLabel = "Create Instance",
+  triggerIcon,
 }: CreateInstanceDialogProps) {
   const [open, setOpen] = useState(false);
   const [sessionName, setSessionName] = useState("");
@@ -140,7 +144,10 @@ export function CreateInstanceDialog({
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <Button>Create Instance</Button>
+        <Button>
+          {triggerIcon}
+          {triggerLabel}
+        </Button>
       </DialogTrigger>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
