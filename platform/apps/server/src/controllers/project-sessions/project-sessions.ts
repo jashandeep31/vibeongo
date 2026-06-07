@@ -21,9 +21,8 @@ import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
-import { commonFilterSchema } from "@repo/shared";
+import { commonFilterSchema, projectSessionTaskSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
-import { githubRepoRoutes } from "../../routes/github-repo-routes.js";
 
 export const addTaskToProjectSession = catchAsync(
   async (req: Request, res: Response) => {
@@ -35,14 +34,9 @@ export const addTaskToProjectSession = catchAsync(
       })
       .parse(req.params);
 
-    const { task, model, agent, repoId } = z
-      .object({
-        task: z.string(),
-        model: z.string().optional(),
-        agent: z.enum(projectSessionTaskAgents.enumValues),
-        repoId: z.string(),
-      })
-      .parse(req.body);
+    const { task, model, agent, repoId } = projectSessionTaskSchema.parse(
+      req.body,
+    );
 
     const [session] = await db
       .select()

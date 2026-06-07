@@ -5,9 +5,12 @@ import {
   and,
   db,
   eq,
+  githubRepos,
+  inArray,
   projectDomainRouting,
   projects,
   projectSessions,
+  projectSessionTasks,
   projectSshKeys,
   sshKeys,
 } from "@repo/db";
@@ -46,15 +49,42 @@ export const createInstance = catchAsync(
     if (!project) throw new AppError("Project not found", 404);
 
     // creating a project session
-    const [projectSession] = await db
-      .insert(projectSessions)
-      .values({
-        name: body.sessionName,
-        description: body.sessionDescription || "",
-        user_id: user.id,
-        project_id: project.id,
-      })
-      .returning();
+    const projectSession = await db.transaction(async (tx) => {
+      const [projectSession] = await tx
+        .insert(projectSessions)
+        .values({
+          name: body.sessionName,
+          description: body.sessionDescription || "",
+          user_id: user.id,
+          project_id: project.id,
+        })
+        .returning();
+      if (!projectSession)
+        throw new AppError("Failed to create a project session", 500);
+
+      const repoIds = body.tasks.map((i) => i.repoId);
+      const requestedRepo = await db
+        .select()
+        .from(githubRepos)
+        .where(
+          and(
+            eq(githubRepos.user_id, user.id),
+            inArray(githubRepos.id, repoIds),
+          ),
+        );
+      for (const task of body.tasks) {
+        const githubRepo = requestedRepo.find((r) => (r.id = task.repoId));
+        if (!githubRepo) throw new AppError("Repo doesn't found ", 404);
+        await db.insert(projectSessionTasks).values({
+          project_session_id: projectSession.id,
+          task: task.task,
+          model: task.model,
+          folder_name: githubRepo.full_name.split("/")[1],
+          agent: task.agent,
+        });
+      }
+      return projectSession;
+    });
 
     if (!projectSession)
       throw new AppError("Failed to create a project session", 500);
