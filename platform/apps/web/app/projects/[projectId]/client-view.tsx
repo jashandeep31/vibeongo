@@ -9,7 +9,7 @@ import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialo
 import { useGetInstances } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
-import { Button, buttonVariants } from "@repo/ui/components/button";
+import { Button } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
@@ -17,7 +17,20 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
-import { Settings, Trash2 } from "lucide-react";
+import {
+  FileCode2,
+  MoreHorizontal,
+  Rocket,
+  Settings,
+  Trash2,
+} from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -111,38 +124,58 @@ export default function ClientView({ projectId }: { projectId: string }) {
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
           <div className="flex flex-wrap items-center gap-2">
-            <Link
-              href={`/dashboard/project/${projectId}/edit`}
-              className={buttonVariants({ variant: "outline" })}
-            >
-              <Settings className="h-4 w-4" />
-              Edit Config
-            </Link>
             <CreateInstanceDialog
               projectId={projectId}
               projectName={project.name}
+              triggerLabel="Launch Instance"
+              triggerIcon={<Rocket className="h-4 w-4" />}
               onSuccess={() => {
                 void refetchInstances();
                 void refetchSessions();
               }}
             />
-            <ConfirmationDialog
-              title="Delete project"
-              description="Are you sure you want to delete this project? This action cannot be undone."
-              confirmText="Delete"
-              isDestructive
-              onConfirm={handleDeleteProject}
-            >
-              <Button
-                variant="destructive"
-                disabled={deleteProjectMutation.isPending}
-              >
-                <Trash2 className="mr-2 h-4 w-4" />
-                {deleteProjectMutation.isPending
-                  ? "Deleting..."
-                  : "Delete Project"}
-              </Button>
-            </ConfirmationDialog>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="icon" aria-label="Project menu">
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/project/${projectId}/edit`}>
+                    <Settings className="h-4 w-4" />
+                    Edit Config
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href={`/dashboard/project/${projectId}/manage/env`}>
+                    <FileCode2 className="h-4 w-4" />
+                    Edit Envs
+                  </Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <ConfirmationDialog
+                  title="Delete project"
+                  description="Are you sure you want to delete this project? This action cannot be undone."
+                  confirmText="Delete"
+                  isDestructive
+                  onConfirm={handleDeleteProject}
+                >
+                  <DropdownMenuItem
+                    variant="destructive"
+                    disabled={deleteProjectMutation.isPending}
+                    onSelect={(event) => {
+                      event.preventDefault();
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    {deleteProjectMutation.isPending
+                      ? "Deleting..."
+                      : "Delete Project"}
+                  </DropdownMenuItem>
+                </ConfirmationDialog>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
         <p className="text-muted-foreground mt-2">
