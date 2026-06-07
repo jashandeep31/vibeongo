@@ -1,4 +1,3 @@
-import { projectSessionTaskAgents } from "@repo/db";
 import { z } from "zod";
 
 export const dockerConfigValidator = z.object({
@@ -81,10 +80,10 @@ export const projectConfigValidator = z.object({
 });
 
 export const projectSessionTaskSchema = z.object({
-  task: z.string(),
-  model: z.string().optional(),
-  agent: z.enum(projectSessionTaskAgents.enumValues),
-  repoId: z.string(),
+  task: z.string().trim().min(1, "Task description is required"),
+  model: z.string().trim().optional(),
+  agent: z.enum(["build", "plan", "reviewer", "fixer"]),
+  repoId: z.uuid("Repository id must be valid"),
 });
 
 export const createInstanceSchema = z.object({
