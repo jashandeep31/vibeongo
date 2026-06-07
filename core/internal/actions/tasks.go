@@ -7,9 +7,11 @@ import (
 	"path"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 func ExecuteTasks(cfg config.Config) error {
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
 	if len(cfg.Tasks) == 0 {
 		return nil
 	}
@@ -23,14 +25,28 @@ func ExecuteTasks(cfg config.Config) error {
 	)
 
 	for _, task := range cfg.Tasks {
+		if task.Done {
+			continue
+		}
 		taskFolderPath := path.Join(codeFolderPath, task.FolderName)
 		// asking to create a plan
 		if err := ExecuteOpencodeTask(taskFolderPath, env, continueFlag, task); err != nil {
 			return err
 		}
 		continueFlag = true
-	}
 
+		var b any
+		apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/tasks/"+task.ID, struct {
+			Done bool `json:"done"`
+		}{
+			Done: true,
+		},
+			map[string]string{
+				"Authorization": "Bearer " + cfg.Token,
+			},
+			&b)
+
+	}
 	return nil
 }
 

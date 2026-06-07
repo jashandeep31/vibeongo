@@ -81,6 +81,7 @@ export const getRuntimeSessionConfig = catchAsync(
       repos: await getConfigReadyGithubRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
+        id: t.id,
         folder_name: t.folder_name,
         task: t.task,
         agent: t.agent,

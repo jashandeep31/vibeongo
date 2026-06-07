@@ -7,6 +7,7 @@ import {
   updateSessionOverview,
 } from "../controllers/runtime/session-overview.js";
 import { suspendSessionInstance } from "../controllers/runtime/suspend-session-instance.js";
+import { runTaskActions } from "../controllers/runtime/task-actions.js";
 
 const routes: Router = Router();
 
@@ -26,5 +27,9 @@ routes
   .route("/sessions/:id/overview")
   .get(checkRuntimeAuthorization, getSessionOverview)
   .post(checkRuntimeAuthorization, updateSessionOverview);
+
+routes
+  .route("/sessions/:id/tasks/:taskId")
+  .post(checkRuntimeAuthorization, runTaskActions);
 
 export const runtimeRoutes = routes;
