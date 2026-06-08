@@ -5,21 +5,11 @@ import (
 	"os"
 	"os/exec"
 
-	"github.com/fatih/color"
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 func InitializeWorkspace(cfg config.Config) error {
-	fmt.Println("v0.0.5")
-	fmt.Println("")
-	color.Cyan("Welcome, We are setting the system up for you")
-	color.Yellow("it may take a while")
-	fmt.Println("")
-	fmt.Println("")
-
-	ProvisionOpenCode(cfg.OpenCode)
-
 	script := `#!/usr/bin/env bash
 source /home/ubuntu/.bashrc`
 

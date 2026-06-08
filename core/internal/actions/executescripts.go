@@ -9,9 +9,13 @@ import (
 
 func ExecuteIntialScript() error {
 	cfg, err := config.LoadAndValidate("config.json")
+	ProvisionOpenCode(cfg.OpenCode)
 	if err != nil {
 		return err
 	}
+
+	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
+
 	script := cfg.InitialScript
 	path := "/home/ubuntu/code"
 

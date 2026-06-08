@@ -11,7 +11,6 @@ import (
 func GenerateGitCloneScript(gitRepos []config.GitRepoConfig) string {
 	script := ``
 	path := "/home/ubuntu/code"
-	utils.AppendToBashScript(&script, `mkdir -p `+path)
 
 	for _, repo := range gitRepos {
 		projectFolderPath := filepath.Join(path, repo.FolderName)
