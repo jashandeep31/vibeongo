@@ -26,6 +26,16 @@ export function LandingFooter() {
                   GitHub
                 </Link>
               </li>
+              <li>
+                <Link 
+                  href="https://x.com/Jashandeep31" 
+                  className="hover:text-primary transition-colors"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Twitter
+                </Link>
+              </li>
             </ul>
           </div>
           <div>

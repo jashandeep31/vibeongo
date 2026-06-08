@@ -55,9 +55,10 @@ chmod +x /tmp/ubuntu-setup.sh
 # Run as ubuntu
 sudo -u ubuntu /tmp/ubuntu-setup.sh
 
+vibeongo setup
 vibeongo init-workspace
 vibeongo init-repos
-vibeongo start
+vibeongo final
 vibeongo run-tasks  
 ${terminate ? "vibeongo terminate" : ""}
 

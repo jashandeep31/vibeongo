@@ -151,11 +151,22 @@ func VpsSetupCmd() *cobra.Command {
 	}
 }
 
+func ExecuteIntialScriptCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "setup",
+		Short: "Run to setup the env for the project",
+		Long:  "Script for setting up the env for the project",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actions.ExecuteIntialScript()
+		},
+	}
+}
+
 func ExecuteFinalScriptCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "start",
-		Short: "Start the configured application",
-		Long:  "Runs the configured final script and keeps the command attached until that script exits.",
+		Use:   "final",
+		Short: "Runs the final script",
+		Long:  "Run the final scrip of the script ",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return actions.ExecuteFinalScript()
 		},
