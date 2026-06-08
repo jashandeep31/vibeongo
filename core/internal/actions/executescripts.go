@@ -5,6 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 func ExecuteIntialScript() error {
@@ -20,7 +21,8 @@ func ExecuteIntialScript() error {
 	script := cfg.InitialScript
 	path := "/home/ubuntu/code"
 
-	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-l", "-c", script)
+	// cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-l", "-c", script)
+	cmd := utils.ExecCommand(utils.SudoUbuntuUser, script)
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
