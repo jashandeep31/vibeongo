@@ -46,7 +46,7 @@ curl --request GET \\
   --header "Authorization: Bearer ${authToken}" \\
   | jq '.data' > "\\$CONFIG_DIR/config.json"
 
-curl -fsSL https://l1.devsradar.com/install | bash
+curl -fsSL https://server.vibeongo.com/install | bash
 
 SCRIPT
 
