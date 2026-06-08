@@ -53,7 +53,7 @@ func ExecuteOpencodeTask(dir string, continueFlag bool, task config.TaskConfig) 
 	} else {
 		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
 	}
-	cmd := utils.ExecCommand(utils.SudoUbuntuUser, cmdStr)
+	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, cmdStr)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
