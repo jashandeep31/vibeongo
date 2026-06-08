@@ -15,8 +15,8 @@ import (
 func GetKeysCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "get-keys",
-		Short: "Display workspace configuration and authentication tokens",
-		Long:  "Retrieve and display the current workspace configuration, including the API authentication token and repository-specific access tokens. Use this to manually authenticate Git or other services.",
+		Short: "Print workspace credentials and connection details",
+		Long:  "Print the current workspace configuration summary, including tokens and repository credentials needed by local tools. Treat this output as sensitive.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -32,8 +32,8 @@ func GetKeysCmd() *cobra.Command {
 func InitializeSessionFromOverviewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "resume-session",
-		Short: "Fetch the overview and context of the last session",
-		Long:  "Retrieves the status and context from the most recently suspended session. This includes details like the active branch, ongoing features, and current progress, allowing you to pick up exactly where you left off.",
+		Short: "Restore context from the saved project session",
+		Long:  "Load the saved overview for the current project session so work can continue from the last recorded state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -48,10 +48,8 @@ func InitializeSessionFromOverviewCmd() *cobra.Command {
 func UpdateSessionFromOverviewCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update-session",
-		Short: "Save the current session's progress and context, after commmand directly pass the overview like vibeongo update-session <overview>",
-		Long: `Description:
-Execute a command on the server using natural language. Just pass the overview directly after the command, and the system will automatically process the arguments and context.
-Note: You only need to provide the task overview after the command. The backend automatically extracts and processes the required arguments from your input.`,
+		Short: "Save a new overview for the current session",
+		Long:  "Save the provided text as the latest overview for the current project session. Pass the overview directly after the command, for example: vibeongo update-session \"Implemented login flow\".",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -67,8 +65,8 @@ Note: You only need to provide the task overview after the command. The backend 
 func RepoSetupCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init-repos",
-		Short: "Install dependencies and run setup scripts for repositories",
-		Long:  "Iterates through all cloned repositories in the workspace and executes their defined setup scripts. This typically involves installing dependencies (e.g., npm install) and performing initial build steps.",
+		Short: "Run setup steps for cloned repositories",
+		Long:  "Run the configured setup commands for each cloned repository in the workspace, such as dependency installation or project-specific bootstrap scripts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -83,8 +81,8 @@ func RepoSetupCmd() *cobra.Command {
 func ServeCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "serve",
-		Short: "Start the local background agent and API server",
-		Long:  "Launches the Vibeongo agent server on port 8080. This server handles background tasks, terminal sessions (PTY), and health monitoring for the workspace.",
+		Short: "Start the local Vibeongo runtime server",
+		Long:  "Start the local runtime server that handles workspace commands, terminal access, and runtime health checks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return server.Start()
 		},
@@ -95,8 +93,8 @@ func ServeCmd() *cobra.Command {
 func TaskCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "run-tasks",
-		Short: "Execute automated AI tasks using OpenCode",
-		Long:  "Sequentially executes the AI-driven tasks defined in your configuration using the OpenCode tool. This includes generating execution plans, implementing changes, and verifying results autonomously.",
+		Short: "Run configured session tasks",
+		Long:  "Execute the tasks configured for the current session using the selected agent and model settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -111,8 +109,8 @@ func TaskCmd() *cobra.Command {
 func TerminateInstanceCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "terminate",
-		Short: "Safely shut down and terminate the current instance",
-		Long:  "Signals the orchestration layer to terminate the current runtime instance. Use this when you have finished your work to release resources and stop billing.",
+		Short: "Terminate the current runtime instance",
+		Long:  "Request termination of the current runtime instance. Use this when work is complete to release resources and stop further usage.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -127,8 +125,8 @@ func TerminateInstanceCmd() *cobra.Command {
 func UpdateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "update",
-		Short: "Update Vibeongo to the latest version",
-		Long:  "Downloads the latest binary from the release server, replaces the current executable, and restarts the system service. This command must be run with sudo privileges.",
+		Short: "Update the Vibeongo CLI",
+		Long:  "Download and install the latest Vibeongo CLI binary for this environment.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return actions.SelfUpdate()
 		},
@@ -139,8 +137,8 @@ func UpdateCmd() *cobra.Command {
 func VpsSetupCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "init-workspace",
-		Short: "Bootstrap the VPS environment and clone project repositories",
-		Long:  "Initializes a fresh VPS environment by configuring OpenCode authentication and cloning all Git repositories specified in the configuration into the workspace directory.",
+		Short: "Prepare the workspace for the project",
+		Long:  "Initialize the runtime workspace by applying authentication setup and cloning the repositories defined in the project configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
@@ -154,8 +152,8 @@ func VpsSetupCmd() *cobra.Command {
 func ExecuteIntialScriptCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "setup",
-		Short: "Run to setup the env for the project",
-		Long:  "Script for setting up the env for the project",
+		Short: "Run the project's initial setup script",
+		Long:  "Execute the initial setup script configured for the project before starting normal work.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return actions.ExecuteIntialScript()
 		},
@@ -165,8 +163,8 @@ func ExecuteIntialScriptCmd() *cobra.Command {
 func ExecuteFinalScriptCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "final",
-		Short: "Runs the final script",
-		Long:  "Run the final scrip of the script ",
+		Short: "Run the project's finalization script",
+		Long:  "Execute the final script configured for the project, usually before ending or terminating the session.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return actions.ExecuteFinalScript()
 		},
@@ -176,8 +174,8 @@ func ExecuteFinalScriptCmd() *cobra.Command {
 func PrintConfigCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "config",
-		Short: "Print all the config used by vibeongo",
-		Long:  "Print all the config used by vibeongo. Use with caution as it can reveal the secrets in the console",
+		Short: "Print the raw Vibeongo configuration",
+		Long:  "Print the full raw configuration loaded by Vibeongo. This may include secrets, tokens, or credentials, so avoid sharing the output.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
