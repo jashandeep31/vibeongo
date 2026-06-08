@@ -16,12 +16,10 @@ func ExecuteIntialScript() error {
 	}
 
 	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
-	exec.Command("sudo", "chown", "ubuntu", "/home/ubuntu/code").Run()
 
 	script := cfg.InitialScript
 	path := "/home/ubuntu/code"
 
-	// cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-l", "-c", script)
 	cmd := utils.ExecCommand(utils.SudoUbuntuUser, script)
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin

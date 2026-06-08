@@ -16,14 +16,8 @@ func ExecuteTasks(cfg config.Config) error {
 		return nil
 	}
 	continueFlag := false
-
 	codeFolderPath := "/home/ubuntu/code"
-	// env := append(
-	// 	os.Environ(),
-	// 	"PATH=/home/ubuntu/.opencode/bin:/usr/local/bin:/usr/bin:/bin",
-	// 	"HOME=/home/ubuntu",
-	// )
-
+	// TODO: if we are chaning the folder the continue will not work so change the continue flag dynamically
 	for _, task := range cfg.Tasks {
 		if task.Done {
 			continue
@@ -34,7 +28,6 @@ func ExecuteTasks(cfg config.Config) error {
 			return err
 		}
 		continueFlag = true
-
 		var b any
 		apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/tasks/"+task.ID, struct {
 			Done bool `json:"done"`
@@ -60,7 +53,7 @@ func ExecuteOpencodeTask(dir string, continueFlag bool, task config.TaskConfig) 
 	} else {
 		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
 	}
-	cmd := utils.ExecCommand(utils.LoginBash, cmdStr)
+	cmd := utils.ExecCommand(utils.SudoUbuntuUser, cmdStr)
 	cmd.Dir = dir
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
