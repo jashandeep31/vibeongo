@@ -39,6 +39,7 @@ func ExecuteFinalScript() error {
 	if err != nil {
 		return err
 	}
+
 	script := cfg.FinalScript
 	path := "/home/ubuntu/code"
 
