@@ -20,7 +20,7 @@ func ExecuteIntialScript() error {
 	script := cfg.InitialScript
 	path := "/home/ubuntu/code"
 
-	cmd := utils.ExecCommand(utils.SudoUbuntuUser, script)
+	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, script)
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout

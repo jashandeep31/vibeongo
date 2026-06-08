@@ -17,7 +17,7 @@ BINARY_PATH="/usr/local/bin/$APP"
 echo "Installing $APP..."
 
 # Download binary
-sudo curl -# -L  https://l1.devsradar.com/vibeongo -o "$BINARY_PATH"
+sudo curl -# -L  https://download.vibeongo.com/vibeongo -o "$BINARY_PATH"
 
 # Make executable
 

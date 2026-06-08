@@ -7,16 +7,24 @@ import (
 type commandType string
 
 const (
-	SudoUbuntuUser commandType = "sudo_ubuntu"
+	SudoUbuntuInterativeShell commandType = "sudo_ubuntu"
+	SudoUbuntuLoginShell      commandType = "sudo_login_ubuntu"
 )
 
 func ExecCommand(t commandType, script string) *exec.Cmd {
 	switch t {
-	case SudoUbuntuUser:
+	case SudoUbuntuInterativeShell:
 		return exec.Command(
 			"sudo",
 			"-iu", "ubuntu",
 			"bash", "-ic",
+			script,
+		)
+	case SudoUbuntuLoginShell:
+		return exec.Command(
+			"sudo",
+			"-u", "ubuntu",
+			"bash", "-lc",
 			script,
 		)
 	default:
