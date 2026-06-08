@@ -36,6 +36,8 @@ func init() {
 	rootCmd.AddCommand(UpdateSessionFromOverviewCmd())
 	// terminate the instance
 	rootCmd.AddCommand(TerminateInstanceCmd())
+	// run the setup script
+	rootCmd.AddCommand(ExecuteIntialScriptCmd())
 	// running the final script
 	rootCmd.AddCommand(ExecuteFinalScriptCmd())
 	// Print the config

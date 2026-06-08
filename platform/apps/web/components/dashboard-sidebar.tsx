@@ -71,7 +71,7 @@ const sidebarLinks: {
   },
   {
     title: "GitHub",
-    url: "https://github.com",
+    url: "https://github.com/jashandeep31",
     icon: Github,
     external: true,
   },
