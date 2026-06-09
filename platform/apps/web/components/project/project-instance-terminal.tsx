@@ -189,11 +189,16 @@ export function ProjectInstanceTerminal({
             });
             window.dispatchEvent(customEvent);
             return;
+          } else if (parsed.type === "logs") {
+            const customEvent = new CustomEvent("vps-logs", {
+              detail: parsed.data,
+            });
+            window.dispatchEvent(customEvent);
+            return;
           } else if (parsed.type === "sessionIds") {
             if (parsed.ids) {
               setTerminalSessionIds(parsed.ids);
               setActiveTerminalSessionId(parsed.activeId);
-              console.log(parsed.ids, parsed.activeId);
               return;
             } else {
               console.log(
@@ -272,7 +277,7 @@ export function ProjectInstanceTerminal({
   };
 
   return (
-    <div className="min-w-0 max-w-full space-y-4 overflow-x-hidden">
+    <div className="max-w-full min-w-0 space-y-4 overflow-x-hidden">
       {!hideControls && (
         <div className="flex flex-wrap items-center gap-2">
           {showConnectionButton && (
@@ -315,7 +320,7 @@ export function ProjectInstanceTerminal({
         </div>
       )}
 
-      <div className="bg-background min-w-0 max-w-full overflow-hidden rounded-lg border shadow-sm">
+      <div className="bg-background max-w-full min-w-0 overflow-hidden rounded-lg border shadow-sm">
         <div className="border-b px-4 py-3">
           <div>
             <h2 className="text-base font-semibold tracking-tight">Terminal</h2>
@@ -395,11 +400,11 @@ export function ProjectInstanceTerminal({
           </div>
         </div>
 
-        <div className="min-w-0 max-w-full overflow-hidden bg-[#111111] p-1.5 sm:p-2">
+        <div className="max-w-full min-w-0 overflow-hidden bg-[#111111] p-1.5 sm:p-2">
           <div
             ref={terminalRef}
             id="terminal"
-            className="h-[55svh] min-h-[280px] w-full min-w-0 max-w-full overflow-hidden rounded-md bg-[#1e1e1e] p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2 [&_.xterm-screen]:max-w-full [&_.xterm-viewport]:max-w-full [&_.xterm]:max-w-full"
+            className="h-[55svh] min-h-[280px] w-full max-w-full min-w-0 overflow-hidden rounded-md bg-[#1e1e1e] p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2 [&_.xterm]:max-w-full [&_.xterm-screen]:max-w-full [&_.xterm-viewport]:max-w-full"
           />
         </div>
       </div>
