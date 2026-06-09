@@ -160,7 +160,7 @@ export function OpencodeWebCard({
   };
   return (
     <section>
-      <div className="bg-muted/30 flex flex-wrap items-center justify-between gap-2 rounded-lg p-3">
+      <div className="bg-muted/30 rounded-lg p-3">
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold tracking-tight">
             Opencode Web
@@ -176,7 +176,7 @@ export function OpencodeWebCard({
           />
         </div>
 
-        <div className="flex items-center gap-1.5">
+        <div className="mt-3 flex items-center gap-1.5">
           <Button
             size="icon-sm"
             variant="outline"
