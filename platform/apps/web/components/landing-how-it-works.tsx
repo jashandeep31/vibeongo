@@ -3,36 +3,44 @@ export function LandingHowItWorks() {
     {
       number: "01",
       title: "Connect Your Repo",
-      description: "Link your GitHub account and select the project you want to work on. We handle the rest.",
+      description:
+        "Link your GitHub account and choose the project you want to work on.",
     },
     {
       number: "02",
-      title: "AI Provisions & Edits",
-      description: "We spin up a dedicated EC2 instance and load the AI environment. Tell the assistant what to build or fix.",
+      title: "Start Vibe Coding",
+      description:
+        "Open your ready-to-use workspace and tell your preferred AI coding assistant what you want to build or fix.",
     },
     {
       number: "03",
-      title: "Preview & Ship",
-      description: "View your changes live on a custom URL. Once satisfied, auto-generate a PR and merge your changes.",
+      title: "Preview & Share",
+      description:
+        "Run the project, review your changes live, and create a pull request when your work is ready.",
     },
   ];
 
   return (
-    <section className="py-24 border-y border-white/5 bg-black/20">
+    <section className="border-y border-white/5 bg-black/20 py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-16">
-          <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-4xl">
+        <div className="mb-16 text-center">
+          <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
             How it works
           </h2>
-          <p className="mt-4 text-lg text-muted-foreground">
-            Get from idea to production in minutes, not hours.
+          <p className="text-muted-foreground mt-4 text-lg">
+            Go from an idea to working code without setting up a local
+            environment.
           </p>
         </div>
         <div className="grid grid-cols-1 gap-12 md:grid-cols-3">
           {steps.map((step) => (
             <div key={step.number} className="relative">
-              <div className="text-5xl font-bold text-primary/10 mb-6">{step.number}</div>
-              <h3 className="text-xl font-semibold text-foreground mb-3">{step.title}</h3>
+              <div className="text-primary/10 mb-6 text-5xl font-bold">
+                {step.number}
+              </div>
+              <h3 className="text-foreground mb-3 text-xl font-semibold">
+                {step.title}
+              </h3>
               <p className="text-muted-foreground leading-relaxed">
                 {step.description}
               </p>

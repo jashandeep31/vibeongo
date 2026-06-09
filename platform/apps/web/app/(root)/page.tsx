@@ -4,7 +4,6 @@ import { getSession } from "@/lib/getSession";
 import { redirect } from "next/navigation";
 import { LandingFeatures } from "@/components/landing-features";
 import { LandingHowItWorks } from "@/components/landing-how-it-works";
-import { LandingPricing } from "@/components/landing-pricing";
 
 export default async function Page() {
   const session = await getSession();
@@ -26,21 +25,23 @@ export default async function Page() {
 
           {/* Main Headline */}
           <h1 className="text-foreground text-4xl font-extrabold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-            <span className="block">Deploy, Edit with AI,</span>
-            <span className="text-primary mt-2 block">& Preview Live</span>
+            <span className="block">Your Vibe Coding</span>
+            <span className="text-primary mt-2 block">
+              Environment, Ready to Go
+            </span>
           </h1>
 
           {/* Subheadline */}
           <p className="text-muted-foreground mx-auto mt-6 max-w-3xl text-lg sm:text-xl">
-            Spin up a dedicated EC2 instance for your project in seconds. Use{" "}
+            Open your repository in a ready-to-use cloud environment. Build with{" "}
             <span className="text-foreground font-semibold">
               OpenCode, Claude, or Codex
             </span>{" "}
-            to make changes, get live previews on your custom domain, and
-            auto-manage your PRs.{" "}
+            by your side, run your project, preview changes, and manage pull
+            requests without configuring a local setup.
             <span className="text-foreground font-semibold">
               {" "}
-              Pay only for what you use.
+              Just connect your repo and start creating.
             </span>
           </p>
 
@@ -83,16 +84,18 @@ export default async function Page() {
 
       <LandingFeatures />
       <LandingHowItWorks />
-      <LandingPricing />
 
-      <section className="py-24 bg-background">
+      <section className="bg-background py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="rounded-3xl bg-card/30 p-12 text-center border border-white/10">
-            <h2 className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
-              Stop configuring environments.<br />Start shipping.
+          <div className="bg-card/30 rounded-3xl border border-white/10 p-12 text-center">
+            <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-5xl">
+              Skip the setup.
+              <br />
+              Stay in the creative flow.
             </h2>
-            <p className="mt-6 text-lg text-muted-foreground max-w-2xl mx-auto">
-              Join the indie hackers who are already using VibeOnGo to build and iterate at the speed of thought.
+            <p className="text-muted-foreground mx-auto mt-6 max-w-2xl text-lg">
+              Bring your repository and start building in an environment made
+              for fast, AI-assisted iteration.
             </p>
             <div className="mt-10">
               <Button asChild size="lg" className="h-14 px-10 text-lg">
