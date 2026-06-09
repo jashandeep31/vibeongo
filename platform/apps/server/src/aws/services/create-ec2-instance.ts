@@ -25,14 +25,13 @@ export const createEc2Instance = async ({
   }
 
   const command = new RunInstancesCommand({
-    // ImageId: imageConfig.linuxImageId, //the version of os,
-    ImageId: env.AMI_ID, //the version of os,
+    ImageId: imageConfig.linuxImageId,
     InstanceType: instanceType as _InstanceType,
     MinCount: 1,
     MaxCount: 1,
 
     Monitoring: {
-      Enabled: true, // enable in future it's paid
+      Enabled: true,
     },
     UserData: Buffer.from(userData).toString("base64"),
     BlockDeviceMappings: [
