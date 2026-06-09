@@ -2,12 +2,15 @@ package server
 
 import (
 	"bufio"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"net"
 	"net/http"
 	"net/http/httputil"
+	"os"
 	"slices"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
@@ -123,9 +126,14 @@ func (s *ProxyServer) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Hosts []string `json:"hosts"`
 	}
+
+	if !hasValidBearerToken(r.Header.Get("Authorization"), os.Getenv("PROXY_SERVER_TOKEN")) {
+		http.Error(w, "401", http.StatusUnauthorized)
+		return
+	}
+
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("400"))
+		http.Error(w, "400", http.StatusBadRequest)
 		return
 	}
 	for _, host := range data.Hosts {
@@ -133,6 +141,19 @@ func (s *ProxyServer) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 	}
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("OK"))
+}
+
+func hasValidBearerToken(authorizationHeader, expectedToken string) bool {
+	if expectedToken == "" {
+		return false
+	}
+
+	scheme, token, found := strings.Cut(authorizationHeader, " ")
+	if !found || !strings.EqualFold(scheme, "Bearer") || token == "" || strings.Contains(token, " ") {
+		return false
+	}
+
+	return subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
 }
 
 func (s *ProxyServer) handleMyIP(w http.ResponseWriter, r *http.Request) {

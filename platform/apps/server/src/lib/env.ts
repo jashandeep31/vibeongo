@@ -7,6 +7,7 @@ const envSchema = z.object({
   PORT: z.coerce.number(),
   FRONTEND_URL: z.string(),
   PROXY_DOMAIN: z.string(),
+  PROXY_SERVER_TOKEN: z.string().min(1),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),

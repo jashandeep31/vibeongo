@@ -6,9 +6,18 @@ export const invalidateProxyHosts = async (hosts: string[]) => {
   const uniqueHosts = [...new Set(hosts.filter(Boolean))];
   if (!uniqueHosts.length) return;
 
-  await axios.post(`${env.PROXY_SERVER_URL}/proxy/invalidate`, {
-    hosts: uniqueHosts,
-  });
+  await axios.post(
+    `${env.PROXY_SERVER_URL}/proxy/invalidate`,
+    {
+      hosts: uniqueHosts,
+    },
+    {
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${env.PROXY_SERVER_TOKEN}`,
+      },
+    },
+  );
 };
 
 export const invalidateProjectProxiesByRoutingId = async (
