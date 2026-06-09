@@ -31,7 +31,7 @@ export function ProjectList() {
   }: {
     project: typeof IProject.$inferSelect;
   }) => (
-    <Link href={`/dashboard/project/${project.id}`}>
+    <Link href={`/projects/${project.id}`}>
       <Card className="hover:bg-muted/50 flex cursor-pointer flex-col transition-colors">
         <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
           <div className="flex items-center gap-3">
