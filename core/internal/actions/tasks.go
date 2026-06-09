@@ -3,6 +3,7 @@ package actions
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path"
 	"strings"
 
@@ -17,6 +18,11 @@ func ExecuteTasks(cfg config.Config) error {
 	}
 	continueFlag := false
 	codeFolderPath := "/home/ubuntu/code"
+	env := append(
+		os.Environ(),
+		"PATH=/home/ubuntu/.opencode/bin:/usr/local/bin:/usr/bin:/bin",
+		"HOME=/home/ubuntu",
+	)
 	// TODO: if we are chaning the folder the continue will not work so change the continue flag dynamically
 	for _, task := range cfg.Tasks {
 		if task.Done {
@@ -24,7 +30,7 @@ func ExecuteTasks(cfg config.Config) error {
 		}
 		taskFolderPath := path.Join(codeFolderPath, task.FolderName)
 		// asking to create a plan
-		if err := ExecuteOpencodeTask(taskFolderPath, continueFlag, task); err != nil {
+		if err := ExecuteOpencodeTask(taskFolderPath, env, continueFlag, task); err != nil {
 			return err
 		}
 		continueFlag = true
@@ -43,7 +49,7 @@ func ExecuteTasks(cfg config.Config) error {
 	return nil
 }
 
-func ExecuteOpencodeTask(dir string, continueFlag bool, task config.TaskConfig) error {
+func ExecuteOpencodeTask(dir string, env []string, continueFlag bool, task config.TaskConfig) error {
 	singleLineString := task.Task
 	singleLineString = strings.ReplaceAll(singleLineString, "\n", " ")
 
@@ -53,8 +59,9 @@ func ExecuteOpencodeTask(dir string, continueFlag bool, task config.TaskConfig) 
 	} else {
 		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
 	}
-	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, cmdStr)
+	cmd := exec.Command("bash", "-c", cmdStr)
 	cmd.Dir = dir
+	cmd.Env = env
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Run(); err != nil {
