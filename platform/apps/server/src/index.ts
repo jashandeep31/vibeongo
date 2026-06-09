@@ -67,7 +67,7 @@ app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const seconds = totalSeconds % 60;
   res.status(200).json({
-    message: "Platform server is running",
+    message: "Platform server is running v0.0.1",
     uptime: `${hours}h ${minutes}m ${seconds}s`,
   });
   return;
