@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
@@ -52,6 +52,8 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     "checking" | "connected" | "disconnected"
   >("checking");
   const [sshCopied, setSshCopied] = useState(false);
+  const [serverLogs, setServerLogs] = useState("");
+  const serverLogsRef = useRef<HTMLDivElement | null>(null);
   const [isCurrentIpDialogOpen, setIsCurrentIpDialogOpen] = useState(false);
   const [hasDismissedCurrentIpDialog, setHasDismissedCurrentIpDialog] =
     useState(false);
@@ -252,6 +254,30 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       window.clearInterval(intervalId);
     };
   }, [terminalHealthCheckUrl]);
+
+  useEffect(() => {
+    const handleServerLogs = (event: Event) => {
+      const logsEvent = event as CustomEvent<unknown>;
+      const logs =
+        typeof logsEvent.detail === "string"
+          ? logsEvent.detail
+          : JSON.stringify(logsEvent.detail, null, 2);
+
+      setServerLogs(logs);
+    };
+
+    window.addEventListener("vps-logs", handleServerLogs);
+    return () => {
+      window.removeEventListener("vps-logs", handleServerLogs);
+    };
+  }, []);
+
+  useEffect(() => {
+    const logsElement = serverLogsRef.current;
+    if (logsElement) {
+      logsElement.scrollTop = logsElement.scrollHeight;
+    }
+  }, [serverLogs]);
 
   useEffect(() => {
     if (
@@ -471,10 +497,27 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             domainFor4096={domainFor4096 || null}
             isTerminated={isTerminated}
           />
-          <ProjectInstanceTerminal
-            domain={domainFor8080 || null}
-            hideControls
-          />
+          <div className="space-y-3">
+            <ProjectInstanceTerminal
+              domain={domainFor8080 || null}
+              hideControls
+              hideHeader
+            />
+            <div className="relative h-[32rem] overflow-hidden bg-[#111111]">
+              <div
+                ref={serverLogsRef}
+                className="h-full overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+              >
+                <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
+                  Logs
+                </div>
+                <pre className="whitespace-pre-wrap break-words px-3 pb-3 pt-1 font-mono text-sm text-zinc-300">
+                  {serverLogs || "Waiting for server logs..."}
+                </pre>
+              </div>
+              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
+            </div>
+          </div>
         </>
       )}
 

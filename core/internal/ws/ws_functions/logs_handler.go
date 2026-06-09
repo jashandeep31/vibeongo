@@ -1,6 +1,7 @@
 package wsfunctions
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"sync"
@@ -18,19 +19,21 @@ func LogsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex)
 		case <-ctx.Done():
 			return
 		case <-logT.C:
-			content, err := os.ReadFile("/var/log/user-data.json")
+			content, err := os.ReadFile("/var/log/user-data.log")
 			if err != nil {
 				content = []byte("Hi how are you")
 			}
+			// Clean carriage returns from progress-bar style output
+			cleaned := bytes.ReplaceAll(content, []byte("\r\n"), []byte("\n"))
+			cleaned = bytes.ReplaceAll(cleaned, []byte("\r"), []byte("\n"))
 
 			message := struct {
 				Type string `json:"type"`
 				Data string `json:"data"`
 			}{
 				Type: "logs",
-				Data: string(content),
+				Data: string(cleaned),
 			}
-
 			writeMu.Lock()
 			writeErr := conn.WriteJSON(message)
 			writeMu.Unlock()
