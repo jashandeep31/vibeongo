@@ -120,6 +120,10 @@ export const githubAuthCallbackController = catchAsync(
       throw new Error("Something went wrong on our side");
     }
 
+    if (user.email !== "jashandeep1659@gmail.com") {
+      throw new AppError("New User are not allowed", 401);
+    }
+
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
       expiresIn: "30d",
     });
