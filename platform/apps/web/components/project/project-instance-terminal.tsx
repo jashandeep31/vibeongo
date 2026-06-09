@@ -16,6 +16,7 @@ interface ProjectInstanceTerminalProps {
   publicIp?: string | null;
   domain?: string | null;
   hideControls?: boolean;
+  hideHeader?: boolean;
   showConnectionButton?: boolean;
 }
 
@@ -23,6 +24,7 @@ export function ProjectInstanceTerminal({
   publicIp,
   domain,
   hideControls = false,
+  hideHeader = false,
   showConnectionButton = true,
 }: ProjectInstanceTerminalProps) {
   const serverUrl = domain
@@ -321,14 +323,14 @@ export function ProjectInstanceTerminal({
       )}
 
       <div className="bg-background max-w-full min-w-0 overflow-hidden rounded-lg border shadow-sm">
-        <div className="border-b px-4 py-3">
-          <div>
+        {!hideHeader && (
+          <div className="border-b px-4 py-3">
             <h2 className="text-base font-semibold tracking-tight">Terminal</h2>
             <p className="text-muted-foreground mt-0.5 text-sm">
               Interactive session connected through WebSocket.
             </p>
           </div>
-        </div>
+        )}
 
         <div className="bg-muted/40 min-w-0 overflow-x-hidden border-b px-3 py-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
