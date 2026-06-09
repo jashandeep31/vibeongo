@@ -15,7 +15,7 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 	pipedSessions := make(map[string]struct{})
 
 	go StatsHandler(ctx, conn, &writeMu)
-
+	go LogsHandler(ctx, conn, &writeMu)
 	// unsubscribe the sessions at the end of function
 	unsubscribeSessions := []func(){}
 	defer func() {
