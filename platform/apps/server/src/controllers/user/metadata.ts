@@ -19,6 +19,9 @@ export const getUserMetadata = catchAsync(
       data: {
         id: user.id,
         balance: userWalletRow.balance,
+        username: user.username,
+        firstName: user.first_name,
+        lastName: user.last_name,
       },
     });
   },
