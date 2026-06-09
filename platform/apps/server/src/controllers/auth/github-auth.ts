@@ -105,12 +105,16 @@ export const githubAuthCallbackController = catchAsync(
         .json({ error: "No username found for this github account" });
       return;
     }
-    const user = await createOrGetUser({
+    const { user, account } = await createOrGetUser({
       email,
       name: profile.name ?? undefined,
       token: accessToken,
       username: profile.login,
     });
+
+    if (account.status !== "active") {
+      throw new Error("Account is not active");
+    }
 
     if (!user.id) {
       throw new Error("Something went wrong on our side");

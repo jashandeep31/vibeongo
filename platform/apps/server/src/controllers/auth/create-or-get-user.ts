@@ -1,30 +1,59 @@
 import { accounts, and, db, eq, users, userWallet } from "@repo/db";
 
-interface CreateUser {
+interface CreateUserInput {
   email: string;
   name?: string | undefined;
   token: string;
   username: string;
 }
 
-const provider: typeof accounts.$inferInsert.provider = "github";
+type User = typeof users.$inferSelect;
+type Account = typeof accounts.$inferSelect;
+
+interface UserWithAccount {
+  user: User;
+  account: Account;
+}
+
+const githubProvider: typeof accounts.$inferInsert.provider = "github";
 const internalError = "Something went wrong on our side";
 
-const ensureId = (id: string | null | undefined) => {
-  if (!id) throw new Error(internalError);
-  return id;
+const getUserByEmail = async (email: string): Promise<User | undefined> => {
+  const [user] = await db
+    .select()
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
+
+  return user;
 };
 
-const upsertGithubAccount = async (userId: string, token: string) => {
+const parseName = (name?: string) => {
+  const [firstName = "unknown", ...remainingNameParts] =
+    name?.trim().split(/\s+/).filter(Boolean) ?? [];
+
+  return {
+    firstName,
+    lastName: remainingNameParts.join(" ") || undefined,
+  };
+};
+
+const upsertGithubAccount = async (
+  userId: string,
+  token: string,
+): Promise<Account> => {
   const [existingAccount] = await db
-    .select({ id: accounts.id })
+    .select()
     .from(accounts)
-    .where(and(eq(accounts.user_id, userId), eq(accounts.provider, provider)));
+    .where(
+      and(eq(accounts.user_id, userId), eq(accounts.provider, githubProvider)),
+    )
+    .limit(1);
 
   const now = new Date();
 
-  if (existingAccount?.id) {
-    await db
+  if (existingAccount) {
+    const [updatedAccount] = await db
       .update(accounts)
       .set({
         status: "active",
@@ -32,52 +61,53 @@ const upsertGithubAccount = async (userId: string, token: string) => {
         last_login_at: now,
         updated_at: now,
       })
-      .where(eq(accounts.id, existingAccount.id));
-    return;
+      .where(
+        and(
+          eq(accounts.user_id, userId),
+          eq(accounts.provider, githubProvider),
+        ),
+      )
+      .returning();
+
+    if (!updatedAccount) throw new Error(internalError);
+    return updatedAccount;
   }
 
-  await db.insert(accounts).values({
-    user_id: userId,
-    provider,
-    status: "active",
-    token,
-    last_login_at: now,
-  });
+  const [account] = await db
+    .insert(accounts)
+    .values({
+      user_id: userId,
+      provider: githubProvider,
+      status: "active",
+      token,
+      last_login_at: now,
+    })
+    .returning();
+
+  if (!account) throw new Error(internalError);
+  return account;
 };
 
-export const createOrGetUser = async ({
+const ensureUserWallet = async (userId: string) => {
+  await db
+    .insert(userWallet)
+    .values({
+      user_id: userId,
+      balance: 0,
+    })
+    .onConflictDoNothing({ target: userWallet.user_id });
+};
+
+const createUserWithGithubAccount = async ({
   email,
   name,
   token,
   username,
-}: CreateUser): Promise<typeof users.$inferSelect> => {
-  const [existingUser] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email));
+}: CreateUserInput): Promise<UserWithAccount> => {
+  const { firstName, lastName } = parseName(name);
 
-  if (existingUser) {
-    await upsertGithubAccount(ensureId(existingUser.id), token);
-    const [userwalletRow] = await db
-      .select()
-      .from(userWallet)
-      .where(eq(userWallet.user_id, existingUser.id));
-
-    if (!userwalletRow) {
-      await db.insert(userWallet).values({
-        user_id: existingUser.id,
-        balance: 0,
-      });
-    }
-    return existingUser;
-  }
-
-  const nameParts = name?.trim().split(/\s+/) ?? [];
-  const firstName = nameParts[0] || "unknown";
-  const lastName = nameParts.slice(1).join(" ") || undefined;
-
-  const user = await db.transaction(async (tx) => {
-    const [dbUser] = await tx
+  return db.transaction(async (tx) => {
+    const [user] = await tx
       .insert(users)
       .values({
         email,
@@ -86,25 +116,47 @@ export const createOrGetUser = async ({
         username,
       })
       .returning();
-    if (!dbUser) throw new Error(internalError);
 
-    // create account for user
-    await tx.insert(accounts).values({
-      user_id: ensureId(dbUser.id),
-      provider,
-      status: "active",
-      token,
-      last_login_at: new Date(),
-    });
+    if (!user) throw new Error(internalError);
 
-    // creating the  user wallet
+    const [account] = await tx
+      .insert(accounts)
+      .values({
+        user_id: user.id,
+        provider: githubProvider,
+        status: "active",
+        token,
+        last_login_at: new Date(),
+      })
+      .returning();
+
+    if (!account) throw new Error(internalError);
+
     await tx.insert(userWallet).values({
-      user_id: dbUser.id,
+      user_id: user.id,
       balance: 0,
     });
 
-    return dbUser;
+    return { user, account };
   });
+};
 
-  return user;
+export const createOrGetUser = async (
+  input: CreateUserInput,
+): Promise<UserWithAccount> => {
+  const existingUser = await getUserByEmail(input.email);
+
+  if (!existingUser) {
+    return createUserWithGithubAccount(input);
+  }
+
+  const [account] = await Promise.all([
+    upsertGithubAccount(existingUser.id, input.token),
+    ensureUserWallet(existingUser.id),
+  ]);
+
+  return {
+    user: existingUser,
+    account,
+  };
 };
