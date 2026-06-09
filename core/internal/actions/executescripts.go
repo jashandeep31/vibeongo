@@ -16,6 +16,7 @@ func ExecuteIntialScript() error {
 	}
 
 	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
+	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
 
 	script := cfg.InitialScript
 	path := "/home/ubuntu/code"
