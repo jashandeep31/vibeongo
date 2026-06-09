@@ -9,6 +9,7 @@ type commandType string
 const (
 	SudoUbuntuInterativeShell commandType = "sudo_ubuntu"
 	SudoUbuntuLoginShell      commandType = "sudo_login_ubuntu"
+	SudoShellScriptFile       commandType = "sudo_shell_script"
 )
 
 func ExecCommand(t commandType, script string) *exec.Cmd {
@@ -19,6 +20,12 @@ func ExecCommand(t commandType, script string) *exec.Cmd {
 			"-iu", "ubuntu",
 			"bash", "-ic",
 			script,
+		)
+	case SudoShellScriptFile:
+		return exec.Command(
+			"sudo",
+			"-iu", "ubuntu",
+			"bash", script,
 		)
 	case SudoUbuntuLoginShell:
 		return exec.Command(

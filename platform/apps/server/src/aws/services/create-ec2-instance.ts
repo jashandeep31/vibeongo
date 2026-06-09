@@ -29,7 +29,6 @@ export const createEc2Instance = async ({
     InstanceType: instanceType as _InstanceType,
     MinCount: 1,
     MaxCount: 1,
-
     Monitoring: {
       Enabled: true,
     },

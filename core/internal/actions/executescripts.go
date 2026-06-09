@@ -15,6 +15,13 @@ func ExecuteIntialScript() error {
 		return err
 	}
 
+	tempScriptFile, err := os.CreateTemp("", "temp.sh")
+	if err != nil {
+		return err
+	}
+	defer tempScriptFile.Close()
+	defer os.Remove(tempScriptFile.Name())
+
 	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
 	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
 
@@ -23,8 +30,9 @@ func ExecuteIntialScript() error {
 	`
 	script = script + cfg.InitialScript
 	path := "/home/ubuntu/code"
+	tempScriptFile.Write([]byte(script))
 
-	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, script)
+	cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -44,10 +52,18 @@ func ExecuteFinalScript() error {
 		return err
 	}
 
+	tempScriptFile, err := os.CreateTemp("", "temp.sh")
+	if err != nil {
+		return err
+	}
+	defer tempScriptFile.Close()
+	defer os.Remove(tempScriptFile.Name())
+
 	script := cfg.FinalScript
 	path := "/home/ubuntu/code"
 
-	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-l", "-c", script)
+	tempScriptFile.Write([]byte(script))
+	cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
