@@ -54,6 +54,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const [sshCopied, setSshCopied] = useState(false);
   const [serverLogs, setServerLogs] = useState("");
   const serverLogsRef = useRef<HTMLDivElement | null>(null);
+  const mobileServerLogsRef = useRef<HTMLDivElement | null>(null);
   const [isCurrentIpDialogOpen, setIsCurrentIpDialogOpen] = useState(false);
   const [hasDismissedCurrentIpDialog, setHasDismissedCurrentIpDialog] =
     useState(false);
@@ -273,9 +274,13 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   }, []);
 
   useEffect(() => {
-    const logsElement = serverLogsRef.current;
-    if (logsElement) {
-      logsElement.scrollTop = logsElement.scrollHeight;
+    for (const logsElement of [
+      serverLogsRef.current,
+      mobileServerLogsRef.current,
+    ]) {
+      if (logsElement) {
+        logsElement.scrollTop = logsElement.scrollHeight;
+      }
     }
   }, [serverLogs]);
 
@@ -476,8 +481,6 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         </Alert>
       ) : null}
 
-      <ProjectInstanceInfoCard instance={instance} />
-
       {isLoadingDomains ? (
         <Card className="text-muted-foreground flex items-center justify-center p-6 text-center">
           <Loader2 className="mr-2 h-6 w-6 animate-spin" />
@@ -491,22 +494,11 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         </Card>
       ) : (
         <>
-          <ProjectInstanceStats />
-          <OpencodeWebCard
-            domainFor8080={domainFor8080 || null}
-            domainFor4096={domainFor4096 || null}
-            isTerminated={isTerminated}
-          />
-          <div className="space-y-3">
-            <ProjectInstanceTerminal
-              domain={domainFor8080 || null}
-              hideControls
-              hideHeader
-            />
-            <div className="relative h-[32rem] overflow-hidden bg-[#111111]">
+          <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+            <div className="relative hidden min-h-64 overflow-hidden bg-[#111111] lg:block lg:min-h-0">
               <div
                 ref={serverLogsRef}
-                className="h-full overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
                   Logs
@@ -517,6 +509,34 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               </div>
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
             </div>
+            <div className="min-w-0 space-y-3">
+              <ProjectInstanceInfoCard instance={instance} />
+              <ProjectInstanceStats />
+              <OpencodeWebCard
+                domainFor8080={domainFor8080 || null}
+                domainFor4096={domainFor4096 || null}
+                isTerminated={isTerminated}
+              />
+            </div>
+          </div>
+          <ProjectInstanceTerminal
+            domain={domainFor8080 || null}
+            hideControls
+            hideHeader
+          />
+          <div className="relative h-64 overflow-hidden bg-[#111111] lg:hidden">
+            <div
+              ref={mobileServerLogsRef}
+              className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            >
+              <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
+                Logs
+              </div>
+              <pre className="whitespace-pre-wrap break-words px-3 pb-3 pt-1 font-mono text-sm text-zinc-300">
+                {serverLogs || "Waiting for server logs..."}
+              </pre>
+            </div>
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
           </div>
         </>
       )}
