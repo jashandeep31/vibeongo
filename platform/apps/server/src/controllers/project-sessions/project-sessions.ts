@@ -14,8 +14,9 @@ import {
   projectDomainRouting,
   customQuery,
   projectSessionTasks,
-  projectSessionTaskAgents,
   githubRepos,
+  exists,
+  sql,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -24,13 +25,128 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { commonFilterSchema, projectSessionTaskSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
+export const deleteProjectSessionTask = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 404);
+
+    const { id, taskId } = z
+      .object({
+        id: z.uuid(),
+        taskId: z.uuid(),
+      })
+      .parse(req.params);
+
+    const [deleted] = await db
+      .delete(projectSessionTasks)
+      .where(
+        and(
+          eq(projectSessionTasks.id, taskId),
+          eq(projectSessionTasks.project_session_id, id),
+          exists(
+            db
+              .select({ _: sql`1` })
+              .from(projectSessions)
+              .where(
+                and(
+                  eq(projectSessions.id, id),
+                  eq(projectSessions.user_id, user.id),
+                ),
+              ),
+          ),
+        ),
+      )
+      .returning({ id: projectSessionTasks.id });
+
+    if (!deleted) {
+      throw new AppError("Task or project session not found", 404);
+    }
+
+    res.status(200).json({ message: "Successfully deleted the task" });
+  },
+);
+
+export const updateProjectSessionTask = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 404);
+
+    const { id, taskId } = z
+      .object({
+        id: z.uuid(),
+        taskId: z.uuid(),
+      })
+      .parse(req.params);
+
+    const { task, model, agent, done, repoId } = projectSessionTaskSchema
+      .extend({
+        done: z.boolean(),
+      })
+      .partial()
+      .refine((value) => Object.keys(value).length > 0, {
+        message: "At least one task field is required",
+      })
+      .parse(req.body);
+
+    let repo = undefined;
+    if (repoId !== undefined) {
+      [repo] = await db
+        .select()
+        .from(githubRepos)
+        .where(
+          and(eq(githubRepos.id, repoId), eq(githubRepos.user_id, user.id)),
+        );
+      if (!repo) {
+        throw new AppError("Github repo not found", 404);
+      }
+    }
+
+    const [updated] = await db
+      .update(projectSessionTasks)
+      .set({
+        ...(task !== undefined && { task }),
+        ...(model !== undefined && { model }),
+        ...(agent !== undefined && { agent }),
+        ...(done !== undefined && { done }),
+        ...(repo !== undefined && {
+          folder_name: repo.full_name.split("/").at(-1),
+        }),
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          eq(projectSessionTasks.id, taskId),
+          eq(projectSessionTasks.project_session_id, id),
+          exists(
+            db
+              .select({ _: sql`1` })
+              .from(projectSessions)
+              .where(
+                and(
+                  eq(projectSessions.id, id),
+                  eq(projectSessions.user_id, user.id),
+                ),
+              ),
+          ),
+        ),
+      )
+      .returning({ id: projectSessionTasks.id });
+
+    if (!updated) {
+      throw new AppError("Task or project session not found", 404);
+    }
+
+    res.status(200).json({ message: "Successfully updated the task" });
+  },
+);
+
 export const addTaskToProjectSession = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("User not found", 404);
     const { id } = z
       .object({
-        id: z.string(),
+        id: z.uuid(),
       })
       .parse(req.params);
 
