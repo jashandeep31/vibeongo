@@ -3,7 +3,6 @@ package actions
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path"
 	"strings"
 
@@ -59,7 +58,8 @@ func ExecuteOpencodeTask(dir string, env []string, continueFlag bool, task confi
 	} else {
 		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
 	}
-	cmd := exec.Command("bash", "-c", cmdStr)
+	// cmd := exec.Command("bash", "-c", cmdStr)
+	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, cmdStr)
 	cmd.Dir = dir
 	cmd.Env = env
 	cmd.Stdout = os.Stdout
