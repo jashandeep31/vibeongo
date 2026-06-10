@@ -3,9 +3,11 @@ import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   addTaskToProjectSession,
   archiveProjectSession,
+  deleteProjectSessionTask,
   getProjectSessionById,
   getUserProjectSessions,
   resumeProjectSession,
+  updateProjectSessionTask,
 } from "../controllers/project-sessions/project-sessions.js";
 
 const routes: Router = Router();
@@ -24,4 +26,8 @@ routes
 routes
   .route("/:id/tasks")
   .post(checkAuthorization(["all"]), addTaskToProjectSession);
+routes
+  .route("/:id/tasks/:taskId")
+  .patch(checkAuthorization(["all"]), updateProjectSessionTask)
+  .delete(checkAuthorization(["all"]), deleteProjectSessionTask);
 export const projectSessionRoutes = routes;

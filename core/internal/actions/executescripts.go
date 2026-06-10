@@ -61,7 +61,11 @@ func ExecuteFinalScript() error {
 	defer tempScriptFile.Close()
 	defer os.Remove(tempScriptFile.Name())
 
-	script := cfg.FinalScript
+	script := `#!/usr/bin/env bash
+	source /home/ubuntu/.bashrc
+	`
+	script = script + cfg.FinalScript
+
 	path := "/home/ubuntu/code"
 
 	tempScriptFile.Write([]byte(script))
