@@ -43,6 +43,21 @@ export type AddTaskToProjectSessionInput = {
   repoId: string;
 };
 
+export type UpdateProjectSessionTaskInput = {
+  id: string;
+  taskId: string;
+  task?: string;
+  model?: string;
+  agent?: (typeof projectSessionTaskAgents.enumValues)[number];
+  repoId?: string;
+  done?: boolean;
+};
+
+export type DeleteProjectSessionTaskInput = {
+  id: string;
+  taskId: string;
+};
+
 export const getProjectSessions = async ({
   projectId,
   page,
@@ -97,6 +112,40 @@ export const addTaskToProjectSession = async ({
   const res = await axios.post(
     `${BACKEND_URL}/api/v1/project-sessions/${id}/tasks`,
     { task, model, agent, repoId },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const updateProjectSessionTask = async ({
+  id,
+  taskId,
+  task,
+  model,
+  agent,
+  repoId,
+  done,
+}: UpdateProjectSessionTaskInput) => {
+  const res = await axios.patch(
+    `${BACKEND_URL}/api/v1/project-sessions/${id}/tasks/${taskId}`,
+    { task, model, agent, repoId, done },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const deleteProjectSessionTask = async ({
+  id,
+  taskId,
+}: DeleteProjectSessionTaskInput) => {
+  const res = await axios.delete(
+    `${BACKEND_URL}/api/v1/project-sessions/${id}/tasks/${taskId}`,
     {
       withCredentials: true,
     },

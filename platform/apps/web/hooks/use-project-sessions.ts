@@ -1,10 +1,12 @@
 import {
   addTaskToProjectSession,
   archiveProjectSession,
+  deleteProjectSessionTask,
   GetProjectSessionsParams,
   getProjectSessionById,
   getProjectSessions,
   resumeProjectSession,
+  updateProjectSessionTask,
 } from "@/services/project-session-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -57,6 +59,34 @@ export const useAddTaskToProjectSession = () => {
 
   return useMutation({
     mutationFn: addTaskToProjectSession,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-session", variables.id],
+      });
+    },
+  });
+};
+
+export const useUpdateProjectSessionTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProjectSessionTask,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
+      queryClient.invalidateQueries({
+        queryKey: ["project-session", variables.id],
+      });
+    },
+  });
+};
+
+export const useDeleteProjectSessionTask = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProjectSessionTask,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       queryClient.invalidateQueries({

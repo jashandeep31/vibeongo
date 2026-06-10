@@ -5,11 +5,14 @@ import Link from "next/link";
 import { useCallback, useMemo, useState } from "react";
 import { AddProjectSessionTaskDialog } from "@/components/dialogs/add-project-session-task-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { EditProjectSessionTaskDialog } from "@/components/dialogs/edit-project-session-task-dialog";
 import { useTerminateInstance } from "@/hooks/use-instance";
 import {
+  useDeleteProjectSessionTask,
   useGetProjectSessionById,
   useResumeProjectSession,
 } from "@/hooks/use-project-sessions";
+import type { ProjectSessionDetails } from "@/services/project-session-services";
 import { Button } from "@repo/ui/components/button";
 import {
   Card,
@@ -24,6 +27,7 @@ import {
   Clock3,
   FolderIcon,
   Loader2,
+  Pencil,
   Play,
   Plus,
   Server,
@@ -59,6 +63,130 @@ const uniqueById = <T extends { id: string }>(items: T[]) => {
 
   return Array.from(map.values());
 };
+
+type ProjectSessionTask = ProjectSessionDetails["tasks"][number];
+
+const SessionTask = ({
+  task,
+  sessionId,
+  projectId,
+}: {
+  task: ProjectSessionTask;
+  sessionId: string;
+  projectId: string;
+}) => {
+  const deleteTaskMutation = useDeleteProjectSessionTask();
+
+  const handleDelete = async () => {
+    const toastId = toast.loading("Deleting task...");
+    try {
+      await deleteTaskMutation.mutateAsync({
+        id: sessionId,
+        taskId: task.id,
+      });
+      toast.success("Task deleted successfully", { id: toastId });
+    } catch (error: unknown) {
+      console.error(error);
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to delete task")
+        : "Failed to delete task";
+      toast.error(message, { id: toastId });
+    }
+  };
+
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-lg border p-3">
+      <div className="flex min-w-0 gap-3">
+        {task.done ? (
+          <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-600" />
+        ) : (
+          <Circle className="text-muted-foreground mt-0.5 h-4 w-4 shrink-0" />
+        )}
+        <div className="min-w-0">
+          <p className="text-sm leading-5">{task.task.slice(0, 100)}</p>
+          {task.folder_name ? (
+            <div className="flex items-center gap-1">
+              <FolderIcon className="text-muted-foreground h-3 w-3" />
+              <p className="text-muted-foreground mt-1 font-mono text-xs">
+                {task.folder_name}
+              </p>
+            </div>
+          ) : null}
+        </div>
+      </div>
+      <div className="flex shrink-0 items-center gap-1">
+        <EditProjectSessionTaskDialog
+          task={task}
+          sessionId={sessionId}
+          projectId={projectId}
+        >
+          <Button variant="ghost" size="icon" aria-label="Edit task">
+            <Pencil className="h-4 w-4" />
+          </Button>
+        </EditProjectSessionTaskDialog>
+        <ConfirmationDialog
+          title="Delete task"
+          description="Are you sure you want to delete this task? This action cannot be undone."
+          confirmText="Delete"
+          isDestructive
+          onConfirm={() => {
+            void handleDelete();
+          }}
+        >
+          <Button
+            variant="ghost"
+            size="icon"
+            aria-label="Delete task"
+            disabled={deleteTaskMutation.isPending}
+          >
+            {deleteTaskMutation.isPending ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Trash2 className="text-destructive h-4 w-4" />
+            )}
+          </Button>
+        </ConfirmationDialog>
+      </div>
+    </div>
+  );
+};
+
+const SessionTasks = ({
+  tasks,
+  sessionId,
+  projectId,
+}: {
+  tasks: ProjectSessionTask[];
+  sessionId: string;
+  projectId: string;
+}) => (
+  <Card>
+    <CardHeader>
+      <CardTitle>Tasks</CardTitle>
+      <CardDescription>Work items captured for this session.</CardDescription>
+    </CardHeader>
+    <CardContent className="space-y-3">
+      {tasks.length === 0 ? (
+        <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center md:p-8">
+          No tasks recorded.
+        </div>
+      ) : (
+        tasks.map((task) => (
+          <SessionTask
+            key={task.id}
+            task={task}
+            sessionId={sessionId}
+            projectId={projectId}
+          />
+        ))
+      )}
+      <AddProjectSessionTaskDialog
+        sessionId={sessionId}
+        projectId={projectId}
+      />
+    </CardContent>
+  </Card>
+);
 
 const ClientView = ({ sessionId }: { sessionId: string }) => {
   const resumeSessionMutation = useResumeProjectSession();
@@ -239,48 +367,11 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Tasks</CardTitle>
-            <CardDescription>
-              Work items captured for this session.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            {tasks.length === 0 ? (
-              <div className="text-muted-foreground rounded-lg border border-dashed p-4 text-center md:p-8">
-                No tasks recorded.
-              </div>
-            ) : (
-              tasks.map((task) => (
-                <div key={task.id} className="flex gap-3 rounded-lg border p-3">
-                  {task.done ? (
-                    <CheckCircle2 className="mt-0.5 h-4 w-4 text-emerald-600" />
-                  ) : (
-                    <Circle className="text-muted-foreground mt-0.5 h-4 w-4" />
-                  )}
-                  <div className="min-w-0">
-                    <p className="text-sm leading-5">
-                      {task.task.slice(0, 100)}
-                    </p>
-                    {task.folder_name ? (
-                      <div className="flex items-center gap-1">
-                        <FolderIcon className="text-muted-foreground h-3 w-3" />
-                        <p className="text-muted-foreground mt-1 font-mono text-xs">
-                          {task.folder_name}
-                        </p>
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-              ))
-            )}
-            <AddProjectSessionTaskDialog
-              sessionId={sessionId}
-              projectId={session.project_id}
-            />
-          </CardContent>
-        </Card>
+        <SessionTasks
+          tasks={tasks}
+          sessionId={sessionId}
+          projectId={session.project_id}
+        />
       </div>
 
       <Card>
