@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 
@@ -47,6 +48,7 @@ func ExecuteIntialScript() error {
 }
 
 func ExecuteFinalScript() error {
+	fmt.Println("final is working ")
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return err

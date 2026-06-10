@@ -11,6 +11,7 @@ import (
 )
 
 func ExecuteTasks(cfg config.Config) error {
+	fmt.Println("Working on tasks")
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
 	if len(cfg.Tasks) == 0 {
 		return nil
