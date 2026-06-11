@@ -112,7 +112,7 @@ export function CreateInstanceDialog({
       sessionDescription: sessionDescription.trim() || undefined,
       tasks: tasks.map(({ task, model, agent, repoId }) => ({
         task: task.trim(),
-        model: model.trim() || undefined,
+        model: model.trim(),
         agent,
         repoId,
       })),

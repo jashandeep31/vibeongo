@@ -88,7 +88,7 @@ export function AddProjectSessionTaskDialog({
       await addTask({
         id: sessionId,
         task: trimmedTask,
-        model: trimmedModel || undefined,
+        model: trimmedModel,
         agent,
         repoId,
       });

@@ -38,7 +38,7 @@ export type ArchiveProjectSessionInput = {
 export type AddTaskToProjectSessionInput = {
   id: string;
   task: string;
-  model?: string;
+  model: string;
   agent: (typeof projectSessionTaskAgents.enumValues)[number];
   repoId: string;
 };
@@ -46,11 +46,11 @@ export type AddTaskToProjectSessionInput = {
 export type UpdateProjectSessionTaskInput = {
   id: string;
   taskId: string;
-  task?: string;
-  model?: string;
-  agent?: (typeof projectSessionTaskAgents.enumValues)[number];
-  repoId?: string;
-  done?: boolean;
+  task: string;
+  model: string;
+  agent: (typeof projectSessionTaskAgents.enumValues)[number];
+  repoId: string;
+  done: boolean;
 };
 
 export type DeleteProjectSessionTaskInput = {
