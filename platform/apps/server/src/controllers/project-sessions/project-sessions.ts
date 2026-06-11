@@ -12,17 +12,23 @@ import {
   projectSshKeys,
   sshKeys,
   projectDomainRouting,
+  projectGithubRepos,
   customQuery,
   projectSessionTasks,
   githubRepos,
   exists,
   sql,
+  asc,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { z } from "zod";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
-import { commonFilterSchema, projectSessionTaskSchema } from "@repo/shared";
+import {
+  commonFilterSchema,
+  projectSessionTaskSchema,
+  updateProjectSessionTaskSchema,
+} from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
 export const deleteProjectSessionTask = catchAsync(
@@ -78,39 +84,40 @@ export const updateProjectSessionTask = catchAsync(
       })
       .parse(req.params);
 
-    const { task, model, agent, done, repoId } = projectSessionTaskSchema
-      .extend({
-        done: z.boolean(),
-      })
-      .partial()
-      .refine((value) => Object.keys(value).length > 0, {
-        message: "At least one task field is required",
-      })
-      .parse(req.body);
+    const { task, model, agent, done, repoId } =
+      updateProjectSessionTaskSchema.parse(req.body);
 
-    let repo = undefined;
-    if (repoId !== undefined) {
-      [repo] = await db
-        .select()
-        .from(githubRepos)
-        .where(
-          and(eq(githubRepos.id, repoId), eq(githubRepos.user_id, user.id)),
-        );
-      if (!repo) {
-        throw new AppError("Github repo not found", 404);
-      }
+    const [repo] = await db
+      .select({ repo: githubRepos })
+      .from(projectSessions)
+      .innerJoin(
+        projectGithubRepos,
+        eq(projectGithubRepos.project_id, projectSessions.project_id),
+      )
+      .innerJoin(
+        githubRepos,
+        eq(githubRepos.id, projectGithubRepos.github_repo_id),
+      )
+      .where(
+        and(
+          eq(projectSessions.id, id),
+          eq(projectSessions.user_id, user.id),
+          eq(githubRepos.id, repoId),
+          eq(githubRepos.user_id, user.id),
+        ),
+      );
+    if (!repo) {
+      throw new AppError("Github repo is not attached to this project", 404);
     }
 
     const [updated] = await db
       .update(projectSessionTasks)
       .set({
-        ...(task !== undefined && { task }),
-        ...(model !== undefined && { model }),
-        ...(agent !== undefined && { agent }),
-        ...(done !== undefined && { done }),
-        ...(repo !== undefined && {
-          folder_name: repo.full_name.split("/").at(-1),
-        }),
+        task,
+        model,
+        agent,
+        done,
+        folder_name: repo.repo.full_name.split("/").at(-1),
         updated_at: new Date(),
       })
       .where(
@@ -165,19 +172,29 @@ export const addTaskToProjectSession = catchAsync(
     }
 
     const [gitRepo] = await db
-      .select()
-      .from(githubRepos)
-      .where(and(eq(githubRepos.user_id, user.id), eq(githubRepos.id, repoId)));
+      .select({ repo: githubRepos })
+      .from(projectGithubRepos)
+      .innerJoin(
+        githubRepos,
+        eq(githubRepos.id, projectGithubRepos.github_repo_id),
+      )
+      .where(
+        and(
+          eq(projectGithubRepos.project_id, session.project_id),
+          eq(githubRepos.user_id, user.id),
+          eq(githubRepos.id, repoId),
+        ),
+      );
 
     if (!gitRepo) {
-      throw new AppError("Github repo not found", 404);
+      throw new AppError("Github repo is not attached to this project", 404);
     }
     await db.insert(projectSessionTasks).values({
       task: task,
-      ...(model !== undefined && { model }),
+      model,
       agent: agent,
       project_session_id: id,
-      folder_name: gitRepo?.full_name.split("/")[1],
+      folder_name: gitRepo.repo.full_name.split("/").at(-1),
     });
 
     res.status(200).json({ message: "Successfully added the task" });
@@ -332,6 +349,7 @@ export const getProjectSessionById = catchAsync(
         projectSessionTasks,
         eq(projectSessionTasks.project_session_id, id),
       )
+      .orderBy(asc(projectSessionTasks.created_at))
       .leftJoin(
         instances,
         and(

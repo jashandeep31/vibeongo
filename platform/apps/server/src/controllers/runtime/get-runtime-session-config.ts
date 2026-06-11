@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   db,
   eq,
+  asc,
   githubRepos,
   projectGithubRepos,
   projectSessions,
@@ -41,6 +42,7 @@ export const getRuntimeSessionConfig = catchAsync(
       db
         .select()
         .from(projectSessionTasks)
+        .orderBy(asc(projectSessionTasks.created_at))
         .where(eq(projectSessionTasks.project_session_id, id)),
 
       db

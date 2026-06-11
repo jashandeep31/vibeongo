@@ -100,7 +100,7 @@ export const createInstance = catchAsync(
             return {
               project_session_id: projectSession.id,
               task: task.task,
-              model: task.model || "",
+              model: task.model,
               folder_name: githubRepo.full_name.split("/").at(-1),
               agent: task.agent,
             };
