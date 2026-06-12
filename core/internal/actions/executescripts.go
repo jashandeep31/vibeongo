@@ -58,7 +58,7 @@ func ExecuteFinalScript() error {
 	re := regexp.MustCompile(`(?m)^---\s*$`)
 	parts := re.Split(cfg.FinalScript, -1)
 
-	ensureSession := exec.Command("tmux", "new-session", "-d", "-s", "dev")
+	ensureSession := exec.Command("tmux", "new-session", "-d", "-s", "final")
 	ensureSession.Run()
 
 	for i, part := range parts {
@@ -84,7 +84,7 @@ func ExecuteFinalScript() error {
 			os.Remove(tempScriptFile.Name())
 			return err
 		}
-		cmd := exec.Command("tmux", "new-window", "-t", "dev", "-n", fmt.Sprintf("task-%d", i), "bash", tempScriptFile.Name())
+		cmd := exec.Command("tmux", "new-window", "-t", "final:", "-n", fmt.Sprintf("task-%d", i), "bash", tempScriptFile.Name())
 		if err := cmd.Run(); err != nil {
 			os.Remove(tempScriptFile.Name())
 			return err
@@ -97,32 +97,4 @@ func ExecuteFinalScript() error {
 	}
 
 	return nil
-	// tempScriptFile, err := os.CreateTemp("", "temp.sh")
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// defer tempScriptFile.Close()
-	// defer os.Remove(tempScriptFile.Name())
-	//
-	// script := `#!/usr/bin/env bash
-	// source /home/ubuntu/.bashrc
-	// `
-	// script = script + cfg.FinalScript
-	//
-	// path := "/home/ubuntu/code"
-	//
-	// tempScriptFile.Write([]byte(script))
-	// cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
-	// cmd.Dir = path
-	// cmd.Stdin = os.Stdin
-	// cmd.Stdout = os.Stdout
-	// cmd.Stderr = os.Stderr
-	//
-	// err = cmd.Run()
-	// if err != nil {
-	// 	return err
-	// }
-	//
-	// return nil
 }
