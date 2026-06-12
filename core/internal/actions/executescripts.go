@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
@@ -49,7 +50,6 @@ func ExecuteIntialScript() error {
 }
 
 func ExecuteFinalScript() error {
-	fmt.Println("final is working ")
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return err
@@ -58,12 +58,15 @@ func ExecuteFinalScript() error {
 	re := regexp.MustCompile(`(?m)^---\s*$`)
 	parts := re.Split(cfg.FinalScript, -1)
 
-	ensureSession := exec.Command("tmux", "new-session", "-d", "-s", "final")
-	ensureSession.Run()
+	if err := ensureFinalSession(); err != nil {
+		return err
+	}
 
 	for i, part := range parts {
-		fmt.Println("Running the part")
-		fmt.Println(part)
+		if strings.TrimSpace(part) == "" {
+			continue
+		}
+
 		tempScriptFile, err := os.CreateTemp("", "temp-*.sh")
 		if err != nil {
 			return err
@@ -84,16 +87,44 @@ func ExecuteFinalScript() error {
 			os.Remove(tempScriptFile.Name())
 			return err
 		}
-		cmd := exec.Command("tmux", "new-window", "-t", "final:", "-n", fmt.Sprintf("task-%d", i), "bash", tempScriptFile.Name())
-		if err := cmd.Run(); err != nil {
+		createWindow := exec.Command(
+			"tmux", "new-window",
+			"-d",
+			"-P",
+			"-F", "#{pane_id}",
+			"-t", "final:",
+			"-n", fmt.Sprintf("task-%d", i),
+			"bash", "-il",
+		)
+		output, err := createWindow.CombinedOutput()
+		if err != nil {
 			os.Remove(tempScriptFile.Name())
-			return err
+			return fmt.Errorf("create tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
 		}
 
-		// os.Remove(tempScriptFile.Name())
-		// deleting this causes the issue
-		// defer tempScriptFile.Close()
-		// defer os.Remove(tempScriptFile.Name())
+		paneID := strings.TrimSpace(string(output))
+		runScript := fmt.Sprintf(
+			`script=%q; source "$script"; status=$?; rm -f "$script"; printf '\nFinal script exited with status %%d\n' "$status"`,
+			tempScriptFile.Name(),
+		)
+		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "-l", runScript).CombinedOutput(); err != nil {
+			os.Remove(tempScriptFile.Name())
+			return fmt.Errorf("send final script to tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
+		}
+		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "Enter").CombinedOutput(); err != nil {
+			os.Remove(tempScriptFile.Name())
+			return fmt.Errorf("start final script in tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
+		}
+	}
+
+	return nil
+}
+
+func ensureFinalSession() error {
+	if err := exec.Command("tmux", "has-session", "-t", "final").Run(); err != nil {
+		if output, createErr := exec.Command("tmux", "new-session", "-d", "-s", "final").CombinedOutput(); createErr != nil {
+			return fmt.Errorf("create tmux session final: %w: %s", createErr, strings.TrimSpace(string(output)))
+		}
 	}
 
 	return nil
