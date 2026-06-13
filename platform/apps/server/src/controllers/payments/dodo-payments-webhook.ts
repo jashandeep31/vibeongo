@@ -41,7 +41,10 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
       const checkoutSessionId = unwrapped.data.checkout_session_id;
 
       if (!checkoutSessionId) {
-        res.status(200).json({ received: true });
+        res.status(200).json({
+          received: true,
+          from: "payment-succeeded-missing-checkout-session-id",
+        });
         return;
       }
 
@@ -52,7 +55,10 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
         .where(eq(paymentGatewayTransactions.sessionId, checkoutSessionId));
 
       if (!paymentAndUserDbRow || !paymentAndUserDbRow.users) {
-        res.status(200).json({ received: true });
+        res.status(200).json({
+          received: true,
+          from: "payment-succeeded-transaction-or-user-not-found",
+        });
         return;
       }
       const { users: user } = paymentAndUserDbRow;
@@ -65,13 +71,19 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
         settlement_currency == null ||
         settlement_tax == null
       ) {
-        res.status(200).json({ received: true });
+        res.status(200).json({
+          received: true,
+          from: "payment-succeeded-missing-settlement-data",
+        });
         return;
       }
 
       const receivedAmountAfterTax = settlement_amount - settlement_tax;
       if (receivedAmountAfterTax <= 0) {
-        res.status(200).json({ received: true });
+        res.status(200).json({
+          received: true,
+          from: "payment-succeeded-non-positive-settlement-amount",
+        });
         return;
       }
 
@@ -131,7 +143,10 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
         });
       });
     }
-    res.status(200).json({ received: true });
+    res.status(200).json({
+      received: true,
+      from: "webhook-handled",
+    });
   } catch (error) {
     console.error(error);
     res.status(400).json({ message: "Invalid Dodo webhook" });
