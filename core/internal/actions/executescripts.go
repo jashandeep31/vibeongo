@@ -50,6 +50,7 @@ func ExecuteIntialScript() error {
 }
 
 func ExecuteFinalScript() error {
+	fmt.Println("Running the final script")
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return err

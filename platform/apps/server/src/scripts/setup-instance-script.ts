@@ -66,5 +66,6 @@ VIBEONGO_COMMANDS
 
 
 date
+echo "Done with the setup"
 `;
 };
