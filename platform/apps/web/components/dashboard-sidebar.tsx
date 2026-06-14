@@ -28,6 +28,7 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@repo/ui/components/sidebar";
+import axios from "axios";
 import {
   ArrowUpRight,
   Clock3,
@@ -45,6 +46,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { toast } from "sonner";
 
 type SidebarUser = {
@@ -208,7 +210,15 @@ export function DashboardSidebar() {
   const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
   const { data: repos } = useGetGithubRepos();
-  const { data: user } = useUserMetadata();
+  const { data: user, error } = useUserMetadata();
+  const isUnauthenticated =
+    axios.isAxiosError(error) && error.response?.status === 401;
+
+  useEffect(() => {
+    if (isUnauthenticated) {
+      router.replace("/login");
+    }
+  }, [isUnauthenticated, router]);
 
   const reposWithNoDefaultProject = repos?.filter((r) => !r.default_project_id);
   const userName = user
@@ -223,6 +233,9 @@ export function DashboardSidebar() {
     router.push(url);
   };
 
+  if (isUnauthenticated) {
+    return null;
+  }
   return (
     <Sidebar className="bg-background mt-14 h-[calc(100vh-56px)]">
       <SidebarContent className="bg-background">
