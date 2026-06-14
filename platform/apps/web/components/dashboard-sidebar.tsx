@@ -214,11 +214,11 @@ export function DashboardSidebar() {
   const isUnauthenticated =
     axios.isAxiosError(error) && error.response?.status === 401;
 
-  useEffect(() => {
-    if (isUnauthenticated) {
-      router.replace("/login");
-    }
-  }, [isUnauthenticated, router]);
+  // useEffect(() => {
+  //   if (isUnauthenticated) {
+  //     router.replace("/login");
+  //   }
+  // }, [isUnauthenticated, router]);
 
   const reposWithNoDefaultProject = repos?.filter((r) => !r.default_project_id);
   const userName = user

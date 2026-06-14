@@ -90,10 +90,6 @@ export const githubAuthCallbackController = catchAsync(
     const verifiedEmail = emails.find((email) => email.verified)?.email;
 
     const email = primaryVerifiedEmail || verifiedEmail || profile.email;
-    if (email != "jashandeep1659@gmail.com") {
-      throw new AppError("New User are not allowed", 401);
-    }
-
     if (!email) {
       res.status(400).json({ error: "No email found for this github account" });
       return;
