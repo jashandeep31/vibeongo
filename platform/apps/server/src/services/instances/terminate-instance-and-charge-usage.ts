@@ -32,6 +32,15 @@ interface terminateInstanceAndChargeUsageWithInstanceIdAndSessionId {
   sessionId: string;
 }
 
+const formatUptime = (uptimeInMin: number) =>
+  `${uptimeInMin} ${uptimeInMin === 1 ? "minute" : "minutes"}`;
+
+const formatNetworkUsage = (networkUsageInGB: number) =>
+  `${networkUsageInGB.toFixed(6)} GB`;
+
+const formatWalletAmount = (amount: number) =>
+  `$${(amount / 10000).toFixed(4)}`;
+
 /**
  * Terminate the instance and charge the user
  */
@@ -173,8 +182,8 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: `Instance usage ${instanceId} and network $${(networkCharges / 10000).toFixed(6)}`,
-        raw_description: `Charged for instance usage ${instanceId}. Usage cost: ${totalCost}; amount charged: ${amountToUse}`,
+        description: `Instance ID: ${instanceId} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(netWorkOutInGB)}`,
+        raw_description: `Instance ${instanceId} (AWS instance ID: ${instance.aws_instance_id}) ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(netWorkOutInGB)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged.`,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
