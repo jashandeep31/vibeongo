@@ -138,6 +138,7 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
           transaction_type: "deposit",
           wallet_id: updatedUserWallet.id,
           description: "User topup",
+          raw_description: `Payment using dodopayments sessionId: ${checkoutSessionId} currency: ${settlement_currency} settlement_amount: ${settlement_amount} tax: ${settlement_tax}`,
           amount: formatToPrecissionAmount(receivedAmountAfterTax),
           user_wallet_credit_id: userWalletCredit.id,
         });
