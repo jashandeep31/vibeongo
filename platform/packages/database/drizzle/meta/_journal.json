@@ -15,6 +15,13 @@
       "when": 1781407311090,
       "tag": "0001_steady_snowbird",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1781419370479,
+      "tag": "0002_big_crystal",
+      "breakpoints": true
     }
   ]
 }

@@ -6,7 +6,7 @@ import {
   sql,
   users,
   userWallet,
-  userWalletCredits,
+  userCreditGrants,
   userWalletTransactions,
 } from "@repo/db";
 import { dodoPaymentClient } from "./dodo-payments.js";
@@ -128,7 +128,7 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
 
         // precision amount is required
         const [userWalletCredit] = await tx
-          .insert(userWalletCredits)
+          .insert(userCreditGrants)
           .values({
             user_id: user.id,
             balance: formatToPrecissionAmount(receivedAmountAfterTax),
