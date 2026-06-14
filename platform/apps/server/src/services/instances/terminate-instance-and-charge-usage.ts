@@ -7,7 +7,7 @@ import {
   instanceRegions,
   instanceTypes,
   sql,
-  userWalletCredits,
+  userCreditGrants,
   gt,
   asc,
   userWalletTransactions,
@@ -135,16 +135,16 @@ export const terminateInstanceAndChargeUsage = async ({
     // selecting all user credit wallet to charge  from the appropriate wallet and locked for update
     const userCreditWalletRows = await tx
       .select()
-      .from(userWalletCredits)
+      .from(userCreditGrants)
       .where(
         and(
-          eq(userWalletCredits.user_id, userId),
-          eq(userWalletCredits.expired, false),
-          gt(userWalletCredits.expires_at, new Date()),
-          gt(userWalletCredits.balance, 0),
+          eq(userCreditGrants.user_id, userId),
+          eq(userCreditGrants.expired, false),
+          gt(userCreditGrants.expires_at, new Date()),
+          gt(userCreditGrants.balance, 0),
         ),
       )
-      .orderBy(asc(userWalletCredits.expires_at))
+      .orderBy(asc(userCreditGrants.expires_at))
       .for("update");
 
     const availableCreditBalance = userCreditWalletRows.reduce(
@@ -173,11 +173,11 @@ export const terminateInstanceAndChargeUsage = async ({
       const amountToUse = Math.min(pendingAmount, creditWallet.balance);
       pendingAmount -= amountToUse;
       await tx
-        .update(userWalletCredits)
+        .update(userCreditGrants)
         .set({
-          balance: sql`greatest(${userWalletCredits.balance} - ${amountToUse}, 0)`,
+          balance: sql`greatest(${userCreditGrants.balance} - ${amountToUse}, 0)`,
         })
-        .where(eq(userWalletCredits.id, creditWallet.id));
+        .where(eq(userCreditGrants.id, creditWallet.id));
 
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,

@@ -29,7 +29,7 @@ export const userWalletTransactionType = pgEnum(
   ["deposit", "spent", "withdrawal"],
 );
 
-export const userWalletCredits = pgTable("user_wallet_credits", {
+export const userCreditGrants = pgTable("user_credit_grants", {
   id: uuid().primaryKey().defaultRandom(),
   total_balance: integer().default(0).notNull(),
   balance: integer().default(0).notNull(),
@@ -56,7 +56,7 @@ export const userWalletTransactions = pgTable("user_wallet_transactions", {
   raw_description: text().notNull(),
 
   amount: integer().notNull(),
-  user_wallet_credit_id: uuid().references(() => userWalletCredits.id, {
+  user_wallet_credit_id: uuid().references(() => userCreditGrants.id, {
     onDelete: "cascade",
   }),
   created_at: timestamp().defaultNow().notNull(),
