@@ -47,3 +47,16 @@ export const usersApiKeys = pgTable("users_api_keys", {
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
+
+export const userLoginMethodEnum = pgEnum("user_login_method_enum", ["github"]);
+export const userLoginLogs = pgTable("user_login_logs", {
+  id: uuid().unique().defaultRandom(),
+  user_id: uuid().references(() => users.id),
+
+  ip_address: varchar(),
+  user_agent: varchar(),
+  login_method: userLoginMethodEnum().default("github"),
+
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow(),
+});

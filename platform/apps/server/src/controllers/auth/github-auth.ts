@@ -101,19 +101,20 @@ export const githubAuthCallbackController = catchAsync(
         .json({ error: "No username found for this github account" });
       return;
     }
+
+    const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
+    const user_agent = req.headers["user-agent"];
     const { user, account } = await createOrGetUser({
       email,
       name: profile.name ?? undefined,
       token: accessToken,
       username: profile.login,
+      ip,
+      user_agent,
     });
 
     if (account.status !== "active") {
       throw new Error("Account is not active");
-    }
-
-    if (!user.id) {
-      throw new Error("Something went wrong on our side");
     }
 
     if (user.email !== "jashandeep1659@gmail.com") {
