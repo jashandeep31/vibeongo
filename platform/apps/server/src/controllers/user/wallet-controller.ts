@@ -6,6 +6,7 @@ import {
   db,
   desc,
   eq,
+  userCreditGrants,
   userWallet,
   userWalletTransactions,
 } from "@repo/db";
@@ -71,3 +72,25 @@ export const getUserWallet = catchAsync(async (req: Request, res: Response) => {
     hasNext: rows.length > filters.limit,
   });
 });
+
+export const getUserCreditGrants = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authorization is required", 401);
+
+    const { page, limit } = commonFilterSchema.parse(req.query);
+
+    const query = db
+      .select()
+      .from(userCreditGrants)
+      .where(eq(userCreditGrants.user_id, user.id))
+      .orderBy(desc(userCreditGrants.created_at))
+      .$dynamic();
+
+    const grants = await customQuery(query, page, limit);
+
+    res.status(200).json({
+      data: { grants, page, hasNext: grants.length > limit },
+    });
+  },
+);

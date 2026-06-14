@@ -12,11 +12,12 @@ const pool = new Pool({
 });
 
 /**
- * Add pagination to query
- * @params q raw query of the database
- * @params page page number
- * @params limit items per page
+ * Custom query for pagination and limit
+ * @param q : query of drizzle
+ * @param page : page number
+ * @param limit : limit count
  */
+
 export function customQuery<T extends PgSelect>(
   q: T,
   page: number,

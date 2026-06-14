@@ -7,7 +7,10 @@ import {
   updateSshKey,
 } from "../controllers/user/ssh-keys-controller.js";
 import { getUserMetadata } from "../controllers/user/metadata.js";
-import { getUserWallet } from "../controllers/user/wallet-controller.js";
+import {
+  getUserCreditGrants,
+  getUserWallet,
+} from "../controllers/user/wallet-controller.js";
 
 const routes: Router = Router();
 
@@ -19,6 +22,9 @@ routes
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 
 routes.route("/wallet").get(checkAuthorization(["all"]), getUserWallet);
+routes
+  .route("/credit-grants")
+  .get(checkAuthorization(["all"]), getUserCreditGrants);
 
 routes
   .route("/ssh-keys/:id")
