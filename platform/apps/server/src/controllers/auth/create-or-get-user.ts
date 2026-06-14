@@ -1,10 +1,20 @@
-import { accounts, and, db, eq, users, userWallet } from "@repo/db";
+import {
+  accounts,
+  and,
+  db,
+  eq,
+  userLoginLogs,
+  users,
+  userWallet,
+} from "@repo/db";
 
 interface CreateUserInput {
   email: string;
   name?: string | undefined;
   token: string;
   username: string;
+  ip: string | string[] | undefined;
+  user_agent: string | string[] | undefined;
 }
 
 type User = typeof users.$inferSelect;
@@ -146,17 +156,30 @@ export const createOrGetUser = async (
 ): Promise<UserWithAccount> => {
   const existingUser = await getUserByEmail(input.email);
 
-  if (!existingUser) {
-    return createUserWithGithubAccount(input);
+  const ip = input.ip ? input.ip.toString() : "unknown";
+  const user_agent = input.user_agent ? input.user_agent.toString() : "unknown";
+
+  let userWithAccount: UserWithAccount;
+
+  if (existingUser) {
+    const [account] = await Promise.all([
+      upsertGithubAccount(existingUser.id, input.token),
+      ensureUserWallet(existingUser.id),
+    ]);
+
+    userWithAccount = {
+      user: existingUser,
+      account,
+    };
+  } else {
+    userWithAccount = await createUserWithGithubAccount(input);
   }
 
-  const [account] = await Promise.all([
-    upsertGithubAccount(existingUser.id, input.token),
-    ensureUserWallet(existingUser.id),
-  ]);
+  await db.insert(userLoginLogs).values({
+    user_id: userWithAccount.user.id,
+    ip_address: ip,
+    user_agent,
+  });
 
-  return {
-    user: existingUser,
-    account,
-  };
+  return userWithAccount;
 };
