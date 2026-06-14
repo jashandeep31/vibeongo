@@ -52,7 +52,8 @@ export const userWalletTransactions = pgTable("user_wallet_transactions", {
     .references(() => userWallet.id, { onDelete: "cascade" })
     .notNull(),
 
-  description: text(),
+  description: text().notNull(),
+  raw_description: text().notNull(),
 
   amount: integer().notNull(),
   user_wallet_credit_id: uuid().references(() => userWalletCredits.id, {

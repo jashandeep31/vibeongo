@@ -133,6 +133,7 @@ export const terminateInstanceAndChargeUsage = async ({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
         description: `Instance usage ${instanceId}`,
+        raw_description: `Charged for instance usage ${instanceId} for uptime: ${uptimeInMin}  in min. ${amountToUse} is charged`,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
