@@ -32,7 +32,7 @@ export const instances = pgTable("instances", {
   }),
 
   terminated_at: timestamp(),
-  started_at: timestamp(),
+  started_at: timestamp().notNull().defaultNow(),
   state: instanceState().notNull(),
   session_cost: integer().notNull().default(0),
 
