@@ -42,10 +42,18 @@ export const getUserWallet = catchAsync(async (req: Request, res: Response) => {
     });
     return;
   }
-
   const rows = await customQuery(
     db
-      .select()
+      .select({
+        id: userWalletTransactions.id,
+        transaction_type: userWalletTransactions.transaction_type,
+        wallet_id: userWalletTransactions.wallet_id,
+        description: userWalletTransactions.description,
+        amount: userWalletTransactions.amount,
+        user_wallet_credit_id: userWalletTransactions.user_wallet_credit_id,
+        created_at: userWalletTransactions.created_at,
+        updated_at: userWalletTransactions.updated_at,
+      })
       .from(userWalletTransactions)
       .where(eq(userWalletTransactions.wallet_id, wallet.id))
       .orderBy(desc(userWalletTransactions.created_at))

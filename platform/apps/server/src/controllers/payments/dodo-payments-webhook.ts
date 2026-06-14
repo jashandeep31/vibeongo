@@ -16,6 +16,9 @@ function formatToPrecissionAmount(amount: number): number {
   return amount * 100;
 }
 
+const formatSettlementAmount = (amount: number, currency: string) =>
+  `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`;
+
 const firstHeaderValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
@@ -90,6 +93,9 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
       const expiresAt = new Date();
       expiresAt.setFullYear(expiresAt.getFullYear() + 1);
 
+      const description = `Wallet top-up | Amount credited: ${formatSettlementAmount(receivedAmountAfterTax, settlement_currency)}`;
+      const rawDescription = `Dodo Payments checkout session ${checkoutSessionId} completed successfully. The gross settlement amount was ${formatSettlementAmount(settlement_amount, settlement_currency)}, tax was ${formatSettlementAmount(settlement_tax, settlement_currency)}, and the net amount credited was ${formatSettlementAmount(receivedAmountAfterTax, settlement_currency)}. The wallet credit expires on ${expiresAt.toISOString()}.`;
+
       await db.transaction(async (tx) => {
         // precision amount is not needed here
         const [updatedPaymentGatewayTransaction] = await tx
@@ -128,7 +134,7 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
             balance: formatToPrecissionAmount(receivedAmountAfterTax),
             total_balance: formatToPrecissionAmount(receivedAmountAfterTax),
             wallet_id: updatedUserWallet.id,
-            description: "User topup",
+            description,
             expires_at: expiresAt,
           })
           .returning();
@@ -137,8 +143,8 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
         await tx.insert(userWalletTransactions).values({
           transaction_type: "deposit",
           wallet_id: updatedUserWallet.id,
-          description: "User topup",
-          raw_description: `Payment using dodopayments sessionId: ${checkoutSessionId} currency: ${settlement_currency} settlement_amount: ${settlement_amount} tax: ${settlement_tax}`,
+          description,
+          raw_description: rawDescription,
           amount: formatToPrecissionAmount(receivedAmountAfterTax),
           user_wallet_credit_id: userWalletCredit.id,
         });
