@@ -36,6 +36,8 @@ const envSchema = z.object({
   DODO_PAYMENT_BEARER_TOKEN: z.string(),
   DODO_PAYMENTS_WEBHOOK_SECRET: z.string(),
   PROFIT_PRECENTAGE: z.coerce.number().min(10).max(100),
+  AWS_SES_ACCESS_KEY_ID: z.string(),
+  AWS_SES_SECRET_KEY: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);
 
