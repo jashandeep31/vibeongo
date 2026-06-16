@@ -5,6 +5,7 @@ import {
   updateProjectFile,
   deleteProject,
   deleteAllowedIpFromProject,
+  deleteMultipleAllowedIpsFromProject,
   getProjectById,
   getProjectConfigForEdit,
   getProjectDomainsById,
@@ -142,6 +143,19 @@ export const useDeleteAllowedIpFromProject = () => {
 
   return useMutation({
     mutationFn: deleteAllowedIpFromProject,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "domains"],
+      });
+    },
+  });
+};
+
+export const useDeleteMultipleAllowedIpsFromProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteMultipleAllowedIpsFromProject,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "domains"],
