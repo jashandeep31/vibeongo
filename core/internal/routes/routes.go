@@ -14,5 +14,5 @@ func Register(e *echo.Echo) {
 	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)
 
 	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
-	e.POST("/opencode/web", handlers.OpenCodeWeb)
+	e.POST("/opencode/web", handlers.OpenCodeWebActions)
 }

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 	"github.com/labstack/echo/v5"
 )
 
@@ -26,6 +27,46 @@ type OpenCodeWebBody struct {
 type OpenCodeWebResponse struct {
 	Message string `json:"message"`
 	Running bool   `json:"running"`
+}
+
+func OpenCodeWebActions(c *echo.Context) error {
+	var body OpenCodeWebBody
+
+	// binding the body from http request
+	if err := c.Bind(&body); err != nil {
+		return c.JSON(http.StatusBadRequest, OpenCodeWebResponse{
+			Message: "bad request",
+			Running: openCodeWebServer.running,
+		})
+	}
+
+	switch body.Action {
+	case "start":
+		fmt.Println("starting the session")
+		// kill session before starting ::: No error as there could be no session tooo
+		utils.KilltmuxSession("opencodeserver")
+
+		// creating the tmux session
+		err := utils.StartTmuxSession("opencodeserver", "/home/ubuntu/code")
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
+				Message: fmt.Sprintf("failed to start tmux session: %v", err),
+				Running: openCodeWebServer.running,
+			})
+		}
+
+		err = utils.RunCommandInTmuxSession("opencodeserver", 0, "opencode web serve --port 4096 --hostname 0.0.0.0")
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
+				Message: fmt.Sprintf("failed to run command in tmux session: %v", err),
+				Running: openCodeWebServer.running,
+			})
+		}
+
+	case "stop":
+		utils.KilltmuxSession("opencodeserver")
+	}
+	return nil
 }
 
 func OpenCodeWebStatus(c *echo.Context) error {
