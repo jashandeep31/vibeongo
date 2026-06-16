@@ -1,76 +1,31 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Check, Copy } from "lucide-react";
+import { ArrowUpRight, Check, Copy, Loader2, RefreshCw } from "lucide-react";
 import { instances } from "@repo/db";
 import { Button, buttonVariants } from "@repo/ui/components/button";
 import Link from "next/link";
 
 type ProjectInstance = typeof instances.$inferSelect;
 
-const formatDate = (value: unknown) => {
-  if (!value) return "N/A";
-
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleString();
-};
-
 const formatValue = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "N/A";
   return String(value);
 };
 
-const formatDuration = (
-  startedAt: unknown,
-  terminatedAt: unknown,
-  now: Date,
-) => {
-  if (!startedAt) return "N/A";
-
-  const startDate = new Date(String(startedAt));
-  if (Number.isNaN(startDate.getTime())) return "N/A";
-
-  const endDate = terminatedAt ? new Date(String(terminatedAt)) : now;
-  if (Number.isNaN(endDate.getTime())) return "N/A";
-
-  const durationMs = endDate.getTime() - startDate.getTime();
-  if (durationMs < 0) return "N/A";
-
-  const totalSeconds = Math.floor(durationMs / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) {
-    return `${days}d ${hours}h ${minutes}m`;
-  }
-
-  if (hours > 0) {
-    return `${hours}h ${minutes}m`;
-  }
-
-  if (minutes > 0) {
-    return `${minutes}m ${seconds}s`;
-  }
-
-  return `${seconds}s`;
-};
-
 interface ProjectInstanceInfoCardProps {
   instance: ProjectInstance;
+  isRestartingFinalScript?: boolean;
+  onRestartFinalScript?: () => void;
 }
 
 export function ProjectInstanceInfoCard({
   instance,
+  isRestartingFinalScript = false,
+  onRestartFinalScript,
 }: ProjectInstanceInfoCardProps) {
   const [copied, setCopied] = useState(false);
-  const [now, setNow] = useState(() => new Date());
   const copyResetTimerRef = useRef<number | null>(null);
-  const isTerminated =
-    instance.state === "terminated" || !!instance.terminated_at;
 
   useEffect(() => {
     return () => {
@@ -79,20 +34,6 @@ export function ProjectInstanceInfoCard({
       }
     };
   }, []);
-
-  useEffect(() => {
-    if (isTerminated) {
-      return;
-    }
-
-    const timerId = window.setInterval(() => {
-      setNow(new Date());
-    }, 1000);
-
-    return () => {
-      window.clearInterval(timerId);
-    };
-  }, [isTerminated]);
 
   const handleCopyPublicIp = async () => {
     const publicIp = instance.public_ip;
@@ -150,10 +91,26 @@ export function ProjectInstanceInfoCard({
       </div>
 
       <div>
-        <p className="text-muted-foreground">Spun Up For</p>
-        <p className="font-medium">
-          {formatDuration(instance.started_at, instance.terminated_at, now)}
-        </p>
+        <p className="text-muted-foreground">Dev Script</p>
+        <Button
+          className="mt-1 gap-1.5"
+          size="sm"
+          type="button"
+          variant="outline"
+          disabled={!onRestartFinalScript || isRestartingFinalScript}
+          aria-label="Restart dev script"
+          title="Restart dev script"
+          onClick={() => {
+            onRestartFinalScript?.();
+          }}
+        >
+          {isRestartingFinalScript ? (
+            <Loader2 className="h-4 w-4 animate-spin" />
+          ) : (
+            <RefreshCw className="h-4 w-4" />
+          )}
+          Restart
+        </Button>
       </div>
     </section>
   );
