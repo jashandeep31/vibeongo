@@ -13,8 +13,7 @@ import (
 
 // ReExecuteFinalScript  re execute the final after kill the first tmux session
 func ReExecuteFinalScript() error {
-	cmd := exec.Command("tmux", "kill-session", "-t", "final")
-	err := cmd.Run()
+	err := utils.KilltmuxSession("final")
 	if err != nil {
 		return err
 	}
@@ -74,7 +73,9 @@ func ExecuteFinalScript() error {
 	re := regexp.MustCompile(`(?m)^---\s*$`)
 	parts := re.Split(cfg.FinalScript, -1)
 
-	if err := ensureFinalSession(); err != nil {
+	utils.KilltmuxSession("final")
+	err = utils.StartTmuxSession("final", "/home/ubuntu/code")
+	if err != nil {
 		return err
 	}
 
@@ -130,16 +131,6 @@ func ExecuteFinalScript() error {
 		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "Enter").CombinedOutput(); err != nil {
 			os.Remove(tempScriptFile.Name())
 			return fmt.Errorf("start final script in tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
-		}
-	}
-
-	return nil
-}
-
-func ensureFinalSession() error {
-	if err := exec.Command("tmux", "has-session", "-t", "final").Run(); err != nil {
-		if output, createErr := exec.Command("tmux", "new-session", "-d", "-s", "final").CombinedOutput(); createErr != nil {
-			return fmt.Errorf("create tmux session final: %w: %s", createErr, strings.TrimSpace(string(output)))
 		}
 	}
 
