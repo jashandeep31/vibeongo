@@ -11,6 +11,7 @@ func Register(e *echo.Echo) {
 	e.GET("/ws", ws.WebSocket)
 	e.GET("/ufw", handlers.GetAllowedPorts)
 	e.POST("/reboot", handlers.RebootServer)
+	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)
 
 	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
 	e.POST("/opencode/web", handlers.OpenCodeWeb)
