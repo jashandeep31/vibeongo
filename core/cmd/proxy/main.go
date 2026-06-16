@@ -8,6 +8,8 @@ import (
 	"github.com/joho/godotenv"
 )
 
+const Port = "5000"
+
 func main() {
 	if err := godotenv.Load(".env"); err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
@@ -15,9 +17,9 @@ func main() {
 
 	proxyStore := store.NewProxyManager()
 	srv := server.NewProxyServer(proxyStore)
+	log.Println("Starting proxy server on :", Port)
 
-	log.Println("Starting proxy server on :5000")
-	if err := srv.Start(":5000"); err != nil {
+	if err := srv.Start(":" + Port); err != nil {
 		log.Fatalf("Server failed to start: %v", err)
 	}
 }
