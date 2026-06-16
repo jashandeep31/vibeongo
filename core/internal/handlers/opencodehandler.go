@@ -44,10 +44,10 @@ func OpenCodeWebActions(c *echo.Context) error {
 	case "start":
 		fmt.Println("starting the session")
 		// kill session before starting ::: No error as there could be no session tooo
-		utils.KilltmuxSession("opencodeserver")
+		utils.KilltmuxSession("ops")
 
 		// creating the tmux session
-		err := utils.StartTmuxSession("opencodeserver", "/home/ubuntu/code")
+		err := utils.StartTmuxSession("ops", "/home/ubuntu/code")
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
 				Message: fmt.Sprintf("failed to start tmux session: %v", err),
@@ -55,7 +55,7 @@ func OpenCodeWebActions(c *echo.Context) error {
 			})
 		}
 
-		err = utils.RunCommandInTmuxSession("opencodeserver", 0, "opencode web serve --port 4096 --hostname 0.0.0.0")
+		err = utils.RunCommandInTmuxSession("ops", "opencode web --port 4096 --hostname 0.0.0.0")
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
 				Message: fmt.Sprintf("failed to run command in tmux session: %v", err),
@@ -63,10 +63,26 @@ func OpenCodeWebActions(c *echo.Context) error {
 			})
 		}
 
+		openCodeWebServer.running = true
+		return c.JSON(http.StatusOK, OpenCodeWebResponse{
+			Message: fmt.Sprintf("Opencode web server is starting at port %d", openCodeWebServer.port),
+			Running: true,
+		})
+
 	case "stop":
-		utils.KilltmuxSession("opencodeserver")
+		utils.KilltmuxSession("ops")
+		openCodeWebServer.running = false
+		return c.JSON(http.StatusOK, OpenCodeWebResponse{
+			Message: "Opencode web server stopped successfully.",
+			Running: false,
+		})
+
+	default:
+		return c.JSON(http.StatusBadRequest, OpenCodeWebResponse{
+			Message: fmt.Sprintf("only start and stop actions are valid and you sent '%s'", body.Action),
+			Running: openCodeWebServer.running,
+		})
 	}
-	return nil
 }
 
 func OpenCodeWebStatus(c *echo.Context) error {
