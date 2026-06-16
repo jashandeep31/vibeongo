@@ -11,6 +11,21 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
+// ReExecuteFinalScript  re execute the final after kill the first tmux session
+func ReExecuteFinalScript() error {
+	cmd := exec.Command("tmux", "kill-session", "-t", "final")
+	err := cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	err = ExecuteFinalScript()
+	if err != nil {
+		return nil
+	}
+	return nil
+}
+
 func ExecuteIntialScript() error {
 	cfg, err := config.LoadAndValidate("config.json")
 	ProvisionOpenCode(cfg.OpenCode)
