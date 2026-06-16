@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useMemo, useState } from "react";
 import { Globe, ExternalLink, X, Lock, Plus } from "lucide-react";
 import {
   Card,
@@ -44,8 +44,32 @@ export function ProjectDomainsCard({
   const { data, isLoading } = useGetProjectDomainsById(projectId);
   const deleteAllowedIpMutation = useDeleteAllowedIpFromProject();
   const updateDomainPortMutation = useUpdateProjectDomainPort();
-  const proxyDomains = data?.proxy_domains ?? [];
-  const allowedIps = data?.allowed_ips ?? [];
+  const proxyDomains = useMemo(
+    () =>
+      [...(data?.proxy_domains ?? [])].sort((a, b) => {
+        const editabilityOrder = Number(a.is_editable) - Number(b.is_editable);
+        if (editabilityOrder !== 0) return editabilityOrder;
+
+        const portOrder = a.target_port - b.target_port;
+        if (portOrder !== 0) return portOrder;
+
+        const domainOrder = a.domain.localeCompare(b.domain);
+        if (domainOrder !== 0) return domainOrder;
+
+        return a.id.localeCompare(b.id);
+      }),
+    [data?.proxy_domains],
+  );
+  const allowedIps = useMemo(
+    () =>
+      [...(data?.allowed_ips ?? [])].sort((a, b) => {
+        const ipOrder = a.ip.localeCompare(b.ip, undefined, { numeric: true });
+        if (ipOrder !== 0) return ipOrder;
+
+        return a.id.localeCompare(b.id);
+      }),
+    [data?.allowed_ips],
+  );
 
   const handleAddIp = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -172,9 +196,7 @@ export function ProjectDomainsCard({
             <div className="space-y-6">
               <div className="space-y-3">
                 {proxyDomains.length > 0 ? (
-                  proxyDomains
-                    .sort((t) => (t.is_editable ? 1 : -1))
-                    .map((domainRow) => (
+                  proxyDomains.map((domainRow) => (
                       <div
                         key={domainRow.id}
                         className="flex flex-col gap-3 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
