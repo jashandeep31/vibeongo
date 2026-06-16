@@ -30,6 +30,43 @@ import axios from "axios";
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { InstancePageState } from "./instance-page-state";
 
+const formatDuration = (
+  startedAt: unknown,
+  terminatedAt: unknown,
+  now: Date,
+) => {
+  if (!startedAt) return "N/A";
+
+  const startDate = new Date(String(startedAt));
+  if (Number.isNaN(startDate.getTime())) return "N/A";
+
+  const endDate = terminatedAt ? new Date(String(terminatedAt)) : now;
+  if (Number.isNaN(endDate.getTime())) return "N/A";
+
+  const durationMs = endDate.getTime() - startDate.getTime();
+  if (durationMs < 0) return "N/A";
+
+  const totalSeconds = Math.floor(durationMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
+};
+
 export default function ClientView({ instanceId }: { instanceId: string }) {
   const {
     data: instance,
@@ -51,8 +88,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const [terminalConnectionStatus, setTerminalConnectionStatus] = useState<
     "checking" | "connected" | "disconnected"
   >("checking");
+  const [now, setNow] = useState(() => new Date());
   const [sshCopied, setSshCopied] = useState(false);
   const [serverLogs, setServerLogs] = useState("");
+  const [isRestartingFinalScript, setIsRestartingFinalScript] = useState(false);
   const serverLogsRef = useRef<HTMLDivElement | null>(null);
   const mobileServerLogsRef = useRef<HTMLDivElement | null>(null);
   const [isCurrentIpDialogOpen, setIsCurrentIpDialogOpen] = useState(false);
@@ -95,6 +134,11 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const sshCommand = instance?.public_ip
     ? `ssh ubuntu@${String(Instance_IP)}`
     : null;
+  const spunUpFor = formatDuration(
+    instance?.started_at,
+    instance?.terminated_at,
+    now,
+  );
 
   const handleTerminate = async () => {
     if (!instance || isTerminated) {
@@ -208,6 +252,24 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     }
   };
 
+  const handleRestartFinalScript = async () => {
+    if (!domainFor8080 || isTerminated || isRestartingFinalScript) {
+      return;
+    }
+
+    const toastId = toast.loading("Restarting dev script...");
+    setIsRestartingFinalScript(true);
+
+    try {
+      await axios.post(`https://${domainFor8080}/restart-final-script`, {});
+      toast.success("Dev script restarted", { id: toastId });
+    } catch {
+      toast.error("Failed to restart dev script", { id: toastId });
+    } finally {
+      setIsRestartingFinalScript(false);
+    }
+  };
+
   useEffect(() => {
     if (!terminalHealthCheckUrl) {
       setTerminalConnectionStatus("disconnected");
@@ -255,6 +317,20 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       window.clearInterval(intervalId);
     };
   }, [terminalHealthCheckUrl]);
+
+  useEffect(() => {
+    if (!instance || isTerminated) {
+      return;
+    }
+
+    const timerId = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
+
+    return () => {
+      window.clearInterval(timerId);
+    };
+  }, [instance, isTerminated]);
 
   useEffect(() => {
     const handleServerLogs = (event: Event) => {
@@ -465,6 +541,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               }
             />
           </h1>
+          <p className="text-muted-foreground mt-1 text-sm">
+            Spun up for <span className="font-medium">{spunUpFor}</span>
+          </p>
         </div>
 
         <Controls />
@@ -510,7 +589,11 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
             </div>
             <div className="min-w-0 space-y-3">
-              <ProjectInstanceInfoCard instance={instance} />
+              <ProjectInstanceInfoCard
+                instance={instance}
+                isRestartingFinalScript={isRestartingFinalScript}
+                onRestartFinalScript={handleRestartFinalScript}
+              />
               <ProjectInstanceStats />
               <OpencodeWebCard
                 domainFor8080={domainFor8080 || null}
