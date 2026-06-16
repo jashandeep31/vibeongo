@@ -402,7 +402,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     );
   }
 
-  const Controls = () => {
+  const renderControls = () => {
     return (
       <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
         <Button
@@ -546,7 +546,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           </p>
         </div>
 
-        <Controls />
+        {renderControls()}
       </div>
 
       {!isLoadingDomains && !isTargetInstance ? (
