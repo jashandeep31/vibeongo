@@ -12,6 +12,7 @@ import {
 import {
   addAllowedIPToProject,
   deleteAllowedIPFromProject,
+  deleteMultipleIpFromProject,
   updateProjectRoutingTargetInstance,
   updateProxyDomainPort,
 } from "../controllers/project/project-domain.js";
@@ -52,6 +53,10 @@ routes
 routes
   .route("/:id/allowed-ips/:ipId")
   .delete(checkAuthorization(["all"]), deleteAllowedIPFromProject);
+
+routes
+  .route("/:id/allowed-ips")
+  .delete(checkAuthorization(["all"]), deleteMultipleIpFromProject);
 
 routes
   .route("/:id/project-files")

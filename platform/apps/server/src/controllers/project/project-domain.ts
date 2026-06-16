@@ -2,6 +2,7 @@ import {
   and,
   db,
   eq,
+  inArray,
   instances,
   projectDomainRouting,
   proxyDomains,
@@ -61,6 +62,46 @@ export const updateProxyDomainPort = catchAsync(
 
     res.status(200).json({
       message: "port updated successfully",
+    });
+  },
+);
+
+export const deleteMultipleIpFromProject = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+    const { id, ids } = z
+      .object({
+        id: z.uuid(),
+        ids: z.array(z.uuid()).min(1),
+      })
+      .parse({ ...req.params, ...req.body });
+
+    const [projectRouting] = await db
+      .select()
+      .from(projectDomainRouting)
+      .where(
+        and(
+          eq(projectDomainRouting.user_id, user.id),
+          eq(projectDomainRouting.project_id, id),
+        ),
+      );
+
+    if (!projectRouting) throw new AppError("routing not found", 404);
+
+    await db
+      .delete(routingAllowedIps)
+      .where(
+        and(
+          eq(routingAllowedIps.routing_id, projectRouting.id),
+          inArray(routingAllowedIps.id, ids),
+        ),
+      );
+
+    await invalidateProjectProxiesByRoutingId(projectRouting.id);
+
+    res.status(200).json({
+      message: "ips removed from routing successfully",
     });
   },
 );

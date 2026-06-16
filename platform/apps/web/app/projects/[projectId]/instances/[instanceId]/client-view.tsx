@@ -18,6 +18,7 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import {
   useAddAllowedIpToProject,
+  useDeleteMultipleAllowedIpsFromProject,
   useGetProjectDomainsById,
   useUpdateProjectRoutingTargetInstance,
 } from "@/hooks/use-project";
@@ -92,6 +93,8 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const { data: currentUserIp, isLoading: isCurrentIpLoading } =
     useCurrentUserIp();
   const addAllowedIpMutation = useAddAllowedIpToProject();
+  const deleteMultipleAllowedIpsMutation =
+    useDeleteMultipleAllowedIpsFromProject();
   const {
     mutateAsync: assignDomainsToInstance,
     isPending: isAssigningDomains,
@@ -245,6 +248,31 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         { id: toastId },
       );
       throw new Error("Failed to add allowed IP");
+    }
+  };
+
+  const handleDeleteOtherAllowedIps = async (ids: string[]) => {
+    if (!instance?.project_id) {
+      toast.error("Project is not available");
+      return;
+    }
+
+    if (ids.length === 0) {
+      toast.info("No other allowed IPs to remove");
+      return;
+    }
+
+    const toastId = toast.loading("Removing other allowed IPs...");
+
+    try {
+      await deleteMultipleAllowedIpsMutation.mutateAsync({
+        id: instance.project_id,
+        ids,
+      });
+      toast.success("Other allowed IPs removed", { id: toastId });
+    } catch {
+      toast.error("Failed to remove other allowed IPs", { id: toastId });
+      throw new Error("Failed to remove other allowed IPs");
     }
   };
 
@@ -646,7 +674,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         isCurrentIpLoading={isCurrentIpLoading}
         isCurrentIpAllowed={isCurrentIpAllowed}
         isAddingAllowedIp={addAllowedIpMutation.isPending}
+        isDeletingOtherAllowedIps={deleteMultipleAllowedIpsMutation.isPending}
         onAddAllowedIp={handleAddAllowedIp}
+        onDeleteOtherAllowedIps={handleDeleteOtherAllowedIps}
       />
     </div>
   );

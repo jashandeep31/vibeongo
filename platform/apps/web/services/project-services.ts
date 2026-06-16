@@ -160,6 +160,11 @@ type DeleteAllowedIpInput = {
   ipId: string;
 };
 
+type DeleteMultipleAllowedIpsInput = {
+  id: string;
+  ids: string[];
+};
+
 type UpdateProjectDomainPortInput = {
   id: string;
   domainId: string;
@@ -202,6 +207,21 @@ export const deleteAllowedIpFromProject = async ({
   const res = await axios.delete(
     BACKEND_URL + `/api/v1/projects/${id}/allowed-ips/${ipId}`,
     {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
+export const deleteMultipleAllowedIpsFromProject = async ({
+  id,
+  ids,
+}: DeleteMultipleAllowedIpsInput): Promise<{ message: string }> => {
+  const res = await axios.delete(
+    BACKEND_URL + `/api/v1/projects/${id}/allowed-ips`,
+    {
+      data: { ids },
       withCredentials: true,
     },
   );

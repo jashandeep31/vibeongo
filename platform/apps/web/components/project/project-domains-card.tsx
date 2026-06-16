@@ -26,7 +26,9 @@ interface ProjectDomainsCardProps {
   isCurrentIpLoading?: boolean;
   isCurrentIpAllowed?: boolean;
   isAddingAllowedIp?: boolean;
+  isDeletingOtherAllowedIps?: boolean;
   onAddAllowedIp?: (ip: string) => Promise<void>;
+  onDeleteOtherAllowedIps?: (ids: string[]) => Promise<void>;
 }
 
 export function ProjectDomainsCard({
@@ -35,7 +37,9 @@ export function ProjectDomainsCard({
   isCurrentIpLoading = false,
   isCurrentIpAllowed = false,
   isAddingAllowedIp = false,
+  isDeletingOtherAllowedIps = false,
   onAddAllowedIp,
+  onDeleteOtherAllowedIps,
 }: ProjectDomainsCardProps) {
   const [newIp, setNewIp] = useState("");
   const [deletingIpId, setDeletingIpId] = useState<string | null>(null);
@@ -69,6 +73,13 @@ export function ProjectDomainsCard({
         return a.id.localeCompare(b.id);
       }),
     [data?.allowed_ips],
+  );
+  const otherAllowedIps = useMemo(
+    () =>
+      currentIp
+        ? allowedIps.filter((allowedIp) => allowedIp.ip.trim() !== currentIp)
+        : [],
+    [allowedIps, currentIp],
   );
 
   const handleAddIp = async (event: FormEvent<HTMLFormElement>) => {
@@ -127,6 +138,29 @@ export function ProjectDomainsCard({
       await onAddAllowedIp(currentIp);
     } catch {
       // Toast handling lives with the owner of the add-IP mutation.
+    }
+  };
+
+  const handleDeleteOtherIps = async () => {
+    if (!currentIp) {
+      toast.error("Current IP address is not available");
+      return;
+    }
+
+    if (otherAllowedIps.length === 0) {
+      toast.info("No other allowed IPs to remove");
+      return;
+    }
+
+    if (!onDeleteOtherAllowedIps) {
+      toast.error("Removing allowed IPs is not available here");
+      return;
+    }
+
+    try {
+      await onDeleteOtherAllowedIps(otherAllowedIps.map((ip) => ip.id));
+    } catch {
+      // Toast handling lives with the owner of the delete-IP mutation.
     }
   };
 
@@ -321,32 +355,60 @@ export function ProjectDomainsCard({
                   ) : null}
 
                   {allowedIps.length > 0 ? (
-                    allowedIps.map((allowedIp) => (
-                      <div
-                        key={allowedIp.id}
-                        className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded border px-2 py-1 font-mono text-xs"
-                      >
-                        <span>{allowedIp.ip}</span>
+                    <>
+                      {allowedIps.map((allowedIp) => (
+                        <div
+                          key={allowedIp.id}
+                          className="bg-muted text-muted-foreground inline-flex items-center gap-1 rounded border px-2 py-1 font-mono text-xs"
+                        >
+                          <span>{allowedIp.ip}</span>
+                          <ConfirmationDialog
+                            title="Remove allowed IP"
+                            description={`Are you sure you want to remove ${allowedIp.ip} from the allowlist?`}
+                            confirmText="Remove"
+                            isDestructive
+                            onConfirm={() => {
+                              void handleDeleteIp(allowedIp.id);
+                            }}
+                          >
+                            <button
+                              type="button"
+                              className="hover:bg-background/80 rounded p-0.5"
+                              aria-label={`Remove ${allowedIp.ip}`}
+                              disabled={deletingIpId === allowedIp.id}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </ConfirmationDialog>
+                        </div>
+                      ))}
+
+                      {otherAllowedIps.length > 0 ? (
                         <ConfirmationDialog
-                          title="Remove allowed IP"
-                          description={`Are you sure you want to remove ${allowedIp.ip} from the allowlist?`}
-                          confirmText="Remove"
+                          title="Remove other allowed IPs"
+                          description={`Remove ${otherAllowedIps.length} allowed IP${otherAllowedIps.length === 1 ? "" : "s"} and keep ${currentIp}?`}
+                          confirmText="Remove others"
                           isDestructive
                           onConfirm={() => {
-                            void handleDeleteIp(allowedIp.id);
+                            void handleDeleteOtherIps();
                           }}
                         >
-                          <button
+                          <Button
                             type="button"
-                            className="hover:bg-background/80 rounded p-0.5"
-                            aria-label={`Remove ${allowedIp.ip}`}
-                            disabled={deletingIpId === allowedIp.id}
+                            size="sm"
+                            variant="outline"
+                            disabled={
+                              isDeletingOtherAllowedIps ||
+                              !onDeleteOtherAllowedIps
+                            }
                           >
-                            <X className="h-3 w-3" />
-                          </button>
+                            {isDeletingOtherAllowedIps
+                              ? "Removing..."
+                              : "Remove others"}
+                          </Button>
                         </ConfirmationDialog>
-                      </div>
-                    ))
+                      ) : null}
+                    </>
                   ) : !currentIp || isCurrentIpAllowed ? (
                     <div className="text-muted-foreground text-sm">
                       No allowed IPs configured.
