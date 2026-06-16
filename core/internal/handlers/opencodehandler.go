@@ -30,6 +30,10 @@ type OpenCodeWebResponse struct {
 }
 
 func OpenCodeWebActions(c *echo.Context) error {
+	cfg, err := config.LoadAndValidate("config.json")
+	if err != nil {
+		return err
+	}
 	var body OpenCodeWebBody
 
 	// binding the body from http request
@@ -55,7 +59,7 @@ func OpenCodeWebActions(c *echo.Context) error {
 			})
 		}
 
-		err = utils.RunCommandInTmuxSession("ops", "opencode web --port 4096 --hostname 0.0.0.0")
+		err = utils.RunCommandInTmuxSession("ops", "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" opencode web --port 4096 --hostname 0.0.0.0")
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, OpenCodeWebResponse{
 				Message: fmt.Sprintf("failed to run command in tmux session: %v", err),

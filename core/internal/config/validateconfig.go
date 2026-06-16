@@ -8,19 +8,23 @@ import (
 )
 
 type Config struct {
-	ServerBaseUrl string          `json:"serverBaseUrl"`
-	SessionId     string          `json:"sessionId"`
-	ProjectId     string          `json:"projectId"`
-	InstanceId    string          `json:"instanceId"`
-	Token         string          `json:"token"`
-	Packages      []PackageConfig `json:"packages"`
-	Repos         []GitRepoConfig `json:"repos"`
-	Docker        *DockerConfig   `json:"docker"`
-	OpenCode      *OpenCodeConfig `json:"opencode"`
-	Nvim          *NvimConfig     `json:"nvim"`
-	Tasks         []TaskConfig    `json:"tasks"`
-	InitialScript string          `json:"initialScript"`
-	FinalScript   string          `json:"finalScript"`
+	ServerBaseUrl  string          `json:"serverBaseUrl"`
+	SessionId      string          `json:"sessionId"`
+	ProjectId      string          `json:"projectId"`
+	InstanceConfig InstanceConfig  `json:"instanceConfig"`
+	InstanceId     string          `json:"instanceId"`
+	Token          string          `json:"token"`
+	Packages       []PackageConfig `json:"packages"`
+	Repos          []GitRepoConfig `json:"repos"`
+	Docker         *DockerConfig   `json:"docker"`
+	OpenCode       *OpenCodeConfig `json:"opencode"`
+	Nvim           *NvimConfig     `json:"nvim"`
+	Tasks          []TaskConfig    `json:"tasks"`
+	InitialScript  string          `json:"initialScript"`
+	FinalScript    string          `json:"finalScript"`
+}
+type InstanceConfig struct {
+	OpencodePassword string `json:"opencodePassword"`
 }
 
 type TaskConfig struct {
@@ -64,7 +68,7 @@ type NvimConfig struct {
 	ConfigJSON json.RawMessage `json:"config_json"`
 }
 
-func ValidateConfig(file []byte) (Config, error) {
+func calidateConfig(file []byte) (Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(file, &cfg); err != nil {
 		return cfg, fmt.Errorf("error parsing config: %w", err)
@@ -105,8 +109,8 @@ func LoadAndValidate(filename string) (Config, error) {
 		if err != nil {
 			return Config{}, fmt.Errorf("config not found at %s", configPath)
 		}
-		return ValidateConfig(tempfile)
+		return calidateConfig(tempfile)
 	}
 
-	return ValidateConfig(file)
+	return calidateConfig(file)
 }

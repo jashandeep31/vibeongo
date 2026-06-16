@@ -1,0 +1,1 @@
+ALTER TABLE "instances" ADD COLUMN "config" json DEFAULT '{}' NOT NULL;

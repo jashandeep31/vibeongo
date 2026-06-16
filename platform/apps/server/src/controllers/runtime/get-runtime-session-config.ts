@@ -13,6 +13,7 @@ import {
   projects,
   sshKeys,
   sessionAuthTokens,
+  instances,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
@@ -28,15 +29,21 @@ export const getRuntimeSessionConfig = catchAsync(
       .select({
         project_session: projectSessions,
         project: projects,
+        instance: instances,
       })
       .from(projectSessions)
       .leftJoin(projects, eq(projects.id, projectSessions.project_id))
+      .leftJoin(instances, eq(instances.id, instanceId))
       .where(eq(projectSessions.id, id));
 
-    if (!sessionRow?.project_session || !sessionRow?.project)
+    if (
+      !sessionRow?.project_session ||
+      !sessionRow?.project ||
+      !sessionRow.instance
+    )
       throw new AppError("Project session not found", 404);
 
-    const { project } = sessionRow;
+    const { project, instance } = sessionRow;
 
     const [tasks, repos, keys] = await Promise.all([
       db
@@ -76,6 +83,7 @@ export const getRuntimeSessionConfig = catchAsync(
       token: token?.token || "",
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
+      instanceConfig: instance.config,
       instanceId,
       projectId: project.id,
       initialScript: project.initial_script,

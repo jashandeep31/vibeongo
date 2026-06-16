@@ -67,6 +67,20 @@ const formatDuration = (
   return `${seconds}s`;
 };
 
+const getOpencodePassword = (config: unknown) => {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null;
+  }
+
+  const { opencodePassword } = config as { opencodePassword?: unknown };
+
+  if (typeof opencodePassword !== "string" || !opencodePassword.trim()) {
+    return null;
+  }
+
+  return opencodePassword;
+};
+
 export default function ClientView({ instanceId }: { instanceId: string }) {
   const {
     data: instance,
@@ -134,6 +148,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const sshCommand = instance?.public_ip
     ? `ssh ubuntu@${String(Instance_IP)}`
     : null;
+  const opencodePassword = getOpencodePassword(instance?.config);
   const spunUpFor = formatDuration(
     instance?.started_at,
     instance?.terminated_at,
@@ -599,6 +614,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
                 domainFor8080={domainFor8080 || null}
                 domainFor4096={domainFor4096 || null}
                 isTerminated={isTerminated}
+                opencodePassword={opencodePassword}
               />
             </div>
           </div>
