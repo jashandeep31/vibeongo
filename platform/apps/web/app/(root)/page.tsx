@@ -12,15 +12,12 @@ export default async function Page() {
   }
   return (
     <>
-      <section className="bg-background relative flex min-h-[calc(100vh-4rem)] flex-col items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
-        {/* Background glow effects */}
-        <div className="bg-primary/20 pointer-events-none absolute top-1/2 left-1/2 h-150 w-150 -translate-x-1/2 -translate-y-1/2 rounded-full blur-[120px]" />
-
+      <section className="bg-background relative flex min-h-[calc(80vh-4rem)] flex-col items-center justify-center overflow-hidden px-4 py-12 sm:px-6 lg:px-8">
         <div className="z-10 w-full max-w-5xl text-center">
           {/* Badge */}
           <div className="border-primary/20 bg-primary/10 text-primary mb-6 inline-flex items-center rounded-full border px-3 py-1 text-sm font-medium">
             <span className="bg-primary mr-2 flex h-2 w-2 animate-pulse rounded-full"></span>
-            Built for Indie Hackers
+            OpenSoure (Soon)
           </div>
 
           {/* Main Headline */}
@@ -51,7 +48,7 @@ export default async function Page() {
             <Button
               asChild
               size="lg"
-              className="h-12 border border-gray-300 bg-white px-8 text-base text-black hover:bg-gray-200"
+              className="bg-foreground text-background hover:bg-foreground/90 border-border h-12 border px-8 text-base"
             >
               <Link href="/login" className="flex items-center gap-2">
                 <svg
@@ -68,7 +65,7 @@ export default async function Page() {
               asChild
               variant="outline"
               size="lg"
-              className="bg-background text-foreground hover:bg-muted h-12 px-8 text-base"
+              className="bg-background text-foreground hover:bg-muted border-border h-12 px-8 text-base"
             >
               <Link
                 href="https://github.com/jashandeep31/vibeongo"
@@ -87,7 +84,7 @@ export default async function Page() {
 
       <section className="bg-background py-24">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="bg-card/30 rounded-3xl border border-white/10 p-12 text-center">
+          <div className="bg-card border-border rounded-3xl border p-12 text-center shadow-sm">
             <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-5xl">
               Skip the setup.
               <br />
