@@ -13,6 +13,7 @@ import { createEc2Instance } from "../../aws/services/create-ec2-instance.js";
 import { AppError } from "../../lib/app-error.js";
 import { getInstancePublicAddress } from "../../aws/services/get-instance-public-address.js";
 import { env } from "../../lib/env.js";
+import { createId } from "@paralleldrive/cuid2";
 
 interface SpinUpAndSaveInstance {
   setupScript: string;
@@ -104,6 +105,9 @@ export const spinUpAndSaveInstance = async ({
       public_ip: publicIpAddress,
       state: "running",
       project_session_id: sessionId,
+      config: {
+        opencodePassword: createId(),
+      },
     })
     .returning();
 

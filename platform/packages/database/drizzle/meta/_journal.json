@@ -29,6 +29,13 @@
       "when": 1781434623037,
       "tag": "0003_previous_boomerang",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1781627964906,
+      "tag": "0004_majestic_the_renegades",
+      "breakpoints": true
     }
   ]
 }
