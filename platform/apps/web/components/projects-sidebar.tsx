@@ -36,7 +36,7 @@ export function ProjectsSidebar() {
               <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
-                  className="active:bg-background data-active:bg-background cursor-pointer"
+                  className="text-sidebar-foreground hover:text-sidebar-foreground active:bg-background active:text-sidebar-foreground data-active:bg-background data-active:text-sidebar-foreground cursor-pointer"
                 >
                   <Link href="/dashboard" onClick={closeMobileSidebar}>
                     <ArrowLeft className="h-4 w-4" />
@@ -56,7 +56,7 @@ export function ProjectsSidebar() {
                 <SidebarMenuItem key={server.id}>
                   <SidebarMenuButton
                     asChild
-                    className="active:bg-background data-active:bg-background cursor-pointer"
+                    className="text-sidebar-foreground hover:text-sidebar-foreground active:bg-background active:text-sidebar-foreground data-active:bg-background data-active:text-sidebar-foreground cursor-pointer"
                   >
                     <Link
                       href={`/projects/${server.id}`}
