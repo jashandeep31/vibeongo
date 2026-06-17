@@ -37,11 +37,20 @@ export default function RootLayout({
         "font-sans",
         geist.variable,
         instrumentSansHeading.variable,
+        "dark",
       )}
+      suppressHydrationWarning
     >
       <body>
         <Toaster richColors />
-        <Provider>{children}</Provider>
+        <Provider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+        </Provider>
       </body>
     </html>
   );

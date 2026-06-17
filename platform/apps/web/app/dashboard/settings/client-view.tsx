@@ -4,7 +4,7 @@ import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { EditSshKeyDialog } from "@/components/dialogs/edit-ssh-key-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { Key, Pencil, Trash2 } from "lucide-react";
+import { Check, Key, Monitor, Moon, Pencil, Sun, Trash2 } from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -16,8 +16,31 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { toast } from "sonner";
+import { useTheme } from "next-themes";
+
+const themeOptions = [
+  {
+    value: "light",
+    label: "Light",
+    description: "Use a bright interface.",
+    icon: Sun,
+  },
+  {
+    value: "dark",
+    label: "Dark",
+    description: "Use a low-light interface.",
+    icon: Moon,
+  },
+  {
+    value: "system",
+    label: "System",
+    description: "Match your device setting.",
+    icon: Monitor,
+  },
+] as const;
 
 export default function ClientView() {
+  const { theme = "system", setTheme } = useTheme();
   const { data: sshKeys, isLoading } = useSshKeys();
   const deleteSshKeyMutation = useDeleteSshKey();
 
@@ -37,10 +60,50 @@ export default function ClientView() {
       <h1 className="text-3xl font-bold tracking-tight">Settings</h1>
 
       <div className="mt-8">
-        <div className="flex items-center justify-between">
-          <h2 className="text-muted-foreground text-lg font-semibold">
-            SSH keys
-          </h2>
+        <section>
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">Appearance</h2>
+          </div>
+
+          <div className="mt-5 grid gap-3 sm:grid-cols-3">
+            {themeOptions.map((option) => {
+              const Icon = option.icon;
+              const isSelected = theme === option.value;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={isSelected}
+                  onClick={() => setTheme(option.value)}
+                  className="border-input bg-background hover:bg-muted/50 focus-visible:border-ring focus-visible:ring-ring/50 aria-pressed:border-primary aria-pressed:bg-primary/5 dark:aria-pressed:bg-primary/10 flex min-h-28 rounded-lg border p-4 text-left transition-colors outline-none focus-visible:ring-3"
+                >
+                  <span className="flex w-full flex-col gap-4">
+                    <span className="flex items-start justify-between gap-3">
+                      <span className="bg-muted text-foreground flex size-9 items-center justify-center rounded-lg">
+                        <Icon className="h-4 w-4" />
+                      </span>
+                      {isSelected ? (
+                        <span className="bg-primary text-primary-foreground flex size-5 items-center justify-center rounded-full">
+                          <Check className="h-3.5 w-3.5" />
+                        </span>
+                      ) : null}
+                    </span>
+                    <span>
+                      <span className="block font-medium">{option.label}</span>
+                      <span className="text-muted-foreground mt-1 block text-sm">
+                        {option.description}
+                      </span>
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        <div className="mt-8 flex items-center justify-between">
+          <h2 className="text-lg font-semibold">SSH keys</h2>
           <CreateSshKeyDialog />
         </div>
 
