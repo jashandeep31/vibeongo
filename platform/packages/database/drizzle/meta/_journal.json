@@ -43,6 +43,13 @@
       "when": 1781665030072,
       "tag": "0005_square_strong_guy",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1781698401826,
+      "tag": "0006_previous_rawhide_kid",
+      "breakpoints": true
     }
   ]
 }

@@ -8,6 +8,7 @@ import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
 import { AppError } from "../../lib/app-error.js";
 import { sessionCookieOptions } from "../../lib/session-cookie.js";
+import { throwDeprecation } from "node:process";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
@@ -117,8 +118,9 @@ export const githubAuthCallbackController = catchAsync(
       throw new Error("Account is not active");
     }
 
-    if (user.email !== "jashandeep1659@gmail.com") {
-      throw new AppError("New User are not allowed", 401);
+    if (account.verified === false) {
+      res.redirect(env.FRONTEND_URL + "/invite");
+      return;
     }
 
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {

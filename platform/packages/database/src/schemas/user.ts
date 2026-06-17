@@ -1,4 +1,11 @@
-import { pgTable, timestamp, uuid, varchar, pgEnum } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  timestamp,
+  uuid,
+  varchar,
+  pgEnum,
+  boolean,
+} from "drizzle-orm/pg-core";
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
 
@@ -28,6 +35,7 @@ export const accounts = pgTable("accounts", {
 
   provider: accountProviders().notNull(),
   status: acountStatus().notNull().default("active"),
+  verified: boolean().notNull().default(true),
   token: varchar({ length: 255 }).notNull(),
 
   deleted_at: timestamp(),
