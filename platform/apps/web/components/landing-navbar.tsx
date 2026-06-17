@@ -17,7 +17,7 @@ export function LandingNavbar() {
               <Link href="/login">Login</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="/signup">Sign Up</Link>
+              <Link href="/signup">Join Waitlist</Link>
             </Button>
           </nav>
         </div>
@@ -25,7 +25,8 @@ export function LandingNavbar() {
 
       <div className="border-primary/20 bg-primary/10 text-primary flex h-9 items-center justify-center border-b px-4 text-center text-xs font-medium sm:text-sm">
         <span className="bg-primary mr-2 h-1.5 w-1.5 shrink-0 animate-pulse rounded-full" />
-        VibeOnGo is in private preview. Public access is coming soon.
+        VibeOnGo signup is invite-only. Join the waitlist and we will let you
+        know when access is available.
       </div>
     </header>
   );
