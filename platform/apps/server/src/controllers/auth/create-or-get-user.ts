@@ -138,6 +138,8 @@ const createUserWithGithubAccount = async ({
         provider: githubProvider,
         status: "active",
         token,
+        // TODO: remove  in the production on public release
+        verified: false,
         last_login_at: new Date(),
       })
       .returning();
