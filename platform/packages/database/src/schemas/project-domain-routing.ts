@@ -1,4 +1,11 @@
-import { pgTable, timestamp, uuid, varchar, unique } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  timestamp,
+  uuid,
+  varchar,
+  unique,
+  boolean,
+} from "drizzle-orm/pg-core";
 import { instances } from "./instances.js";
 import { projects } from "./projects.js";
 import { users } from "./user.js";
@@ -18,6 +25,8 @@ export const projectDomainRouting = pgTable("project_domain_routing", {
   target_instance_id: uuid().references(() => instances.id, {
     onDelete: "set null",
   }),
+
+  allow_all_ips: boolean().notNull().default(false),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

@@ -36,6 +36,13 @@
       "when": 1781627964906,
       "tag": "0004_majestic_the_renegades",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1781665030072,
+      "tag": "0005_square_strong_guy",
+      "breakpoints": true
     }
   ]
 }
