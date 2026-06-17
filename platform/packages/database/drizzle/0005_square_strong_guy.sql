@@ -1,0 +1,1 @@
+ALTER TABLE "project_domain_routing" ADD COLUMN "allow_all_ips" boolean DEFAULT false NOT NULL;

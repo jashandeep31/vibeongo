@@ -116,10 +116,10 @@ export const githubAuthCallbackController = catchAsync(
     if (account.status !== "active") {
       throw new Error("Account is not active");
     }
-
-    if (user.email !== "jashandeep1659@gmail.com") {
-      throw new AppError("New User are not allowed", 401);
-    }
+    //
+    // if (user.email !== "jashandeep1659@gmail.com") {
+    //   throw new AppError("New User are not allowed", 401);
+    // }
 
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
       expiresIn: "30d",

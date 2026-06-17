@@ -92,7 +92,7 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		struct {
 			Domain string `json:"domain"`
 		}{Domain: host},
-		nil,
+		map[string]string{"Content-Type": "application/json", "Authorization": os.Getenv("PROXY_SERVER_TOKEN")},
 		&parsedResponse,
 	)
 	if err != nil {

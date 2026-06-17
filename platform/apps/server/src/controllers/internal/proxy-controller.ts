@@ -1,11 +1,18 @@
-import { db, eq, sql } from "@repo/db";
+import { db, sql } from "@repo/db";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
+import { env } from "../../lib/env.js";
 
 export const getTargetHostByDomain = catchAsync(
   async (req: Request, res: Response) => {
+    const authToken = req.headers.authorization;
+    console.log(authToken);
+    if (authToken !== env.PROXY_SERVER_TOKEN) {
+      throw new AppError("unauthorized", 401);
+    }
+
     const { domain } = z
       .object({
         domain: z.string(),
@@ -50,7 +57,6 @@ FROM proxy_domains pd WHERE pd.domain = ${domain};
 `);
     const data = dbRes.rows[0]?.to_jsonb;
     if (!data) throw new AppError("domain not found" + domain, 404);
-    console.log(JSON.stringify(data as any));
     res.status(200).json({
       data,
     });
