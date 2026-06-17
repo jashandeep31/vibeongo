@@ -8,10 +8,15 @@ import {
 } from "@/hooks/use-github-repos";
 import { useGetProjects } from "@/hooks/use-project";
 import { CreateGithubRepoDialog } from "@/components/dialogs/create-github-repo-dialog";
-import { Edit2, GitFork, Trash2 } from "lucide-react";
+import { Edit2, ExternalLink, GitFork, Github, Trash2 } from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { Button, buttonVariants } from "@repo/ui/components/button";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@repo/ui/components/alert";
 import {
   Dialog,
   DialogContent,
@@ -143,6 +148,22 @@ export default function ClientView() {
           <CreateGithubRepoDialog />
         </div>
       </div>
+      <Alert className="mt-6">
+        <Github className="h-4 w-4" />
+        <AlertTitle>Install the GitHub App first</AlertTitle>
+        <AlertDescription>
+          Install the Vibeongo GitHub App on a repository before adding it here.{" "}
+          <a
+            href="https://github.com/apps/vibeongo/installations/new"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-medium"
+          >
+            Install GitHub App
+            <ExternalLink className="h-3 w-3" />
+          </a>
+        </AlertDescription>
+      </Alert>
       <div className="mt-8 grid gap-4 space-y-4 md:grid-cols-2 lg:grid-cols-3">
         {isLoading ? (
           <>
