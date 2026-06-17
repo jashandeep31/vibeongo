@@ -1,4 +1,4 @@
-import { db, eq, userRoles, users } from "@repo/db";
+import { accounts, db, eq, userRoles, users } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../lib/env.js";
@@ -44,9 +44,20 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
       return failedToAuthenticate(res);
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, id));
+    const [userAndAccountRow] = await db
+      .select({ user: users, account: accounts })
+      .from(users)
+      .innerJoin(accounts, eq(accounts.user_id, id))
+      .where(eq(users.id, id));
 
-    if (!user) {
+    if (!userAndAccountRow?.user || !userAndAccountRow.account) {
+      return failedToAuthenticate(res);
+    }
+    const { user, account } = userAndAccountRow;
+    if (account.verified === false) {
+      return failedToAuthenticate(res);
+    }
+    if (account.status !== "active") {
       return failedToAuthenticate(res);
     }
 
