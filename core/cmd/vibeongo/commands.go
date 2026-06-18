@@ -92,7 +92,7 @@ func ServeCmd() *cobra.Command {
 // TaskCmd executes configured opencode tasks
 func TaskCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "run-tasks",
+		Use:   "tasks",
 		Short: "Run configured session tasks",
 		Long:  "Execute the tasks configured for the current session using the selected agent and model settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
