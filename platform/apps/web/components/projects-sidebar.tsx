@@ -21,7 +21,6 @@ import {
   ChevronRight,
   Clock3,
   CreditCard,
-  FolderOpen,
   GitFork,
   LucideIcon,
   PlusCircle,
@@ -106,7 +105,6 @@ export function ProjectsSidebar() {
                 <SidebarMenuItem>
                   <CollapsibleTrigger asChild>
                     <SidebarMenuButton className="bg-background text-foreground hover:bg-background hover:text-foreground active:bg-background active:text-foreground data-active:bg-background data-active:text-foreground cursor-pointer">
-                      <FolderOpen />
                       <span>Quick Links</span>
                       <ChevronRight className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90" />
                     </SidebarMenuButton>
