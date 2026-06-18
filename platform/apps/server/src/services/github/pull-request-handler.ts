@@ -13,7 +13,7 @@ import {
   users,
 } from "@repo/db";
 import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
-import { getSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
+import { generateSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import {
   spinUpAndSaveInstance,
@@ -54,7 +54,7 @@ export const pullRequestOpenedHandler = async ({
     pull_number: prNumber,
   });
 
-  const sessionMeta = await getSessionNameAndDescription(
+  const sessionMeta = await generateSessionNameAndDescription(
     pr.title + "\n" + pr.body,
   );
 
