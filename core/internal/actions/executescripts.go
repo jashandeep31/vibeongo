@@ -100,7 +100,7 @@ func ExecuteFinalScript() error {
 			return err
 		}
 
-		if err := os.Chmod(tempScriptFile.Name(), 0755); err != nil {
+		if err := os.Chmod(tempScriptFile.Name(), 0o755); err != nil {
 			os.Remove(tempScriptFile.Name())
 			return err
 		}
