@@ -61,7 +61,7 @@ vibeongo init-workspace
 vibeongo init-repos
 vibeongo final
 echo "doing with the tasks"
-vibeongo run-tasks  
+vibeongo tasks  
 VIBEONGO_COMMANDS
 
 date
