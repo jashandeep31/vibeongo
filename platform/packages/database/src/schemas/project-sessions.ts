@@ -37,7 +37,8 @@ export const projectSessions = pgTable("project_session", {
 });
 
 // --- Projects tasks
-// --- example: add the support to the google auth
+// NOTE: we are limiting the options in the typesafe to prevent the coding mistake but infuture depending upon the requirements we can remove this
+// and just make string based incase forexample: allowing users to use there own agents
 export const projectSessionTaskAgents = pgEnum("project_session_task_agents", [
   "build",
   "plan",

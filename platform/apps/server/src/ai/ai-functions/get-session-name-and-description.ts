@@ -2,7 +2,7 @@ import { Type } from "@google/genai";
 import { aiModels, googleAiClient } from "../config.js";
 import { prompts } from "../prompts/index.js";
 
-export const getSessionNameAndDescription = async (content: string) => {
+export const generateSessionNameAndDescription = async (content: string) => {
   try {
     const res = await googleAiClient.models.generateContent({
       model: aiModels["google-lite-model"].name,

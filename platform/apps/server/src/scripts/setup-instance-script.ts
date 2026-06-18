@@ -60,7 +60,9 @@ vibeongo setup
 vibeongo init-workspace
 vibeongo init-repos
 vibeongo final
+echo "doing with the tasks"
 vibeongo run-tasks  
+echo "done with tasks"
 ${terminate ? "vibeongo terminate" : ""}
 VIBEONGO_COMMANDS
 

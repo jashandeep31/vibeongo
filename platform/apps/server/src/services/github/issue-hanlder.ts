@@ -12,7 +12,7 @@ import {
   sshKeys,
   users,
 } from "@repo/db";
-import { getSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
+import { generateSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import {
   spinUpAndSaveInstance,
@@ -55,7 +55,7 @@ export const issueRequestHandler = async ({
     full_repo_name: repo.full_name,
   });
 
-  const sessionMeta = await getSessionNameAndDescription(
+  const sessionMeta = await generateSessionNameAndDescription(
     issue.title + "\n" + issue.body,
   );
 

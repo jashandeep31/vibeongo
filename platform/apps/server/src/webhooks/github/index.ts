@@ -5,6 +5,7 @@ import path from "path";
 import fs from "fs/promises";
 import { issueOpenedHandler } from "./handlers/issue-opened.js";
 import { pullRequestOpenedWebhookHandler } from "./handlers/pull-request-opened.js";
+import { commentHandler } from "./handlers/comment-handler.js";
 
 const BASE_DIR = process.cwd();
 const filepath = path.join(BASE_DIR, "vibeongo.2026-03-28.private-key.pem");
@@ -30,6 +31,8 @@ octokitApp.webhooks.on(
 // ------ Issue comment handling ------
 octokitApp.webhooks.on("issue_comment", async (event) => {
   const payload = event.payload;
+  // console.log(payload);
+  commentHandler(event as any);
   // const username = payload.issue.user.login;
   //what we need to check here
   // 1. comment user is allowed to manage that repo means admin of it
