@@ -105,6 +105,19 @@ func TaskCmd() *cobra.Command {
 	}
 }
 
+func MarkTaskCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "mark-task",
+		Short: "Makes the API call to mark the task done.Takes Task Id as parameter",
+		Long:  "For internal use only try not to use this!! This allow a task to be marked as completed ones ai had gone through the task",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actions.MarkTask(cmd, args)
+		},
+	}
+
+}
+
 // TerminateInstanceCmd terminates the instance
 func TerminateInstanceCmd() *cobra.Command {
 	return &cobra.Command{

@@ -28,6 +28,8 @@ func init() {
 	rootCmd.AddCommand(RepoSetupCmd())
 	// run the tasks in the opencode
 	rootCmd.AddCommand(TaskCmd())
+	//mark the task as done
+	rootCmd.AddCommand(MarkTaskCmd())
 	// getting config
 	rootCmd.AddCommand(GetKeysCmd())
 	// setting up hte session as per the overview file

@@ -7,7 +7,45 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
+	"github.com/spf13/cobra"
 )
+
+func MarkTask(cmd *cobra.Command, args []string) error {
+	cfg, err := config.LoadAndValidate("config.json")
+	if err != nil {
+		return err
+	}
+	id := args[0]
+	if id == "" {
+		return fmt.Errorf("id is required")
+	}
+
+	var task *config.TaskConfig
+
+	for _, i := range cfg.Tasks {
+		if i.ID == id {
+			task = &i
+			break
+		}
+	}
+	if task == nil {
+		return fmt.Errorf("enter the valid id no task found")
+	}
+
+	var b any
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
+	apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/tasks/"+id, struct {
+		Done bool `json:"done"`
+	}{
+		Done: true,
+	},
+		map[string]string{
+			"Authorization": "Bearer " + cfg.Token,
+		},
+		&b)
+
+	return nil
+}
 
 func ExecuteTasks(cfg config.Config) error {
 	fmt.Println("Working on tasks")
@@ -46,6 +84,7 @@ func ExecuteTasks(cfg config.Config) error {
 		}
 
 		tmuxScript.WriteString("\n")
+		fmt.Fprintf(&tmuxScript, "vibeongo mark-task %s \n\n", task.ID)
 	}
 
 	err = utils.RunScriptInTmuxSession("tasks", tmuxScript.String())
