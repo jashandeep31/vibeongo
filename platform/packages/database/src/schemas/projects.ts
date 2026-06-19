@@ -63,12 +63,16 @@ export const projectFileData = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
     version: integer().notNull().default(1),
-    content: text(),
     project_file_id: uuid()
       .references(() => projectFiles.id, {
         onDelete: "cascade",
       })
       .notNull(),
+
+    encrypted_content: text().notNull(),
+    iv: varchar().notNull(),
+    tag: varchar().notNull(),
+
     created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },
