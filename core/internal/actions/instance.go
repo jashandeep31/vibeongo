@@ -8,9 +8,10 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
-func TerminateInstance(cfg config.Config) error {
+func TerminateInstance(cfg config.Config, force bool) error {
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
-	if cfg.InstanceConfig.Terminate {
+
+	if cfg.InstanceConfig.Terminate || force {
 		var apiRes any
 		headers := map[string]string{
 			"Content-Type":  "application/json",
@@ -26,6 +27,6 @@ func TerminateInstance(cfg config.Config) error {
 
 		return nil
 	}
-	fmt.Println("Sorry As per the default config i can't terminate. Please use website ")
+	fmt.Println("Termination is disabled by the current config. Run `vibeongo terminate --force` to override.")
 	return nil
 }
