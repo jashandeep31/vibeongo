@@ -8,7 +8,6 @@ import { env } from "../../lib/env.js";
 export const getTargetHostByDomain = catchAsync(
   async (req: Request, res: Response) => {
     const authToken = req.headers.authorization;
-    console.log(authToken);
     if (authToken !== env.PROXY_SERVER_TOKEN) {
       throw new AppError("unauthorized", 401);
     }
