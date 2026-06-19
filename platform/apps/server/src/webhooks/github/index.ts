@@ -30,18 +30,13 @@ octokitApp.webhooks.on(
 
 // ------ Issue comment handling ------
 octokitApp.webhooks.on("issue_comment", async (event) => {
-  const payload = event.payload;
-  // console.log(payload);
-  commentHandler(event as any);
-  // const username = payload.issue.user.login;
-  //what we need to check here
-  // 1. comment user is allowed to manage that repo means admin of it
+  await commentHandler(event as any);
 });
 
 // --- Any webhook handling ------
-octokitApp.webhooks.onAny(async (event) => {
-  // console.log(event.name, "this is not handled");
-});
+// octokitApp.webhooks.onAny(async (event) => {
+//   // console.log(event.name, "this is not handled");
+// });
 
 export const githubAppWebhookMiddleware = createNodeMiddleware(
   octokitApp.webhooks,
@@ -49,17 +44,3 @@ export const githubAppWebhookMiddleware = createNodeMiddleware(
     path: "/webhook",
   },
 );
-
-// --- sending the comment from bot ---
-// await octokitApp.request(
-//   "POST /repos/{owner}/{repo}/issues/{issue_number}/comments",
-//   {
-//     owner: payload.repository.owner.login,
-//     repo: payload.repository.name,
-//     issue_number: payload.issue.number,
-//     body: `thanks @jashandeep31 i am looking into it`,
-//     headers: {
-//       "x-github-api-version": "2026-03-10",
-//     },
-//   },
-// );
