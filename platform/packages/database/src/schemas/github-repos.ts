@@ -28,6 +28,9 @@ export const githubRepos = pgTable(
       .unique(),
     installation_id: integer().notNull(),
 
+    auto_review_pull_requests_enabled: boolean().default(false).notNull(),
+    auto_fix_issues_enabled: boolean().default(false).notNull(),
+
     public: boolean().default(false).notNull(),
     full_name: varchar({ length: 255 }).notNull(),
     repo_owner_username: varchar({ length: 255 }).notNull(),
@@ -37,4 +40,24 @@ export const githubRepos = pgTable(
     updated_at: timestamp().defaultNow(),
   },
   (t) => [unique().on(t.user_id, t.full_name)],
+);
+
+export const githubRepoMembers = pgTable(
+  "github_repo_members",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    repo_id: uuid()
+      .references(() => githubRepos.id, { onDelete: "cascade" })
+      .notNull(),
+
+    username: varchar().notNull(),
+
+    can_trigger_pull_request: boolean().default(false).notNull(),
+    can_trigger_issue: boolean().default(false).notNull(),
+    can_trigger_comment: boolean().default(false).notNull(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+  (t) => [unique().on(t.username, t.repo_id)],
 );
