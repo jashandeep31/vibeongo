@@ -12,9 +12,11 @@ import {
   inArray,
   sshKeys,
   projectDomainRouting,
+  projectConfig,
 } from "@repo/db";
 import { projectConfigValidator } from "@repo/shared";
 import { createDomainsForProject } from "../../lib/create-domain-for-project.js";
+import { encryptData } from "../../lib/encryption-decryption.js";
 
 export const createProject = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
@@ -53,12 +55,20 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
         user_id: user.id,
         instance_type_id: parsedData.instanceTypeId,
         total_charges: 0,
-        config: parsedData.config,
+        config: {},
         initial_script: parsedData.initial_script,
         final_script: parsedData.final_script,
       })
       .returning();
     if (!projectRow) throw new AppError("project not created", 400);
+
+    const enc = encryptData(JSON.stringify(parsedData.config));
+    await tx.insert(projectConfig).values({
+      project_id: projectRow.id,
+      encrypted_config: enc.encrypted,
+      tag: enc.tag,
+      iv: enc.iv,
+    });
 
     const githubRepoData: { project_id: string; github_repo_id: string }[] =
       validRepos.map((item) => {

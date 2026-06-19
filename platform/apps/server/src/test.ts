@@ -1,5 +1,5 @@
 import { db, eq, projectConfig, projects } from "@repo/db";
-import { encryptData } from "./lib/encrytion-decryption.js";
+import { encryptData } from "./lib/encryption-decryption.js";
 
 export default async function test() {
   const projecRows = await db.select().from(projects);
