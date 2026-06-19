@@ -38,6 +38,7 @@ const envSchema = z.object({
   PROFIT_PRECENTAGE: z.coerce.number().min(10).max(100),
   AWS_SES_ACCESS_KEY_ID: z.string(),
   AWS_SES_SECRET_KEY: z.string(),
+  ENCRYPTION_KEY: z.string(),
 });
 const parsed = envSchema.safeParse(process.env);
 
