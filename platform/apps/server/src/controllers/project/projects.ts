@@ -12,12 +12,14 @@ import {
   sshKeys,
   sql,
   desc,
+  projectConfig,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
-import { env } from "../../lib/env.js";
 import { projectConfigValidator } from "@repo/shared";
+import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
+import { encryptData } from "../../lib/encryption-decryption.js";
 
 export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
@@ -88,6 +90,10 @@ export const getProjectConfigForEdit = catchAsync(
       .from(projectGithubRepos)
       .where(eq(projectGithubRepos.project_id, id));
 
+    const projectConfig = JSON.parse(
+      await getDecryptedProjectConfig(projectWithInstanceType.project.id),
+    );
+
     res.status(200).json({
       data: {
         project: projectWithInstanceType.project,
@@ -95,7 +101,7 @@ export const getProjectConfigForEdit = catchAsync(
         instanceTypeId: projectWithInstanceType.project.instance_type_id,
         sshKeyIds: sshKeyRows.map((row) => row.sshKeyId),
         githubRepoIds: githubRepoRows.map((row) => row.githubRepoId),
-        config: projectWithInstanceType.project.config,
+        config: projectConfig,
       },
     });
   },
@@ -155,7 +161,6 @@ export const updateProjectById = catchAsync(
           name: parsedData.name,
           description: parsedData.description,
           instance_type_id: parsedData.instanceTypeId,
-          config: parsedData.config,
           initial_script: parsedData.initial_script,
           final_script: parsedData.final_script,
           updated_at: new Date(),
@@ -164,6 +169,17 @@ export const updateProjectById = catchAsync(
         .returning();
 
       if (!updatedProjectRow) throw new AppError("project not updated", 400);
+
+      const enc = encryptData(JSON.stringify(parsedData.config));
+      await tx
+        .update(projectConfig)
+        .set({
+          iv: enc.iv,
+          encrypted_config: enc.encryptedData,
+          tag: enc.tag,
+          updated_at: new Date(),
+        })
+        .where(eq(projectConfig.project_id, id));
 
       await tx
         .delete(projectGithubRepos)

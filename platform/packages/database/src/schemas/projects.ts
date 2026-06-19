@@ -5,7 +5,6 @@ import {
   varchar,
   integer,
   text,
-  json,
   unique,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
@@ -26,7 +25,6 @@ export const projects = pgTable("projects", {
     .references(() => instanceTypes.id)
     .notNull(),
   total_charges: integer().notNull().default(0),
-  config: json().notNull(),
 
   initial_script: text().notNull().default(""),
   final_script: text().notNull().default(""),

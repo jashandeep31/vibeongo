@@ -55,7 +55,6 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
         user_id: user.id,
         instance_type_id: parsedData.instanceTypeId,
         total_charges: 0,
-        config: {},
         initial_script: parsedData.initial_script,
         final_script: parsedData.final_script,
       })
@@ -65,7 +64,7 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
     const enc = encryptData(JSON.stringify(parsedData.config));
     await tx.insert(projectConfig).values({
       project_id: projectRow.id,
-      encrypted_config: enc.encrypted,
+      encrypted_config: enc.encryptedData,
       tag: enc.tag,
       iv: enc.iv,
     });
