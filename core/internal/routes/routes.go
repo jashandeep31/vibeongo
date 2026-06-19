@@ -12,6 +12,7 @@ func Register(e *echo.Echo) {
 	e.GET("/ufw", handlers.GetAllowedPorts)
 	e.POST("/reboot", handlers.RebootServer)
 	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)
+	// e.GET("/terminate", , m ...echo.MiddlewareFunc)
 
 	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
 	e.POST("/opencode/web", handlers.OpenCodeWebActions)
