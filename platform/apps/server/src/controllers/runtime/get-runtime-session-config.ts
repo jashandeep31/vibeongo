@@ -18,6 +18,7 @@ import {
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 import { env } from "../../lib/env.js";
+import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -44,6 +45,8 @@ export const getRuntimeSessionConfig = catchAsync(
       throw new AppError("Project session not found", 404);
 
     const { project, instance } = sessionRow;
+    const stringfiedConfig = await getDecryptedProjectConfig(project.id);
+    const parsedConfig = JSON.parse(stringfiedConfig);
 
     const [tasks, repos, keys] = await Promise.all([
       db
@@ -79,7 +82,7 @@ export const getRuntimeSessionConfig = catchAsync(
       .orderBy(sessionAuthTokens.created_at);
 
     const config = {
-      ...(project.config as any),
+      ...(parsedConfig as any),
       token: token?.token || "",
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
