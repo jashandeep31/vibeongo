@@ -120,18 +120,22 @@ func MarkTaskCmd() *cobra.Command {
 
 // TerminateInstanceCmd terminates the instance
 func TerminateInstanceCmd() *cobra.Command {
-	return &cobra.Command{
+	var force bool
+	cmd := &cobra.Command{
 		Use:   "terminate",
 		Short: "Terminate the current runtime instance",
-		Long:  "Request termination of the current runtime instance. Use this when work is complete to release resources and stop further usage.",
+		Long:  "Request termination of the current runtime instance. Use this when work is complete to release resources and stop further usage. Pass --force to terminate even when the current config disables automatic termination.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate("config.json")
 			if err != nil {
 				return err
 			}
-			return actions.TerminateInstance(cfg)
+			return actions.TerminateInstance(cfg, force)
 		},
 	}
+	cmd.Flags().BoolVarP(&force, "force", "f", false, "Terminate even when the current config disables automatic termination")
+	return cmd
 }
 
 // UpdateCmd updates the software version
