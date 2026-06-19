@@ -21,6 +21,7 @@ interface SpinUpAndSaveInstance {
   userId: string;
   sessionId: null | string;
   instanceId: string;
+  terminate?: boolean;
 }
 export type spinUpAndSaveInstanceResponse =
   | typeof instances.$inferSelect
@@ -35,6 +36,7 @@ export const spinUpAndSaveInstance = async ({
   userId,
   sessionId = null,
   instanceId,
+  terminate = false,
 }: SpinUpAndSaveInstance): Promise<spinUpAndSaveInstanceResponse> => {
   const [userWalletRow] = await db
     .select()
@@ -107,6 +109,7 @@ export const spinUpAndSaveInstance = async ({
       project_session_id: sessionId,
       config: {
         opencodePassword: createId(),
+        terminate,
       },
     })
     .returning();

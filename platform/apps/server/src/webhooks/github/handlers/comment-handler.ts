@@ -127,5 +127,6 @@ export const commentHandler = async (
     userId: user.id,
     sessionId: session.id,
     instanceId,
+    terminate: true,
   });
 };

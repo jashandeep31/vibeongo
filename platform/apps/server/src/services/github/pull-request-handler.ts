@@ -123,6 +123,7 @@ export const pullRequestOpenedHandler = async ({
     userId: user.id,
     sessionId: session.id,
     instanceId,
+    terminate: true,
   });
   return instance;
 };

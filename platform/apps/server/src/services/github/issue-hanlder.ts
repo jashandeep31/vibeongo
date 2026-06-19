@@ -124,6 +124,7 @@ export const issueRequestHandler = async ({
     userId: user.id,
     sessionId: session.id,
     instanceId,
+    terminate: true,
   });
   return instance;
 };

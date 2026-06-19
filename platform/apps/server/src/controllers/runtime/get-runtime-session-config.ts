@@ -83,6 +83,7 @@ export const getRuntimeSessionConfig = catchAsync(
 
     const config = {
       ...(parsedConfig as any),
+      terminate: false,
       token: token?.token || "",
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,

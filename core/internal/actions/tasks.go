@@ -87,68 +87,14 @@ func ExecuteTasks(cfg config.Config) error {
 		fmt.Fprintf(&tmuxScript, "vibeongo mark-task %s \n\n", task.ID)
 	}
 
+	if cfg.Terminate {
+		fmt.Fprintf(&tmuxScript, "vibeongo terminate\n\n")
+	}
 	err = utils.RunScriptInTmuxSession("tasks", tmuxScript.String())
 	if err != nil {
 		return err
 	}
 
-	// apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
-	// if len(cfg.Tasks) == 0 {
-	// 		return nil
-	// 	}
-	// 	continueFlag := false
-	// 	codeFolderPath := "/home/ubuntu/code"
-	// 	env := append(
-	// 		os.Environ(),
-	// 		"PATH=/home/ubuntu/.opencode/bin:/usr/local/bin:/usr/bin:/bin",
-	// 		"HOME=/home/ubuntu",
-	// 	)
-	// 	// TODO: if we are chaning the folder the continue will not work so change the continue flag dynamically
-	// 	for _, task := range cfg.Tasks {
-	// 		if task.Done {
-	// 			continue
-	// 		}
-	// 		taskFolderPath := path.Join(codeFolderPath, task.FolderName)
-	// 		// asking to create a plan
-	// 		if err := ExecuteOpencodeTask(taskFolderPath, env, continueFlag, task); err != nil {
-	// 			return err
-	// 		}
-	// 		continueFlag = true
-	// 		var b any
-	// 		apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/tasks/"+task.ID, struct {
-	// 			Done bool `json:"done"`
-	// 		}{
-	// 			Done: true,
-	// 		},
-	// 			map[string]string{
-	// 				"Authorization": "Bearer " + cfg.Token,
-	// 			},
-	// 			&b)
-	//
-	// 	}
-	// 	return nil
-	// }
-	//
-	// func ExecuteOpencodeTask(dir string, env []string, continueFlag bool, task config.TaskConfig) error {
-	// 	singleLineString := task.Task
-	// 	singleLineString = strings.ReplaceAll(singleLineString, "\n", " ")
-	//
-	// 	cmdStr := ""
-	// 	if continueFlag {
-	// 		cmdStr = fmt.Sprintf(`opencode run --continue %s%s%s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
-	// 	} else {
-	// 		cmdStr = fmt.Sprintf(`opencode run %s %s %s`, getOpenCodeModelFlag(task.Model), getOpenCodeAgentFlag(task.Agent), singleLineString)
-	// 	}
-	// 	// cmd := exec.Command("bash", "-c", cmdStr)
-	// 	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, cmdStr)
-	// 	cmd.Dir = dir
-	// 	cmd.Env = env
-	// 	cmd.Stdout = os.Stdout
-	// 	cmd.Stderr = os.Stderr
-	// 	if err := cmd.Run(); err != nil {
-	// 		return fmt.Errorf("failed to run opencode command: %w", err)
-	// 	}
-	//
 	return nil
 }
 

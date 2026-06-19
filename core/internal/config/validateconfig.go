@@ -25,6 +25,7 @@ type Config struct {
 }
 type InstanceConfig struct {
 	OpencodePassword string `json:"opencodePassword"`
+	Terminate        bool   `json:"terminate"`
 }
 
 type TaskConfig struct {
