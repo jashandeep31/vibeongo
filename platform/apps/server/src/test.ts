@@ -1,13 +1,30 @@
-import { decryptData, encryptData } from "./lib/encrytion-decryption.js";
+import { db, eq, projectConfig, projects } from "@repo/db";
+import { encryptData } from "./lib/encrytion-decryption.js";
 
 export default async function test() {
-  const userdata = JSON.stringify({
-    name: "jashan",
-    age: 22,
-  });
-  const enc = encryptData(userdata);
-  console.log(enc);
+  const projecRows = await db.select().from(projects);
+  for (const project of projecRows) {
+    console.log(project.id);
+    console.log(project.config);
 
-  const decrypt = decryptData(enc);
-  console.log(decrypt);
+    const stringifiedConfig = JSON.stringify(project.config);
+
+    const enc = encryptData(stringifiedConfig);
+
+    const [isProjectConfigchnaged] = await db
+      .select()
+      .from(projectConfig)
+      .where(eq(projectConfig.project_id, project.id));
+    if (isProjectConfigchnaged) {
+      continue;
+    }
+
+    console.log("we need to work");
+    await db.insert(projectConfig).values({
+      project_id: project.id,
+      encrypted_config: enc.encrypted,
+      iv: enc.iv,
+      tag: enc.tag,
+    });
+  }
 }

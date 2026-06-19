@@ -35,9 +35,25 @@ export const projects = pgTable("projects", {
   updated_at: timestamp().defaultNow(),
 });
 
+export const projectConfig = pgTable("project_config", {
+  id: uuid().defaultRandom().primaryKey(),
+
+  iv: varchar().notNull(),
+  encrypted_config: text().notNull(),
+  tag: text().notNull(),
+
+  project_id: uuid()
+    .references(() => projects.id, { onDelete: "cascade" })
+    .notNull(),
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow(),
+});
+
 export const projectFiles = pgTable("project_files", {
   id: uuid().defaultRandom().primaryKey(),
-  project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
+  project_id: uuid()
+    .references(() => projects.id, { onDelete: "cascade" })
+    .unique(),
   name: varchar().notNull(),
   path: varchar().notNull(),
   created_at: timestamp().defaultNow().notNull(),
