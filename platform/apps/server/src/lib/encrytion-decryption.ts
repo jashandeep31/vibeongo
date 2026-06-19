@@ -2,14 +2,17 @@ import crypto from "crypto";
 import { Buffer } from "buffer";
 import { env } from "./env.js";
 
-/**
- * Encypts the data
- *
- * @param data - sting which you wanna encrypt
- * @returns {iv: string tag: string encrypted: string} -> iv= nonace , tag= for authentication , encrypted= encrypted data
- */
-
 const ENCRYPTIONKEY = Buffer.from(env.ENCRYPTION_KEY, "base64");
+
+/**
+ * Encrypts a UTF-8 string with AES-256-CCM.
+ *
+ * @param data - Plain text value to encrypt.
+ * @returns Base64-encoded encryption payload containing:
+ * - `iv`: random nonce used for this encryption operation.
+ * - `tag`: authentication tag used to verify ciphertext integrity.
+ * - `encrypted`: encrypted representation of the input string.
+ */
 export function encryptData(data: string): {
   iv: string;
   tag: string;
@@ -33,10 +36,13 @@ export function encryptData(data: string): {
 }
 
 /**
- * Encypts the data
+ * Decrypts an AES-256-CCM payload produced by `encryptData`.
  *
- * @param  payload{iv: string tag: string encrypted: string} -> iv= nonace , tag= for authentication , encrypted= encrypted data
- * @returns encrypted string*/
+ * @param payload - Base64-encoded encryption payload containing the nonce,
+ * authentication tag, and encrypted data.
+ * @returns Original UTF-8 plain text string.
+ * @throws If the authentication tag is invalid or the payload cannot be decrypted.
+ */
 export function decryptData(payload: {
   iv: string;
   tag: string;
