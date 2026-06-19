@@ -9,6 +9,7 @@ import {
   routingAllowedIps,
 } from "@repo/db";
 import axios from "axios";
+import { projectConfigValidator, z } from "@repo/shared";
 
 export const createProject = async (projectData: unknown) => {
   console.log(projectData);
@@ -59,7 +60,7 @@ export type ProjectConfigForEdit = {
   instanceTypeId: (typeof projects.$inferSelect)["instance_type_id"];
   sshKeyIds: string[];
   githubRepoIds: string[];
-  config: (typeof projects.$inferSelect)["config"];
+  config: z.infer<typeof projectConfigValidator>;
 };
 
 export const getProjectConfigForEdit = async (
