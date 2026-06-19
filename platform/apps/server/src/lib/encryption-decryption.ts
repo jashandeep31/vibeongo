@@ -16,7 +16,7 @@ const ENCRYPTIONKEY = Buffer.from(env.ENCRYPTION_KEY, "base64");
 export function encryptData(data: string): {
   iv: string;
   tag: string;
-  encrypted: string;
+  encryptedData: string;
 } {
   const dataBuffer = Buffer.from(data, "utf8");
   const iv = crypto.randomBytes(12); // 12 bytes is valid for CCM (7-13 allowed)
@@ -31,7 +31,7 @@ export function encryptData(data: string): {
   return {
     iv: iv.toString("base64"),
     tag: tag.toString("base64"),
-    encrypted: encrypted.toString("base64"),
+    encryptedData: encrypted.toString("base64"),
   };
 }
 
