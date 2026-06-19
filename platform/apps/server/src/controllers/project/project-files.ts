@@ -54,7 +54,6 @@ export const getProjectFiles = catchAsync(
     const refinedFiles: Map<string, RefinedFile> = new Map();
 
     for (const item of rows) {
-      console.log(item);
       if (item.projectFiles) {
         if (!refinedFiles.has(item.projectFiles.id)) {
           refinedFiles.set(item.projectFiles.id, {
@@ -68,7 +67,6 @@ export const getProjectFiles = catchAsync(
           item.projectFileData.project_file_id,
         );
         if (!selectedItem) continue;
-        console.log("iam runngin");
 
         refinedFiles.set(selectedItem.id, {
           ...selectedItem,

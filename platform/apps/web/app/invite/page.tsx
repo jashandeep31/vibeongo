@@ -13,7 +13,7 @@ export default function Page() {
   return (
     <main className="bg-background relative min-h-screen overflow-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--border)_1px,transparent_1px),linear-gradient(to_bottom,var(--border)_1px,transparent_1px)] bg-[size:56px_56px] opacity-20" />
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-primary/70 to-transparent" />
+      <div className="via-primary/70 absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent to-transparent" />
 
       <div className="relative mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-6 sm:px-6 lg:px-8">
         <header className="flex items-center justify-between">
@@ -43,7 +43,7 @@ export default function Page() {
                 the account details you used to sign up.
               </p>
 
-              <div className="mt-8 max-w-xl rounded-lg border border-primary/25 bg-primary/10 p-5">
+              <div className="border-primary/25 bg-primary/10 mt-8 max-w-xl rounded-lg border p-5">
                 <div className="flex gap-3">
                   <div className="bg-primary text-primary-foreground flex h-10 w-10 shrink-0 items-center justify-center rounded-lg">
                     <AtSign className="h-5 w-5" />

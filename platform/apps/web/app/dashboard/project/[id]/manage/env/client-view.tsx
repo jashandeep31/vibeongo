@@ -18,9 +18,9 @@ export default function ClientView() {
     () =>
       (data ?? [])
         .map((entry) => ({
-          id: entry.projectFiles.id,
-          name: entry.projectFiles.name,
-          path: entry.projectFiles.path,
+          id: entry.id,
+          name: entry.name,
+          path: entry.path,
           content: entry.projectFileData?.content ?? "",
           version: entry.projectFileData?.version ?? 1,
         }))

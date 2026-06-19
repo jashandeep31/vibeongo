@@ -76,9 +76,11 @@ export const getProjectConfigForEdit = async (
 };
 
 type GetProjectFilesResponse = {
-  projectFiles: typeof projectFiles.$inferSelect;
-  projectFileData?: typeof projectFileData.$inferSelect | null;
-};
+  projectFileData?: Pick<
+    typeof projectFileData.$inferSelect,
+    "id" | "version" | "created_at" | "updated_at"
+  > & { content: string };
+} & typeof projectFiles.$inferSelect;
 
 export const getProjectFilesById = async (
   id: string,
