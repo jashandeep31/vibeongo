@@ -15,7 +15,6 @@ const envSchema = z.object({
   DOMAIN: z.string(),
   AWS_EC2_ACCESS_KEY_ID: z.string(),
   AWS_EC2_ACCESS_KEY_SECRET: z.string(),
-  SSH_KEY: z.string(),
   DATABASE_URL: z.string(),
   ALLOWED_ORIGINS: z.string().transform((value) => [
     ...new Set(

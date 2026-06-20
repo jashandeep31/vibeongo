@@ -2,6 +2,9 @@ import { db, eq, projectConfig, projects } from "@repo/db";
 import { encryptData } from "./lib/encryption-decryption.js";
 
 export default async function test() {
+  // const key = crypto.randomBytes(32); // AES-256 key
+  // const keyString = key.toString("base64");
+  // console.log(keystring);
   // const projecRows = await db.select().from(projects);
   // for (const project of projecRows) {
   //   console.log(project.id);
