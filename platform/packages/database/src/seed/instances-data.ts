@@ -1,13 +1,13 @@
 export const instancesData = [
-  {
-    name: "t3.small",
-    slug_prefix: "t3-small",
-    description:
-      "Burstable general purpose instance for lightweight applications, staging workloads, and small services.",
-    cpu: "2 vCPU",
-    ram: "2 GiB",
-    price_per_hour_dollars: 0.0208,
-  },
+  // {
+  //   name: "t3.small",
+  //   slug_prefix: "t3-small",
+  //   description:
+  //     "Burstable general purpose instance for lightweight applications, staging workloads, and small services.",
+  //   cpu: "2 vCPU",
+  //   ram: "2 GiB",
+  //   price_per_hour_dollars: 0.0208,
+  // },
   {
     name: "t3.medium",
     slug_prefix: "t3-medium",
@@ -17,15 +17,15 @@ export const instancesData = [
     ram: "4 GiB",
     price_per_hour_dollars: 0.0416,
   },
-  {
-    name: "t3.large",
-    slug_prefix: "t3-large",
-    description:
-      "Burstable general purpose instance for small production apps, web services, and memory-light workloads.",
-    cpu: "2 vCPU",
-    ram: "8 GiB",
-    price_per_hour_dollars: 0.0832,
-  },
+  // {
+  //   name: "t3.large",
+  //   slug_prefix: "t3-large",
+  //   description:
+  //     "Burstable general purpose instance for small production apps, web services, and memory-light workloads.",
+  //   cpu: "2 vCPU",
+  //   ram: "8 GiB",
+  //   price_per_hour_dollars: 0.0832,
+  // },
   {
     name: "m6i.large",
     slug_prefix: "m6i-large",
@@ -62,15 +62,15 @@ export const instancesData = [
   //   ram: "64 GiB",
   //   price_per_hour_dollars: 0.808,
   // },
-  {
-    name: "m7i.large",
-    slug_prefix: "m7i-large",
-    description:
-      "Latest-generation Intel general purpose instance for small services that need strong per-core performance.",
-    cpu: "2 vCPU",
-    ram: "8 GiB",
-    price_per_hour_dollars: 0.10605,
-  },
+  // {
+  //   name: "m7i.large",
+  //   slug_prefix: "m7i-large",
+  //   description:
+  //     "Latest-generation Intel general purpose instance for small services that need strong per-core performance.",
+  //   cpu: "2 vCPU",
+  //   ram: "8 GiB",
+  //   price_per_hour_dollars: 0.10605,
+  // },
   // {
   //   name: "m7i.xlarge",
   //   slug_prefix: "m7i-xlarge",

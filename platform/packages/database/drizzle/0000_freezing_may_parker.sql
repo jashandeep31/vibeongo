@@ -7,6 +7,7 @@ CREATE TYPE "public"."payment_gateway_transaction_status" AS ENUM('pending', 'su
 CREATE TYPE "public"."user_wallet_transaction_type" AS ENUM('deposit', 'spent', 'withdrawal');--> statement-breakpoint
 CREATE TYPE "public"."account_providers" AS ENUM('github');--> statement-breakpoint
 CREATE TYPE "public"."account_status" AS ENUM('active', 'banned', 'deleted');--> statement-breakpoint
+CREATE TYPE "public"."user_login_method_enum" AS ENUM('github');--> statement-breakpoint
 CREATE TYPE "public"."users_roles" AS ENUM('user', 'admin');--> statement-breakpoint
 CREATE TABLE "environments" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -16,11 +17,25 @@ CREATE TABLE "environments" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
+CREATE TABLE "github_repo_members" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"repo_id" uuid NOT NULL,
+	"username" varchar NOT NULL,
+	"can_trigger_pull_request" boolean DEFAULT false NOT NULL,
+	"can_trigger_issue" boolean DEFAULT false NOT NULL,
+	"can_trigger_comment" boolean DEFAULT false NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "github_repo_members_username_repo_id_unique" UNIQUE("username","repo_id")
+);
+--> statement-breakpoint
 CREATE TABLE "github_repos" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"default_project_id" uuid,
 	"installation_id" integer NOT NULL,
+	"auto_review_pull_requests_enabled" boolean DEFAULT false NOT NULL,
+	"auto_fix_issues_enabled" boolean DEFAULT false NOT NULL,
 	"public" boolean DEFAULT false NOT NULL,
 	"full_name" varchar(255) NOT NULL,
 	"repo_owner_username" varchar(255) NOT NULL,
@@ -63,9 +78,10 @@ CREATE TABLE "instances" (
 	"instance_type_id" uuid,
 	"project_session_id" uuid,
 	"terminated_at" timestamp,
-	"started_at" timestamp,
+	"started_at" timestamp DEFAULT now() NOT NULL,
 	"state" "instance_state" NOT NULL,
 	"session_cost" integer DEFAULT 0 NOT NULL,
+	"config" json DEFAULT '{}' NOT NULL,
 	"overview" text,
 	"public_ip" varchar,
 	"private_ip" varchar,
@@ -79,6 +95,7 @@ CREATE TABLE "project_domain_routing" (
 	"project_id" uuid NOT NULL,
 	"user_id" uuid NOT NULL,
 	"target_instance_id" uuid,
+	"allow_all_ips" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now(),
 	CONSTRAINT "project_domain_routing_project_id_unique" UNIQUE("project_id")
@@ -119,11 +136,23 @@ CREATE TABLE "project_session" (
 	"updated_at" timestamp DEFAULT now()
 );
 --> statement-breakpoint
+CREATE TABLE "project_config" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"iv" varchar NOT NULL,
+	"encrypted_config" text NOT NULL,
+	"tag" text NOT NULL,
+	"project_id" uuid NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now()
+);
+--> statement-breakpoint
 CREATE TABLE "project_file_data" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"version" integer DEFAULT 1 NOT NULL,
-	"content" text,
 	"project_file_id" uuid NOT NULL,
+	"encrypted_content" text NOT NULL,
+	"iv" varchar NOT NULL,
+	"tag" varchar NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now(),
 	CONSTRAINT "project_file_data_version_project_file_id_unique" UNIQUE("version","project_file_id")
@@ -135,7 +164,8 @@ CREATE TABLE "project_files" (
 	"name" varchar NOT NULL,
 	"path" varchar NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now()
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "project_files_project_id_unique" UNIQUE("project_id")
 );
 --> statement-breakpoint
 CREATE TABLE "project_github_repos" (
@@ -161,7 +191,6 @@ CREATE TABLE "projects" (
 	"user_id" uuid NOT NULL,
 	"instance_type_id" uuid NOT NULL,
 	"total_charges" integer DEFAULT 0 NOT NULL,
-	"config" json NOT NULL,
 	"initial_script" text DEFAULT '' NOT NULL,
 	"final_script" text DEFAULT '' NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
@@ -222,16 +251,7 @@ CREATE TABLE "payment_gateway_transactions" (
 	CONSTRAINT "payment_gateway_transactions_sessionId_unique" UNIQUE("sessionId")
 );
 --> statement-breakpoint
-CREATE TABLE "user_wallet" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
-	"user_id" uuid DEFAULT gen_random_uuid() NOT NULL,
-	"balance" integer DEFAULT 0 NOT NULL,
-	"created_at" timestamp DEFAULT now() NOT NULL,
-	"updated_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "user_wallet_user_id_unique" UNIQUE("user_id")
-);
---> statement-breakpoint
-CREATE TABLE "user_wallet_credits" (
+CREATE TABLE "user_credit_grants" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"total_balance" integer DEFAULT 0 NOT NULL,
 	"balance" integer DEFAULT 0 NOT NULL,
@@ -242,6 +262,15 @@ CREATE TABLE "user_wallet_credits" (
 	"expired" boolean DEFAULT false NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "user_wallet" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid DEFAULT gen_random_uuid() NOT NULL,
+	"balance" integer DEFAULT 0 NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now() NOT NULL,
+	CONSTRAINT "user_wallet_user_id_unique" UNIQUE("user_id")
 );
 --> statement-breakpoint
 CREATE TABLE "user_wallet_transactions" (
@@ -261,12 +290,24 @@ CREATE TABLE "accounts" (
 	"user_id" uuid,
 	"provider" "account_providers" NOT NULL,
 	"status" "account_status" DEFAULT 'active' NOT NULL,
+	"verified" boolean DEFAULT true NOT NULL,
 	"token" varchar(255) NOT NULL,
 	"deleted_at" timestamp,
 	"last_login_at" timestamp,
 	"created_at" timestamp DEFAULT now() NOT NULL,
 	"updated_at" timestamp DEFAULT now(),
 	CONSTRAINT "accounts_id_unique" UNIQUE("id")
+);
+--> statement-breakpoint
+CREATE TABLE "user_login_logs" (
+	"id" uuid DEFAULT gen_random_uuid(),
+	"user_id" uuid,
+	"ip_address" varchar,
+	"user_agent" varchar,
+	"login_method" "user_login_method_enum" DEFAULT 'github',
+	"created_at" timestamp DEFAULT now() NOT NULL,
+	"updated_at" timestamp DEFAULT now(),
+	CONSTRAINT "user_login_logs_id_unique" UNIQUE("id")
 );
 --> statement-breakpoint
 CREATE TABLE "users" (
@@ -293,6 +334,7 @@ CREATE TABLE "users_api_keys" (
 );
 --> statement-breakpoint
 ALTER TABLE "environments" ADD CONSTRAINT "environments_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "github_repo_members" ADD CONSTRAINT "github_repo_members_repo_id_github_repos_id_fk" FOREIGN KEY ("repo_id") REFERENCES "public"."github_repos"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "github_repos" ADD CONSTRAINT "github_repos_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "github_repos" ADD CONSTRAINT "github_repos_default_project_id_projects_id_fk" FOREIGN KEY ("default_project_id") REFERENCES "public"."projects"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "instance_types" ADD CONSTRAINT "instance_types_region_id_instance_regions_id_fk" FOREIGN KEY ("region_id") REFERENCES "public"."instance_regions"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -307,6 +349,7 @@ ALTER TABLE "routing_allowed_ips" ADD CONSTRAINT "routing_allowed_ips_routing_id
 ALTER TABLE "project_session_tasks" ADD CONSTRAINT "project_session_tasks_project_session_id_project_session_id_fk" FOREIGN KEY ("project_session_id") REFERENCES "public"."project_session"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_session" ADD CONSTRAINT "project_session_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_session" ADD CONSTRAINT "project_session_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "project_config" ADD CONSTRAINT "project_config_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_file_data" ADD CONSTRAINT "project_file_data_project_file_id_project_files_id_fk" FOREIGN KEY ("project_file_id") REFERENCES "public"."project_files"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_files" ADD CONSTRAINT "project_files_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "project_github_repos" ADD CONSTRAINT "project_github_repos_project_id_projects_id_fk" FOREIGN KEY ("project_id") REFERENCES "public"."projects"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -320,11 +363,12 @@ ALTER TABLE "proxy_domains" ADD CONSTRAINT "proxy_domains_user_id_users_id_fk" F
 ALTER TABLE "session_auth_tokens" ADD CONSTRAINT "session_auth_tokens_session_id_project_session_id_fk" FOREIGN KEY ("session_id") REFERENCES "public"."project_session"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "shh_keys" ADD CONSTRAINT "shh_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "payment_gateway_transactions" ADD CONSTRAINT "payment_gateway_transactions_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_credit_grants" ADD CONSTRAINT "user_credit_grants_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_credit_grants" ADD CONSTRAINT "user_credit_grants_wallet_id_user_wallet_id_fk" FOREIGN KEY ("wallet_id") REFERENCES "public"."user_wallet"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_wallet" ADD CONSTRAINT "user_wallet_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_wallet_credits" ADD CONSTRAINT "user_wallet_credits_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_wallet_credits" ADD CONSTRAINT "user_wallet_credits_wallet_id_user_wallet_id_fk" FOREIGN KEY ("wallet_id") REFERENCES "public"."user_wallet"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "user_wallet_transactions" ADD CONSTRAINT "user_wallet_transactions_wallet_id_user_wallet_id_fk" FOREIGN KEY ("wallet_id") REFERENCES "public"."user_wallet"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
-ALTER TABLE "user_wallet_transactions" ADD CONSTRAINT "user_wallet_transactions_user_wallet_credit_id_user_wallet_credits_id_fk" FOREIGN KEY ("user_wallet_credit_id") REFERENCES "public"."user_wallet_credits"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_wallet_transactions" ADD CONSTRAINT "user_wallet_transactions_user_wallet_credit_id_user_credit_grants_id_fk" FOREIGN KEY ("user_wallet_credit_id") REFERENCES "public"."user_credit_grants"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "accounts" ADD CONSTRAINT "accounts_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "user_login_logs" ADD CONSTRAINT "user_login_logs_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "users_api_keys" ADD CONSTRAINT "users_api_keys_user_id_users_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE UNIQUE INDEX "domain_idx" ON "proxy_domains" USING btree ("domain");
