@@ -1,1 +1,0 @@
-ALTER TABLE "accounts" ADD COLUMN "verified" boolean DEFAULT true NOT NULL;

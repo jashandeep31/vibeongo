@@ -1,5 +1,5 @@
 {
-  "id": "bfc25a2c-dd65-4f0f-aed6-394e726cdfe0",
+  "id": "86b56360-2413-4b36-a65a-e2e7a6297452",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -64,6 +64,96 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.github_repo_members": {
+      "name": "github_repo_members",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "repo_id": {
+          "name": "repo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "username": {
+          "name": "username",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "can_trigger_pull_request": {
+          "name": "can_trigger_pull_request",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "can_trigger_issue": {
+          "name": "can_trigger_issue",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "can_trigger_comment": {
+          "name": "can_trigger_comment",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "github_repo_members_repo_id_github_repos_id_fk": {
+          "name": "github_repo_members_repo_id_github_repos_id_fk",
+          "tableFrom": "github_repo_members",
+          "tableTo": "github_repos",
+          "columnsFrom": [
+            "repo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "github_repo_members_username_repo_id_unique": {
+          "name": "github_repo_members_username_repo_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "username",
+            "repo_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.github_repos": {
       "name": "github_repos",
       "schema": "",
@@ -92,6 +182,20 @@
           "type": "integer",
           "primaryKey": false,
           "notNull": true
+        },
+        "auto_review_pull_requests_enabled": {
+          "name": "auto_review_pull_requests_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "auto_fix_issues_enabled": {
+          "name": "auto_fix_issues_enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "public": {
           "name": "public",
@@ -395,7 +499,8 @@
           "name": "started_at",
           "type": "timestamp",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true,
+          "default": "now()"
         },
         "state": {
           "name": "state",
@@ -410,6 +515,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "config": {
+          "name": "config",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'"
         },
         "overview": {
           "name": "overview",
@@ -539,6 +651,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "allow_all_ips": {
+          "name": "allow_all_ips",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -880,6 +999,78 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.project_config": {
+      "name": "project_config",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "iv": {
+          "name": "iv",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encrypted_config": {
+          "name": "encrypted_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_config_project_id_projects_id_fk": {
+          "name": "project_config_project_id_projects_id_fk",
+          "tableFrom": "project_config",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.project_file_data": {
       "name": "project_file_data",
       "schema": "",
@@ -898,15 +1089,27 @@
           "notNull": true,
           "default": 1
         },
-        "content": {
-          "name": "content",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
         "project_file_id": {
           "name": "project_file_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encrypted_content": {
+          "name": "encrypted_content",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iv": {
+          "name": "iv",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag": {
+          "name": "tag",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": true
         },
@@ -1017,7 +1220,15 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "project_files_project_id_unique": {
+          "name": "project_files_project_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "project_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1209,12 +1420,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "config": {
-          "name": "config",
-          "type": "json",
-          "primaryKey": false,
-          "notNull": true
         },
         "initial_script": {
           "name": "initial_script",
@@ -1690,78 +1895,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.user_wallet": {
-      "name": "user_wallet",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "user_id": {
-          "name": "user_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "balance": {
-          "name": "balance",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "user_wallet_user_id_users_id_fk": {
-          "name": "user_wallet_user_id_users_id_fk",
-          "tableFrom": "user_wallet",
-          "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "user_wallet_user_id_unique": {
-          "name": "user_wallet_user_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "user_id"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.user_wallet_credits": {
-      "name": "user_wallet_credits",
+    "public.user_credit_grants": {
+      "name": "user_credit_grants",
       "schema": "",
       "columns": {
         "id": {
@@ -1833,9 +1968,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "user_wallet_credits_user_id_users_id_fk": {
-          "name": "user_wallet_credits_user_id_users_id_fk",
-          "tableFrom": "user_wallet_credits",
+        "user_credit_grants_user_id_users_id_fk": {
+          "name": "user_credit_grants_user_id_users_id_fk",
+          "tableFrom": "user_credit_grants",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -1846,9 +1981,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "user_wallet_credits_wallet_id_user_wallet_id_fk": {
-          "name": "user_wallet_credits_wallet_id_user_wallet_id_fk",
-          "tableFrom": "user_wallet_credits",
+        "user_credit_grants_wallet_id_user_wallet_id_fk": {
+          "name": "user_credit_grants_wallet_id_user_wallet_id_fk",
+          "tableFrom": "user_credit_grants",
           "tableTo": "user_wallet",
           "columnsFrom": [
             "wallet_id"
@@ -1862,6 +1997,76 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_wallet": {
+      "name": "user_wallet",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "balance": {
+          "name": "balance",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_wallet_user_id_users_id_fk": {
+          "name": "user_wallet_user_id_users_id_fk",
+          "tableFrom": "user_wallet",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_wallet_user_id_unique": {
+          "name": "user_wallet_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
@@ -1944,10 +2149,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "user_wallet_transactions_user_wallet_credit_id_user_wallet_credits_id_fk": {
-          "name": "user_wallet_transactions_user_wallet_credit_id_user_wallet_credits_id_fk",
+        "user_wallet_transactions_user_wallet_credit_id_user_credit_grants_id_fk": {
+          "name": "user_wallet_transactions_user_wallet_credit_id_user_credit_grants_id_fk",
           "tableFrom": "user_wallet_transactions",
-          "tableTo": "user_wallet_credits",
+          "tableTo": "user_credit_grants",
           "columnsFrom": [
             "user_wallet_credit_id"
           ],
@@ -1995,6 +2200,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'active'"
+        },
+        "verified": {
+          "name": "verified",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": true
         },
         "token": {
           "name": "token",
@@ -2049,6 +2261,88 @@
       "uniqueConstraints": {
         "accounts_id_unique": {
           "name": "accounts_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_login_logs": {
+      "name": "user_login_logs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ip_address": {
+          "name": "ip_address",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "login_method": {
+          "name": "login_method",
+          "type": "user_login_method_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'github'"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_login_logs_user_id_users_id_fk": {
+          "name": "user_login_logs_user_id_users_id_fk",
+          "tableFrom": "user_login_logs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_login_logs_id_unique": {
+          "name": "user_login_logs_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id"
@@ -2291,6 +2585,13 @@
         "active",
         "banned",
         "deleted"
+      ]
+    },
+    "public.user_login_method_enum": {
+      "name": "user_login_method_enum",
+      "schema": "public",
+      "values": [
+        "github"
       ]
     },
     "public.users_roles": {

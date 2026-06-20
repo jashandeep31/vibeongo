@@ -5,71 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1781405800092,
-      "tag": "0000_striped_anthem",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1781407311090,
-      "tag": "0001_steady_snowbird",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1781419370479,
-      "tag": "0002_big_crystal",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1781434623037,
-      "tag": "0003_previous_boomerang",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1781627964906,
-      "tag": "0004_majestic_the_renegades",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1781665030072,
-      "tag": "0005_square_strong_guy",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1781698401826,
-      "tag": "0006_previous_rawhide_kid",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1781848309916,
-      "tag": "0007_common_hemingway",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1781853633419,
-      "tag": "0008_zippy_justin_hammer",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1781858733137,
-      "tag": "0009_needy_bushwacker",
+      "when": 1781941759014,
+      "tag": "0000_freezing_may_parker",
       "breakpoints": true
     }
   ]

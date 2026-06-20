@@ -2,6 +2,7 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { Pool } from "pg";
 import { PgSelect } from "drizzle-orm/pg-core";
+// import { createInstances } from "./seed/instances.seed.js";
 
 export type Transaction = Parameters<
   Parameters<(typeof db)["transaction"]>[0]

@@ -16,12 +16,12 @@ const getRoundedPrice = (price: number): number => {
 
 const awsRegions = [
   // { slug: "af-south-1", name: "Africa (Cape Town)" },
-  { slug: "ap-east-1", name: "Asia Pacific (Hong Kong)" },
+  // { slug: "ap-east-1", name: "Asia Pacific (Hong Kong)" },
   // { slug: "ap-east-2", name: "Asia Pacific (Taipei)" },
   // { slug: "ap-northeast-1", name: "Asia Pacific (Tokyo)" },
   // { slug: "ap-northeast-2", name: "Asia Pacific (Seoul)" },
   // { slug: "ap-northeast-3", name: "Asia Pacific (Osaka)" },
-  { slug: "ap-south-1", name: "Asia Pacific (Mumbai)" },
+  // { slug: "ap-south-1", name: "Asia Pacific (Mumbai)" },
   { slug: "ap-south-2", name: "Asia Pacific (Hyderabad)" },
   // { slug: "ap-southeast-1", name: "Asia Pacific (Singapore)" },
   // { slug: "ap-southeast-2", name: "Asia Pacific (Sydney)" },
