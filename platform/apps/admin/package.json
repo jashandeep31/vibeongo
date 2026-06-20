@@ -9,6 +9,10 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@repo/db": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "better-auth": "^1.6.20",
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4"
