@@ -17,6 +17,7 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import LogoutButton from "../(root)/logout-button";
+import { UserWalletTopUpDialog } from "@/components/dialogs/user-wallet-top-up-dialog";
 
 export type UserData = {
   users: {
@@ -83,6 +84,7 @@ const UsersClientView = ({ usersData }: { usersData: UserData[] }) => {
                   <TableHead>Verified</TableHead>
                   <TableHead>Wallet</TableHead>
                   <TableHead>Created</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -129,12 +131,18 @@ const UsersClientView = ({ usersData }: { usersData: UserData[] }) => {
                           ${formatWalletCredits(wallet?.balance ?? 0)}
                         </TableCell>
                         <TableCell>{formatDate(user.created_at)}</TableCell>
+                        <TableCell className="text-right">
+                          <UserWalletTopUpDialog
+                            userId={user.id}
+                            userEmail={user.email}
+                          />
+                        </TableCell>
                       </TableRow>
                     );
                   })
                 ) : (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-muted-foreground">
+                    <TableCell colSpan={10} className="text-muted-foreground">
                       No users found
                     </TableCell>
                   </TableRow>

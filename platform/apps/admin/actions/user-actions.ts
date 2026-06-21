@@ -1,3 +1,5 @@
+"use server";
+
 import { checkAdmin } from "@/lib/get-session";
 import {
   accounts,
@@ -8,6 +10,7 @@ import {
   userWallet,
   userWalletTransactions,
 } from "@repo/db";
+import { revalidatePath } from "next/cache";
 
 export const verifyUser = async (id: string, state: boolean) => {
   await checkAdmin();
@@ -63,4 +66,6 @@ export const userWalletTopUp = async (id: string, rawAmount: number) => {
       user_wallet_credit_id: creditGrant.id,
     });
   });
+
+  revalidatePath("/users");
 };
