@@ -14,13 +14,13 @@ const prodServers: ProxyServerConfig[] = [
     domain: ".vibeongo.one",
   },
   {
-    region: "us-east-1",
+    region: "ap-south-1",
     domain: ".in.vibeongo.one",
   },
 ];
 const localServers: ProxyServerConfig[] = [
   {
-    region: "us-east-1",
+    region: "ap-south-1",
     domain: env.PROXY_DOMAIN,
   },
 ];
