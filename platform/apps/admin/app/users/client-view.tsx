@@ -1,6 +1,10 @@
 "use client";
 
+import { blockUser, updateUserStatus, verifyUser } from "@/actions/user-actions";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { UserWalletTopUpDialog } from "@/components/dialogs/user-wallet-top-up-dialog";
 import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
 import {
   Card,
   CardContent,
@@ -16,8 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from "@repo/ui/components/table";
+import { useRouter } from "next/navigation";
+import { useTransition } from "react";
 import LogoutButton from "../(root)/logout-button";
-import { UserWalletTopUpDialog } from "@/components/dialogs/user-wallet-top-up-dialog";
 
 export type UserData = {
   users: {
@@ -53,6 +58,16 @@ const formatWalletCredits = (amount: number) => {
 };
 
 const UsersClientView = ({ usersData }: { usersData: UserData[] }) => {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const runUserAction = (action: () => Promise<unknown>) => {
+    startTransition(async () => {
+      await action();
+      router.refresh();
+    });
+  };
+
   return (
     <main className="min-h-screen bg-background p-6 text-foreground">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
@@ -131,11 +146,74 @@ const UsersClientView = ({ usersData }: { usersData: UserData[] }) => {
                           ${formatWalletCredits(wallet?.balance ?? 0)}
                         </TableCell>
                         <TableCell>{formatDate(user.created_at)}</TableCell>
-                        <TableCell className="text-right">
-                          <UserWalletTopUpDialog
-                            userId={user.id}
-                            userEmail={user.email}
-                          />
+                        <TableCell>
+                          <div className="flex justify-end gap-2">
+                            {!isVerified && account ? (
+                              <ConfirmationDialog
+                                title="Verify user"
+                                description={`Verify ${user.email}? This marks the account as verified.`}
+                                confirmText="Verify"
+                                onConfirm={() =>
+                                  runUserAction(() => verifyUser(user.id, true))
+                                }
+                              >
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  variant="outline"
+                                  disabled={isPending}
+                                >
+                                  Verify
+                                </Button>
+                              </ConfirmationDialog>
+                            ) : null}
+                            {account ? (
+                              isBlocked ? (
+                                <ConfirmationDialog
+                                  title="Unban user"
+                                  description={`Unban ${user.email}? Access to protected app routes will be restored.`}
+                                  confirmText="Unban"
+                                  onConfirm={() =>
+                                    runUserAction(() =>
+                                      updateUserStatus(user.id, "active"),
+                                    )
+                                  }
+                                >
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    disabled={isPending}
+                                  >
+                                    Unban
+                                  </Button>
+                                </ConfirmationDialog>
+                              ) : (
+                                <ConfirmationDialog
+                                  title="Ban user"
+                                  description={`Ban ${user.email}? The user will no longer be able to access protected app routes.`}
+                                  confirmText="Ban user"
+                                  isDestructive
+                                  onConfirm={() =>
+                                    runUserAction(() => blockUser(user.id))
+                                  }
+                                >
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="destructive"
+                                    disabled={isPending}
+                                  >
+                                    Ban
+                                  </Button>
+                                </ConfirmationDialog>
+                              )
+                            ) : null}
+                            <UserWalletTopUpDialog
+                              userId={user.id}
+                              userEmail={user.email}
+                            />
+                          </div>
                         </TableCell>
                       </TableRow>
                     );

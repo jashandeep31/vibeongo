@@ -72,7 +72,6 @@ const Page = async () => {
     totalUsers,
     totalProjects,
     totalGithubRepos,
-    activeSessions,
     runningInstancesCount,
     runningInstances,
     recentlyTerminatedInstances,
@@ -81,10 +80,6 @@ const Page = async () => {
     db.select({ value: count() }).from(users),
     db.select({ value: count() }).from(projects),
     db.select({ value: count() }).from(githubRepos),
-    db
-      .select({ value: count() })
-      .from(projectSessions)
-      .where(eq(projectSessions.archived, false)),
     db
       .select({ value: count() })
       .from(instances)
@@ -131,7 +126,6 @@ const Page = async () => {
     { label: "Total users", value: Number(totalUsers[0]?.value ?? 0) },
     { label: "Total projects", value: Number(totalProjects[0]?.value ?? 0) },
     { label: "GitHub repos", value: Number(totalGithubRepos[0]?.value ?? 0) },
-    { label: "Active sessions", value: Number(activeSessions[0]?.value ?? 0) },
     {
       label: "Running instances",
       value: Number(runningInstancesCount[0]?.value ?? 0),
@@ -139,11 +133,11 @@ const Page = async () => {
   ];
 
   return (
-    <main className="min-h-screen bg-background p-6 text-foreground">
+    <main className="bg-background text-foreground min-h-screen p-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">Admin</p>
+            <p className="text-muted-foreground text-sm">Admin</p>
             <h1 className="text-3xl font-semibold tracking-tight">
               Platform overview
             </h1>
@@ -237,7 +231,9 @@ const Page = async () => {
                             instance.terminatedAt,
                           )}
                         </TableCell>
-                        <TableCell>{formatDate(instance.terminatedAt)}</TableCell>
+                        <TableCell>
+                          {formatDate(instance.terminatedAt)}
+                        </TableCell>
                       </TableRow>
                     ))
                   ) : (

@@ -12,6 +12,8 @@ import {
 } from "@repo/db";
 import { revalidatePath } from "next/cache";
 
+type AccountStatus = "active" | "banned";
+
 export const verifyUser = async (id: string, state: boolean) => {
   await checkAdmin();
   await db
@@ -20,8 +22,24 @@ export const verifyUser = async (id: string, state: boolean) => {
       verified: state,
     })
     .where(eq(accounts.user_id, id));
+  revalidatePath("/users");
   return true;
 };
+
+export const updateUserStatus = async (id: string, status: AccountStatus) => {
+  await checkAdmin();
+
+  await db
+    .update(accounts)
+    .set({
+      status,
+    })
+    .where(eq(accounts.user_id, id));
+  revalidatePath("/users");
+  return true;
+};
+
+export const blockUser = async (id: string) => updateUserStatus(id, "banned");
 
 export const userWalletTopUp = async (id: string, rawAmount: number) => {
   await checkAdmin();
