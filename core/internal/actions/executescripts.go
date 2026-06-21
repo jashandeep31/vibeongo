@@ -27,8 +27,10 @@ func ReExecuteFinalScript() error {
 
 func ExecuteIntialScript() error {
 	cfg, err := config.LoadAndValidate("config.json")
-	ProvisionOpenCode(cfg.OpenCode)
 	if err != nil {
+		return err
+	}
+	if err := ProvisionOpenCode(cfg.OpenCode); err != nil {
 		return err
 	}
 
