@@ -52,7 +52,7 @@ export const getTargetHostByDomain = catchAsync(
     )
   )
 )
-FROM proxy_domains pd WHERE pd.domain = ${domain};
+FROM proxy_domains pd WHERE pd.domain = ${domain.split(".")[0]};
 `);
     const data = dbRes.rows[0]?.to_jsonb;
     if (!data) throw new AppError("domain not found" + domain, 404);
