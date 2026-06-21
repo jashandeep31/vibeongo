@@ -10,7 +10,6 @@ import {
   projects,
   projectSshKeys,
   sshKeys,
-  sql,
   desc,
   projectConfig,
   proxyDomains,
@@ -23,6 +22,7 @@ import { Request, Response } from "express";
 import { projectConfigValidator } from "@repo/shared";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
+import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 
 export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
@@ -225,37 +225,8 @@ export const getProjectDomainsById = catchAsync(
     const { id } = req.params;
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
-    //     const dbRes = await db.execute(sql`SELECT
-    //   jsonb_agg(
-    //     to_jsonb(pdr) || jsonb_build_object(
-    //       'proxy_domains',
-    //       COALESCE(
-    //         (
-    //           SELECT jsonb_agg(to_jsonb(pd) )
-    //           FROM proxy_domains pd
-    //           WHERE pd.routing_id = pdr.id
-    //         ),
-    //         '[]'::jsonb
-    //       ),
-    //       'allowed_ips',
-    //       COALESCE(
-    //         (
-    //           SELECT jsonb_agg(to_jsonb(rai))
-    //           FROM routing_allowed_ips rai
-    //           WHERE rai.routing_id = pdr.id
-    //         ),
-    //         '[]'::jsonb
-    //       )
-    //     )
-    //   ) AS result
-    // FROM project_domain_routing pdr
-    // WHERE pdr.project_id = ${id};`);
-    //NOTE: make it typesafe but its working too as we not using type can't check even looking for review on this
-    // const refinedData = (dbRes.rows[0]?.result as any)[0];
-    //
-    //
 
-    const projectRountingWithDomains = await db
+    const projectRoutingWithDomains = await db
       .select()
       .from(projectDomainRouting)
       .leftJoin(
@@ -272,22 +243,28 @@ export const getProjectDomainsById = catchAsync(
           eq(projectDomainRouting.project_id, id),
         ),
       );
-    // const projectDomainRows = await db.select().from(proxyDomains).where(eq(proxyDomains.routing_id, ));
-    //
+
+    const routing = projectRoutingWithDomains[0]?.project_domain_routing;
+    if (!routing) throw new AppError("routing not found", 404);
 
     const domains: Map<string, typeof proxyDomains.$inferSelect> = new Map();
     const ips: Map<string, typeof routingAllowedIps.$inferSelect> = new Map();
 
-    for (const item of projectRountingWithDomains) {
+    for (const item of projectRoutingWithDomains) {
       if (item.proxy_domains) {
-        domains.set(item.proxy_domains.id, item.proxy_domains);
+        domains.set(item.proxy_domains.id, {
+          ...item.proxy_domains,
+          domain: item.proxy_domains.domain + (await getProxyServerUrl(id)),
+        });
       }
-      if (item.routing_allowed_ips)
-        ips.set(item.project_domain_routing.id, item.routing_allowed_ips);
+      if (item.routing_allowed_ips) {
+        ips.set(item.routing_allowed_ips.id, item.routing_allowed_ips);
+      }
     }
 
     res.status(200).json({
       data: {
+        ...routing,
         proxy_domains: [...domains.values()],
         allowed_ips: [...ips.values()],
       },
