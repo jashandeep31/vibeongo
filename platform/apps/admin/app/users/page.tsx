@@ -1,5 +1,5 @@
 import { checkAdmin } from "@/lib/get-session";
-import UsersClientView, { type AdminUser } from "./client-view";
+import UsersClientView from "./client-view";
 import { accounts, db, eq, users, userWallet } from "@repo/db";
 
 const UsersPage = async () => {
