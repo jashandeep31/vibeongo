@@ -26,7 +26,7 @@ export const createDomainsForProject = async ({
         const randomCuid = createId();
         const sub = randomCuid.slice(0, 10);
         return {
-          domain: `${sub}.${env.PROXY_DOMAIN}`,
+          domain: `${sub}`,
           target_port: port,
           allow_any: true,
           routing_id: routingId,
