@@ -4,9 +4,15 @@ import { env } from "./env.js";
 import { getProxyServerUrl } from "./proxy-servers.js";
 
 export const invalidateProxyHosts = async (pid: string, hosts: string[]) => {
-  const uniqueHosts = [...new Set(hosts.filter(Boolean))];
-  if (!uniqueHosts.length) return;
   const domain = await getProxyServerUrl(pid);
+  const uniqueHosts = [
+    ...new Set(
+      hosts
+        .filter(Boolean)
+        .map((host) => (host.includes(".") ? host : `${host}${domain}`)),
+    ),
+  ];
+  if (!uniqueHosts.length) return;
 
   await axios.post(
     `https://a${domain}/proxy/invalidate`,
