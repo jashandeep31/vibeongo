@@ -1,5 +1,3 @@
-import { DescribeImagesCommand } from "@aws-sdk/client-ec2";
-import { getEc2Client } from "../ec2-client.js";
 import { awsSupportedRegions } from "./aws-supported-regions-configs.js";
 
 //TODO:: make the ids automated using aws fetching current or same version for all the regions
@@ -11,6 +9,7 @@ export const ec2RegionImageIds: {
     region: "ap-south-1",
     linuxImageId: "ami-0090624b608e8c44e",
   },
+  { region: "us-east-1", linuxImageId: "ami-021dce13887b692e1" },
 ] as const;
 
 // export const getAWSLinuxAmis = async () => {
