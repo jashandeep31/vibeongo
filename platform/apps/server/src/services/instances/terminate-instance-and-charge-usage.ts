@@ -17,8 +17,8 @@ import {
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { userWallet } from "@repo/db";
-import { invalidateProjectProxiesByRoutingId } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { getEc2InstanceNetworkUsage } from "../../aws/services/get-instance-network-usage.js";
+import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
 //props of the fuction
 interface terminateInstanceAndChargeUsageProps {
@@ -221,10 +221,10 @@ export const terminateInstanceAndChargeUsage = async ({
         eq(projectDomainRouting.user_id, userId),
       ),
     )
-    .returning({ id: projectDomainRouting.id });
+    .returning();
 
   for (const routing of updatedRoutings) {
-    await invalidateProjectProxiesByRoutingId(routing.id);
+    await invalidateProjectProxiesByPid(routing.project_id);
   }
   return;
 };
