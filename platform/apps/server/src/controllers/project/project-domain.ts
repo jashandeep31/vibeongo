@@ -13,7 +13,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
 import {
-  invalidateProjectProxiesByRoutingId,
+  invalidateProjectProxiesByPid,
   invalidateProxyHosts,
 } from "../../lib/invalidate-project-proxies-by-pid.js";
 
@@ -22,7 +22,11 @@ export const updateProxyDomainPort = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("authentication is required", 401);
 
-    const { id, domainId, target_port } = z
+    const {
+      id: projectId,
+      domainId,
+      target_port,
+    } = z
       .object({
         id: z.uuid(),
         domainId: z.uuid(),
@@ -36,7 +40,7 @@ export const updateProxyDomainPort = catchAsync(
       .where(
         and(
           eq(projectDomainRouting.user_id, user.id),
-          eq(projectDomainRouting.project_id, id),
+          eq(projectDomainRouting.project_id, projectId),
         ),
       );
     if (!projectRouting) throw new AppError("routing not found", 404);
@@ -58,7 +62,10 @@ export const updateProxyDomainPort = catchAsync(
 
     if (!updatedRows.length) throw new AppError("domain not found", 404);
 
-    await invalidateProxyHosts(updatedRows.map((row) => row.domain));
+    await invalidateProxyHosts(
+      projectId,
+      updatedRows.map((row) => row.domain),
+    );
 
     res.status(200).json({
       message: "port updated successfully",
@@ -98,7 +105,7 @@ export const deleteMultipleIpFromProject = catchAsync(
         ),
       );
 
-    await invalidateProjectProxiesByRoutingId(projectRouting.id);
+    await invalidateProjectProxiesByPid(projectRouting.project_id);
 
     res.status(200).json({
       message: "ips removed from routing successfully",
@@ -139,7 +146,7 @@ export const deleteAllowedIPFromProject = catchAsync(
       )
       .returning({ id: routingAllowedIps.id });
 
-    await invalidateProjectProxiesByRoutingId(projectRouting.id);
+    await invalidateProjectProxiesByPid(projectRouting.project_id);
 
     res.status(200).json({
       message: "ip removed from routing successfully",
@@ -176,7 +183,7 @@ export const addAllowedIPToProject = catchAsync(
       routing_id: projectRouting.id,
     });
 
-    await invalidateProjectProxiesByRoutingId(projectRouting.id);
+    await invalidateProjectProxiesByPid(projectRouting.project_id);
 
     res.status(200).json({
       message: "ip added to routing successfully",
@@ -221,7 +228,7 @@ export const updateProjectRoutingTargetInstance = catchAsync(
       .returning();
     if (!updatedRouting) throw new AppError("routing not found", 404);
 
-    await invalidateProjectProxiesByRoutingId(updatedRouting.id);
+    await invalidateProjectProxiesByPid(updatedRouting.project_id);
 
     res.status(200).json({
       message: "instance updated successfully",

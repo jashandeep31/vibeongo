@@ -288,21 +288,21 @@ export const deleteProjectById = catchAsync(
     //   throw new AppError("Feature is stopped temporarily", 400);
     // }
     // check if any instance is associated with the project and its not terminated
-    const projectInstances = await db
-      .select()
-      .from(instances)
-      .where(and(eq(instances.project_id, id), eq(instances.state, "running")));
+    // const projectInstances = await db
+    //   .select()
+    //   .from(instances)
+    //   .where(and(eq(instances.project_id, id), eq(instances.state, "running")));
 
-    if (projectInstances.length > 0) {
-      throw new AppError("project has running instances, cannot delete", 400);
-    }
+    // if (projectInstances.length > 0) {
+    //   throw new AppError("project has running instances, cannot delete", 400);
+    // }
+    //
+    // await db
+    //   .delete(projects)
+    //   .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
 
-    await db
-      .delete(projects)
-      .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
-
-    res.status(200).json({
-      message: "Project deleted successfully",
+    res.status(401).json({
+      message: "Project deletion is not allowed yet",
     });
   },
 );
