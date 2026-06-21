@@ -13,9 +13,13 @@ import {
   projectSessions,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
+import { decryptData } from "../../lib/encryption-decryption.js";
 
 type ProjectFileItem = typeof projectFiles.$inferSelect & {
-  project_file_data: typeof projectFileData.$inferSelect | null;
+  project_file_data: (Pick<
+    typeof projectFileData.$inferSelect,
+    "id" | "version" | "created_at" | "updated_at"
+  > & { content: string }) | null;
 };
 
 export const getRuntimeProjectFiles = catchAsync(
@@ -61,7 +65,17 @@ export const getRuntimeProjectFiles = catchAsync(
           item.projectFileData.project_file_id,
         );
         if (!projectItem) continue;
-        projectItem.project_file_data = item.projectFileData;
+        projectItem.project_file_data = {
+          id: item.projectFileData.id,
+          content: decryptData({
+            encrypted: item.projectFileData.encrypted_content,
+            iv: item.projectFileData.iv,
+            tag: item.projectFileData.tag,
+          }),
+          created_at: item.projectFileData.created_at,
+          updated_at: item.projectFileData.updated_at,
+          version: item.projectFileData.version,
+        };
       }
     }
 

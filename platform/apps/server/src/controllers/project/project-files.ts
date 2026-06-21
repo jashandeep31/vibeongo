@@ -6,7 +6,6 @@ import {
   projectFileData,
   projectFiles,
   projects,
-  ConsoleLogWriter,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
