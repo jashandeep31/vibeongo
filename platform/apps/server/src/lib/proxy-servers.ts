@@ -42,11 +42,8 @@ export const getProxyServerUrl = async (
     .where(eq(projects.id, project_id));
   if (!row) throw new AppError("region not found", 404);
 
-  const server = localServers.find((i) => i.region === row.region.slug);
+  const server = proxyServers.find((i) => i.region === row.region.slug);
+  const domain = server?.domain ?? proxyServers[0]?.domain ?? "";
 
-  if (server) {
-    return server.domain;
-  } else {
-    return proxyServers[0]?.domain || "";
-  }
+  return domain;
 };
