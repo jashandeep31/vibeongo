@@ -1,6 +1,5 @@
 import { awsSupportedRegions } from "./aws-supported-regions-configs.js";
 
-//TODO:: make the ids automated using aws fetching current or same version for all the regions
 export const ec2RegionImageIds: {
   region: (typeof awsSupportedRegions)[number];
   linuxImageId: string;

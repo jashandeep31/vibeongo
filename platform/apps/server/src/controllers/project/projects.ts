@@ -13,6 +13,9 @@ import {
   sql,
   desc,
   projectConfig,
+  proxyDomains,
+  projectDomainRouting,
+  routingAllowedIps,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -222,36 +225,72 @@ export const getProjectDomainsById = catchAsync(
     const { id } = req.params;
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
-    const dbRes = await db.execute(sql`SELECT 
-  jsonb_agg(
-    to_jsonb(pdr) || jsonb_build_object(
-      'proxy_domains', 
-      COALESCE(
-        (
-          SELECT jsonb_agg(to_jsonb(pd) )
-          FROM proxy_domains pd 
-          WHERE pd.routing_id = pdr.id
-        ), 
-        '[]'::jsonb
-      ),
-      'allowed_ips',
-      COALESCE(
-        (
-          SELECT jsonb_agg(to_jsonb(rai))
-          FROM routing_allowed_ips rai
-          WHERE rai.routing_id = pdr.id
-        ),
-        '[]'::jsonb
-      )
-    )
-  ) AS result
-FROM project_domain_routing pdr  
-WHERE pdr.project_id = ${id};`);
+    //     const dbRes = await db.execute(sql`SELECT
+    //   jsonb_agg(
+    //     to_jsonb(pdr) || jsonb_build_object(
+    //       'proxy_domains',
+    //       COALESCE(
+    //         (
+    //           SELECT jsonb_agg(to_jsonb(pd) )
+    //           FROM proxy_domains pd
+    //           WHERE pd.routing_id = pdr.id
+    //         ),
+    //         '[]'::jsonb
+    //       ),
+    //       'allowed_ips',
+    //       COALESCE(
+    //         (
+    //           SELECT jsonb_agg(to_jsonb(rai))
+    //           FROM routing_allowed_ips rai
+    //           WHERE rai.routing_id = pdr.id
+    //         ),
+    //         '[]'::jsonb
+    //       )
+    //     )
+    //   ) AS result
+    // FROM project_domain_routing pdr
+    // WHERE pdr.project_id = ${id};`);
     //NOTE: make it typesafe but its working too as we not using type can't check even looking for review on this
-    const refinedData = (dbRes.rows[0]?.result as any)[0];
+    // const refinedData = (dbRes.rows[0]?.result as any)[0];
+    //
+    //
+
+    const projectRountingWithDomains = await db
+      .select()
+      .from(projectDomainRouting)
+      .leftJoin(
+        proxyDomains,
+        eq(proxyDomains.routing_id, projectDomainRouting.id),
+      )
+      .leftJoin(
+        routingAllowedIps,
+        eq(routingAllowedIps.routing_id, projectDomainRouting.id),
+      )
+      .where(
+        and(
+          eq(projectDomainRouting.user_id, user.id),
+          eq(projectDomainRouting.project_id, id),
+        ),
+      );
+    // const projectDomainRows = await db.select().from(proxyDomains).where(eq(proxyDomains.routing_id, ));
+    //
+
+    const domains: Map<string, typeof proxyDomains.$inferSelect> = new Map();
+    const ips: Map<string, typeof routingAllowedIps.$inferSelect> = new Map();
+
+    for (const item of projectRountingWithDomains) {
+      if (item.proxy_domains) {
+        domains.set(item.proxy_domains.id, item.proxy_domains);
+      }
+      if (item.routing_allowed_ips)
+        ips.set(item.project_domain_routing.id, item.routing_allowed_ips);
+    }
 
     res.status(200).json({
-      data: refinedData,
+      data: {
+        proxy_domains: [...domains.values()],
+        allowed_ips: [...ips.values()],
+      },
     });
   },
 );

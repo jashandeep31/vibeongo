@@ -102,7 +102,7 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
     await createDomainsForProject({
       tx: tx,
       routingId: projectRouting.id,
-      ports: [8080, 3000, 4096, 8000, 80],
+      ports: [8080, 3000, 4096, 8000, 80, 5000],
       userId: user.id,
     });
 

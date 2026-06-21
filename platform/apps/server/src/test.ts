@@ -1,33 +1,14 @@
-import { db, eq, projectConfig, projects } from "@repo/db";
-import { encryptData } from "./lib/encryption-decryption.js";
+import { db, eq, proxyDomains } from "@repo/db";
 
 export default async function test() {
-  // const key = crypto.randomBytes(32); // AES-256 key
-  // const keyString = key.toString("base64");
-  // console.log(keystring);
-  // const projecRows = await db.select().from(projects);
-  // for (const project of projecRows) {
-  //   console.log(project.id);
-  //   console.log(project.config);
-  //
-  //   const stringifiedConfig = JSON.stringify(project.config);
-  //
-  //   const enc = encryptData(stringifiedConfig);
-  //
-  //   const [isProjectConfigchnaged] = await db
-  //     .select()
-  //     .from(projectConfig)
-  //     .where(eq(projectConfig.project_id, project.id));
-  //   if (isProjectConfigchnaged) {
-  //     continue;
-  //   }
-  //
-  //   console.log("we need to work");
-  //   await db.insert(projectConfig).values({
-  //     project_id: project.id,
-  //     encrypted_config: enc.encryptedData,
-  //     iv: enc.iv,
-  //     tag: enc.tag,
-  //   });
-  // }
+  const proxyDomain = await db.select().from(proxyDomains);
+
+  for (const domain of proxyDomain) {
+    await db
+      .update(proxyDomains)
+      .set({
+        domain: domain.domain.split(".")[0],
+      })
+      .where(eq(proxyDomains.id, domain.id));
+  }
 }
