@@ -47,7 +47,7 @@ const awsRegions = [
   // { slug: "me-south-1", name: "Middle East (Bahrain)" },
   // { slug: "mx-central-1", name: "Mexico (Central)" },
   // { slug: "sa-east-1", name: "South America (Sao Paulo)" },
-  // { slug: "us-east-1", name: "US East (N. Virginia)" },
+  { slug: "us-east-1", name: "US East (N. Virginia)" },
   // { slug: "us-east-2", name: "US East (Ohio)" },
   // { slug: "us-gov-east-1", name: "AWS GovCloud (US-East)" },
   // { slug: "us-gov-west-1", name: "AWS GovCloud (US-West)" },
