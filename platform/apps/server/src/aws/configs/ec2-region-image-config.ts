@@ -6,7 +6,7 @@ export const ec2RegionImageIds: {
 }[] = [
   {
     region: "ap-south-1",
-    linuxImageId: "ami-0090624b608e8c44e",
+    linuxImageId: "ami-0984c70bbe282f599",
   },
   { region: "us-east-1", linuxImageId: "ami-021dce13887b692e1" },
 ] as const;
