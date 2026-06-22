@@ -1,4 +1,5 @@
 import { checkAdmin } from "@/lib/get-session";
+import Link from "next/link";
 import {
   Card,
   CardContent,
@@ -20,8 +21,8 @@ import {
   desc,
   eq,
   githubRepos,
+  instanceRegions,
   instances,
-  projectSessions,
   projects,
   users,
 } from "@repo/db";
@@ -72,6 +73,7 @@ const Page = async () => {
     totalUsers,
     totalProjects,
     totalGithubRepos,
+    totalRegions,
     runningInstancesCount,
     runningInstances,
     recentlyTerminatedInstances,
@@ -80,6 +82,7 @@ const Page = async () => {
     db.select({ value: count() }).from(users),
     db.select({ value: count() }).from(projects),
     db.select({ value: count() }).from(githubRepos),
+    db.select({ value: count() }).from(instanceRegions),
     db
       .select({ value: count() })
       .from(instances)
@@ -123,9 +126,18 @@ const Page = async () => {
   ]);
 
   const metrics = [
-    { label: "Total users", value: Number(totalUsers[0]?.value ?? 0) },
+    {
+      label: "Total users",
+      value: Number(totalUsers[0]?.value ?? 0),
+      href: "/users",
+    },
     { label: "Total projects", value: Number(totalProjects[0]?.value ?? 0) },
     { label: "GitHub repos", value: Number(totalGithubRepos[0]?.value ?? 0) },
+    {
+      label: "Regions",
+      value: Number(totalRegions[0]?.value ?? 0),
+      href: "/regions",
+    },
     {
       label: "Running instances",
       value: Number(runningInstancesCount[0]?.value ?? 0),
@@ -146,16 +158,38 @@ const Page = async () => {
         </header>
 
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
-          {metrics.map((metric) => (
-            <Card key={metric.label}>
-              <CardHeader>
-                <CardDescription>{metric.label}</CardDescription>
-                <CardTitle className="text-3xl font-semibold">
-                  {metric.value.toLocaleString()}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-          ))}
+          {metrics.map((metric) => {
+            const card = (
+              <Card
+                className={
+                  metric.href
+                    ? "h-full transition-colors hover:bg-muted/50"
+                    : "h-full"
+                }
+              >
+                <CardHeader>
+                  <CardDescription>{metric.label}</CardDescription>
+                  <CardTitle className="text-3xl font-semibold">
+                    {metric.value.toLocaleString()}
+                  </CardTitle>
+                </CardHeader>
+              </Card>
+            );
+
+            if (metric.href) {
+              return (
+                <Link
+                  key={metric.label}
+                  href={metric.href}
+                  className="block h-full"
+                >
+                  {card}
+                </Link>
+              );
+            }
+
+            return <div key={metric.label}>{card}</div>;
+          })}
         </section>
 
         <section className="grid gap-4 xl:grid-cols-2">

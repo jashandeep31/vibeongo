@@ -17,6 +17,7 @@ export const instanceRegions = pgTable("instance_regions", {
   id: uuid().defaultRandom().primaryKey(),
   name: varchar().notNull(),
   slug: varchar().notNull(),
+  ami: varchar().notNull(),
 
   provider: instanceProvidersEnum().notNull(),
   created_at: timestamp().defaultNow().notNull(),

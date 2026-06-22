@@ -8,6 +8,20 @@
       "when": 1781941759014,
       "tag": "0000_freezing_may_parker",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1782109267101,
+      "tag": "0001_famous_champions",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782109881037,
+      "tag": "0002_fine_infant_terrible",
+      "breakpoints": true
     }
   ]
 }
