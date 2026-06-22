@@ -68,3 +68,19 @@ export const userLoginLogs = pgTable("user_login_logs", {
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
+
+export const userSettings = pgTable("user_settings", {
+  id: uuid().defaultRandom().unique(),
+
+  user_id: uuid()
+    .references(() => users.id)
+    .notNull()
+    .unique(),
+
+  default_pr_model: varchar(),
+  default_issue_fixer_model: varchar(),
+  default_comment_model: varchar(),
+
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow(),
+});
