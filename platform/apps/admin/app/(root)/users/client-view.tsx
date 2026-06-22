@@ -22,7 +22,7 @@ import {
 } from "@repo/ui/components/table";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import LogoutButton from "../(root)/logout-button";
+import LogoutButton from "../logout-button";
 
 export type UserData = {
   users: {

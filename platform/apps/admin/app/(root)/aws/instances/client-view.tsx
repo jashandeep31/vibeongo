@@ -22,7 +22,7 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { useState, useTransition } from "react";
-import LogoutButton from "../../(root)/logout-button";
+import LogoutButton from "../../logout-button";
 
 type InstancesClientViewProps = {
   initialRegion: ValidRegion;

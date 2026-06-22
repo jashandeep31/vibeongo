@@ -16,7 +16,7 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { asc, db, instanceRegions } from "@repo/db";
-import LogoutButton from "../(root)/logout-button";
+import LogoutButton from "../logout-button";
 
 const formatDate = (value: Date | string | null | undefined) => {
   if (!value) return "-";

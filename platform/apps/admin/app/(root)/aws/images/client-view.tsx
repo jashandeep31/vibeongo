@@ -45,7 +45,7 @@ import type { Image } from "@aws-sdk/client-ec2";
 import type { ImageSummary } from "@aws-sdk/client-imagebuilder";
 import { Copy, Images, Play, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import LogoutButton from "../../(root)/logout-button";
+import LogoutButton from "../../logout-button";
 
 type ImagesClientViewProps = {
   images: Image[];
