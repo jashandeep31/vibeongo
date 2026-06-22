@@ -72,22 +72,21 @@ export const issueRequestHandler = async ({
       .returning();
     if (!session) return;
 
-    await tx.insert(projectSessionTasks).values({
-      folder_name: repo.full_name.split("/")[1],
-      task: `Fix issue: ${issue.url} `,
-      agent: "issue-resolver",
-      project_session_id: session.id,
-      done: false,
-    });
+    const tasks = [
+      `Fix issue ${issue.url}`,
+      "Have you done with all if not please complete the steps and make sure the pr is raised",
+    ];
 
-    await tx.insert(projectSessionTasks).values({
-      folder_name: repo.full_name.split("/")[1],
-      task: `Have you done with all if not please complete the steps and make sure the pr is raised`,
-      agent: "issue-resolver",
-      project_session_id: session.id,
-      done: false,
-    });
-
+    await tx.insert(projectSessionTasks).values(
+      tasks.map((t, index) => ({
+        folder_name: repo.full_name.split("/")[1] ?? "",
+        task: t,
+        agent: "issue-resolver" as const,
+        project_session_id: session.id,
+        done: false,
+        order_number: index,
+      })),
+    );
     return session;
   });
   if (!session) return null;

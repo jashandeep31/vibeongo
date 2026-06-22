@@ -71,21 +71,20 @@ export const pullRequestOpenedHandler = async ({
       .returning();
     if (!session) return;
 
-    await tx.insert(projectSessionTasks).values({
-      folder_name: repo.full_name.split("/")[1],
-      task: `Review the PR: ${pr.url} `,
-      agent: "pr-reviewer",
-      project_session_id: session.id,
-      done: false,
-    });
-
-    await tx.insert(projectSessionTasks).values({
-      folder_name: repo.full_name.split("/")[1],
-      task: `Have you done with all if not please complete the steps and make sure you have left the comment`,
-      agent: "pr-reviewer",
-      project_session_id: session.id,
-      done: false,
-    });
+    const tasks = [
+      `Review the PR: ${pr.url} `,
+      `Have you done with all if not please complete the steps and make sure you have left the comment`,
+    ];
+    await tx.insert(projectSessionTasks).values(
+      tasks.map((t, index) => ({
+        folder_name: repo.full_name.split("/")[1] ?? "",
+        task: t,
+        agent: "pr-reviewer" as const,
+        project_session_id: session.id,
+        done: false,
+        order_number: index,
+      })),
+    );
 
     return session;
   });

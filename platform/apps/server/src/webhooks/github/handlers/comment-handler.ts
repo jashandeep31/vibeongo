@@ -73,25 +73,23 @@ export const commentHandler = async (
       .returning();
 
     if (!session) throw new Error("Internal error");
-    //TODO: automate the agent selection with the AI
-    const tasks: (typeof projectSessionTasks.$inferInsert)[] = [
-      {
-        folder_name: repo.full_name.split("/")[1]!,
-        task:
-          `Here is the comment given by the user perform the actions as per it comment url: ${payload.comment.url}` +
-          body,
-        agent: "issue-resolver",
-        project_session_id: session.id,
-      },
-      {
-        folder_name: repo.full_name.split("/")[1]!,
-        task: "Please you have done things as asked if not please complete those now",
-        agent: "issue-resolver",
-        project_session_id: session.id,
-      },
+
+    const tasks = [
+      `Here is the comment given by the user perform the actions as per it comment url: ${payload.comment.url} ${body}`,
+      "Please you have done things as asked if not please complete those now",
     ];
 
-    await tx.insert(projectSessionTasks).values(tasks);
+    //TODO: automate the agent selection with the AI
+    await tx.insert(projectSessionTasks).values(
+      tasks.map((t, index) => ({
+        folder_name: repo.full_name.split("/")[1] ?? "",
+        task: t,
+        agent: "issue-resolver" as const,
+        project_session_id: session.id,
+        done: false,
+        order_number: index,
+      })),
+    );
     return session;
   });
   const authToken = await createSessionAuthToken(session.id);

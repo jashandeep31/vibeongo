@@ -189,12 +189,23 @@ export const addTaskToProjectSession = catchAsync(
     if (!gitRepo) {
       throw new AppError("Github repo is not attached to this project", 404);
     }
+
     await db.insert(projectSessionTasks).values({
-      task: task,
+      task,
       model,
-      agent: agent,
+      agent,
       project_session_id: id,
-      folder_name: gitRepo.repo.full_name.split("/").at(-1),
+      folder_name: gitRepo.repo.full_name.split("/").at(-1) ?? "",
+      order_number: sql<number>`
+    COALESCE(
+      (
+        SELECT MAX(order_number) + 1
+        FROM project_session_tasks
+        WHERE project_session_id = ${id}
+      ),
+      1
+    )
+  `,
     });
 
     res.status(200).json({ message: "Successfully added the task" });
@@ -349,7 +360,7 @@ export const getProjectSessionById = catchAsync(
         projectSessionTasks,
         eq(projectSessionTasks.project_session_id, id),
       )
-      .orderBy(asc(projectSessionTasks.created_at))
+      .orderBy(asc(projectSessionTasks.order_number))
       .leftJoin(
         instances,
         and(
