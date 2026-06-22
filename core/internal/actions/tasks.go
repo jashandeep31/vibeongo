@@ -90,6 +90,7 @@ func ExecuteTasks(cfg config.Config) error {
 	if cfg.InstanceConfig.Terminate {
 		fmt.Fprintf(&tmuxScript, "vibeongo terminate\n\n")
 	}
+	fmt.Println(tmuxScript.String())
 	err = utils.RunScriptInTmuxSession("tasks", tmuxScript.String())
 	if err != nil {
 		return err
