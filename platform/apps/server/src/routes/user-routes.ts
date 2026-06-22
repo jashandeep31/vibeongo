@@ -11,6 +11,7 @@ import {
   getUserCreditGrants,
   getUserWallet,
 } from "../controllers/user/wallet-controller.js";
+import { getUserSettings } from "../controllers/user/settings-controller.js";
 
 const routes: Router = Router();
 
@@ -19,7 +20,7 @@ routes
   .post(checkAuthorization(["all"]), createSshKey)
   .get(checkAuthorization(["all"]), getSshKeys);
 
-routes.route("/settings").get(checkAuthorization(["all"]));
+routes.route("/settings").get(checkAuthorization(["all"]), getUserSettings);
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 
 routes.route("/wallet").get(checkAuthorization(["all"]), getUserWallet);

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUserSettings } from "@/hooks/use-user";
 import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { EditSshKeyDialog } from "@/components/dialogs/edit-ssh-key-dialog";
@@ -41,8 +42,28 @@ const themeOptions = [
 
 export default function ClientView() {
   const { theme = "system", setTheme } = useTheme();
+  const {
+    data: userSettings,
+    isLoading: isUserSettingsLoading,
+    isError: isUserSettingsError,
+  } = useUserSettings();
   const { data: sshKeys, isLoading } = useSshKeys();
   const deleteSshKeyMutation = useDeleteSshKey();
+
+  const modelSettings = [
+    {
+      label: "Default PR model",
+      value: userSettings?.default_pr_model,
+    },
+    {
+      label: "Default issue fixer model",
+      value: userSettings?.default_issue_fixer_model,
+    },
+    {
+      label: "Default comment model",
+      value: userSettings?.default_comment_model,
+    },
+  ];
 
   const handleDelete = async (id: string) => {
     const toastId = toast.loading("Deleting SSH key");
@@ -99,6 +120,52 @@ export default function ClientView() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-lg font-semibold">Default models</h2>
+          </div>
+
+          <div className="mt-5 rounded-lg border">
+            {isUserSettingsLoading ? (
+              <div className="divide-y">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="grid gap-2 p-4 sm:grid-cols-[220px_1fr] sm:items-center"
+                  >
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-4 w-44" />
+                  </div>
+                ))}
+              </div>
+            ) : isUserSettingsError ? (
+              <div className="text-muted-foreground p-6 text-sm">
+                Failed to load user settings.
+              </div>
+            ) : userSettings ? (
+              <div className="divide-y">
+                {modelSettings.map((setting) => (
+                  <div
+                    key={setting.label}
+                    className="grid gap-1 p-4 sm:grid-cols-[220px_1fr] sm:items-center"
+                  >
+                    <div className="text-muted-foreground text-sm">
+                      {setting.label}
+                    </div>
+                    <div className="font-medium">
+                      {setting.value?.trim() || "Not configured"}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground p-6 text-sm">
+                No user settings found.
+              </div>
+            )}
           </div>
         </section>
 
