@@ -149,7 +149,7 @@ const Page = async () => {
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-muted-foreground text-sm">Admin</p>
+            <p className="text-muted-foreground text-sm">Admin Panel</p>
             <h1 className="text-3xl font-semibold tracking-tight">
               Platform overview
             </h1>
@@ -163,7 +163,7 @@ const Page = async () => {
               <Card
                 className={
                   metric.href
-                    ? "h-full transition-colors hover:bg-muted/50"
+                    ? "hover:bg-muted/50 h-full transition-colors"
                     : "h-full"
                 }
               >
