@@ -5,6 +5,7 @@ import {
   eq,
   userLoginLogs,
   users,
+  userSettings,
   userWallet,
 } from "@repo/db";
 
@@ -146,6 +147,7 @@ const createUserWithGithubAccount = async ({
 
     if (!account) throw new Error(internalError);
 
+    await tx.insert(userSettings).values({ user_id: user.id });
     await tx.insert(userWallet).values({
       user_id: user.id,
       balance: 0,
@@ -170,7 +172,6 @@ export const createOrGetUser = async (
       upsertGithubAccount(existingUser.id, input.token),
       ensureUserWallet(existingUser.id),
     ]);
-
     userWithAccount = {
       user: existingUser,
       account,
