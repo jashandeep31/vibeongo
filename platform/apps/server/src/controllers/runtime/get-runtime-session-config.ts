@@ -52,7 +52,7 @@ export const getRuntimeSessionConfig = catchAsync(
       db
         .select()
         .from(projectSessionTasks)
-        .orderBy(asc(projectSessionTasks.created_at))
+        .orderBy(asc(projectSessionTasks.order_number))
         .where(eq(projectSessionTasks.project_session_id, id)),
 
       db

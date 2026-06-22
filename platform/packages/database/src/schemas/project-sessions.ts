@@ -6,6 +6,7 @@ import {
   varchar,
   boolean,
   pgEnum,
+  integer,
 } from "drizzle-orm/pg-core";
 import { projects } from "./projects.js";
 import { users } from "./user.js";
@@ -52,6 +53,9 @@ export const projectSessionTasks = pgTable("project_session_tasks", {
   folder_name: varchar(),
   task: text().notNull(),
   agent: projectSessionTaskAgents().notNull(),
+
+  // Why order at
+  order_number: integer().notNull(),
   model: text().notNull().default(""),
   done: boolean().default(false).notNull(),
 

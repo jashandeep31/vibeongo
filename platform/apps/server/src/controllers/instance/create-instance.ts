@@ -91,7 +91,7 @@ export const createInstance = catchAsync(
         }
 
         await tx.insert(projectSessionTasks).values(
-          body.tasks.map((task) => {
+          body.tasks.map((task, i) => {
             const githubRepo = reposById.get(task.repoId);
             if (!githubRepo) {
               throw new AppError("Repository not found", 404);
@@ -99,6 +99,7 @@ export const createInstance = catchAsync(
 
             return {
               project_session_id: projectSession.id,
+              order_number: i,
               task: task.task,
               model: task.model,
               folder_name: githubRepo.full_name.split("/").at(-1),
