@@ -19,6 +19,7 @@ routes
   .post(checkAuthorization(["all"]), createSshKey)
   .get(checkAuthorization(["all"]), getSshKeys);
 
+routes.route("/settings").get(checkAuthorization(["all"]));
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 
 routes.route("/wallet").get(checkAuthorization(["all"]), getUserWallet);
