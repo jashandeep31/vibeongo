@@ -22,7 +22,6 @@ import {
 } from "@repo/ui/components/table";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
-import LogoutButton from "../logout-button";
 
 export type UserData = {
   users: {
@@ -69,16 +68,7 @@ const UsersClientView = ({ usersData }: { usersData: UserData[] }) => {
   };
 
   return (
-    <main className="min-h-screen bg-background p-6 text-foreground">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Admin</p>
-            <h1 className="text-3xl font-semibold tracking-tight">Users</h1>
-          </div>
-          <LogoutButton />
-        </header>
-
+    <>
         <Card>
           <CardHeader>
             <CardTitle>All users</CardTitle>
@@ -229,8 +219,7 @@ const UsersClientView = ({ usersData }: { usersData: UserData[] }) => {
             </Table>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </>
   );
 };
 

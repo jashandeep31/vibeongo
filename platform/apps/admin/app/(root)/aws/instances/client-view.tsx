@@ -22,7 +22,6 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { useState, useTransition } from "react";
-import LogoutButton from "../../logout-button";
 
 type InstancesClientViewProps = {
   initialRegion: ValidRegion;
@@ -87,18 +86,7 @@ const InstancesClientView = ({
   };
 
   return (
-    <main className="min-h-screen bg-background p-6 text-foreground">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">AWS</p>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Instances
-            </h1>
-          </div>
-          <LogoutButton />
-        </header>
-
+    <>
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -195,8 +183,7 @@ const InstancesClientView = ({
             </Table>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </>
   );
 };
 

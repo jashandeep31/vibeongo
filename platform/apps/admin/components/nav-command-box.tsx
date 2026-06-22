@@ -9,19 +9,9 @@ import {
   CommandItem,
   CommandList,
 } from "@repo/ui/components/command";
+import { adminNavGroups } from "@/components/admin-nav-links";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-
-const adminCommands = [
-  { label: "Admin Home", href: "/" },
-  { label: "Users", href: "/users" },
-  { label: "Regions", href: "/regions" },
-] as const;
-
-const awsCommands = [
-  { label: "AWS Images", href: "/aws/images" },
-  { label: "AWS Instances", href: "/aws/instances" },
-] as const;
 
 const NavCommandBox = () => {
   const router = useRouter();
@@ -50,28 +40,19 @@ const NavCommandBox = () => {
         <CommandInput placeholder="Type a command or search admin pages..." />
         <CommandList>
           <CommandEmpty>No admin page found.</CommandEmpty>
-          <CommandGroup heading="Admin">
-            {adminCommands.map((command) => (
-              <CommandItem
-                className="p-1 text-sm"
-                key={command.label}
-                onSelect={() => runCommand(command.href)}
-              >
-                {command.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
-          <CommandGroup heading="AWS">
-            {awsCommands.map((command) => (
-              <CommandItem
-                className="p-1 text-sm"
-                key={command.label}
-                onSelect={() => runCommand(command.href)}
-              >
-                {command.label}
-              </CommandItem>
-            ))}
-          </CommandGroup>
+          {adminNavGroups.map((group) => (
+            <CommandGroup key={group.heading} heading={group.heading}>
+              {group.items.map((command) => (
+                <CommandItem
+                  className="p-1 text-sm"
+                  key={command.label}
+                  onSelect={() => runCommand(command.href)}
+                >
+                  {command.label}
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          ))}
         </CommandList>
       </Command>
     </CommandDialog>

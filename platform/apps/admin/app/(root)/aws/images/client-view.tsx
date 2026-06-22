@@ -46,7 +46,6 @@ import type { Image, Snapshot } from "@aws-sdk/client-ec2";
 import type { ImageSummary } from "@aws-sdk/client-imagebuilder";
 import { Copy, Images, Play, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import LogoutButton from "../../logout-button";
 
 type ImagesClientViewProps = {
   images: Image[];
@@ -347,16 +346,7 @@ const ImagesClientView = ({
   };
 
   return (
-    <main className="bg-background text-foreground min-h-screen p-6">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-muted-foreground text-sm">AWS</p>
-            <h1 className="text-3xl font-semibold tracking-tight">Images</h1>
-          </div>
-          <LogoutButton />
-        </header>
-
+    <>
         <Card>
           <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
             <div>
@@ -822,8 +812,7 @@ const ImagesClientView = ({
             </CardContent>
           </Card>
         ) : null}
-      </div>
-    </main>
+    </>
   );
 };
 

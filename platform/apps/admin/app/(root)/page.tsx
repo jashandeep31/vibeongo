@@ -26,7 +26,6 @@ import {
   projects,
   users,
 } from "@repo/db";
-import LogoutButton from "./logout-button";
 
 const formatDate = (value: Date | string | null | undefined) => {
   if (!value) return "-";
@@ -145,18 +144,7 @@ const Page = async () => {
   ];
 
   return (
-    <main className="bg-background text-foreground min-h-screen p-6">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-muted-foreground text-sm">Admin Panel</p>
-            <h1 className="text-3xl font-semibold tracking-tight">
-              Platform overview
-            </h1>
-          </div>
-          <LogoutButton />
-        </header>
-
+    <>
         <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           {metrics.map((metric) => {
             const card = (
@@ -320,8 +308,7 @@ const Page = async () => {
             </Table>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </>
   );
 };
 

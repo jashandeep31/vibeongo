@@ -16,7 +16,6 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { asc, db, instanceRegions } from "@repo/db";
-import LogoutButton from "../logout-button";
 
 const formatDate = (value: Date | string | null | undefined) => {
   if (!value) return "-";
@@ -44,16 +43,7 @@ const RegionsPage = async () => {
     .orderBy(asc(instanceRegions.slug));
 
   return (
-    <main className="min-h-screen bg-background p-6 text-foreground">
-      <div className="mx-auto flex max-w-7xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <p className="text-sm text-muted-foreground">Admin</p>
-            <h1 className="text-3xl font-semibold tracking-tight">Regions</h1>
-          </div>
-          <LogoutButton />
-        </header>
-
+    <>
         <Card>
           <CardHeader>
             <CardTitle>Instance regions</CardTitle>
@@ -106,8 +96,7 @@ const RegionsPage = async () => {
             </Table>
           </CardContent>
         </Card>
-      </div>
-    </main>
+    </>
   );
 };
 
