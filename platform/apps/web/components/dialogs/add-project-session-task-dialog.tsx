@@ -34,8 +34,8 @@ type TaskAgent = AddTaskToProjectSessionInput["agent"];
 const taskAgents: { label: string; value: TaskAgent }[] = [
   { label: "Build", value: "build" },
   { label: "Plan", value: "plan" },
-  { label: "Review", value: "pr-reviewer" },
-  { label: "Fix", value: "issue-resolver" },
+  { label: "PR Reviewer", value: "pr-reviewer" },
+  { label: "Issue Resolver", value: "issue-resolver" },
 ];
 
 interface AddProjectSessionTaskDialogProps {
