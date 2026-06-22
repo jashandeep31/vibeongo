@@ -42,9 +42,10 @@ export const projectSessions = pgTable("project_session", {
 export const projectSessionTaskAgents = pgEnum("project_session_task_agents", [
   "build",
   "plan",
-  "reviewer",
-  "fixer",
+  "issue-resolver",
+  "pr-reviewer",
 ]);
+
 export const projectSessionTasks = pgTable("project_session_tasks", {
   id: uuid().defaultRandom().primaryKey(),
 

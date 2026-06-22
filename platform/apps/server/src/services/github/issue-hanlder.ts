@@ -75,7 +75,7 @@ export const issueRequestHandler = async ({
     await tx.insert(projectSessionTasks).values({
       folder_name: repo.full_name.split("/")[1],
       task: `Fix issue: ${issue.url} `,
-      agent: "fixer",
+      agent: "issue-resolver",
       project_session_id: session.id,
       done: false,
     });
@@ -83,7 +83,7 @@ export const issueRequestHandler = async ({
     await tx.insert(projectSessionTasks).values({
       folder_name: repo.full_name.split("/")[1],
       task: `Have you done with all if not please complete the steps and make sure the pr is raised`,
-      agent: "fixer",
+      agent: "issue-resolver",
       project_session_id: session.id,
       done: false,
     });
