@@ -26,6 +26,7 @@ export const updateRegionAmi = async (rId: string, ami: string) => {
     .where(eq(instanceRegions.id, rId));
 
   revalidatePath("/regions");
+  revalidatePath("/aws/images");
 
   return true;
 };
