@@ -9,6 +9,7 @@ import {
   CopyImageCommand,
   DeregisterImageCommand,
   DescribeImagesCommand,
+  DescribeSnapshotsCommand,
 } from "@aws-sdk/client-ec2";
 import {
   DeleteImageCommand,
@@ -99,6 +100,7 @@ export const getPipeLineImages = async (
     imagePipelineArn,
   });
   const res = await client.send(command);
+  console.log(res.imageSummaryList);
   return res.imageSummaryList ?? [];
 };
 
@@ -113,5 +115,14 @@ export const deleteImagePipelineImage = async (
     imageBuildVersionArn: arn,
   });
 
+  return await client.send(command);
+};
+
+export const getSnapShots = async (region: ValidRegion) => {
+  await checkAdmin();
+  const client = getEc2Client(region);
+  const command = new DescribeSnapshotsCommand({
+    OwnerIds: ["self"],
+  });
   return await client.send(command);
 };

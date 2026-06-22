@@ -7,6 +7,7 @@ import {
   getAWSImages,
   getImagePipelines,
   getPipeLineImages,
+  getSnapShots,
   startImagePipeline,
 } from "@/actions/aws/images-action";
 import { updateRegionAmi } from "@/actions/regions-actions";
@@ -41,7 +42,7 @@ import {
   TableHeader,
   TableRow,
 } from "@repo/ui/components/table";
-import type { Image } from "@aws-sdk/client-ec2";
+import type { Image, Snapshot } from "@aws-sdk/client-ec2";
 import type { ImageSummary } from "@aws-sdk/client-imagebuilder";
 import { Copy, Images, Play, Plus, Trash2 } from "lucide-react";
 import { useState, useTransition } from "react";
@@ -58,9 +59,10 @@ type ImagesClientViewProps = {
   }[];
   pipelines: ImagePipeline[];
   regions: ValidRegion[];
+  snapshots: Snapshot[];
 };
 
-const formatDate = (value: string | null | undefined) => {
+const formatDate = (value: Date | string | null | undefined) => {
   if (!value) return "-";
 
   return new Intl.DateTimeFormat("en", {
@@ -152,7 +154,7 @@ const CopyImageDialog = ({
             }}
             placeholder="ap-south-1"
           />
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
+          {error ? <p className="text-destructive text-xs">{error}</p> : null}
         </div>
 
         <DialogFooter>
@@ -179,12 +181,13 @@ const ImagesClientView = ({
   liveAmis,
   pipelines: initialPipelines,
   regions,
+  snapshots: initialSnapshots,
 }: ImagesClientViewProps) => {
   const [selectedRegion, setSelectedRegion] =
     useState<ValidRegion>(initialRegion);
   const [images, setImages] = useState<Image[]>(initialImages);
-  const [pipelines, setPipelines] =
-    useState<ImagePipeline[]>(initialPipelines);
+  const [pipelines, setPipelines] = useState<ImagePipeline[]>(initialPipelines);
+  const [snapshots, setSnapshots] = useState<Snapshot[]>(initialSnapshots);
   const [pipelineImages, setPipelineImages] = useState<ImageSummary[]>([]);
   const [selectedPipeline, setSelectedPipeline] = useState<{
     arn: string;
@@ -196,28 +199,48 @@ const ImagesClientView = ({
   const selectedConfiguredRegion = configuredRegions.find(
     (region) => region.slug === selectedRegion,
   );
+  const selectedRegionImageIds = new Set(
+    images
+      .map((image) => image.ImageId)
+      .filter((imageId): imageId is string => Boolean(imageId)),
+  );
+  const sortedPipelineImages = [...pipelineImages].sort((a, b) => {
+    const aCreatedAt = a.dateCreated ? new Date(a.dateCreated).getTime() : 0;
+    const bCreatedAt = b.dateCreated ? new Date(b.dateCreated).getTime() : 0;
+
+    return bCreatedAt - aCreatedAt;
+  });
+  const sortedSnapshots = [...snapshots].sort((a, b) => {
+    const aCreatedAt = a.StartTime ? a.StartTime.getTime() : 0;
+    const bCreatedAt = b.StartTime ? b.StartTime.getTime() : 0;
+
+    return bCreatedAt - aCreatedAt;
+  });
 
   const handleRegionChange = (region: ValidRegion) => {
     setSelectedRegion(region);
     setImages([]);
     setPipelines([]);
+    setSnapshots([]);
     setPipelineImages([]);
     setSelectedPipeline(null);
     setError(null);
 
     startTransition(async () => {
       try {
-        const [nextImages, nextPipelines] = await Promise.all([
+        const [nextImages, nextPipelines, nextSnapshots] = await Promise.all([
           getAWSImages(region),
           getImagePipelines(region),
+          getSnapShots(region),
         ]);
         setImages(nextImages);
         setPipelines(nextPipelines);
+        setSnapshots(nextSnapshots.Snapshots ?? []);
       } catch (err) {
         setError(
           err instanceof Error
             ? err.message
-            : "Failed to load images and pipelines",
+            : "Failed to load images, pipelines, and snapshots",
         );
       }
     });
@@ -258,9 +281,7 @@ const ImagesClientView = ({
         );
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to update default AMI",
+          err instanceof Error ? err.message : "Failed to update default AMI",
         );
       }
     });
@@ -274,15 +295,16 @@ const ImagesClientView = ({
         await startImagePipeline(selectedRegion, pipelineArn);
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to run image pipeline",
+          err instanceof Error ? err.message : "Failed to run image pipeline",
         );
       }
     });
   };
 
-  const handleLoadPipelineImages = (pipelineArn: string, pipelineName: string) => {
+  const handleLoadPipelineImages = (
+    pipelineArn: string,
+    pipelineName: string,
+  ) => {
     setError(null);
     setSelectedPipeline({
       arn: pipelineArn,
@@ -299,9 +321,7 @@ const ImagesClientView = ({
         setPipelineImages(nextPipelineImages);
       } catch (err) {
         setError(
-          err instanceof Error
-            ? err.message
-            : "Failed to load pipeline images",
+          err instanceof Error ? err.message : "Failed to load pipeline images",
         );
       }
     });
@@ -327,11 +347,11 @@ const ImagesClientView = ({
   };
 
   return (
-    <main className="min-h-screen bg-background p-6 text-foreground">
+    <main className="bg-background text-foreground min-h-screen p-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-sm text-muted-foreground">AWS</p>
+            <p className="text-muted-foreground text-sm">AWS</p>
             <h1 className="text-3xl font-semibold tracking-tight">Images</h1>
           </div>
           <LogoutButton />
@@ -401,7 +421,7 @@ const ImagesClientView = ({
                               title={`Live for ${liveRegion.name} (${liveRegion.slug})`}
                             />
                           ) : (
-                            <span className="block size-2.5 rounded-full bg-muted" />
+                            <span className="bg-muted block size-2.5 rounded-full" />
                           )}
                         </TableCell>
                         <TableCell className="max-w-sm whitespace-normal">
@@ -458,7 +478,9 @@ const ImagesClientView = ({
                                       type="button"
                                       size="icon-sm"
                                       variant="outline"
-                                      disabled={isPending || Boolean(liveRegion)}
+                                      disabled={
+                                        isPending || Boolean(liveRegion)
+                                      }
                                       aria-label={`Make ${imageId} default for ${selectedConfiguredRegion.name}`}
                                       title="Make default AMI"
                                     >
@@ -497,6 +519,71 @@ const ImagesClientView = ({
                   <TableRow>
                     <TableCell colSpan={9} className="text-muted-foreground">
                       {isPending ? "Loading images..." : "No images found"}
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Snapshots</CardTitle>
+            <CardDescription>
+              EBS snapshots for the selected region.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Snapshot ID</TableHead>
+                  <TableHead>State</TableHead>
+                  <TableHead>Size</TableHead>
+                  <TableHead>Progress</TableHead>
+                  <TableHead>Started</TableHead>
+                  <TableHead>Owner</TableHead>
+                  <TableHead>Encrypted</TableHead>
+                  <TableHead>Description</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {sortedSnapshots.length ? (
+                  sortedSnapshots.map((snapshot) => (
+                    <TableRow key={snapshot.SnapshotId}>
+                      <TableCell>{snapshot.SnapshotId ?? "-"}</TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            snapshot.State === "completed"
+                              ? "secondary"
+                              : "outline"
+                          }
+                        >
+                          {snapshot.State ?? "-"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {typeof snapshot.VolumeSize === "number"
+                          ? `${snapshot.VolumeSize} GiB`
+                          : "-"}
+                      </TableCell>
+                      <TableCell>{snapshot.Progress ?? "-"}</TableCell>
+                      <TableCell>{formatDate(snapshot.StartTime)}</TableCell>
+                      <TableCell>{snapshot.OwnerId ?? "-"}</TableCell>
+                      <TableCell>{snapshot.Encrypted ? "Yes" : "No"}</TableCell>
+                      <TableCell className="max-w-md whitespace-normal">
+                        {snapshot.Description ?? "-"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                ) : (
+                  <TableRow>
+                    <TableCell colSpan={8} className="text-muted-foreground">
+                      {isPending
+                        ? "Loading snapshots..."
+                        : "No snapshots found"}
                     </TableCell>
                   </TableRow>
                 )}
@@ -551,7 +638,7 @@ const ImagesClientView = ({
                         <TableCell>
                           {formatDate(pipeline.dateUpdated)}
                         </TableCell>
-                        <TableCell className="max-w-md whitespace-normal break-all">
+                        <TableCell className="max-w-md break-all whitespace-normal">
                           {pipelineArn ?? "-"}
                         </TableCell>
                         <TableCell>
@@ -616,107 +703,125 @@ const ImagesClientView = ({
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Pipeline images</CardTitle>
-            <CardDescription>
-              {selectedPipeline
-                ? `Images created by ${selectedPipeline.name}.`
-                : "Select a pipeline to view its images."}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Version</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Platform</TableHead>
-                  <TableHead>Created</TableHead>
-                  <TableHead>ARN</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {!selectedPipeline ? (
+        {selectedPipeline ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Pipeline images</CardTitle>
+              <CardDescription>
+                Images created by {selectedPipeline.name}.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={8} className="text-muted-foreground">
-                      Select a pipeline to view its images
-                    </TableCell>
+                    <TableHead>In region</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>Version</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Platform</TableHead>
+                    <TableHead>Created</TableHead>
+                    <TableHead>ARN</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
-                ) : pipelineImages.length ? (
-                  pipelineImages.map((pipelineImage) => {
-                    const imageArn = pipelineImage.arn;
+                </TableHeader>
+                <TableBody>
+                  {sortedPipelineImages.length ? (
+                    sortedPipelineImages.map((pipelineImage) => {
+                      const imageArn = pipelineImage.arn;
+                      const matchingAmiId = pipelineImage.outputResources?.amis
+                        ?.filter(
+                          (ami) => !ami.region || ami.region === selectedRegion,
+                        )
+                        .map((ami) => ami.image)
+                        .find(
+                          (amiId): amiId is string =>
+                            Boolean(amiId) &&
+                            selectedRegionImageIds.has(amiId!),
+                        );
 
-                    return (
-                      <TableRow key={imageArn}>
-                        <TableCell>{pipelineImage.name ?? "-"}</TableCell>
-                        <TableCell>{pipelineImage.version ?? "-"}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              pipelineImage.state?.status === "AVAILABLE"
-                                ? "secondary"
-                                : "outline"
-                            }
-                          >
-                            {pipelineImage.state?.status ?? "-"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{pipelineImage.type ?? "-"}</TableCell>
-                        <TableCell>{pipelineImage.platform ?? "-"}</TableCell>
-                        <TableCell>
-                          {formatDate(pipelineImage.dateCreated)}
-                        </TableCell>
-                        <TableCell className="max-w-md whitespace-normal break-all">
-                          {imageArn ?? "-"}
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex justify-end">
-                            {imageArn ? (
-                              <ConfirmationDialog
-                                title="Delete pipeline image"
-                                description={`Delete ${pipelineImage.name ?? pipelineImage.version ?? "pipeline image"} (${imageArn}) from Image Builder?`}
-                                confirmText="Delete"
-                                isDestructive
-                                onConfirm={() =>
-                                  handleDeletePipelineImage(imageArn)
-                                }
-                              >
-                                <Button
-                                  type="button"
-                                  size="icon-sm"
-                                  variant="destructive"
-                                  disabled={isPending}
-                                  aria-label={`Delete pipeline image ${imageArn}`}
-                                  title="Delete pipeline image"
-                                >
-                                  <Trash2 />
-                                </Button>
-                              </ConfirmationDialog>
+                      return (
+                        <TableRow key={imageArn}>
+                          <TableCell>
+                            {matchingAmiId ? (
+                              <span
+                                className="block size-2.5 rounded-full bg-green-500"
+                                title={`AMI ${matchingAmiId} exists in ${selectedRegion}`}
+                              />
                             ) : (
-                              "-"
+                              <span
+                                className="bg-muted block size-2.5 rounded-full"
+                                title={`No matching AMI found in ${selectedRegion}`}
+                              />
                             )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })
-                ) : (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-muted-foreground">
-                      {isPending
-                        ? "Loading pipeline images..."
-                        : "No images found for this pipeline"}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
+                          </TableCell>
+                          <TableCell>{pipelineImage.name ?? "-"}</TableCell>
+                          <TableCell>{pipelineImage.version ?? "-"}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                pipelineImage.state?.status === "AVAILABLE"
+                                  ? "secondary"
+                                  : "outline"
+                              }
+                            >
+                              {pipelineImage.state?.status ?? "-"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{pipelineImage.type ?? "-"}</TableCell>
+                          <TableCell>{pipelineImage.platform ?? "-"}</TableCell>
+                          <TableCell>
+                            {formatDate(pipelineImage.dateCreated)}
+                          </TableCell>
+                          <TableCell className="max-w-md break-all whitespace-normal">
+                            {imageArn ?? "-"}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex justify-end">
+                              {imageArn ? (
+                                <ConfirmationDialog
+                                  title="Delete pipeline image"
+                                  description={`Delete ${pipelineImage.name ?? pipelineImage.version ?? "pipeline image"} (${imageArn}) from Image Builder?`}
+                                  confirmText="Delete"
+                                  isDestructive
+                                  onConfirm={() =>
+                                    handleDeletePipelineImage(imageArn)
+                                  }
+                                >
+                                  <Button
+                                    type="button"
+                                    size="icon-sm"
+                                    variant="destructive"
+                                    disabled={isPending}
+                                    aria-label={`Delete pipeline image ${imageArn}`}
+                                    title="Delete pipeline image"
+                                  >
+                                    <Trash2 />
+                                  </Button>
+                                </ConfirmationDialog>
+                              ) : (
+                                "-"
+                              )}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={9} className="text-muted-foreground">
+                        {isPending
+                          ? "Loading pipeline images..."
+                          : "No images found for this pipeline"}
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        ) : null}
       </div>
     </main>
   );

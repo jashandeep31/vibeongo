@@ -1,4 +1,8 @@
-import { getAWSImages, getImagePipelines } from "@/actions/aws/images-action";
+import {
+  getAWSImages,
+  getImagePipelines,
+  getSnapShots,
+} from "@/actions/aws/images-action";
 import { validRegions } from "@/lib/aws-clients";
 import { checkAdmin } from "@/lib/get-session";
 import { db, instanceRegions } from "@repo/db";
@@ -10,6 +14,7 @@ const ImagesPage = async () => {
   const initialRegion = "ap-south-1";
   const images = await getAWSImages(initialRegion);
   const pipelines = await getImagePipelines(initialRegion);
+  const snapshots = await getSnapShots(initialRegion);
   const liveAmis = await db
     .select({
       id: instanceRegions.id,
@@ -26,6 +31,7 @@ const ImagesPage = async () => {
       liveAmis={liveAmis}
       pipelines={pipelines}
       regions={[...validRegions]}
+      snapshots={snapshots.Snapshots ?? []}
     />
   );
 };
