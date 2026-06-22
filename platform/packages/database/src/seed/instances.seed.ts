@@ -58,6 +58,7 @@ const awsRegions = [
 export const regionsSeed: (typeof instanceRegions.$inferInsert)[] =
   awsRegions.map((region) => ({
     ...region,
+    ami: "Please change this ",
     provider: "aws",
   }));
 
