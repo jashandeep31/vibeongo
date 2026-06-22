@@ -82,7 +82,7 @@ export const projectConfigValidator = z.object({
 export const projectSessionTaskSchema = z.object({
   task: z.string().trim().min(1, "Task description is required"),
   model: z.string().trim(),
-  agent: z.enum(["build", "plan", "reviewer", "fixer"]),
+  agent: z.enum(["build", "plan", "issue-resolver", "pr-reviewer"]),
   repoId: z.uuid("Repository id must be valid"),
 });
 

@@ -80,13 +80,13 @@ export const commentHandler = async (
         task:
           `Here is the comment given by the user perform the actions as per it comment url: ${payload.comment.url}` +
           body,
-        agent: "fixer",
+        agent: "issue-resolver",
         project_session_id: session.id,
       },
       {
         folder_name: repo.full_name.split("/")[1]!,
         task: "Please you have done things as asked if not please complete those now",
-        agent: "fixer",
+        agent: "issue-resolver",
         project_session_id: session.id,
       },
     ];

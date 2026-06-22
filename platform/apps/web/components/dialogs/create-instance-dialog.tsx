@@ -29,7 +29,7 @@ import { createInstanceSchema } from "@repo/shared";
 import axios from "axios";
 import { Plus, Trash2 } from "lucide-react";
 
-type TaskAgent = "build" | "plan" | "reviewer" | "fixer";
+type TaskAgent = "build" | "plan" | "issue-resolver" | "pr-reviewer";
 type TaskDraft = {
   id: string;
   task: string;
@@ -41,8 +41,8 @@ type TaskDraft = {
 const taskAgents: { label: string; value: TaskAgent }[] = [
   { label: "Build", value: "build" },
   { label: "Plan", value: "plan" },
-  { label: "Review", value: "reviewer" },
-  { label: "Fix", value: "fixer" },
+  { label: "Review", value: "pr-reviewer" },
+  { label: "Fix", value: "issue-resolver" },
 ];
 
 const createTaskDraft = (): TaskDraft => ({

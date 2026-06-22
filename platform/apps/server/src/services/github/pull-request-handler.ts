@@ -74,7 +74,7 @@ export const pullRequestOpenedHandler = async ({
     await tx.insert(projectSessionTasks).values({
       folder_name: repo.full_name.split("/")[1],
       task: `Review the PR: ${pr.url} `,
-      agent: "reviewer",
+      agent: "pr-reviewer",
       project_session_id: session.id,
       done: false,
     });
@@ -82,7 +82,7 @@ export const pullRequestOpenedHandler = async ({
     await tx.insert(projectSessionTasks).values({
       folder_name: repo.full_name.split("/")[1],
       task: `Have you done with all if not please complete the steps and make sure you have left the comment`,
-      agent: "reviewer",
+      agent: "pr-reviewer",
       project_session_id: session.id,
       done: false,
     });
