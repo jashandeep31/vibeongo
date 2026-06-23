@@ -164,8 +164,8 @@ export const updateProjectById = catchAsync(
           name: parsedData.name,
           description: parsedData.description,
           instance_type_id: parsedData.instanceTypeId,
-          initial_script: parsedData.initial_script,
-          final_script: parsedData.final_script,
+          initial_script: parsedData.initialScript,
+          final_script: parsedData.finalScript,
           updated_at: new Date(),
         })
         .where(and(eq(projects.user_id, user.id), eq(projects.id, id)))

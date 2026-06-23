@@ -55,8 +55,8 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
         user_id: user.id,
         instance_type_id: parsedData.instanceTypeId,
         total_charges: 0,
-        initial_script: parsedData.initial_script,
-        final_script: parsedData.final_script,
+        initial_script: parsedData.initialScript,
+        final_script: parsedData.finalScript,
       })
       .returning();
     if (!projectRow) throw new AppError("project not created", 400);

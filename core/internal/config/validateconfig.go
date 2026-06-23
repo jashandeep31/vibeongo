@@ -61,8 +61,9 @@ type GitRepoConfig struct {
 }
 
 type OpenCodeConfig struct {
-	AuthJSON json.RawMessage `json:"auth_json"`
-	Model    string          `json:"model"`
+	AuthJSON        json.RawMessage `json:"auth_json"`
+	Model           string          `json:"model"`
+	RequirePassword bool            `json:"requirePassword"`
 }
 
 type NvimConfig struct {
