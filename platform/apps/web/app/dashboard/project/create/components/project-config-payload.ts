@@ -37,6 +37,8 @@ export const buildProjectConfigPayload = (
         enabled: state.additionalServices.opencodeConfig.enabled || false,
         config: {
           model: state.additionalServices.opencodeConfig.model,
+          requirePassword:
+            state.additionalServices.opencodeConfig.requirePassword,
           auth_json: (() => {
             try {
               return JSON.parse(

@@ -1,8 +1,6 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
-import DockerConfigCard from "./docker-config-card";
 import OpencodeConfigCard from "./opencode-config-card";
-import NvimConfigCard from "./nvim-config-card";
 // import { useConfigStore } from "@/store/config-store";
 
 function AdditionalServices() {
