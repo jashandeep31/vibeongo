@@ -1,8 +1,5 @@
 import { create } from "zustand";
-import {
-  type PortRule,
-  createPortRule,
-} from "@/app/dashboard/project/create/types";
+import { type PortRule } from "@/app/dashboard/project/create/types";
 
 interface ContainerConfig {
   id: string;
@@ -18,6 +15,7 @@ interface AdditionalService {
     enabled: boolean;
     authJson: string;
     model: string;
+    requirePassword: boolean;
   };
   nvimConfig: {
     enabled: boolean;
@@ -61,6 +59,7 @@ interface ConfigStore {
     enabled: boolean;
     authJson: string;
     model: string;
+    requirePassword: boolean;
   }) => void;
   updateNvimConfig: (nvimConfig: { enabled: boolean; config: string }) => void;
 
@@ -118,6 +117,7 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       enabled: true,
       authJson: ``,
       model: "",
+      requirePassword: false,
     },
     nvimConfig: {
       enabled: false,

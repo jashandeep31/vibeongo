@@ -14,9 +14,10 @@ function OpencodeConfigCard() {
   const opencodeEnabled = additionalServices.opencodeConfig.enabled;
   const authJson = additionalServices.opencodeConfig.authJson;
   const model = additionalServices.opencodeConfig.model;
+  const requirePassword = additionalServices.opencodeConfig.requirePassword;
 
   const onOpencodeEnabledChange = (enabled: boolean) => {
-    updateOpencodeConfig({ enabled, authJson, model });
+    updateOpencodeConfig({ enabled, authJson, model, requirePassword });
   };
 
   const onAuthJsonChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
@@ -24,6 +25,7 @@ function OpencodeConfigCard() {
       enabled: opencodeEnabled,
       authJson: e.target.value,
       model,
+      requirePassword,
     });
   };
 
@@ -32,6 +34,16 @@ function OpencodeConfigCard() {
       enabled: opencodeEnabled,
       authJson,
       model: e.target.value,
+      requirePassword,
+    });
+  };
+
+  const onRequirePasswordChange = (checked: boolean) => {
+    updateOpencodeConfig({
+      enabled: opencodeEnabled,
+      authJson,
+      model,
+      requirePassword: checked,
     });
   };
 
@@ -68,19 +80,44 @@ function OpencodeConfigCard() {
             <div className="animate-in fade-in slide-in-from-top-4 w-full pt-6 duration-300">
               <div className="border-border mb-6 border-t"></div>
 
-              <div className="mb-6 space-y-4">
-                <Label
-                  htmlFor="opencode-model"
-                  className="text-foreground text-sm font-semibold"
-                >
-                  AI Model
-                </Label>
-                <Input
-                  id="opencode-model"
-                  value={model}
-                  onChange={onModelChange}
-                  placeholder="default"
-                />
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="mb-6 space-y-4">
+                  <Label
+                    htmlFor="opencode-model"
+                    className="text-foreground text-sm font-semibold"
+                  >
+                    AI Model
+                  </Label>
+                  <Input
+                    id="opencode-model"
+                    value={model}
+                    onChange={onModelChange}
+                    placeholder="default"
+                  />
+                </div>
+                <div className="mb-6 space-y-4">
+                  <Label
+                    htmlFor="opencode-require-password"
+                    className="text-foreground text-sm font-semibold"
+                  >
+                    Require Password
+                  </Label>
+                  <div className="flex items-center gap-3 rounded-md border px-3 py-2">
+                    <Checkbox
+                      id="opencode-require-password"
+                      checked={requirePassword}
+                      onCheckedChange={(checked) =>
+                        onRequirePasswordChange(checked === true)
+                      }
+                    />
+                    <Label
+                      htmlFor="opencode-require-password"
+                      className="text-muted-foreground cursor-pointer text-sm"
+                    >
+                      Require a password for Opencode access
+                    </Label>
+                  </div>
+                </div>
               </div>
               <div className="grid space-y-4 overflow-auto">
                 <Label

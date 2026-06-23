@@ -24,8 +24,11 @@ const getPackage = (config: ProjectConfig, name: string) =>
   config.packages?.find((projectPackage) => projectPackage.name === name);
 
 const ClientView = ({ projectId }: { projectId: string }) => {
-  const { data: projectConfig, isLoading, isError } =
-    useGetProjectConfigForEdit(projectId);
+  const {
+    data: projectConfig,
+    isLoading,
+    isError,
+  } = useGetProjectConfigForEdit(projectId);
   const hydratedProjectIdRef = useRef<string | null>(null);
   const setProjectName = useConfigStore((state) => state.setProjectName);
   const setInstanceTypeId = useConfigStore((state) => state.setInstanceTypeId);
@@ -35,7 +38,9 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   const setInitialScript = useConfigStore((state) => state.setInitialScript);
   const setFinalScript = useConfigStore((state) => state.setFinalScript);
   const setPortRules = useConfigStore((state) => state.setPortRules);
-  const updateDockerConfig = useConfigStore((state) => state.updateDockerConfig);
+  const updateDockerConfig = useConfigStore(
+    (state) => state.updateDockerConfig,
+  );
   const updateOpencodeConfig = useConfigStore(
     (state) => state.updateOpencodeConfig,
   );
@@ -81,11 +86,19 @@ const ClientView = ({ projectId }: { projectId: string }) => {
 
     updateOpencodeConfig({
       enabled: opencodePackage?.enabled ?? false,
-      authJson: JSON.stringify(opencodePackage?.config?.auth_json ?? {}, null, 2),
+      authJson: JSON.stringify(
+        opencodePackage?.config?.auth_json ?? {},
+        null,
+        2,
+      ),
       model:
         typeof opencodePackage?.config?.model === "string"
           ? opencodePackage.config.model
           : "",
+      requirePassword:
+        typeof opencodePackage?.config?.requirePassword === "boolean"
+          ? opencodePackage.config.requirePassword
+          : false,
     });
 
     updateNvimConfig({
@@ -113,9 +126,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
 
   if (isLoading) {
     return (
-      <div className="text-muted-foreground p-4 md:p-8">
-        Loading project...
-      </div>
+      <div className="text-muted-foreground p-4 md:p-8">Loading project...</div>
     );
   }
 
