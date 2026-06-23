@@ -3,110 +3,29 @@
 import { useEffect, useRef, useState } from "react";
 import { FitAddon } from "@xterm/addon-fit";
 import { Terminal } from "@xterm/xterm";
-import { Copy, Plus, RotateCcw, X } from "lucide-react";
+import { Plus, X } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { ButtonGroup } from "@repo/ui/components/button-group";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { toast } from "sonner";
+import { useWebSocketContext } from "@/hooks/use-websocket";
 import "@xterm/xterm/css/xterm.css";
 
-type TerminalConnectionStatus = "checking" | "connected" | "disconnected";
-
-interface ProjectInstanceTerminalProps {
-  publicIp?: string | null;
-  domain?: string | null;
-  hideControls?: boolean;
-  hideHeader?: boolean;
-  showConnectionButton?: boolean;
-}
-
-export function ProjectInstanceTerminal({
-  publicIp,
-  domain,
-  hideControls = false,
-  hideHeader = false,
-  showConnectionButton = true,
-}: ProjectInstanceTerminalProps) {
-  const serverUrl = domain
-    ? `wss://${domain}/ws`
-    : publicIp
-      ? `wss://${String(publicIp)}:8080/ws`
-      : null;
-  const healthCheckUrl = domain
-    ? `https://${domain}`
-    : publicIp
-      ? `https://${String(publicIp)}:8080`
-      : null;
-  const sshCommand = publicIp ? `ssh ubuntu@${String(publicIp)}` : null;
-
-  const [webSocketConnection, setWebSocketConnection] =
-    useState<WebSocket | null>(null);
+export function ProjectInstanceTerminal() {
+  const { websocket } = useWebSocketContext();
   const [terminalSessionIds, setTerminalSessionIds] = useState<string[]>([]);
   const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
     string | null
   >(null);
   const terminalRef = useRef<HTMLDivElement | null>(null);
   const isReplayingPtyBufferRef = useRef(false);
-  const [connectionStatus, setConnectionStatus] =
-    useState<TerminalConnectionStatus>("checking");
-  const [refreshToken, setRefreshToken] = useState(0);
 
   useEffect(() => {
-    if (!healthCheckUrl) {
-      setConnectionStatus("disconnected");
-      return;
-    }
-
-    let isDisposed = false;
-
-    const checkInstanceConnection = async () => {
-      setConnectionStatus("checking");
-
-      const controller = new AbortController();
-      const timeoutId = window.setTimeout(() => {
-        controller.abort();
-      }, 6000);
-
-      try {
-        const response = await fetch(healthCheckUrl, {
-          method: "GET",
-          signal: controller.signal,
-        });
-
-        if (!isDisposed) {
-          setConnectionStatus(
-            response.status === 200 ? "connected" : "disconnected",
-          );
-        }
-      } catch {
-        if (!isDisposed) {
-          setConnectionStatus("disconnected");
-        }
-      } finally {
-        window.clearTimeout(timeoutId);
-      }
-    };
-
-    void checkInstanceConnection();
-
-    const intervalId = window.setInterval(() => {
-      void checkInstanceConnection();
-    }, 30000);
-
-    return () => {
-      isDisposed = true;
-      window.clearInterval(intervalId);
-    };
-  }, [healthCheckUrl, refreshToken]);
-
-  useEffect(() => {
-    if (!serverUrl) return;
+    if (!websocket) return;
 
     const terminalElement = terminalRef.current;
     if (!terminalElement) return;
 
     const isMobileViewport = window.matchMedia("(max-width: 639px)").matches;
-
     const term = new Terminal({
       cursorBlink: true,
       fontSize: isMobileViewport ? 12 : 14,
@@ -122,11 +41,9 @@ export function ProjectInstanceTerminal({
     term.loadAddon(fitAddon);
     term.open(terminalElement);
 
-    const ws = new WebSocket(serverUrl);
-
     const sendTerminalSize = () => {
-      if (ws.readyState !== WebSocket.OPEN) return;
-      ws.send(
+      if (websocket.readyState !== WebSocket.OPEN) return;
+      websocket.send(
         JSON.stringify({
           type: "size",
           data: {
@@ -154,15 +71,6 @@ export function ProjectInstanceTerminal({
       });
     };
 
-    scheduleFit();
-
-    const resizeObserver = new ResizeObserver(() => {
-      scheduleFit();
-    });
-    resizeObserver.observe(terminalElement);
-
-    window.addEventListener("resize", scheduleFit);
-
     const writeToTerminal = (
       data: string | Uint8Array,
       options?: { replay?: boolean },
@@ -175,39 +83,38 @@ export function ProjectInstanceTerminal({
       });
     };
 
-    ws.onopen = () => {
-      setWebSocketConnection(ws);
-      scheduleFit();
-    };
-
-    ws.onmessage = async (event) => {
+    const handleMessage = async (event: MessageEvent) => {
       if (typeof event.data === "string") {
         try {
           const parsed = JSON.parse(event.data);
+
           if (parsed.type === "stats") {
-            // we could emit this to a prop or custom event
-            const customEvent = new CustomEvent("vps-stats", {
-              detail: parsed.data,
-            });
-            window.dispatchEvent(customEvent);
+            window.dispatchEvent(
+              new CustomEvent("vps-stats", { detail: parsed.data }),
+            );
             return;
-          } else if (parsed.type === "logs") {
-            const customEvent = new CustomEvent("vps-logs", {
-              detail: parsed.data,
-            });
-            window.dispatchEvent(customEvent);
+          }
+
+          if (parsed.type === "logs") {
+            window.dispatchEvent(
+              new CustomEvent("vps-logs", { detail: parsed.data }),
+            );
             return;
-          } else if (parsed.type === "sessionIds") {
+          }
+
+          if (parsed.type === "sessionIds") {
             if (parsed.ids) {
               setTerminalSessionIds(parsed.ids);
               setActiveTerminalSessionId(parsed.activeId);
-              return;
             } else {
               console.log(
                 "Parsed ids are not here , Error in the  backend server",
               );
             }
-          } else if (parsed.type === "ptyUpdate") {
+            return;
+          }
+
+          if (parsed.type === "ptyUpdate") {
             if (typeof parsed.sessionId === "string") {
               setActiveTerminalSessionId(parsed.sessionId);
             }
@@ -216,11 +123,11 @@ export function ProjectInstanceTerminal({
             scheduleFit();
             return;
           }
+
           console.log("Received:", parsed);
         } catch {
-          // not json, fall through
+          writeToTerminal(event.data);
         }
-        writeToTerminal(event.data);
         return;
       }
 
@@ -237,101 +144,47 @@ export function ProjectInstanceTerminal({
       }
     };
 
-    ws.onerror = (err) => {
-      console.error("WebSocket error:", err);
-    };
-
-    ws.onclose = () => {
-      setWebSocketConnection((current) => (current === ws ? null : current));
+    const handleClose = () => {
       term.write("\r\nConnection closed\r\n");
     };
 
-    term.onData((data) => {
-      if (isReplayingPtyBufferRef.current) {
-        return;
-      }
+    scheduleFit();
 
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(data);
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleFit();
+    });
+    resizeObserver.observe(terminalElement);
+
+    window.addEventListener("resize", scheduleFit);
+    websocket.addEventListener("message", handleMessage);
+    websocket.addEventListener("close", handleClose);
+
+    const dataSubscription = term.onData((data) => {
+      if (isReplayingPtyBufferRef.current) return;
+
+      if (websocket.readyState === WebSocket.OPEN) {
+        websocket.send(data);
       }
     });
 
     return () => {
       window.removeEventListener("resize", scheduleFit);
+      websocket.removeEventListener("message", handleMessage);
+      websocket.removeEventListener("close", handleClose);
       resizeObserver.disconnect();
-      ws.close();
+      dataSubscription.dispose();
       term.dispose();
     };
-  }, [serverUrl, refreshToken]);
+  }, [websocket]);
 
-  const handleCopySshCommand = async () => {
-    if (!sshCommand) {
-      toast.error("Public IP not available");
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(sshCommand);
-      toast.success("SSH command copied");
-    } catch {
-      toast.error("Failed to copy SSH command");
-    }
+  const sendMessage = (message: unknown) => {
+    if (websocket?.readyState !== WebSocket.OPEN) return;
+    websocket.send(JSON.stringify(message));
   };
 
   return (
     <div className="max-w-full min-w-0 space-y-4 overflow-x-hidden">
-      {!hideControls && (
-        <div className="flex flex-wrap items-center gap-2">
-          {showConnectionButton && (
-            <Button
-              size="lg"
-              variant="outline"
-              type="button"
-              onClick={() => {
-                setRefreshToken((value) => value + 1);
-              }}
-              className={
-                connectionStatus === "connected"
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-700 hover:bg-emerald-500/20"
-                  : connectionStatus === "checking"
-                    ? "border-amber-500/40 bg-amber-500/10 text-amber-700 hover:bg-amber-500/20"
-                    : "border-destructive/40 bg-destructive/10 text-destructive hover:bg-destructive/20"
-              }
-            >
-              <RotateCcw className="h-4 w-4" />
-              {connectionStatus === "connected"
-                ? "Connected"
-                : connectionStatus === "checking"
-                  ? "Checking"
-                  : "Disconnected"}
-            </Button>
-          )}
-
-          <Button
-            size="lg"
-            variant="outline"
-            type="button"
-            disabled={!sshCommand}
-            onClick={() => {
-              void handleCopySshCommand();
-            }}
-          >
-            <Copy className="h-4 w-4" />
-            SSH
-          </Button>
-        </div>
-      )}
-
       <div className="bg-background max-w-full min-w-0 overflow-hidden rounded-lg border shadow-sm">
-        {!hideHeader && (
-          <div className="border-b px-4 py-3">
-            <h2 className="text-base font-semibold tracking-tight">Terminal</h2>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              Interactive session connected through WebSocket.
-            </p>
-          </div>
-        )}
-
         <div className="bg-muted/40 min-w-0 overflow-x-hidden border-b px-3 py-2">
           <div className="flex min-w-0 flex-wrap items-center gap-1.5">
             {terminalSessionIds.map((id, index) => {
@@ -345,14 +198,12 @@ export function ProjectInstanceTerminal({
                     className="min-w-24 justify-start"
                     onClick={() => {
                       setActiveTerminalSessionId(id);
-                      webSocketConnection?.send(
-                        JSON.stringify({
-                          type: "switchSession",
-                          data: {
-                            sessionId: id,
-                          },
-                        }),
-                      );
+                      sendMessage({
+                        type: "switchSession",
+                        data: {
+                          sessionId: id,
+                        },
+                      });
                     }}
                   >
                     Terminal {index + 1}
@@ -363,14 +214,12 @@ export function ProjectInstanceTerminal({
                     confirmText="Close terminal"
                     isDestructive
                     onConfirm={() => {
-                      webSocketConnection?.send(
-                        JSON.stringify({
-                          type: "endSession",
-                          data: {
-                            sessionId: id,
-                          },
-                        }),
-                      );
+                      sendMessage({
+                        type: "endSession",
+                        data: {
+                          sessionId: id,
+                        },
+                      });
                     }}
                   >
                     <Button
@@ -389,11 +238,7 @@ export function ProjectInstanceTerminal({
               variant="outline"
               size="sm"
               onClick={() => {
-                webSocketConnection?.send(
-                  JSON.stringify({
-                    type: "newSession",
-                  }),
-                );
+                sendMessage({ type: "newSession" });
               }}
             >
               <Plus className="h-4 w-4" />

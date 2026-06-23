@@ -1,31 +1,50 @@
-import { useContext, useState, createContext, useEffect } from "react";
+"use client";
 
-const SocketContext = createContext<null | WebSocket>(null);
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from "react";
 
-export const WebSocketPorvider = ({
+const SocketContext = createContext<{ websocket: WebSocket | null } | null>(
+  null,
+);
+
+export const WebSocketProvider = ({
   children,
   socketUrl,
 }: {
-  children: React.ReactNode;
+  children: ReactNode;
   socketUrl: string | undefined | null;
 }) => {
-  const [websocket, SetWebsocket] = useState<null | WebSocket>(null);
+  const [websocket, setWebsocket] = useState<WebSocket | null>(null);
+
   useEffect(() => {
-    if (!socketUrl) return;
+    setWebsocket(null);
+    if (!socketUrl) {
+      return;
+    }
+
     const ws = new WebSocket(`wss://${socketUrl}/ws`);
-    console.log(socketUrl);
 
     ws.onopen = () => {
-      SetWebsocket(ws);
+      setWebsocket(ws);
+    };
+
+    ws.onclose = () => {
+      setWebsocket((current) => (current === ws ? null : current));
     };
 
     return () => {
+      setWebsocket((current) => (current === ws ? null : current));
       ws.close();
     };
   }, [socketUrl]);
 
   return (
-    <SocketContext.Provider value={websocket}>
+    <SocketContext.Provider value={{ websocket }}>
       {children}
     </SocketContext.Provider>
   );

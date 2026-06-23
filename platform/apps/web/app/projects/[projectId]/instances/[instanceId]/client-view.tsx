@@ -30,6 +30,7 @@ import { toast } from "sonner";
 import axios from "axios";
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
 import { InstancePageState } from "./instance-page-state";
+import { WebSocketProvider } from "@/hooks/use-websocket";
 
 const formatDuration = (
   startedAt: unknown,
@@ -552,132 +553,130 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <div className="w-full max-w-full min-w-0 space-y-12 overflow-x-hidden p-4 md:p-8">
-      <ConfirmationDialog
-        open={isCurrentIpDialogOpen}
-        onOpenChange={(open) => {
-          setIsCurrentIpDialogOpen(open);
-          if (!open) {
-            setHasDismissedCurrentIpDialog(true);
-          }
-        }}
-        title="Allow current IP"
-        description={`Your current IP ${currentIp || "is not available"} is not in this project's allowlist. Add it so project domains can be accessed from this device.`}
-        confirmText="Add current IP"
-        cancelText="Not now"
-        onConfirm={() => {
-          void handleAddAllowedIp(currentIp);
-        }}
-      />
+    <WebSocketProvider socketUrl={domainFor8080}>
+      <div className="w-full max-w-full min-w-0 space-y-12 overflow-x-hidden p-4 md:p-8">
+        <ConfirmationDialog
+          open={isCurrentIpDialogOpen}
+          onOpenChange={(open) => {
+            setIsCurrentIpDialogOpen(open);
+            if (!open) {
+              setHasDismissedCurrentIpDialog(true);
+            }
+          }}
+          title="Allow current IP"
+          description={`Your current IP ${currentIp || "is not available"} is not in this project's allowlist. Add it so project domains can be accessed from this device.`}
+          confirmText="Add current IP"
+          cancelText="Not now"
+          onConfirm={() => {
+            void handleAddAllowedIp(currentIp);
+          }}
+        />
 
-      <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0">
-          <h1 className="flex min-w-0 items-center gap-2 text-3xl font-bold tracking-tight">
-            Instance
-            <span
-              className={
-                terminalConnectionStatus === "connected"
-                  ? "h-2.5 w-2.5 rounded-full bg-emerald-500"
-                  : terminalConnectionStatus === "checking"
-                    ? "h-2.5 w-2.5 rounded-full bg-amber-500"
-                    : "h-2.5 w-2.5 rounded-full bg-red-500"
-              }
-            />
-          </h1>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Spun up for <span className="font-medium">{spunUpFor}</span>
-          </p>
+        <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <h1 className="flex min-w-0 items-center gap-2 text-3xl font-bold tracking-tight">
+              Instance
+              <span
+                className={
+                  terminalConnectionStatus === "connected"
+                    ? "h-2.5 w-2.5 rounded-full bg-emerald-500"
+                    : terminalConnectionStatus === "checking"
+                      ? "h-2.5 w-2.5 rounded-full bg-amber-500"
+                      : "h-2.5 w-2.5 rounded-full bg-red-500"
+                }
+              />
+            </h1>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Spun up for <span className="font-medium">{spunUpFor}</span>
+            </p>
+          </div>
+
+          {renderControls()}
         </div>
 
-        {renderControls()}
-      </div>
+        {!isLoadingDomains && !isTargetInstance ? (
+          <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+            <TriangleAlert />
+            <AlertTitle>Project domains are not assigned</AlertTitle>
+            <AlertDescription>
+              Assign this instance as the project domain target to enable the
+              terminal, usage stats, and web services.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
-      {!isLoadingDomains && !isTargetInstance ? (
-        <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">
-          <TriangleAlert />
-          <AlertTitle>Project domains are not assigned</AlertTitle>
-          <AlertDescription>
-            Assign this instance as the project domain target to enable the
-            terminal, usage stats, and web services.
-          </AlertDescription>
-        </Alert>
-      ) : null}
-
-      {isLoadingDomains ? (
-        <Card className="text-muted-foreground flex items-center justify-center p-6 text-center">
-          <Loader2 className="mr-2 h-6 w-6 animate-spin" />
-          Loading instance routing...
-        </Card>
-      ) : !domainFor8080 ? (
-        <Card className="text-muted-foreground p-6 text-center">
-          To view the Terminal, CPU Usage, and Opencode Web, please make this
-          instance the default for the project. You need to assign domains to
-          this instance.
-        </Card>
-      ) : (
-        <>
-          <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-            <div className="relative hidden min-h-64 overflow-hidden bg-[#111111] lg:block lg:min-h-0">
+        {isLoadingDomains ? (
+          <Card className="text-muted-foreground flex items-center justify-center p-6 text-center">
+            <Loader2 className="mr-2 h-6 w-6 animate-spin" />
+            Loading instance routing...
+          </Card>
+        ) : !domainFor8080 ? (
+          <Card className="text-muted-foreground p-6 text-center">
+            To view the Terminal, CPU Usage, and Opencode Web, please make this
+            instance the default for the project. You need to assign domains to
+            this instance.
+          </Card>
+        ) : (
+          <>
+            <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
+              <div className="relative hidden min-h-64 overflow-hidden bg-[#111111] lg:block lg:min-h-0">
+                <div
+                  ref={serverLogsRef}
+                  className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                >
+                  <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
+                    Logs
+                  </div>
+                  <pre className="px-3 pt-1 pb-3 font-mono text-sm break-words whitespace-pre-wrap text-zinc-300">
+                    {serverLogs || "Waiting for server logs..."}
+                  </pre>
+                </div>
+                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
+              </div>
+              <div className="min-w-0 space-y-3">
+                <ProjectInstanceInfoCard
+                  instance={instance}
+                  isRestartingFinalScript={isRestartingFinalScript}
+                  onRestartFinalScript={handleRestartFinalScript}
+                />
+                <ProjectInstanceStats />
+                <OpencodeWebCard
+                  domainFor8080={domainFor8080 || null}
+                  domainFor4096={domainFor4096 || null}
+                  isTerminated={isTerminated}
+                  opencodePassword={opencodePassword}
+                />
+              </div>
+            </div>
+            <ProjectInstanceTerminal />
+            <div className="relative h-64 overflow-hidden bg-[#111111] lg:hidden">
               <div
-                ref={serverLogsRef}
+                ref={mobileServerLogsRef}
                 className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
                 <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
                   Logs
                 </div>
-                <pre className="whitespace-pre-wrap break-words px-3 pb-3 pt-1 font-mono text-sm text-zinc-300">
+                <pre className="px-3 pt-1 pb-3 font-mono text-sm break-words whitespace-pre-wrap text-zinc-300">
                   {serverLogs || "Waiting for server logs..."}
                 </pre>
               </div>
               <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
             </div>
-            <div className="min-w-0 space-y-3">
-              <ProjectInstanceInfoCard
-                instance={instance}
-                isRestartingFinalScript={isRestartingFinalScript}
-                onRestartFinalScript={handleRestartFinalScript}
-              />
-              <ProjectInstanceStats />
-              <OpencodeWebCard
-                domainFor8080={domainFor8080 || null}
-                domainFor4096={domainFor4096 || null}
-                isTerminated={isTerminated}
-                opencodePassword={opencodePassword}
-              />
-            </div>
-          </div>
-          <ProjectInstanceTerminal
-            domain={domainFor8080 || null}
-            hideControls
-            hideHeader
-          />
-          <div className="relative h-64 overflow-hidden bg-[#111111] lg:hidden">
-            <div
-              ref={mobileServerLogsRef}
-              className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            >
-              <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
-                Logs
-              </div>
-              <pre className="whitespace-pre-wrap break-words px-3 pb-3 pt-1 font-mono text-sm text-zinc-300">
-                {serverLogs || "Waiting for server logs..."}
-              </pre>
-            </div>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
-          </div>
-        </>
-      )}
+          </>
+        )}
 
-      <ProjectDomainsCard
-        projectId={instance.project_id || ""}
-        currentIp={currentIp}
-        isCurrentIpLoading={isCurrentIpLoading}
-        isCurrentIpAllowed={isCurrentIpAllowed}
-        isAddingAllowedIp={addAllowedIpMutation.isPending}
-        isDeletingOtherAllowedIps={deleteMultipleAllowedIpsMutation.isPending}
-        onAddAllowedIp={handleAddAllowedIp}
-        onDeleteOtherAllowedIps={handleDeleteOtherAllowedIps}
-      />
-    </div>
+        <ProjectDomainsCard
+          projectId={instance.project_id || ""}
+          currentIp={currentIp}
+          isCurrentIpLoading={isCurrentIpLoading}
+          isCurrentIpAllowed={isCurrentIpAllowed}
+          isAddingAllowedIp={addAllowedIpMutation.isPending}
+          isDeletingOtherAllowedIps={deleteMultipleAllowedIpsMutation.isPending}
+          onAddAllowedIp={handleAddAllowedIp}
+          onDeleteOtherAllowedIps={handleDeleteOtherAllowedIps}
+        />
+      </div>
+    </WebSocketProvider>
   );
 }
