@@ -2,11 +2,12 @@ package routes
 
 import (
 	"github.com/jashandeep31/vibeongo/core/internal/handlers"
+	"github.com/jashandeep31/vibeongo/core/internal/store"
 	"github.com/jashandeep31/vibeongo/core/internal/ws"
 	"github.com/labstack/echo/v5"
 )
 
-func Register(e *echo.Echo) {
+func Register(e *echo.Echo, openCode *store.OpencodeWeb) {
 	e.GET("/", handlers.Health)
 	e.GET("/ws", ws.WebSocket)
 	e.GET("/ufw", handlers.GetAllowedPorts)
@@ -14,6 +15,6 @@ func Register(e *echo.Echo) {
 	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)
 	// e.GET("/terminate", , m ...echo.MiddlewareFunc)
 
-	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus)
-	e.POST("/opencode/web", handlers.OpenCodeWebActions)
+	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus(openCode))
+	e.POST("/opencode/web", handlers.OpenCodeWebActions(openCode))
 }
