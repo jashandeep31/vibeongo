@@ -1,13 +1,25 @@
 "use client";
 
-import { useUserSettings } from "@/hooks/use-user";
+import { useEffect, useState } from "react";
+import { useUpdateUserSettings, useUserSettings } from "@/hooks/use-user";
 import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { EditSshKeyDialog } from "@/components/dialogs/edit-ssh-key-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { Check, Key, Monitor, Moon, Pencil, Sun, Trash2 } from "lucide-react";
+import {
+  Check,
+  Key,
+  Monitor,
+  Moon,
+  Pencil,
+  Save,
+  Sun,
+  Trash2,
+  X,
+} from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Button } from "@repo/ui/components/button";
+import { Input } from "@repo/ui/components/input";
 import {
   Table,
   TableBody,
@@ -49,21 +61,41 @@ export default function ClientView() {
   } = useUserSettings();
   const { data: sshKeys, isLoading } = useSshKeys();
   const deleteSshKeyMutation = useDeleteSshKey();
+  const updateUserSettingsMutation = useUpdateUserSettings();
+  const [isEditingModels, setIsEditingModels] = useState(false);
+  const [modelForm, setModelForm] = useState({
+    defaultPrModel: "",
+    defaultIssueFixerModel: "",
+    defaultCommentModel: "",
+  });
+
+  useEffect(() => {
+    if (!userSettings || isEditingModels) return;
+
+    setModelForm({
+      defaultPrModel: userSettings.default_pr_model ?? "",
+      defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
+      defaultCommentModel: userSettings.default_comment_model ?? "",
+    });
+  }, [isEditingModels, userSettings]);
 
   const modelSettings = [
     {
       label: "Default PR model",
+      name: "defaultPrModel",
       value: userSettings?.default_pr_model,
     },
     {
       label: "Default issue fixer model",
+      name: "defaultIssueFixerModel",
       value: userSettings?.default_issue_fixer_model,
     },
     {
       label: "Default comment model",
+      name: "defaultCommentModel",
       value: userSettings?.default_comment_model,
     },
-  ];
+  ] as const;
 
   const handleDelete = async (id: string) => {
     const toastId = toast.loading("Deleting SSH key");
@@ -73,6 +105,41 @@ export default function ClientView() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to delete SSH key", { id: toastId });
+    }
+  };
+
+  const handleEditModels = () => {
+    if (!userSettings) return;
+
+    setModelForm({
+      defaultPrModel: userSettings.default_pr_model ?? "",
+      defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
+      defaultCommentModel: userSettings.default_comment_model ?? "",
+    });
+    setIsEditingModels(true);
+  };
+
+  const handleCancelEditModels = () => {
+    if (userSettings) {
+      setModelForm({
+        defaultPrModel: userSettings.default_pr_model ?? "",
+        defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
+        defaultCommentModel: userSettings.default_comment_model ?? "",
+      });
+    }
+    setIsEditingModels(false);
+  };
+
+  const handleSaveModels = async () => {
+    const toastId = toast.loading("Saving default models");
+
+    try {
+      await updateUserSettingsMutation.mutateAsync(modelForm);
+      setIsEditingModels(false);
+      toast.success("Default models saved", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save default models", { id: toastId });
     }
   };
 
@@ -124,8 +191,40 @@ export default function ClientView() {
         </section>
 
         <section className="mt-8">
-          <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-3">
             <h2 className="text-lg font-semibold">Default models</h2>
+            {userSettings ? (
+              isEditingModels ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Cancel editing default models"
+                    onClick={handleCancelEditModels}
+                    disabled={updateUserSettingsMutation.isPending}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveModels}
+                    disabled={updateUserSettingsMutation.isPending}
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Edit default models"
+                  onClick={handleEditModels}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )
+            ) : null}
           </div>
 
           <div className="mt-5 rounded-lg border">
@@ -155,9 +254,23 @@ export default function ClientView() {
                     <div className="text-muted-foreground text-sm">
                       {setting.label}
                     </div>
-                    <div className="font-medium">
-                      {setting.value?.trim() || "Not configured"}
-                    </div>
+                    {isEditingModels ? (
+                      <Input
+                        value={modelForm[setting.name]}
+                        onChange={(event) =>
+                          setModelForm((current) => ({
+                            ...current,
+                            [setting.name]: event.target.value,
+                          }))
+                        }
+                        disabled={updateUserSettingsMutation.isPending}
+                        aria-label={setting.label}
+                      />
+                    ) : (
+                      <div className="font-medium">
+                        {setting.value?.trim() || "Not configured"}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

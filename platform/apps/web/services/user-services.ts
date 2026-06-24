@@ -16,6 +16,12 @@ export type UserCreditGrantsResponse = {
   hasNext: boolean;
 };
 
+export type UpdateUserSettingsPayload = {
+  defaultPrModel?: string | null;
+  defaultIssueFixerModel?: string | null;
+  defaultCommentModel?: string | null;
+};
+
 export const getUserMetadata = async (): Promise<{
   id: string;
   balance: number;
@@ -31,6 +37,15 @@ export const getUserMetadata = async (): Promise<{
 
 export const getUserSettings = async (): Promise<UserSettings | null> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/users/settings`, {
+    withCredentials: true,
+  });
+  return res.data.data;
+};
+
+export const updateUserSettings = async (
+  payload: UpdateUserSettingsPayload,
+): Promise<UserSettings> => {
+  const res = await axios.put(`${BACKEND_URL}/api/v1/users/settings`, payload, {
     withCredentials: true,
   });
   return res.data.data;
