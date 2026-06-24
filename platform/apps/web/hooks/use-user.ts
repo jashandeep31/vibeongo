@@ -3,8 +3,9 @@ import {
   getUserCreditGrants,
   getUserMetadata,
   getUserSettings,
+  updateUserSettings,
 } from "@/services/user-services";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
 
 export const useUserCreditGrants = (
@@ -42,3 +43,14 @@ export const useUserSettings = () =>
       return failureCount < 3;
     },
   });
+
+export const useUpdateUserSettings = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateUserSettings,
+    onSuccess: (settings) => {
+      queryClient.setQueryData(["user-settings"], settings);
+    },
+  });
+};

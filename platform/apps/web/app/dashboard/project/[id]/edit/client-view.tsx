@@ -144,6 +144,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     <ProjectConfigForm
       title="Edit project"
       description="Update this project's deployment configuration."
+      showImportFrom={false}
       submitAction={<ConfigPreviewAndUpdate projectId={projectId} />}
     />
   );
