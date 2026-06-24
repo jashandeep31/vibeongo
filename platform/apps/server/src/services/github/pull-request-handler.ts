@@ -11,6 +11,7 @@ import {
   projectSshKeys,
   sshKeys,
   users,
+  userSettings,
 } from "@repo/db";
 import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { generateSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
@@ -20,6 +21,7 @@ import {
   spinUpAndSaveInstanceResponse,
 } from "../instances/spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
+import { Models } from "@google/genai";
 
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
@@ -71,16 +73,22 @@ export const pullRequestOpenedHandler = async ({
       .returning();
     if (!session) return;
 
+    const [userSettingsRow] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.user_id, user.id));
+
     const tasks = [
       `Review the PR: ${pr.url} `,
       `Have you done with all if not please complete the steps and make sure you have left the comment`,
     ];
     await tx.insert(projectSessionTasks).values(
-      tasks.map((t, index) => ({
+      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => ({
         folder_name: repo.full_name.split("/")[1] ?? "",
         task: t,
         agent: "pr-reviewer" as const,
         project_session_id: session.id,
+        model: userSettingsRow?.default_pr_model || "",
         done: false,
         order_number: index,
       })),
