@@ -20,11 +20,8 @@ const (
 )
 
 type PTYMessage struct {
-	Type string `json:"type"`
-	Data struct {
-		Rows uint16 `json:"rows"`
-		Cols uint16 `json:"cols"`
-	} `json:"data"`
+	Type string          `json:"type"`
+	Data json.RawMessage `json:"data"`
 }
 
 func StartPTY(session *store.TerminalSession) error {
@@ -105,6 +102,13 @@ func WritePTYBufferToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, sessio
 	if len(buffer) > 0 {
 		writeMu.Lock()
 		_ = conn.WriteMessage(websocket.BinaryMessage, buffer)
+		// _ = conn.WriteJSON(struct {
+		// 	Type string `json:"type"`
+		// 	Data any    `json:"data"`
+		// }{
+		// 	Type: "terminal",
+		// 	Data: buffer,
+		// })
 		writeMu.Unlock()
 	}
 }
@@ -122,10 +126,26 @@ func HandlePTYInput(session *store.TerminalSession, msg []byte) error {
 	}
 
 	switch m.Type {
+	case "terminal":
+		var data string
+		if err := json.Unmarshal(m.Data, &data); err != nil {
+			return err
+		}
+
+		_, err := session.Ptmx.Write([]byte(data))
+		return err
 	case "size":
+		var data struct {
+			Rows uint16 `json:"rows"`
+			Cols uint16 `json:"cols"`
+		}
+		if err := json.Unmarshal(m.Data, &data); err != nil {
+			return err
+		}
+
 		return pty.Setsize(session.Ptmx, &pty.Winsize{
-			Rows: m.Data.Rows,
-			Cols: m.Data.Cols,
+			Rows: data.Rows,
+			Cols: data.Cols,
 		})
 	default:
 		return nil

@@ -55,7 +55,7 @@ func (o *OpencodeWeb) StartWebServer() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 	if o.Running {
-		return fmt.Errorf("OpencodeWeb is already running")
+		return nil
 	}
 	err := startWebServerLocked()
 	if err != nil {
@@ -70,7 +70,7 @@ func (o *OpencodeWeb) RestartWebServer() error {
 	defer o.mu.Unlock()
 
 	if !o.Running {
-		return fmt.Errorf("OpencodeWeb is not running")
+		return nil
 	}
 	err := utils.KilltmuxSession("ops")
 	if err != nil {

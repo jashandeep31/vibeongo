@@ -7,11 +7,15 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { ButtonGroup } from "@repo/ui/components/button-group";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { useWebSocketContext } from "@/hooks/use-websocket";
+import {
+  handleWebSocketJsonMessage,
+  parseWebSocketJsonMessages,
+  useWebSocketContext,
+} from "@/hooks/use-websocket";
 import "@xterm/xterm/css/xterm.css";
 
 export function ProjectInstanceTerminal() {
-  const { websocket } = useWebSocketContext();
+  const { websocket, sendJsonMessage } = useWebSocketContext();
   const [terminalSessionIds, setTerminalSessionIds] = useState<string[]>([]);
   const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
     string | null
@@ -43,15 +47,13 @@ export function ProjectInstanceTerminal() {
 
     const sendTerminalSize = () => {
       if (websocket.readyState !== WebSocket.OPEN) return;
-      websocket.send(
-        JSON.stringify({
-          type: "size",
-          data: {
-            rows: term.rows,
-            cols: term.cols,
-          },
-        }),
-      );
+      sendJsonMessage({
+        type: "size",
+        data: {
+          rows: term.rows,
+          cols: term.cols,
+        },
+      });
     };
 
     const fitTerminal = () => {
@@ -85,48 +87,34 @@ export function ProjectInstanceTerminal() {
 
     const handleMessage = async (event: MessageEvent) => {
       if (typeof event.data === "string") {
-        try {
-          const parsed = JSON.parse(event.data);
+        const parsedMessages = parseWebSocketJsonMessages(event.data);
 
-          if (parsed.type === "stats") {
-            window.dispatchEvent(
-              new CustomEvent("vps-stats", { detail: parsed.data }),
-            );
-            return;
-          }
+        if (!parsedMessages) {
+          writeToTerminal(event.data);
+          return;
+        }
 
-          if (parsed.type === "logs") {
-            window.dispatchEvent(
-              new CustomEvent("vps-logs", { detail: parsed.data }),
-            );
-            return;
-          }
+        for (const parsed of parsedMessages) {
+          const didHandleMessage = handleWebSocketJsonMessage(parsed, {
+            onSessionIds: (ids, activeId) => {
+              setTerminalSessionIds(ids);
+              setActiveTerminalSessionId(activeId);
+            },
+            onPtyUpdate: (sessionId, hasBuffer) => {
+              if (sessionId) {
+                setActiveTerminalSessionId(sessionId);
+              }
+              isReplayingPtyBufferRef.current = hasBuffer;
+              term.reset();
+              scheduleFit();
+            },
+          });
 
-          if (parsed.type === "sessionIds") {
-            if (parsed.ids) {
-              setTerminalSessionIds(parsed.ids);
-              setActiveTerminalSessionId(parsed.activeId);
-            } else {
-              console.log(
-                "Parsed ids are not here , Error in the  backend server",
-              );
-            }
-            return;
-          }
-
-          if (parsed.type === "ptyUpdate") {
-            if (typeof parsed.sessionId === "string") {
-              setActiveTerminalSessionId(parsed.sessionId);
-            }
-            isReplayingPtyBufferRef.current = parsed.hasBuffer === true;
-            term.reset();
-            scheduleFit();
-            return;
+          if (didHandleMessage) {
+            continue;
           }
 
           console.log("Received:", parsed);
-        } catch {
-          writeToTerminal(event.data);
         }
         return;
       }
@@ -163,7 +151,10 @@ export function ProjectInstanceTerminal() {
       if (isReplayingPtyBufferRef.current) return;
 
       if (websocket.readyState === WebSocket.OPEN) {
-        websocket.send(data);
+        sendJsonMessage({
+          type: "terminal",
+          data: data,
+        });
       }
     });
 
@@ -175,12 +166,7 @@ export function ProjectInstanceTerminal() {
       dataSubscription.dispose();
       term.dispose();
     };
-  }, [websocket]);
-
-  const sendMessage = (message: unknown) => {
-    if (websocket?.readyState !== WebSocket.OPEN) return;
-    websocket.send(JSON.stringify(message));
-  };
+  }, [sendJsonMessage, websocket]);
 
   return (
     <div className="max-w-full min-w-0 space-y-4 overflow-x-hidden">
@@ -198,7 +184,7 @@ export function ProjectInstanceTerminal() {
                     className="min-w-24 justify-start"
                     onClick={() => {
                       setActiveTerminalSessionId(id);
-                      sendMessage({
+                      sendJsonMessage({
                         type: "switchSession",
                         data: {
                           sessionId: id,
@@ -214,7 +200,7 @@ export function ProjectInstanceTerminal() {
                     confirmText="Close terminal"
                     isDestructive
                     onConfirm={() => {
-                      sendMessage({
+                      sendJsonMessage({
                         type: "endSession",
                         data: {
                           sessionId: id,
@@ -238,7 +224,7 @@ export function ProjectInstanceTerminal() {
               variant="outline"
               size="sm"
               onClick={() => {
-                sendMessage({ type: "newSession" });
+                sendJsonMessage({ type: "newSession" });
               }}
             >
               <Plus className="h-4 w-4" />
