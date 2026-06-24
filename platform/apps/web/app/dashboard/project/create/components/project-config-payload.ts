@@ -14,6 +14,7 @@ export const buildProjectConfigPayload = (
   githubRepoIds: state.gitRepoIds,
   initialScript: state.initialScript,
   finalScript: state.finalScript,
+  devScript: state.devScript,
   config: {
     ports: state.portRules.map((rule) => ({
       port: parseInt(rule.port, 10),

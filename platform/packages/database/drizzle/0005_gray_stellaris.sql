@@ -1,0 +1,1 @@
+ALTER TABLE "projects" ADD COLUMN "dev_script" text DEFAULT '' NOT NULL;

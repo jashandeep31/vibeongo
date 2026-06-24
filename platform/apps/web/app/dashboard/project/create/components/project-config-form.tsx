@@ -63,6 +63,7 @@ export default function ProjectConfigForm({
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
   const setInitialScript = useConfigStore((state) => state.setInitialScript);
   const setFinalScript = useConfigStore((state) => state.setFinalScript);
+  const setDevScript = useConfigStore((state) => state.setDevScript);
   const setPortRules = useConfigStore((state) => state.setPortRules);
   const updateDockerConfig = useConfigStore(
     (state) => state.updateDockerConfig,
@@ -89,6 +90,7 @@ export default function ProjectConfigForm({
     setSshKeys(selectedProjectConfig.sshKeyIds);
     setInitialScript(selectedProjectConfig.project.initial_script ?? "");
     setFinalScript(selectedProjectConfig.project.final_script ?? "");
+    setDevScript(selectedProjectConfig.project.dev_script ?? "");
     setPortRules(
       config.ports?.map((rule) => ({
         id: crypto.randomUUID(),
