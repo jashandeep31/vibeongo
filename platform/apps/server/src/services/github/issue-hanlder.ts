@@ -11,6 +11,7 @@ import {
   projectSshKeys,
   sshKeys,
   users,
+  userSettings,
 } from "@repo/db";
 import { generateSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
@@ -72,16 +73,21 @@ export const issueRequestHandler = async ({
       .returning();
     if (!session) return;
 
+    const [userSettingsRow] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.user_id, user.id));
     const tasks = [
       `Fix issue ${issue.url}`,
       "Have you done with all if not please complete the steps and make sure the pr is raised",
     ];
 
     await tx.insert(projectSessionTasks).values(
-      tasks.map((t, index) => ({
+      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => ({
         folder_name: repo.full_name.split("/")[1] ?? "",
         task: t,
-        agent: "issue-resolver" as const,
+        agent: "issue-resolver",
+        model: userSettingsRow?.default_issue_fixer_model || "",
         project_session_id: session.id,
         done: false,
         order_number: index,
