@@ -8,7 +8,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
-func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *store.SessionStore) error {
+func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *store.SessionStore, opencodeweb *store.OpencodeWeb) error {
 	// create the mutex to make sure only one is sending the resposne at a time
 	var writeMu sync.Mutex
 	var activeMu sync.RWMutex
@@ -85,6 +85,15 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 		_, msg, err := conn.ReadMessage()
 		if err != nil {
 			return err
+		}
+
+		// passing the messages to the opencode handler to check if it can do something with it
+		handled, err := OpencodewebHandler(ctx, conn, &writeMu, msg, opencodeweb)
+		if err != nil {
+			return err
+		}
+		if handled {
+			continue
 		}
 
 		// storehandler-> hanling things: switch the terminal session, add new terminal session

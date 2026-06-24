@@ -9,7 +9,7 @@ import (
 
 func Register(e *echo.Echo, openCode *store.OpencodeWeb) {
 	e.GET("/", handlers.Health)
-	e.GET("/ws", ws.WebSocket)
+	e.GET("/ws", ws.WebSocket(openCode))
 	e.GET("/ufw", handlers.GetAllowedPorts)
 	e.POST("/reboot", handlers.RebootServer)
 	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)

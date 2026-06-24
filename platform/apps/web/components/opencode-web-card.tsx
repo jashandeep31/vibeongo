@@ -1,7 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, Loader2, Globe, Square } from "lucide-react";
+import { Check, Copy, Loader2, Globe, RotateCcw, Square } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
+import { useWebSocketContext } from "@/hooks/use-websocket";
 
 interface OpencodeWebCardProps {
   domainFor8080: string | null;
@@ -10,26 +11,41 @@ interface OpencodeWebCardProps {
   opencodePassword?: string | null;
 }
 
+type OpencodeWebStatus = "stopped" | "starting" | "started" | "stopping";
+type OpencodeWebPendingAction = "start" | "restart" | "stop" | null;
+
 export function OpencodeWebCard({
-  domainFor8080,
   domainFor4096,
   isTerminated,
   opencodePassword,
 }: OpencodeWebCardProps) {
-  const [isOpeningOpenCodeWeb, setIsOpeningOpenCodeWeb] = useState(false);
-  const [isStoppingOpenCodeWeb, setIsStoppingOpenCodeWeb] = useState(false);
-  const [isOpenCodeConnected, setIsOpenCodeConnected] = useState(false);
+  const { websocket, sendJsonMessage } = useWebSocketContext();
+  const [opencodeWebStatus, setOpencodeWebStatus] =
+    useState<OpencodeWebStatus>("stopped");
+  const [pendingOpencodeWebAction, setPendingOpencodeWebAction] =
+    useState<OpencodeWebPendingAction>(null);
   const [isOpencodePasswordCopied, setIsOpencodePasswordCopied] =
     useState(false);
   const copyResetTimerRef = useRef<number | null>(null);
+  const shouldRedirectOnStartedRef = useRef(false);
 
-  const opencodeApiUrl = domainFor8080
-    ? `https://${domainFor8080}/opencode/web`
-    : null;
-  const opencodeStatusApiUrl = domainFor8080
-    ? `https://${domainFor8080}/opencode/web/status`
-    : null;
   const opencodeWebUrl = domainFor4096 ? `https://${domainFor4096}` : null;
+  const isOpenCodeConnected = opencodeWebStatus === "started";
+  const isOpeningOpenCodeWeb = opencodeWebStatus === "starting";
+  const isStoppingOpenCodeWeb = opencodeWebStatus === "stopping";
+  const isStartingOpenCodeWeb =
+    isOpeningOpenCodeWeb && pendingOpencodeWebAction === "start";
+  const isRestartingOpenCodeWeb =
+    isOpeningOpenCodeWeb && pendingOpencodeWebAction === "restart";
+  const canSendOpencodeAction = websocket?.readyState === WebSocket.OPEN;
+
+  const redirectToOpencodeWeb = useCallback(() => {
+    if (!opencodeWebUrl) {
+      return;
+    }
+
+    window.open(opencodeWebUrl, "_blank", "noopener,noreferrer");
+  }, [opencodeWebUrl]);
 
   useEffect(() => {
     return () => {
@@ -39,137 +55,121 @@ export function OpencodeWebCard({
     };
   }, []);
 
-  const getOpenCodeStatus = useCallback(async (): Promise<{
-    running: boolean;
-  }> => {
-    if (!opencodeStatusApiUrl) {
-      throw new Error("Instance domain not available");
+  useEffect(() => {
+    if (!opencodeWebUrl || isTerminated) {
+      setOpencodeWebStatus("stopped");
+      setPendingOpencodeWebAction(null);
     }
-
-    const response = await fetch(opencodeStatusApiUrl, {
-      method: "GET",
-    });
-    const data = (await response.json()) as {
-      message?: string;
-      running?: boolean;
-    };
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to check Opencode status");
-    }
-
-    return { running: !!data.running };
-  }, [opencodeStatusApiUrl]);
+  }, [isTerminated, opencodeWebUrl]);
 
   useEffect(() => {
-    if (!opencodeStatusApiUrl || isTerminated) {
-      setIsOpenCodeConnected(false);
+    if (!websocket) {
       return;
     }
 
-    let isDisposed = false;
+    const handleMessage = (event: MessageEvent) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
 
-    const syncOpenCodeStatus = async () => {
       try {
-        const status = await getOpenCodeStatus();
-        if (!isDisposed) {
-          setIsOpenCodeConnected(status.running);
+        const parsed = JSON.parse(event.data) as {
+          type?: unknown;
+          data?: unknown;
+        };
+
+        if (parsed.type !== "opencode") {
+          return;
+        }
+
+        const data = parsed.data as { state?: unknown; error?: unknown };
+
+        if (data.state !== "started" && data.state !== "stopped") {
+          return;
+        }
+
+        setOpencodeWebStatus(data.state);
+        setPendingOpencodeWebAction(null);
+
+        if (
+          data.state === "started" &&
+          !data.error &&
+          shouldRedirectOnStartedRef.current
+        ) {
+          shouldRedirectOnStartedRef.current = false;
+          redirectToOpencodeWeb();
+        }
+
+        if (data.state === "stopped") {
+          shouldRedirectOnStartedRef.current = false;
         }
       } catch {
-        if (!isDisposed) {
-          setIsOpenCodeConnected(false);
-        }
+        // Ignore non-JSON websocket payloads.
       }
     };
 
-    void syncOpenCodeStatus();
-    const intervalId = window.setInterval(() => {
-      void syncOpenCodeStatus();
-    }, 10000);
+    websocket.addEventListener("message", handleMessage);
 
     return () => {
-      isDisposed = true;
-      window.clearInterval(intervalId);
+      websocket.removeEventListener("message", handleMessage);
     };
-  }, [getOpenCodeStatus, isTerminated, opencodeStatusApiUrl]);
-
-  const startOpenCodeWeb = async (): Promise<void> => {
-    if (!opencodeApiUrl) {
-      throw new Error("Instance domain not available");
-    }
-
-    const response = await fetch(opencodeApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action: "start" }),
-    });
-
-    const data = (await response.json()) as {
-      message?: string;
-    };
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to start Opencode web");
-    }
-  };
-
-  const stopOpenCodeWeb = async (): Promise<void> => {
-    if (!opencodeApiUrl) {
-      throw new Error("Instance domain not available");
-    }
-
-    const response = await fetch(opencodeApiUrl, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ action: "terminate" }),
-    });
-
-    const data = (await response.json()) as {
-      message?: string;
-    };
-
-    if (!response.ok) {
-      throw new Error(data.message || "Failed to stop Opencode web");
-    }
-  };
+  }, [redirectToOpencodeWeb, websocket]);
 
   const handleOpenOpenCodeWeb = async () => {
-    if (!opencodeWebUrl || !opencodeApiUrl) {
+    if (!opencodeWebUrl) {
       return;
     }
 
-    setIsOpeningOpenCodeWeb(true);
-
-    try {
-      await startOpenCodeWeb();
-      window.open(opencodeWebUrl, "_blank", "noopener,noreferrer");
-      setIsOpenCodeConnected(true);
-    } catch {
-      // Silently handle error
-    } finally {
-      setIsOpeningOpenCodeWeb(false);
+    if (opencodeWebStatus === "started" || opencodeWebStatus === "starting") {
+      redirectToOpencodeWeb();
+      return;
     }
+
+    if (!canSendOpencodeAction) {
+      return;
+    }
+
+    setOpencodeWebStatus("starting");
+    setPendingOpencodeWebAction("start");
+    shouldRedirectOnStartedRef.current = true;
+    sendJsonMessage({
+      type: "opencode",
+      data: {
+        action: "start",
+      },
+    });
   };
 
   const handleStopOpenCodeWeb = async () => {
-    if (!opencodeApiUrl) {
+    if (!canSendOpencodeAction) {
       return;
     }
 
-    setIsStoppingOpenCodeWeb(true);
+    setOpencodeWebStatus("stopping");
+    setPendingOpencodeWebAction("stop");
+    shouldRedirectOnStartedRef.current = false;
+    sendJsonMessage({
+      type: "opencode",
+      data: {
+        action: "stop",
+      },
+    });
+  };
 
-    try {
-      await stopOpenCodeWeb();
-      setIsOpenCodeConnected(false);
-    } catch {
-      // Silently handle error
-    } finally {
-      setIsStoppingOpenCodeWeb(false);
+  const handleRestartOpenCodeWeb = async () => {
+    if (!canSendOpencodeAction) {
+      return;
     }
+
+    setOpencodeWebStatus("starting");
+    setPendingOpencodeWebAction("restart");
+    shouldRedirectOnStartedRef.current = true;
+    sendJsonMessage({
+      type: "opencode",
+      data: {
+        action: "restart",
+      },
+    });
   };
 
   const handleCopyOpencodePassword = async () => {
@@ -218,9 +218,9 @@ export function OpencodeWebCard({
             type="button"
             disabled={
               isTerminated ||
-              isOpeningOpenCodeWeb ||
               isStoppingOpenCodeWeb ||
-              !domainFor8080
+              !opencodeWebUrl ||
+              (opencodeWebStatus === "stopped" && !canSendOpencodeAction)
             }
             aria-label={
               isOpenCodeConnected ? "Open Opencode" : "Start Opencode"
@@ -231,10 +231,10 @@ export function OpencodeWebCard({
               void handleOpenOpenCodeWeb();
             }}
           >
-            {isOpeningOpenCodeWeb ? (
+            {isStartingOpenCodeWeb ? (
               <>
                 <Loader2 className="h-4 w-4 animate-spin" />
-                <span className="sr-only sm:not-sr-only">Opening...</span>
+                <span className="sr-only sm:not-sr-only">Starting...</span>
               </>
             ) : (
               <>
@@ -252,10 +252,40 @@ export function OpencodeWebCard({
             type="button"
             disabled={
               isTerminated ||
-              isStoppingOpenCodeWeb ||
               isOpeningOpenCodeWeb ||
-              !domainFor8080 ||
-              !isOpenCodeConnected
+              isStoppingOpenCodeWeb ||
+              !canSendOpencodeAction
+            }
+            aria-label="Restart Opencode"
+            title="Restart Opencode"
+            className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
+            onClick={() => {
+              void handleRestartOpenCodeWeb();
+            }}
+          >
+            {isRestartingOpenCodeWeb ? (
+              <>
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="sr-only sm:not-sr-only">Restarting...</span>
+              </>
+            ) : (
+              <>
+                <RotateCcw className="h-4 w-4" />
+                <span className="sr-only sm:not-sr-only">Restart</span>
+              </>
+            )}
+          </Button>
+
+          <Button
+            size="icon-sm"
+            variant="outline"
+            type="button"
+            disabled={
+              isTerminated ||
+              isStoppingOpenCodeWeb ||
+              !canSendOpencodeAction ||
+              (opencodeWebStatus !== "started" &&
+                opencodeWebStatus !== "starting")
             }
             aria-label="Stop Opencode"
             title="Stop Opencode"

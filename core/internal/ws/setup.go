@@ -19,13 +19,14 @@ var upgrader = websocket.Upgrader{
 
 var TerminalStore = store.NewSessionStore()
 
-func WebSocket(c *echo.Context) error {
-	conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
-	if err != nil {
-		return err
+func WebSocket(opencodeweb *store.OpencodeWeb) echo.HandlerFunc {
+	return func(c *echo.Context) error {
+		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
+		if err != nil {
+			return err
+		}
+		defer conn.Close()
+
+		return wsfunctions.HandleConnection(c.Request().Context(), conn, TerminalStore, opencodeweb)
 	}
-	defer conn.Close()
-
-	return wsfunctions.HandleConnection(c.Request().Context(), conn, TerminalStore)
 }
-
