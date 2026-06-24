@@ -24,6 +24,18 @@ type PTYMessage struct {
 	Data json.RawMessage `json:"data"`
 }
 
+type TerminalMessage struct {
+	Type string `json:"type"`
+	Data string `json:"data"`
+}
+
+func NewTerminalMessage(data []byte) TerminalMessage {
+	return TerminalMessage{
+		Type: "terminal",
+		Data: string(data),
+	}
+}
+
 func StartPTY(session *store.TerminalSession) error {
 	session.Mu.Lock()
 
@@ -80,10 +92,7 @@ func PipePTYToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, session *stor
 				continue
 			}
 
-			writeMu.Lock()
-			writeErr := conn.WriteMessage(websocket.BinaryMessage, data)
-			writeMu.Unlock()
-			if writeErr != nil {
+			if err := WriteTerminalMessage(conn, writeMu, data); err != nil {
 				return
 			}
 		}
@@ -100,17 +109,15 @@ func WritePTYBufferToWebSocket(conn *websocket.Conn, writeMu *sync.Mutex, sessio
 	session.Mu.Unlock()
 
 	if len(buffer) > 0 {
-		writeMu.Lock()
-		_ = conn.WriteMessage(websocket.BinaryMessage, buffer)
-		// _ = conn.WriteJSON(struct {
-		// 	Type string `json:"type"`
-		// 	Data any    `json:"data"`
-		// }{
-		// 	Type: "terminal",
-		// 	Data: buffer,
-		// })
-		writeMu.Unlock()
+		_ = WriteTerminalMessage(conn, writeMu, buffer)
 	}
+}
+
+func WriteTerminalMessage(conn *websocket.Conn, writeMu *sync.Mutex, data []byte) error {
+	writeMu.Lock()
+	defer writeMu.Unlock()
+
+	return conn.WriteJSON(NewTerminalMessage(data))
 }
 
 func HandlePTYInput(session *store.TerminalSession, msg []byte) error {

@@ -19,7 +19,8 @@ export function OpencodeWebCard({
   isTerminated,
   opencodePassword,
 }: OpencodeWebCardProps) {
-  const { websocket, sendJsonMessage } = useWebSocketContext();
+  const { websocket, sendJsonMessage, subscribeJsonMessage } =
+    useWebSocketContext();
   const [opencodeWebStatus, setOpencodeWebStatus] =
     useState<OpencodeWebStatus>("stopped");
   const [pendingOpencodeWebAction, setPendingOpencodeWebAction] =
@@ -67,53 +68,55 @@ export function OpencodeWebCard({
       return;
     }
 
-    const handleMessage = (event: MessageEvent) => {
-      if (typeof event.data !== "string") {
+    const unsubscribeMessages = subscribeJsonMessage((parsed) => {
+      if (parsed.type !== "opencode") {
         return;
       }
 
-      try {
-        const parsed = JSON.parse(event.data) as {
-          type?: unknown;
-          data?: unknown;
-        };
-
-        if (parsed.type !== "opencode") {
-          return;
-        }
-
-        const data = parsed.data as { state?: unknown; error?: unknown };
-
-        if (data.state !== "started" && data.state !== "stopped") {
-          return;
-        }
-
-        setOpencodeWebStatus(data.state);
-        setPendingOpencodeWebAction(null);
-
-        if (
-          data.state === "started" &&
-          !data.error &&
-          shouldRedirectOnStartedRef.current
-        ) {
-          shouldRedirectOnStartedRef.current = false;
-          redirectToOpencodeWeb();
-        }
-
-        if (data.state === "stopped") {
-          shouldRedirectOnStartedRef.current = false;
-        }
-      } catch {
-        // Ignore non-JSON websocket payloads.
+      if (!parsed.data || typeof parsed.data !== "object") {
+        return;
       }
-    };
 
-    websocket.addEventListener("message", handleMessage);
+      const data = parsed.data as { state?: unknown; error?: unknown };
+
+      if (data.state !== "started" && data.state !== "stopped") {
+        return;
+      }
+
+      setOpencodeWebStatus(data.state);
+      setPendingOpencodeWebAction(null);
+
+      if (
+        data.state === "started" &&
+        !data.error &&
+        shouldRedirectOnStartedRef.current
+      ) {
+        shouldRedirectOnStartedRef.current = false;
+        redirectToOpencodeWeb();
+      }
+
+      if (data.state === "stopped") {
+        shouldRedirectOnStartedRef.current = false;
+      }
+    });
 
     return () => {
-      websocket.removeEventListener("message", handleMessage);
+      unsubscribeMessages();
     };
-  }, [redirectToOpencodeWeb, websocket]);
+  }, [redirectToOpencodeWeb, subscribeJsonMessage, websocket]);
+
+  useEffect(() => {
+    if (!websocket || !opencodeWebUrl || isTerminated) {
+      return;
+    }
+
+    sendJsonMessage({
+      type: "opencode",
+      data: {
+        action: "status",
+      },
+    });
+  }, [isTerminated, opencodeWebUrl, sendJsonMessage, websocket]);
 
   const handleOpenOpenCodeWeb = async () => {
     if (!opencodeWebUrl) {

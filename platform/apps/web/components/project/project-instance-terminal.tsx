@@ -7,15 +7,12 @@ import { Plus, X } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { ButtonGroup } from "@repo/ui/components/button-group";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import {
-  handleWebSocketJsonMessage,
-  parseWebSocketJsonMessages,
-  useWebSocketContext,
-} from "@/hooks/use-websocket";
+import { useWebSocketContext } from "@/hooks/use-websocket";
 import "@xterm/xterm/css/xterm.css";
 
 export function ProjectInstanceTerminal() {
-  const { websocket, sendJsonMessage } = useWebSocketContext();
+  const { websocket, sendJsonMessage, subscribeJsonMessage } =
+    useWebSocketContext();
   const [terminalSessionIds, setTerminalSessionIds] = useState<string[]>([]);
   const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
     string | null
@@ -85,52 +82,42 @@ export function ProjectInstanceTerminal() {
       });
     };
 
-    const handleMessage = async (event: MessageEvent) => {
-      if (typeof event.data === "string") {
-        const parsedMessages = parseWebSocketJsonMessages(event.data);
-
-        if (!parsedMessages) {
-          writeToTerminal(event.data);
+    const unsubscribeMessages = subscribeJsonMessage((parsed) => {
+      if (parsed.type === "terminal") {
+        if (typeof parsed.data !== "string") {
           return;
         }
 
-        for (const parsed of parsedMessages) {
-          const didHandleMessage = handleWebSocketJsonMessage(parsed, {
-            onSessionIds: (ids, activeId) => {
-              setTerminalSessionIds(ids);
-              setActiveTerminalSessionId(activeId);
-            },
-            onPtyUpdate: (sessionId, hasBuffer) => {
-              if (sessionId) {
-                setActiveTerminalSessionId(sessionId);
-              }
-              isReplayingPtyBufferRef.current = hasBuffer;
-              term.reset();
-              scheduleFit();
-            },
-          });
+        const isReplay = isReplayingPtyBufferRef.current;
+        writeToTerminal(parsed.data, { replay: isReplay });
+        return;
+      }
 
-          if (didHandleMessage) {
-            continue;
-          }
-
-          console.log("Received:", parsed);
+      if (parsed.type === "sessionIds") {
+        if (!Array.isArray(parsed.ids)) {
+          return;
         }
+
+        const ids = parsed.ids.filter(
+          (id): id is string => typeof id === "string",
+        );
+        setTerminalSessionIds(ids);
+        setActiveTerminalSessionId(
+          typeof parsed.activeId === "string" ? parsed.activeId : null,
+        );
         return;
       }
 
-      if (event.data instanceof ArrayBuffer) {
-        const isReplay = isReplayingPtyBufferRef.current;
-        writeToTerminal(new Uint8Array(event.data), { replay: isReplay });
-        return;
-      }
+      if (parsed.type === "ptyUpdate") {
+        if (typeof parsed.sessionId === "string") {
+          setActiveTerminalSessionId(parsed.sessionId);
+        }
 
-      if (event.data instanceof Blob) {
-        const buffer = await event.data.arrayBuffer();
-        const isReplay = isReplayingPtyBufferRef.current;
-        writeToTerminal(new Uint8Array(buffer), { replay: isReplay });
+        isReplayingPtyBufferRef.current = parsed.hasBuffer === true;
+        term.reset();
+        scheduleFit();
       }
-    };
+    });
 
     const handleClose = () => {
       term.write("\r\nConnection closed\r\n");
@@ -144,7 +131,6 @@ export function ProjectInstanceTerminal() {
     resizeObserver.observe(terminalElement);
 
     window.addEventListener("resize", scheduleFit);
-    websocket.addEventListener("message", handleMessage);
     websocket.addEventListener("close", handleClose);
 
     const dataSubscription = term.onData((data) => {
@@ -160,13 +146,13 @@ export function ProjectInstanceTerminal() {
 
     return () => {
       window.removeEventListener("resize", scheduleFit);
-      websocket.removeEventListener("message", handleMessage);
       websocket.removeEventListener("close", handleClose);
+      unsubscribeMessages();
       resizeObserver.disconnect();
       dataSubscription.dispose();
       term.dispose();
     };
-  }, [sendJsonMessage, websocket]);
+  }, [sendJsonMessage, subscribeJsonMessage, websocket]);
 
   return (
     <div className="max-w-full min-w-0 space-y-4 overflow-x-hidden">
