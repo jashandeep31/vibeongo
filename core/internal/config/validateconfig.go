@@ -22,6 +22,7 @@ type Config struct {
 	Tasks          []TaskConfig    `json:"tasks"`
 	InitialScript  string          `json:"initialScript"`
 	FinalScript    string          `json:"finalScript"`
+	DevScript      string          `json:"devScript"`
 }
 type InstanceConfig struct {
 	OpencodePassword string `json:"opencodePassword"`
