@@ -28,6 +28,7 @@ export const projects = pgTable("projects", {
 
   initial_script: text().notNull().default(""),
   final_script: text().notNull().default(""),
+  dev_script: text().notNull().default(""),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

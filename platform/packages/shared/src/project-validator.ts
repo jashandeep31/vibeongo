@@ -38,6 +38,7 @@ export const projectConfigValidator = z.object({
 
   initialScript: z.string().max(500),
   finalScript: z.string().max(500),
+  devScript: z.string().max(500).default(""),
 
   config: z.object({
     ports: z.array(

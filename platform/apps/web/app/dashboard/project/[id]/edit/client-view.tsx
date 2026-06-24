@@ -37,6 +37,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
   const setInitialScript = useConfigStore((state) => state.setInitialScript);
   const setFinalScript = useConfigStore((state) => state.setFinalScript);
+  const setDevScript = useConfigStore((state) => state.setDevScript);
   const setPortRules = useConfigStore((state) => state.setPortRules);
   const updateDockerConfig = useConfigStore(
     (state) => state.updateDockerConfig,
@@ -62,6 +63,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setSshKeys(projectConfig.sshKeyIds);
     setInitialScript(projectConfig.project.initial_script ?? "");
     setFinalScript(projectConfig.project.final_script ?? "");
+    setDevScript(projectConfig.project.dev_script ?? "");
     setPortRules(
       config.ports?.map((rule) => ({
         id: crypto.randomUUID(),
@@ -118,6 +120,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setProjectName,
     setInitialScript,
     setFinalScript,
+    setDevScript,
     setSshKeys,
     updateDockerConfig,
     updateNvimConfig,
