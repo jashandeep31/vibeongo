@@ -1,6 +1,6 @@
 "use client";
 
-import { Server } from "lucide-react";
+import { Server, PlusCircle } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -12,12 +12,19 @@ import {
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { useGetProjects } from "@/hooks/use-project";
 import { projects as IProject } from "@repo/db";
+import { Button } from "@repo/ui/components/button";
 
 function ProjectListSkeleton() {
   return (
     <div className="space-y-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">My Projects</h2>
+        <Button disabled size="sm">
+          <PlusCircle className="mr-2 h-4 w-4" />
+          Create Project
+        </Button>
+      </div>
       <div>
-        <Skeleton className="mb-4 h-7 w-32" />
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
           {[1, 2, 3].map((item) => (
             <Card key={item} className="flex flex-col">
@@ -78,18 +85,23 @@ export function ProjectList() {
 
   return (
     <div className="space-y-6">
-      {projectsList.length > 0 && (
-        <div>
-          <h2 className="mb-4 text-xl font-semibold">My Projects</h2>
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {projectsList.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        </div>
-      )}
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold">My Projects</h2>
+        <Button asChild size="sm">
+          <Link href="/dashboard/project/create">
+            <PlusCircle className="mr-2 h-4 w-4" />
+            Create Project
+          </Link>
+        </Button>
+      </div>
 
-      {projectsList.length === 0 && (
+      {projectsList.length > 0 ? (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {projectsList.map((project) => (
+            <ProjectCard key={project.id} project={project} />
+          ))}
+        </div>
+      ) : (
         <div className="text-muted-foreground">
           No projects found. Create one to get started!
         </div>
