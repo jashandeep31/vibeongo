@@ -9,7 +9,7 @@ import (
 )
 
 func TerminateInstance(cfg config.Config, force bool) error {
-	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
 
 	if cfg.InstanceConfig.Terminate || force {
 		var apiRes any
@@ -17,7 +17,7 @@ func TerminateInstance(cfg config.Config, force bool) error {
 			"Content-Type":  "application/json",
 			"Authorization": "Bearer " + cfg.Token,
 		}
-		resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionId+"/terminate/"+cfg.InstanceId, headers, &apiRes)
+		resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionID+"/terminate/"+cfg.InstanceID, headers, &apiRes)
 		if err != nil {
 			return err
 		}

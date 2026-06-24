@@ -8,11 +8,11 @@ import (
 )
 
 type Config struct {
-	ServerBaseUrl  string          `json:"serverBaseUrl"`
-	SessionId      string          `json:"sessionId"`
-	ProjectId      string          `json:"projectId"`
+	ServerBaseURL  string          `json:"serverBaseUrl"`
+	SessionID      string          `json:"sessionId"`
+	ProjectID      string          `json:"projectId"`
 	InstanceConfig InstanceConfig  `json:"instanceConfig"`
-	InstanceId     string          `json:"instanceId"`
+	InstanceID     string          `json:"instanceId"`
 	Token          string          `json:"token"`
 	Packages       []PackageConfig `json:"packages"`
 	Repos          []GitRepoConfig `json:"repos"`

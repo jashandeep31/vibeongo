@@ -13,7 +13,7 @@ import (
 
 func ProvisionProjectFiles() error {
 	cfg, err := config.LoadAndValidate("config.json")
-	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
 	if err != nil {
 		return err
 	}
@@ -33,7 +33,7 @@ func ProvisionProjectFiles() error {
 		"Authorization": "Bearer " + cfg.Token,
 	}
 	resp, err := apiClient.Get(
-		"/api/v1/runtime/sessions/"+cfg.SessionId+"/get-project-files",
+		"/api/v1/runtime/sessions/"+cfg.SessionID+"/get-project-files",
 		headers,
 		&res,
 	)
@@ -57,7 +57,7 @@ func ProvisionProjectFiles() error {
 		err = os.WriteFile(
 			fullFilePath,
 			[]byte(file.ProjectFileData.Content),
-			0644,
+			0o644,
 		)
 		if err != nil {
 			log.Println("write file error:", err)

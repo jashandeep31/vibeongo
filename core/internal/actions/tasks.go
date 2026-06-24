@@ -33,8 +33,8 @@ func MarkTask(cmd *cobra.Command, args []string) error {
 	}
 
 	var b any
-	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
-	apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/tasks/"+id, struct {
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
+	apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionID+"/tasks/"+id, struct {
 		Done bool `json:"done"`
 	}{
 		Done: true,
