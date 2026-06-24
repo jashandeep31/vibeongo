@@ -60,6 +60,7 @@ vibeongo setup
 vibeongo init-workspace
 vibeongo init-repos
 vibeongo final
+vibeongo dev
 echo "doing with the tasks"
 vibeongo tasks  
 VIBEONGO_COMMANDS

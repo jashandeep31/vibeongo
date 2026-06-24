@@ -42,6 +42,8 @@ func init() {
 	rootCmd.AddCommand(ExecuteIntialScriptCmd())
 	// running the final script
 	rootCmd.AddCommand(ExecuteFinalScriptCmd())
+	// running the dev script
+	rootCmd.AddCommand(ExecuteDevScriptCmd())
 	// Print the config
 	rootCmd.AddCommand(PrintConfigCmd())
 }
