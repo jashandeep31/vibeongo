@@ -24,6 +24,7 @@ const envSchema = z.object({
         .filter(Boolean),
     ),
   ]),
+  DSN: z.string(),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   JWT_SECRET: z.string(),
