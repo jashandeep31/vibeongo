@@ -66,6 +66,46 @@ func ExecuteIntialScript() error {
 }
 
 func ExecuteFinalScript() error {
+	cfg, err := config.LoadAndValidate("config.json")
+	if err != nil {
+		return err
+	}
+	if err := ProvisionOpenCode(cfg.OpenCode); err != nil {
+		return err
+	}
+
+	tempScriptFile, err := os.CreateTemp("", "temp-*.sh")
+	if err != nil {
+		return err
+	}
+	defer tempScriptFile.Close()
+	defer os.Remove(tempScriptFile.Name())
+
+	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
+	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
+
+	script := `
+	echo "final script is running"
+	`
+	script = script + cfg.FinalScript
+	path := "/home/ubuntu/code"
+	tempScriptFile.Write([]byte(script))
+
+	cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
+	cmd.Dir = path
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ExecuteDevScript() error {
 	fmt.Println("Running the final script")
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
@@ -73,10 +113,10 @@ func ExecuteFinalScript() error {
 	}
 
 	re := regexp.MustCompile(`(?m)^---\s*$`)
-	parts := re.Split(cfg.FinalScript, -1)
+	parts := re.Split(cfg.DevScript, -1)
 
-	utils.KilltmuxSession("final")
-	err = utils.StartTmuxSession("final", "/home/ubuntu/code")
+	utils.KilltmuxSession("dev")
+	err = utils.StartTmuxSession("dev", "/home/ubuntu/code")
 	if err != nil {
 		return err
 	}
@@ -111,7 +151,7 @@ func ExecuteFinalScript() error {
 			"-d",
 			"-P",
 			"-F", "#{pane_id}",
-			"-t", "final:",
+			"-t", "dev:",
 			"-n", fmt.Sprintf("task-%d", i),
 			"bash", "-il",
 		)
