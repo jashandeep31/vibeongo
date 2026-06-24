@@ -6,6 +6,7 @@ import { ProjectSessionsList } from "@/components/project-sessions/project-sessi
 import { PaginationControls } from "@/components/pagination-controls";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateInstanceDialog } from "@/components/dialogs/create-instance-dialog";
+import { ProjectLoadingSkeleton } from "./project-loading-skeleton";
 import { useGetInstances } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
@@ -98,11 +99,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
   };
 
   if (isLoading) {
-    return (
-      <div className="text-muted-foreground p-4 md:p-8">
-        Loading project...
-      </div>
-    );
+    return <ProjectLoadingSkeleton />;
   }
 
   if (isError || !project) {

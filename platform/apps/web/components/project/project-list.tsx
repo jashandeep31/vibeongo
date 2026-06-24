@@ -9,14 +9,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { useGetProjects } from "@/hooks/use-project";
 import { projects as IProject } from "@repo/db";
+
+function ProjectListSkeleton() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <Skeleton className="mb-4 h-7 w-32" />
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {[1, 2, 3].map((item) => (
+            <Card key={item} className="flex flex-col">
+              <CardHeader className="flex flex-row items-start justify-between gap-4 space-y-0 pb-2">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-9 w-9 rounded-lg" />
+                  <Skeleton className="h-6 w-36" />
+                </div>
+              </CardHeader>
+              <CardContent>
+                <Skeleton className="h-4 w-full max-w-56" />
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function ProjectList() {
   const { data: projects, isLoading, error } = useGetProjects();
 
   if (isLoading) {
-    return <div className="text-muted-foreground">Loading projects...</div>;
+    return <ProjectListSkeleton />;
   }
 
   if (error) {
