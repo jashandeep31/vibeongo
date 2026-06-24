@@ -91,8 +91,6 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   } = useGetInstanceById(instanceId);
   const { data: projectDomainsData, isLoading: isLoadingDomains } =
     useGetProjectDomainsById(instance?.project_id || "");
-  const { data: currentUserIp, isLoading: isCurrentIpLoading } =
-    useCurrentUserIp();
   const addAllowedIpMutation = useAddAllowedIpToProject();
   const deleteMultipleAllowedIpsMutation =
     useDeleteMultipleAllowedIpsFromProject();
@@ -132,6 +130,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         (domain) => domain.target_port === 4096,
       )?.domain
     : null;
+
+  const { data: currentUserIp, isLoading: isCurrentIpLoading } =
+    useCurrentUserIp(domainFor8080);
 
   const Instance_IP = instance?.public_ip || "localhost";
   const currentIp = currentUserIp?.trim() ?? "";

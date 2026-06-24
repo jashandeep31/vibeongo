@@ -1,9 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
-const USER_IP_URL = "https://proxy.vibeongo.one/proxy/my-ip";
-
-const getCurrentUserIp = async (): Promise<string> => {
-  const response = await fetch(USER_IP_URL);
+const getCurrentUserIp = async (domain: string): Promise<string> => {
+  const response = await fetch(`https://${domain}/proxy/my-ip`);
 
   if (!response.ok) {
     throw new Error("Failed to fetch current IP");
@@ -13,8 +11,9 @@ const getCurrentUserIp = async (): Promise<string> => {
   return data.ip?.trim() ?? "";
 };
 
-export const useCurrentUserIp = () =>
+export const useCurrentUserIp = (domain: string | null | undefined) =>
   useQuery({
-    queryKey: ["proxy-current-user-ip"],
-    queryFn: getCurrentUserIp,
+    queryKey: ["proxy-current-user-ip", domain],
+    queryFn: () => getCurrentUserIp(domain ?? ""),
+    enabled: !!domain,
   });

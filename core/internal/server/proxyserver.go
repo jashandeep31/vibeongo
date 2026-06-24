@@ -161,7 +161,7 @@ func (s *ProxyServer) handleMyIP(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(struct {
 		IP string `json:"ip"`
 	}{
-		IP: getRealIp(r.Header),
+		IP: getRealIP(r.Header),
 	})
 }
 
@@ -173,7 +173,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 				r.Header.Set("proxy-error", "404")
 				return
 			}
-			allowed := checkIpIsAllowed(r.Header, proxyData.AllowedIPs)
+			allowed := checkIPIsAllowed(r.Header, proxyData.AllowedIPs)
 			if !allowed {
 				r.Header.Set("proxy-error", "403")
 				return
@@ -193,7 +193,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 				json.NewEncoder(w).Encode(struct {
 					Error string
 				}{
-					Error: "Ip is not allowed please add to allowed ips, You Ip is " + getRealIp(r.Header),
+					Error: "Ip is not allowed please add to allowed ips, You Ip is " + getRealIP(r.Header),
 				})
 			default:
 				w.WriteHeader(http.StatusInternalServerError)
@@ -203,20 +203,20 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 	}
 }
 
-func getRealIp(headers map[string][]string) string {
-	var XRealIp string
+func getRealIP(headers map[string][]string) string {
+	var XRealIP string
 	for k, v := range headers {
 		if k == "X-Real-Ip" {
-			XRealIp = v[0]
+			XRealIP = v[0]
 		}
 	}
-	return XRealIp
+	return XRealIP
 }
 
-func checkIpIsAllowed(headers map[string][]string, allowedIps []string) bool {
-	Ip := getRealIp(headers)
-	if Ip == "" {
+func checkIPIsAllowed(headers map[string][]string, allowedIps []string) bool {
+	IP := getRealIP(headers)
+	if IP == "" {
 		return false
 	}
-	return slices.Contains(allowedIps, Ip)
+	return slices.Contains(allowedIps, IP)
 }

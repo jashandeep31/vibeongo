@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useMemo, useState } from "react";
-import { Globe, ExternalLink, X, Lock, Plus } from "lucide-react";
+import { Globe, ExternalLink, X, Lock, Plus, Copy, Check } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -44,6 +44,7 @@ export function ProjectDomainsCard({
   const [newIp, setNewIp] = useState("");
   const [deletingIpId, setDeletingIpId] = useState<string | null>(null);
   const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
+  const [copiedDomainId, setCopiedDomainId] = useState<string | null>(null);
   const [portInputs, setPortInputs] = useState<Record<string, string>>({});
   const { data, isLoading } = useGetProjectDomainsById(projectId);
   const deleteAllowedIpMutation = useDeleteAllowedIpFromProject();
@@ -195,6 +196,17 @@ export function ProjectDomainsCard({
     }
   };
 
+  const handleCopyDomain = async (domainId: string, domain: string) => {
+    try {
+      await navigator.clipboard.writeText(`https://${domain}`);
+      setCopiedDomainId(domainId);
+      toast.success("Domain copied");
+      setTimeout(() => setCopiedDomainId(null), 1000);
+    } catch {
+      toast.error("Failed to copy domain");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <h2 className="mb-4 flex items-center gap-2 text-xl font-semibold">
@@ -235,19 +247,41 @@ export function ProjectDomainsCard({
                         key={domainRow.id}
                         className="flex flex-col gap-3 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
                       >
-                        <a
-                          href={`https://${domainRow.domain}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          title={domainRow.domain}
-                          className="flex min-w-0 items-start gap-2 text-sm text-blue-500 hover:underline sm:items-center"
-                        >
-                          <Globe className="h-4 w-4 shrink-0" />
-                          <span className="min-w-0 break-all sm:truncate">
-                            {domainRow.domain}
-                          </span>
-                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                        </a>
+                        <div className="flex min-w-0 items-start gap-2 sm:items-center">
+                          <a
+                            href={`https://${domainRow.domain}`}
+                            target="_blank"
+                            rel="noreferrer"
+                            title={domainRow.domain}
+                            className="flex min-w-0 items-start gap-2 text-sm text-blue-500 hover:underline sm:items-center"
+                          >
+                            <Globe className="h-4 w-4 shrink-0" />
+                            <span className="min-w-0 break-all sm:truncate">
+                              {domainRow.domain}
+                            </span>
+                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                          </a>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 shrink-0"
+                            aria-label={`Copy ${domainRow.domain}`}
+                            title="Copy domain"
+                            onClick={() => {
+                              void handleCopyDomain(
+                                domainRow.id,
+                                domainRow.domain,
+                              );
+                            }}
+                          >
+                            {copiedDomainId === domainRow.id ? (
+                              <Check className="h-4 w-4" />
+                            ) : (
+                              <Copy className="h-4 w-4" />
+                            )}
+                          </Button>
+                        </div>
                         <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                           <Input
                             type="number"
