@@ -1,3 +1,4 @@
+import "./lib/sentry.js";
 import express, { Request, Response } from "express";
 import cors from "cors";
 import test from "./test.js";
@@ -21,6 +22,7 @@ import { internalRoutes } from "./routes/internal-routes.js";
 import { paymentRoutes } from "./routes/payment-routes.js";
 import "./lib/cron.js";
 import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
+import * as Sentry from "@sentry/node";
 
 const app = express();
 
@@ -86,6 +88,8 @@ app.use("/api/v1/runtime", runtimeRoutes);
 app.use("/api/v1/internal", internalRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
+
+Sentry.setupExpressErrorHandler(app);
 
 // --- Global Error Handler ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
