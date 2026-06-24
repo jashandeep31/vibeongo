@@ -10,13 +10,13 @@ import (
 
 func UpdateSessionOverview(cfg config.Config, overview string) error {
 	fmt.Println("Updating the overview of the project")
-	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
 	var b any
 	headers := map[string]string{
 		"Content-Type":  "application/json",
 		"Authorization": "Bearer " + cfg.Token,
 	}
-	resp, err := apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionId+"/overview", struct {
+	resp, err := apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionID+"/overview", struct {
 		Overview string `json:"overview"`
 	}{Overview: overview}, headers, &b)
 	if err != nil {
@@ -30,7 +30,7 @@ func UpdateSessionOverview(cfg config.Config, overview string) error {
 
 func ResumeSession(cfg config.Config) error {
 	fmt.Println("Resuming the session")
-	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseUrl}
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
 	var b struct {
 		data string
 	}
@@ -38,7 +38,7 @@ func ResumeSession(cfg config.Config) error {
 		"Content-Type":  "application/json",
 		"Authorization": "Bearer " + cfg.Token,
 	}
-	resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionId+"/overview", headers, &b)
+	resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionID+"/overview", headers, &b)
 	if err != nil {
 		return err
 	}
