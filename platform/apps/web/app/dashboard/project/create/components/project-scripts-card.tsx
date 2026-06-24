@@ -46,23 +46,6 @@ function ProjectScriptsCard() {
 
       <div className="space-y-3">
         <Label
-          htmlFor="project-dev-script"
-          className="text-muted-foreground text-sm"
-        >
-          Dev Script
-        </Label>
-        <Textarea
-          id="project-dev-script"
-          value={devScript}
-          onChange={onDevScriptChange}
-          maxLength={500}
-          placeholder="Script for starting the development server or dev workflow."
-          className="min-h-32 w-full max-w-full font-mono text-sm"
-        />
-      </div>
-
-      <div className="space-y-3">
-        <Label
           htmlFor="project-final-script"
           className="text-muted-foreground text-sm"
         >
@@ -74,6 +57,22 @@ function ProjectScriptsCard() {
           onChange={onFinalScriptChange}
           maxLength={500}
           placeholder="Scripts of thins like starting a server and more "
+          className="min-h-32 w-full max-w-full font-mono text-sm"
+        />
+      </div>
+      <div className="space-y-3">
+        <Label
+          htmlFor="project-dev-script"
+          className="text-muted-foreground text-sm"
+        >
+          Dev Script
+        </Label>
+        <Textarea
+          id="project-dev-script"
+          value={devScript}
+          onChange={onDevScriptChange}
+          maxLength={500}
+          placeholder="Script for starting the development server or dev workflow."
           className="min-h-32 w-full max-w-full font-mono text-sm"
         />
       </div>

@@ -11,18 +11,9 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
-// ReExecuteFinalScript  re execute the final after kill the first tmux session
-func ReExecuteFinalScript() error {
-	err := utils.KilltmuxSession("final")
-	if err != nil {
-		return err
-	}
-
-	err = ExecuteFinalScript()
-	if err != nil {
-		return nil
-	}
-	return nil
+// ReExecuteDevScript restarts the dev tmux session and runs the dev script.
+func ReExecuteDevScript() error {
+	return ExecuteDevScript()
 }
 
 func ExecuteIntialScript() error {
@@ -106,7 +97,7 @@ func ExecuteFinalScript() error {
 }
 
 func ExecuteDevScript() error {
-	fmt.Println("Running the final script")
+	fmt.Println("Running the dev script")
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return err
@@ -115,7 +106,7 @@ func ExecuteDevScript() error {
 	re := regexp.MustCompile(`(?m)^---\s*$`)
 	parts := re.Split(cfg.DevScript, -1)
 
-	utils.KilltmuxSession("dev")
+	_ = utils.KilltmuxSession("dev")
 	err = utils.StartTmuxSession("dev", "/home/ubuntu/code")
 	if err != nil {
 		return err
@@ -163,16 +154,16 @@ func ExecuteDevScript() error {
 
 		paneID := strings.TrimSpace(string(output))
 		runScript := fmt.Sprintf(
-			`script=%q; source "$script"; status=$?; rm -f "$script"; printf '\nFinal script exited with status %%d\n' "$status"`,
+			`script=%q; source "$script"; status=$?; rm -f "$script"; printf '\nDev script exited with status %%d\n' "$status"`,
 			tempScriptFile.Name(),
 		)
 		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "-l", runScript).CombinedOutput(); err != nil {
 			os.Remove(tempScriptFile.Name())
-			return fmt.Errorf("send final script to tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
+			return fmt.Errorf("send dev script to tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
 		}
 		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "Enter").CombinedOutput(); err != nil {
 			os.Remove(tempScriptFile.Name())
-			return fmt.Errorf("start final script in tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
+			return fmt.Errorf("start dev script in tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
 		}
 	}
 

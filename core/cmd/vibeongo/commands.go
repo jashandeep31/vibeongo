@@ -188,6 +188,17 @@ func ExecuteFinalScriptCmd() *cobra.Command {
 	}
 }
 
+func ExecuteDevScriptCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "dev",
+		Short: "Run the project's dev script in tmux",
+		Long:  "Execute the dev script configured for the project in a dev tmux session, usually for long-running development servers or watchers.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actions.ExecuteDevScript()
+		},
+	}
+}
+
 func PrintConfigCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "config",
