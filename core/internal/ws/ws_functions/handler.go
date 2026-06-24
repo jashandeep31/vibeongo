@@ -2,6 +2,7 @@ package wsfunctions
 
 import (
 	"context"
+	"encoding/json"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -13,9 +14,6 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 	var writeMu sync.Mutex
 	var activeMu sync.RWMutex
 	pipedSessions := make(map[string]struct{})
-
-	go StatsHandler(ctx, conn, &writeMu)
-	go LogsHandler(ctx, conn, &writeMu)
 	// unsubscribe the sessions at the end of function
 	unsubscribeSessions := []func(){}
 	defer func() {
@@ -63,11 +61,16 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 
 	// add the ptmx  to the session if not present
 	if err := StartPTY(session); err != nil {
-		writeMu.Lock()
-		_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
-		writeMu.Unlock()
+		_ = WriteTerminalMessage(conn, &writeMu, []byte("Failed to start terminal session\n"))
 		return err
 	}
+
+	if err := waitForClientReady(conn); err != nil {
+		return err
+	}
+
+	go StatsHandler(ctx, conn, &writeMu)
+	go LogsHandler(ctx, conn, &writeMu)
 
 	// send the sessions list to the frontend client
 	SendSessions(conn, terminalStore, &writeMu)
@@ -104,9 +107,7 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 		if selectedSession != nil {
 			setActiveSession(selectedSession)
 			if err := StartPTY(selectedSession); err != nil {
-				writeMu.Lock()
-				_ = conn.WriteMessage(websocket.TextMessage, []byte("Failed to start terminal session\n"))
-				writeMu.Unlock()
+				_ = WriteTerminalMessage(conn, &writeMu, []byte("Failed to start terminal session\n"))
 				return err
 			}
 			if err := SendPtyUpdate(selectedSession, conn, &writeMu); err != nil {
@@ -120,5 +121,24 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 		}
 
 		_ = HandlePTYInput(getActiveSession(), msg)
+	}
+}
+
+func waitForClientReady(conn *websocket.Conn) error {
+	for {
+		_, msg, err := conn.ReadMessage()
+		if err != nil {
+			return err
+		}
+
+		var parsed struct {
+			Type string `json:"type"`
+		}
+		if err := json.Unmarshal(msg, &parsed); err != nil {
+			continue
+		}
+		if parsed.Type == "clientReady" {
+			return nil
+		}
 	}
 }

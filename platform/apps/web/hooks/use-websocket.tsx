@@ -5,181 +5,28 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
 
-type WebSocketContextValue = {
+export type WebSocketServerMessage = {
+  type?: unknown;
+  data?: unknown;
+  ids?: unknown;
+  activeId?: unknown;
+  sessionId?: unknown;
+  hasBuffer?: unknown;
+};
+
+const SocketContext = createContext<{
   websocket: WebSocket | null;
-  sendJsonMessage: (message: WebSocketClientMessage) => void;
-};
-
-export type WebSocketClientMessage =
-  | {
-      type: "terminal";
-      data: string;
-    }
-  | {
-      type: "size";
-      data: {
-        rows: number;
-        cols: number;
-      };
-    }
-  | {
-      type: "switchSession" | "endSession";
-      data: {
-        sessionId: string;
-      };
-    }
-  | {
-      type: "newSession";
-    }
-  | {
-      type: "opencode";
-      data: {
-        action: "status" | "start" | "restart" | "stop";
-      };
-    };
-
-type WebSocketMessageHandlers = {
-  onSessionIds?: (ids: string[], activeId: string | null) => void;
-  onPtyUpdate?: (sessionId: string | null, hasBuffer: boolean) => void;
-};
-
-const SocketContext = createContext<WebSocketContextValue | null>(null);
-
-const parseJsonMessageStream = (data: string) => {
-  try {
-    return [JSON.parse(data)];
-  } catch {
-    // Some websocket servers/proxies may coalesce text JSON frames. Keep
-    // typed envelopes out of the terminal instead of writing them as PTY text.
-  }
-
-  const messages: unknown[] = [];
-  let depth = 0;
-  let start = -1;
-  let isInString = false;
-  let isEscaped = false;
-
-  for (let index = 0; index < data.length; index += 1) {
-    const char = data.charAt(index);
-
-    if (isInString) {
-      if (isEscaped) {
-        isEscaped = false;
-      } else if (char === "\\") {
-        isEscaped = true;
-      } else if (char === '"') {
-        isInString = false;
-      }
-      continue;
-    }
-
-    if (depth === 0 && /\S/.test(char) && char !== "{") {
-      return null;
-    }
-
-    if (char === '"') {
-      isInString = true;
-      continue;
-    }
-
-    if (char === "{") {
-      if (depth === 0) {
-        start = index;
-      }
-      depth += 1;
-      continue;
-    }
-
-    if (char === "}") {
-      depth -= 1;
-      if (depth === 0 && start >= 0) {
-        try {
-          messages.push(JSON.parse(data.slice(start, index + 1)));
-        } catch {
-          return null;
-        }
-        start = -1;
-      }
-
-      if (depth < 0) {
-        return null;
-      }
-    }
-  }
-
-  return messages.length > 0 && depth === 0 ? messages : null;
-};
-
-export const parseWebSocketJsonMessages = (data: string) => {
-  const messages = parseJsonMessageStream(data);
-  if (!messages) return null;
-
-  const hasWebSocketEnvelope = messages.some(
-    (message) => !!message && typeof message === "object" && "type" in message,
-  );
-
-  return hasWebSocketEnvelope ? messages : null;
-};
-
-export const handleWebSocketJsonMessage = (
-  parsed: unknown,
-  handlers: WebSocketMessageHandlers = {},
-) => {
-  if (!parsed || typeof parsed !== "object" || !("type" in parsed)) {
-    return false;
-  }
-
-  const message = parsed as {
-    type?: unknown;
-    data?: unknown;
-    ids?: unknown;
-    activeId?: unknown;
-    sessionId?: unknown;
-    hasBuffer?: unknown;
-  };
-
-  if (message.type === "stats") {
-    window.dispatchEvent(
-      new CustomEvent("vps-stats", { detail: message.data }),
-    );
-    return true;
-  }
-
-  if (message.type === "logs") {
-    window.dispatchEvent(new CustomEvent("vps-logs", { detail: message.data }));
-    return true;
-  }
-
-  if (message.type === "opencode") {
-    return true;
-  }
-
-  if (message.type === "sessionIds") {
-    if (Array.isArray(message.ids)) {
-      handlers.onSessionIds?.(
-        message.ids.filter((id): id is string => typeof id === "string"),
-        typeof message.activeId === "string" ? message.activeId : null,
-      );
-    } else {
-      console.log("Parsed ids are not here , Error in the  backend server");
-    }
-    return true;
-  }
-
-  if (message.type === "ptyUpdate") {
-    handlers.onPtyUpdate?.(
-      typeof message.sessionId === "string" ? message.sessionId : null,
-      message.hasBuffer === true,
-    );
-    return true;
-  }
-
-  return false;
-};
+  sendJsonMessage: (message: unknown) => void;
+  subscribeJsonMessage: (
+    listener: (message: WebSocketServerMessage) => void,
+    options?: { replay?: boolean },
+  ) => () => void;
+} | null>(null);
 
 export const WebSocketProvider = ({
   children,
@@ -189,25 +36,91 @@ export const WebSocketProvider = ({
   socketUrl: string | undefined | null;
 }) => {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
+  const listenersRef = useRef(
+    new Set<(message: WebSocketServerMessage) => void>(),
+  );
+  const messageBufferRef = useRef<WebSocketServerMessage[]>([]);
 
+  // function to send the events to the backend server
   const sendJsonMessage = useCallback(
-    (message: WebSocketClientMessage) => {
+    (message: unknown) => {
       if (websocket?.readyState !== WebSocket.OPEN) return;
       websocket.send(JSON.stringify(message));
     },
     [websocket],
   );
 
+  const subscribeJsonMessage = useCallback(
+    (
+      listener: (message: WebSocketServerMessage) => void,
+      options?: { replay?: boolean },
+    ) => {
+      listenersRef.current.add(listener);
+
+      if (options?.replay !== false) {
+        for (const message of messageBufferRef.current) {
+          listener(message);
+        }
+      }
+
+      return () => {
+        listenersRef.current.delete(listener);
+      };
+    },
+    [],
+  );
+
   useEffect(() => {
     setWebsocket(null);
+    messageBufferRef.current = [];
     if (!socketUrl) {
       return;
     }
 
     const ws = new WebSocket(`wss://${socketUrl}/ws`);
 
+    const handleMessage = (event: MessageEvent) => {
+      if (typeof event.data !== "string") {
+        return;
+      }
+
+      let message: WebSocketServerMessage;
+      try {
+        message = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      messageBufferRef.current.push(message);
+      if (messageBufferRef.current.length > 5000) {
+        messageBufferRef.current.splice(
+          0,
+          messageBufferRef.current.length - 5000,
+        );
+      }
+
+      if (message.type === "stats") {
+        window.dispatchEvent(
+          new CustomEvent("vps-stats", { detail: message.data }),
+        );
+      }
+
+      if (message.type === "logs") {
+        window.dispatchEvent(
+          new CustomEvent("vps-logs", { detail: message.data }),
+        );
+      }
+
+      for (const listener of listenersRef.current) {
+        listener(message);
+      }
+    };
+
+    ws.addEventListener("message", handleMessage);
+
     ws.onopen = () => {
       setWebsocket(ws);
+      ws.send(JSON.stringify({ type: "clientReady" }));
     };
 
     ws.onclose = () => {
@@ -215,13 +128,16 @@ export const WebSocketProvider = ({
     };
 
     return () => {
+      ws.removeEventListener("message", handleMessage);
       setWebsocket((current) => (current === ws ? null : current));
       ws.close();
     };
   }, [socketUrl]);
 
   return (
-    <SocketContext.Provider value={{ websocket, sendJsonMessage }}>
+    <SocketContext.Provider
+      value={{ websocket, sendJsonMessage, subscribeJsonMessage }}
+    >
       {children}
     </SocketContext.Provider>
   );
