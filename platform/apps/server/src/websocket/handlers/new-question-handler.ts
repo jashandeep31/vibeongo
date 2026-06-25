@@ -27,7 +27,6 @@ export const newQuestionHandler = async (
   }
 
   const parsedResponse = parsingResponse.data;
-  const newQuestionId = crypto.randomUUID();
   const [lastQuestionAndAnswer] = await db
     .select({
       question: chatQuestions,
@@ -46,26 +45,55 @@ export const newQuestionHandler = async (
     sendWSError(socket, "Somehting went wrong");
     return;
   }
-  const { response, updatedConfig } = await aiWork(
+
+  const newQuestion: typeof chatQuestions.$inferSelect = {
+    id: crypto.randomUUID(),
+    question: parsedResponse.question,
+    order_number: lastQuestionAndAnswer.question.order_number + 1,
+    chat_id: parsedResponse.chatId,
+    memory: "",
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  const newAnswer: typeof chatAnswer.$inferSelect = {
+    id: crypto.randomUUID(),
+    question_id: newQuestion.id,
+    answer: "",
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  socket.send(
+    JSON.stringify({
+      type: "new-question",
+      data: {
+        ...newQuestion,
+        answer: newAnswer,
+      },
+    }),
+  );
+
+  let answer = "";
+  for await (const res of aiWork(
     parsedResponse.question,
     userId,
     lastQuestionAndAnswer.question.memory,
-  );
+  )) {
+    answer += res.text;
+  }
 
-  // await db.transaction(async (tx) => {
-  //   await tx.insert(chatQuestions).values({
-  //     id: newQuestionId,
-  //     question: parsedResponse.question,
-  //     order_number: lastQuestionAndAnswer.question.order_number + 1,
-  //     chat_id: parsedResponse.chatId,
-  //     memory: JSON.stringify(updatedConfig),
-  //   });
-  //   await tx.insert(chatAnswer).values({
-  //     answer: response,
-  //     question_id: newQuestionId,
-  //   });
-  // });
+  await db.transaction(async (tx) => {
+    await tx.insert(chatQuestions).values({
+      ...newQuestion,
+    });
+    await tx.insert(chatAnswer).values({
+      answer: answer,
+      question_id: newQuestion.id,
+    });
+  });
 };
+
 const updateConfig = tool({
   description: "Update the config with the user given data",
   inputSchema: projectValidatorForAIInput.extend({}),
@@ -84,7 +112,15 @@ const getCurrentConfig = (config: unknown) =>
     },
   });
 
-const aiWork = async (question: string, userId: string, prevConig: unknown) => {
+async function* aiWork(
+  question: string,
+  userId: string,
+  prevConig: unknown,
+): AsyncGenerator<{
+  done: boolean;
+  text: string;
+  config: unknown;
+}> {
   const result = streamText({
     model: "openai/gpt-5-nano",
     system:
@@ -103,22 +139,30 @@ const aiWork = async (question: string, userId: string, prevConig: unknown) => {
 
   let response = "";
   let updatedConfig = null;
+  let done = false;
 
   for await (const text of result.textStream) {
-    console.log(text);
+    response += text;
+    yield {
+      done,
+      text: text,
+      config: updatedConfig,
+    };
   }
-  // for (const contentPart of result.content) {
-  //   if (contentPart.type === "text") {
-  //     response += contentPart.text;
-  //   }
-  //   if (contentPart.type === "tool-result") {
-  //     const toolUsed = contentPart;
-  //     if (toolUsed.toolName === "updateConfig") {
-  //       updatedConfig = toolUsed.output;
-  //     }
-  //   }
-  // }
-  // console.log(result);
-  // console.log(response);
-  return { response, updatedConfig };
-};
+  const steps = await result.steps;
+  //
+  for (const step of steps) {
+    for (const tool of step.toolResults) {
+      if (tool.type == "tool-result") {
+        if (tool.toolName === "updateConfig") {
+          updatedConfig = tool.output;
+        }
+      }
+    }
+  }
+  yield {
+    done: true,
+    text: "",
+    config: updatedConfig,
+  };
+}

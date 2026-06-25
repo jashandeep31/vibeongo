@@ -34,7 +34,6 @@ export const createNewGithubRepo = (userId: string): Tool =>
     description:
       "Add new github repo for user by repourl, url should be like https://github.com/USERNAME/REPO_NAME",
     inputSchema: createNewGithubRepoSchema,
-    strict: true,
     execute: async (inputData: z.infer<typeof createNewGithubRepoSchema>) => {
       const parsedData = createNewGithubRepoSchema.parse(inputData);
       let owner = "";
