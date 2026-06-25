@@ -25,7 +25,7 @@ import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhoo
 import * as Sentry from "@sentry/node";
 import { WebSocketServer } from "ws";
 import { createServer } from "node:http";
-import { SocketHandler } from "./websocket/index.js";
+import { SocketHandler } from "./websocket/socket-handler.js";
 const app = express();
 
 const server = createServer(app);
@@ -96,12 +96,13 @@ Sentry.setupExpressErrorHandler(app);
 
 const ws = new WebSocketServer({
   server,
+  path: "/ws",
   verifyClient: (info, done) => {
     const origin = info.origin;
-    if (!origin || !env.ALLOWED_ORIGINS.includes(origin)) {
-      console.log("❌ WS blocked from:", origin);
-      return done(false, 403, "Forbidden");
-    }
+    // if (!origin || !env.ALLOWED_ORIGINS.includes(origin)) {
+    //   console.log("❌ WS blocked from:", origin);
+    //   return done(false, 403, "Forbidden");
+    // }
     console.log("✅ WS allowed from:", origin);
     done(true);
   },

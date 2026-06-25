@@ -1,5 +1,6 @@
 import DashboardNavbar from "@/components/dashboard-navbar";
 import { DashboardSidebar } from "@/components/dashboard-sidebar";
+import { VibeSocketProvider } from "@/hooks/use-vibe-socket";
 import { getSession } from "@/lib/getSession";
 import { SidebarProvider } from "@repo/ui/components/sidebar";
 import { redirect } from "next/navigation";
@@ -16,11 +17,13 @@ export default async function layout({
   }
   return (
     <div>
-      <SidebarProvider>
-        <DashboardNavbar />
-        <DashboardSidebar />
-        <div className="mt-12 grid w-full">{children}</div>
-      </SidebarProvider>
+      <VibeSocketProvider>
+        <SidebarProvider>
+          <DashboardNavbar />
+          <DashboardSidebar />
+          <div className="mt-12 grid w-full">{children}</div>
+        </SidebarProvider>
+      </VibeSocketProvider>
     </div>
   );
 }
