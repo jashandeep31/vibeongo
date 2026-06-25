@@ -132,7 +132,7 @@ ws.on("connection", async (socket, req) => {
     const parsedCookies = parseCookies(cookies);
     const decoded = jwt.verify(parsedCookies["session"]!, env.JWT_SECRET);
 
-    socket.userId = decoded as string;
+    socket.userId = (decoded as any).id as string;
     await SocketHandler(socket);
   } catch (e) {
     console.log(`Error: ${e}`);

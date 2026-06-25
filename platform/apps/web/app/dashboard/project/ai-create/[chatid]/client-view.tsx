@@ -15,7 +15,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
     // Getting the chat from the backend
     websocket.send(
       JSON.stringify({
-        type: "get-chat",
+        type: "join-chat",
         data: {
           id: chatid,
         },
@@ -23,7 +23,10 @@ const ClientView = ({ chatid }: ClientViewProps) => {
     );
 
     websocket.addEventListener("message", (event) => {
-      console.log(event);
+      const parsedEventData = JSON.parse(event.data);
+      if (parsedEventData.type === "chat-data") {
+        console.log(parsedEventData.data);
+      }
     });
     return () => {
       websocket.removeEventListener("message", () => {});

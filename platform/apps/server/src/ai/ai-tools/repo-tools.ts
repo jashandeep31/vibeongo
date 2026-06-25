@@ -20,7 +20,6 @@ export const getUserReposAITool = (userId: string) =>
         id: r.id,
         public: r.public,
       }));
-      console.log(res);
       return res;
     },
   });

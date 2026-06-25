@@ -11,7 +11,9 @@ import { users } from "./user.js";
 export const chats = pgTable("chats", {
   id: uuid().defaultRandom().primaryKey(),
   name: varchar().notNull(),
-  user_id: uuid().references(() => users.id, { onDelete: "cascade" }),
+  user_id: uuid()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow().notNull(),
@@ -20,7 +22,9 @@ export const chats = pgTable("chats", {
 export const chatQuestions = pgTable("chat_questions", {
   id: uuid().defaultRandom().primaryKey(),
   question: text().notNull(),
-  chat_id: uuid().references(() => chats.id, { onDelete: "cascade" }),
+  chat_id: uuid()
+    .references(() => chats.id, { onDelete: "cascade" })
+    .notNull(),
 
   memory: text(),
 
@@ -34,9 +38,11 @@ export const chatAnswer = pgTable("chat_answer", {
   id: uuid().defaultRandom().primaryKey(),
   answer: text().notNull(),
 
-  question_id: uuid().references(() => chatQuestions.id, {
-    onDelete: "cascade",
-  }),
+  question_id: uuid()
+    .references(() => chatQuestions.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow().notNull(),
