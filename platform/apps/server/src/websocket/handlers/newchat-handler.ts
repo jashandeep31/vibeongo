@@ -92,7 +92,7 @@ const aiWork = async (question: string, userId: string) => {
       updateConfig,
       createNewGithubRepo: createNewGithubRepo(userId),
     },
-    stopWhen: stepCountIs(2),
+    stopWhen: stepCountIs(5),
     prompt: question,
     // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
