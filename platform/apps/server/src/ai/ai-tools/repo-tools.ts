@@ -1,10 +1,10 @@
 import { db, eq, githubRepos } from "@repo/db";
-import { tool } from "ai";
+import { tool, Tool } from "ai";
 import { z } from "zod";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { AppError } from "../../lib/app-error.js";
 
-export const getUserReposAITool = (userId: string) =>
+export const getUserReposAITool = (userId: string): Tool =>
   tool({
     description: "Get list of all user repos to suggest user which one to add",
     strict: true,
@@ -19,6 +19,7 @@ export const getUserReposAITool = (userId: string) =>
         full_name: r.full_name,
         id: r.id,
         public: r.public,
+        setup_script: r.setup_script,
       }));
       return res;
     },
@@ -26,9 +27,9 @@ export const getUserReposAITool = (userId: string) =>
 
 const createNewGithubRepoSchema = z.object({
   url: z.string(),
-  setup_script: z.string().optional(),
+  setup_script: z.string().optional().default(" "),
 });
-export const createNewGithubRepo = (userId: string) =>
+export const createNewGithubRepo = (userId: string): Tool =>
   tool({
     description:
       "Add new github repo for user by repourl, url should be like https://github.com/USERNAME/REPO_NAME",
