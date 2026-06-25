@@ -1,11 +1,35 @@
 "use client";
 import { InputArea } from "@/components/input-area/input-area";
+import { useVibeSocket } from "@/hooks/use-vibe-socket";
+import { useEffect } from "react";
 
 interface ClientViewProps {
   chatid: string;
 }
 
 const ClientView = ({ chatid }: ClientViewProps) => {
+  const { websocket } = useVibeSocket();
+
+  useEffect(() => {
+    if (!websocket) return;
+    // Getting the chat from the backend
+    websocket.send(
+      JSON.stringify({
+        type: "get-chat",
+        data: {
+          id: chatid,
+        },
+      }),
+    );
+
+    websocket.addEventListener("message", (event) => {
+      console.log(event);
+    });
+    return () => {
+      websocket.removeEventListener("message", () => {});
+    };
+  }, [websocket, chatid]);
+
   return (
     <div className="flex h-full flex-col justify-between">
       <div></div>
