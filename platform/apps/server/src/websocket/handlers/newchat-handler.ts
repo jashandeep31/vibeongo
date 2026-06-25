@@ -20,7 +20,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
   const [chatId, chatQuestionId] = [crypto.randomUUID(), crypto.randomUUID()];
 
-  const { response, updatedConfig } = await aiWork(
+  const { response, reasoning, updatedConfig } = await aiWork(
     parsedData.question,
     socket.userId,
   );
@@ -54,6 +54,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
     await tx.insert(chatAnswer).values({
       question_id: chatQuestion.id,
       answer: response,
+      reasoning,
     });
     return { chat, chatQuestion };
   });
@@ -98,11 +99,15 @@ const aiWork = async (question: string, userId: string) => {
   });
 
   let response = "";
+  let reasoning = "";
   let updatedConfig = null;
 
   for (const contentPart of result.content) {
     if (contentPart.type === "text") {
       response += contentPart.text;
+    }
+    if (contentPart.type === "reasoning") {
+      reasoning += contentPart.text;
     }
     if (contentPart.type === "tool-result") {
       const toolUsed = contentPart;
@@ -113,5 +118,5 @@ const aiWork = async (question: string, userId: string) => {
   }
   console.log(result);
   console.log(response);
-  return { response, updatedConfig };
+  return { response, reasoning, updatedConfig };
 };

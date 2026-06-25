@@ -37,6 +37,7 @@ export const chatQuestions = pgTable("chat_questions", {
 export const chatAnswer = pgTable("chat_answer", {
   id: uuid().defaultRandom().primaryKey(),
   answer: text().notNull(),
+  reasoning: text(),
 
   question_id: uuid()
     .references(() => chatQuestions.id, {

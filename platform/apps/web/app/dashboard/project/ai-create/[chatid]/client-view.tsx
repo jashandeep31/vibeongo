@@ -13,6 +13,10 @@ type ChatQuestionWithAnswer = typeof chatQuestions.$inferSelect & {
   chatAnswer: typeof chatAnswer.$inferSelect | null;
 };
 
+type NewQuestionEventData = typeof chatQuestions.$inferSelect & {
+  answer: typeof chatAnswer.$inferSelect;
+};
+
 const ClientView = ({ chatid }: ClientViewProps) => {
   const { websocket, sendJsonMessage } = useVibeSocket();
   const [chat, setChat] = useState<null | typeof chats.$inferSelect>(null);
@@ -35,6 +39,48 @@ const ClientView = ({ chatid }: ClientViewProps) => {
       if (parsedEvent.type === "chat-data") {
         setChat(parsedEvent.data.chat ?? null);
         setChatQWithA(parsedEvent.data.chatQuestions ?? []);
+        return;
+      }
+
+      if (parsedEvent.type === "new-question") {
+        const question = parsedEvent.data as NewQuestionEventData;
+        setChatQWithA((currentQuestions) => {
+          const nextQuestion = {
+            ...question,
+            chatAnswer: question.answer,
+          };
+          const existingQuestionIndex = currentQuestions.findIndex(
+            (item) => item.id === question.id,
+          );
+
+          if (existingQuestionIndex === -1) {
+            return [...currentQuestions, nextQuestion];
+          }
+
+          return currentQuestions.map((item, index) =>
+            index === existingQuestionIndex ? nextQuestion : item,
+          );
+        });
+        return;
+      }
+
+      if (parsedEvent.type === "answer-update") {
+        const answer = parsedEvent.data as typeof chatAnswer.$inferSelect;
+        setChatQWithA((currentQuestions) =>
+          currentQuestions.map((item) => {
+            if (
+              item.id !== answer.question_id &&
+              item.chatAnswer?.id !== answer.id
+            ) {
+              return item;
+            }
+
+            return {
+              ...item,
+              chatAnswer: answer,
+            };
+          }),
+        );
       }
     };
 
@@ -56,6 +102,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
             ) : (
               chatQWithA.map((item) => {
                 const answer = item.chatAnswer;
+                const reasoning = answer?.reasoning?.trim();
 
                 return (
                   <div key={item.id} className="flex flex-col gap-8">
@@ -66,9 +113,22 @@ const ClientView = ({ chatid }: ClientViewProps) => {
                     </div>
 
                     <div className="max-w-3xl">
-                      <p className="text-foreground text-lg leading-snug whitespace-pre-wrap">
-                        {answer?.answer}
-                      </p>
+                      {reasoning ? (
+                        <div className="border-border bg-muted/30 text-muted-foreground mb-4 rounded-lg border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+                          {reasoning}
+                        </div>
+                      ) : null}
+
+                      {answer?.answer ? (
+                        <p className="text-foreground text-lg leading-snug whitespace-pre-wrap">
+                          {answer.answer}
+                        </p>
+                      ) : (
+                        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                          Thinking
+                        </div>
+                      )}
                     </div>
                   </div>
                 );
