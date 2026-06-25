@@ -7,17 +7,8 @@ import {
 } from "../../ai/ai-tools/repo-tools.js";
 import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
-import {
-  and,
-  asc,
-  chatAnswer,
-  chatQuestions,
-  chats,
-  db,
-  desc,
-  eq,
-} from "@repo/db";
-import { reverse } from "node:dns";
+import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
+
 export const newQuestionHandler = async (
   socket: WebSocket,
   rawData: unknown,
@@ -68,6 +59,10 @@ export const newQuestionHandler = async (
       order_number: lastQuestionAndAnswer.question.order_number + 1,
       chat_id: parsedResponse.chatId,
       memory: JSON.stringify(updatedConfig),
+    });
+    await tx.insert(chatAnswer).values({
+      answer: response,
+      question_id: newQuestionId,
     });
   });
 };

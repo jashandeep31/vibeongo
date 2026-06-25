@@ -6,10 +6,11 @@ import { Textarea } from "@repo/ui/components/textarea";
 import { useState, type FormEvent } from "react";
 
 interface InputAreaProps {
+  chatId: string;
   sendJsonMessage: (message: unknown) => void;
 }
 
-export function InputArea({ sendJsonMessage }: InputAreaProps) {
+export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
   const [question, setQuestion] = useState("");
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -17,11 +18,11 @@ export function InputArea({ sendJsonMessage }: InputAreaProps) {
 
     const trimmedQuestion = question.trim();
     if (!trimmedQuestion) return;
-    console.log(trimmedQuestion);
 
     sendJsonMessage({
-      type: "new-chat",
+      type: "new-question",
       data: {
+        chatId,
         question: trimmedQuestion,
       },
     });

@@ -79,7 +79,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
       </div>
       <div className="px-4 pb-4 md:px-0">
         <div className="mx-auto w-full md:w-2/3">
-          <InputArea sendJsonMessage={sendJsonMessage} />
+          <InputArea chatId={chatid} sendJsonMessage={sendJsonMessage} />
         </div>
       </div>
     </div>
