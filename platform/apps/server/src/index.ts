@@ -26,6 +26,7 @@ import * as Sentry from "@sentry/node";
 import { WebSocketServer } from "ws";
 import { createServer } from "node:http";
 import { SocketHandler } from "./websocket/socket-handler.js";
+import * as cookie from "cookie";
 const app = express();
 
 const server = createServer(app);
@@ -108,20 +109,19 @@ const ws = new WebSocketServer({
   },
 });
 
-ws.on("connection", async (socket, _req) => {
+ws.on("connection", async (socket, req) => {
   try {
-    // const cookies = req.headers.cookie;
-    // if (!cookies) {
-    //   console.log(`not authenticated `);
-    //   return;
-    // }
-    // const parsedCookie = cookie.parse(req.headers.cookie!);
-    // if (!parsedCookie.session) return;
-    //
-    // let session;
-    // session = JSON.parse(decodeURIComponent(parsedCookie.session));
-    //
-    // socket.userId = session.id;
+    const cookies = req.headers.cookie;
+    if (!cookies) {
+      console.log(`not authenticated `);
+      return;
+    }
+    const parsedCookie = cookie.parseCookie(req.headers.cookie!);
+    if (!parsedCookie.session) return;
+    let session;
+    session = JSON.parse(decodeURIComponent(parsedCookie.session));
+
+    socket.userId = session.id;
     await SocketHandler(socket);
   } catch (e) {
     console.log(`Error: ${e}`);

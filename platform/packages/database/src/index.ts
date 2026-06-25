@@ -43,3 +43,4 @@ export * from "./schemas/project-sessions.js";
 export * from "./schemas/instances-metadata.js";
 export * from "./schemas/ssh-key.js";
 export * from "./schemas/session-auth-tokens.js";
+export * from "./schemas/chat.js";
