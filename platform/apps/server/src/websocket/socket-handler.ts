@@ -1,6 +1,7 @@
 import { WebSocket } from "ws";
 import { newChatHandler } from "./handlers/newchat-handler.js";
 import { joinChatHandler } from "./handlers/join-chat-handler.js";
+import { newQuestionHandler } from "./handlers/new-question-handler.js";
 
 export const SocketHandler = async (socket: WebSocket) => {
   socket.onmessage = async (event) => {
@@ -14,6 +15,9 @@ export const SocketHandler = async (socket: WebSocket) => {
         case "new-chat":
           console.log("i wanna create the chat");
           await newChatHandler(socket, parsedEvent.data);
+          break;
+        case "new-question":
+          await newQuestionHandler(socket, parsedEvent.data);
           break;
       }
     } catch (error) {
