@@ -39,7 +39,9 @@ const envSchema = z.object({
   AWS_SES_ACCESS_KEY_ID: z.string(),
   AWS_SES_SECRET_KEY: z.string(),
   ENCRYPTION_KEY: z.string(),
+  AI_GATEWAY_API_KEY: z.string(),
 });
+
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {

@@ -27,6 +27,7 @@ import { WebSocketServer } from "ws";
 import { createServer } from "node:http";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import * as cookie from "cookie";
+import jwt from "jsonwebtoken";
 const app = express();
 
 const server = createServer(app);
@@ -109,6 +110,17 @@ const ws = new WebSocketServer({
   },
 });
 
+function parseCookies(header: string) {
+  const out: Record<string, string> = {};
+  header.split(";").forEach((pair) => {
+    const idx = pair.indexOf("=");
+    const k = pair.slice(0, idx).trim();
+    const v = pair.slice(idx + 1).trim();
+    out[k] = v; // last one wins on duplicate keys
+  });
+  return out;
+}
+
 ws.on("connection", async (socket, req) => {
   try {
     const cookies = req.headers.cookie;
@@ -116,12 +128,11 @@ ws.on("connection", async (socket, req) => {
       console.log(`not authenticated `);
       return;
     }
-    const parsedCookie = cookie.parseCookie(req.headers.cookie!);
-    if (!parsedCookie.session) return;
-    let session;
-    session = JSON.parse(decodeURIComponent(parsedCookie.session));
 
-    socket.userId = session.id;
+    const parsedCookies = parseCookies(cookies);
+    const decoded = jwt.verify(parsedCookies["session"]!, env.JWT_SECRET);
+
+    socket.userId = decoded as string;
     await SocketHandler(socket);
   } catch (e) {
     console.log(`Error: ${e}`);
