@@ -1,5 +1,5 @@
 "use client";
-import { InputArea } from "@/components/input-area/input-area";
+import { InputArea } from "@/components/chat/input-area";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
 import { useEffect } from "react";
 
@@ -8,7 +8,7 @@ interface ClientViewProps {
 }
 
 const ClientView = ({ chatid }: ClientViewProps) => {
-  const { websocket } = useVibeSocket();
+  const { websocket, sendJsonMessage } = useVibeSocket();
 
   useEffect(() => {
     if (!websocket) return;
@@ -35,7 +35,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
       <div></div>
       <div className="px-4 pb-4 md:px-0">
         <div className="mx-auto w-full md:w-2/3">
-          <InputArea />
+          <InputArea sendJsonMessage={sendJsonMessage} />
         </div>
       </div>
     </div>
