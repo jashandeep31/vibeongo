@@ -147,7 +147,7 @@ async function* aiWork(
       updateConfig,
       createNewGithubRepo: createNewGithubRepo(userId),
     },
-    stopWhen: stepCountIs(2),
+    stopWhen: stepCountIs(20),
     prompt: question,
     // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
@@ -158,7 +158,6 @@ async function* aiWork(
   let reasoning = "";
   for await (const chunk of result.stream) {
     if (chunk.type === "reasoning-delta") {
-      console.log(chunk.text);
       reasoning += chunk.text;
       yield {
         reasoning: chunk.text,
@@ -197,7 +196,6 @@ async function* aiWork(
       }
     }
   }
-  console.log(JSON.stringify(result));
   yield {
     done: true,
     text: "",
