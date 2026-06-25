@@ -111,6 +111,7 @@ const aiWork = async (question: string, userId: string) => {
       }
     }
   }
+  console.log(result);
   console.log(response);
   return { response, updatedConfig };
 };
