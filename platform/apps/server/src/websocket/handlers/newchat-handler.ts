@@ -7,8 +7,7 @@ import { projectValidatorForAIInput } from "@repo/shared";
 import {
   createNewGithubRepo,
   getUserReposAITool,
-} from "../../ai/ai-tools/index.js";
-// import {v4 as } from "u  "
+} from "../../ai/ai-tools/repo-tools.js";
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
@@ -20,38 +19,44 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
     .parse(eventData);
 
   const [chatId, chatQuestionId] = [crypto.randomUUID(), crypto.randomUUID()];
-  // create the chat for user
-  // const { chat, chatQuestion } = await db.transaction(async (tx) => {
-  //   const [chat] = await tx
-  //     .insert(chats)
-  //     .values({
-  //       id: chatId,
-  //       name: "unknown",
-  //       user_id: userId,
-  //     })
-  //     .returning();
-  //   if (!chat) throw new AppError("something went wrong", 500);
-  //   const [chatQuestion] = await tx
-  //     .insert(chatQuestions)
-  //     .values({
-  //       id: chatQuestionId,
-  //       chat_id: chat.id,
-  //       question: parsedData.question,
-  //       order_number: 0,
-  //     })
-  //     .returning();
-  //
-  //   if (!chatQuestion) throw new AppError("something went wrong ", 500);
-  //   return { chat, chatQuestion };
-  // });
 
-  console.log(`we are working `);
-  const answer = await aiWork(parsedData.question, socket.userId);
-  // await db.insert(chatAnswer).values({
-  //   question_id: chatQuestion.id,
-  //   answer: answer,
-  // });
-  console.log(answer);
+  const { response, updatedConfig } = await aiWork(
+    parsedData.question,
+    socket.userId,
+  );
+
+  // create the chat for user
+  await db.transaction(async (tx) => {
+    const [chat] = await tx
+      .insert(chats)
+      .values({
+        id: chatId,
+        name: "unknown",
+        user_id: userId,
+      })
+      .returning();
+    if (!chat) throw new AppError("something went wrong", 500);
+    const [chatQuestion] = await tx
+      .insert(chatQuestions)
+      .values({
+        id: chatQuestionId,
+        chat_id: chat.id,
+        question: parsedData.question,
+        memory: updatedConfig
+          ? JSON.stringify(updatedConfig)
+          : JSON.stringify({}),
+        order_number: 0,
+      })
+      .returning();
+
+    if (!chatQuestion) throw new AppError("something went wrong ", 500);
+
+    await tx.insert(chatAnswer).values({
+      question_id: chatQuestion.id,
+      answer: response,
+    });
+    return { chat, chatQuestion };
+  });
 };
 
 const updateConfig = tool({
@@ -59,7 +64,6 @@ const updateConfig = tool({
   inputSchema: projectValidatorForAIInput.extend({}),
   execute: async (data: unknown) => {
     const valid = projectValidatorForAIInput.parse(data);
-    console.log(valid);
     return valid;
   },
 });
@@ -90,14 +94,22 @@ const aiWork = async (question: string, userId: string) => {
     },
     stopWhen: stepCountIs(2),
     prompt: question,
+    // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
 
   let response = "";
+  let updatedConfig = null;
 
-  for (const part of result.content) {
-    if (part.type === "text") {
-      response += part.text;
+  for (const contentPart of result.content) {
+    if (contentPart.type === "text") {
+      response += contentPart.text;
+    }
+    if (contentPart.type === "tool-result") {
+      const toolUsed = contentPart;
+      if (toolUsed.toolName === "updateConfig") {
+        updatedConfig = toolUsed.output;
+      }
     }
   }
-  return response;
+  return { response, updatedConfig };
 };
