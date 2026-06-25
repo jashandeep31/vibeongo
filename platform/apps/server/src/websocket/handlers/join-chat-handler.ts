@@ -58,7 +58,7 @@ export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
     JSON.stringify({
       type: "chat-data",
       data: {
-        ...rows[0]?.chats!,
+        chat: rows[0]?.chats!,
         chatQuestions: Array.from(refinedQuestions.values()),
       },
     }),
