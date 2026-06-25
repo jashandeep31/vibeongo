@@ -60,6 +60,7 @@ export const newQuestionHandler = async (
     id: crypto.randomUUID(),
     question_id: newQuestion.id,
     answer: "",
+    reasoning: "",
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -74,6 +75,7 @@ export const newQuestionHandler = async (
     }),
   );
 
+  let reasoning = "";
   let answer = "";
   for await (const res of aiWork(
     parsedResponse.question,
@@ -81,6 +83,17 @@ export const newQuestionHandler = async (
     lastQuestionAndAnswer.question.memory,
   )) {
     answer += res.text;
+    reasoning += res.reasoning;
+    socket.send(
+      JSON.stringify({
+        type: "answer-update",
+        data: {
+          ...newAnswer,
+          answer: answer,
+          reasoning: reasoning,
+        },
+      }),
+    );
   }
 
   await db.transaction(async (tx) => {
@@ -88,8 +101,9 @@ export const newQuestionHandler = async (
       ...newQuestion,
     });
     await tx.insert(chatAnswer).values({
+      ...newAnswer,
+      reasoning: reasoning,
       answer: answer,
-      question_id: newQuestion.id,
     });
   });
 };
@@ -120,6 +134,7 @@ async function* aiWork(
   done: boolean;
   text: string;
   config: unknown;
+  reasoning: string;
 }> {
   const result = streamText({
     model: "openai/gpt-5-nano",
@@ -140,13 +155,35 @@ async function* aiWork(
   let response = "";
   let updatedConfig = null;
   let done = false;
+  let reasoning = "";
+  for await (const chunk of result.stream) {
+    if (chunk.type === "reasoning-delta") {
+      console.log(chunk.text);
+      reasoning += chunk.text;
+      yield {
+        reasoning: chunk.text,
+        text: "",
+        config: null,
+        done: false,
+      };
+    }
 
+    if (chunk.type === "text-delta") {
+      yield {
+        reasoning: "",
+        text: chunk.text,
+        config: null,
+        done: false,
+      };
+    }
+  }
   for await (const text of result.textStream) {
     response += text;
     yield {
       done,
       text: text,
       config: updatedConfig,
+      reasoning,
     };
   }
   const steps = await result.steps;
@@ -160,9 +197,11 @@ async function* aiWork(
       }
     }
   }
+  console.log(JSON.stringify(result));
   yield {
     done: true,
     text: "",
     config: updatedConfig,
+    reasoning: "",
   };
 }
