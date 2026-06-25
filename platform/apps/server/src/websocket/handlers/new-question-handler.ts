@@ -1,4 +1,4 @@
-import { generateText, stepCountIs, tool } from "ai";
+import { generateText, stepCountIs, streamText, tool } from "ai";
 import WebSocket from "ws";
 import { z } from "zod";
 import {
@@ -52,19 +52,19 @@ export const newQuestionHandler = async (
     lastQuestionAndAnswer.question.memory,
   );
 
-  await db.transaction(async (tx) => {
-    await tx.insert(chatQuestions).values({
-      id: newQuestionId,
-      question: parsedResponse.question,
-      order_number: lastQuestionAndAnswer.question.order_number + 1,
-      chat_id: parsedResponse.chatId,
-      memory: JSON.stringify(updatedConfig),
-    });
-    await tx.insert(chatAnswer).values({
-      answer: response,
-      question_id: newQuestionId,
-    });
-  });
+  // await db.transaction(async (tx) => {
+  //   await tx.insert(chatQuestions).values({
+  //     id: newQuestionId,
+  //     question: parsedResponse.question,
+  //     order_number: lastQuestionAndAnswer.question.order_number + 1,
+  //     chat_id: parsedResponse.chatId,
+  //     memory: JSON.stringify(updatedConfig),
+  //   });
+  //   await tx.insert(chatAnswer).values({
+  //     answer: response,
+  //     question_id: newQuestionId,
+  //   });
+  // });
 };
 const updateConfig = tool({
   description: "Update the config with the user given data",
@@ -85,7 +85,7 @@ const getCurrentConfig = (config: unknown) =>
   });
 
 const aiWork = async (question: string, userId: string, prevConig: unknown) => {
-  const result = await generateText({
+  const result = streamText({
     model: "openai/gpt-5-nano",
     system:
       "You are a expert vibeongo project config maker. You can ask the question regading that as needed and can use the internal tools for it. You have ask user to for each tthing as the user want so do me your own Your motive is compelte the config you can ask user next queistons  , if config is not rpooerp you can getprev config fomthe getCurrentConfig toll and after adding new thigns those areginven i nte thsi pronpt call updateConfig then asked the user  quesions about missign thisns",
@@ -104,18 +104,21 @@ const aiWork = async (question: string, userId: string, prevConig: unknown) => {
   let response = "";
   let updatedConfig = null;
 
-  for (const contentPart of result.content) {
-    if (contentPart.type === "text") {
-      response += contentPart.text;
-    }
-    if (contentPart.type === "tool-result") {
-      const toolUsed = contentPart;
-      if (toolUsed.toolName === "updateConfig") {
-        updatedConfig = toolUsed.output;
-      }
-    }
+  for await (const text of result.textStream) {
+    console.log(text);
   }
-  console.log(result);
-  console.log(response);
+  // for (const contentPart of result.content) {
+  //   if (contentPart.type === "text") {
+  //     response += contentPart.text;
+  //   }
+  //   if (contentPart.type === "tool-result") {
+  //     const toolUsed = contentPart;
+  //     if (toolUsed.toolName === "updateConfig") {
+  //       updatedConfig = toolUsed.output;
+  //     }
+  //   }
+  // }
+  // console.log(result);
+  // console.log(response);
   return { response, updatedConfig };
 };
