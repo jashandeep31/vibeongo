@@ -23,9 +23,12 @@ import { paymentRoutes } from "./routes/payment-routes.js";
 import "./lib/cron.js";
 import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
 import * as Sentry from "@sentry/node";
-
+import { WebSocketServer } from "ws";
+import { createServer } from "node:http";
+import { SocketHandler } from "./websocket/index.js";
 const app = express();
 
+const server = createServer(app);
 // --- dodopayments  Webhooks ---
 // Must be before express.json()
 app.post(
@@ -91,6 +94,39 @@ app.use("/api/v1/project-sessions", projectSessionRoutes);
 
 Sentry.setupExpressErrorHandler(app);
 
+const ws = new WebSocketServer({
+  server,
+  verifyClient: (info, done) => {
+    const origin = info.origin;
+    if (!origin || !env.ALLOWED_ORIGINS.includes(origin)) {
+      console.log("❌ WS blocked from:", origin);
+      return done(false, 403, "Forbidden");
+    }
+    console.log("✅ WS allowed from:", origin);
+    done(true);
+  },
+});
+
+ws.on("connection", async (socket, _req) => {
+  try {
+    // const cookies = req.headers.cookie;
+    // if (!cookies) {
+    //   console.log(`not authenticated `);
+    //   return;
+    // }
+    // const parsedCookie = cookie.parse(req.headers.cookie!);
+    // if (!parsedCookie.session) return;
+    //
+    // let session;
+    // session = JSON.parse(decodeURIComponent(parsedCookie.session));
+    //
+    // socket.userId = session.id;
+    await SocketHandler(socket);
+  } catch (e) {
+    console.log(`Error: ${e}`);
+  }
+});
+
 // --- Global Error Handler ---
 app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   let statusCode = 500;
@@ -112,8 +148,8 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 });
 
 // --- Server ---
-app.listen(env.PORT, () => {
-  console.log(`Server is running at the port ${env.PORT}`);
+server.listen(env.PORT, () => {
+  console.log(`Server is running at 🔥 ${env.PORT}`);
 });
 
 if (env.NODE_ENV === "development") {
