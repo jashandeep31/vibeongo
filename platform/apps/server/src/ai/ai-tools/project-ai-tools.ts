@@ -37,7 +37,7 @@ export const getUserReposAITool = (userId: string): Tool =>
   });
 
 const copyFromOtherProjectSchema = z.object({
-  projectId: z.string(),
+  id: z.uuid(),
 });
 
 export const getAllProjectNameAndIds = (userId: string): Tool =>
@@ -55,16 +55,14 @@ export const getAllProjectNameAndIds = (userId: string): Tool =>
 export const copyFromOtherProject = (userId: string): Tool =>
   tool({
     description:
-      "Provide the access to the users other pre configured project so that copy the config from it to the new one ",
-    strict: true,
+      "Provide the access to the users other pre configured project so that copy the config from it to the new one  , pass the project id from after getting project list and add id form there",
+    // strict: true,
     inputSchema: copyFromOtherProjectSchema,
     execute: async (input: z.infer<typeof copyFromOtherProjectSchema>) => {
       const [project] = await db
         .select()
         .from(projects)
-        .where(
-          and(eq(projects.user_id, userId), eq(projects.id, input.projectId)),
-        );
+        .where(and(eq(projects.user_id, userId), eq(projects.id, input.id)));
 
       if (!project) {
         return {
@@ -72,9 +70,21 @@ export const copyFromOtherProject = (userId: string): Tool =>
         };
       }
       const decryptedConfig = await getDecryptedProjectConfig(project.id);
+
+      let config: unknown;
+      try {
+        config = JSON.parse(decryptedConfig);
+      } catch {
+        return {
+          error: "Project config is not valid JSON",
+        };
+      }
+
       return {
-        ...project,
-        config: decryptedConfig,
+        project: {
+          ...project,
+          config,
+        },
       };
     },
   });
