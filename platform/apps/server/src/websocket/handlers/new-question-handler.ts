@@ -1,8 +1,10 @@
-import { stepCountIs, streamText, tool } from "ai";
+import { ModelMessage, stepCountIs, streamText, tool } from "ai";
 import WebSocket from "ws";
 import { z } from "zod";
 import {
+  copyFromOtherProject,
   createNewGithubRepo,
+  getAllProjectNameAndIds,
   getInstanceCatalogAITool,
   getUserReposAITool,
   getUserSshKeysAITool,
@@ -11,6 +13,10 @@ import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
 import { prompts } from "../../ai/prompts/index.js";
+
+type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
+  chatAnswer: typeof chatAnswer.$inferSelect | null;
+};
 
 export const newQuestionHandler = async (
   socket: WebSocket,
@@ -30,6 +36,41 @@ export const newQuestionHandler = async (
   }
 
   const parsedResponse = parsingResponse.data;
+
+  //TODO: make it redis/valkey based q/a fetching
+  //
+  const questionAndAnswerRows = await db
+    .select()
+    .from(chatQuestions)
+    .leftJoin(chatAnswer, eq(chatAnswer.question_id, chatQuestions.id))
+    .where(eq(chatQuestions.chat_id, parsedResponse.chatId))
+    .limit(5);
+  const refinedQAMap = new Map<
+    string,
+    typeof chatQuestions.$inferSelect & {
+      chatAnswer: typeof chatAnswer.$inferSelect | null;
+    }
+  >();
+
+  for (const item of questionAndAnswerRows) {
+    if (item.chat_questions && !refinedQAMap.has(item.chat_questions.id)) {
+      refinedQAMap.set(item.chat_questions.id, {
+        ...item.chat_questions,
+        chatAnswer: null,
+      });
+    }
+    if (item.chat_answer) {
+      const prev = refinedQAMap.get(item.chat_answer.question_id);
+      if (prev)
+        refinedQAMap.set(prev.id, {
+          ...prev,
+          chatAnswer: item.chat_answer,
+        });
+    }
+  }
+
+  const refinedQA = Array.from(refinedQAMap.values());
+
   const [lastQuestionAndAnswer] = await db
     .select({
       question: chatQuestions,
@@ -94,6 +135,7 @@ export const newQuestionHandler = async (
     parsedResponse.question,
     userId,
     lastQuestionAndAnswer.question.memory,
+    refinedQA,
   )) {
     answer += res.text;
     reasoning += res.reasoning;
@@ -162,12 +204,22 @@ async function* aiWork(
   question: string,
   userId: string,
   prevConig: unknown,
+  QAArray: QuesitonWithAnswer[],
 ): AsyncGenerator<{
   done: boolean;
   text: string;
   config: unknown;
   reasoning: string;
 }> {
+  const history: ModelMessage[] = [];
+  QAArray.map((qa) => {
+    if (qa.question && qa.chatAnswer?.answer) {
+      history.push({ role: "user", content: qa.question });
+      if (qa.chatAnswer?.answer) {
+        history.push({ role: "assistant", content: qa.chatAnswer?.answer });
+      }
+    }
+  });
   const result = streamText({
     model: "openai/gpt-5-nano",
     system: prompts.createProject.systemPrompt(),
@@ -178,10 +230,12 @@ async function* aiWork(
       getInstanceCatalogAITool: getInstanceCatalogAITool(),
       getCurrentConfig: getCurrentConfig(prevConig),
       updateConfig,
+      getAllProjectNameAndIds: getAllProjectNameAndIds(userId),
+      copyFromOtherProject: copyFromOtherProject(userId),
       createNewGithubRepo: createNewGithubRepo(userId),
     },
     stopWhen: stepCountIs(20),
-    prompt: question,
+    messages: [...history, { role: "user", content: question }],
     // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
 

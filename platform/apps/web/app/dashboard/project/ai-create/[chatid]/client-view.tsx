@@ -47,6 +47,7 @@ const ChatQuestion = ({ item }: { item: IChatQuestion }) => {
             Thinking
           </div>
         )}
+        {JSON.stringify(item.memory)}
       </div>
     </div>
   );
@@ -164,10 +165,12 @@ const ClientView = ({ chatid }: ClientViewProps) => {
 
       if (parsedEvent.type === "answer-update") {
         const answer = parsedEvent.data as typeof chatAnswer.$inferSelect;
-        const question = chatStore.getState().chatQuestionsList.find(
-          (item) =>
-            item.id === answer.question_id || item.answer?.id === answer.id,
-        );
+        const question = chatStore
+          .getState()
+          .chatQuestionsList.find(
+            (item) =>
+              item.id === answer.question_id || item.answer?.id === answer.id,
+          );
 
         if (question) {
           upsertFinalQuestion({
