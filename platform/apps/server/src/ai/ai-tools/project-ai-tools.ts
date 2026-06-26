@@ -36,7 +36,7 @@ export const getUserReposAITool = (userId: string): Tool =>
     },
   });
 
-const copyFromOtherProjectSchema = z.object({
+const getOtherProjectConfigSchema = z.object({
   id: z.uuid(),
 });
 
@@ -52,13 +52,17 @@ export const getAllProjectNameAndIds = (userId: string): Tool =>
         .where(eq(projects.user_id, userId));
     },
   });
-export const copyFromOtherProject = (userId: string): Tool =>
+export const getOtherProjectConfigById = (userId: string): Tool =>
   tool({
     description:
-      "Provide the access to the users other pre configured project so that copy the config from it to the new one  , pass the project id from after getting project list and add id form there",
+      "Provide the config of the other project incase its needed to getsomething form it",
     // strict: true,
-    inputSchema: copyFromOtherProjectSchema,
-    execute: async (input: z.infer<typeof copyFromOtherProjectSchema>) => {
+    inputSchema: getOtherProjectConfigSchema,
+    toModelOutput: ({ output }) => ({
+      type: "text",
+      value: JSON.stringify(output),
+    }),
+    execute: async (input: z.infer<typeof getOtherProjectConfigSchema>) => {
       const [project] = await db
         .select()
         .from(projects)

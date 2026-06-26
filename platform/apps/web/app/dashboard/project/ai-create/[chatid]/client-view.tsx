@@ -32,7 +32,7 @@ const ChatQuestion = ({ item }: { item: IChatQuestion }) => {
 
       <div className="max-w-3xl">
         {reasoning ? (
-          <div className="border-border bg-muted/30 text-muted-foreground mb-4 rounded-lg border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
+          <div className="border-border bg-muted/30 text-muted-foreground mb-4 h-32 overflow-y-auto rounded-lg border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
             {reasoning}
           </div>
         ) : null}
@@ -47,7 +47,6 @@ const ChatQuestion = ({ item }: { item: IChatQuestion }) => {
             Thinking
           </div>
         )}
-        {JSON.stringify(item.memory)}
       </div>
     </div>
   );
