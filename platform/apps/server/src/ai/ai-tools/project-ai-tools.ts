@@ -1,16 +1,19 @@
 import {
+  and,
   asc,
   db,
   eq,
   githubRepos,
   instanceRegions,
   instanceTypes,
+  projects,
   sshKeys,
 } from "@repo/db";
 import { tool, Tool } from "ai";
 import { z } from "zod";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { AppError } from "../../lib/app-error.js";
+import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 
 export const getUserReposAITool = (userId: string): Tool =>
   tool({
@@ -33,6 +36,48 @@ export const getUserReposAITool = (userId: string): Tool =>
     },
   });
 
+const copyFromOtherProjectSchema = z.object({
+  projectId: z.string(),
+});
+
+export const getAllProjectNameAndIds = (userId: string): Tool =>
+  tool({
+    description:
+      "Get list of all user projects  it provides access to the user project name and ids",
+    inputSchema: z.object({}),
+    execute: async () => {
+      return await db
+        .select({ name: projects.name, id: projects.id })
+        .from(projects)
+        .where(eq(projects.user_id, userId));
+    },
+  });
+export const copyFromOtherProject = (userId: string): Tool =>
+  tool({
+    description:
+      "Provide the access to the users other pre configured project so that copy the config from it to the new one ",
+    strict: true,
+    inputSchema: copyFromOtherProjectSchema,
+    execute: async (input: z.infer<typeof copyFromOtherProjectSchema>) => {
+      const [project] = await db
+        .select()
+        .from(projects)
+        .where(
+          and(eq(projects.user_id, userId), eq(projects.id, input.projectId)),
+        );
+
+      if (!project) {
+        return {
+          error: "Project not found or doesn't belong to you",
+        };
+      }
+      const decryptedConfig = await getDecryptedProjectConfig(project.id);
+      return {
+        ...project,
+        config: decryptedConfig,
+      };
+    },
+  });
 export const getUserSshKeysAITool = (userId: string): Tool =>
   tool({
     description:
