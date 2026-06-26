@@ -46,7 +46,8 @@ curl --request GET \\
   --header "Authorization: Bearer ${authToken}" \\
   | jq '.data' > "\\$CONFIG_DIR/config.json"
 
-curl -fsSL ${env.BACKEND_URL}/install | bash
+# Now vibeongo is pre cooked in the ami
+# curl -fsSL ${env.BACKEND_URL}/install | bash
 
 SCRIPT
 
