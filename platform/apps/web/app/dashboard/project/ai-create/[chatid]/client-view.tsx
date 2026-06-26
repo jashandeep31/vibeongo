@@ -1,9 +1,9 @@
 "use client";
 import { InputArea } from "@/components/chat/input-area";
+import MarkdownRenderer from "@/components/markdown-renderer";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
 import { chatStore, type IChatQuestion } from "@/store/chat-store";
 import { chatAnswer, chatQuestions, chats } from "@repo/db";
-import { Loader2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ClientViewProps {
@@ -36,17 +36,17 @@ const ChatQuestion = ({ item }: { item: IChatQuestion }) => {
             {reasoning}
           </div>
         ) : null}
-
-        {answer?.answer ? (
-          <p className="text-foreground text-base leading-normal whitespace-pre-wrap">
-            {answer.answer}
-          </p>
-        ) : (
-          <div className="text-muted-foreground flex items-center gap-2 text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Thinking
-          </div>
-        )}
+        {answer?.answer && <MarkdownRenderer content={answer?.answer} />}
+        {/* {answer?.answer ? ( */}
+        {/*   <p className="text-foreground text-base leading-normal whitespace-pre-wrap"> */}
+        {/*     {answer.answer} */}
+        {/*   </p> */}
+        {/* ) : ( */}
+        {/*   <div className="text-muted-foreground flex items-center gap-2 text-sm"> */}
+        {/*     <Loader2 className="h-4 w-4 animate-spin" /> */}
+        {/*     Thinking */}
+        {/*   </div> */}
+        {/* )} */}
       </div>
     </div>
   );
