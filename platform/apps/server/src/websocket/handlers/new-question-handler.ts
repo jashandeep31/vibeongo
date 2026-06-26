@@ -76,19 +76,28 @@ export const newQuestionHandler = async (
     updated_at: new Date(),
   };
 
-  socket.send(
-    JSON.stringify({
-      type: "new-question",
-      data: {
-        ...newQuestion,
-        answer: newAnswer,
-      },
-    }),
-  );
-
   let reasoning = "";
   let answer = "";
   let updatedConfig: unknown = null;
+
+  const sendQuestionUpdate = () => {
+    socket.send(
+      JSON.stringify({
+        type: "stream-question",
+        data: {
+          ...newQuestion,
+          answer: {
+            ...newAnswer,
+            answer,
+            reasoning,
+          },
+        },
+      }),
+    );
+  };
+
+  sendQuestionUpdate();
+
   for await (const res of aiWork(
     parsedResponse.question,
     userId,
@@ -99,31 +108,38 @@ export const newQuestionHandler = async (
     if (res.config) {
       updatedConfig = res.config;
     }
-    socket.send(
-      JSON.stringify({
-        type: "answer-update",
-        data: {
-          ...newAnswer,
-          answer: answer,
-          reasoning: reasoning,
-        },
-      }),
-    );
+    sendQuestionUpdate();
   }
 
+  const persistedQuestion = {
+    ...newQuestion,
+    memory: updatedConfig
+      ? JSON.stringify(updatedConfig)
+      : lastQuestionAndAnswer.question.memory,
+  };
+
   await db.transaction(async (tx) => {
-    await tx.insert(chatQuestions).values({
-      ...newQuestion,
-      memory: updatedConfig
-        ? JSON.stringify(updatedConfig)
-        : lastQuestionAndAnswer.question.memory,
-    });
+    await tx.insert(chatQuestions).values(persistedQuestion);
     await tx.insert(chatAnswer).values({
       ...newAnswer,
       reasoning: reasoning,
       answer: answer,
     });
   });
+
+  socket.send(
+    JSON.stringify({
+      type: "new-question",
+      data: {
+        ...persistedQuestion,
+        answer: {
+          ...newAnswer,
+          answer,
+          reasoning,
+        },
+      },
+    }),
+  );
 };
 
 const updateConfig = tool({
@@ -177,9 +193,7 @@ async function* aiWork(
     // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
 
-  let response = "";
   let updatedConfig = null;
-  let done = false;
   let reasoning = "";
   for await (const chunk of result.stream) {
     if (chunk.type === "reasoning-delta") {
@@ -201,17 +215,8 @@ async function* aiWork(
       };
     }
   }
-  for await (const text of result.textStream) {
-    response += text;
-    yield {
-      done,
-      text: text,
-      config: updatedConfig,
-      reasoning,
-    };
-  }
+
   const steps = await result.steps;
-  //
   for (const step of steps) {
     for (const tool of step.toolResults) {
       if (tool.type == "tool-result") {
