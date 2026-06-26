@@ -2,7 +2,7 @@ import { ModelMessage, stepCountIs, streamText, tool } from "ai";
 import WebSocket from "ws";
 import { z } from "zod";
 import {
-  copyFromOtherProject,
+  getOtherProjectConfigById,
   createNewGithubRepo,
   getAllProjectNameAndIds,
   getInstanceCatalogAITool,
@@ -221,8 +221,9 @@ async function* aiWork(
     }
   });
   const result = streamText({
-    model: "openai/gpt-5-nano",
+    model: "openai/gpt-oss-120b",
     system: prompts.createProject.systemPrompt(),
+    reasoning: "high",
     tools: {
       // weatherTool,
       getUserReposAITool: getUserReposAITool(userId),
@@ -231,7 +232,7 @@ async function* aiWork(
       getCurrentConfig: getCurrentConfig(prevConig),
       updateConfig,
       getAllProjectNameAndIds: getAllProjectNameAndIds(userId),
-      copyFromOtherProject: copyFromOtherProject(userId),
+      getOtherProjectConfigById: getOtherProjectConfigById(userId),
       createNewGithubRepo: createNewGithubRepo(userId),
     },
     stopWhen: stepCountIs(20),
