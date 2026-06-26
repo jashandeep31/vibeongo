@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
+import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { Textarea } from "@repo/ui/components/textarea";
@@ -8,7 +9,42 @@ import { useVibeSocket } from "@/hooks/use-vibe-socket";
 
 export function NewChatInput() {
   const { websocket, sendJsonMessage } = useVibeSocket();
+  const router = useRouter();
   const [question, setQuestion] = useState("");
+
+  useEffect(() => {
+    if (!websocket) return;
+
+    const handleNewChatResponse = (event: MessageEvent) => {
+      if (typeof event.data !== "string") return;
+
+      let message: unknown;
+      try {
+        message = JSON.parse(event.data);
+      } catch {
+        return;
+      }
+
+      if (
+        typeof message === "object" &&
+        message !== null &&
+        "type" in message &&
+        message.type === "new-chat" &&
+        "data" in message &&
+        typeof message.data === "object" &&
+        message.data !== null &&
+        "chatId" in message.data &&
+        typeof message.data.chatId === "string"
+      ) {
+        router.push(`/dashboard/project/ai-create/${message.data.chatId}`);
+      }
+    };
+
+    websocket.addEventListener("message", handleNewChatResponse);
+    return () => {
+      websocket.removeEventListener("message", handleNewChatResponse);
+    };
+  }, [router, websocket]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();

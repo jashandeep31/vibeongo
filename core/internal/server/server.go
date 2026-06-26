@@ -19,11 +19,12 @@ func Start() error {
 
 	// spinning up the opencode web server
 	openCode := store.NewOpencodeWeb()
-	go func() {
-		if err := openCode.StartWebServer(); err != nil {
-			e.Logger.Error("failed to start opencode web server", "error", err)
-		}
-	}()
+	// NOTE: we are not using this option any more as this starting the opencode server before the complete setup causes the issue of not loading the folders of that project properly
+	// go func() {
+	// 	if err := openCode.StartWebServer(); err != nil {
+	// 		e.Logger.Error("failed to start opencode web server", "error", err)
+	// 	}
+	// }()
 
 	// TODO: please use the proper cors way
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

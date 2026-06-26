@@ -3,6 +3,7 @@ package handlers
 import (
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
 	"github.com/jashandeep31/vibeongo/core/internal/store"
@@ -46,6 +47,9 @@ func OpenCodeWebActions(openCode *store.OpencodeWeb) echo.HandlerFunc {
 					Running: openCode.IsRunning(),
 				})
 			}
+
+			// Note: temp sleep to allow the server to spin up
+			time.Sleep(3 * time.Second)
 
 			return c.JSON(http.StatusOK, OpenCodeWebResponse{
 				Message: fmt.Sprintf("Opencode web server is starting at port %d", openCodeWebPort),
