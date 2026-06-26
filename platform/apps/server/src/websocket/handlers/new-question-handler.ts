@@ -1,13 +1,24 @@
-import { generateText, stepCountIs, streamText, tool } from "ai";
+import { stepCountIs, streamText, tool } from "ai";
 import WebSocket from "ws";
 import { z } from "zod";
 import {
   createNewGithubRepo,
+  getInstanceCatalogAITool,
   getUserReposAITool,
+  getUserSshKeysAITool,
 } from "../../ai/ai-tools/repo-tools.js";
 import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
+
+const projectConfigSystemPrompt = `You are an expert Vibeongo project config assistant.
+Your goal is to collect enough information to build a valid project config.
+Use getCurrentConfig first when continuing an existing chat so you preserve previous choices.
+Use getUserReposAITool to show/select existing GitHub repositories. If the user gives a new GitHub repo URL, use createNewGithubRepo before adding it to the config.
+Use getUserSshKeysAITool to show/select SSH keys. The selected IDs must be written to sshKeyIds.
+Use getInstanceCatalogAITool to show available regions and instance types. The selected IDs must be written to regionId and instanceTypeId.
+When the user provides or confirms config values, call updateConfig with the complete current config using these fields: name, description, regionId, instanceTypeId, sshKeyIds, githubRepoIds, initialScript, finalScript, and devScript.
+Ask concise follow-up questions only for missing required values or unclear choices.`;
 
 export const newQuestionHandler = async (
   socket: WebSocket,
@@ -77,6 +88,7 @@ export const newQuestionHandler = async (
 
   let reasoning = "";
   let answer = "";
+  let updatedConfig: unknown = null;
   for await (const res of aiWork(
     parsedResponse.question,
     userId,
@@ -84,6 +96,9 @@ export const newQuestionHandler = async (
   )) {
     answer += res.text;
     reasoning += res.reasoning;
+    if (res.config) {
+      updatedConfig = res.config;
+    }
     socket.send(
       JSON.stringify({
         type: "answer-update",
@@ -99,6 +114,9 @@ export const newQuestionHandler = async (
   await db.transaction(async (tx) => {
     await tx.insert(chatQuestions).values({
       ...newQuestion,
+      memory: updatedConfig
+        ? JSON.stringify(updatedConfig)
+        : lastQuestionAndAnswer.question.memory,
     });
     await tx.insert(chatAnswer).values({
       ...newAnswer,
@@ -122,7 +140,13 @@ const getCurrentConfig = (config: unknown) =>
     description: "Get the current to read check what we already have",
     inputSchema: z.object(),
     execute: async () => {
-      return JSON.parse(config as any);
+      if (!config) return {};
+      if (typeof config !== "string") return config;
+      try {
+        return JSON.parse(config);
+      } catch {
+        return {};
+      }
     },
   });
 
@@ -138,11 +162,12 @@ async function* aiWork(
 }> {
   const result = streamText({
     model: "openai/gpt-5-nano",
-    system:
-      "You are a expert vibeongo project config maker. You can ask the question regading that as needed and can use the internal tools for it. You have ask user to for each tthing as the user want so do me your own Your motive is compelte the config you can ask user next queistons  , if config is not rpooerp you can getprev config fomthe getCurrentConfig toll and after adding new thigns those areginven i nte thsi pronpt call updateConfig then asked the user  quesions about missign thisns",
+    system: projectConfigSystemPrompt,
     tools: {
       // weatherTool,
       getUserReposAITool: getUserReposAITool(userId),
+      getUserSshKeysAITool: getUserSshKeysAITool(userId),
+      getInstanceCatalogAITool: getInstanceCatalogAITool(),
       getCurrentConfig: getCurrentConfig(prevConig),
       updateConfig,
       createNewGithubRepo: createNewGithubRepo(userId),

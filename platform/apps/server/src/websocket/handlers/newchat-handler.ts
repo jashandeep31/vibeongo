@@ -6,8 +6,19 @@ import { generateText, stepCountIs, tool } from "ai";
 import { projectValidatorForAIInput } from "@repo/shared";
 import {
   createNewGithubRepo,
+  getInstanceCatalogAITool,
   getUserReposAITool,
+  getUserSshKeysAITool,
 } from "../../ai/ai-tools/repo-tools.js";
+
+const projectConfigSystemPrompt = `You are an expert Vibeongo project config assistant.
+Your goal is to collect enough information to build a valid project config.
+Use getCurrentConfig first so you know the current empty/default config.
+Use getUserReposAITool to show/select existing GitHub repositories. If the user gives a new GitHub repo URL, use createNewGithubRepo before adding it to the config.
+Use getUserSshKeysAITool to show/select SSH keys. The selected IDs must be written to sshKeyIds.
+Use getInstanceCatalogAITool to show available regions and instance types. The selected IDs must be written to regionId and instanceTypeId.
+When the user provides or confirms config values, call updateConfig with the complete current config using these fields: name, description, regionId, instanceTypeId, sshKeyIds, githubRepoIds, initialScript, finalScript, and devScript.
+Ask concise follow-up questions only for missing required values or unclear choices.`;
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
@@ -74,9 +85,8 @@ const getCurrentConfig = tool({
   inputSchema: z.object(),
   execute: async () => {
     return {
-      gitUrl: "",
-      awsRegion: null,
-      ec2Type: null,
+      githubRepoIds: [],
+      sshKeyIds: [],
     };
   },
 });
@@ -84,11 +94,12 @@ const getCurrentConfig = tool({
 const aiWork = async (question: string, userId: string) => {
   const result = await generateText({
     model: "openai/gpt-5-nano",
-    system:
-      "You are a expert vibeongo project config maker. You can ask the question regading that as needed and can use the internal tools for it. You have ask user to for each tthing as the user want so do me your own Your motive is compelte the config you can ask user next queistons  , if config is not rpooerp you can getprev config fomthe getCurrentConfig toll and after adding new thigns those areginven i nte thsi pronpt call updateConfig then asked the user  quesions about missign thisns",
+    system: projectConfigSystemPrompt,
     tools: {
       // weatherTool,
       getUserReposAITool: getUserReposAITool(userId),
+      getUserSshKeysAITool: getUserSshKeysAITool(userId),
+      getInstanceCatalogAITool: getInstanceCatalogAITool(),
       getCurrentConfig,
       updateConfig,
       createNewGithubRepo: createNewGithubRepo(userId),
