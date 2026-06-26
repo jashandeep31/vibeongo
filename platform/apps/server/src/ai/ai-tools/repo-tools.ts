@@ -1,4 +1,12 @@
-import { db, eq, githubRepos } from "@repo/db";
+import {
+  asc,
+  db,
+  eq,
+  githubRepos,
+  instanceRegions,
+  instanceTypes,
+  sshKeys,
+} from "@repo/db";
 import { tool, Tool } from "ai";
 import { z } from "zod";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
@@ -22,6 +30,67 @@ export const getUserReposAITool = (userId: string): Tool =>
         setup_script: r.setup_script,
       }));
       return res;
+    },
+  });
+
+export const getUserSshKeysAITool = (userId: string): Tool =>
+  tool({
+    description:
+      "Get the user's SSH keys so the user can choose which keys to add to the project",
+    strict: true,
+    inputSchema: z.object({}),
+    execute: async () => {
+      const keys = await db
+        .select({
+          id: sshKeys.id,
+          name: sshKeys.name,
+          value: sshKeys.value,
+        })
+        .from(sshKeys)
+        .where(eq(sshKeys.user_id, userId))
+        .orderBy(asc(sshKeys.name));
+
+      return keys;
+    },
+  });
+
+export const getInstanceCatalogAITool = (): Tool =>
+  tool({
+    description:
+      "Get available instance regions and instance types so the user can choose where the project should run",
+    strict: true,
+    inputSchema: z.object({}),
+    execute: async () => {
+      const [regions, types] = await Promise.all([
+        db
+          .select({
+            id: instanceRegions.id,
+            name: instanceRegions.name,
+            slug: instanceRegions.slug,
+            provider: instanceRegions.provider,
+          })
+          .from(instanceRegions)
+          .orderBy(asc(instanceRegions.name)),
+        db
+          .select({
+            id: instanceTypes.id,
+            name: instanceTypes.name,
+            slug: instanceTypes.slug,
+            description: instanceTypes.description,
+            cpu: instanceTypes.cpu,
+            ram: instanceTypes.ram,
+            provider: instanceTypes.provider,
+            region_id: instanceTypes.region_id,
+            price_per_hour: instanceTypes.price_per_hour,
+          })
+          .from(instanceTypes)
+          .orderBy(asc(instanceTypes.name)),
+      ]);
+
+      return regions.map((region) => ({
+        ...region,
+        instanceTypes: types.filter((type) => type.region_id === region.id),
+      }));
     },
   });
 

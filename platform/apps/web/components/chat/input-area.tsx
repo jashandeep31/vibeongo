@@ -33,16 +33,16 @@ export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="group border-border bg-background/40 focus-within:border-primary/50 focus-within:bg-background dark:bg-background/20 relative w-full rounded-[2rem] border p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm transition-all duration-500 focus-within:shadow-[0_8px_40px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]"
+      className="border-border bg-background focus-within:border-primary/50 relative w-full rounded-[2px] border p-0 transition-colors"
     >
       <Textarea
         aria-label="Describe what you want to build"
         placeholder="Describe the app, repo workflow, or development environment you want to run..."
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
-        className="placeholder:text-muted-foreground/50 min-h-[120px] resize-none border-0 bg-transparent px-4 py-2 text-lg leading-relaxed font-medium shadow-none focus-visible:ring-0 md:text-xl"
+        className="placeholder:text-muted-foreground/50 min-h-[120px] resize-none border-0 bg-transparent p-2 text-lg leading-normal shadow-none focus-visible:ring-0 md:text-base"
       />
-      <div className="mt-2 flex items-center justify-end px-2">
+      <div className="flex items-center justify-end">
         <Button
           type="submit"
           disabled={!question.trim()}

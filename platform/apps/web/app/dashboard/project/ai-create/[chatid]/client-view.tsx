@@ -120,7 +120,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
                       ) : null}
 
                       {answer?.answer ? (
-                        <p className="text-foreground text-lg leading-snug whitespace-pre-wrap">
+                        <p className="text-foreground text-base leading-normal whitespace-pre-wrap">
                           {answer.answer}
                         </p>
                       ) : (
@@ -138,7 +138,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
         </div>
       </div>
       <div className="px-4 pb-4 md:px-0">
-        <div className="mx-auto w-full md:w-2/3">
+        <div className="mx-auto w-full max-w-4xl">
           <InputArea chatId={chatid} sendJsonMessage={sendJsonMessage} />
         </div>
       </div>
