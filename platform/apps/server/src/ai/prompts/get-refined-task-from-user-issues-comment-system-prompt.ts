@@ -1,6 +1,3 @@
-/**
- * @deprecated This function is not ment to used without the prompts file
- */
 export const getRefinedTaskFromUserIssuesCommentSystemPrompt = () => {
   return `
 You are an experienced software engineer and code reviewer.

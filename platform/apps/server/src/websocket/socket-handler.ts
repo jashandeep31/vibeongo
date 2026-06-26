@@ -7,7 +7,6 @@ export const SocketHandler = async (socket: WebSocket) => {
   socket.onmessage = async (event) => {
     try {
       const parsedEvent = JSON.parse(event.data.toString());
-      console.log(parsedEvent.type);
       switch (parsedEvent.type) {
         case "join-chat":
           await joinChatHandler(socket, parsedEvent.data);
