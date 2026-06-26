@@ -10,15 +10,7 @@ import {
   getUserReposAITool,
   getUserSshKeysAITool,
 } from "../../ai/ai-tools/project-ai-tools.js";
-
-const projectConfigSystemPrompt = `You are an expert Vibeongo project config assistant.
-Your goal is to collect enough information to build a valid project config.
-Use getCurrentConfig first so you know the current empty/default config.
-Use getUserReposAITool to show/select existing GitHub repositories. If the user gives a new GitHub repo URL, use createNewGithubRepo before adding it to the config.
-Use getUserSshKeysAITool to show/select SSH keys. The selected IDs must be written to sshKeyIds.
-Use getInstanceCatalogAITool to show available regions and instance types. The selected IDs must be written to regionId and instanceTypeId.
-When the user provides or confirms config values, call updateConfig with the complete current config using these fields: name, description, regionId, instanceTypeId, sshKeyIds, githubRepoIds, initialScript, finalScript, and devScript.
-Ask concise follow-up questions only for missing required values or unclear choices.`;
+import { prompts } from "../../ai/prompts/index.js";
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
@@ -101,7 +93,7 @@ const getCurrentConfig = tool({
 const aiWork = async (question: string, userId: string) => {
   const result = await generateText({
     model: "openai/gpt-5-nano",
-    system: projectConfigSystemPrompt,
+    system: prompts.createProject.systemPrompt(),
     tools: {
       // weatherTool,
       getUserReposAITool: getUserReposAITool(userId),
