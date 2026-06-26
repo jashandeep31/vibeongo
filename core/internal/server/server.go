@@ -41,7 +41,7 @@ func Start() error {
 	routes.Register(e, openCode)
 
 	// address := ":" + config.ENV.PORT
-	address := ":" + "8080"
+	address := ":" + "3101"
 	if err := e.Start(address); err != nil {
 		e.Logger.Error("failed to start server", "error", err)
 	}
