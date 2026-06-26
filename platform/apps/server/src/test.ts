@@ -1,5 +1,3 @@
-import { db, eq, proxyDomains } from "@repo/db";
-
 export default async function test() {
   // const proxyDomain = await db.select().from(proxyDomains);
   //

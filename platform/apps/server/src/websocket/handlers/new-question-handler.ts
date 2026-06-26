@@ -10,15 +10,7 @@ import {
 import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
-
-const projectConfigSystemPrompt = `You are an expert Vibeongo project config assistant.
-Your goal is to collect enough information to build a valid project config.
-Use getCurrentConfig first when continuing an existing chat so you preserve previous choices.
-Use getUserReposAITool to show/select existing GitHub repositories. If the user gives a new GitHub repo URL, use createNewGithubRepo before adding it to the config.
-Use getUserSshKeysAITool to show/select SSH keys. The selected IDs must be written to sshKeyIds.
-Use getInstanceCatalogAITool to show available regions and instance types. The selected IDs must be written to regionId and instanceTypeId.
-When the user provides or confirms config values, call updateConfig with the complete current config using these fields: name, description, regionId, instanceTypeId, sshKeyIds, githubRepoIds, initialScript, finalScript, and devScript.
-Ask concise follow-up questions only for missing required values or unclear choices.`;
+import { prompts } from "../../ai/prompts/index.js";
 
 export const newQuestionHandler = async (
   socket: WebSocket,
@@ -178,7 +170,7 @@ async function* aiWork(
 }> {
   const result = streamText({
     model: "openai/gpt-5-nano",
-    system: projectConfigSystemPrompt,
+    system: prompts.createProject.systemPrompt(),
     tools: {
       // weatherTool,
       getUserReposAITool: getUserReposAITool(userId),
