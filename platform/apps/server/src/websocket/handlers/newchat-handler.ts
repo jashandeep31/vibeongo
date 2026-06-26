@@ -9,7 +9,7 @@ import {
   getInstanceCatalogAITool,
   getUserReposAITool,
   getUserSshKeysAITool,
-} from "../../ai/ai-tools/repo-tools.js";
+} from "../../ai/ai-tools/project-ai-tools.js";
 
 const projectConfigSystemPrompt = `You are an expert Vibeongo project config assistant.
 Your goal is to collect enough information to build a valid project config.

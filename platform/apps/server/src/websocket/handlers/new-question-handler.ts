@@ -6,7 +6,7 @@ import {
   getInstanceCatalogAITool,
   getUserReposAITool,
   getUserSshKeysAITool,
-} from "../../ai/ai-tools/repo-tools.js";
+} from "../../ai/ai-tools/project-ai-tools.js";
 import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
