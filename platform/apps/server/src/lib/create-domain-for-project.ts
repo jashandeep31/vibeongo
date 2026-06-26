@@ -31,7 +31,7 @@ export const createDomainsForProject = async ({
           allow_any: true,
           routing_id: routingId,
           user_id: userId,
-          is_editable: ![8080, 4096].includes(port),
+          is_editable: ![4096, 3773, 3101].includes(port),
         };
       });
       const result = await tx.insert(proxyDomains).values(values).returning();
