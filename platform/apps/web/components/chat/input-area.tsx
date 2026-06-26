@@ -3,7 +3,7 @@
 import { Send } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
 import { Textarea } from "@repo/ui/components/textarea";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 interface InputAreaProps {
   chatId: string;
@@ -12,6 +12,7 @@ interface InputAreaProps {
 
 export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
   const [question, setQuestion] = useState("");
+  const formRef = useRef<HTMLFormElement>(null);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -30,8 +31,16 @@ export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
     setQuestion("");
   };
 
+  const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== "Enter" || !event.ctrlKey) return;
+
+    event.preventDefault();
+    formRef.current?.requestSubmit();
+  };
+
   return (
     <form
+      ref={formRef}
       onSubmit={handleSubmit}
       className="border-border bg-background focus-within:border-primary/50 relative w-full rounded-[2px] border p-0 transition-colors"
     >
@@ -40,6 +49,7 @@ export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
         placeholder="Describe the app, repo workflow, or development environment you want to run..."
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
+        onKeyDown={handleKeyDown}
         className="placeholder:text-muted-foreground/50 min-h-[120px] resize-none border-0 bg-transparent p-2 text-lg leading-normal shadow-none focus-visible:ring-0 md:text-base"
       />
       <div className="flex items-center justify-end">
