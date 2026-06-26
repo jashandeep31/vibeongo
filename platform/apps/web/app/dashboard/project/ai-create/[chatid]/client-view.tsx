@@ -1,6 +1,7 @@
 "use client";
 import { InputArea } from "@/components/chat/input-area";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
+import { chatStore, type IChatQuestion } from "@/store/chat-store";
 import { chatAnswer, chatQuestions, chats } from "@repo/db";
 import { Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
@@ -13,17 +14,22 @@ type ChatQuestionWithAnswer = typeof chatQuestions.$inferSelect & {
   chatAnswer: typeof chatAnswer.$inferSelect | null;
 };
 
-type NewQuestionEventData = typeof chatQuestions.$inferSelect & {
+type QuestionEventData = typeof chatQuestions.$inferSelect & {
   answer: typeof chatAnswer.$inferSelect;
 };
 
 const ClientView = ({ chatid }: ClientViewProps) => {
   const { websocket, sendJsonMessage } = useVibeSocket();
   const [chat, setChat] = useState<null | typeof chats.$inferSelect>(null);
-  const [chatQWithA, setChatQWithA] = useState<ChatQuestionWithAnswer[]>([]);
+  const chatQuestionsList = chatStore((state) => state.chatQuestionsList);
+  const setQuestions = chatStore((state) => state.setQuestions);
+  const upsertQuestion = chatStore((state) => state.upsertQuestion);
+  const updateChat = chatStore((state) => state.updateChat);
+  const resetChat = chatStore((state) => state.resetChat);
 
   useEffect(() => {
     if (!websocket) return;
+    updateChat(chatid);
     // Getting the chat from the backend
     websocket.send(
       JSON.stringify({
@@ -36,72 +42,73 @@ const ClientView = ({ chatid }: ClientViewProps) => {
 
     const handleMessage = (event: MessageEvent) => {
       const parsedEvent = JSON.parse(event.data);
+
       if (parsedEvent.type === "chat-data") {
         setChat(parsedEvent.data.chat ?? null);
-        setChatQWithA(parsedEvent.data.chatQuestions ?? []);
+        setQuestions(
+          (parsedEvent.data.chatQuestions ?? []).map(
+            (question: ChatQuestionWithAnswer): IChatQuestion => {
+              const { chatAnswer, ...questionData } = question;
+              return {
+                ...questionData,
+                answer: chatAnswer,
+              };
+            },
+          ),
+        );
         return;
       }
 
-      if (parsedEvent.type === "new-question") {
-        const question = parsedEvent.data as NewQuestionEventData;
-        setChatQWithA((currentQuestions) => {
-          const nextQuestion = {
-            ...question,
-            chatAnswer: question.answer,
-          };
-          const existingQuestionIndex = currentQuestions.findIndex(
-            (item) => item.id === question.id,
-          );
-
-          if (existingQuestionIndex === -1) {
-            return [...currentQuestions, nextQuestion];
-          }
-
-          return currentQuestions.map((item, index) =>
-            index === existingQuestionIndex ? nextQuestion : item,
-          );
-        });
+      if (
+        parsedEvent.type === "stream-question" ||
+        parsedEvent.type === "new-question"
+      ) {
+        upsertQuestion(parsedEvent.data as QuestionEventData);
         return;
       }
 
       if (parsedEvent.type === "answer-update") {
         const answer = parsedEvent.data as typeof chatAnswer.$inferSelect;
-        setChatQWithA((currentQuestions) =>
-          currentQuestions.map((item) => {
-            if (
-              item.id !== answer.question_id &&
-              item.chatAnswer?.id !== answer.id
-            ) {
-              return item;
-            }
-
-            return {
-              ...item,
-              chatAnswer: answer,
-            };
-          }),
+        const question = chatStore.getState().chatQuestionsList.find(
+          (item) =>
+            item.id === answer.question_id || item.answer?.id === answer.id,
         );
+
+        if (question) {
+          upsertQuestion({
+            ...question,
+            answer,
+          });
+        }
       }
     };
 
     websocket.addEventListener("message", handleMessage);
     return () => {
       websocket.removeEventListener("message", handleMessage);
+      resetChat();
     };
-  }, [websocket, chatid]);
+  }, [
+    chatid,
+    resetChat,
+    setQuestions,
+    updateChat,
+    upsertQuestion,
+    websocket,
+  ]);
 
   return (
     <div className="bg-background text-foreground flex max-h-[95vh] flex-col justify-between">
       <div className="grid overflow-y-scroll">
         <div className="flex-1 px-4 py-8 md:px-8">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
-            {chatQWithA.length === 0 ? (
+            {chatQuestionsList.length === 0 ? (
               <div className="text-muted-foreground flex min-h-[45vh] items-center justify-center text-sm">
                 Start the chat by describing what you want to build.
               </div>
             ) : (
-              chatQWithA.map((item) => {
-                const answer = item.chatAnswer;
+              chatQuestionsList.map((item) => {
+                const answer = item.answer;
                 const reasoning = answer?.reasoning?.trim();
 
                 return (
