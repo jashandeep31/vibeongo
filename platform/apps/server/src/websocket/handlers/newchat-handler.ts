@@ -31,11 +31,18 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
   const [chatId, chatQuestionId] = [crypto.randomUUID(), crypto.randomUUID()];
 
+  socket.send(
+    JSON.stringify({
+      type: "new-chat",
+      data: {
+        chatId: chatId,
+      },
+    }),
+  );
   const { response, reasoning, updatedConfig } = await aiWork(
     parsedData.question,
     socket.userId,
   );
-
   // create the chat for user
   await db.transaction(async (tx) => {
     const [chat] = await tx
