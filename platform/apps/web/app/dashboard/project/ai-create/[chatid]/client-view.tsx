@@ -51,7 +51,7 @@ const StreamingQuestion = () => {
 
   if (!streamingQuestion) return null;
 
-  return <ChatQuestion item={streamingQuestion} />;
+  return <ChatQuestion item={streamingQuestion} isStreaming />;
 };
 
 const ClientView = ({ chatid }: ClientViewProps) => {

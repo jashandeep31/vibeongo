@@ -2,17 +2,29 @@
 
 import MarkdownRenderer from "@/components/markdown-renderer";
 import type { IChatQuestion } from "@/store/chat-store";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
 interface ChatQuestionProps {
   item: IChatQuestion;
+  isStreaming?: boolean;
 }
 
-export function ChatQuestion({ item }: ChatQuestionProps) {
+const LoadingResponseSkeleton = () => (
+  <div className="space-y-3">
+    <Skeleton className="h-4 w-full max-w-2xl" />
+    <Skeleton className="h-4 w-full max-w-xl" />
+    <Skeleton className="h-4 w-full max-w-lg" />
+  </div>
+);
+
+export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const answer = item.answer;
   const reasoning = answer?.reasoning?.trim();
+  const hasAnswer = Boolean(answer?.answer?.trim());
+  const hasResponseText = hasAnswer || Boolean(reasoning);
 
   return (
     <div className="flex flex-col gap-8">
@@ -28,7 +40,7 @@ export function ChatQuestion({ item }: ChatQuestionProps) {
             <div
               className={
                 isReasoningExpanded
-                  ? "bg-muted/70 text-muted-foreground rounded-lg px-4 py-3 text-sm leading-relaxed shadow-sm whitespace-pre-wrap"
+                  ? "bg-muted/70 text-muted-foreground rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-sm"
                   : "bg-muted/70 text-muted-foreground relative h-32 overflow-hidden rounded-lg text-sm leading-relaxed shadow-sm"
               }
             >
@@ -63,7 +75,11 @@ export function ChatQuestion({ item }: ChatQuestionProps) {
             </button>
           </div>
         ) : null}
-        {answer?.answer ? <MarkdownRenderer content={answer.answer} /> : null}
+        {hasAnswer ? (
+          <MarkdownRenderer content={answer?.answer ?? ""} />
+        ) : isStreaming && !hasResponseText ? (
+          <LoadingResponseSkeleton />
+        ) : null}
       </div>
     </div>
   );

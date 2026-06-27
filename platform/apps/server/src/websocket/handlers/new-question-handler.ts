@@ -1,25 +1,8 @@
-import { ModelMessage, stepCountIs, streamText, tool } from "ai";
 import WebSocket from "ws";
 import { z } from "zod";
-import {
-  getOtherProjectConfigById,
-  createNewGithubRepo,
-  getAllProjectNameAndIds,
-  getInstanceCatalogAITool,
-  getUserReposAITool,
-  getUserSshKeysAITool,
-  createAndSaveProjectTool,
-  updateProjectByIdTool,
-} from "../../ai/ai-tools/project-ai-tools.js";
-import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
-import { prompts } from "../../ai/prompts/index.js";
 import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
-
-type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
-  chatAnswer: typeof chatAnswer.$inferSelect | null;
-};
 
 export const newQuestionHandler = async (
   socket: WebSocket,
@@ -41,13 +24,12 @@ export const newQuestionHandler = async (
   const parsedResponse = parsingResponse.data;
 
   //TODO: make it redis/valkey based q/a fetching
-  //
   const questionAndAnswerRows = await db
     .select()
     .from(chatQuestions)
     .leftJoin(chatAnswer, eq(chatAnswer.question_id, chatQuestions.id))
     .where(eq(chatQuestions.chat_id, parsedResponse.chatId))
-    .limit(5);
+    .limit(10);
   const refinedQAMap = new Map<
     string,
     typeof chatQuestions.$inferSelect & {
