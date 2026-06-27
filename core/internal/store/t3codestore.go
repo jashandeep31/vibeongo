@@ -48,6 +48,14 @@ func (c *T3Code) StopT3Code() error {
 	return err
 }
 
+func (c *T3Code) GetPassword() string {
+	return c.Password
+}
+
+func (c *T3Code) Status() bool {
+	return c.Running
+}
+
 func (c *T3Code) RestartT3Code() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
