@@ -10,12 +10,20 @@ import (
 func StartTmuxSession(name string, dir string) error {
 	cmd := exec.Command("tmux", "new-session", "-d", "-s", name)
 	cmd.Dir = dir
-	return cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("create tmux session %q in %q: %w: %s", name, dir, err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 func KilltmuxSession(name string) error {
 	cmd := exec.Command("tmux", "kill-session", "-t", name)
-	return cmd.Run()
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("kill tmux session %q: %w: %s", name, err, strings.TrimSpace(string(out)))
+	}
+	return nil
 }
 
 func RunCommandInTmuxSession(name string, command string) error {

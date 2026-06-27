@@ -40,13 +40,13 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 	switch parsedData.Tool {
 	case "opencode":
 		if err := openCodeHanler(tools.OpenCode, parsedData.Action); err != nil {
-			return true, err
+			return true, writeToolError(conn, writeMu, "opencode", tools.OpenCode.IsRunning(), err)
 		}
 		return true, writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
 
 	case "codex", "t3Code":
 		if err := t3CodeHandler(tools.T3Code, parsedData.Action); err != nil {
-			return true, err
+			return true, writeToolError(conn, writeMu, "codex", tools.T3Code.Status(), err)
 		}
 		return true, writeToolStatus(conn, writeMu, "codex", tools.T3Code.Status())
 	}
@@ -72,6 +72,31 @@ func writeToolStatus(conn *websocket.Conn, writeMu *sync.Mutex, tool string, sta
 		}{
 			Tool:   tool,
 			Status: status,
+		},
+	})
+}
+
+func writeToolError(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool, err error) error {
+	writeMu.Lock()
+	defer writeMu.Unlock()
+
+	return conn.WriteJSON(struct {
+		Type string `json:"type"`
+		Data struct {
+			Tool   string `json:"tool"`
+			Status bool   `json:"status"`
+			Error  string `json:"error"`
+		} `json:"data"`
+	}{
+		Type: "tool",
+		Data: struct {
+			Tool   string `json:"tool"`
+			Status bool   `json:"status"`
+			Error  string `json:"error"`
+		}{
+			Tool:   tool,
+			Status: status,
+			Error:  err.Error(),
 		},
 	})
 }
@@ -103,7 +128,7 @@ func t3CodeHandler(t3Code *store.T3Code, action string) error {
 	case "stop":
 		return t3Code.StopT3Code()
 
-	case "restart", "retart":
+	case "restart":
 		return t3Code.RestartT3Code()
 
 	case "status":
