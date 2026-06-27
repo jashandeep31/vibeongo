@@ -2,15 +2,19 @@
 
 import { Send } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
-import { Textarea } from "@repo/ui/components/textarea";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 interface InputAreaProps {
   chatId: string;
   sendJsonMessage: (message: unknown) => void;
+  onSubmitSuccess?: () => void;
 }
 
-export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
+export function InputArea({
+  chatId,
+  sendJsonMessage,
+  onSubmitSuccess,
+}: InputAreaProps) {
   const [question, setQuestion] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -29,6 +33,11 @@ export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
     });
 
     setQuestion("");
+    window.setTimeout(() => {
+      requestAnimationFrame(() => {
+        onSubmitSuccess?.();
+      });
+    }, 1000);
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -42,17 +51,17 @@ export function InputArea({ chatId, sendJsonMessage }: InputAreaProps) {
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="border-border bg-background focus-within:border-primary/50 relative w-full rounded-[2px] border p-0 transition-colors"
+      className="border-border focus-within:border-primary/50 bg-muted relative w-full rounded-lg border p-0 transition-colors"
     >
-      <Textarea
+      <textarea
         aria-label="Describe what you want to build"
         placeholder="Describe the app, repo workflow, or development environment you want to run..."
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
         onKeyDown={handleKeyDown}
-        className="placeholder:text-muted-foreground/50 min-h-[120px] resize-none border-0 bg-transparent p-2 text-lg leading-normal shadow-none focus-visible:ring-0 md:text-base"
+        className="placeholder:text-muted-foreground/50 min-h-[120px] w-full resize-none overflow-y-auto border-0 p-2 text-lg leading-normal outline-none [scrollbar-width:none] focus:outline-none focus-visible:ring-0 focus-visible:outline-none md:text-base [&::-webkit-scrollbar]:hidden"
       />
-      <div className="flex items-center justify-end">
+      <div className="flex items-center justify-end p-2">
         <Button
           type="submit"
           disabled={!question.trim()}
