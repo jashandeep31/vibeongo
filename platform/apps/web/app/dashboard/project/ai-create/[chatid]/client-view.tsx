@@ -1,9 +1,10 @@
 "use client";
+import { ChatQuestion } from "@/components/chat/chat-question";
 import { InputArea } from "@/components/chat/input-area";
-import MarkdownRenderer from "@/components/markdown-renderer";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
 import { chatStore, type IChatQuestion } from "@/store/chat-store";
-import { chatAnswer, chatQuestions, chats } from "@repo/db";
+import { chatAnswer, chatQuestions } from "@repo/db";
+import { ArrowDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface ClientViewProps {
@@ -16,40 +17,6 @@ type ChatQuestionWithAnswer = typeof chatQuestions.$inferSelect & {
 
 type QuestionEventData = typeof chatQuestions.$inferSelect & {
   answer: typeof chatAnswer.$inferSelect;
-};
-
-const ChatQuestion = ({ item }: { item: IChatQuestion }) => {
-  const answer = item.answer;
-  const reasoning = answer?.reasoning?.trim();
-
-  return (
-    <div className="flex flex-col gap-8">
-      <div className="flex justify-end">
-        <div className="bg-muted text-foreground border-border max-w-[70%] rounded-2xl border px-5 py-4 text-base leading-relaxed shadow-sm md:max-w-[55%]">
-          {item.question}
-        </div>
-      </div>
-
-      <div className="max-w-3xl">
-        {reasoning ? (
-          <div className="border-border bg-muted/30 text-muted-foreground mb-4 h-32 overflow-y-auto rounded-lg border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
-            {reasoning}
-          </div>
-        ) : null}
-        {answer?.answer && <MarkdownRenderer content={answer?.answer} />}
-        {/* {answer?.answer ? ( */}
-        {/*   <p className="text-foreground text-base leading-normal whitespace-pre-wrap"> */}
-        {/*     {answer.answer} */}
-        {/*   </p> */}
-        {/* ) : ( */}
-        {/*   <div className="text-muted-foreground flex items-center gap-2 text-sm"> */}
-        {/*     <Loader2 className="h-4 w-4 animate-spin" /> */}
-        {/*     Thinking */}
-        {/*   </div> */}
-        {/* )} */}
-      </div>
-    </div>
-  );
 };
 
 const ChatHistory = () => {
@@ -89,7 +56,7 @@ const StreamingQuestion = () => {
 
 const ClientView = ({ chatid }: ClientViewProps) => {
   const { websocket, sendJsonMessage } = useVibeSocket();
-  const [chat, setChat] = useState<null | typeof chats.$inferSelect>(null);
+  const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const setQuestions = chatStore((state) => state.setQuestions);
   const setStreamingQuestion = chatStore((state) => state.setStreamingQuestion);
@@ -100,11 +67,25 @@ const ClientView = ({ chatid }: ClientViewProps) => {
   const updateChat = chatStore((state) => state.updateChat);
   const resetChat = chatStore((state) => state.resetChat);
 
-  const scrollToBottom = useCallback(() => {
+  const updateScrollButtonVisibility = useCallback(() => {
     const scrollArea = scrollAreaRef.current;
     if (!scrollArea) return;
 
-    scrollArea.scrollTop = scrollArea.scrollHeight;
+    const distanceFromBottom =
+      scrollArea.scrollHeight - scrollArea.scrollTop - scrollArea.clientHeight;
+
+    setShowScrollButton(distanceFromBottom > 50);
+  }, []);
+
+  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
+    const scrollArea = scrollAreaRef.current;
+    if (!scrollArea) return;
+
+    scrollArea.scrollTo({
+      top: scrollArea.scrollHeight,
+      behavior,
+    });
+    setShowScrollButton(false);
   }, []);
 
   useEffect(() => {
@@ -132,7 +113,6 @@ const ClientView = ({ chatid }: ClientViewProps) => {
       const parsedEvent = JSON.parse(event.data);
 
       if (parsedEvent.type === "chat-data") {
-        setChat(parsedEvent.data.chat ?? null);
         const questions = (parsedEvent.data.chatQuestions ?? []).map(
           (question: ChatQuestionWithAnswer): IChatQuestion => {
             const { chatAnswer, ...questionData } = question;
@@ -195,9 +175,10 @@ const ClientView = ({ chatid }: ClientViewProps) => {
   ]);
 
   return (
-    <div className="bg-background text-foreground flex h-[calc(100vh-3rem)] flex-col justify-between">
+    <div className="bg-background text-foreground relative flex h-[calc(100vh-3rem)] flex-col justify-between">
       <div
         ref={scrollAreaRef}
+        onScroll={updateScrollButtonVisibility}
         className="grid min-h-0 flex-1 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
       >
         <div className="flex-1 px-4 py-8 md:px-8">
@@ -208,9 +189,25 @@ const ClientView = ({ chatid }: ClientViewProps) => {
           </div>
         </div>
       </div>
+      {showScrollButton ? (
+        <div className="pointer-events-none absolute inset-x-0 bottom-55 z-50 flex justify-center">
+          <button
+            type="button"
+            onClick={() => scrollToBottom("smooth")}
+            className="bg-primary text-primary-foreground hover:bg-primary/90 pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full shadow-md transition-colors"
+            aria-label="Scroll to latest message"
+          >
+            <ArrowDown className="h-5 w-5" />
+          </button>
+        </div>
+      ) : null}
       <div className="shrink-0 px-4 pb-4 md:px-0">
         <div className="mx-auto w-full max-w-4xl">
-          <InputArea chatId={chatid} sendJsonMessage={sendJsonMessage} />
+          <InputArea
+            chatId={chatid}
+            sendJsonMessage={sendJsonMessage}
+            onSubmitSuccess={() => scrollToBottom("smooth")}
+          />
         </div>
       </div>
     </div>
