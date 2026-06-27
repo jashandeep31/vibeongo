@@ -42,7 +42,6 @@ export async function* projectAIAgent({
   updatedConfig: any;
   reasoning: string;
 }> {
-  console.log("we are working ");
   const history: ModelMessage[] = [];
 
   QAs.map((qa) => {
@@ -53,10 +52,9 @@ export async function* projectAIAgent({
       }
     }
   });
-  console.log("we are working ");
 
   const result = streamText({
-    model: "openai/gpt-oss-120b",
+    model: "zai/glm-5.2",
     system: prompts.createProject.systemPrompt(),
     reasoning: "high",
     tools: {

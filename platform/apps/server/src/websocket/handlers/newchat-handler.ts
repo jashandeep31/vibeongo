@@ -1,47 +1,55 @@
 import { chatAnswer, chatQuestions, chats, db } from "@repo/db";
 import { z } from "zod";
-import { WebSocket } from "ws";
+import WebSocket from "ws";
 import { AppError } from "../../lib/app-error.js";
-import { generateText, stepCountIs, tool } from "ai";
-import { projectValidatorForAIInput } from "@repo/shared";
-import {
-  createNewGithubRepo,
-  getInstanceCatalogAITool,
-  getUserReposAITool,
-  getUserSshKeysAITool,
-} from "../../ai/ai-tools/project-ai-tools.js";
-import { prompts } from "../../ai/prompts/index.js";
+import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
+import { sendWSError } from "../socket-handler.js";
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
 
-  const parsedData = z
+  const parsingResponse = z
     .object({
-      question: z.string().min(3).max(3000),
+      question: z.string().min(2).max(3000),
     })
-    .parse(eventData);
+    .safeParse(eventData);
 
-  const [chatId, chatQuestionId] = [crypto.randomUUID(), crypto.randomUUID()];
+  if (parsingResponse.error) {
+    sendWSError(socket, "Validation failed");
+    return;
+  }
+
+  const parsedData = parsingResponse.data;
+  const chatId = crypto.randomUUID();
+
+  await db.transaction(async (tx) => {
+    const [chat] = await tx
+      .insert(chats)
+      .values({
+        id: chatId,
+        name: "unknown",
+        user_id: userId,
+        chat_agent: "project-handler",
+      })
+      .returning();
+
+    if (!chat) throw new AppError("something went wrong", 500);
+  });
 
   socket.send(
     JSON.stringify({
       type: "new-chat",
       data: {
-        chatId: chatId,
+        chatId,
       },
     }),
   );
-  // const { response, reasoning, updatedConfig } = await aiWork(
-  //   parsedData.question,
-  //   socket.userId,
-  // );
-  //
 
   const newQuestion: typeof chatQuestions.$inferSelect = {
     id: crypto.randomUUID(),
-    question: parsedResponse.question,
-    order_number: lastQuestionAndAnswer.question.order_number + 1,
-    chat_id: parsedResponse.chatId,
+    question: parsedData.question,
+    order_number: 0,
+    chat_id: chatId,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -66,11 +74,33 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   let usage: unknown = null;
   let finishReason: string | null = null;
 
+  const sendQuestionUpdate = () => {
+    socket.send(
+      JSON.stringify({
+        type: "stream-question",
+        data: {
+          ...newQuestion,
+          answer: {
+            ...newAnswer,
+            answer,
+            reasoning,
+            memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+            steps,
+            usage,
+            finish_reason: finishReason,
+          },
+        },
+      }),
+    );
+  };
+
+  sendQuestionUpdate();
+
   for await (const res of projectAIAgent({
-    query: parsedResponse.question,
+    query: parsedData.question,
     userId,
-    prevConfig: lastQuestionAndAnswer.answer?.memory || "",
-    QAs: refinedQA,
+    prevConfig: "",
+    QAs: [],
   })) {
     answer += res.text;
     reasoning += res.reasoning;
@@ -92,34 +122,35 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const persistedQuestion = {
     ...newQuestion,
   };
-  // create the chat for user
+
   await db.transaction(async (tx) => {
-    const [chat] = await tx
-      .insert(chats)
-      .values({
-        id: chatId,
-        name: "unknown",
-        user_id: userId,
-      })
-      .returning();
-    if (!chat) throw new AppError("something went wrong", 500);
-    const [chatQuestion] = await tx
-      .insert(chatQuestions)
-      .values({
-        id: chatQuestionId,
-        chat_id: chat.id,
-        question: parsedData.question,
-        order_number: 0,
-      })
-      .returning();
-
-    if (!chatQuestion) throw new AppError("something went wrong ", 500);
-
-    // await tx.insert(chatAnswer).values({
-    //   question_id: chatQuestion.id,
-    //   answer: response,
-    //   reasoning,
-    // });
-    return { chat, chatQuestion };
+    await tx.insert(chatQuestions).values(persistedQuestion);
+    await tx.insert(chatAnswer).values({
+      ...newAnswer,
+      reasoning,
+      answer,
+      memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+      steps,
+      usage,
+      finish_reason: finishReason,
+    });
   });
+
+  socket.send(
+    JSON.stringify({
+      type: "new-question",
+      data: {
+        ...persistedQuestion,
+        answer: {
+          ...newAnswer,
+          answer,
+          reasoning,
+          memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+          steps,
+          usage,
+          finish_reason: finishReason,
+        },
+      },
+    }),
+  );
 };
