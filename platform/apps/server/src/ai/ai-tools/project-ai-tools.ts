@@ -14,11 +14,38 @@ import { z } from "zod";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { AppError } from "../../lib/app-error.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
-import { projectConfigValidator } from "@repo/shared";
+import {
+  projectConfigValidator,
+  projectValidatorForAIInput,
+} from "@repo/shared";
 import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 import { env } from "../../lib/env.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 
+export const updateConfigInMemAITool: Tool = tool({
+  description:
+    "After making any changes in config make a call to this tool it update local meomoy",
+  inputSchema: projectValidatorForAIInput.extend({}),
+  execute: async (data: unknown) => {
+    const valid = projectValidatorForAIInput.parse(data);
+    return valid;
+  },
+});
+
+export const getCurrentConfigAITool = (config: unknown): Tool =>
+  tool({
+    description: "Get the current to read check what we already have",
+    inputSchema: z.object(),
+    execute: async () => {
+      if (!config) return {};
+      if (typeof config !== "string") return config;
+      try {
+        return JSON.parse(config);
+      } catch {
+        return {};
+      }
+    },
+  });
 const updateProjectByIdSchema = projectConfigValidator.extend({
   projectId: z.string(),
 });
