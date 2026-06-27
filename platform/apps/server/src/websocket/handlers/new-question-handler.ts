@@ -8,6 +8,7 @@ import {
   getInstanceCatalogAITool,
   getUserReposAITool,
   getUserSshKeysAITool,
+  createAndSaveProject,
 } from "../../ai/ai-tools/project-ai-tools.js";
 import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
@@ -234,6 +235,7 @@ async function* aiWork(
       getAllProjectNameAndIds: getAllProjectNameAndIds(userId),
       getOtherProjectConfigById: getOtherProjectConfigById(userId),
       createNewGithubRepo: createNewGithubRepo(userId),
+      createAndSaveProjectAITool: createAndSaveProject(userId),
     },
     stopWhen: stepCountIs(20),
     messages: [...history, { role: "user", content: question }],
