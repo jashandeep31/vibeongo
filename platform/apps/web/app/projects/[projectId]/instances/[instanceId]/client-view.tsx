@@ -5,7 +5,6 @@ import {
   Copy,
   Globe,
   Loader2,
-  RotateCw,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
@@ -278,25 +277,6 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     }
   };
 
-  const handleReboot = async () => {
-    if (!instance || isTerminated) {
-      return;
-    }
-    try {
-      const rebootUrl = vibeongoDomain
-        ? `https://${vibeongoDomain}/reboot`
-        : `http://${Instance_IP}:8080/reboot`;
-      const res = await axios.post(rebootUrl, {});
-      if (res.status === 200) {
-        toast.success("Server rebooted successfully");
-        await new Promise((res) => setTimeout(res, 2000));
-        window.location.reload();
-      }
-    } catch {
-      toast.error("Failed to reboot the server");
-    }
-  };
-
   const handleRestartFinalScript = async () => {
     if (!vibeongoDomain || isTerminated || isRestartingFinalScript) {
       return;
@@ -450,18 +430,6 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const renderControls = () => {
     return (
       <div className="flex flex-wrap items-center justify-end gap-1.5 sm:gap-2">
-        <Button
-          size="icon-sm"
-          variant="outline"
-          onClick={handleReboot}
-          disabled={!vibeongoDomain}
-          aria-label="Reboot"
-          title="Reboot"
-          className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
-        >
-          <RotateCw className="h-4 w-4" />
-          <span className="sr-only sm:not-sr-only">Reboot</span>
-        </Button>
         <Button
           size="icon-sm"
           variant="outline"
