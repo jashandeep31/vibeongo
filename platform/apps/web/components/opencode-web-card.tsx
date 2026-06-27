@@ -2,7 +2,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, Copy, Loader2, Globe, RotateCcw, Square } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
-import { useWebSocketContext } from "@/hooks/use-websocket";
+import {
+  useWebSocketContext,
+  type WebSocketToolMessageData,
+} from "@/hooks/use-websocket";
 
 interface OpencodeWebCardProps {
   domainFor8080: string | null;
@@ -69,7 +72,7 @@ export function OpencodeWebCard({
     }
 
     const unsubscribeMessages = subscribeJsonMessage((parsed) => {
-      if (parsed.type !== "opencode") {
+      if (parsed.type !== "tool") {
         return;
       }
 
@@ -77,25 +80,28 @@ export function OpencodeWebCard({
         return;
       }
 
-      const data = parsed.data as { state?: unknown; error?: unknown };
+      const data = parsed.data as WebSocketToolMessageData;
 
-      if (data.state !== "started" && data.state !== "stopped") {
+      if (data.tool !== "opencode" || typeof data.status !== "boolean") {
         return;
       }
 
-      setOpencodeWebStatus(data.state);
+      const nextStatus: OpencodeWebStatus = data.status
+        ? "started"
+        : "stopped";
+
+      setOpencodeWebStatus(nextStatus);
       setPendingOpencodeWebAction(null);
 
       if (
-        data.state === "started" &&
-        !data.error &&
+        nextStatus === "started" &&
         shouldRedirectOnStartedRef.current
       ) {
         shouldRedirectOnStartedRef.current = false;
         redirectToOpencodeWeb();
       }
 
-      if (data.state === "stopped") {
+      if (nextStatus === "stopped") {
         shouldRedirectOnStartedRef.current = false;
       }
     });
@@ -111,8 +117,9 @@ export function OpencodeWebCard({
     }
 
     sendJsonMessage({
-      type: "opencode",
+      type: "tool",
       data: {
+        tool: "opencode",
         action: "status",
       },
     });
@@ -136,8 +143,9 @@ export function OpencodeWebCard({
     setPendingOpencodeWebAction("start");
     shouldRedirectOnStartedRef.current = true;
     sendJsonMessage({
-      type: "opencode",
+      type: "tool",
       data: {
+        tool: "opencode",
         action: "start",
       },
     });
@@ -152,8 +160,9 @@ export function OpencodeWebCard({
     setPendingOpencodeWebAction("stop");
     shouldRedirectOnStartedRef.current = false;
     sendJsonMessage({
-      type: "opencode",
+      type: "tool",
       data: {
+        tool: "opencode",
         action: "stop",
       },
     });
@@ -168,8 +177,9 @@ export function OpencodeWebCard({
     setPendingOpencodeWebAction("restart");
     shouldRedirectOnStartedRef.current = true;
     sendJsonMessage({
-      type: "opencode",
+      type: "tool",
       data: {
+        tool: "opencode",
         action: "restart",
       },
     });

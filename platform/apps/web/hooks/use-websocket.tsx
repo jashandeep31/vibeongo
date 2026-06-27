@@ -19,6 +19,11 @@ export type WebSocketServerMessage = {
   hasBuffer?: unknown;
 };
 
+export type WebSocketToolMessageData = {
+  tool?: unknown;
+  status?: unknown;
+};
+
 const SocketContext = createContext<{
   websocket: WebSocket | null;
   sendJsonMessage: (message: unknown) => void;
