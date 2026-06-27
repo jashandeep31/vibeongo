@@ -3,6 +3,7 @@ package wsfunctions
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -133,7 +134,14 @@ func t3CodeHandler(t3Code *store.T3Code, action string) error {
 
 	case "status":
 		return nil
-	}
 
+	case "password":
+		token, err := t3Code.SetAndGetPassword()
+		if err != nil {
+			return err
+		}
+		fmt.Println(token)
+
+	}
 	return nil
 }
