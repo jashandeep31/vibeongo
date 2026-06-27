@@ -90,8 +90,8 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 			return err
 		}
 
-		// passing the messages to the opencode handler to check if it can do something with it
-		handled, err := OpencodewebHandler(ctx, conn, &writeMu, msg, tools.OpenCode)
+		// passing the messages to the tools handler to check if it can do something with it
+		handled, err := ToolsHandler(ctx, conn, &writeMu, msg, tools)
 		if err != nil {
 			return err
 		}

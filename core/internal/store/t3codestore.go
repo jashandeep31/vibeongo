@@ -35,7 +35,11 @@ func (c *T3Code) StartT3Code() error {
 		return nil
 	}
 	// spin up the new with the tmux session
-	return c.startT3CodePreLocked()
+	if err := c.startT3CodePreLocked(); err != nil {
+		return err
+	}
+	c.Running = true
+	return nil
 }
 
 func (c *T3Code) StopT3Code() error {
@@ -44,8 +48,11 @@ func (c *T3Code) StopT3Code() error {
 	if !c.Running {
 		return nil
 	}
-	err := utils.KilltmuxSession("t3Code")
-	return err
+	if err := utils.KilltmuxSession("t3Code"); err != nil {
+		return err
+	}
+	c.Running = false
+	return nil
 }
 
 func (c *T3Code) GetPassword() string {
@@ -53,6 +60,8 @@ func (c *T3Code) GetPassword() string {
 }
 
 func (c *T3Code) Status() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.Running
 }
 
@@ -60,6 +69,11 @@ func (c *T3Code) RestartT3Code() error {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	_ = utils.KilltmuxSession("t3Code")
+	c.Running = false
 
-	return c.startT3CodePreLocked()
+	if err := c.startT3CodePreLocked(); err != nil {
+		return err
+	}
+	c.Running = true
+	return nil
 }

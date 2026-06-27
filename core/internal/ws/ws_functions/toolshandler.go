@@ -11,6 +11,7 @@ import (
 
 func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools) (bool, error) {
 
+	// basic parsing to check the message is for this function or not
 	var parsedBaseMesasge struct {
 		Type string          `json:"type"`
 		Data json.RawMessage `json:"data"`
@@ -21,10 +22,12 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 		return false, nil
 	}
 
-	if parsedBaseMesasge.Type != "opencode" {
+	// if message is not for the tools that just return it
+	if parsedBaseMesasge.Type != "tool" {
 		return false, nil
 	}
 
+	// proper parsing with the tool and the action required
 	var parsedData struct {
 		Tool   string `json:"tool"`
 		Action string `json:"action"`
@@ -33,54 +36,79 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 		return true, nil
 	}
 
-	if parsedData.Tool == "opencode" {
-		openCodeHanler(tools.OpenCode, parsedData.Action)
-		conn.WriteJSON(struct {
-			Type string          `json:"type"`
-			Data json.RawMessage `json:"data"`
-		}{
-			Type: "opencode",
-			Data: parsedBaseMesasge.Data,
-		})
+	// switch between the tools
+	switch parsedData.Tool {
+	case "opencode":
+		if err := openCodeHanler(tools.OpenCode, parsedData.Action); err != nil {
+			return true, err
+		}
+		return true, writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
+
+	case "codex", "t3Code":
+		if err := t3CodeHandler(tools.T3Code, parsedData.Action); err != nil {
+			return true, err
+		}
+		return true, writeToolStatus(conn, writeMu, "codex", tools.T3Code.Status())
 	}
 
-	if parsedData.Tool == "t3Code" {
-		t3CodeHandler(tools.T3Code, parsedData.Action)
-	}
-
-	return false, nil
+	return true, nil
 }
 
-func openCodeHanler(opencode *store.OpencodeWeb, action string) {
+func writeToolStatus(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool) error {
+	writeMu.Lock()
+	defer writeMu.Unlock()
+
+	return conn.WriteJSON(struct {
+		Type string `json:"type"`
+		Data struct {
+			Tool   string `json:"tool"`
+			Status bool   `json:"status"`
+		} `json:"data"`
+	}{
+		Type: "tool",
+		Data: struct {
+			Tool   string `json:"tool"`
+			Status bool   `json:"status"`
+		}{
+			Tool:   tool,
+			Status: status,
+		},
+	})
+}
+
+func openCodeHanler(opencode *store.OpencodeWeb, action string) error {
 	switch action {
 	case "start":
-		_ = opencode.StartWebServer()
+		return opencode.StartWebServer()
 
 	case "stop":
-		_ = opencode.StopWebServer()
+		return opencode.StopWebServer()
 
 	case "restart":
-		_ = opencode.RestartWebServer()
+		return opencode.RestartWebServer()
 
 	case "status":
-		_ = opencode.IsRunning()
+		return nil
 
 	}
+
+	return nil
 }
 
-func t3CodeHandler(t3Code *store.T3Code, action string) {
+func t3CodeHandler(t3Code *store.T3Code, action string) error {
 	switch action {
 	case "start":
-		_ = t3Code.StartT3Code()
+		return t3Code.StartT3Code()
 
 	case "stop":
-		_ = t3Code.StopT3Code()
+		return t3Code.StopT3Code()
 
-	case "retart":
-		_ = t3Code.RestartT3Code()
+	case "restart", "retart":
+		return t3Code.RestartT3Code()
 
 	case "status":
-		_ = t3Code.Status()
+		return nil
 	}
 
+	return nil
 }
