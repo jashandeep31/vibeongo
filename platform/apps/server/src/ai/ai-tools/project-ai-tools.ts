@@ -53,7 +53,6 @@ export const updateProjectByIdTool = (userId: string): Tool =>
   tool({
     description:
       "Update the users pre configureed to the daatabase after the full conformation from the user ",
-    strict: true,
     inputSchema: updateProjectByIdSchema,
     execute: async (rawInput: z.infer<typeof updateProjectByIdSchema>) => {
       try {
@@ -86,7 +85,6 @@ export const createAndSaveProjectTool = (userId: string): Tool =>
   tool({
     description:
       "This final to be needed to only called when wanna save the project to database",
-    strict: true,
     inputSchema: projectConfigValidator,
     execute: async (rawInput: z.infer<typeof projectConfigValidator>) => {
       try {
@@ -118,7 +116,6 @@ export const createAndSaveProjectTool = (userId: string): Tool =>
 export const getUserReposAITool = (userId: string): Tool =>
   tool({
     description: "Get list of all user repos to suggest user which one to add",
-    strict: true,
     inputSchema: z.object({}),
     execute: async () => {
       const repos = await db
@@ -156,7 +153,6 @@ export const getOtherProjectConfigById = (userId: string): Tool =>
   tool({
     description:
       "Provide the config of the other project incase its needed to getsomething form it",
-    // strict: true,
     inputSchema: getOtherProjectConfigSchema,
     toModelOutput: ({ output }) => ({
       type: "text",
@@ -196,7 +192,6 @@ export const getUserSshKeysAITool = (userId: string): Tool =>
   tool({
     description:
       "Get the user's SSH keys so the user can choose which keys to add to the project",
-    strict: true,
     inputSchema: z.object({}),
     execute: async () => {
       const keys = await db
@@ -217,7 +212,6 @@ export const getInstanceCatalogAITool = (): Tool =>
   tool({
     description:
       "Get available instance regions and instance types so the user can choose where the project should run",
-    strict: true,
     inputSchema: z.object({}),
     execute: async () => {
       const [regions, types] = await Promise.all([
