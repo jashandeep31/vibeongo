@@ -18,6 +18,7 @@ type Config struct {
 	Repos          []GitRepoConfig `json:"repos"`
 	Docker         *DockerConfig   `json:"docker"`
 	OpenCode       *OpenCodeConfig `json:"opencode"`
+	Codex          *CodexConfig    `json:"codex"`
 	Nvim           *NvimConfig     `json:"nvim"`
 	Tasks          []TaskConfig    `json:"tasks"`
 	InitialScript  string          `json:"initialScript"`
@@ -67,6 +68,10 @@ type OpenCodeConfig struct {
 	RequirePassword bool            `json:"requirePassword"`
 }
 
+type CodexConfig struct {
+	AuthJSON json.RawMessage `json:"auth_json"`
+}
+
 type NvimConfig struct {
 	ConfigJSON json.RawMessage `json:"config_json"`
 }
@@ -91,6 +96,13 @@ func calidateConfig(file []byte) (Config, error) {
 				return cfg, fmt.Errorf("error parsing opencode package config: %w", err)
 			}
 			cfg.OpenCode = &openCodeConfig
+		case "codex":
+			var codexConfig CodexConfig
+			if err := json.Unmarshal(pkg.Config, &codexConfig); err != nil {
+				return cfg, fmt.Errorf("error parsing opencode package config: %w", err)
+			}
+			cfg.Codex = &codexConfig
+
 		case "nvim":
 			var nvimConfig NvimConfig
 			if err := json.Unmarshal(pkg.Config, &nvimConfig); err != nil {

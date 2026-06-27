@@ -17,6 +17,10 @@ interface AdditionalService {
     model: string;
     requirePassword: boolean;
   };
+  codexConfig: {
+    enabled: boolean;
+    authJson: string;
+  };
   nvimConfig: {
     enabled: boolean;
     config: string;
@@ -63,6 +67,10 @@ interface ConfigStore {
     authJson: string;
     model: string;
     requirePassword: boolean;
+  }) => void;
+  updateCodexConfig: (codexConfig: {
+    enabled: boolean;
+    authJson: string;
   }) => void;
   updateNvimConfig: (nvimConfig: { enabled: boolean; config: string }) => void;
 
@@ -125,6 +133,10 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       model: "",
       requirePassword: false,
     },
+    codexConfig: {
+      enabled: false,
+      authJson: "",
+    },
     nvimConfig: {
       enabled: false,
       config: "",
@@ -139,6 +151,11 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   updateOpencodeConfig: (opencodeConfig) =>
     set((state) => ({
       additionalServices: { ...state.additionalServices, opencodeConfig },
+    })),
+
+  updateCodexConfig: (codexConfig) =>
+    set((state) => ({
+      additionalServices: { ...state.additionalServices, codexConfig },
     })),
 
   updateNvimConfig: (nvimConfig) =>
