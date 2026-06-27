@@ -98,16 +98,23 @@ This is an array of GitHub repository UUIDs. Use the repository tool to list ava
 
 ## initialScript
 
-This script prepares the VPS before repositories are cloned. It should install required languages, databases, package managers, and system dependencies. It should also configure any required services. Do not include any repository-specific commands here. Keep it under 500 characters.
+This script prepares the VPS before repositories are cloned. It should install required languages, databases, package managers, and system dependencies. It should also configure any required services. Do not include any repository-specific commands here. You  cna use next lines we run this as teh bash script by our self don't force to && you freely move to the next line we will auto calculate it and don't add #!/bin/bash or anything in start we handle it our self in backed
+
+```
+docker run MYXCONTINAER
+nvm i node25
+```
 
 ---
 
 ## finalScript
 
-This script runs after repositories are cloned and repository setup scripts finish. It should install project dependencies, set up environment files, run migrations, seed databases, build assets, and complete any setup that depends on the repository. Always start by changing into the repository directory. Keep it under 500 characters.
+This script runs after repositories are cloned and repository setup scripts finish. It should install project dependencies, set up environment files, run migrations, seed databases, build assets, and complete any setup that depends on the repository. Always start by changing into the repository directory. You  cna use next lines we run this as teh bash script by our self don't force to && you freely move to the next line we will auto calculate it and don't add #!/bin/bash or anything in start we handle it our self in backed
 
-```bash
+
+```
 cd /home/ubuntu/code/REPO_NAME
+make devbuild
 ```
 
 ---
