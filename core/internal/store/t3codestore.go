@@ -1,6 +1,7 @@
 package store
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
@@ -17,13 +18,11 @@ func NewT3Code() *T3Code {
 }
 
 func (c *T3Code) startT3CodePreLocked() error {
-	err := utils.StartTmuxSession("t3Code", "/home/ubunut/code")
-	if err != nil {
-		return err
+	if err := utils.StartTmuxSession("t3Code", "/home/ubuntu/code"); err != nil {
+		return fmt.Errorf("start t3 code tmux session: %w", err)
 	}
-	err = utils.RunCommandInTmuxSession("t3Code", "t3 serve --host 0.0.0.0 --no-browser")
-	if err != nil {
-		return err
+	if err := utils.RunCommandInTmuxSession("t3Code", "t3 serve --host 0.0.0.0 --no-browser"); err != nil {
+		return fmt.Errorf("run t3 code serve command: %w", err)
 	}
 	return nil
 }
@@ -49,7 +48,7 @@ func (c *T3Code) StopT3Code() error {
 		return nil
 	}
 	if err := utils.KilltmuxSession("t3Code"); err != nil {
-		return err
+		return fmt.Errorf("stop t3 code tmux session: %w", err)
 	}
 	c.Running = false
 	return nil
@@ -72,7 +71,7 @@ func (c *T3Code) RestartT3Code() error {
 	c.Running = false
 
 	if err := c.startT3CodePreLocked(); err != nil {
-		return err
+		return fmt.Errorf("restart t3 code: %w", err)
 	}
 	c.Running = true
 	return nil

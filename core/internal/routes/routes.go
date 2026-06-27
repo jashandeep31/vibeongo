@@ -12,5 +12,4 @@ func Register(e *echo.Echo, tools *store.Tools) {
 	e.GET("/ws", ws.WebSocket(tools))
 	e.GET("/ufw", handlers.GetAllowedPorts)
 	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)
-	// e.GET("/terminate", , m ...echo.MiddlewareFunc)
 }

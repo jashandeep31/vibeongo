@@ -12,6 +12,7 @@ import {
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
 import { OpencodeWebCard } from "@/components/opencode-web-card";
+import { T3CodeCard } from "@/components/t3-code-card";
 import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
@@ -127,6 +128,12 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const opencodeCodeDomain = isTargetInstance
     ? projectDomainsData?.proxy_domains?.find(
         (domain) => domain.target_port === 4096,
+      )?.domain
+    : null;
+
+  const t3CodeDomain = isTargetInstance
+    ? projectDomainsData?.proxy_domains?.find(
+        (domain) => domain.target_port === 3773,
       )?.domain
     : null;
 
@@ -614,6 +621,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
                   domainFor4096={opencodeCodeDomain || null}
                   isTerminated={isTerminated}
                   opencodePassword={opencodePassword}
+                />
+                <T3CodeCard
+                  domainFor3773={t3CodeDomain || null}
+                  isTerminated={isTerminated}
                 />
               </div>
             </div>
