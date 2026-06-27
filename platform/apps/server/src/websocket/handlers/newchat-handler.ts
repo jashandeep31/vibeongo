@@ -52,20 +52,17 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
         id: chatQuestionId,
         chat_id: chat.id,
         question: parsedData.question,
-        memory: updatedConfig
-          ? JSON.stringify(updatedConfig)
-          : JSON.stringify({}),
         order_number: 0,
       })
       .returning();
 
     if (!chatQuestion) throw new AppError("something went wrong ", 500);
 
-    await tx.insert(chatAnswer).values({
-      question_id: chatQuestion.id,
-      answer: response,
-      reasoning,
-    });
+    // await tx.insert(chatAnswer).values({
+    //   question_id: chatQuestion.id,
+    //   answer: response,
+    //   reasoning,
+    // });
     return { chat, chatQuestion };
   });
 };

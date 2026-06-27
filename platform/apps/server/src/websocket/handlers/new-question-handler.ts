@@ -15,7 +15,7 @@ import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
 import { prompts } from "../../ai/prompts/index.js";
-import { updateProjectById } from "../../controllers/project/projects.js";
+import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
 
 type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
   chatAnswer: typeof chatAnswer.$inferSelect | null;
@@ -98,7 +98,6 @@ export const newQuestionHandler = async (
     question: parsedResponse.question,
     order_number: lastQuestionAndAnswer.question.order_number + 1,
     chat_id: parsedResponse.chatId,
-    memory: "",
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -107,7 +106,11 @@ export const newQuestionHandler = async (
     id: crypto.randomUUID(),
     question_id: newQuestion.id,
     answer: "",
+    memory: "",
     reasoning: "",
+    steps: null,
+    finish_reason: null,
+    usage: null,
     created_at: new Date(),
     updated_at: new Date(),
   };
@@ -134,25 +137,22 @@ export const newQuestionHandler = async (
 
   sendQuestionUpdate();
 
-  for await (const res of aiWork(
-    parsedResponse.question,
+  for await (const res of projectAIAgent({
+    query: parsedResponse.question,
     userId,
-    lastQuestionAndAnswer.question.memory,
-    refinedQA,
-  )) {
+    prevConfig: lastQuestionAndAnswer.answer?.memory || "",
+    QAs: refinedQA,
+  })) {
     answer += res.text;
     reasoning += res.reasoning;
-    if (res.config) {
-      updatedConfig = res.config;
+    if (res.updatedConfig) {
+      updatedConfig = res.updatedConfig;
     }
     sendQuestionUpdate();
   }
 
   const persistedQuestion = {
     ...newQuestion,
-    memory: updatedConfig
-      ? JSON.stringify(updatedConfig)
-      : lastQuestionAndAnswer.question.memory,
   };
 
   await db.transaction(async (tx) => {
@@ -178,110 +178,3 @@ export const newQuestionHandler = async (
     }),
   );
 };
-
-const updateConfig = tool({
-  description: "Update the config with the user given data",
-  inputSchema: projectValidatorForAIInput.extend({}),
-  execute: async (data: unknown) => {
-    const valid = projectValidatorForAIInput.parse(data);
-    return valid;
-  },
-});
-
-const getCurrentConfig = (config: unknown) =>
-  tool({
-    description: "Get the current to read check what we already have",
-    inputSchema: z.object(),
-    execute: async () => {
-      if (!config) return {};
-      if (typeof config !== "string") return config;
-      try {
-        return JSON.parse(config);
-      } catch {
-        return {};
-      }
-    },
-  });
-
-async function* aiWork(
-  question: string,
-  userId: string,
-  prevConig: unknown,
-  QAArray: QuesitonWithAnswer[],
-): AsyncGenerator<{
-  done: boolean;
-  text: string;
-  config: unknown;
-  reasoning: string;
-}> {
-  const history: ModelMessage[] = [];
-  QAArray.map((qa) => {
-    if (qa.question && qa.chatAnswer?.answer) {
-      history.push({ role: "user", content: qa.question });
-      if (qa.chatAnswer?.answer) {
-        history.push({ role: "assistant", content: qa.chatAnswer?.answer });
-      }
-    }
-  });
-  const result = streamText({
-    model: "openai/gpt-oss-120b",
-    system: prompts.createProject.systemPrompt(),
-    reasoning: "high",
-    tools: {
-      // weatherTool,
-      getUserReposAITool: getUserReposAITool(userId),
-      getUserSshKeysAITool: getUserSshKeysAITool(userId),
-      getInstanceCatalogAITool: getInstanceCatalogAITool(),
-      getCurrentConfig: getCurrentConfig(prevConig),
-      updateConfig,
-      getAllProjectNameAndIds: getAllProjectNameAndIds(userId),
-      getOtherProjectConfigById: getOtherProjectConfigById(userId),
-      createNewGithubRepo: createNewGithubRepo(userId),
-      createAndSaveProjectAITool: createAndSaveProjectTool(userId),
-      updateProjectById: updateProjectByIdTool(userId),
-    },
-    stopWhen: stepCountIs(20),
-    messages: [...history, { role: "user", content: question }],
-    // toolChoice: { type: "tool", toolName: "updateConfig" },
-  });
-
-  let updatedConfig = null;
-  let reasoning = "";
-  for await (const chunk of result.stream) {
-    if (chunk.type === "reasoning-delta") {
-      reasoning += chunk.text;
-      yield {
-        reasoning: chunk.text,
-        text: "",
-        config: null,
-        done: false,
-      };
-    }
-
-    if (chunk.type === "text-delta") {
-      yield {
-        reasoning: "",
-        text: chunk.text,
-        config: null,
-        done: false,
-      };
-    }
-  }
-
-  const steps = await result.steps;
-  for (const step of steps) {
-    for (const tool of step.toolResults) {
-      if (tool.type == "tool-result") {
-        if (tool.toolName === "updateConfig") {
-          updatedConfig = tool.output;
-        }
-      }
-    }
-  }
-  yield {
-    done: true,
-    text: "",
-    config: updatedConfig,
-    reasoning: "",
-  };
-}
