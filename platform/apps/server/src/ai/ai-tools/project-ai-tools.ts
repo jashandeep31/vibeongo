@@ -4,14 +4,13 @@ import {
   db,
   eq,
   githubRepos,
-  inArray,
   instanceRegions,
   instanceTypes,
   projects,
   sshKeys,
 } from "@repo/db";
 import { tool, Tool } from "ai";
-import { string, z } from "zod";
+import { z } from "zod";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { AppError } from "../../lib/app-error.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
@@ -26,22 +25,29 @@ export const createAndSaveProject = (userId: string): Tool =>
     strict: true,
     inputSchema: projectConfigValidator,
     execute: async (rawInput: z.infer<typeof projectConfigValidator>) => {
-      const parsingResponse = projectConfigValidator.safeParse(rawInput);
-      if (parsingResponse.error) {
+      try {
+        const parsingResponse = projectConfigValidator.safeParse(rawInput);
+        if (parsingResponse.error) {
+          return {
+            status: "error",
+            error: String(parsingResponse.error),
+          };
+        }
+        const parsedData = parsingResponse.data;
+        const resp = await createProjectWithConfigAndUserIdService(
+          parsedData,
+          userId,
+        );
         return {
-          error: "Error in config fix",
-          deatils: string(parsingResponse.error),
+          status: "ok",
+          message: `Your is project is created check at: ${env.FRONTEND_URL}/projects/${resp.id}`,
+        };
+      } catch (e) {
+        return {
+          status: "error",
+          error: String(e),
         };
       }
-      const parsedData = parsingResponse.data;
-      const resp = await createProjectWithConfigAndUserIdService(
-        parsedData,
-        userId,
-      );
-      return {
-        status: "ok",
-        message: `Your is project is created check at: ${env.FRONTEND_URL}/projects/${resp.id}`,
-      };
     },
   });
 

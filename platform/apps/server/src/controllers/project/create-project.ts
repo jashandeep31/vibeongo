@@ -10,7 +10,10 @@ export const createProject = catchAsync(async (req: Request, res: Response) => {
   }
 
   const { body } = req;
-  const createdProject = createProjectWithConfigAndUserIdService(body, user.id);
+  const createdProject = await createProjectWithConfigAndUserIdService(
+    body,
+    user.id,
+  );
 
   res.status(200).json({
     message: "Project created successfully",
