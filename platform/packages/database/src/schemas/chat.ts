@@ -10,10 +10,11 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 
-const chatAgentEnum = pgEnum("chat_agent_enum", [
+export const chatAgentEnum = pgEnum("chat_agent_enum", [
   "project-handler",
   "tasks-maker",
 ]);
+
 export const chats = pgTable("chats", {
   id: uuid().defaultRandom().primaryKey(),
   name: varchar().notNull(),
@@ -21,7 +22,7 @@ export const chats = pgTable("chats", {
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
 
-  chat_agent: chatAgentEnum().default("project-handler").notNull(),
+  chat_agent: chatAgentEnum().notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow().notNull(),

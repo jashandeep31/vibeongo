@@ -31,10 +31,67 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
       },
     }),
   );
-  const { response, reasoning, updatedConfig } = await aiWork(
-    parsedData.question,
-    socket.userId,
-  );
+  // const { response, reasoning, updatedConfig } = await aiWork(
+  //   parsedData.question,
+  //   socket.userId,
+  // );
+  //
+
+  const newQuestion: typeof chatQuestions.$inferSelect = {
+    id: crypto.randomUUID(),
+    question: parsedResponse.question,
+    order_number: lastQuestionAndAnswer.question.order_number + 1,
+    chat_id: parsedResponse.chatId,
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  const newAnswer: typeof chatAnswer.$inferSelect = {
+    id: crypto.randomUUID(),
+    question_id: newQuestion.id,
+    answer: "",
+    memory: "",
+    reasoning: "",
+    steps: null,
+    finish_reason: null,
+    usage: null,
+    created_at: new Date(),
+    updated_at: new Date(),
+  };
+
+  let reasoning = "";
+  let answer = "";
+  let updatedConfig: unknown = null;
+  let steps: unknown = null;
+  let usage: unknown = null;
+  let finishReason: string | null = null;
+
+  for await (const res of projectAIAgent({
+    query: parsedResponse.question,
+    userId,
+    prevConfig: lastQuestionAndAnswer.answer?.memory || "",
+    QAs: refinedQA,
+  })) {
+    answer += res.text;
+    reasoning += res.reasoning;
+    if (res.updatedConfig) {
+      updatedConfig = res.updatedConfig;
+    }
+    if (res.steps) {
+      steps = res.steps;
+    }
+    if (res.usage) {
+      usage = res.usage;
+    }
+    if (res.finish_reason) {
+      finishReason = res.finish_reason;
+    }
+    sendQuestionUpdate();
+  }
+
+  const persistedQuestion = {
+    ...newQuestion,
+  };
   // create the chat for user
   await db.transaction(async (tx) => {
     const [chat] = await tx
@@ -65,65 +122,4 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
     // });
     return { chat, chatQuestion };
   });
-};
-
-const updateConfig = tool({
-  description: "Update the config with the user given data",
-  inputSchema: projectValidatorForAIInput.extend({}),
-  execute: async (data: unknown) => {
-    const valid = projectValidatorForAIInput.parse(data);
-    return valid;
-  },
-});
-
-const getCurrentConfig = tool({
-  description: "Get the current to read check what we already have",
-  inputSchema: z.object(),
-  execute: async () => {
-    return {
-      githubRepoIds: [],
-      sshKeyIds: [],
-    };
-  },
-});
-
-const aiWork = async (question: string, userId: string) => {
-  const result = await generateText({
-    model: "openai/gpt-5-nano",
-    system: prompts.createProject.systemPrompt(),
-    tools: {
-      // weatherTool,
-      getUserReposAITool: getUserReposAITool(userId),
-      getUserSshKeysAITool: getUserSshKeysAITool(userId),
-      getInstanceCatalogAITool: getInstanceCatalogAITool(),
-      getCurrentConfig,
-      updateConfig,
-      createNewGithubRepo: createNewGithubRepo(userId),
-    },
-    stopWhen: stepCountIs(5),
-    prompt: question,
-    // toolChoice: { type: "tool", toolName: "updateConfig" },
-  });
-
-  let response = "";
-  let reasoning = "";
-  let updatedConfig = null;
-
-  for (const contentPart of result.content) {
-    if (contentPart.type === "text") {
-      response += contentPart.text;
-    }
-    if (contentPart.type === "reasoning") {
-      reasoning += contentPart.text;
-    }
-    if (contentPart.type === "tool-result") {
-      const toolUsed = contentPart;
-      if (toolUsed.toolName === "updateConfig") {
-        updatedConfig = toolUsed.output;
-      }
-    }
-  }
-  console.log(result);
-  console.log(response);
-  return { response, reasoning, updatedConfig };
 };
