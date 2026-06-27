@@ -17,8 +17,45 @@ import { getDecryptedProjectConfig } from "../../services/project/project-config
 import { projectConfigValidator } from "@repo/shared";
 import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 import { env } from "../../lib/env.js";
+import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 
-export const createAndSaveProject = (userId: string): Tool =>
+const updateProjectByIdSchema = projectConfigValidator.extend({
+  projectId: z.string(),
+});
+export const updateProjectByIdTool = (userId: string): Tool =>
+  tool({
+    description:
+      "Update the users pre configureed to the daatabase after the full conformation from the user ",
+    strict: true,
+    inputSchema: updateProjectByIdSchema,
+    execute: async (rawInput: z.infer<typeof updateProjectByIdSchema>) => {
+      try {
+        const parsingResponse = updateProjectByIdSchema.safeParse(rawInput);
+        if (parsingResponse.error) {
+          return {
+            status: "error",
+            error: String(parsingResponse.error),
+          };
+        }
+        const updatedProject = await udpateProjectConfigByProjectIdAndUserId(
+          parsingResponse.data,
+          userId,
+        );
+
+        return {
+          status: "ok",
+          details: `You project is updated you can check at:${env.FRONTEND_URL}/projects/${updatedProject.id}`,
+        };
+      } catch (e) {
+        return {
+          status: "error",
+          error: String(e),
+        };
+      }
+    },
+  });
+
+export const createAndSaveProjectTool = (userId: string): Tool =>
   tool({
     description:
       "This final to be needed to only called when wanna save the project to database",

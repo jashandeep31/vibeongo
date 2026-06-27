@@ -26,7 +26,6 @@ import * as Sentry from "@sentry/node";
 import { WebSocketServer } from "ws";
 import { createServer } from "node:http";
 import { SocketHandler } from "./websocket/socket-handler.js";
-import * as cookie from "cookie";
 import jwt from "jsonwebtoken";
 const app = express();
 

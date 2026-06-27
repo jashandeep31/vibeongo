@@ -8,12 +8,14 @@ import {
   getInstanceCatalogAITool,
   getUserReposAITool,
   getUserSshKeysAITool,
-  createAndSaveProject,
+  createAndSaveProjectTool,
+  updateProjectByIdTool,
 } from "../../ai/ai-tools/project-ai-tools.js";
 import { projectValidatorForAIInput } from "@repo/shared";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
 import { prompts } from "../../ai/prompts/index.js";
+import { updateProjectById } from "../../controllers/project/projects.js";
 
 type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
   chatAnswer: typeof chatAnswer.$inferSelect | null;
@@ -235,7 +237,8 @@ async function* aiWork(
       getAllProjectNameAndIds: getAllProjectNameAndIds(userId),
       getOtherProjectConfigById: getOtherProjectConfigById(userId),
       createNewGithubRepo: createNewGithubRepo(userId),
-      createAndSaveProjectAITool: createAndSaveProject(userId),
+      createAndSaveProjectAITool: createAndSaveProjectTool(userId),
+      updateProjectById: updateProjectByIdTool(userId),
     },
     stopWhen: stepCountIs(20),
     messages: [...history, { role: "user", content: question }],
