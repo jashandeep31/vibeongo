@@ -13,8 +13,6 @@ type OpencodeWeb struct {
 	Running bool
 }
 
-var Opencode = &OpencodeWeb{}
-
 func NewOpencodeWeb() *OpencodeWeb {
 	return &OpencodeWeb{}
 }
@@ -95,5 +93,4 @@ func (o *OpencodeWeb) StopWebServer() error {
 	}
 	o.Running = false
 	return nil
-
 }

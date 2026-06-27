@@ -18,7 +18,11 @@ func Start() error {
 	e := echo.New()
 
 	// spinning up the opencode web server
-	openCode := store.NewOpencodeWeb()
+	// openCode := store.NewOpencodeWeb()
+	// t3Code := store.NewT3Code()
+
+	tools := store.NewTools()
+
 	// NOTE: we are not using this option any more as this starting the opencode server before the complete setup causes the issue of not loading the folders of that project properly
 	// go func() {
 	// 	if err := openCode.StartWebServer(); err != nil {
@@ -39,7 +43,7 @@ func Start() error {
 	e.Use(middleware.RequestLogger())
 
 	// routes of app
-	routes.Register(e, openCode)
+	routes.Register(e, tools)
 
 	// address := ":" + config.ENV.PORT
 	address := ":" + "3101"
