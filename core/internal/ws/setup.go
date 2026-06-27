@@ -19,7 +19,7 @@ var upgrader = websocket.Upgrader{
 
 var TerminalStore = store.NewSessionStore()
 
-func WebSocket(opencodeweb *store.OpencodeWeb) echo.HandlerFunc {
+func WebSocket(tools *store.Tools) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
@@ -27,6 +27,6 @@ func WebSocket(opencodeweb *store.OpencodeWeb) echo.HandlerFunc {
 		}
 		defer conn.Close()
 
-		return wsfunctions.HandleConnection(c.Request().Context(), conn, TerminalStore, opencodeweb)
+		return wsfunctions.HandleConnection(c.Request().Context(), conn, TerminalStore, tools)
 	}
 }

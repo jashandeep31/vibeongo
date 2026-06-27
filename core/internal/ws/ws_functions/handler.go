@@ -9,7 +9,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
-func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *store.SessionStore, opencodeweb *store.OpencodeWeb) error {
+func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *store.SessionStore, tools *store.Tools) error {
 	// create the mutex to make sure only one is sending the resposne at a time
 	var writeMu sync.Mutex
 	var activeMu sync.RWMutex
@@ -91,7 +91,7 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 		}
 
 		// passing the messages to the opencode handler to check if it can do something with it
-		handled, err := OpencodewebHandler(ctx, conn, &writeMu, msg, opencodeweb)
+		handled, err := OpencodewebHandler(ctx, conn, &writeMu, msg, tools.OpenCode)
 		if err != nil {
 			return err
 		}
