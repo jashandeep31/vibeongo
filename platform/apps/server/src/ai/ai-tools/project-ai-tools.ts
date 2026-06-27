@@ -4,16 +4,46 @@ import {
   db,
   eq,
   githubRepos,
+  inArray,
   instanceRegions,
   instanceTypes,
   projects,
   sshKeys,
 } from "@repo/db";
 import { tool, Tool } from "ai";
-import { z } from "zod";
+import { string, z } from "zod";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { AppError } from "../../lib/app-error.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
+import { projectConfigValidator } from "@repo/shared";
+import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
+import { env } from "../../lib/env.js";
+
+export const createAndSaveProject = (userId: string): Tool =>
+  tool({
+    description:
+      "This final to be needed to only called when wanna save the project to database",
+    strict: true,
+    inputSchema: projectConfigValidator,
+    execute: async (rawInput: z.infer<typeof projectConfigValidator>) => {
+      const parsingResponse = projectConfigValidator.safeParse(rawInput);
+      if (parsingResponse.error) {
+        return {
+          error: "Error in config fix",
+          deatils: string(parsingResponse.error),
+        };
+      }
+      const parsedData = parsingResponse.data;
+      const resp = await createProjectWithConfigAndUserIdService(
+        parsedData,
+        userId,
+      );
+      return {
+        status: "ok",
+        message: `Your is project is created check at: ${env.FRONTEND_URL}/projects/${resp.id}`,
+      };
+    },
+  });
 
 export const getUserReposAITool = (userId: string): Tool =>
   tool({
