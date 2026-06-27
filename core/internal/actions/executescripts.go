@@ -25,6 +25,10 @@ func ExecuteIntialScript() error {
 		return err
 	}
 
+	if err := ProvisionCodex(cfg.Codex); err != nil {
+		return err
+	}
+
 	tempScriptFile, err := os.CreateTemp("", "temp.sh")
 	if err != nil {
 		return err
@@ -64,7 +68,9 @@ func ExecuteFinalScript() error {
 	if err := ProvisionOpenCode(cfg.OpenCode); err != nil {
 		return err
 	}
-
+	if err := ProvisionCodex(cfg.Codex); err != nil {
+		return err
+	}
 	tempScriptFile, err := os.CreateTemp("", "temp-*.sh")
 	if err != nil {
 		return err

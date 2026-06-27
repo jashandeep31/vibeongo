@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
+import CodexConfigCard from "./codex-config-card";
 import OpencodeConfigCard from "./opencode-config-card";
 // import { useConfigStore } from "@/store/config-store";
 
@@ -16,6 +17,7 @@ function AdditionalServices() {
       <div className="space-y-4">
         {/* <DockerConfigCard /> */}
         <OpencodeConfigCard />
+        <CodexConfigCard />
         {/* <NvimConfigCard /> */}
       </div>
     </div>

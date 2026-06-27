@@ -71,6 +71,7 @@ export default function ProjectConfigForm({
   const updateOpencodeConfig = useConfigStore(
     (state) => state.updateOpencodeConfig,
   );
+  const updateCodexConfig = useConfigStore((state) => state.updateCodexConfig);
   const updateNvimConfig = useConfigStore((state) => state.updateNvimConfig);
   const selectedProjectName = useMemo(
     () => projects?.find((project) => project.id === selectedProjectId)?.name,
@@ -83,6 +84,7 @@ export default function ProjectConfigForm({
     const config = selectedProjectConfig.config as ProjectConfig;
     const dockerPackage = getPackage(config, "docker");
     const opencodePackage = getPackage(config, "opencode");
+    const codexPackage = getPackage(config, "codex");
     const nvimPackage = getPackage(config, "nvim");
 
     setInstanceTypeId(selectedProjectConfig.instanceTypeId);
@@ -128,6 +130,11 @@ export default function ProjectConfigForm({
         typeof opencodePackage?.config?.requirePassword === "boolean"
           ? opencodePackage.config.requirePassword
           : false,
+    });
+
+    updateCodexConfig({
+      enabled: codexPackage?.enabled ?? false,
+      authJson: JSON.stringify(codexPackage?.config?.auth_json ?? {}, null, 2),
     });
 
     updateNvimConfig({

@@ -14,7 +14,4 @@ func Register(e *echo.Echo, openCode *store.OpencodeWeb) {
 	e.POST("/reboot", handlers.RebootServer)
 	e.POST("/restart-final-script", handlers.RestartFinalScriptHandler)
 	// e.GET("/terminate", , m ...echo.MiddlewareFunc)
-
-	e.GET("/opencode/web/status", handlers.OpenCodeWebStatus(openCode))
-	e.POST("/opencode/web", handlers.OpenCodeWebActions(openCode))
 }

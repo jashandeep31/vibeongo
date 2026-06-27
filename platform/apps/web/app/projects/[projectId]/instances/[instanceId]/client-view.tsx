@@ -119,20 +119,20 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const isTargetInstance =
     projectDomainsData?.target_instance_id === instanceId;
 
-  const domainFor8080 = isTargetInstance
+  const vibeongoDomain = isTargetInstance
     ? projectDomainsData?.proxy_domains?.find(
-        (domain) => domain.target_port === 8080,
+        (domain) => domain.target_port === 3101,
       )?.domain
     : null;
 
-  const domainFor4096 = isTargetInstance
+  const opencodeCodeDomain = isTargetInstance
     ? projectDomainsData?.proxy_domains?.find(
         (domain) => domain.target_port === 4096,
       )?.domain
     : null;
 
   const { data: currentUserIp, isLoading: isCurrentIpLoading } =
-    useCurrentUserIp(domainFor8080);
+    useCurrentUserIp(vibeongoDomain);
 
   const Instance_IP = instance?.public_ip || "localhost";
   const currentIp = currentUserIp?.trim() ?? "";
@@ -147,8 +147,8 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   // const domainFor4096 = "localhost:4096";
   // const Instance_IP = "localhost";
   //
-  const terminalHealthCheckUrl = domainFor8080
-    ? `https://${domainFor8080}`
+  const terminalHealthCheckUrl = vibeongoDomain
+    ? `https://${vibeongoDomain}`
     : null;
   const sshCommand = instance?.public_ip
     ? `ssh ubuntu@${String(Instance_IP)}`
@@ -283,8 +283,8 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       return;
     }
     try {
-      const rebootUrl = domainFor8080
-        ? `https://${domainFor8080}/reboot`
+      const rebootUrl = vibeongoDomain
+        ? `https://${vibeongoDomain}/reboot`
         : `http://${Instance_IP}:8080/reboot`;
       const res = await axios.post(rebootUrl, {});
       if (res.status === 200) {
@@ -298,7 +298,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   const handleRestartFinalScript = async () => {
-    if (!domainFor8080 || isTerminated || isRestartingFinalScript) {
+    if (!vibeongoDomain || isTerminated || isRestartingFinalScript) {
       return;
     }
 
@@ -306,7 +306,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     setIsRestartingFinalScript(true);
 
     try {
-      await axios.post(`https://${domainFor8080}/restart-final-script`, {});
+      await axios.post(`https://${vibeongoDomain}/restart-final-script`, {});
       toast.success("Dev script restarted", { id: toastId });
     } catch {
       toast.error("Failed to restart dev script", { id: toastId });
@@ -454,7 +454,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           size="icon-sm"
           variant="outline"
           onClick={handleReboot}
-          disabled={!domainFor8080}
+          disabled={!vibeongoDomain}
           aria-label="Reboot"
           title="Reboot"
           className="sm:h-9 sm:w-auto sm:gap-1.5 sm:px-2.5"
@@ -554,7 +554,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <WebSocketProvider socketUrl={domainFor8080}>
+    <WebSocketProvider socketUrl={vibeongoDomain}>
       <div className="w-full max-w-full min-w-0 space-y-12 overflow-x-hidden p-4 md:p-8">
         <ConfirmationDialog
           open={isCurrentIpDialogOpen}
@@ -611,7 +611,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             <Loader2 className="mr-2 h-6 w-6 animate-spin" />
             Loading instance routing...
           </Card>
-        ) : !domainFor8080 ? (
+        ) : !vibeongoDomain ? (
           <Card className="text-muted-foreground p-6 text-center">
             To view the Terminal, CPU Usage, and Opencode Web, please make this
             instance the default for the project. You need to assign domains to
@@ -642,8 +642,8 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
                 />
                 <ProjectInstanceStats />
                 <OpencodeWebCard
-                  domainFor8080={domainFor8080 || null}
-                  domainFor4096={domainFor4096 || null}
+                  domainFor8080={vibeongoDomain || null}
+                  domainFor4096={opencodeCodeDomain || null}
                   isTerminated={isTerminated}
                   opencodePassword={opencodePassword}
                 />

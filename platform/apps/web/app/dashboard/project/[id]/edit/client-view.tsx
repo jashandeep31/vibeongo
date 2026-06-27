@@ -45,6 +45,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   const updateOpencodeConfig = useConfigStore(
     (state) => state.updateOpencodeConfig,
   );
+  const updateCodexConfig = useConfigStore((state) => state.updateCodexConfig);
   const updateNvimConfig = useConfigStore((state) => state.updateNvimConfig);
 
   useEffect(() => {
@@ -54,6 +55,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     const config = projectConfig.config as ProjectConfig;
     const dockerPackage = getPackage(config, "docker");
     const opencodePackage = getPackage(config, "opencode");
+    const codexPackage = getPackage(config, "codex");
     const nvimPackage = getPackage(config, "nvim");
 
     setProjectName(projectConfig.project.name);
@@ -103,6 +105,11 @@ const ClientView = ({ projectId }: { projectId: string }) => {
           : false,
     });
 
+    updateCodexConfig({
+      enabled: codexPackage?.enabled ?? false,
+      authJson: JSON.stringify(codexPackage?.config?.auth_json ?? {}, null, 2),
+    });
+
     updateNvimConfig({
       enabled: nvimPackage?.enabled ?? false,
       config:
@@ -123,6 +130,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setDevScript,
     setSshKeys,
     updateDockerConfig,
+    updateCodexConfig,
     updateNvimConfig,
     updateOpencodeConfig,
   ]);

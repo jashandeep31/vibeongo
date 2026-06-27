@@ -55,6 +55,24 @@ export const buildProjectConfigPayload = (
         },
       },
       {
+        name: "codex",
+        enabled: state.additionalServices.codexConfig.enabled || false,
+        config: {
+          auth_json: (() => {
+            try {
+              return JSON.parse(
+                state.additionalServices.codexConfig.authJson || "{}",
+              );
+            } catch {
+              return {
+                error: "Invalid JSON",
+                raw: state.additionalServices.codexConfig.authJson,
+              };
+            }
+          })(),
+        },
+      },
+      {
         name: "nvim",
         enabled: state.additionalServices.nvimConfig.enabled || false,
         config: {
