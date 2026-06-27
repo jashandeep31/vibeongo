@@ -119,7 +119,7 @@ export async function* projectAIAgent({
       text: "",
       updatedConfig,
       usage: await result.usage,
-      steps: await result.steps,
+      steps,
     };
   }
 }

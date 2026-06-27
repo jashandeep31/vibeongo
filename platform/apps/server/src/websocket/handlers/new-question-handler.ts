@@ -118,6 +118,9 @@ export const newQuestionHandler = async (
   let reasoning = "";
   let answer = "";
   let updatedConfig: unknown = null;
+  let steps: unknown = null;
+  let usage: unknown = null;
+  let finishReason: string | null = null;
 
   const sendQuestionUpdate = () => {
     socket.send(
@@ -129,6 +132,10 @@ export const newQuestionHandler = async (
             ...newAnswer,
             answer,
             reasoning,
+            memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+            steps,
+            usage,
+            finish_reason: finishReason,
           },
         },
       }),
@@ -148,6 +155,15 @@ export const newQuestionHandler = async (
     if (res.updatedConfig) {
       updatedConfig = res.updatedConfig;
     }
+    if (res.steps) {
+      steps = res.steps;
+    }
+    if (res.usage) {
+      usage = res.usage;
+    }
+    if (res.finish_reason) {
+      finishReason = res.finish_reason;
+    }
     sendQuestionUpdate();
   }
 
@@ -161,6 +177,10 @@ export const newQuestionHandler = async (
       ...newAnswer,
       reasoning: reasoning,
       answer: answer,
+      memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+      steps,
+      usage,
+      finish_reason: finishReason,
     });
   });
 
@@ -173,6 +193,10 @@ export const newQuestionHandler = async (
           ...newAnswer,
           answer,
           reasoning,
+          memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+          steps,
+          usage,
+          finish_reason: finishReason,
         },
       },
     }),
