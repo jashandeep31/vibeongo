@@ -2,6 +2,8 @@ package store
 
 import (
 	"fmt"
+	"os/exec"
+	"regexp"
 	"sync"
 
 	"github.com/jashandeep31/vibeongo/core/internal/utils"
@@ -62,6 +64,22 @@ func (c *T3Code) Status() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.Running
+}
+func (c *T3Code) SetAndGetPassword() (string, error) {
+	cmd := exec.Command("t3", "auth", "pairing", "create")
+
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return "", err
+	}
+
+	re := regexp.MustCompile(`Token:\s*(\S+)`)
+	match := re.FindSubmatch(out)
+	if len(match) < 2 {
+		return "", fmt.Errorf("token not found")
+	}
+
+	return string(match[1]), nil
 }
 
 func (c *T3Code) RestartT3Code() error {
