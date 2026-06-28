@@ -35,7 +35,7 @@ export function NewChatInput() {
         "chatId" in message.data &&
         typeof message.data.chatId === "string"
       ) {
-        router.push(`/dashboard/project/ai-create/${message.data.chatId}`);
+        router.push(`/chats/${message.data.chatId}`);
       }
     };
 

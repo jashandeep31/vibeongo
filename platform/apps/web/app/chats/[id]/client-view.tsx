@@ -175,7 +175,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
   ]);
 
   return (
-    <div className="bg-background text-foreground relative flex h-[calc(100dvh-3rem)] flex-col justify-between">
+    <div className="bg-background text-foreground relative flex flex-col justify-between">
       <div
         ref={scrollAreaRef}
         onScroll={updateScrollButtonVisibility}

@@ -1,4 +1,5 @@
 import { ChatsSidebar } from "@/components/chats-sidebar";
+import ProjectsNavbar from "@/components/projects-navbar";
 import { VibeSocketProvider } from "@/hooks/use-vibe-socket";
 import { SidebarProvider } from "@repo/ui/components/sidebar";
 
@@ -7,8 +8,11 @@ const layout = ({ children }: { children: React.ReactNode }) => {
     <div>
       <SidebarProvider>
         <ChatsSidebar />
+        <ProjectsNavbar />
         <VibeSocketProvider>
-          <main className="grid w-full">{children}</main>
+          <main className="grid h-dvh min-h-0 w-full grid-rows-[minmax(0,1fr)] overflow-hidden pt-[56px] md:mt-0">
+            {children}
+          </main>
         </VibeSocketProvider>
       </SidebarProvider>
     </div>
