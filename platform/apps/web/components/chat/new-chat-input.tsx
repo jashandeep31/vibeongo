@@ -76,7 +76,9 @@ export function NewChatInput() {
       <div className="flex items-center justify-end p-2">
         <Button
           type="submit"
-          disabled={!question.trim() || websocket?.readyState !== WebSocket.OPEN}
+          disabled={
+            !question.trim() || websocket?.readyState !== WebSocket.OPEN
+          }
           className="bg-primary text-primary-foreground h-12 w-12 rounded-full shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-md active:scale-95"
           size="icon"
         >

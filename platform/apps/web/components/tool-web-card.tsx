@@ -56,7 +56,6 @@ export function ToolWebCard({
     useState<PasswordPendingAction>(null);
   const [isPasswordCopied, setIsPasswordCopied] = useState(false);
   const copyResetTimerRef = useRef<number | null>(null);
-  const pendingPairWindowRef = useRef<Window | null>(null);
   const shouldCopyPasswordOnReceiveRef = useRef(false);
   const shouldOpenPairOnPasswordReceiveRef = useRef(false);
   const shouldRequestPasswordOnStartedRef = useRef(false);
@@ -88,26 +87,10 @@ export function ToolWebCard({
       }
 
       const pairUrl = `${url.replace(/\/$/, "")}/pair#token=${encodeURIComponent(token)}`;
-      const pendingPairWindow = pendingPairWindowRef.current;
-      pendingPairWindowRef.current = null;
-
-      if (pendingPairWindow && !pendingPairWindow.closed) {
-        pendingPairWindow.location.href = pairUrl;
-        return;
-      }
-
       window.open(pairUrl, "_blank", "noopener,noreferrer");
     },
     [url],
   );
-
-  const closePendingPairWindow = useCallback(() => {
-    if (pendingPairWindowRef.current && !pendingPairWindowRef.current.closed) {
-      pendingPairWindowRef.current.close();
-    }
-
-    pendingPairWindowRef.current = null;
-  }, []);
 
   const sendToolAction = useCallback(
     (action: ToolAction) => {
@@ -144,10 +127,8 @@ export function ToolWebCard({
       if (copyResetTimerRef.current) {
         window.clearTimeout(copyResetTimerRef.current);
       }
-
-      closePendingPairWindow();
     };
-  }, [closePendingPairWindow]);
+  }, []);
 
   useEffect(() => {
     if (!url || isTerminated) {
@@ -159,9 +140,8 @@ export function ToolWebCard({
       shouldCopyPasswordOnReceiveRef.current = false;
       shouldOpenPairOnPasswordReceiveRef.current = false;
       shouldRequestPasswordOnStartedRef.current = false;
-      closePendingPairWindow();
     }
-  }, [closePendingPairWindow, isTerminated, url]);
+  }, [isTerminated, url]);
 
   useEffect(() => {
     if (!websocket) {
@@ -231,7 +211,6 @@ export function ToolWebCard({
         shouldCopyPasswordOnReceiveRef.current = false;
         shouldOpenPairOnPasswordReceiveRef.current = false;
         shouldRequestPasswordOnStartedRef.current = false;
-        closePendingPairWindow();
       }
     });
 
@@ -239,7 +218,6 @@ export function ToolWebCard({
       unsubscribeMessages();
     };
   }, [
-    closePendingPairWindow,
     copyPassword,
     redirectToPair,
     redirectToTool,
@@ -274,11 +252,6 @@ export function ToolWebCard({
           return;
         }
 
-        pendingPairWindowRef.current = window.open("about:blank", "_blank");
-        if (pendingPairWindowRef.current) {
-          pendingPairWindowRef.current.opener = null;
-        }
-
         setPasswordPendingAction("open");
         setError(null);
         shouldOpenPairOnPasswordReceiveRef.current = true;
@@ -298,11 +271,6 @@ export function ToolWebCard({
     setPendingAction("start");
     setError(null);
     if (canRequestPassword) {
-      pendingPairWindowRef.current = window.open("about:blank", "_blank");
-      if (pendingPairWindowRef.current) {
-        pendingPairWindowRef.current.opener = null;
-      }
-
       setPasswordPendingAction("open");
       shouldRequestPasswordOnStartedRef.current = true;
     } else {
@@ -324,7 +292,6 @@ export function ToolWebCard({
     shouldCopyPasswordOnReceiveRef.current = false;
     shouldOpenPairOnPasswordReceiveRef.current = false;
     shouldRequestPasswordOnStartedRef.current = false;
-    closePendingPairWindow();
     sendToolAction("stop");
   };
 
@@ -337,11 +304,6 @@ export function ToolWebCard({
     setPendingAction("restart");
     setError(null);
     if (canRequestPassword) {
-      pendingPairWindowRef.current = window.open("about:blank", "_blank");
-      if (pendingPairWindowRef.current) {
-        pendingPairWindowRef.current.opener = null;
-      }
-
       setPasswordPendingAction("open");
       shouldRequestPasswordOnStartedRef.current = true;
     } else {
