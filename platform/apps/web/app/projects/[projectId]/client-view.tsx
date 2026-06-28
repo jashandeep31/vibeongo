@@ -11,13 +11,7 @@ import { useGetInstances } from "@/hooks/use-instance";
 import type { ProjectInstanceStateFilter } from "@/services/instance-services";
 import { useDeleteProject, useGetProjectById } from "@/hooks/use-project";
 import { Button } from "@repo/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/components/card";
+import { Card, CardContent } from "@repo/ui/components/card";
 import {
   FileCode2,
   MoreHorizontal,
@@ -28,6 +22,7 @@ import {
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuLabel,
   DropdownMenuItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -42,13 +37,28 @@ type InstanceFilter = ProjectInstanceStateFilter;
 const PROJECT_INSTANCES_LIMIT = 10;
 const PROJECT_SESSIONS_LIMIT = 10;
 
-const formatDate = (value: unknown) => {
-  if (!value) return "N/A";
+const getInstanceEmptyCopy = (filter: InstanceFilter) => {
+  if (filter === "running") {
+    return {
+      title: "No running instances",
+      description:
+        "Launch an instance when you are ready to run this project, open terminals, or preview exposed domains.",
+    };
+  }
 
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return String(value);
+  if (filter === "terminated") {
+    return {
+      title: "No terminated instances",
+      description:
+        "Stopped instances will appear here after you terminate project work.",
+    };
+  }
 
-  return date.toLocaleString();
+  return {
+    title: "No instances yet",
+    description:
+      "This project has not launched any instances. Start one to create a live workspace.",
+  };
 };
 
 export default function ClientView({ projectId }: { projectId: string }) {
@@ -114,12 +124,23 @@ export default function ClientView({ projectId }: { projectId: string }) {
 
   const projectInstances = instances?.data ?? [];
   const projectSessions = sessions?.data ?? [];
+  const totalCharges = (project.total_charges / 10000).toFixed(2);
+  const instanceEmptyCopy = getInstanceEmptyCopy(instanceFilter);
 
   return (
     <div className="space-y-8 p-4 md:p-8">
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">
+              {project.name}
+            </h1>
+            {project.description ? (
+              <p className="text-muted-foreground mt-2">
+                {project.description}
+              </p>
+            ) : null}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <CreateInstanceDialog
               projectId={projectId}
@@ -138,6 +159,13 @@ export default function ClientView({ projectId }: { projectId: string }) {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-44">
+                <DropdownMenuLabel className="text-muted-foreground flex items-center justify-between gap-3 text-xs font-normal">
+                  <span>Total charges</span>
+                  <span className="text-foreground font-medium">
+                    ${totalCharges}
+                  </span>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
                   <Link href={`/dashboard/project/${projectId}/edit`}>
                     <Settings className="h-4 w-4" />
@@ -175,56 +203,28 @@ export default function ClientView({ projectId }: { projectId: string }) {
             </DropdownMenu>
           </div>
         </div>
-        <p className="text-muted-foreground mt-2">
-          {project.description || "No description provided."}
-        </p>
       </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Project Information</CardTitle>
-          <CardDescription>
-            Basic details and metadata for this project.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-4 text-sm md:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <p className="text-muted-foreground">Total Charges</p>
-              <p className="font-medium">${project.total_charges / 10000}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Created At</p>
-              <p className="font-medium">{formatDate(project.created_at)}</p>
-            </div>
-            <div>
-              <p className="text-muted-foreground">Updated At</p>
-              <p className="font-medium">{formatDate(project.updated_at)}</p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
 
       <div className="space-y-4">
         <div className="space-y-3">
           <h2 className="text-2xl font-semibold tracking-tight">Instances</h2>
           <div className="flex flex-wrap gap-2">
-            {(
-              ["running", "terminated", "all"] as InstanceFilter[]
-            ).map((filter) => (
-              <Button
-                key={filter}
-                type="button"
-                size="sm"
-                variant={instanceFilter === filter ? "default" : "outline"}
-                onClick={() => {
-                  setInstanceFilter(filter);
-                  setInstancePage(1);
-                }}
-              >
-                {filter.charAt(0).toUpperCase() + filter.slice(1)}
-              </Button>
-            ))}
+            {(["running", "terminated", "all"] as InstanceFilter[]).map(
+              (filter) => (
+                <Button
+                  key={filter}
+                  type="button"
+                  size="sm"
+                  variant={instanceFilter === filter ? "default" : "outline"}
+                  onClick={() => {
+                    setInstanceFilter(filter);
+                    setInstancePage(1);
+                  }}
+                >
+                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
+                </Button>
+              ),
+            )}
           </div>
         </div>
 
@@ -241,12 +241,26 @@ export default function ClientView({ projectId }: { projectId: string }) {
             </CardContent>
           </Card>
         ) : projectInstances.length === 0 ? (
-          <Card>
-            <CardContent className="text-muted-foreground py-8 text-center">
-              No {instanceFilter === "all" ? "" : `${instanceFilter} `}
-              instances found for this project.
-            </CardContent>
-          </Card>
+          <div className="text-muted-foreground rounded-lg border border-dashed p-12 text-center">
+            <h3 className="text-foreground text-lg font-medium">
+              {instanceEmptyCopy.title}
+            </h3>
+            <p className="mt-1 text-sm">{instanceEmptyCopy.description}</p>
+            {instanceFilter === "running" ? (
+              <div className="mt-4">
+                <CreateInstanceDialog
+                  projectId={projectId}
+                  projectName={project.name}
+                  triggerLabel="Launch instance"
+                  triggerIcon={<Rocket className="h-4 w-4" />}
+                  onSuccess={() => {
+                    void refetchInstances();
+                    void refetchSessions();
+                  }}
+                />
+              </div>
+            ) : null}
+          </div>
         ) : (
           <div className="grid gap-4 lg:grid-cols-2">
             {projectInstances.map((instance) => (
@@ -290,6 +304,8 @@ export default function ClientView({ projectId }: { projectId: string }) {
           sessions={projectSessions}
           isLoading={isSessionsLoading}
           isError={isSessionsError}
+          emptyTitle="No project sessions"
+          emptyDescription="Sessions track task context separately from live instances. Create or resume work to see that history here."
         />
         <PaginationControls
           page={sessions?.page ?? sessionPage}
