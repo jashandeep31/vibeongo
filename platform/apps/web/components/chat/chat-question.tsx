@@ -76,7 +76,9 @@ export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
           </div>
         ) : null}
         {hasAnswer ? (
-          <MarkdownRenderer content={answer?.answer ?? ""} />
+          <div className="grid grid-cols-1">
+            <MarkdownRenderer content={answer?.answer ?? ""} />
+          </div>
         ) : isStreaming && !hasResponseText ? (
           <LoadingResponseSkeleton />
         ) : null}
