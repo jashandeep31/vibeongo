@@ -10,7 +10,7 @@ const layout = ({ children }: { children: React.ReactNode }) => {
         <ChatsSidebar />
         <ProjectsNavbar />
         <VibeSocketProvider>
-          <main className="grid h-dvh min-h-0 w-full grid-rows-[minmax(0,1fr)] overflow-hidden pt-[56px] md:mt-0">
+          <main className="grid h-dvh min-h-0 w-full grid-rows-[minmax(0,1fr)] overflow-hidden pt-[56px] md:mt-0 md:pt-0">
             {children}
           </main>
         </VibeSocketProvider>

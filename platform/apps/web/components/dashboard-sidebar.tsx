@@ -35,7 +35,6 @@ import {
   CreditCard,
   Github,
   LucideIcon,
-  PlusCircle,
   Settings,
   FolderOpen,
   Home,
@@ -44,6 +43,7 @@ import {
   MessageSquare,
   MoreVertical,
   Wallet,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -176,7 +176,7 @@ const sidebarLinks: {
   {
     title: "Create Project",
     url: "/dashboard/project/create",
-    icon: PlusCircle,
+    icon: Plus,
   },
   {
     title: "Chats",

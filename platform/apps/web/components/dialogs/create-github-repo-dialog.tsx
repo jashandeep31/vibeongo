@@ -19,7 +19,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { Field, FieldError, FieldLabel } from "@repo/ui/components/field";
 import { toast } from "sonner";
-import { PlusCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import axios from "axios";
 
 type CreateGithubRepoFormValues = z.input<typeof createGithubRepoSchema>;
@@ -60,7 +60,7 @@ export function CreateGithubRepoDialog() {
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button variant="outline" size="sm">
-          <PlusCircle className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" />
           Add Repository
         </Button>
       </DialogTrigger>

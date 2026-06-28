@@ -36,7 +36,7 @@ import {
   MessageSquare,
   MoreHorizontal,
   Pencil,
-  PlusCircle,
+  Plus,
   Settings,
   Trash2,
 } from "lucide-react";
@@ -57,7 +57,7 @@ const sidebarLinks: {
   {
     title: "New Chat",
     url: "/chats",
-    icon: PlusCircle,
+    icon: Plus,
   },
   {
     title: "Repos",
@@ -213,10 +213,7 @@ export function ChatsSidebar() {
                             asChild
                             className="bg-background text-foreground hover:bg-background hover:text-foreground active:bg-background active:text-foreground data-active:bg-background data-active:text-foreground cursor-pointer"
                           >
-                            <Link
-                              href={item.url}
-                              onClick={closeMobileSidebar}
-                            >
+                            <Link href={item.url} onClick={closeMobileSidebar}>
                               <item.icon />
                               <span>{item.title}</span>
                             </Link>
@@ -241,7 +238,7 @@ export function ChatsSidebar() {
                   className="text-sidebar-foreground hover:text-sidebar-foreground active:bg-background active:text-sidebar-foreground data-active:bg-background data-active:text-sidebar-foreground cursor-pointer"
                 >
                   <Link href="/chats" onClick={closeMobileSidebar}>
-                    <PlusCircle className="h-4 w-4" />
+                    <Plus className="h-4 w-4" />
                     <span>New Chat</span>
                   </Link>
                 </SidebarMenuButton>

@@ -15,7 +15,7 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { z } from "@repo/shared";
-import { PlusCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { toast } from "sonner";
 
 const MIN_CREDIT_AMOUNT = 5;
@@ -74,7 +74,7 @@ export function BuyCreditsDialog() {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
         <Button type="button" size="lg">
-          <PlusCircle className="h-4 w-4" />
+          <Plus className="h-4 w-4" />
           Buy Credits
         </Button>
       </DialogTrigger>
