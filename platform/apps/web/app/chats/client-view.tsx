@@ -7,7 +7,7 @@ export default function ClientView() {
   useVibeSocket();
 
   return (
-    <div className="bg-background flex min-h-0 w-full flex-1 flex-col">
+    <div className="bg-background flex min-h-0 w-full flex-1 flex-col md:mt-24">
       <div className="min-h-0 flex-1 overflow-y-auto px-4 py-6 md:px-8 md:py-10">
         <div className="mx-auto flex min-h-full w-full max-w-4xl items-center justify-center text-center">
           <h1 className="text-3xl font-semibold tracking-tight md:text-5xl">

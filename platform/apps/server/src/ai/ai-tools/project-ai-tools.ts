@@ -146,7 +146,7 @@ export const getAllProjectNameAndIds = (userId: string): Tool =>
       return await db
         .select({ name: projects.name, id: projects.id })
         .from(projects)
-        .where(eq(projects.user_id, userId));
+        .where(and(eq(projects.user_id, userId), eq(projects.deleted, false)));
     },
   });
 export const getOtherProjectConfigById = (userId: string): Tool =>
@@ -162,7 +162,13 @@ export const getOtherProjectConfigById = (userId: string): Tool =>
       const [project] = await db
         .select()
         .from(projects)
-        .where(and(eq(projects.user_id, userId), eq(projects.id, input.id)));
+        .where(
+          and(
+            eq(projects.user_id, userId),
+            eq(projects.id, input.id),
+            eq(projects.deleted, false),
+          ),
+        );
 
       if (!project) {
         return {

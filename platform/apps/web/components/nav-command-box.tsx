@@ -50,6 +50,7 @@ const NavCommandBox = () => {
     { label: "Dashboard (Home)", href: "/dashboard" },
     { label: "My Projects", href: "/projects" },
     { label: "Create Project", href: "/dashboard/project/create" },
+    { label: "Chats", href: "/chats" },
     { label: "Sessions", href: "/dashboard/sessions" },
     { label: "Repos", href: "/dashboard/repos" },
     { label: "Wallet", href: "/dashboard/wallet" },

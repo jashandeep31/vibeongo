@@ -31,7 +31,13 @@ export const udpateProjectConfigByProjectIdAndUserId = async (
   const [projectRow] = await db
     .select({ id: projects.id })
     .from(projects)
-    .where(and(eq(projects.user_id, userId), eq(projects.id, projectId)));
+    .where(
+      and(
+        eq(projects.user_id, userId),
+        eq(projects.id, projectId),
+        eq(projects.deleted, false),
+      ),
+    );
 
   if (!projectRow) throw new AppError("project not found", 404);
 
