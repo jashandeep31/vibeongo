@@ -85,13 +85,19 @@ const ErrorState = () => (
   </div>
 );
 
-const EmptyState = () => (
+type EmptyStateProps = {
+  title?: string;
+  description?: string;
+};
+
+const EmptyState = ({
+  title = "No sessions found",
+  description = "Start a project session to see it listed here.",
+}: EmptyStateProps) => (
   <div className="text-muted-foreground rounded-lg border border-dashed p-12 text-center">
     <Clock3 className="mx-auto mb-4 h-10 w-10 opacity-50" />
-    <h3 className="text-foreground text-lg font-medium">No sessions found</h3>
-    <p className="mt-1 text-sm">
-      Start a project session to see it listed here.
-    </p>
+    <h3 className="text-foreground text-lg font-medium">{title}</h3>
+    <p className="mt-1 text-sm">{description}</p>
   </div>
 );
 
@@ -287,6 +293,8 @@ type ProjectSessionsListProps = {
   isLoading: boolean;
   isError: boolean;
   isArchivedView?: boolean;
+  emptyTitle?: string;
+  emptyDescription?: string;
 };
 
 export function ProjectSessionsList({
@@ -294,6 +302,8 @@ export function ProjectSessionsList({
   isLoading,
   isError,
   isArchivedView = false,
+  emptyTitle,
+  emptyDescription,
 }: ProjectSessionsListProps) {
   const resumeSessionMutation = useResumeProjectSession();
   const archiveSessionMutation = useArchiveProjectSession();
@@ -355,7 +365,9 @@ export function ProjectSessionsList({
 
   if (isLoading) return <LoadingState />;
   if (isError) return <ErrorState />;
-  if (sessions.length === 0) return <EmptyState />;
+  if (sessions.length === 0) {
+    return <EmptyState title={emptyTitle} description={emptyDescription} />;
+  }
 
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
