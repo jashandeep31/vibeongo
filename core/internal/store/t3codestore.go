@@ -68,7 +68,7 @@ func (c *T3Code) Status() bool {
 }
 func (c *T3Code) SetAndGetPassword() (string, error) {
 	// cmd := exec.Command("t3", "auth", "pairing", "create")
-	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, "t3 auth session create")
+	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, "t3 auth pairing create")
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
