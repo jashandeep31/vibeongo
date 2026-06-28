@@ -23,6 +23,7 @@ import {
   CreditCard,
   GitFork,
   LucideIcon,
+  MessageSquare,
   PlusCircle,
   Server,
   Settings,
@@ -44,6 +45,11 @@ const sidebarLinks: {
     title: "Create Project",
     url: "/dashboard/project/create",
     icon: PlusCircle,
+  },
+  {
+    title: "Chats",
+    url: "/chats",
+    icon: MessageSquare,
   },
   {
     title: "Repos",
