@@ -34,9 +34,9 @@ export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
         </div>
       </div>
 
-      <div className="max-w-3xl">
+      <div className="">
         {reasoning ? (
-          <div className="mb-4">
+          <div className="mb-4 max-w-[75%]">
             <div
               className={
                 isReasoningExpanded
