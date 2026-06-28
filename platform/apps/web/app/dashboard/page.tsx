@@ -1,4 +1,4 @@
-import { NewChatInput } from "@/components/chat/new-chat-input";
+import { PromptInput } from "@/components/chat/prompt-input";
 import { ProjectList } from "@/components/project/project-list";
 import { RunningInstancesList } from "@/components/project/running-instances-list";
 import { getSession } from "@/lib/getSession";
@@ -21,7 +21,7 @@ export default async function ProjectsPage() {
           </h1>
         </div>
 
-        <NewChatInput />
+        <PromptInput mode="new-chat" />
       </section>
 
       <ProjectList />
