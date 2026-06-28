@@ -1,11 +1,11 @@
 import ClientView from "./client-view";
 
 interface PageProps {
-  params: Promise<{ chatid: string }>;
+  params: Promise<{ id: string }>;
 }
 
 export default async function Page({ params }: PageProps) {
-  const { chatid } = await params;
+  const { id } = await params;
 
-  return <ClientView chatid={chatid} />;
+  return <ClientView chatid={id} />;
 }
