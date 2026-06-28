@@ -4,7 +4,6 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Send } from "lucide-react";
 import { Button } from "@repo/ui/components/button";
-import { Textarea } from "@repo/ui/components/textarea";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
 
 export function NewChatInput() {
@@ -65,16 +64,16 @@ export function NewChatInput() {
   return (
     <form
       onSubmit={handleSubmit}
-      className="group border-border bg-background/40 focus-within:border-primary/50 focus-within:bg-background dark:bg-background/20 relative w-full rounded-[2rem] border p-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] backdrop-blur-sm transition-all duration-500 focus-within:shadow-[0_8px_40px_rgb(0,0,0,0.08)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)]"
+      className="border-border focus-within:border-primary/50 bg-muted relative w-full rounded-lg border p-0 transition-colors"
     >
-      <Textarea
+      <textarea
         aria-label="Describe what you want to build"
         placeholder="Describe the app, repo workflow, or development environment you want to run..."
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
-        className="placeholder:text-muted-foreground/50 min-h-[120px] resize-none border-0 bg-transparent px-4 py-2 text-lg leading-relaxed font-medium shadow-none focus-visible:ring-0 md:text-xl"
+        className="placeholder:text-muted-foreground/50 min-h-[80px] w-full resize-none overflow-y-auto border-0 p-2 text-base leading-normal outline-none [scrollbar-width:none] focus:outline-none focus-visible:ring-0 focus-visible:outline-none md:min-h-[120px] md:text-base [&::-webkit-scrollbar]:hidden"
       />
-      <div className="mt-2 flex items-center justify-end px-2">
+      <div className="flex items-center justify-end p-2">
         <Button
           type="submit"
           disabled={!question.trim() || websocket?.readyState !== WebSocket.OPEN}
