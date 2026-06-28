@@ -206,26 +206,23 @@ export default function ClientView({ projectId }: { projectId: string }) {
       </div>
 
       <div className="space-y-4">
-        <div className="space-y-3">
-          <h2 className="text-2xl font-semibold tracking-tight">Instances</h2>
-          <div className="flex flex-wrap gap-2">
-            {(["running", "terminated", "all"] as InstanceFilter[]).map(
-              (filter) => (
-                <Button
-                  key={filter}
-                  type="button"
-                  size="sm"
-                  variant={instanceFilter === filter ? "default" : "outline"}
-                  onClick={() => {
-                    setInstanceFilter(filter);
-                    setInstancePage(1);
-                  }}
-                >
-                  {filter.charAt(0).toUpperCase() + filter.slice(1)}
-                </Button>
-              ),
-            )}
-          </div>
+        <div className="flex flex-wrap gap-2">
+          {(["running", "terminated", "all"] as InstanceFilter[]).map(
+            (filter) => (
+              <Button
+                key={filter}
+                type="button"
+                size="sm"
+                variant={instanceFilter === filter ? "default" : "outline"}
+                onClick={() => {
+                  setInstanceFilter(filter);
+                  setInstancePage(1);
+                }}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </Button>
+            ),
+          )}
         </div>
 
         {isInstancesLoading ? (
