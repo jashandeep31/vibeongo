@@ -25,6 +25,7 @@ import {
 
 type ToolStatus = "stopped" | "starting" | "started" | "stopping";
 type ToolPendingAction = "start" | "restart" | "stop" | null;
+type ToolAction = "start" | "restart" | "stop" | "password";
 
 interface ToolWebCardProps {
   title: string;
@@ -33,6 +34,7 @@ interface ToolWebCardProps {
   isTerminated: boolean;
   password?: string | null;
   passwordLabel?: string;
+  canRequestPassword?: boolean;
 }
 
 export function ToolWebCard({
@@ -42,14 +44,20 @@ export function ToolWebCard({
   isTerminated,
   password,
   passwordLabel = "password",
+  canRequestPassword = false,
 }: ToolWebCardProps) {
   const { websocket, sendJsonMessage, subscribeJsonMessage } =
     useWebSocketContext();
   const [status, setStatus] = useState<ToolStatus>("stopped");
   const [pendingAction, setPendingAction] = useState<ToolPendingAction>(null);
   const [error, setError] = useState<string | null>(null);
+  const [receivedPassword, setReceivedPassword] = useState<string | null>(
+    password ?? null,
+  );
+  const [isPasswordPending, setIsPasswordPending] = useState(false);
   const [isPasswordCopied, setIsPasswordCopied] = useState(false);
   const copyResetTimerRef = useRef<number | null>(null);
+  const shouldCopyPasswordOnReceiveRef = useRef(false);
   const shouldRedirectOnStartedRef = useRef(false);
 
   const isRunning = status === "started";
@@ -58,7 +66,9 @@ export function ToolWebCard({
   const isStartPending = isStarting && pendingAction === "start";
   const isRestartPending = isStarting && pendingAction === "restart";
   const canSendAction = websocket?.readyState === WebSocket.OPEN;
-  const hasPassword = Boolean(password);
+  const passwordValue = password ?? receivedPassword;
+  const hasPassword = Boolean(passwordValue);
+  const canShowPasswordAction = hasPassword || canRequestPassword;
 
   const redirectToTool = useCallback(() => {
     if (!url) {
@@ -69,7 +79,7 @@ export function ToolWebCard({
   }, [url]);
 
   const sendToolAction = useCallback(
-    (action: "start" | "restart" | "stop") => {
+    (action: ToolAction) => {
       sendJsonMessage({
         type: "tool",
         data: {
@@ -81,6 +91,23 @@ export function ToolWebCard({
     [sendJsonMessage, tool],
   );
 
+  const copyPassword = useCallback(async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value);
+      setIsPasswordCopied(true);
+
+      if (copyResetTimerRef.current) {
+        window.clearTimeout(copyResetTimerRef.current);
+      }
+
+      copyResetTimerRef.current = window.setTimeout(() => {
+        setIsPasswordCopied(false);
+      }, 1800);
+    } catch {
+      setIsPasswordCopied(false);
+    }
+  }, []);
+
   useEffect(() => {
     return () => {
       if (copyResetTimerRef.current) {
@@ -88,6 +115,10 @@ export function ToolWebCard({
       }
     };
   }, []);
+
+  useEffect(() => {
+    setReceivedPassword(password ?? null);
+  }, [password]);
 
   useEffect(() => {
     if (!url || isTerminated) {
@@ -119,10 +150,24 @@ export function ToolWebCard({
 
       const nextError = typeof data.error === "string" ? data.error : null;
       const nextStatus: ToolStatus = data.status ? "started" : "stopped";
+      const nextPassword =
+        typeof data.password === "string" && data.password.trim()
+          ? data.password
+          : null;
 
       setStatus(nextStatus);
       setPendingAction(null);
       setError(nextError);
+      setIsPasswordPending(false);
+
+      if (nextPassword) {
+        setReceivedPassword(nextPassword);
+
+        if (shouldCopyPasswordOnReceiveRef.current) {
+          shouldCopyPasswordOnReceiveRef.current = false;
+          void copyPassword(nextPassword);
+        }
+      }
 
       if (
         !nextError &&
@@ -135,13 +180,14 @@ export function ToolWebCard({
 
       if (nextStatus === "stopped" || nextError) {
         shouldRedirectOnStartedRef.current = false;
+        shouldCopyPasswordOnReceiveRef.current = false;
       }
     });
 
     return () => {
       unsubscribeMessages();
     };
-  }, [redirectToTool, subscribeJsonMessage, tool, websocket]);
+  }, [copyPassword, redirectToTool, subscribeJsonMessage, tool, websocket]);
 
   useEffect(() => {
     if (!websocket || !url || isTerminated) {
@@ -203,24 +249,19 @@ export function ToolWebCard({
   };
 
   const handleCopyPassword = async () => {
-    if (!password) {
+    if (passwordValue) {
+      await copyPassword(passwordValue);
       return;
     }
 
-    try {
-      await navigator.clipboard.writeText(password);
-      setIsPasswordCopied(true);
-
-      if (copyResetTimerRef.current) {
-        window.clearTimeout(copyResetTimerRef.current);
-      }
-
-      copyResetTimerRef.current = window.setTimeout(() => {
-        setIsPasswordCopied(false);
-      }, 1800);
-    } catch {
-      setIsPasswordCopied(false);
+    if (!canRequestPassword || !canSendAction) {
+      return;
     }
+
+    setIsPasswordPending(true);
+    setError(null);
+    shouldCopyPasswordOnReceiveRef.current = true;
+    sendToolAction("password");
   };
 
   const primaryLabel = isStopping
@@ -233,7 +274,7 @@ export function ToolWebCard({
 
   return (
     <section>
-      <div className="rounded-lg bg-muted/30 p-3">
+      <div className="bg-muted/30 rounded-lg p-3">
         <div className="flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
             <h2 className="truncate text-base font-semibold tracking-tight">
@@ -311,21 +352,26 @@ export function ToolWebCard({
                   Stop
                 </DropdownMenuItem>
 
-                {hasPassword ? (
+                {canShowPasswordAction ? (
                   <>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem
+                      disabled={
+                        isPasswordPending || (!hasPassword && !canSendAction)
+                      }
                       onSelect={(event) => {
                         event.preventDefault();
                         void handleCopyPassword();
                       }}
                     >
-                      {isPasswordCopied ? (
+                      {isPasswordPending ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : isPasswordCopied ? (
                         <Check className="h-4 w-4 text-emerald-600" />
                       ) : (
                         <Copy className="h-4 w-4" />
                       )}
-                      Copy {passwordLabel}
+                      {hasPassword ? "Copy" : "Get"} {passwordLabel}
                     </DropdownMenuItem>
                   </>
                 ) : null}
@@ -335,7 +381,7 @@ export function ToolWebCard({
         </div>
 
         {error ? (
-          <p className="mt-2 break-words text-xs text-destructive">{error}</p>
+          <p className="text-destructive mt-2 text-xs break-words">{error}</p>
         ) : null}
       </div>
     </section>

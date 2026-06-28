@@ -14,6 +14,7 @@ export function T3CodeCard({ domainFor3773, isTerminated }: T3CodeCardProps) {
       tool="codex"
       url={domainFor3773 ? `https://${domainFor3773}` : null}
       isTerminated={isTerminated}
+      canRequestPassword
     />
   );
 }

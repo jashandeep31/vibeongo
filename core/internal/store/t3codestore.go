@@ -57,6 +57,8 @@ func (c *T3Code) StopT3Code() error {
 }
 
 func (c *T3Code) GetPassword() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
 	return c.Password
 }
 
@@ -79,7 +81,12 @@ func (c *T3Code) SetAndGetPassword() (string, error) {
 		return "", fmt.Errorf("token not found")
 	}
 
-	return string(match[1]), nil
+	token := string(match[1])
+	c.mu.Lock()
+	c.Password = token
+	c.mu.Unlock()
+
+	return token, nil
 }
 
 func (c *T3Code) RestartT3Code() error {

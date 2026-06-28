@@ -23,6 +23,7 @@ export type WebSocketToolMessageData = {
   tool?: unknown;
   status?: unknown;
   error?: unknown;
+  password?: unknown;
 };
 
 const SocketContext = createContext<{
