@@ -5,6 +5,8 @@ import { AppError } from "../../lib/app-error.js";
 import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
 import { sendWSError } from "../socket-handler.js";
 
+const STREAM_UPDATE_INTERVAL_MS = 300;
+
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
 
@@ -73,8 +75,10 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   let steps: unknown = null;
   let usage: unknown = null;
   let finishReason: string | null = null;
+  let lastStreamUpdateAt = 0;
 
   const sendQuestionUpdate = () => {
+    lastStreamUpdateAt = Date.now();
     socket.send(
       JSON.stringify({
         type: "stream-question",
@@ -92,6 +96,13 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
         },
       }),
     );
+  };
+
+  const sendThrottledQuestionUpdate = () => {
+    const now = Date.now();
+    if (now - lastStreamUpdateAt < STREAM_UPDATE_INTERVAL_MS) return;
+
+    sendQuestionUpdate();
   };
 
   sendQuestionUpdate();
@@ -116,8 +127,10 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
     if (res.finish_reason) {
       finishReason = res.finish_reason;
     }
-    sendQuestionUpdate();
+    sendThrottledQuestionUpdate();
   }
+
+  sendQuestionUpdate();
 
   const persistedQuestion = {
     ...newQuestion,
