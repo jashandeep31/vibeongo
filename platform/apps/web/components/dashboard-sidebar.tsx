@@ -2,20 +2,7 @@
 
 import { useGetGithubRepos } from "@/hooks/use-github-repos";
 import { useUserMetadata } from "@/hooks/use-user";
-import { logout } from "@/services/auth-services";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@repo/ui/components/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
+import { SidebarUserMenu } from "@/components/sidebar-user-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -39,122 +26,11 @@ import {
   FolderOpen,
   Home,
   GitFork,
-  LogOut,
   MessageSquare,
-  MoreVertical,
-  Wallet,
   Plus,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { toast } from "sonner";
-
-type SidebarUser = {
-  name: string;
-  username: string;
-  balance: number;
-};
-
-function NavUser({ user }: { user: SidebarUser }) {
-  const router = useRouter();
-  const { isMobile, setOpenMobile } = useSidebar();
-  const initials =
-    user.name
-      .split(" ")
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "U";
-  const walletBalance = (
-    Math.trunc((user.balance / 10000) * 100) / 100
-  ).toFixed(2);
-
-  const handleLogout = async () => {
-    try {
-      await logout();
-      setOpenMobile(false);
-      router.replace("/login");
-      router.refresh();
-    } catch {
-      toast.error("Failed to log out");
-    }
-  };
-
-  return (
-    <SidebarMenu>
-      <SidebarMenuItem>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
-            >
-              <Avatar className="rounded-lg">
-                <AvatarImage
-                  src={`https://github.com/${user.username}.png`}
-                  alt={user.name}
-                />
-                <AvatarFallback className="rounded-lg">
-                  {initials}
-                </AvatarFallback>
-              </Avatar>
-              <div className="grid flex-1 text-left text-sm">
-                <span className="truncate font-medium">{user.name}</span>
-              </div>
-              <MoreVertical className="ml-auto h-4 w-4" />
-            </SidebarMenuButton>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
-            side={isMobile ? "bottom" : "right"}
-            align="end"
-            sideOffset={4}
-          >
-            <DropdownMenuLabel className="p-0 font-normal">
-              <div className="flex items-center gap-2 px-1 py-1.5 text-left text-sm">
-                <Avatar className="rounded-lg">
-                  <AvatarImage
-                    src={`https://github.com/${user.username}.png`}
-                    alt={user.name}
-                  />
-                  <AvatarFallback className="rounded-lg">
-                    {initials}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="grid flex-1 text-left text-sm leading-tight">
-                  <span className="truncate font-medium">{user.name}</span>
-                  <span className="text-muted-foreground truncate text-xs">
-                    @{user.username}
-                  </span>
-                </div>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/dashboard/wallet">
-                <Wallet />
-                <span>Wallet balance</span>
-                <span className="ml-auto font-medium">
-                  ${walletBalance} credits
-                </span>
-              </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => {
-                void handleLogout();
-              }}
-            >
-              <LogOut />
-              Log out
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarMenuItem>
-    </SidebarMenu>
-  );
-}
 
 const sidebarLinks: {
   title: string;
@@ -296,7 +172,7 @@ export function DashboardSidebar() {
       </SidebarContent>
       <SidebarFooter>
         {user ? (
-          <NavUser
+          <SidebarUserMenu
             user={{
               name: userName || user.username,
               username: user.username,
