@@ -29,7 +29,7 @@ export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-end">
-        <div className="bg-muted text-foreground border-border max-w-[70%] rounded-2xl border px-5 py-4 text-base leading-relaxed shadow-sm md:max-w-[55%]">
+        <div className="bg-muted text-foreground border-border max-w-[70%] rounded-2xl border px-3 py-2 text-base leading-relaxed shadow-sm md:max-w-[55%]">
           {item.question}
         </div>
       </div>
@@ -51,7 +51,7 @@ export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
                   <div className="absolute inset-x-0 bottom-0 px-4 py-3 whitespace-pre-wrap">
                     {reasoning}
                   </div>
-                  <div className="pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-black/75 to-transparent" />
+                  <div className="from-muted pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b to-transparent" />
                 </>
               )}
             </div>
