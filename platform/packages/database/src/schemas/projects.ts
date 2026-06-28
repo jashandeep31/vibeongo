@@ -6,6 +6,7 @@ import {
   integer,
   text,
   unique,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
@@ -29,7 +30,8 @@ export const projects = pgTable("projects", {
   initial_script: text().notNull().default(""),
   final_script: text().notNull().default(""),
   dev_script: text().notNull().default(""),
-
+  deleted: boolean().default(false).notNull(),
+  deleted_at: timestamp(),
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

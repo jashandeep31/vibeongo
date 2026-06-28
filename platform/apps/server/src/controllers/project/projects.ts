@@ -2,24 +2,21 @@ import {
   and,
   db,
   eq,
-  githubRepos,
-  inArray,
-  instances,
   instanceTypes,
   projectGithubRepos,
   projects,
   projectSshKeys,
-  sshKeys,
   desc,
   projectConfig,
   proxyDomains,
   projectDomainRouting,
   routingAllowedIps,
+  projectFiles,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
-import { projectConfigValidator } from "@repo/shared";
+import { projectConfigValidator, z } from "@repo/shared";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
@@ -33,7 +30,7 @@ export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const dbProjects = await db
     .select()
     .from(projects)
-    .where(eq(projects.user_id, user.id))
+    .where(and(eq(projects.user_id, user.id), eq(projects.deleted, false)))
     .orderBy(desc(projects.created_at));
 
   res.status(200).json({
@@ -54,7 +51,13 @@ export const getProjectById = catchAsync(
     const [projectRow] = await db
       .select()
       .from(projects)
-      .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
+      .where(
+        and(
+          eq(projects.user_id, user.id),
+          eq(projects.id, id),
+          eq(projects.deleted, false),
+        ),
+      );
 
     if (!projectRow) throw new AppError("project not found", 404);
 
@@ -80,7 +83,13 @@ export const getProjectConfigForEdit = catchAsync(
       })
       .from(projects)
       .innerJoin(instanceTypes, eq(instanceTypes.id, projects.instance_type_id))
-      .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
+      .where(
+        and(
+          eq(projects.user_id, user.id),
+          eq(projects.id, id),
+          eq(projects.deleted, false),
+        ),
+      );
 
     if (!projectWithInstanceType) throw new AppError("project not found", 404);
 
@@ -192,32 +201,35 @@ export const deleteProjectById = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("authentication is required", 401);
 
-    const { id } = req.params;
-    if (!id || typeof id !== "string")
-      throw new AppError("project id is required", 400);
+    const { id } = z
+      .object({
+        id: z.string(),
+      })
+      .parse(req.params);
 
-    // if (1 === 1 && env.NODE_ENV !== "development") {
-    //   // TODO: enable this feature
-    //   // the reason if the user had created the instance but before getting allocated as aws takes little time to allocate the ip4 address
-    //   // but user instantely delete the project and the instance is still running
-    //   throw new AppError("Feature is stopped temporarily", 400);
-    // }
-    // check if any instance is associated with the project and its not terminated
-    // const projectInstances = await db
-    //   .select()
-    //   .from(instances)
-    //   .where(and(eq(instances.project_id, id), eq(instances.state, "running")));
+    const deletedProject = await db.transaction(async (tx) => {
+      const [updatedProject] = await tx
+        .update(projects)
+        .set({ deleted: true, deleted_at: new Date() })
+        .where(and(eq(projects.id, id), eq(projects.user_id, user.id)))
+        .returning();
 
-    // if (projectInstances.length > 0) {
-    //   throw new AppError("project has running instances, cannot delete", 400);
-    // }
-    //
-    // await db
-    //   .delete(projects)
-    //   .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
+      if (!updatedProject) throw new AppError("Project not found ", 404);
 
-    res.status(401).json({
-      message: "Project deletion is not allowed yet",
+      await tx
+        .delete(projectConfig)
+        .where(eq(projectConfig.project_id, updatedProject.id));
+
+      await tx
+        .delete(projectFiles)
+        .where(eq(projectFiles.project_id, updatedProject.id));
+
+      return updatedProject;
+    });
+
+    res.status(200).json({
+      message: "Project deleted successfully",
+      data: deletedProject,
     });
   },
 );
