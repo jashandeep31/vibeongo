@@ -1,9 +1,13 @@
 import { WebSocket } from "ws";
-import { newChatHandler } from "./handlers/newchat-handler.js";
+import { newChatHandler } from "./handlers/new-chat-handler.js";
 import { joinChatHandler } from "./handlers/join-chat-handler.js";
 import { newQuestionHandler } from "./handlers/new-question-handler.js";
 
 export const SocketHandler = async (socket: WebSocket) => {
+  //NOTE:
+  //Current method of sending the live chats data is not the best method we are currently emmeting the full question data again and again
+  //Instead we should be sending the chunks data only
+  //For that we need to build a local tracking system which can handle the chat rejoin in the better way
   socket.onmessage = async (event) => {
     try {
       const parsedEvent = JSON.parse(event.data.toString());
