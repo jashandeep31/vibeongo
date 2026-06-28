@@ -2,7 +2,9 @@
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { RenameChatDialog } from "@/components/dialogs/rename-chat-dialog";
+import { SidebarUserMenu } from "@/components/sidebar-user-menu";
 import { useDeleteChat, useGetChats } from "@/hooks/use-chats";
+import { useUserMetadata } from "@/hooks/use-user";
 import type { Chat } from "@/services/chat-services";
 import {
   DropdownMenu,
@@ -14,6 +16,7 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -166,7 +169,11 @@ function ChatItem({ chat }: { chat: Chat }) {
 export function ChatsSidebar() {
   const { isMobile, setOpenMobile } = useSidebar();
   const { data, isError, isLoading } = useGetChats();
+  const { data: user } = useUserMetadata();
   const chats = data?.data.chats ?? [];
+  const userName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+    : "";
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -275,6 +282,17 @@ export function ChatsSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        {user ? (
+          <SidebarUserMenu
+            user={{
+              name: userName || user.username,
+              username: user.username,
+              balance: user.balance,
+            }}
+          />
+        ) : null}
+      </SidebarFooter>
     </Sidebar>
   );
 }

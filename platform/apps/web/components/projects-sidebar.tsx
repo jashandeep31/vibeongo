@@ -1,9 +1,12 @@
 "use client";
+import { SidebarUserMenu } from "@/components/sidebar-user-menu";
 import { useGetGithubRepos } from "@/hooks/use-github-repos";
 import { useGetProjects } from "@/hooks/use-project";
+import { useUserMetadata } from "@/hooks/use-user";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
@@ -76,8 +79,12 @@ const sidebarLinks: {
 export function ProjectsSidebar() {
   const { data: projects } = useGetProjects();
   const { data: repos } = useGetGithubRepos();
+  const { data: user } = useUserMetadata();
   const { isMobile, setOpenMobile } = useSidebar();
   const reposWithNoDefaultProject = repos?.filter((r) => !r.default_project_id);
+  const userName = user
+    ? [user.firstName, user.lastName].filter(Boolean).join(" ")
+    : "";
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -184,6 +191,17 @@ export function ProjectsSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        {user ? (
+          <SidebarUserMenu
+            user={{
+              name: userName || user.username,
+              username: user.username,
+              balance: user.balance,
+            }}
+          />
+        ) : null}
+      </SidebarFooter>
     </Sidebar>
   );
 }
