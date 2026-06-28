@@ -8,7 +8,7 @@ import (
 )
 
 func StartTmuxSession(name string, dir string) error {
-	cmd := exec.Command("tmux", "new-session", "-d", "-s", name)
+	cmd := exec.Command("tmux", "new-session", "-d", "-s", name, "-c", dir)
 	cmd.Dir = dir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
@@ -26,17 +26,25 @@ func KilltmuxSession(name string) error {
 	return nil
 }
 
-func RunCommandInTmuxSession(name string, command string) error {
+func RunCommandInTmuxSessionInDir(name string, dir string, command string) error {
 	// command to create the new window session
-	cmd := exec.Command(
+	args := []string{
 		"tmux", "new-window", // help to create the new window of the tmux
 		"-d",               // run in the detach mode
 		"-P",               // print information-> prints the detials of the created  window
 		"-F", "#{pane_id}", //  Format the output string -> example output %12
 		"-t", name, // target session
 		"-n", "task", // new window nam
-		"bash", "-il", // lauch the interative bash shell
-	)
+	}
+	if dir != "" {
+		args = append(args, "-c", dir)
+	}
+	args = append(args, "bash", "-il") // lauch the interative bash shell
+
+	cmd := exec.Command(args[0], args[1:]...)
+	if dir != "" {
+		cmd.Dir = dir
+	}
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
