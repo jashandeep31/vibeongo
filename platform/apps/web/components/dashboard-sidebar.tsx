@@ -41,12 +41,12 @@ import {
   Home,
   GitFork,
   LogOut,
+  MessageSquare,
   MoreVertical,
   Wallet,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { toast } from "sonner";
 
 type SidebarUser = {
@@ -177,6 +177,11 @@ const sidebarLinks: {
     title: "Create Project",
     url: "/dashboard/project/create",
     icon: PlusCircle,
+  },
+  {
+    title: "Chats",
+    url: "/chats",
+    icon: MessageSquare,
   },
   {
     title: "Repos",
