@@ -46,7 +46,7 @@ export const chatStore = create<ChatStore>((set) => ({
         existingQuestion?.answer?.answer === q.answer?.answer &&
         existingQuestion?.answer?.reasoning === q.answer?.reasoning &&
         existingQuestion?.answer?.id === q.answer?.id &&
-        existingQuestion?.memory === q.memory
+        existingQuestion?.answer?.memory === q.answer?.memory
       ) {
         return state;
       }
