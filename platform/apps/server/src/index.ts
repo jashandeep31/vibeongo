@@ -27,6 +27,7 @@ import { WebSocketServer } from "ws";
 import { createServer } from "node:http";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import jwt from "jsonwebtoken";
+import { chatRoutes } from "./routes/chat-routes.js";
 const app = express();
 
 const server = createServer(app);
@@ -91,6 +92,7 @@ app.use("/api/v1/github-repos", githubRepoRoutes);
 app.use("/api/v1/runtime", runtimeRoutes);
 app.use("/api/v1/internal", internalRoutes);
 app.use("/api/v1/payments", paymentRoutes);
+app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
 
 Sentry.setupExpressErrorHandler(app);
