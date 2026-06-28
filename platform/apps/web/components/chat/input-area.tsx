@@ -59,7 +59,7 @@ export function InputArea({
         value={question}
         onChange={(event) => setQuestion(event.target.value)}
         onKeyDown={handleKeyDown}
-        className="placeholder:text-muted-foreground/50 min-h-[120px] w-full resize-none overflow-y-auto border-0 p-2 text-lg leading-normal outline-none [scrollbar-width:none] focus:outline-none focus-visible:ring-0 focus-visible:outline-none md:text-base [&::-webkit-scrollbar]:hidden"
+        className="placeholder:text-muted-foreground/50 min-h-[80px] w-full resize-none overflow-y-auto border-0 p-2 text-base leading-normal outline-none [scrollbar-width:none] focus:outline-none focus-visible:ring-0 focus-visible:outline-none md:min-h-[120px] md:text-base [&::-webkit-scrollbar]:hidden"
       />
       <div className="flex items-center justify-end p-2">
         <Button

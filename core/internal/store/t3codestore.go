@@ -2,7 +2,6 @@ package store
 
 import (
 	"fmt"
-	"os/exec"
 	"regexp"
 	"sync"
 
@@ -68,7 +67,8 @@ func (c *T3Code) Status() bool {
 	return c.Running
 }
 func (c *T3Code) SetAndGetPassword() (string, error) {
-	cmd := exec.Command("t3", "auth", "pairing", "create")
+	// cmd := exec.Command("t3", "auth", "pairing", "create")
+	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, "t3 auth session create")
 
 	out, err := cmd.CombinedOutput()
 	if err != nil {
