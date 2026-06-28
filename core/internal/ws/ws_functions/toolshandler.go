@@ -3,7 +3,6 @@ package wsfunctions
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -46,33 +45,41 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 		return true, writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
 
 	case "codex", "t3Code":
-		if err := t3CodeHandler(tools.T3Code, parsedData.Action); err != nil {
+		password, err := t3CodeHandler(tools.T3Code, parsedData.Action)
+		if err != nil {
 			return true, writeToolError(conn, writeMu, "codex", tools.T3Code.Status(), err)
 		}
-		return true, writeToolStatus(conn, writeMu, "codex", tools.T3Code.Status())
+		return true, writeToolStatusWithPassword(conn, writeMu, "codex", tools.T3Code.Status(), password)
 	}
 
 	return true, nil
 }
 
 func writeToolStatus(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool) error {
+	return writeToolStatusWithPassword(conn, writeMu, tool, status, "")
+}
+
+func writeToolStatusWithPassword(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool, password string) error {
 	writeMu.Lock()
 	defer writeMu.Unlock()
 
 	return conn.WriteJSON(struct {
 		Type string `json:"type"`
 		Data struct {
-			Tool   string `json:"tool"`
-			Status bool   `json:"status"`
+			Tool     string `json:"tool"`
+			Status   bool   `json:"status"`
+			Password string `json:"password,omitempty"`
 		} `json:"data"`
 	}{
 		Type: "tool",
 		Data: struct {
-			Tool   string `json:"tool"`
-			Status bool   `json:"status"`
+			Tool     string `json:"tool"`
+			Status   bool   `json:"status"`
+			Password string `json:"password,omitempty"`
 		}{
-			Tool:   tool,
-			Status: status,
+			Tool:     tool,
+			Status:   status,
+			Password: password,
 		},
 	})
 }
@@ -121,27 +128,27 @@ func openCodeHanler(opencode *store.OpencodeWeb, action string) error {
 	return nil
 }
 
-func t3CodeHandler(t3Code *store.T3Code, action string) error {
+func t3CodeHandler(t3Code *store.T3Code, action string) (string, error) {
 	switch action {
 	case "start":
-		return t3Code.StartT3Code()
+		return "", t3Code.StartT3Code()
 
 	case "stop":
-		return t3Code.StopT3Code()
+		return "", t3Code.StopT3Code()
 
 	case "restart":
-		return t3Code.RestartT3Code()
+		return "", t3Code.RestartT3Code()
 
 	case "status":
-		return nil
+		return "", nil
 
 	case "password":
 		token, err := t3Code.SetAndGetPassword()
 		if err != nil {
-			return err
+			return "", err
 		}
-		fmt.Println(token)
+		return token, nil
 
 	}
-	return nil
+	return "", nil
 }
