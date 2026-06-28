@@ -1,11 +1,5 @@
 import { chatAnswer, chatQuestions } from "@repo/db";
-import {
-  ModelMessage,
-  stepCountIs,
-  StepResult,
-  streamText,
-  StreamTextResult,
-} from "ai";
+import { ModelMessage, stepCountIs, streamText } from "ai";
 import { prompts } from "../prompts/index.js";
 import {
   getOtherProjectConfigById,
@@ -100,24 +94,25 @@ export async function* projectAIAgent({
         steps: null,
       };
     }
+  }
 
-    const steps = await result.steps;
-    for (const step of steps) {
-      for (const tool of step.toolResults) {
-        if (tool.type == "tool-result") {
-          if (tool.toolName === "updateConfig") {
-            updatedConfig = tool.output;
-          }
+  const steps = await result.steps;
+  for (const step of steps) {
+    for (const tool of step.toolResults) {
+      if (tool.type == "tool-result") {
+        if (tool.toolName === "updateConfig") {
+          updatedConfig = tool.output;
         }
       }
     }
-    yield {
-      finish_reason: null,
-      reasoning: "",
-      text: "",
-      updatedConfig,
-      usage: await result.usage,
-      steps,
-    };
   }
+
+  yield {
+    finish_reason: null,
+    reasoning: "",
+    text: "",
+    updatedConfig,
+    usage: await result.usage,
+    steps,
+  };
 }
