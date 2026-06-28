@@ -1,6 +1,6 @@
 "use client";
 
-import { PromptInput } from "@/components/chat/prompt-input";
+import { NewChatInput } from "@/components/chat/new-chat-input";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
 
 export default function ClientView() {
@@ -21,7 +21,7 @@ export default function ClientView() {
 
       <div className="shrink-0 px-4 pb-4 md:px-8 md:pb-6">
         <div className="mx-auto w-full max-w-4xl">
-          <PromptInput mode="new-chat" />
+          <NewChatInput />
         </div>
       </div>
     </div>

@@ -1,21 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
-import { useVibeSocket } from "@/hooks/use-vibe-socket";
+import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Send } from "lucide-react";
-import { useRouter } from "next/navigation";
 
-type PromptInputProps = (
-  | {
-      mode: "new-chat";
-      chatId?: never;
-    }
-  | {
-      mode: "new-question";
-      chatId: string;
-    }
-) & {
+type PromptInputProps = {
+  onSubmit: (question: string) => void;
+  disabled?: boolean;
   onSubmitSuccess?: () => void;
   ariaLabel?: string;
   placeholder?: string;
@@ -23,77 +14,24 @@ type PromptInputProps = (
 };
 
 export function PromptInput({
-  mode,
-  chatId,
+  onSubmit,
+  disabled = false,
   onSubmitSuccess,
   ariaLabel = "Describe what you want to build",
   placeholder = "Describe the app, repo workflow, or development environment you want to run...",
   submitLabel = "Submit prompt",
 }: PromptInputProps) {
-  const router = useRouter();
-  const { websocket, sendJsonMessage } = useVibeSocket();
   const [question, setQuestion] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
   const trimmedQuestion = question.trim();
-  const isSubmitDisabled =
-    !trimmedQuestion || websocket?.readyState !== WebSocket.OPEN;
-
-  useEffect(() => {
-    if (mode !== "new-chat" || !websocket) return;
-
-    const handleNewChatResponse = (event: MessageEvent) => {
-      if (typeof event.data !== "string") return;
-
-      let message: unknown;
-      try {
-        message = JSON.parse(event.data);
-      } catch {
-        return;
-      }
-
-      if (
-        typeof message === "object" &&
-        message !== null &&
-        "type" in message &&
-        message.type === "new-chat" &&
-        "data" in message &&
-        typeof message.data === "object" &&
-        message.data !== null &&
-        "chatId" in message.data &&
-        typeof message.data.chatId === "string"
-      ) {
-        router.push(`/chats/${message.data.chatId}`);
-      }
-    };
-
-    websocket.addEventListener("message", handleNewChatResponse);
-    return () => {
-      websocket.removeEventListener("message", handleNewChatResponse);
-    };
-  }, [mode, router, websocket]);
+  const isSubmitDisabled = disabled || !trimmedQuestion;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
     if (isSubmitDisabled) return;
 
-    sendJsonMessage(
-      mode === "new-chat"
-        ? {
-            type: "new-chat",
-            data: {
-              question: trimmedQuestion,
-            },
-          }
-        : {
-            type: "new-question",
-            data: {
-              chatId,
-              question: trimmedQuestion,
-            },
-          },
-    );
-
+    onSubmit(trimmedQuestion);
     setQuestion("");
     onSubmitSuccess?.();
   };
