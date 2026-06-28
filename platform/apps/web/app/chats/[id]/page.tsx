@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation";
+import ClientView from "./client-view";
 
 interface PageProps {
   params: Promise<{ chatid: string }>;
@@ -7,5 +7,5 @@ interface PageProps {
 export default async function Page({ params }: PageProps) {
   const { chatid } = await params;
 
-  redirect(`/dashboard/project/ai-create/${chatid}`);
+  return <ClientView chatid={chatid} />;
 }
