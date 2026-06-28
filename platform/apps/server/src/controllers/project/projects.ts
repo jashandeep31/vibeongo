@@ -12,6 +12,7 @@ import {
   projectDomainRouting,
   routingAllowedIps,
   projectFiles,
+  instances,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -207,6 +208,13 @@ export const deleteProjectById = catchAsync(
       })
       .parse(req.params);
 
+    const runningIntances = await db
+      .select()
+      .from(instances)
+      .where(and(eq(instances.project_id, id), eq(instances.state, "running")));
+    if (runningIntances.length > 0) {
+      throw new AppError("This project have some running instances", 400);
+    }
     const deletedProject = await db.transaction(async (tx) => {
       const [updatedProject] = await tx
         .update(projects)

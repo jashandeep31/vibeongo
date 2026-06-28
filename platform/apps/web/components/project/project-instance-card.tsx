@@ -19,15 +19,6 @@ type ProjectInstance = typeof instances.$inferSelect & {
   project?: InstanceProject | null;
 };
 
-const formatDate = (value: unknown) => {
-  if (!value) return "N/A";
-
-  const date = new Date(String(value));
-  if (Number.isNaN(date.getTime())) return String(value);
-
-  return date.toLocaleString();
-};
-
 const formatValue = (value: unknown) => {
   if (value === null || value === undefined || value === "") return "N/A";
   return String(value);
@@ -172,14 +163,6 @@ export function ProjectInstanceCard({
                 )}
               </Button>
             </div>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Started At</p>
-            <p className="font-medium">{formatDate(instance.started_at)}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground">Terminated At</p>
-            <p className="font-medium">{formatDate(instance.terminated_at)}</p>
           </div>
           <div>
             <p className="text-muted-foreground">Spun Up For</p>
