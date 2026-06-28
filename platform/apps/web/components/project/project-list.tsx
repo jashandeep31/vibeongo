@@ -1,6 +1,6 @@
 "use client";
 
-import { Server, PlusCircle } from "lucide-react";
+import { Plus, Server } from "lucide-react";
 import Link from "next/link";
 import {
   Card,
@@ -20,7 +20,7 @@ function ProjectListSkeleton() {
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold">My Projects</h2>
         <Button disabled size="sm">
-          <PlusCircle className="mr-2 h-4 w-4" />
+          <Plus className="mr-2 h-4 w-4" />
           Create Project
         </Button>
       </div>
@@ -89,7 +89,7 @@ export function ProjectList() {
         <h2 className="text-xl font-semibold">My Projects</h2>
         <Button asChild size="sm">
           <Link href="/dashboard/project/create">
-            <PlusCircle className="mr-2 h-4 w-4" />
+            <Plus className="mr-2 h-4 w-4" />
             Create Project
           </Link>
         </Button>

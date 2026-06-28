@@ -24,7 +24,7 @@ import {
   GitFork,
   LucideIcon,
   MessageSquare,
-  PlusCircle,
+  Plus,
   Server,
   Settings,
 } from "lucide-react";
@@ -44,7 +44,7 @@ const sidebarLinks: {
   {
     title: "Create Project",
     url: "/dashboard/project/create",
-    icon: PlusCircle,
+    icon: Plus,
   },
   {
     title: "Chats",
