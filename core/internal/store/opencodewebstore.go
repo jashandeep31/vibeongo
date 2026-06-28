@@ -32,15 +32,17 @@ func startWebServerLocked() error {
 		return fmt.Errorf("opencode is not configured")
 	}
 
-	err = utils.StartTmuxSession("ops", "/home/ubuntu/code")
+	const projectDir = "/home/ubuntu/code"
+
+	err = utils.StartTmuxSession("ops", projectDir)
 	if err != nil {
 		return err
 	}
 
 	if cfg.OpenCode.RequirePassword {
-		err = utils.RunCommandInTmuxSession("ops", "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" OPENCODE_SERVER_USERNAME=vibe opencode web --port 4096 --hostname 0.0.0.0")
+		err = utils.RunCommandInTmuxSessionInDir("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" OPENCODE_SERVER_USERNAME=vibe opencode web --port 4096 --hostname 0.0.0.0")
 	} else {
-		err = utils.RunCommandInTmuxSession("ops", "opencode web --port 4096 --hostname 0.0.0.0")
+		err = utils.RunCommandInTmuxSessionInDir("ops", projectDir, "opencode web --port 4096 --hostname 0.0.0.0")
 	}
 	if err != nil {
 		return err
