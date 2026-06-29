@@ -11,6 +11,7 @@ import {
 } from "@repo/ui/components/card";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
+import { Switch } from "@repo/ui/components/switch";
 import {
   useDeleteAllowedIpFromProject,
   useGetProjectDomainsById,
@@ -196,6 +197,27 @@ export function ProjectDomainsCard({
     }
   };
 
+  const handleUpdateAllowAllIps = async (
+    domainId: string,
+    allowAllIps: boolean,
+  ) => {
+    const toastId = toast.loading("Updating domain access...");
+    setUpdatingDomainId(domainId);
+
+    try {
+      await updateDomainPortMutation.mutateAsync({
+        id: projectId,
+        domainId,
+        allow_all_ips: allowAllIps,
+      });
+      toast.success("Domain access updated", { id: toastId });
+    } catch {
+      toast.error("Failed to update domain access", { id: toastId });
+    } finally {
+      setUpdatingDomainId(null);
+    }
+  };
+
   const handleCopyDomain = async (domainId: string, domain: string) => {
     try {
       await navigator.clipboard.writeText(`https://${domain}`);
@@ -243,92 +265,111 @@ export function ProjectDomainsCard({
               <div className="space-y-3">
                 {proxyDomains.length > 0 ? (
                   proxyDomains.map((domainRow) => (
-                      <div
-                        key={domainRow.id}
-                        className="flex flex-col gap-3 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
-                      >
-                        <div className="flex min-w-0 items-start gap-2 sm:items-center">
-                          <a
-                            href={`https://${domainRow.domain}`}
-                            target="_blank"
-                            rel="noreferrer"
-                            title={domainRow.domain}
-                            className="flex min-w-0 items-start gap-2 text-sm text-blue-500 hover:underline sm:items-center"
-                          >
-                            <Globe className="h-4 w-4 shrink-0" />
-                            <span className="min-w-0 break-all sm:truncate">
-                              {domainRow.domain}
-                            </span>
-                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                          </a>
-                          <Button
-                            type="button"
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 shrink-0"
-                            aria-label={`Copy ${domainRow.domain}`}
-                            title="Copy domain"
-                            onClick={() => {
-                              void handleCopyDomain(
-                                domainRow.id,
-                                domainRow.domain,
-                              );
-                            }}
-                          >
-                            {copiedDomainId === domainRow.id ? (
-                              <Check className="h-4 w-4" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                        <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
-                          <Input
-                            type="number"
-                            min={1}
-                            max={65535}
-                            className="h-8 w-24 font-mono text-xs"
-                            value={
-                              portInputs[domainRow.id] ??
-                              String(domainRow.target_port)
-                            }
-                            onChange={(event) =>
-                              setPortInputs((prev) => ({
-                                ...prev,
-                                [domainRow.id]: event.target.value,
-                              }))
-                            }
-                            disabled={
-                              updatingDomainId === domainRow.id ||
-                              !domainRow.is_editable
-                            }
-                          />
-                          <Button
-                            type="button"
-                            size="sm"
-                            variant="outline"
-                            disabled={
-                              updatingDomainId === domainRow.id ||
-                              !domainRow.is_editable
-                            }
-                            onClick={() => {
-                              void handleUpdatePort(
-                                domainRow.id,
-                                domainRow.target_port,
-                              );
-                            }}
-                          >
-                            {!domainRow.is_editable ? (
-                              <Lock className="h-4 w-4" />
-                            ) : updatingDomainId === domainRow.id ? (
-                              "Saving..."
-                            ) : (
-                              "Save"
-                            )}
-                          </Button>
-                        </div>
+                    <div
+                      key={domainRow.id}
+                      className="flex flex-col gap-3 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                    >
+                      <div className="flex min-w-0 items-start gap-2 sm:items-center">
+                        <a
+                          href={`https://${domainRow.domain}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          title={domainRow.domain}
+                          className="flex min-w-0 items-start gap-2 text-sm text-blue-500 hover:underline sm:items-center"
+                        >
+                          <Globe className="h-4 w-4 shrink-0" />
+
+                          <span className="min-w-0 break-all sm:truncate">
+                            {domainRow.domain}
+                          </span>
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0" />
+                        </a>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 shrink-0"
+                          aria-label={`Copy ${domainRow.domain}`}
+                          title="Copy domain"
+                          onClick={() => {
+                            void handleCopyDomain(
+                              domainRow.id,
+                              domainRow.domain,
+                            );
+                          }}
+                        >
+                          {copiedDomainId === domainRow.id ? (
+                            <Check className="h-4 w-4" />
+                          ) : (
+                            <Copy className="h-4 w-4" />
+                          )}
+                        </Button>
                       </div>
-                    ))
+                      <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
+                        <div className="text-muted-foreground flex items-center gap-2 text-xs">
+                          <span>All IPs</span>
+                          <Switch
+                            size="sm"
+                            aria-label={`Allow all IPs for ${domainRow.domain}`}
+                            checked={domainRow.allow_all_ips}
+                            disabled={
+                              updatingDomainId === domainRow.id ||
+                              !domainRow.is_editable
+                            }
+                            onCheckedChange={(checked) => {
+                              void handleUpdateAllowAllIps(
+                                domainRow.id,
+                                checked,
+                              );
+                            }}
+                          />
+                        </div>
+                        <Input
+                          type="number"
+                          min={1}
+                          max={65535}
+                          className="h-8 w-24 font-mono text-xs"
+                          value={
+                            portInputs[domainRow.id] ??
+                            String(domainRow.target_port)
+                          }
+                          onChange={(event) =>
+                            setPortInputs((prev) => ({
+                              ...prev,
+                              [domainRow.id]: event.target.value,
+                            }))
+                          }
+                          disabled={
+                            updatingDomainId === domainRow.id ||
+                            !domainRow.is_editable
+                          }
+                        />
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={
+                            updatingDomainId === domainRow.id ||
+                            !domainRow.is_editable
+                          }
+                          onClick={() => {
+                            void handleUpdatePort(
+                              domainRow.id,
+                              domainRow.target_port,
+                            );
+                          }}
+                        >
+                          {!domainRow.is_editable ? (
+                            <Lock className="h-4 w-4" />
+                          ) : updatingDomainId === domainRow.id ? (
+                            "Saving..."
+                          ) : (
+                            "Save"
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ))
                 ) : (
                   <div className="text-muted-foreground text-sm">
                     No domains are configured for this project.

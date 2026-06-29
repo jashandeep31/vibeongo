@@ -17,7 +17,7 @@ import {
   invalidateProxyHosts,
 } from "../../lib/invalidate-project-proxies-by-pid.js";
 
-export const updateProxyDomainPort = catchAsync(
+export const updateProxyDomain = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("authentication is required", 401);
@@ -26,11 +26,13 @@ export const updateProxyDomainPort = catchAsync(
       id: projectId,
       domainId,
       target_port,
+      allow_all_ips,
     } = z
       .object({
         id: z.uuid(),
         domainId: z.uuid(),
-        target_port: z.coerce.number().int().min(1).max(65535),
+        target_port: z.coerce.number().int().min(1).max(65535).optional(),
+        allow_all_ips: z.boolean().optional(),
       })
       .parse({ ...req.params, ...req.body });
 
@@ -48,7 +50,8 @@ export const updateProxyDomainPort = catchAsync(
     const updatedRows = await db
       .update(proxyDomains)
       .set({
-        target_port,
+        ...(target_port !== undefined ? { target_port } : {}),
+        ...(allow_all_ips !== undefined ? { allow_all_ips } : {}),
       })
       .where(
         and(
@@ -68,7 +71,7 @@ export const updateProxyDomainPort = catchAsync(
     );
 
     res.status(200).json({
-      message: "port updated successfully",
+      message: "domain updated successfully",
     });
   },
 );

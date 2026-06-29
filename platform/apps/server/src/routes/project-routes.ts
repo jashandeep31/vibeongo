@@ -14,7 +14,7 @@ import {
   deleteAllowedIPFromProject,
   deleteMultipleIpFromProject,
   updateProjectRoutingTargetInstance,
-  updateProxyDomainPort,
+  updateProxyDomain,
 } from "../controllers/project/project-domain.js";
 import {
   createProjectFile,
@@ -42,7 +42,7 @@ routes
   .get(checkAuthorization(["all"]), getProjectDomainsById);
 routes
   .route("/:id/domains/:domainId")
-  .patch(checkAuthorization(["all"]), updateProxyDomainPort);
+  .patch(checkAuthorization(["all"]), updateProxyDomain);
 routes
   .route("/:id/routing/target-instance")
   .patch(checkAuthorization(["all"]), updateProjectRoutingTargetInstance);

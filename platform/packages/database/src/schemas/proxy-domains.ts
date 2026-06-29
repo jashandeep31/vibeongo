@@ -31,6 +31,7 @@ export const proxyDomains = pgTable(
       .notNull(),
 
     is_editable: boolean("is_editable").default(true).notNull(),
+    allow_all_ips: boolean().default(false).notNull(),
 
     created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
