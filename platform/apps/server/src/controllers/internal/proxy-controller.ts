@@ -56,10 +56,6 @@ FROM proxy_domains pd WHERE pd.domain = ${domain.split(".")[0]};
 `);
     const data = dbRes.rows[0]?.to_jsonb;
     if (!data) throw new AppError("domain not found" + domain, 404);
-    // if (!data) {
-    //   res.status(200).json({});
-    //   return;
-    // }
     res.status(200).json({
       data,
     });
