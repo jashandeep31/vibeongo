@@ -109,9 +109,10 @@ func setCORSHeaders(headers http.Header, origin string) {
 	headers.Add("Vary", "Origin")
 }
 
-// Return the version of the applcation along with the build time
+// Return the version of the application along with the build time.
 func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	remoteAddr := r.RemoteAddr
+	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(struct {
 		Version string
 		Build   string
@@ -119,7 +120,7 @@ func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	}{Version: AppVersion, Build: BuildTime, IP: remoteAddr})
 }
 
-// Takes the array of of hosts and invalidate all those in  the on go
+// Takes an array of hosts and invalidates them in one go.
 func (s *ProxyServer) handleInvalidate(w http.ResponseWriter, r *http.Request) {
 	var data struct {
 		Hosts []string `json:"hosts"`
@@ -200,6 +201,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 				w.WriteHeader(http.StatusNotFound)
 				w.Write([]byte("404"))
 			case "403":
+				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusForbidden)
 				ip, err := getRealIP(r.Header)
 				if err != nil {
@@ -213,7 +215,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 				json.NewEncoder(w).Encode(struct {
 					Error string
 				}{
-					Error: "Ip is not allowed please add to allowed ips, You Ip is " + ip,
+					Error: "IP is not allowed. Please add it to allowed IPs. Your IP is " + ip,
 				})
 			default:
 				w.WriteHeader(http.StatusInternalServerError)
