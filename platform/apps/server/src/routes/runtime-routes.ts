@@ -32,4 +32,6 @@ routes
   .route("/sessions/:id/tasks/:taskId")
   .post(checkRuntimeAuthorization, runTaskActions);
 
+routes.route("/renew-tokens").get(checkRuntimeAuthorization);
+
 export const runtimeRoutes = routes;

@@ -20,6 +20,8 @@ var rootCmd = &cobra.Command{
 func init() {
 	// update the vibeongo
 	rootCmd.AddCommand(UpdateCmd())
+	// renew the keys
+	rootCmd.AddCommand(RenewKeysCmd())
 	// setup the vps and config the things
 	rootCmd.AddCommand(VpsSetupCmd())
 	// start the echo server
