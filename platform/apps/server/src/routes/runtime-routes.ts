@@ -8,6 +8,7 @@ import {
 } from "../controllers/runtime/session-overview.js";
 import { suspendSessionInstance } from "../controllers/runtime/suspend-session-instance.js";
 import { runTaskActions } from "../controllers/runtime/task-actions.js";
+import { renewTokens } from "../controllers/runtime/renew-tokens.js";
 
 const routes: Router = Router();
 
@@ -32,6 +33,8 @@ routes
   .route("/sessions/:id/tasks/:taskId")
   .post(checkRuntimeAuthorization, runTaskActions);
 
-routes.route("/renew-tokens").get(checkRuntimeAuthorization);
+routes
+  .route("/sessions/:id/renew-tokens/:instanceId")
+  .get(checkRuntimeAuthorization, renewTokens);
 
 export const runtimeRoutes = routes;
