@@ -26,6 +26,10 @@ export type WebSocketToolMessageData = {
   password?: unknown;
 };
 
+const INITIAL_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 30000;
+const MAX_PENDING_MESSAGES = 1000;
+
 const SocketContext = createContext<{
   websocket: WebSocket | null;
   sendJsonMessage: (message: unknown) => void;
@@ -47,11 +51,26 @@ export const WebSocketProvider = ({
     new Set<(message: WebSocketServerMessage) => void>(),
   );
   const messageBufferRef = useRef<WebSocketServerMessage[]>([]);
+  const pendingMessagesRef = useRef<unknown[]>([]);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   // function to send the events to the backend server
   const sendJsonMessage = useCallback(
     (message: unknown) => {
-      if (websocket?.readyState !== WebSocket.OPEN) return;
+      if (websocket?.readyState !== WebSocket.OPEN) {
+        pendingMessagesRef.current.push(message);
+        if (pendingMessagesRef.current.length > MAX_PENDING_MESSAGES) {
+          pendingMessagesRef.current.splice(
+            0,
+            pendingMessagesRef.current.length - MAX_PENDING_MESSAGES,
+          );
+        }
+        return;
+      }
+
       websocket.send(JSON.stringify(message));
     },
     [websocket],
@@ -78,13 +97,18 @@ export const WebSocketProvider = ({
   );
 
   useEffect(() => {
+    let isMounted = true;
+    let currentSocket: WebSocket | null = null;
+
     setWebsocket(null);
     messageBufferRef.current = [];
+    pendingMessagesRef.current = [];
+    reconnectAttemptRef.current = 0;
     if (!socketUrl) {
       return;
     }
 
-    const ws = new WebSocket(`wss://${socketUrl}/ws`);
+    const wsUrl = `wss://${socketUrl}/ws`;
 
     const handleMessage = (event: MessageEvent) => {
       if (typeof event.data !== "string") {
@@ -123,21 +147,83 @@ export const WebSocketProvider = ({
       }
     };
 
-    ws.addEventListener("message", handleMessage);
+    const clearReconnectTimeout = () => {
+      if (!reconnectTimeoutRef.current) return;
 
-    ws.onopen = () => {
-      setWebsocket(ws);
-      ws.send(JSON.stringify({ type: "clientReady" }));
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     };
 
-    ws.onclose = () => {
-      setWebsocket((current) => (current === ws ? null : current));
+    const scheduleReconnect = () => {
+      if (!isMounted || reconnectTimeoutRef.current) return;
+
+      const delay = Math.min(
+        INITIAL_RECONNECT_DELAY_MS * 2 ** reconnectAttemptRef.current,
+        MAX_RECONNECT_DELAY_MS,
+      );
+
+      reconnectAttemptRef.current += 1;
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        connect();
+      }, delay);
     };
+
+    const connect = () => {
+      clearReconnectTimeout();
+      setWebsocket(null);
+
+      let ws: WebSocket;
+      try {
+        ws = new WebSocket(wsUrl);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      currentSocket = ws;
+      ws.addEventListener("message", handleMessage);
+
+      ws.onopen = () => {
+        if (!isMounted) return;
+
+        reconnectAttemptRef.current = 0;
+        setWebsocket(ws);
+        ws.send(JSON.stringify({ type: "clientReady" }));
+
+        const pendingMessages = pendingMessagesRef.current.splice(0);
+        for (const message of pendingMessages) {
+          ws.send(JSON.stringify(message));
+        }
+      };
+
+      ws.onclose = () => {
+        if (!isMounted) return;
+
+        ws.removeEventListener("message", handleMessage);
+        setWebsocket((current) => (current === ws ? null : current));
+        if (currentSocket === ws) {
+          currentSocket = null;
+        }
+        scheduleReconnect();
+      };
+
+      ws.onerror = () => {
+        if (!isMounted) return;
+
+        setWebsocket((current) => (current === ws ? null : current));
+        ws.close();
+      };
+    };
+
+    connect();
 
     return () => {
-      ws.removeEventListener("message", handleMessage);
-      setWebsocket((current) => (current === ws ? null : current));
-      ws.close();
+      isMounted = false;
+      clearReconnectTimeout();
+      currentSocket?.removeEventListener("message", handleMessage);
+      setWebsocket((current) => (current === currentSocket ? null : current));
+      currentSocket?.close();
     };
   }, [socketUrl]);
 
