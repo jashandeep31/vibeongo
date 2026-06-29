@@ -37,8 +37,21 @@ export const updateProxyDomain = catchAsync(
       .parse({ ...req.params, ...req.body });
 
     const [projectRouting] = await db
-      .select()
+      .select({
+        routingId: projectDomainRouting.id,
+        domainId: proxyDomains.id,
+        domain: proxyDomains.domain,
+        isEditable: proxyDomains.is_editable,
+      })
       .from(projectDomainRouting)
+      .leftJoin(
+        proxyDomains,
+        and(
+          eq(proxyDomains.id, domainId),
+          eq(proxyDomains.user_id, user.id),
+          eq(proxyDomains.routing_id, projectDomainRouting.id),
+        ),
+      )
       .where(
         and(
           eq(projectDomainRouting.user_id, user.id),
@@ -46,7 +59,13 @@ export const updateProxyDomain = catchAsync(
         ),
       );
     if (!projectRouting) throw new AppError("routing not found", 404);
+    if (!projectRouting.domainId || !projectRouting.domain) {
+      throw new AppError("domain not found", 404);
+    }
 
+    if (target_port !== undefined && !projectRouting.isEditable) {
+      throw new AppError("domain port is not editable", 403);
+    }
     const updatedRows = await db
       .update(proxyDomains)
       .set({
@@ -57,8 +76,7 @@ export const updateProxyDomain = catchAsync(
         and(
           eq(proxyDomains.user_id, user.id),
           eq(proxyDomains.id, domainId),
-          eq(proxyDomains.routing_id, projectRouting.id),
-          eq(proxyDomains.is_editable, true),
+          eq(proxyDomains.routing_id, projectRouting.routingId),
         ),
       )
       .returning({ id: proxyDomains.id, domain: proxyDomains.domain });

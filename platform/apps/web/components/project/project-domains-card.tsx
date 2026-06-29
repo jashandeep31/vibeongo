@@ -312,10 +312,7 @@ export function ProjectDomainsCard({
                             size="sm"
                             aria-label={`Allow all IPs for ${domainRow.domain}`}
                             checked={domainRow.allow_all_ips}
-                            disabled={
-                              updatingDomainId === domainRow.id ||
-                              !domainRow.is_editable
-                            }
+                            disabled={updatingDomainId === domainRow.id}
                             onCheckedChange={(checked) => {
                               void handleUpdateAllowAllIps(
                                 domainRow.id,
