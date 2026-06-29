@@ -6,9 +6,13 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useRef,
   useState,
   type ReactNode,
 } from "react";
+
+const INITIAL_RECONNECT_DELAY_MS = 1000;
+const MAX_RECONNECT_DELAY_MS = 30000;
 
 const VibeSocketContext = createContext<{
   websocket: WebSocket | null;
@@ -17,37 +21,103 @@ const VibeSocketContext = createContext<{
 
 export const VibeSocketProvider = ({ children }: { children: ReactNode }) => {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
+  const pendingMessagesRef = useRef<unknown[]>([]);
+  const reconnectAttemptRef = useRef(0);
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
+    null,
+  );
 
   const sendJsonMessage = useCallback(
     (message: unknown) => {
-      if (websocket?.readyState !== WebSocket.OPEN) return;
+      if (websocket?.readyState !== WebSocket.OPEN) {
+        pendingMessagesRef.current.push(message);
+        return;
+      }
+
       websocket.send(JSON.stringify(message));
     },
     [websocket],
   );
 
   useEffect(() => {
-    setWebsocket(null);
+    let isMounted = true;
+    let currentSocket: WebSocket | null = null;
 
-    const vibeSocket = new WebSocket(
-      BACKEND_URL.replace("https", "wss") + "/ws",
-    );
+    const socketUrl = BACKEND_URL.replace("https", "wss") + "/ws";
 
-    vibeSocket.onopen = () => {
-      setWebsocket(vibeSocket);
+    const clearReconnectTimeout = () => {
+      if (!reconnectTimeoutRef.current) return;
+
+      clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
     };
 
-    vibeSocket.onclose = () => {
-      setWebsocket((current) => (current === vibeSocket ? null : current));
+    const scheduleReconnect = () => {
+      if (!isMounted || reconnectTimeoutRef.current) return;
+
+      const delay = Math.min(
+        INITIAL_RECONNECT_DELAY_MS * 2 ** reconnectAttemptRef.current,
+        MAX_RECONNECT_DELAY_MS,
+      );
+
+      reconnectAttemptRef.current += 1;
+      reconnectTimeoutRef.current = setTimeout(() => {
+        reconnectTimeoutRef.current = null;
+        connect();
+      }, delay);
     };
 
-    vibeSocket.onerror = () => {
-      setWebsocket((current) => (current === vibeSocket ? null : current));
+    const connect = () => {
+      clearReconnectTimeout();
+      setWebsocket(null);
+
+      let vibeSocket: WebSocket;
+      try {
+        vibeSocket = new WebSocket(socketUrl);
+      } catch {
+        scheduleReconnect();
+        return;
+      }
+
+      currentSocket = vibeSocket;
+
+      vibeSocket.onopen = () => {
+        if (!isMounted) return;
+
+        reconnectAttemptRef.current = 0;
+        setWebsocket(vibeSocket);
+
+        const pendingMessages = pendingMessagesRef.current.splice(0);
+        for (const message of pendingMessages) {
+          vibeSocket.send(JSON.stringify(message));
+        }
+      };
+
+      vibeSocket.onclose = () => {
+        if (!isMounted) return;
+
+        setWebsocket((current) => (current === vibeSocket ? null : current));
+        if (currentSocket === vibeSocket) {
+          currentSocket = null;
+        }
+        scheduleReconnect();
+      };
+
+      vibeSocket.onerror = () => {
+        if (!isMounted) return;
+
+        setWebsocket((current) => (current === vibeSocket ? null : current));
+        vibeSocket.close();
+      };
     };
+
+    connect();
 
     return () => {
-      setWebsocket((current) => (current === vibeSocket ? null : current));
-      vibeSocket.close();
+      isMounted = false;
+      clearReconnectTimeout();
+      setWebsocket((current) => (current === currentSocket ? null : current));
+      currentSocket?.close();
     };
   }, []);
 
