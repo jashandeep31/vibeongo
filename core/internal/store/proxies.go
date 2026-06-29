@@ -54,6 +54,8 @@ func (pm *ProxyManager) AddProxy(hostUrl string, target string, port int, allowe
 // Return the proxy from the array using the domain name
 // if not present then as the ip
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
 	p, ok := pm.proxies[host]
 	if !ok {
 		proxy, err := getProxyFromServerCall(host)
