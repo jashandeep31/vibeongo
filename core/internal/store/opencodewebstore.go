@@ -40,7 +40,7 @@ func startWebServerLocked() error {
 	}
 
 	if cfg.OpenCode.RequirePassword {
-		err = utils.RunCommandInTmuxSessionInDir("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" OPENCODE_SERVER_USERNAME=vibe opencode web --port 4096 --hostname 0.0.0.0")
+		err = utils.RunCommandInTmuxSessionInDir("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" opencode web --port 4096 --hostname 0.0.0.0")
 	} else {
 		err = utils.RunCommandInTmuxSessionInDir("ops", projectDir, "opencode web --port 4096 --hostname 0.0.0.0")
 	}

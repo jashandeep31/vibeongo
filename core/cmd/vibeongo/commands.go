@@ -184,7 +184,7 @@ func ExecuteIntialScriptCmd() *cobra.Command {
 		Short: "Run the project's initial setup script",
 		Long:  "Execute the initial setup script configured for the project before starting normal work.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return actions.ExecuteIntialScript()
+			return actions.ExecuteSetupScript()
 		},
 	}
 }
