@@ -28,6 +28,18 @@ func GetKeysCmd() *cobra.Command {
 	}
 }
 
+func RenewKeysCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "renew-keys",
+		Short: "Renew the expired keys example: github token",
+		Long:  "Renew the expired token and updates them in the config.json",
+		RunE: func(cmd *cobra.Command, args []string) error {
+
+			return actions.Renewkeys()
+		},
+	}
+}
+
 // InitializeSessionFromOverviewCmd gets the overview of the last session
 func InitializeSessionFromOverviewCmd() *cobra.Command {
 	return &cobra.Command{
