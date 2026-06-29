@@ -200,7 +200,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 			return
 		}
 
-		if !checkIPIsAllowed(r.Header, proxyData.AllowedIPs) {
+		if !proxyData.AllowAllIPs && !checkIPIsAllowed(r.Header, proxyData.AllowedIPs) {
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusForbidden)
 
