@@ -168,10 +168,11 @@ type DeleteMultipleAllowedIpsInput = {
   ids: string[];
 };
 
-type UpdateProjectDomainPortInput = {
+type UpdateProjectDomainInput = {
   id: string;
   domainId: string;
-  target_port: number;
+  target_port?: number;
+  allow_all_ips?: boolean;
 };
 
 type UpdateProjectRoutingTargetInstanceInput = {
@@ -236,10 +237,11 @@ export const updateProjectDomainPort = async ({
   id,
   domainId,
   target_port,
-}: UpdateProjectDomainPortInput): Promise<{ message: string }> => {
+  allow_all_ips,
+}: UpdateProjectDomainInput): Promise<{ message: string }> => {
   const res = await axios.patch(
     BACKEND_URL + `/api/v1/projects/${id}/domains/${domainId}`,
-    { target_port },
+    { target_port, allow_all_ips },
     {
       withCredentials: true,
     },
