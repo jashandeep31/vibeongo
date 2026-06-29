@@ -16,12 +16,16 @@ func ReExecuteDevScript() error {
 	return ExecuteDevScript()
 }
 
-func ExecuteIntialScript() error {
+func ExecuteSetupScript() error {
 	cfg, err := config.LoadAndValidate("config.json")
 	if err != nil {
 		return err
 	}
 	if err := ProvisionOpenCode(cfg.OpenCode); err != nil {
+		return err
+	}
+
+	if err := ProvisionT3Code(); err != nil {
 		return err
 	}
 
