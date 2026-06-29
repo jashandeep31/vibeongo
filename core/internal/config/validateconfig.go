@@ -117,15 +117,25 @@ func calidateConfig(file []byte) (Config, error) {
 
 var configPath = filepath.Join("/home/ubuntu/.config/vibeongo", "config.json")
 
+func ResolveConfigPath() (string, error) {
+	if _, err := os.Stat(configPath); err == nil {
+		return configPath, nil
+	}
+	if _, err := os.Stat("config.json"); err == nil {
+		return "config.json", nil
+	}
+	return "", fmt.Errorf("config not found at %s", configPath)
+}
+
 func LoadAndValidate(filename string) (Config, error) {
-	file, err := os.ReadFile(configPath)
+	path, err := ResolveConfigPath()
 	if err != nil {
-		tempfile, err := os.ReadFile("config.json")
-		if err != nil {
-			return Config{}, fmt.Errorf("config not found at %s", configPath)
-		}
-		return calidateConfig(tempfile)
+		return Config{}, err
 	}
 
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return Config{}, err
+	}
 	return calidateConfig(file)
 }

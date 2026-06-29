@@ -4,7 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
+	"strings"
 )
 
 type APIClient struct {
@@ -36,7 +38,7 @@ func (c *APIClient) Post(path string, payload any, headers map[string]string, ou
 		return nil, err
 	}
 	defer resp.Body.Close()
-	return resp, json.NewDecoder(resp.Body).Decode(out)
+	return resp, decodeAPIResponse(resp, out)
 }
 
 func (c *APIClient) Get(path string, headers map[string]string, out any) (*http.Response, error) {
@@ -57,6 +59,37 @@ func (c *APIClient) Get(path string, headers map[string]string, out any) (*http.
 
 	defer resp.Body.Close()
 
-	err = json.NewDecoder(resp.Body).Decode(out)
-	return resp, err
+	return resp, decodeAPIResponse(resp, out)
+}
+
+func decodeAPIResponse(resp *http.Response, out any) error {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("failed to read response body: %w", err)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("%s %s returned %d: %s", resp.Request.Method, resp.Request.URL.String(), resp.StatusCode, truncateResponseBody(body))
+	}
+
+	if len(bytes.TrimSpace(body)) == 0 || out == nil {
+		return nil
+	}
+
+	if err := json.Unmarshal(body, out); err != nil {
+		return fmt.Errorf("failed to decode JSON response from %s %s: %w; body: %s", resp.Request.Method, resp.Request.URL.String(), err, truncateResponseBody(body))
+	}
+
+	return nil
+}
+
+func truncateResponseBody(body []byte) string {
+	text := strings.TrimSpace(string(body))
+	if text == "" {
+		return "<empty response>"
+	}
+	if len(text) > 500 {
+		return text[:500] + "..."
+	}
+	return text
 }
