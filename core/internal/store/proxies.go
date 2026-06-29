@@ -15,9 +15,10 @@ type Proxy struct {
 	// The domain the that i am proxing to ex: test.vibeongo.one -> 192.168.1.1
 	Host string
 	// Target is the upstream destination URL, ex: http://192.168.1.1:8080
-	Target     *url.URL
-	AllowedIPs []string
-	ExpiresAt  time.Time
+	Target      *url.URL
+	AllowedIPs  []string
+	AllowAllIPs bool
+	ExpiresAt   time.Time
 }
 
 type ProxyManager struct {
@@ -78,9 +79,10 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 
 type Response struct {
 	Data struct {
-		ID      string `json:"id"`
-		Port    int    `json:"target_port"`
-		Routing struct {
+		ID          string `json:"id"`
+		Port        int    `json:"target_port"`
+		AllowAllIPs bool   `json:"allow_all_ips"`
+		Routing     struct {
 			Ip         string `json:"ip"`
 			AllowedIPs []struct {
 				Ip string `json:"ip"`
@@ -137,10 +139,11 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		return nil, err
 	}
 	return &Proxy{
-		Host:       host,
-		Target:     fullTargetUrl,
-		AllowedIPs: allowedIPs,
-		ExpiresAt:  time.Now().Add(5 * time.Minute),
+		Host:        host,
+		Target:      fullTargetUrl,
+		AllowedIPs:  allowedIPs,
+		AllowAllIPs: parsedResponse.Data.AllowAllIPs,
+		ExpiresAt:   time.Now().Add(5 * time.Minute),
 	}, nil
 }
 
