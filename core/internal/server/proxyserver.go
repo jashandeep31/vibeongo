@@ -112,13 +112,11 @@ func setCORSHeaders(headers http.Header, origin string) {
 // Return the version of the applcation along with the build time
 func (s *ProxyServer) handleStatus(w http.ResponseWriter, r *http.Request) {
 	remoteAddr := r.RemoteAddr
-	headers := r.Header
 	json.NewEncoder(w).Encode(struct {
 		Version string
 		Build   string
-		Ip      string
-		Header  map[string][]string
-	}{Version: AppVersion, Build: BuildTime, Ip: remoteAddr, Header: headers})
+		IP      string
+	}{Version: AppVersion, Build: BuildTime, IP: remoteAddr})
 }
 
 // Takes the array of of hosts and invalidate all those in  the on go
@@ -157,11 +155,24 @@ func hasValidBearerToken(authorizationHeader, expectedToken string) bool {
 }
 
 func (s *ProxyServer) handleMyIP(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	ip, err := getRealIP(r.Header)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		_ = json.NewEncoder(w).Encode(struct {
+			Error string `json:"error"`
+		}{
+			Error: err.Error(),
+		})
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(struct {
+	_ = json.NewEncoder(w).Encode(struct {
 		IP string `json:"ip"`
 	}{
-		IP: getRealIP(r.Header),
+		IP: ip,
 	})
 }
 
@@ -190,10 +201,19 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 				w.Write([]byte("404"))
 			case "403":
 				w.WriteHeader(http.StatusForbidden)
+				ip, err := getRealIP(r.Header)
+				if err != nil {
+					json.NewEncoder(w).Encode(struct {
+						Error string
+					}{
+						Error: "Ip is not found. Internal Server Error. Please report if you seeing it ",
+					})
+
+				}
 				json.NewEncoder(w).Encode(struct {
 					Error string
 				}{
-					Error: "Ip is not allowed please add to allowed ips, You Ip is " + getRealIP(r.Header),
+					Error: "Ip is not allowed please add to allowed ips, You Ip is " + ip,
 				})
 			default:
 				w.WriteHeader(http.StatusInternalServerError)
@@ -203,18 +223,26 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 	}
 }
 
-func getRealIP(headers map[string][]string) string {
+func getRealIP(headers map[string][]string) (string, error) {
 	var XRealIP string
+
 	for k, v := range headers {
+		if len(v) <= 0 {
+
+			return "", fmt.Errorf("Ip not found ")
+		}
 		if k == "X-Real-Ip" {
 			XRealIP = v[0]
 		}
 	}
-	return XRealIP
+	return XRealIP, nil
 }
 
 func checkIPIsAllowed(headers map[string][]string, allowedIps []string) bool {
-	IP := getRealIP(headers)
+	IP, err := getRealIP(headers)
+	if err != nil {
+		return false
+	}
 	if IP == "" {
 		return false
 	}
