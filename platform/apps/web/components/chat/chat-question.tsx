@@ -29,7 +29,7 @@ export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
   return (
     <div className="flex flex-col gap-8">
       <div className="flex justify-end">
-        <div className="bg-muted text-foreground border-border max-w-[70%] rounded-2xl border px-3 py-2 text-base leading-relaxed shadow-sm md:max-w-[55%]">
+        <div className="bg-muted text-foreground border-border max-w-[90%] rounded-2xl border px-3 py-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
           {item.question}
         </div>
       </div>
