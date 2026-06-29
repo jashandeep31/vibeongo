@@ -2,6 +2,7 @@ package server
 
 import (
 	"bufio"
+	"context"
 	"crypto/subtle"
 	"encoding/json"
 	"fmt"
@@ -178,52 +179,55 @@ func (s *ProxyServer) handleMyIP(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *ProxyServer) reverseProxy() http.Handler {
-	return &httputil.ReverseProxy{
+	proxy := &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
-			proxyData, ok := s.store.GetProxyByHost(r.Host)
-			if !ok {
-				r.Header.Set("proxy-error", "404")
-				return
-			}
-			allowed := checkIPIsAllowed(r.Header, proxyData.AllowedIPs)
-			if !allowed {
-				r.Header.Set("proxy-error", "403")
-				return
-			}
+			proxyData := r.Context().Value(proxyDataContextKey{}).(*store.Proxy)
 			r.URL.Scheme = proxyData.Target.Scheme
 			r.Host = proxyData.Host
 			r.URL.Host = proxyData.Target.Host
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
-			errorHeader := r.Header.Get("proxy-error")
-			switch errorHeader {
-			case "404":
-				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte("404"))
-			case "403":
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusForbidden)
-				ip, err := getRealIP(r.Header)
-				if err != nil {
-					json.NewEncoder(w).Encode(struct {
-						Error string
-					}{
-						Error: "Ip is not found. Internal Server Error. Please report if you seeing it ",
-					})
-
-				}
-				json.NewEncoder(w).Encode(struct {
-					Error string
-				}{
-					Error: "IP is not allowed. Please add it to allowed IPs. Your IP is " + ip,
-				})
-			default:
-				w.WriteHeader(http.StatusInternalServerError)
-				w.Write([]byte("500"))
-			}
+			w.WriteHeader(http.StatusBadGateway)
+			w.Write([]byte("502"))
 		},
 	}
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		proxyData, ok := s.store.GetProxyByHost(r.Host)
+		if !ok {
+			w.WriteHeader(http.StatusNotFound)
+			w.Write([]byte("404"))
+			return
+		}
+
+		if !checkIPIsAllowed(r.Header, proxyData.AllowedIPs) {
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusForbidden)
+
+			ip, err := getRealIP(r.Header)
+			if err != nil {
+				_ = json.NewEncoder(w).Encode(struct {
+					Error string `json:"error"`
+				}{
+					Error: "IP is not found. Please report this if you are seeing it.",
+				})
+				return
+			}
+
+			_ = json.NewEncoder(w).Encode(struct {
+				Error string `json:"error"`
+			}{
+				Error: "IP is not allowed. Please add it to allowed IPs. Your IP is " + ip,
+			})
+			return
+		}
+
+		ctx := context.WithValue(r.Context(), proxyDataContextKey{}, proxyData)
+		proxy.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
+
+type proxyDataContextKey struct{}
 
 func getRealIP(headers map[string][]string) (string, error) {
 	var XRealIP string
@@ -231,7 +235,7 @@ func getRealIP(headers map[string][]string) (string, error) {
 	for k, v := range headers {
 		if len(v) <= 0 {
 
-			return "", fmt.Errorf("Ip not found ")
+			return "", fmt.Errorf("ip not found ")
 		}
 		if k == "X-Real-Ip" {
 			XRealIP = v[0]

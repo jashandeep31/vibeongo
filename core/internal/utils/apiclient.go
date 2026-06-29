@@ -7,11 +7,14 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"time"
 )
 
 type APIClient struct {
 	BaseURL string
 }
+
+const defaultHTTPTimeout = 10 * time.Second
 
 func (c *APIClient) Post(path string, payload any, headers map[string]string, out any) (*http.Response, error) {
 	fmt.Println(payload)
@@ -32,7 +35,7 @@ func (c *APIClient) Post(path string, payload any, headers map[string]string, ou
 		req.Header.Set(k, v)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: defaultHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err
@@ -51,7 +54,7 @@ func (c *APIClient) Get(path string, headers map[string]string, out any) (*http.
 		req.Header.Set(k, v)
 	}
 
-	client := &http.Client{}
+	client := &http.Client{Timeout: defaultHTTPTimeout}
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, err

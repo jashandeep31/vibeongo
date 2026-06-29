@@ -55,20 +55,25 @@ func (pm *ProxyManager) AddProxy(hostUrl string, target string, port int, allowe
 // if not present then as the ip
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 	pm.mu.RLock()
-	defer pm.mu.RUnlock()
 	p, ok := pm.proxies[host]
-	if !ok {
-		proxy, err := getProxyFromServerCall(host)
-		if err != nil {
-			return nil, false
-		}
-		fmt.Println("proxy", proxy)
-		pm.mu.Lock()
-		pm.proxies[host] = proxy
-		pm.mu.Unlock()
-		return proxy, true
+	pm.mu.RUnlock()
+	if ok {
+		return p, true
 	}
-	return p, ok
+
+	proxy, err := getProxyFromServerCall(host)
+	if err != nil {
+		return nil, false
+	}
+	fmt.Println("proxy", proxy)
+
+	pm.mu.Lock()
+	defer pm.mu.Unlock()
+	if p, ok := pm.proxies[host]; ok {
+		return p, true
+	}
+	pm.proxies[host] = proxy
+	return proxy, true
 }
 
 type Response struct {
