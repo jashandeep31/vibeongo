@@ -24,9 +24,6 @@ const LoadingResponseSkeleton = () => (
     <Skeleton className="h-4 w-full max-w-2xl" />
     <Skeleton className="h-4 w-full max-w-xl" />
     <Skeleton className="h-4 w-full max-w-lg" />
-    <Skeleton className="h-4 w-full max-w-2xl" />
-    <Skeleton className="h-4 w-full max-w-xl" />
-    <Skeleton className="h-4 w-full max-w-lg" />
   </div>
 );
 
@@ -45,7 +42,7 @@ export function ChatQuestion({
     <div
       className={cn(
         "flex flex-col gap-8",
-        (isStreaming || reserveBottomSpace) && "min-h-[70vh]",
+        reserveBottomSpace && "min-h-[42dvh] md:min-h-[60dvh]",
       )}
     >
       <div className="flex justify-end">
