@@ -3,12 +3,14 @@
 import MarkdownRenderer from "@/components/markdown-renderer";
 import type { IChatQuestion } from "@/store/chat-store";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { cn } from "@repo/ui/lib/utils";
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { useState } from "react";
 
 interface ChatQuestionProps {
   item: IChatQuestion;
   isStreaming?: boolean;
+  reserveBottomSpace?: boolean;
 }
 
 const LoadingResponseSkeleton = () => (
@@ -16,10 +18,23 @@ const LoadingResponseSkeleton = () => (
     <Skeleton className="h-4 w-full max-w-2xl" />
     <Skeleton className="h-4 w-full max-w-xl" />
     <Skeleton className="h-4 w-full max-w-lg" />
+    <Skeleton className="h-4 w-full max-w-2xl" />
+    <Skeleton className="h-4 w-full max-w-xl" />
+    <Skeleton className="h-4 w-full max-w-lg" />
+    <Skeleton className="h-4 w-full max-w-2xl" />
+    <Skeleton className="h-4 w-full max-w-xl" />
+    <Skeleton className="h-4 w-full max-w-lg" />
+    <Skeleton className="h-4 w-full max-w-2xl" />
+    <Skeleton className="h-4 w-full max-w-xl" />
+    <Skeleton className="h-4 w-full max-w-lg" />
   </div>
 );
 
-export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
+export function ChatQuestion({
+  item,
+  isStreaming = false,
+  reserveBottomSpace = false,
+}: ChatQuestionProps) {
   const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const answer = item.answer;
   const reasoning = answer?.reasoning?.trim();
@@ -27,7 +42,12 @@ export function ChatQuestion({ item, isStreaming = false }: ChatQuestionProps) {
   const hasResponseText = hasAnswer || Boolean(reasoning);
 
   return (
-    <div className="flex flex-col gap-8">
+    <div
+      className={cn(
+        "flex flex-col gap-8",
+        (isStreaming || reserveBottomSpace) && "min-h-[70vh]",
+      )}
+    >
       <div className="flex justify-end">
         <div className="bg-muted text-foreground border-border max-w-[90%] rounded-2xl border px-3 py-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
           {item.question}
