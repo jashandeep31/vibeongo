@@ -11,8 +11,6 @@ import {
 } from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
 
-const STREAM_UPDATE_INTERVAL_MS = 300;
-
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
 
@@ -83,39 +81,97 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   let steps: unknown = null;
   let usage: unknown = null;
   let finishReason: string | null = null;
-  let lastStreamUpdateAt = 0;
 
-  const sendQuestionUpdate = () => {
-    lastStreamUpdateAt = Date.now();
-    const streamQuestion = {
-      ...newQuestion,
-      answer: {
-        ...newAnswer,
-        answer,
-        reasoning,
-        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-        steps,
-        usage,
-        finish_reason: finishReason,
-      },
-    };
+  const getAnswerMemory = () =>
+    updatedConfig === null ? "" : JSON.stringify(updatedConfig);
+
+  const getStreamingQuestion = () => ({
+    ...newQuestion,
+    answer: {
+      ...newAnswer,
+      answer,
+      reasoning,
+      memory: getAnswerMemory(),
+      steps,
+      usage,
+      finish_reason: finishReason,
+    },
+  });
+
+  const updateActiveStream = () => {
+    setActiveStream(chatId, getStreamingQuestion());
+  };
+
+  const sendQuestionStarted = () => {
+    const streamQuestion = getStreamingQuestion();
 
     setActiveStream(chatId, streamQuestion);
     broadcastToChat(chatId, {
-      type: "stream-question",
+      type: "stream-question-started",
       data: streamQuestion,
     });
   };
 
-  const sendThrottledQuestionUpdate = () => {
-    const now = Date.now();
-    if (now - lastStreamUpdateAt < STREAM_UPDATE_INTERVAL_MS) return;
+  const sendAnswerDelta = (res: {
+    text: string;
+    reasoning: string;
+    updatedConfig?: unknown;
+    steps?: unknown;
+    usage?: unknown;
+    finish_reason?: string | null;
+  }) => {
+    const delta: {
+      chatId: string;
+      questionId: string;
+      answerId: string;
+      answerDelta: string;
+      reasoningDelta: string;
+      memory?: string;
+      steps?: unknown;
+      usage?: unknown;
+      finishReason?: string | null;
+    } = {
+      chatId,
+      questionId: newQuestion.id,
+      answerId: newAnswer.id,
+      answerDelta: res.text,
+      reasoningDelta: res.reasoning,
+    };
 
-    sendQuestionUpdate();
+    if (res.updatedConfig) {
+      delta.memory = JSON.stringify(res.updatedConfig);
+    }
+    if (res.steps) {
+      delta.steps = res.steps;
+    }
+    if (res.usage) {
+      delta.usage = res.usage;
+    }
+    if (res.finish_reason) {
+      delta.finishReason = res.finish_reason;
+    }
+
+    broadcastToChat(chatId, {
+      type: "answer-delta",
+      data: delta,
+    });
   };
 
+  const getFinalQuestion = () => ({
+    ...newQuestion,
+    answer: {
+      ...newAnswer,
+      answer,
+      reasoning,
+      memory: getAnswerMemory(),
+      steps,
+      usage,
+      finish_reason: finishReason,
+    },
+  });
+
   try {
-    sendQuestionUpdate();
+    sendQuestionStarted();
 
     for await (const res of projectAIAgent({
       query: parsedData.question,
@@ -123,8 +179,10 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
       prevConfig: "",
       QAs: [],
     })) {
-      answer += res.text;
-      reasoning += res.reasoning;
+      const answerDelta = res.text ?? "";
+      const reasoningDelta = res.reasoning ?? "";
+      answer += answerDelta;
+      reasoning += reasoningDelta;
       if (res.updatedConfig) {
         updatedConfig = res.updatedConfig;
       }
@@ -137,10 +195,19 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
       if (res.finish_reason) {
         finishReason = res.finish_reason;
       }
-      sendThrottledQuestionUpdate();
+
+      updateActiveStream();
+      sendAnswerDelta({
+        text: answerDelta,
+        reasoning: reasoningDelta,
+        updatedConfig: res.updatedConfig,
+        steps: res.steps,
+        usage: res.usage,
+        finish_reason: res.finish_reason,
+      });
     }
 
-    sendQuestionUpdate();
+    updateActiveStream();
 
     const persistedQuestion = {
       ...newQuestion,
@@ -152,7 +219,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
         ...newAnswer,
         reasoning,
         answer,
-        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+        memory: getAnswerMemory(),
         steps,
         usage,
         finish_reason: finishReason,
@@ -161,18 +228,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
     broadcastToChat(chatId, {
       type: "new-question",
-      data: {
-        ...persistedQuestion,
-        answer: {
-          ...newAnswer,
-          answer,
-          reasoning,
-          memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-          steps,
-          usage,
-          finish_reason: finishReason,
-        },
-      },
+      data: getFinalQuestion(),
     });
     clearActiveStream(chatId);
   } catch (error) {

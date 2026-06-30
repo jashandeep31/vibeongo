@@ -72,7 +72,7 @@ export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
 
   socket.send(
     JSON.stringify({
-      type: "stream-question",
+      type: "stream-question-started",
       data: activeStream,
     }),
   );

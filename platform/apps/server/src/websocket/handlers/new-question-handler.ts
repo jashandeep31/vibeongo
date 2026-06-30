@@ -10,8 +10,6 @@ import {
   setActiveStream,
 } from "../chats-store.js";
 
-const STREAM_UPDATE_INTERVAL_MS = 300;
-
 export const newQuestionHandler = async (
   socket: WebSocket,
   rawData: unknown,
@@ -113,39 +111,97 @@ export const newQuestionHandler = async (
   let steps: unknown = null;
   let usage: unknown = null;
   let finishReason: string | null = null;
-  let lastStreamUpdateAt = 0;
 
-  const sendQuestionUpdate = () => {
-    lastStreamUpdateAt = Date.now();
-    const streamQuestion = {
-      ...newQuestion,
-      answer: {
-        ...newAnswer,
-        answer,
-        reasoning,
-        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-        steps,
-        usage,
-        finish_reason: finishReason,
-      },
-    };
+  const getAnswerMemory = () =>
+    updatedConfig === null ? "" : JSON.stringify(updatedConfig);
+
+  const getStreamingQuestion = () => ({
+    ...newQuestion,
+    answer: {
+      ...newAnswer,
+      answer,
+      reasoning,
+      memory: getAnswerMemory(),
+      steps,
+      usage,
+      finish_reason: finishReason,
+    },
+  });
+
+  const updateActiveStream = () => {
+    setActiveStream(parsedResponse.chatId, getStreamingQuestion());
+  };
+
+  const sendQuestionStarted = () => {
+    const streamQuestion = getStreamingQuestion();
 
     setActiveStream(parsedResponse.chatId, streamQuestion);
     broadcastToChat(parsedResponse.chatId, {
-      type: "stream-question",
+      type: "stream-question-started",
       data: streamQuestion,
     });
   };
 
-  const sendThrottledQuestionUpdate = () => {
-    const now = Date.now();
-    if (now - lastStreamUpdateAt < STREAM_UPDATE_INTERVAL_MS) return;
+  const sendAnswerDelta = (res: {
+    text: string;
+    reasoning: string;
+    updatedConfig?: unknown;
+    steps?: unknown;
+    usage?: unknown;
+    finish_reason?: string | null;
+  }) => {
+    const delta: {
+      chatId: string;
+      questionId: string;
+      answerId: string;
+      answerDelta: string;
+      reasoningDelta: string;
+      memory?: string;
+      steps?: unknown;
+      usage?: unknown;
+      finishReason?: string | null;
+    } = {
+      chatId: parsedResponse.chatId,
+      questionId: newQuestion.id,
+      answerId: newAnswer.id,
+      answerDelta: res.text,
+      reasoningDelta: res.reasoning,
+    };
 
-    sendQuestionUpdate();
+    if (res.updatedConfig) {
+      delta.memory = JSON.stringify(res.updatedConfig);
+    }
+    if (res.steps) {
+      delta.steps = res.steps;
+    }
+    if (res.usage) {
+      delta.usage = res.usage;
+    }
+    if (res.finish_reason) {
+      delta.finishReason = res.finish_reason;
+    }
+
+    broadcastToChat(parsedResponse.chatId, {
+      type: "answer-delta",
+      data: delta,
+    });
   };
 
+  const getFinalQuestion = () => ({
+    ...newQuestion,
+    answer: {
+      ...newAnswer,
+      answer,
+      reasoning,
+      memory: getAnswerMemory(),
+      steps,
+      usage,
+      finish_reason: finishReason,
+    },
+  });
+
   try {
-    sendQuestionUpdate();
+    sendQuestionStarted();
 
     for await (const res of projectAIAgent({
       query: parsedResponse.question,
@@ -153,8 +209,10 @@ export const newQuestionHandler = async (
       prevConfig: lastQuestionAndAnswer.answer?.memory || "",
       QAs: refinedQA,
     })) {
-      answer += res.text;
-      reasoning += res.reasoning;
+      const answerDelta = res.text ?? "";
+      const reasoningDelta = res.reasoning ?? "";
+      answer += answerDelta;
+      reasoning += reasoningDelta;
       if (res.updatedConfig) {
         updatedConfig = res.updatedConfig;
       }
@@ -167,10 +225,19 @@ export const newQuestionHandler = async (
       if (res.finish_reason) {
         finishReason = res.finish_reason;
       }
-      sendThrottledQuestionUpdate();
+
+      updateActiveStream();
+      sendAnswerDelta({
+        text: answerDelta,
+        reasoning: reasoningDelta,
+        updatedConfig: res.updatedConfig,
+        steps: res.steps,
+        usage: res.usage,
+        finish_reason: res.finish_reason,
+      });
     }
 
-    sendQuestionUpdate();
+    updateActiveStream();
 
     const persistedQuestion = {
       ...newQuestion,
@@ -182,7 +249,7 @@ export const newQuestionHandler = async (
         ...newAnswer,
         reasoning: reasoning,
         answer: answer,
-        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+        memory: getAnswerMemory(),
         steps,
         usage,
         finish_reason: finishReason,
@@ -191,18 +258,7 @@ export const newQuestionHandler = async (
 
     broadcastToChat(parsedResponse.chatId, {
       type: "new-question",
-      data: {
-        ...persistedQuestion,
-        answer: {
-          ...newAnswer,
-          answer,
-          reasoning,
-          memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-          steps,
-          usage,
-          finish_reason: finishReason,
-        },
-      },
+      data: getFinalQuestion(),
     });
     clearActiveStream(parsedResponse.chatId);
   } catch (error) {

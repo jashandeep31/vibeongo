@@ -2,7 +2,11 @@
 import { ChatQuestion } from "@/components/chat/chat-question";
 import { InputArea } from "@/components/chat/input-area";
 import { useVibeSocket } from "@/hooks/use-vibe-socket";
-import { chatStore, type IChatQuestion } from "@/store/chat-store";
+import {
+  chatStore,
+  type ChatAnswerDelta,
+  type IChatQuestion,
+} from "@/store/chat-store";
 import { chatAnswer, chatQuestions } from "@repo/db";
 import { ArrowDown } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,11 +25,20 @@ type QuestionEventData = typeof chatQuestions.$inferSelect & {
 
 const ChatHistory = () => {
   const chatQuestionsList = chatStore((state) => state.chatQuestionsList);
+  const hasStreamingQuestion = chatStore(
+    (state) => state.streamingQuestion !== null,
+  );
 
   return (
     <>
-      {chatQuestionsList.map((item) => (
-        <ChatQuestion key={item.id} item={item} />
+      {chatQuestionsList.map((item, index) => (
+        <ChatQuestion
+          key={item.id}
+          item={item}
+          reserveBottomSpace={
+            !hasStreamingQuestion && index === chatQuestionsList.length - 1
+          }
+        />
       ))}
     </>
   );
@@ -60,6 +73,9 @@ const ClientView = ({ chatid }: ClientViewProps) => {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const setQuestions = chatStore((state) => state.setQuestions);
   const setStreamingQuestion = chatStore((state) => state.setStreamingQuestion);
+  const appendStreamingAnswerDelta = chatStore(
+    (state) => state.appendStreamingAnswerDelta,
+  );
   const clearStreamingQuestion = chatStore(
     (state) => state.clearStreamingQuestion,
   );
@@ -130,8 +146,13 @@ const ClientView = ({ chatid }: ClientViewProps) => {
         return;
       }
 
-      if (parsedEvent.type === "stream-question") {
+      if (parsedEvent.type === "stream-question-started") {
         setStreamingQuestion(parsedEvent.data as QuestionEventData);
+        return;
+      }
+
+      if (parsedEvent.type === "answer-delta") {
+        appendStreamingAnswerDelta(parsedEvent.data as ChatAnswerDelta);
         return;
       }
 
@@ -141,23 +162,6 @@ const ClientView = ({ chatid }: ClientViewProps) => {
         clearStreamingQuestion(question.id);
         return;
       }
-
-      if (parsedEvent.type === "answer-update") {
-        const answer = parsedEvent.data as typeof chatAnswer.$inferSelect;
-        const question = chatStore
-          .getState()
-          .chatQuestionsList.find(
-            (item) =>
-              item.id === answer.question_id || item.answer?.id === answer.id,
-          );
-
-        if (question) {
-          upsertFinalQuestion({
-            ...question,
-            answer,
-          });
-        }
-      }
     };
 
     websocket.addEventListener("message", handleMessage);
@@ -166,6 +170,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
     };
   }, [
     chatid,
+    appendStreamingAnswerDelta,
     clearStreamingQuestion,
     scrollToBottom,
     setQuestions,
