@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
-import { getSession } from "@/lib/get-session";
+import { isAuthenticated } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 import { LandingFeatures } from "@/components/landing-features";
 import { LandingHowItWorks } from "@/components/landing-how-it-works";
 
 export default async function Page() {
-  const session = await getSession();
-  if (session) {
+  const authenticated = await isAuthenticated();
+  if (authenticated) {
     redirect("/dashboard");
   }
   return (

@@ -1,6 +1,6 @@
 import ProjectsNavbar from "@/components/projects-navbar";
 import { ProjectsSidebar } from "@/components/projects-sidebar";
-import { getSession } from "@/lib/get-session";
+import { isAuthenticated } from "@/lib/get-session";
 import { SidebarProvider } from "@repo/ui/components/sidebar";
 import { redirect } from "next/navigation";
 import React from "react";
@@ -10,8 +10,8 @@ export default async function layout({
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getSession();
-  if (!session) redirect("/login");
+  const authenticated = await isAuthenticated();
+  if (!authenticated) redirect("/login");
 
   return (
     <SidebarProvider>

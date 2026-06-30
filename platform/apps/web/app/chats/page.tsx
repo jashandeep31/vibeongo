@@ -1,10 +1,10 @@
-import { getSession } from "@/lib/get-session";
+import { isAuthenticated } from "@/lib/get-session";
 import ClientView from "./client-view";
 import { redirect } from "next/navigation";
 
 const page = async () => {
-  const session = await getSession();
-  if (!session) {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
     redirect("/login");
   }
   return (

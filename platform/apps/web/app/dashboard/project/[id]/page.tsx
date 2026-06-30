@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/get-session";
+import { isAuthenticated } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 
 export default async function ProjectPage({
@@ -6,8 +6,8 @@ export default async function ProjectPage({
 }: {
   params: Promise<{ id: string }>;
 }) {
-  const session = await getSession();
-  if (!session || !session.id) {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
     redirect("/login");
   }
 

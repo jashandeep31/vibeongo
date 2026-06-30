@@ -1,12 +1,12 @@
 import { NewChatInput } from "@/components/chat/new-chat-input";
 import { ProjectList } from "@/components/project/project-list";
 import { RunningInstancesList } from "@/components/project/running-instances-list";
-import { getSession } from "@/lib/get-session";
+import { isAuthenticated } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 
 export default async function ProjectsPage() {
-  const session = await getSession();
-  if (!session || !session.id) {
+  const authenticated = await isAuthenticated();
+  if (!authenticated) {
     redirect("/login");
   }
   return (
