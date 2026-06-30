@@ -214,7 +214,7 @@ const createDemoProjectConfig = async (): Promise<
   }
 
   return {
-    name: "demo-project",
+    name: "Zed snippets",
     description: "Demo project configuration",
     regionId: metadata.regionId,
     instanceTypeId: metadata.instanceTypeId,
@@ -223,7 +223,8 @@ const createDemoProjectConfig = async (): Promise<
     initialScript: "",
     finalScript: `cd /home/ubuntu/code 
 git clone https://github.com/jashandeep31/zed-snippets
-npm i`,
+npm i
+npm i -D concurrently`,
     devScript: `cd /home/ubuntu/code/zed-snippets
 npm run dev
   `,
