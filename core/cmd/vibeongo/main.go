@@ -13,7 +13,7 @@ var rootCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		version := "0.0.3"
 		fmt.Println(version)
-		fmt.Println("Please use a subcommand like: init-workspace, init-repos, tasks, serve")
+		fmt.Println("Please use a subcommand like: setup-github-repos, run-repos-setup-script, tasks, serve")
 	},
 }
 

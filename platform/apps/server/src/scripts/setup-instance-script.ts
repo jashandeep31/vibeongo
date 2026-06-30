@@ -58,8 +58,8 @@ sudo -u ubuntu /tmp/ubuntu-setup.sh
 
 sudo -iu ubuntu bash <<'VIBEONGO_COMMANDS'
 vibeongo setup
-vibeongo init-workspace
-vibeongo init-repos
+vibeongo setup-github-repos
+vibeongo run-repos-setup-script
 vibeongo final
 vibeongo dev
 echo "doing with the tasks"
