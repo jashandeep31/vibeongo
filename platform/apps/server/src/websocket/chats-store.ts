@@ -30,6 +30,11 @@ export const removeSocketFromAllChats = (socket: WebSocket) => {
   }
 };
 
+export const moveSocketToChat = (chatId: string, socket: WebSocket) => {
+  removeSocketFromAllChats(socket);
+  addSubscriber(chatId, socket);
+};
+
 export const getActiveStream = (chatId: string) => {
   return activeChatStreams.get(chatId);
 };

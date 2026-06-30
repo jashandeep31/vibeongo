@@ -44,8 +44,8 @@ export const createInstance = catchAsync(
     const project = rows[0]?.project;
 
     const sshKeysArray = rows
-      .map((row) => row.sshKey!.value)
-      .filter((key) => key !== null);
+      .map((row) => row.sshKey?.value)
+      .filter((key): key is string => Boolean(key));
 
     if (!project) throw new AppError("Project not found", 404);
 

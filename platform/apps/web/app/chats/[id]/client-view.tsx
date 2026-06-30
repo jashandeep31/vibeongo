@@ -174,6 +174,10 @@ const ClientView = ({ chatid }: ClientViewProps) => {
       const parsedEvent = JSON.parse(event.data);
 
       if (parsedEvent.type === "chat-data") {
+        if (parsedEvent.data.chat?.id && parsedEvent.data.chat.id !== chatid) {
+          return;
+        }
+
         const questions = (parsedEvent.data.chatQuestions ?? []).map(
           (question: ChatQuestionWithAnswer): IChatQuestion => {
             const { chatAnswer, ...questionData } = question;
@@ -202,7 +206,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
       if (parsedEvent.type === "new-question") {
         const question = parsedEvent.data as QuestionEventData;
         upsertFinalQuestion(question);
-        clearStreamingQuestion(question.id);
+        clearStreamingQuestion(question.id, question.chat_id);
         return;
       }
     };
