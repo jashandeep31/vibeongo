@@ -1,4 +1,4 @@
-import { getSession } from "@/lib/getSession";
+import { getSession } from "@/lib/get-session";
 import ClientView from "./client-view";
 import { redirect } from "next/navigation";
 

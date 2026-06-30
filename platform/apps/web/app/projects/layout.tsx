@@ -1,6 +1,6 @@
 import ProjectsNavbar from "@/components/projects-navbar";
 import { ProjectsSidebar } from "@/components/projects-sidebar";
-import { getSession } from "@/lib/getSession";
+import { getSession } from "@/lib/get-session";
 import { SidebarProvider } from "@repo/ui/components/sidebar";
 import { redirect } from "next/navigation";
 import React from "react";
