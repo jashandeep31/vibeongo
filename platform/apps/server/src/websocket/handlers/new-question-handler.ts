@@ -3,6 +3,12 @@ import { z } from "zod";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
 import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
+import {
+  addSubscriber,
+  broadcastToChat,
+  clearActiveStream,
+  setActiveStream,
+} from "../chats-store.js";
 
 const STREAM_UPDATE_INTERVAL_MS = 300;
 
@@ -77,6 +83,8 @@ export const newQuestionHandler = async (
     return;
   }
 
+  addSubscriber(parsedResponse.chatId, socket);
+
   const newQuestion: typeof chatQuestions.$inferSelect = {
     id: crypto.randomUUID(),
     question: parsedResponse.question,
@@ -109,23 +117,24 @@ export const newQuestionHandler = async (
 
   const sendQuestionUpdate = () => {
     lastStreamUpdateAt = Date.now();
-    socket.send(
-      JSON.stringify({
-        type: "stream-question",
-        data: {
-          ...newQuestion,
-          answer: {
-            ...newAnswer,
-            answer,
-            reasoning,
-            memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-            steps,
-            usage,
-            finish_reason: finishReason,
-          },
-        },
-      }),
-    );
+    const streamQuestion = {
+      ...newQuestion,
+      answer: {
+        ...newAnswer,
+        answer,
+        reasoning,
+        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+        steps,
+        usage,
+        finish_reason: finishReason,
+      },
+    };
+
+    setActiveStream(parsedResponse.chatId, streamQuestion);
+    broadcastToChat(parsedResponse.chatId, {
+      type: "stream-question",
+      data: streamQuestion,
+    });
   };
 
   const sendThrottledQuestionUpdate = () => {
@@ -135,52 +144,52 @@ export const newQuestionHandler = async (
     sendQuestionUpdate();
   };
 
-  sendQuestionUpdate();
+  try {
+    sendQuestionUpdate();
 
-  for await (const res of projectAIAgent({
-    query: parsedResponse.question,
-    userId,
-    prevConfig: lastQuestionAndAnswer.answer?.memory || "",
-    QAs: refinedQA,
-  })) {
-    answer += res.text;
-    reasoning += res.reasoning;
-    if (res.updatedConfig) {
-      updatedConfig = res.updatedConfig;
+    for await (const res of projectAIAgent({
+      query: parsedResponse.question,
+      userId,
+      prevConfig: lastQuestionAndAnswer.answer?.memory || "",
+      QAs: refinedQA,
+    })) {
+      answer += res.text;
+      reasoning += res.reasoning;
+      if (res.updatedConfig) {
+        updatedConfig = res.updatedConfig;
+      }
+      if (res.steps) {
+        steps = res.steps;
+      }
+      if (res.usage) {
+        usage = res.usage;
+      }
+      if (res.finish_reason) {
+        finishReason = res.finish_reason;
+      }
+      sendThrottledQuestionUpdate();
     }
-    if (res.steps) {
-      steps = res.steps;
-    }
-    if (res.usage) {
-      usage = res.usage;
-    }
-    if (res.finish_reason) {
-      finishReason = res.finish_reason;
-    }
-    sendThrottledQuestionUpdate();
-  }
 
-  sendQuestionUpdate();
+    sendQuestionUpdate();
 
-  const persistedQuestion = {
-    ...newQuestion,
-  };
+    const persistedQuestion = {
+      ...newQuestion,
+    };
 
-  await db.transaction(async (tx) => {
-    await tx.insert(chatQuestions).values(persistedQuestion);
-    await tx.insert(chatAnswer).values({
-      ...newAnswer,
-      reasoning: reasoning,
-      answer: answer,
-      memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-      steps,
-      usage,
-      finish_reason: finishReason,
+    await db.transaction(async (tx) => {
+      await tx.insert(chatQuestions).values(persistedQuestion);
+      await tx.insert(chatAnswer).values({
+        ...newAnswer,
+        reasoning: reasoning,
+        answer: answer,
+        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+        steps,
+        usage,
+        finish_reason: finishReason,
+      });
     });
-  });
 
-  socket.send(
-    JSON.stringify({
+    broadcastToChat(parsedResponse.chatId, {
       type: "new-question",
       data: {
         ...persistedQuestion,
@@ -194,6 +203,10 @@ export const newQuestionHandler = async (
           finish_reason: finishReason,
         },
       },
-    }),
-  );
+    });
+    clearActiveStream(parsedResponse.chatId);
+  } catch (error) {
+    clearActiveStream(parsedResponse.chatId);
+    throw error;
+  }
 };

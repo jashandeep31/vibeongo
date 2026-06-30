@@ -3,6 +3,12 @@ import { z } from "zod";
 import WebSocket from "ws";
 import { AppError } from "../../lib/app-error.js";
 import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
+import {
+  addSubscriber,
+  broadcastToChat,
+  clearActiveStream,
+  setActiveStream,
+} from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
 
 const STREAM_UPDATE_INTERVAL_MS = 300;
@@ -37,6 +43,8 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
     if (!chat) throw new AppError("something went wrong", 500);
   });
+
+  addSubscriber(chatId, socket);
 
   socket.send(
     JSON.stringify({
@@ -79,23 +87,24 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
   const sendQuestionUpdate = () => {
     lastStreamUpdateAt = Date.now();
-    socket.send(
-      JSON.stringify({
-        type: "stream-question",
-        data: {
-          ...newQuestion,
-          answer: {
-            ...newAnswer,
-            answer,
-            reasoning,
-            memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-            steps,
-            usage,
-            finish_reason: finishReason,
-          },
-        },
-      }),
-    );
+    const streamQuestion = {
+      ...newQuestion,
+      answer: {
+        ...newAnswer,
+        answer,
+        reasoning,
+        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+        steps,
+        usage,
+        finish_reason: finishReason,
+      },
+    };
+
+    setActiveStream(chatId, streamQuestion);
+    broadcastToChat(chatId, {
+      type: "stream-question",
+      data: streamQuestion,
+    });
   };
 
   const sendThrottledQuestionUpdate = () => {
@@ -105,52 +114,52 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
     sendQuestionUpdate();
   };
 
-  sendQuestionUpdate();
+  try {
+    sendQuestionUpdate();
 
-  for await (const res of projectAIAgent({
-    query: parsedData.question,
-    userId,
-    prevConfig: "",
-    QAs: [],
-  })) {
-    answer += res.text;
-    reasoning += res.reasoning;
-    if (res.updatedConfig) {
-      updatedConfig = res.updatedConfig;
+    for await (const res of projectAIAgent({
+      query: parsedData.question,
+      userId,
+      prevConfig: "",
+      QAs: [],
+    })) {
+      answer += res.text;
+      reasoning += res.reasoning;
+      if (res.updatedConfig) {
+        updatedConfig = res.updatedConfig;
+      }
+      if (res.steps) {
+        steps = res.steps;
+      }
+      if (res.usage) {
+        usage = res.usage;
+      }
+      if (res.finish_reason) {
+        finishReason = res.finish_reason;
+      }
+      sendThrottledQuestionUpdate();
     }
-    if (res.steps) {
-      steps = res.steps;
-    }
-    if (res.usage) {
-      usage = res.usage;
-    }
-    if (res.finish_reason) {
-      finishReason = res.finish_reason;
-    }
-    sendThrottledQuestionUpdate();
-  }
 
-  sendQuestionUpdate();
+    sendQuestionUpdate();
 
-  const persistedQuestion = {
-    ...newQuestion,
-  };
+    const persistedQuestion = {
+      ...newQuestion,
+    };
 
-  await db.transaction(async (tx) => {
-    await tx.insert(chatQuestions).values(persistedQuestion);
-    await tx.insert(chatAnswer).values({
-      ...newAnswer,
-      reasoning,
-      answer,
-      memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-      steps,
-      usage,
-      finish_reason: finishReason,
+    await db.transaction(async (tx) => {
+      await tx.insert(chatQuestions).values(persistedQuestion);
+      await tx.insert(chatAnswer).values({
+        ...newAnswer,
+        reasoning,
+        answer,
+        memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+        steps,
+        usage,
+        finish_reason: finishReason,
+      });
     });
-  });
 
-  socket.send(
-    JSON.stringify({
+    broadcastToChat(chatId, {
       type: "new-question",
       data: {
         ...persistedQuestion,
@@ -164,6 +173,10 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
           finish_reason: finishReason,
         },
       },
-    }),
-  );
+    });
+    clearActiveStream(chatId);
+  } catch (error) {
+    clearActiveStream(chatId);
+    throw error;
+  }
 };

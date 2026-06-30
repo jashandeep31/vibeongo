@@ -2,6 +2,7 @@ import { WebSocket } from "ws";
 import { newChatHandler } from "./handlers/new-chat-handler.js";
 import { joinChatHandler } from "./handlers/join-chat-handler.js";
 import { newQuestionHandler } from "./handlers/new-question-handler.js";
+import { removeSocketFromAllChats } from "./chats-store.js";
 
 export const SocketHandler = async (socket: WebSocket) => {
   //NOTE:
@@ -30,6 +31,10 @@ export const SocketHandler = async (socket: WebSocket) => {
         error instanceof Error ? error.message : "Invalid websocket message",
       );
     }
+  };
+
+  socket.onclose = () => {
+    removeSocketFromAllChats(socket);
   };
 };
 
