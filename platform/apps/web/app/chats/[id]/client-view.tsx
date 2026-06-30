@@ -71,6 +71,10 @@ const ClientView = ({ chatid }: ClientViewProps) => {
   const { websocket, sendJsonMessage } = useVibeSocket();
   const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const shouldStickToBottomRef = useRef(true);
+  const chatQuestionsList = chatStore((state) => state.chatQuestionsList);
+  const streamingQuestion = chatStore((state) => state.streamingQuestion);
   const setQuestions = chatStore((state) => state.setQuestions);
   const setStreamingQuestion = chatStore((state) => state.setStreamingQuestion);
   const appendStreamingAnswerDelta = chatStore(
@@ -90,19 +94,60 @@ const ClientView = ({ chatid }: ClientViewProps) => {
     const distanceFromBottom =
       scrollArea.scrollHeight - scrollArea.scrollTop - scrollArea.clientHeight;
 
+    shouldStickToBottomRef.current = distanceFromBottom <= 120;
     setShowScrollButton(distanceFromBottom > 50);
   }, []);
 
-  const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
-    const scrollArea = scrollAreaRef.current;
-    if (!scrollArea) return;
+  const scrollToBottom = useCallback(
+    (behavior: ScrollBehavior = "auto", force = true) => {
+      const performScroll = () => {
+        const scrollArea = scrollAreaRef.current;
+        if (!scrollArea) return;
+        if (!force && !shouldStickToBottomRef.current) return;
 
-    scrollArea.scrollTo({
-      top: scrollArea.scrollHeight,
-      behavior,
-    });
-    setShowScrollButton(false);
-  }, []);
+        bottomRef.current?.scrollIntoView({
+          behavior,
+          block: "end",
+        });
+
+        scrollArea.scrollTo({
+          top: scrollArea.scrollHeight,
+          behavior,
+        });
+
+        shouldStickToBottomRef.current = true;
+        setShowScrollButton(false);
+      };
+
+      requestAnimationFrame(performScroll);
+      window.setTimeout(performScroll, 100);
+    },
+    [],
+  );
+
+  const streamingQuestionId = streamingQuestion?.id;
+  const streamingAnswerLength = streamingQuestion?.answer?.answer.length ?? 0;
+  const streamingReasoningLength =
+    streamingQuestion?.answer?.reasoning?.length ?? 0;
+
+  useEffect(() => {
+    if (!streamingQuestionId) return;
+    if (!shouldStickToBottomRef.current) return;
+
+    scrollToBottom("auto", false);
+  }, [
+    scrollToBottom,
+    streamingAnswerLength,
+    streamingQuestionId,
+    streamingReasoningLength,
+  ]);
+
+  useEffect(() => {
+    if (!chatQuestionsList.length) return;
+    if (!shouldStickToBottomRef.current) return;
+
+    scrollToBottom("auto", false);
+  }, [chatQuestionsList.length, scrollToBottom]);
 
   useEffect(() => {
     updateChat(chatid);
@@ -144,9 +189,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
         );
 
         setQuestions(questions);
-        requestAnimationFrame(() => {
-          scrollToBottom();
-        });
+        scrollToBottom();
         return;
       }
 
@@ -184,7 +227,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
   ]);
 
   return (
-    <div className="bg-background text-foreground relative flex flex-col justify-between">
+    <div className="bg-background text-foreground relative flex h-full min-h-0 w-full flex-col justify-between">
       <div
         ref={scrollAreaRef}
         onScroll={updateScrollButtonVisibility}
@@ -195,6 +238,7 @@ const ClientView = ({ chatid }: ClientViewProps) => {
             <EmptyChatState />
             <ChatHistory />
             <StreamingQuestion />
+            <div ref={bottomRef} aria-hidden="true" />
           </div>
         </div>
       </div>
