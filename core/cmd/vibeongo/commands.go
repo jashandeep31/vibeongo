@@ -76,7 +76,7 @@ func UpdateSessionFromOverviewCmd() *cobra.Command {
 // RepoSetupCmd initializes and installs dependencies for repositories
 func RepoSetupCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init-repos",
+		Use:   "run-repos-setup-script",
 		Short: "Run setup steps for cloned repositories",
 		Long:  "Run the configured setup commands for each cloned repository in the workspace, such as dependency installation or project-specific bootstrap scripts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -165,7 +165,7 @@ func UpdateCmd() *cobra.Command {
 // VpsSetupCmd initializes the VPS environment and clones repositories
 func VpsSetupCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "init-workspace",
+		Use:   "setup-github-repos",
 		Short: "Prepare the workspace for the project",
 		Long:  "Initialize the runtime workspace by applying authentication setup and cloning the repositories defined in the project configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
