@@ -1,6 +1,7 @@
 import { and, chatAnswer, chatQuestions, chats, db, eq } from "@repo/db";
 import WebSocket from "ws";
 import { z } from "zod";
+import { addSubscriber, getActiveStream } from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
 
 export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
@@ -29,6 +30,8 @@ export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
     );
     return;
   }
+
+  addSubscriber(parsedData.id, socket);
 
   const refinedQuestions = new Map<
     string,
@@ -61,6 +64,16 @@ export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
         chat: rows[0]?.chats!,
         chatQuestions: Array.from(refinedQuestions.values()),
       },
+    }),
+  );
+
+  const activeStream = getActiveStream(parsedData.id);
+  if (!activeStream) return;
+
+  socket.send(
+    JSON.stringify({
+      type: "stream-question-started",
+      data: activeStream,
     }),
   );
 };

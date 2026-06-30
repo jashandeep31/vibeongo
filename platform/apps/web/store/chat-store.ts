@@ -4,6 +4,19 @@ import { create } from "zustand";
 export type IChatQuestion = typeof chatQuestions.$inferSelect & {
   answer: typeof chatAnswer.$inferSelect | null;
 };
+
+export type ChatAnswerDelta = {
+  chatId: string;
+  questionId: string;
+  answerId: string;
+  answerDelta: string;
+  reasoningDelta: string;
+  memory?: string;
+  steps?: (typeof chatAnswer.$inferSelect)["steps"];
+  usage?: (typeof chatAnswer.$inferSelect)["usage"];
+  finishReason?: string | null;
+};
+
 interface ChatStore {
   chatId: string;
   chatQuestionsList: IChatQuestion[];
@@ -13,6 +26,7 @@ interface ChatStore {
 
   setQuestions: (questions: IChatQuestion[]) => void;
   setStreamingQuestion: (q: IChatQuestion) => void;
+  appendStreamingAnswerDelta: (delta: ChatAnswerDelta) => void;
   clearStreamingQuestion: (questionId?: string) => void;
   upsertFinalQuestion: (q: IChatQuestion) => void;
   upsertQuestion: (q: IChatQuestion) => void;
@@ -52,6 +66,33 @@ export const chatStore = create<ChatStore>((set) => ({
       }
 
       return { streamingQuestion: q };
+    }),
+
+  appendStreamingAnswerDelta: (delta: ChatAnswerDelta) =>
+    set((state) => {
+      const streamingQuestion = state.streamingQuestion;
+      if (!streamingQuestion) return state;
+      if (streamingQuestion.chat_id !== delta.chatId) return state;
+      if (streamingQuestion.id !== delta.questionId) return state;
+      if (!streamingQuestion.answer) return state;
+      if (streamingQuestion.answer.id !== delta.answerId) return state;
+
+      return {
+        streamingQuestion: {
+          ...streamingQuestion,
+          answer: {
+            ...streamingQuestion.answer,
+            answer: streamingQuestion.answer.answer + delta.answerDelta,
+            reasoning:
+              (streamingQuestion.answer.reasoning ?? "") + delta.reasoningDelta,
+            memory: delta.memory ?? streamingQuestion.answer.memory,
+            steps: delta.steps ?? streamingQuestion.answer.steps,
+            usage: delta.usage ?? streamingQuestion.answer.usage,
+            finish_reason:
+              delta.finishReason ?? streamingQuestion.answer.finish_reason,
+          },
+        },
+      };
     }),
 
   clearStreamingQuestion: (questionId?: string) =>

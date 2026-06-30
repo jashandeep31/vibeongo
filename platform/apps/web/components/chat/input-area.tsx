@@ -31,7 +31,7 @@ export function InputArea({
           requestAnimationFrame(() => {
             onSubmitSuccess?.();
           });
-        }, 1000);
+        }, 300);
       }}
     />
   );
