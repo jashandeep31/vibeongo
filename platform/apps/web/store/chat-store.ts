@@ -27,7 +27,7 @@ interface ChatStore {
   setQuestions: (questions: IChatQuestion[]) => void;
   setStreamingQuestion: (q: IChatQuestion) => void;
   appendStreamingAnswerDelta: (delta: ChatAnswerDelta) => void;
-  clearStreamingQuestion: (questionId?: string) => void;
+  clearStreamingQuestion: (questionId?: string, chatId?: string) => void;
   upsertFinalQuestion: (q: IChatQuestion) => void;
   upsertQuestion: (q: IChatQuestion) => void;
   addQuestion: (q: IChatQuestion) => void;
@@ -54,6 +54,8 @@ export const chatStore = create<ChatStore>((set) => ({
 
   setStreamingQuestion: (q: IChatQuestion) =>
     set((state) => {
+      if (state.chatId && q.chat_id !== state.chatId) return state;
+
       const existingQuestion = state.streamingQuestion;
       if (
         existingQuestion?.id === q.id &&
@@ -70,6 +72,8 @@ export const chatStore = create<ChatStore>((set) => ({
 
   appendStreamingAnswerDelta: (delta: ChatAnswerDelta) =>
     set((state) => {
+      if (state.chatId && delta.chatId !== state.chatId) return state;
+
       const streamingQuestion = state.streamingQuestion;
       if (!streamingQuestion) return state;
       if (streamingQuestion.chat_id !== delta.chatId) return state;
@@ -95,9 +99,10 @@ export const chatStore = create<ChatStore>((set) => ({
       };
     }),
 
-  clearStreamingQuestion: (questionId?: string) =>
+  clearStreamingQuestion: (questionId?: string, chatId?: string) =>
     set((state) => {
       if (!state.streamingQuestion) return state;
+      if (chatId && state.streamingQuestion.chat_id !== chatId) return state;
       if (questionId && state.streamingQuestion.id !== questionId) return state;
 
       return { streamingQuestion: null };
@@ -105,6 +110,8 @@ export const chatStore = create<ChatStore>((set) => ({
 
   upsertFinalQuestion: (q: IChatQuestion) =>
     set((state) => {
+      if (state.chatId && q.chat_id !== state.chatId) return state;
+
       const existingQuestionIndex = state.chatQuestionsList.findIndex(
         (item) => item.id === q.id,
       );
@@ -130,6 +137,8 @@ export const chatStore = create<ChatStore>((set) => ({
 
   upsertQuestion: (q: IChatQuestion) =>
     set((state) => {
+      if (state.chatId && q.chat_id !== state.chatId) return state;
+
       const existingQuestionIndex = state.chatQuestionsList.findIndex(
         (item) => item.id === q.id,
       );
@@ -150,7 +159,11 @@ export const chatStore = create<ChatStore>((set) => ({
     }),
 
   addQuestion: (q: IChatQuestion) =>
-    set((state) => ({
-      chatQuestionsList: [...state.chatQuestionsList, q],
-    })),
+    set((state) => {
+      if (state.chatId && q.chat_id !== state.chatId) return state;
+
+      return {
+        chatQuestionsList: [...state.chatQuestionsList, q],
+      };
+    }),
 }));
