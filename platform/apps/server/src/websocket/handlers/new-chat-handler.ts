@@ -3,9 +3,13 @@ import { z } from "zod";
 import WebSocket from "ws";
 import { AppError } from "../../lib/app-error.js";
 import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
+import {
+  addSubscriber,
+  broadcastToChat,
+  clearActiveStream,
+  setActiveStream,
+} from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
-
-const STREAM_UPDATE_INTERVAL_MS = 300;
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
@@ -37,6 +41,8 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
     if (!chat) throw new AppError("something went wrong", 500);
   });
+
+  addSubscriber(chatId, socket);
 
   socket.send(
     JSON.stringify({
@@ -75,95 +81,158 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   let steps: unknown = null;
   let usage: unknown = null;
   let finishReason: string | null = null;
-  let lastStreamUpdateAt = 0;
 
-  const sendQuestionUpdate = () => {
-    lastStreamUpdateAt = Date.now();
-    socket.send(
-      JSON.stringify({
-        type: "stream-question",
-        data: {
-          ...newQuestion,
-          answer: {
-            ...newAnswer,
-            answer,
-            reasoning,
-            memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-            steps,
-            usage,
-            finish_reason: finishReason,
-          },
-        },
-      }),
-    );
-  };
+  const getAnswerMemory = () =>
+    updatedConfig === null ? "" : JSON.stringify(updatedConfig);
 
-  const sendThrottledQuestionUpdate = () => {
-    const now = Date.now();
-    if (now - lastStreamUpdateAt < STREAM_UPDATE_INTERVAL_MS) return;
-
-    sendQuestionUpdate();
-  };
-
-  sendQuestionUpdate();
-
-  for await (const res of projectAIAgent({
-    query: parsedData.question,
-    userId,
-    prevConfig: "",
-    QAs: [],
-  })) {
-    answer += res.text;
-    reasoning += res.reasoning;
-    if (res.updatedConfig) {
-      updatedConfig = res.updatedConfig;
-    }
-    if (res.steps) {
-      steps = res.steps;
-    }
-    if (res.usage) {
-      usage = res.usage;
-    }
-    if (res.finish_reason) {
-      finishReason = res.finish_reason;
-    }
-    sendThrottledQuestionUpdate();
-  }
-
-  sendQuestionUpdate();
-
-  const persistedQuestion = {
+  const getStreamingQuestion = () => ({
     ...newQuestion,
-  };
-
-  await db.transaction(async (tx) => {
-    await tx.insert(chatQuestions).values(persistedQuestion);
-    await tx.insert(chatAnswer).values({
+    answer: {
       ...newAnswer,
-      reasoning,
       answer,
-      memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
+      reasoning,
+      memory: getAnswerMemory(),
       steps,
       usage,
       finish_reason: finishReason,
-    });
+    },
   });
 
-  socket.send(
-    JSON.stringify({
+  const updateActiveStream = () => {
+    setActiveStream(chatId, getStreamingQuestion());
+  };
+
+  const sendQuestionStarted = () => {
+    const streamQuestion = getStreamingQuestion();
+
+    setActiveStream(chatId, streamQuestion);
+    broadcastToChat(chatId, {
+      type: "stream-question-started",
+      data: streamQuestion,
+    });
+  };
+
+  const sendAnswerDelta = (res: {
+    text: string;
+    reasoning: string;
+    updatedConfig?: unknown;
+    steps?: unknown;
+    usage?: unknown;
+    finish_reason?: string | null;
+  }) => {
+    const delta: {
+      chatId: string;
+      questionId: string;
+      answerId: string;
+      answerDelta: string;
+      reasoningDelta: string;
+      memory?: string;
+      steps?: unknown;
+      usage?: unknown;
+      finishReason?: string | null;
+    } = {
+      chatId,
+      questionId: newQuestion.id,
+      answerId: newAnswer.id,
+      answerDelta: res.text,
+      reasoningDelta: res.reasoning,
+    };
+
+    if (res.updatedConfig) {
+      delta.memory = JSON.stringify(res.updatedConfig);
+    }
+    if (res.steps) {
+      delta.steps = res.steps;
+    }
+    if (res.usage) {
+      delta.usage = res.usage;
+    }
+    if (res.finish_reason) {
+      delta.finishReason = res.finish_reason;
+    }
+
+    broadcastToChat(chatId, {
+      type: "answer-delta",
+      data: delta,
+    });
+  };
+
+  const getFinalQuestion = () => ({
+    ...newQuestion,
+    answer: {
+      ...newAnswer,
+      answer,
+      reasoning,
+      memory: getAnswerMemory(),
+      steps,
+      usage,
+      finish_reason: finishReason,
+    },
+  });
+
+  try {
+    sendQuestionStarted();
+
+    for await (const res of projectAIAgent({
+      query: parsedData.question,
+      userId,
+      prevConfig: "",
+      QAs: [],
+    })) {
+      const answerDelta = res.text ?? "";
+      const reasoningDelta = res.reasoning ?? "";
+      answer += answerDelta;
+      reasoning += reasoningDelta;
+      if (res.updatedConfig) {
+        updatedConfig = res.updatedConfig;
+      }
+      if (res.steps) {
+        steps = res.steps;
+      }
+      if (res.usage) {
+        usage = res.usage;
+      }
+      if (res.finish_reason) {
+        finishReason = res.finish_reason;
+      }
+
+      updateActiveStream();
+      sendAnswerDelta({
+        text: answerDelta,
+        reasoning: reasoningDelta,
+        updatedConfig: res.updatedConfig,
+        steps: res.steps,
+        usage: res.usage,
+        finish_reason: res.finish_reason,
+      });
+    }
+
+    updateActiveStream();
+
+    const persistedQuestion = {
+      ...newQuestion,
+    };
+
+    await db.transaction(async (tx) => {
+      await tx.insert(chatQuestions).values(persistedQuestion);
+      await tx.insert(chatAnswer).values({
+        ...newAnswer,
+        reasoning,
+        answer,
+        memory: getAnswerMemory(),
+        steps,
+        usage,
+        finish_reason: finishReason,
+      });
+    });
+
+    broadcastToChat(chatId, {
       type: "new-question",
-      data: {
-        ...persistedQuestion,
-        answer: {
-          ...newAnswer,
-          answer,
-          reasoning,
-          memory: updatedConfig === null ? "" : JSON.stringify(updatedConfig),
-          steps,
-          usage,
-          finish_reason: finishReason,
-        },
-      },
-    }),
-  );
+      data: getFinalQuestion(),
+    });
+    clearActiveStream(chatId);
+  } catch (error) {
+    clearActiveStream(chatId);
+    throw error;
+  }
 };
