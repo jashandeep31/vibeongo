@@ -162,8 +162,8 @@ func UpdateCmd() *cobra.Command {
 	}
 }
 
-// VpsSetupCmd initializes the VPS environment and clones repositories
-func VpsSetupCmd() *cobra.Command {
+// CloneGitReposCmd initializes the VPS environment and clones repositories
+func CloneGitReposCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "setup-github-repos",
 		Short: "Prepare the workspace for the project",
@@ -178,9 +178,37 @@ func VpsSetupCmd() *cobra.Command {
 	}
 }
 
+func ProvissionToolsCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "provisiontools",
+		Short: "Provision the workspace",
+		Long:  "Provision the workspace by applying authentication setup and cloning the repositories defined in the project configuration.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			// return actions.ProvisionWorkspace()
+
+			cfg, err := config.LoadAndValidate("config.json")
+			if err != nil {
+				return err
+			}
+			if err := actions.ProvisionOpenCode(cfg.OpenCode); err != nil {
+				return err
+			}
+
+			if err := actions.ProvisionT3Code(); err != nil {
+				return err
+			}
+
+			if err := actions.ProvisionCodex(cfg.Codex); err != nil {
+				return err
+			}
+			return nil
+		},
+	}
+}
+
 func ExecuteIntialScriptCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "setup",
+		Use:   "initial-script",
 		Short: "Run the project's initial setup script",
 		Long:  "Execute the initial setup script configured for the project before starting normal work.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -191,7 +219,7 @@ func ExecuteIntialScriptCmd() *cobra.Command {
 
 func ExecuteFinalScriptCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "final",
+		Use:   "final-script",
 		Short: "Run the project's finalization script",
 		Long:  "Execute the final script configured for the project, usually before ending or terminating the session.",
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -202,7 +230,7 @@ func ExecuteFinalScriptCmd() *cobra.Command {
 
 func ExecuteDevScriptCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "dev",
+		Use:   "dev-script",
 		Short: "Run the project's dev script in tmux",
 		Long:  "Execute the dev script configured for the project in a dev tmux session, usually for long-running development servers or watchers.",
 		RunE: func(cmd *cobra.Command, args []string) error {

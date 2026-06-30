@@ -21,17 +21,6 @@ func ExecuteSetupScript() error {
 	if err != nil {
 		return err
 	}
-	if err := ProvisionOpenCode(cfg.OpenCode); err != nil {
-		return err
-	}
-
-	if err := ProvisionT3Code(); err != nil {
-		return err
-	}
-
-	if err := ProvisionCodex(cfg.Codex); err != nil {
-		return err
-	}
 
 	tempScriptFile, err := os.CreateTemp("", "temp.sh")
 	if err != nil {

@@ -18,26 +18,24 @@ var rootCmd = &cobra.Command{
 }
 
 func init() {
-	// update the vibeongo
+	// UpdateCmd to update the vibeongo to the latest version
 	rootCmd.AddCommand(UpdateCmd())
-	// renew the keys
+	// RenewKeysCmd Renew the expired keys from the config files
 	rootCmd.AddCommand(RenewKeysCmd())
-	// setup the vps and config the things
-	rootCmd.AddCommand(VpsSetupCmd())
-	// start the echo server
+	// ProvissionToolsCmd setup all tools like: codex, t3Code and Opencode
+	rootCmd.AddCommand(ProvissionToolsCmd())
+	// CloneGitReposCmd clone the github repos
+	rootCmd.AddCommand(CloneGitReposCmd())
+	// ServeCmd start the echo server
 	rootCmd.AddCommand(ServeCmd())
-	// setup the repo like insatlling the dependencies
+	// RepoSetupCmd Run the setup scripts of the github repos
 	rootCmd.AddCommand(RepoSetupCmd())
-	// run the tasks in the opencode
+	// TaskCmd Run the opencode in loop on the all tasks
 	rootCmd.AddCommand(TaskCmd())
-	//mark the task as done
+	//MarkTaskCmd mark the task as done by calling the backend api
 	rootCmd.AddCommand(MarkTaskCmd())
-	// getting config
+	// GetKeysCmd List all the required secret keys for the ai
 	rootCmd.AddCommand(GetKeysCmd())
-	// setting up hte session as per the overview file
-	rootCmd.AddCommand(InitializeSessionFromOverviewCmd())
-	// Updating the overview
-	rootCmd.AddCommand(UpdateSessionFromOverviewCmd())
 	// terminate the instance
 	rootCmd.AddCommand(TerminateInstanceCmd())
 	// run the setup script
@@ -48,6 +46,11 @@ func init() {
 	rootCmd.AddCommand(ExecuteDevScriptCmd())
 	// Print the config
 	rootCmd.AddCommand(PrintConfigCmd())
+
+	// setting up hte session as per the overview file
+	// rootCmd.AddCommand(InitializeSessionFromOverviewCmd())
+	// Updating the overview
+	// rootCmd.AddCommand(UpdateSessionFromOverviewCmd())
 }
 
 func main() {
