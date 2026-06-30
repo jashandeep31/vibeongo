@@ -1,7 +1,7 @@
 import { NewChatInput } from "@/components/chat/new-chat-input";
 import { ProjectList } from "@/components/project/project-list";
 import { RunningInstancesList } from "@/components/project/running-instances-list";
-import { getSession } from "@/lib/getSession";
+import { getSession } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 
 export default async function ProjectsPage() {

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
-import { getSession } from "@/lib/getSession";
+import { getSession } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 import { LandingFeatures } from "@/components/landing-features";
 import { LandingHowItWorks } from "@/components/landing-how-it-works";
