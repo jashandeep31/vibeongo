@@ -57,11 +57,13 @@ chmod +x /tmp/ubuntu-setup.sh
 sudo -u ubuntu /tmp/ubuntu-setup.sh
 
 sudo -iu ubuntu bash <<'VIBEONGO_COMMANDS'
-vibeongo setup
+
+vibeongo provisiontools
+vibeongo initial-script
 vibeongo setup-github-repos
 vibeongo run-repos-setup-script
-vibeongo final
-vibeongo dev
+vibeongo final-script
+vibeongo dev-script
 echo "doing with the tasks"
 vibeongo tasks  
 VIBEONGO_COMMANDS
