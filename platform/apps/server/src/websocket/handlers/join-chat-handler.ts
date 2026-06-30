@@ -1,7 +1,7 @@
 import { and, chatAnswer, chatQuestions, chats, db, eq } from "@repo/db";
 import WebSocket from "ws";
 import { z } from "zod";
-import { addSubscriber, getActiveStream } from "../chats-store.js";
+import { getActiveStream, moveSocketToChat } from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
 
 export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
@@ -31,7 +31,7 @@ export const joinChatHandler = async (socket: WebSocket, data: unknown) => {
     return;
   }
 
-  addSubscriber(parsedData.id, socket);
+  moveSocketToChat(parsedData.id, socket);
 
   const refinedQuestions = new Map<
     string,
