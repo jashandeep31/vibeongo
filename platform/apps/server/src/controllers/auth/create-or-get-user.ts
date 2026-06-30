@@ -3,12 +3,15 @@ import {
   and,
   db,
   eq,
+  instanceRegions,
+  instanceTypes,
   userLoginLogs,
   users,
   userSettings,
   userWallet,
 } from "@repo/db";
-
+import { projectConfigValidator, z } from "@repo/shared";
+import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 interface CreateUserInput {
   email: string;
   name?: string | undefined;
@@ -153,6 +156,9 @@ const createUserWithGithubAccount = async ({
       balance: 0,
     });
 
+    try {
+      await createProjectWithConfigAndUserIdService(demoProject, user.id);
+    } catch {}
     return { user, account };
   });
 };
@@ -187,4 +193,45 @@ export const createOrGetUser = async (
   });
 
   return userWithAccount;
+};
+
+const [region] = await db.select().from(instanceRegions).limit(1);
+const [instanceType] = await db.select().from(instanceTypes).limit(1);
+
+export const demoProject: z.infer<typeof projectConfigValidator> = {
+  name: "demo-project",
+  description: "Demo project configuration",
+  regionId: region?.id || "",
+  instanceTypeId: instanceType!.id,
+  sshKeyIds: [],
+  githubRepoIds: [],
+  initialScript: "",
+  finalScript: `git clone https://github.com/jashandeep31/zed-snippets
+npm i`,
+  devScript: `
+npm run dev
+  `,
+  config: {
+    ports: [
+      {
+        port: 22,
+        protocol: "TCP",
+      },
+      {
+        port: 3000,
+        protocol: "TCP",
+      },
+    ],
+    packages: [
+      {
+        name: "opencode",
+        enabled: true,
+        config: {
+          auth_json: {},
+          model: "default",
+          requirePassword: false,
+        },
+      },
+    ],
+  },
 };
