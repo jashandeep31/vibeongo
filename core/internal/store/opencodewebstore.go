@@ -72,13 +72,9 @@ func (o *OpencodeWeb) RestartWebServer() error {
 	if !o.Running {
 		return nil
 	}
-	err := utils.KilltmuxSession("ops")
-	if err != nil {
-		return err
-	}
+	_ = utils.KilltmuxSession("ops")
 	o.Running = false
-
-	err = startWebServerLocked()
+	err := startWebServerLocked()
 	if err != nil {
 		return err
 	}
