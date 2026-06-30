@@ -104,16 +104,6 @@ const upsertGithubAccount = async (
   return account;
 };
 
-const ensureUserWallet = async (userId: string) => {
-  await db
-    .insert(userWallet)
-    .values({
-      user_id: userId,
-      balance: 0,
-    })
-    .onConflictDoNothing({ target: userWallet.user_id });
-};
-
 const createUserWithGithubAccount = async ({
   email,
   name,
@@ -122,7 +112,7 @@ const createUserWithGithubAccount = async ({
 }: CreateUserInput): Promise<UserWithAccount> => {
   const { firstName, lastName } = parseName(name);
 
-  return db.transaction(async (tx) => {
+  const userWithAccount = await db.transaction(async (tx) => {
     const [user] = await tx
       .insert(users)
       .values({
@@ -156,11 +146,18 @@ const createUserWithGithubAccount = async ({
       balance: 0,
     });
 
-    try {
-      await createProjectWithConfigAndUserIdService(demoProject, user.id);
-    } catch {}
     return { user, account };
   });
+
+  try {
+    const demoProject = await createDemoProjectConfig();
+    await createProjectWithConfigAndUserIdService(
+      demoProject,
+      userWithAccount.user.id,
+    );
+  } catch {}
+
+  return userWithAccount;
 };
 
 export const createOrGetUser = async (
@@ -174,10 +171,7 @@ export const createOrGetUser = async (
   let userWithAccount: UserWithAccount;
 
   if (existingUser) {
-    const [account] = await Promise.all([
-      upsertGithubAccount(existingUser.id, input.token),
-      ensureUserWallet(existingUser.id),
-    ]);
+    const account = await upsertGithubAccount(existingUser.id, input.token);
     userWithAccount = {
       user: existingUser,
       account,
@@ -195,43 +189,66 @@ export const createOrGetUser = async (
   return userWithAccount;
 };
 
-const [region] = await db.select().from(instanceRegions).limit(1);
-const [instanceType] = await db.select().from(instanceTypes).limit(1);
+const createDemoProjectConfig = async (): Promise<
+  z.infer<typeof projectConfigValidator>
+> => {
+  const [metadata] = await db
+    .select({
+      regionId: instanceRegions.id,
+      instanceTypeId: instanceTypes.id,
+    })
+    .from(instanceTypes)
+    .innerJoin(instanceRegions, eq(instanceTypes.region_id, instanceRegions.id))
+    .where(
+      and(
+        eq(instanceRegions.slug, "us-east-1"),
+        eq(instanceTypes.name, "m6i.xlarge"),
+      ),
+    )
+    .limit(1);
 
-export const demoProject: z.infer<typeof projectConfigValidator> = {
-  name: "demo-project",
-  description: "Demo project configuration",
-  regionId: region?.id || "",
-  instanceTypeId: instanceType!.id,
-  sshKeyIds: [],
-  githubRepoIds: [],
-  initialScript: "",
-  finalScript: `git clone https://github.com/jashandeep31/zed-snippets
+  if (!metadata) {
+    throw new Error(
+      "No us-east-1 m6i.xlarge instance metadata available for demo project",
+    );
+  }
+
+  return {
+    name: "demo-project",
+    description: "Demo project configuration",
+    regionId: metadata.regionId,
+    instanceTypeId: metadata.instanceTypeId,
+    sshKeyIds: [],
+    githubRepoIds: [],
+    initialScript: "",
+    finalScript: `cd /home/ubuntu/code 
+git clone https://github.com/jashandeep31/zed-snippets
 npm i`,
-  devScript: `
+    devScript: `cd /home/ubuntu/code/zed-snippets
 npm run dev
   `,
-  config: {
-    ports: [
-      {
-        port: 22,
-        protocol: "TCP",
-      },
-      {
-        port: 3000,
-        protocol: "TCP",
-      },
-    ],
-    packages: [
-      {
-        name: "opencode",
-        enabled: true,
-        config: {
-          auth_json: {},
-          model: "default",
-          requirePassword: false,
+    config: {
+      ports: [
+        {
+          port: 22,
+          protocol: "TCP",
         },
-      },
-    ],
-  },
+        {
+          port: 3000,
+          protocol: "TCP",
+        },
+      ],
+      packages: [
+        {
+          name: "opencode",
+          enabled: true,
+          config: {
+            auth_json: {},
+            model: "default",
+            requirePassword: false,
+          },
+        },
+      ],
+    },
+  };
 };
