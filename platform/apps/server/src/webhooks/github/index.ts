@@ -8,7 +8,7 @@ import { pullRequestOpenedWebhookHandler } from "./handlers/pull-request-opened.
 import { commentHandler } from "./handlers/comment-handler.js";
 
 const BASE_DIR = process.cwd();
-const filepath = path.join(BASE_DIR, "vibeongo.2026-03-28.private-key.pem");
+const filepath = path.join(BASE_DIR, "vibeongo.pem");
 const privateKey = await fs.readFile(filepath, "utf8");
 
 // ------ octokitApp Setup ------
