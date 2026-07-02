@@ -31,7 +31,7 @@ func ProvisionCodex(cfg *config.CodexConfig) error {
 }
 
 func ProvisionT3Code() error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}

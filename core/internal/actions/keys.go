@@ -10,7 +10,7 @@ import (
 )
 
 func Renewkeys() error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}

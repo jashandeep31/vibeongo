@@ -10,7 +10,7 @@ import (
 
 // Start starts the application.
 func Start() error {
-	if _, err := config.LoadAndValidate("config.json"); err != nil {
+	if _, err := config.LoadAndValidate(); err != nil {
 		return err
 	}
 

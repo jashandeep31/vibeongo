@@ -14,6 +14,8 @@ import {
   sshKeys,
   sessionAuthTokens,
   instances,
+  projectDomainRouting,
+  proxyDomains,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
@@ -106,5 +108,51 @@ export const getRuntimeSessionConfig = catchAsync(
 
     console.log(config);
     res.status(200).json({ data: config });
+  },
+);
+
+export const getInstancePointedDomain = catchAsync(
+  async (req: Request, res: Response) => {
+    const { id } = z.object({ id: z.string() }).parse(req.params);
+
+    const [sessionRow] = await db
+      .select({
+        project_session: projectSessions,
+        project: projects,
+        instance: instances,
+      })
+      .from(projectSessions)
+      .innerJoin(projects, eq(projects.id, projectSessions.project_id))
+      .where(eq(projectSessions.id, id));
+
+    if (!sessionRow) throw new AppError("Project session not found", 404);
+    const { project, project_session } = sessionRow;
+
+    const projectDomainRoutingWithDomainsRow = await db
+      .select({
+        routing: projectDomainRouting,
+        domains: proxyDomains,
+      })
+      .from(projectDomainRouting)
+      .leftJoin(
+        proxyDomains,
+        eq(proxyDomains.routing_id, projectDomainRouting.id),
+      )
+      .where(eq(projectDomainRouting.project_id, project.id));
+
+    const domainsMap: Map<string, typeof proxyDomains.$inferSelect> = new Map();
+
+    for (const item of projectDomainRoutingWithDomainsRow) {
+      if (item.domains) {
+        if (!domainsMap.has(item.domains.id))
+          domainsMap.set(item.domains.id, item.domains);
+      }
+    }
+
+    res.status(200).json({
+      data: {
+        domains: Array.from(domainsMap.values()),
+      },
+    });
   },
 );

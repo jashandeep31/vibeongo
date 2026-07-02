@@ -17,7 +17,7 @@ func ReExecuteDevScript() error {
 }
 
 func ExecuteSetupScript() error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}
@@ -54,7 +54,7 @@ func ExecuteSetupScript() error {
 }
 
 func ExecuteFinalScript() error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func ExecuteFinalScript() error {
 
 func ExecuteDevScript() error {
 	fmt.Println("Running the dev script")
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}

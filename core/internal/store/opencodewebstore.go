@@ -24,7 +24,7 @@ func (o *OpencodeWeb) IsRunning() bool {
 }
 
 func startWebServerLocked() error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}

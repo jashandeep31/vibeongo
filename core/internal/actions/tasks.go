@@ -11,7 +11,7 @@ import (
 )
 
 func MarkTask(cmd *cobra.Command, args []string) error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}

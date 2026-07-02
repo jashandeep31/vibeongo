@@ -18,7 +18,7 @@ func GetKeysCmd() *cobra.Command {
 		Short: "Print workspace credentials and connection details",
 		Long:  "Print the current workspace configuration summary, including tokens and repository credentials needed by local tools. Treat this output as sensitive.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -47,7 +47,7 @@ func InitializeSessionFromOverviewCmd() *cobra.Command {
 		Short: "Restore context from the saved project session",
 		Long:  "Load the saved overview for the current project session so work can continue from the last recorded state.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -63,7 +63,7 @@ func UpdateSessionFromOverviewCmd() *cobra.Command {
 		Short: "Save a new overview for the current session",
 		Long:  "Save the provided text as the latest overview for the current project session. Pass the overview directly after the command, for example: vibeongo update-session \"Implemented login flow\".",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -80,7 +80,7 @@ func RepoSetupCmd() *cobra.Command {
 		Short: "Run setup steps for cloned repositories",
 		Long:  "Run the configured setup commands for each cloned repository in the workspace, such as dependency installation or project-specific bootstrap scripts.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -108,7 +108,7 @@ func TaskCmd() *cobra.Command {
 		Short: "Run configured session tasks",
 		Long:  "Execute the tasks configured for the current session using the selected agent and model settings.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -139,7 +139,7 @@ func TerminateInstanceCmd() *cobra.Command {
 		Long:  "Request termination of the current runtime instance. Use this when work is complete to release resources and stop further usage. Pass --force to terminate even when the current config disables automatic termination.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -169,7 +169,7 @@ func CloneGitReposCmd() *cobra.Command {
 		Short: "Prepare the workspace for the project",
 		Long:  "Initialize the runtime workspace by applying authentication setup and cloning the repositories defined in the project configuration.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -186,7 +186,7 @@ func ProvissionToolsCmd() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			// return actions.ProvisionWorkspace()
 
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
@@ -245,13 +245,24 @@ func PrintConfigCmd() *cobra.Command {
 		Short: "Print the raw Vibeongo configuration",
 		Long:  "Print the full raw configuration loaded by Vibeongo. This may include secrets, tokens, or credentials, so avoid sharing the output.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate("config.json")
+			cfg, err := config.LoadAndValidate()
 			if err != nil {
 				return err
 			}
 			marshalCfg, _ := json.Marshal(cfg)
 			fmt.Println(string(marshalCfg))
 			return nil
+		},
+	}
+}
+
+func GetDomainCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "get-domains",
+		Short: "Share the list of the proxy domain which domain uses which port",
+		Long:  "This vps is running under proxy server so the all hte domain list those are pointing to server are listed here ",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actions.GetDomains()
 		},
 	}
 }

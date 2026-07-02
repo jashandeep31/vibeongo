@@ -46,6 +46,8 @@ func init() {
 	rootCmd.AddCommand(ExecuteDevScriptCmd())
 	// Print the config
 	rootCmd.AddCommand(PrintConfigCmd())
+	// print all the domains which point which port
+	rootCmd.AddCommand(GetDomainCmd())
 
 	// setting up hte session as per the overview file
 	// rootCmd.AddCommand(InitializeSessionFromOverviewCmd())

@@ -127,7 +127,7 @@ func ResolveConfigPath() (string, error) {
 	return "", fmt.Errorf("config not found at %s", configPath)
 }
 
-func LoadAndValidate(filename string) (Config, error) {
+func LoadAndValidate() (Config, error) {
 	path, err := ResolveConfigPath()
 	if err != nil {
 		return Config{}, err

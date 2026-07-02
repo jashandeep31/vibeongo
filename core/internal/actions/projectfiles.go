@@ -12,7 +12,7 @@ import (
 )
 
 func ProvisionProjectFiles() error {
-	cfg, err := config.LoadAndValidate("config.json")
+	cfg, err := config.LoadAndValidate()
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
 	if err != nil {
 		return err
