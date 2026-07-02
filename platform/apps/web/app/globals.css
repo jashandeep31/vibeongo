@@ -6,3 +6,10 @@
 .animate-shimmer {
   animation: shimmer 3s linear infinite;
 }
+
+.landing-grid-bg {
+  background-image:
+    linear-gradient(to right, var(--border) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--border) 1px, transparent 1px);
+  background-size: 48px 48px;
+}

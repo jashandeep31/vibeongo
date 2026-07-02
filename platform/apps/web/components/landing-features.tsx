@@ -1,29 +1,28 @@
-import { Laptop, Wand2, Play, GitPullRequest } from "lucide-react";
-
 const features = [
   {
-    title: "Ready-to-Code Workspace",
+    title: "AI agents, preconfigured",
     description:
-      "Open your repository in an isolated environment with the tools and terminal you need already available.",
-    icon: Laptop,
+      "Access Claude Code, Codex, OpenCode, and T3 from one cloud workspace.",
   },
   {
-    title: "AI-Assisted Building",
+    title: "Ready cloud workspaces",
     description:
-      "Use OpenCode, Claude, or Codex to understand your codebase, create features, and fix issues from one workspace.",
-    icon: Wand2,
+      "Open your repo in an isolated machine with tools, terminal, and project setup already in place.",
   },
   {
-    title: "Live Project Previews",
+    title: "SSH access from anywhere",
     description:
-      "Run your application and see changes as you make them without switching back to a local development setup.",
-    icon: Play,
+      "Add SSH keys once and connect to your workspace from any machine.",
   },
   {
-    title: "GitHub-Native Workflow",
+    title: "Fast terminal access",
     description:
-      "Turn your work into clear commits and pull requests while keeping your existing GitHub workflow.",
-    icon: GitPullRequest,
+      "Use Termius and Mosh for responsive remote development sessions.",
+  },
+  {
+    title: "HTTPS previews for dev servers",
+    description:
+      "Expose local dev servers through dedicated proxy domains with HTTPS.",
   },
 ];
 
@@ -31,29 +30,47 @@ export function LandingFeatures() {
   return (
     <section className="bg-background py-24">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div className="mb-16 text-center">
-          <h2 className="text-foreground text-3xl font-bold tracking-tight sm:text-4xl">
-            Everything you need to stay in flow
+        <div className="mb-16 max-w-3xl">
+          <h2 className="text-foreground text-4xl font-bold tracking-tight sm:text-5xl">
+            Why choose us?
           </h2>
-          <p className="text-muted-foreground mt-4 text-lg">
-            A focused environment for exploring ideas, editing code, and
-            previewing the result.
+          <p className="text-muted-foreground mt-5 text-lg leading-8">
+            Everything your project needs to start building in the cloud.
           </p>
         </div>
-        <div className="grid grid-cols-1 gap-12 sm:grid-cols-2 lg:grid-cols-4">
-          {features.map((feature) => (
-            <div key={feature.title} className="group relative">
-              <div className="bg-primary/10 text-primary group-hover:bg-primary/20 mb-6 flex h-12 w-12 items-center justify-center rounded-xl transition-colors">
-                <feature.icon className="h-6 w-6" />
+
+        <div className="space-y-16">
+          {features.map((feature, index) => {
+            const reversed = index % 2 === 1;
+            const number = String(index + 1).padStart(2, "0");
+
+            return (
+              <div
+                key={feature.title}
+                className="grid items-center gap-8 lg:grid-cols-2 lg:gap-16"
+              >
+                <div
+                  className={`border-border border-l pl-6 ${
+                    reversed ? "lg:order-2" : ""
+                  }`}
+                >
+                  <div className="mb-5 flex items-center gap-4">
+                    <span className="text-primary/35 text-5xl font-bold leading-none">
+                      {number}
+                    </span>
+                  </div>
+                  <h3 className="text-foreground text-3xl font-semibold tracking-tight sm:text-4xl">
+                    {feature.title}
+                  </h3>
+                  <p className="text-muted-foreground mt-5 max-w-xl text-lg leading-8">
+                    {feature.description}
+                  </p>
+                </div>
+
+                <div className="bg-muted aspect-[16/10] rounded-2xl" />
               </div>
-              <h3 className="text-foreground mb-3 text-xl font-semibold">
-                {feature.title}
-              </h3>
-              <p className="text-muted-foreground leading-relaxed">
-                {feature.description}
-              </p>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </section>
