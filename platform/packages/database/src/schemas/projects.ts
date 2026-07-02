@@ -53,8 +53,7 @@ export const projectConfig = pgTable("project_config", {
 export const projectFiles = pgTable("project_files", {
   id: uuid().defaultRandom().primaryKey(),
   project_id: uuid()
-    .references(() => projects.id, { onDelete: "cascade" })
-    .unique(),
+    .references(() => projects.id, { onDelete: "cascade" }),
   name: varchar().notNull(),
   path: varchar().notNull(),
   created_at: timestamp().defaultNow().notNull(),

@@ -64,6 +64,13 @@
       "when": 1782754062632,
       "tag": "0008_steep_gunslinger",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1783014371854,
+      "tag": "0009_amusing_gladiator",
+      "breakpoints": true
     }
   ]
 }
