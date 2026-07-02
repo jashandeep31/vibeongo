@@ -3,7 +3,9 @@ import { Button } from "@repo/ui/components/button";
 import { isAuthenticated } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 import { LandingFeatures } from "@/components/landing-features";
+import { LandingFaq } from "@/components/landing-faq";
 import { LandingHowItWorks } from "@/components/landing-how-it-works";
+import { LandingToolsStrip } from "@/components/landing-tools-strip";
 import {
   Bot,
   CheckCircle2,
@@ -150,11 +152,14 @@ export default async function Page() {
               </div>
             </div>
           </div>
+
+          <LandingToolsStrip />
         </div>
       </section>
 
       <LandingFeatures />
       <LandingHowItWorks />
+      <LandingFaq />
 
       <section className="landing-grid-bg bg-background relative overflow-hidden py-24">
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
