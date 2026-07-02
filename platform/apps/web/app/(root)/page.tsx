@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@repo/ui/components/button";
 import { isAuthenticated } from "@/lib/get-session";
 import { redirect } from "next/navigation";
@@ -6,13 +7,6 @@ import { LandingFeatures } from "@/components/landing-features";
 import { LandingFaq } from "@/components/landing-faq";
 import { LandingHowItWorks } from "@/components/landing-how-it-works";
 import { LandingToolsStrip } from "@/components/landing-tools-strip";
-import {
-  Bot,
-  CheckCircle2,
-  GitBranch,
-  PlayCircle,
-  Terminal,
-} from "lucide-react";
 
 export default async function Page() {
   const authenticated = await isAuthenticated();
@@ -29,16 +23,16 @@ export default async function Page() {
                 <span className="bg-primary mr-2 flex h-2 w-2 animate-pulse rounded-full" />
                 Open Source
               </div>
-              <h1 className="text-foreground max-w-4xl text-5xl font-extrabold leading-[0.95] tracking-tight sm:text-6xl lg:text-7xl">
+              <h1 className="text-foreground max-w-4xl text-5xl leading-[0.95] font-extrabold tracking-tight sm:text-6xl lg:text-7xl">
                 Cloud workspaces for code, tests, and agents
               </h1>
             </div>
 
             <div className="lg:pb-3">
               <p className="text-muted-foreground max-w-xl text-xl leading-8 sm:text-2xl">
-                Spin up a preconfigured instance with your repository,
-                terminal, previews, and AI coding tools ready. Build without
-                local setup or toolchain drift.
+                Spin up a preconfigured instance with your repository, terminal,
+                previews, and AI coding tools ready. Build without local setup
+                or toolchain drift.
               </p>
               <div className="mt-8 flex flex-col gap-4 sm:flex-row">
                 <Button
@@ -60,7 +54,7 @@ export default async function Page() {
             </div>
           </div>
 
-          <div className="mt-20 overflow-hidden rounded-2xl border border-border bg-card shadow-2xl shadow-primary/10">
+          <div className="border-border bg-card shadow-primary/10 mt-20 overflow-hidden rounded-2xl border shadow-2xl">
             <div className="border-border bg-muted/30 flex items-center justify-between border-b px-5 py-4">
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded-full bg-red-500/80" />
@@ -68,88 +62,20 @@ export default async function Page() {
                 <span className="h-3 w-3 rounded-full bg-green-500/80" />
               </div>
               <span className="text-muted-foreground text-xs font-medium">
-                workspace.vibeongo.dev
+                vibeongo.com
               </span>
             </div>
 
-            <div className="grid gap-0 lg:grid-cols-[0.9fr_1.1fr]">
-              <div className="border-border space-y-4 border-b p-6 lg:border-r lg:border-b-0">
-                <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="text-muted-foreground text-xs">Repository</p>
-                    <p className="text-foreground mt-1 font-medium">
-                      jashandeep31/vibeongo
-                    </p>
-                  </div>
-                  <div className="text-primary bg-primary/10 flex items-center gap-2 rounded-full px-3 py-1 text-xs font-medium">
-                    <GitBranch className="h-3.5 w-3.5" />
-                    main
-                  </div>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-                  {[
-                    {
-                      label: "Preinstalled tools",
-                      value: "Node, pnpm, Go",
-                      icon: CheckCircle2,
-                    },
-                    {
-                      label: "AI agents ready",
-                      value: "OpenCode, Claude, Codex",
-                      icon: Bot,
-                    },
-                    {
-                      label: "Preview and test in cloud",
-                      value: "Live ports and logs",
-                      icon: PlayCircle,
-                    },
-                  ].map((item) => (
-                    <div
-                      key={item.label}
-                      className="border-border bg-background rounded-lg border p-4"
-                    >
-                      <item.icon className="text-primary mb-3 h-4 w-4" />
-                      <p className="text-foreground text-sm font-medium">
-                        {item.label}
-                      </p>
-                      <p className="text-muted-foreground mt-1 text-sm">
-                        {item.value}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-background p-6 font-mono text-sm">
-                <div className="text-muted-foreground mb-5 flex items-center gap-2 text-xs">
-                  <Terminal className="h-3.5 w-3.5" />
-                  /home/ubuntu/code
-                </div>
-                <div className="space-y-3">
-                  <p>
-                    <span className="text-primary">$</span>{" "}
-                    <span className="text-foreground">pnpm install</span>
-                  </p>
-                  <p className="text-muted-foreground">
-                    dependencies restored from workspace cache
-                  </p>
-                  <p>
-                    <span className="text-primary">$</span>{" "}
-                    <span className="text-foreground">pnpm test</span>
-                  </p>
-                  <p className="text-green-400">
-                    tests passed in cloud environment
-                  </p>
-                  <p>
-                    <span className="text-primary">$</span>{" "}
-                    <span className="text-foreground">pnpm dev</span>
-                  </p>
-                  <p className="text-green-400">
-                    preview ready on https://preview.vibeongo.dev
-                  </p>
-                </div>
-              </div>
+            <div className="bg-background">
+              <Image
+                src="/main.png"
+                alt="Vibeongo cloud workspace dashboard"
+                width={1919}
+                height={964}
+                priority
+                sizes="(min-width: 1280px) 1280px, calc(100vw - 2rem)"
+                className="h-auto w-full"
+              />
             </div>
           </div>
 

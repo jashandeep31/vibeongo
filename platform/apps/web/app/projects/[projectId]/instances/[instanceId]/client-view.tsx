@@ -595,19 +595,18 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         ) : (
           <>
             <div className="grid min-w-0 items-stretch gap-3 lg:grid-cols-[minmax(0,2fr)_minmax(320px,1fr)]">
-              <div className="relative hidden min-h-64 overflow-hidden bg-[#111111] lg:block lg:min-h-0">
+              <div className="bg-card text-card-foreground relative hidden min-h-64 overflow-hidden border lg:block lg:min-h-0">
                 <div
                   ref={serverLogsRef}
                   className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                 >
-                  <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
+                  <div className="text-muted-foreground px-3 pt-2 text-xs font-medium">
                     Logs
                   </div>
-                  <pre className="px-3 pt-1 pb-3 font-mono text-sm break-words whitespace-pre-wrap text-zinc-300">
+                  <pre className="text-card-foreground px-3 pt-1 pb-3 font-mono text-sm break-words whitespace-pre-wrap">
                     {serverLogs || "Waiting for server logs..."}
                   </pre>
                 </div>
-                <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
               </div>
               <div className="min-w-0 space-y-3">
                 <ProjectInstanceInfoCard
@@ -629,19 +628,18 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               </div>
             </div>
             <ProjectInstanceTerminal />
-            <div className="relative h-64 overflow-hidden bg-[#111111] lg:hidden">
+            <div className="bg-card text-card-foreground relative h-64 overflow-hidden lg:hidden">
               <div
                 ref={mobileServerLogsRef}
                 className="absolute inset-0 overflow-x-hidden overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
               >
-                <div className="px-3 pt-2 text-xs font-medium text-zinc-500">
+                <div className="text-muted-foreground px-3 pt-2 text-xs font-medium">
                   Logs
                 </div>
-                <pre className="px-3 pt-1 pb-3 font-mono text-sm break-words whitespace-pre-wrap text-zinc-300">
+                <pre className="text-card-foreground px-3 pt-1 pb-3 font-mono text-sm break-words whitespace-pre-wrap">
                   {serverLogs || "Waiting for server logs..."}
                 </pre>
               </div>
-              <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/90 via-black/35 to-transparent" />
             </div>
           </>
         )}
