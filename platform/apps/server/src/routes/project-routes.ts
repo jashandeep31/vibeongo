@@ -18,6 +18,7 @@ import {
 } from "../controllers/project/project-domain.js";
 import {
   createProjectFile,
+  deleteProjectFile,
   getProjectFiles,
   updateProjectFile,
 } from "../controllers/project/project-files.js";
@@ -64,5 +65,7 @@ routes
   .post(checkAuthorization(["all"]), createProjectFile);
 routes
   .route("/:id/project-files/:fileId")
-  .patch(checkAuthorization(["all"]), updateProjectFile);
+  .patch(checkAuthorization(["all"]), updateProjectFile)
+  .delete(checkAuthorization(["all"]), deleteProjectFile);
+
 export const projectRoutes = routes;

@@ -222,3 +222,37 @@ export const updateProjectFile = catchAsync(
     });
   },
 );
+
+export const deleteProjectFile = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+
+    const { id, fileId } = z
+      .object({
+        id: z.uuid(),
+        fileId: z.uuid(),
+      })
+      .parse(req.params);
+
+    await db.transaction(async (tx) => {
+      const [project] = await tx
+        .select({ id: projects.id })
+        .from(projects)
+        .where(and(eq(projects.user_id, user.id), eq(projects.id, id)));
+      if (!project)
+        throw new AppError("Project not found or unauthorized", 403);
+
+      const [deletedFile] = await tx
+        .delete(projectFiles)
+        .where(and(eq(projectFiles.id, fileId), eq(projectFiles.project_id, id)))
+        .returning();
+
+      if (!deletedFile) throw new AppError("Project file not found", 404);
+    });
+
+    res.status(200).json({
+      message: "project file deleted successfully",
+    });
+  },
+);
