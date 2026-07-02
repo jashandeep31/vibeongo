@@ -2,16 +2,17 @@ import {
   addAllowedIpToProject,
   createProject,
   createProjectFile,
-  updateProjectFile,
-  deleteProject,
   deleteAllowedIpFromProject,
   deleteMultipleAllowedIpsFromProject,
+  deleteProject,
+  deleteProjectFile,
   getProjectById,
   getProjectConfigForEdit,
   getProjectDomainsById,
   getProjectFilesById,
   getProjects,
   updateProject,
+  updateProjectFile,
   updateProjectRoutingTargetInstance,
   updateProjectDomainPort,
 } from "@/services/project-services";
@@ -95,6 +96,19 @@ export const useUpdateProjectFile = () => {
 
   return useMutation({
     mutationFn: updateProjectFile,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "files"],
+      });
+    },
+  });
+};
+
+export const useDeleteProjectFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProjectFile,
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "files"],

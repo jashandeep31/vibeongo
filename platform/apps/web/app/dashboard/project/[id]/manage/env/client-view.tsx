@@ -1,18 +1,24 @@
 "use client";
 
-import { useGetProjectFilesById } from "@/hooks/use-project";
-import { Skeleton } from "@repo/ui/components/skeleton";
-import { cn } from "@repo/ui/lib/utils";
-import { FileCode2, FileText } from "lucide-react";
-import { useMemo, useState } from "react";
-import { useParams } from "next/navigation";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import AddEnvFileDialog from "@/components/dialogs/add-env-file-dialog";
 import EditEnvFileDialog from "@/components/dialogs/edit-env-file-dialog";
+import {
+  useDeleteProjectFile,
+  useGetProjectFilesById,
+} from "@/hooks/use-project";
+import { Button } from "@repo/ui/components/button";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import { cn } from "@repo/ui/lib/utils";
+import { FileCode2, FileText, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { useParams } from "next/navigation";
 
 export default function ClientView() {
   const params = useParams<{ id: string }>();
   const projectId = params?.id ?? null;
   const { data, isLoading, isError } = useGetProjectFilesById(projectId);
+  const deleteProjectFileMutation = useDeleteProjectFile();
 
   const files = useMemo(
     () =>
@@ -35,6 +41,25 @@ export default function ClientView() {
   );
   const selectedContent = selectedFile?.content ?? "";
   const lineCount = selectedContent ? selectedContent.split("\n").length : 0;
+  const isDeletingSelectedFile =
+    deleteProjectFileMutation.isPending &&
+    deleteProjectFileMutation.variables?.fileId === selectedFile?.id;
+
+  const handleDeleteSelectedFile = () => {
+    if (!projectId || !selectedFile) return;
+
+    deleteProjectFileMutation.mutate(
+      {
+        id: projectId,
+        fileId: selectedFile.id,
+      },
+      {
+        onSuccess: () => {
+          setSelectedFileId(null);
+        },
+      },
+    );
+  };
 
   return (
     <div className="flex flex-col gap-6 p-4 md:p-8">
@@ -126,12 +151,31 @@ export default function ClientView() {
               </p>
             </div>
             {selectedFile ? (
-              <EditEnvFileDialog
-                fileId={selectedFile.id}
-                initialName={selectedFile.name}
-                initialPath={selectedFile.path}
-                initialContent={selectedContent}
-              />
+              <div className="flex items-center gap-2">
+                <EditEnvFileDialog
+                  fileId={selectedFile.id}
+                  initialName={selectedFile.name}
+                  initialPath={selectedFile.path}
+                  initialContent={selectedContent}
+                />
+                <ConfirmationDialog
+                  title="Delete environment file"
+                  description={`Are you sure you want to delete ${selectedFile.name}? This action cannot be undone.`}
+                  confirmText="Delete"
+                  isDestructive
+                  onConfirm={handleDeleteSelectedFile}
+                >
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    disabled={isDeletingSelectedFile}
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                    {isDeletingSelectedFile ? "Deleting..." : "Delete"}
+                  </Button>
+                </ConfirmationDialog>
+              </div>
             ) : null}
           </div>
 

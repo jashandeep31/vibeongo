@@ -141,6 +141,23 @@ export const updateProjectFile = async ({
   return res.data;
 };
 
+export const deleteProjectFile = async ({
+  id,
+  fileId,
+}: {
+  id: string;
+  fileId: string;
+}): Promise<{ message: string }> => {
+  const res = await axios.delete(
+    BACKEND_URL + `/api/v1/projects/${id}/project-files/${fileId}`,
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
 export const deleteProject = async (id: string) => {
   const res = await axios.delete(BACKEND_URL + `/api/v1/projects/${id}`, {
     withCredentials: true,
