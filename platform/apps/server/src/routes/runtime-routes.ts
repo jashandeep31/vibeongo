@@ -1,5 +1,8 @@
 import { Router } from "express";
-import { getRuntimeSessionConfig } from "../controllers/runtime/get-runtime-session-config.js";
+import {
+  getSessionDomains,
+  getRuntimeSessionConfig,
+} from "../controllers/runtime/get-runtime-session-config.js";
 import { checkRuntimeAuthorization } from "../middlewares/check-runtime-authorization.js";
 import { getRuntimeProjectFiles } from "../controllers/runtime/get-projects-files.js";
 import {
@@ -9,7 +12,6 @@ import {
 import { suspendSessionInstance } from "../controllers/runtime/suspend-session-instance.js";
 import { runTaskActions } from "../controllers/runtime/task-actions.js";
 import { renewTokens } from "../controllers/runtime/renew-tokens.js";
-import { checkAuthorization } from "../middlewares/check-authorization.js";
 
 const routes: Router = Router();
 
@@ -38,6 +40,8 @@ routes
   .route("/sessions/:id/renew-tokens/:instanceId")
   .get(checkRuntimeAuthorization, renewTokens);
 
-routes.route("/sessions/:id/get-domains").get(checkAuthorization);
+routes
+  .route("/sessions/:id/get-domains")
+  .get(checkRuntimeAuthorization, getSessionDomains);
 
 export const runtimeRoutes = routes;

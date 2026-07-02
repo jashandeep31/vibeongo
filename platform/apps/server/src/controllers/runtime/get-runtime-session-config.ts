@@ -21,6 +21,7 @@ import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 import { env } from "../../lib/env.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
+import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -111,7 +112,7 @@ export const getRuntimeSessionConfig = catchAsync(
   },
 );
 
-export const getInstancePointedDomain = catchAsync(
+export const getSessionDomains = catchAsync(
   async (req: Request, res: Response) => {
     const { id } = z.object({ id: z.string() }).parse(req.params);
 
@@ -119,14 +120,13 @@ export const getInstancePointedDomain = catchAsync(
       .select({
         project_session: projectSessions,
         project: projects,
-        instance: instances,
       })
       .from(projectSessions)
       .innerJoin(projects, eq(projects.id, projectSessions.project_id))
       .where(eq(projectSessions.id, id));
 
     if (!sessionRow) throw new AppError("Project session not found", 404);
-    const { project, project_session } = sessionRow;
+    const { project } = sessionRow;
 
     const projectDomainRoutingWithDomainsRow = await db
       .select({
@@ -140,12 +140,24 @@ export const getInstancePointedDomain = catchAsync(
       )
       .where(eq(projectDomainRouting.project_id, project.id));
 
-    const domainsMap: Map<string, typeof proxyDomains.$inferSelect> = new Map();
+    interface Domain {
+      id: string;
+      domain: string;
+      target_port: number;
+      is_editable: boolean;
+    }
+    const domainsMap: Map<string, Domain> = new Map();
+    const postfix = await getProxyServerUrl(project.id);
 
     for (const item of projectDomainRoutingWithDomainsRow) {
       if (item.domains) {
         if (!domainsMap.has(item.domains.id))
-          domainsMap.set(item.domains.id, item.domains);
+          domainsMap.set(item.domains.id, {
+            id: item.domains.id,
+            domain: "https://" + item.domains.domain + postfix,
+            is_editable: item.domains.is_editable,
+            target_port: item.domains.target_port,
+          });
       }
     }
 

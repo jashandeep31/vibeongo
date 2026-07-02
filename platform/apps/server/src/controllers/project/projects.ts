@@ -174,12 +174,13 @@ export const getProjectDomainsById = catchAsync(
 
     const domains: Map<string, typeof proxyDomains.$inferSelect> = new Map();
     const ips: Map<string, typeof routingAllowedIps.$inferSelect> = new Map();
+    const postfix = await getProxyServerUrl(id);
 
     for (const item of projectRoutingWithDomains) {
       if (item.proxy_domains) {
         domains.set(item.proxy_domains.id, {
           ...item.proxy_domains,
-          domain: item.proxy_domains.domain + (await getProxyServerUrl(id)),
+          domain: item.proxy_domains.domain + postfix,
         });
       }
       if (item.routing_allowed_ips) {
