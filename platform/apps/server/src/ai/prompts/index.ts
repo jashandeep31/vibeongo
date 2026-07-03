@@ -6,6 +6,7 @@ import {
   getChatNameSystemPrompt,
   getSessionNameAndDescriptionSystemPrompt,
 } from "./common-system-prompt.js";
+import { createTasksForPRIssueOrCommaentSystemPrompt } from "./create-tasks-for-pr-issue-or-comment-system-prompt.js";
 
 export const PROMPT_TEXT_FILES_FOLDER_PATH = path.resolve(cwd(), "prompts");
 
@@ -21,5 +22,8 @@ export const prompts = {
   },
   newChatName: {
     systemPrompt: getChatNameSystemPrompt,
+  },
+  createTasksForPRIssueOrCommentAgent: {
+    systemPrompt: createTasksForPRIssueOrCommaentSystemPrompt,
   },
 } as const;
