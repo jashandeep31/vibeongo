@@ -13,8 +13,10 @@ import {
   projectSshKeys,
   sshKeys,
   users,
+  userSettings,
 } from "@repo/db";
 import { getSessionNameAndDescriptionAgent } from "../../../ai/ai-agents/common-agents.js";
+import { createTasksForPRIssueOrCommentAgent } from "../../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
 import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
 import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
@@ -74,21 +76,40 @@ export const commentHandler = async (
 
     if (!session) throw new Error("Internal error");
 
-    const tasks = [
-      `Here is the comment given by the user perform the actions as per it comment url: ${payload.comment.url} ${body}`,
-      "Please you have done things as asked if not please complete those now",
-    ];
+    const [userSettingsRow] = await db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.user_id, user.id));
 
-    //TODO: automate the agent selection with the AI
+    const tasks = await createTasksForPRIssueOrCommentAgent(
+      "comment",
+      `${payload.comment.url} body: ${body}`,
+    );
+
     await tx.insert(projectSessionTasks).values(
-      tasks.map((t, index) => ({
-        folder_name: repo.full_name.split("/")[1] ?? "",
-        task: t,
-        agent: "issue-resolver" as const,
-        project_session_id: session.id,
-        done: false,
-        order_number: index,
-      })),
+      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => {
+        let model = "";
+
+        if (t.agent === "pr-reviewer" && userSettingsRow?.default_pr_model) {
+          model = userSettingsRow.default_pr_model;
+        }
+        if (
+          t.agent === "issue-resolver" &&
+          userSettingsRow?.default_issue_fixer_model
+        ) {
+          model = userSettingsRow.default_issue_fixer_model;
+        }
+
+        return {
+          folder_name: repo.full_name.split("/")[1] ?? "",
+          task: t.task,
+          agent: t.agent,
+          project_session_id: session.id,
+          model,
+          done: false,
+          order_number: index,
+        };
+      }),
     );
     return session;
   });
