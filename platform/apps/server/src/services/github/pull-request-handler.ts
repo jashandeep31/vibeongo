@@ -15,6 +15,7 @@ import {
 } from "@repo/db";
 import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
+import { createTasksForPRIssueOrCommentAgent } from "../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import {
   spinUpAndSaveInstance,
@@ -77,20 +78,35 @@ export const pullRequestOpenedHandler = async ({
       .from(userSettings)
       .where(eq(userSettings.user_id, user.id));
 
-    const tasks = [
-      `Review the PR: ${pr.url} `,
-      `Have you done with all if not please complete the steps and make sure you have left the comment`,
-    ];
+    const tasks = await createTasksForPRIssueOrCommentAgent(
+      "pr",
+      `${pr.url} body: ${pr.body}`,
+    );
+
     await tx.insert(projectSessionTasks).values(
-      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => ({
-        folder_name: repo.full_name.split("/")[1] ?? "",
-        task: t,
-        agent: "pr-reviewer" as const,
-        project_session_id: session.id,
-        model: userSettingsRow?.default_pr_model || "",
-        done: false,
-        order_number: index,
-      })),
+      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => {
+        let model = "";
+
+        if (t.agent === "pr-reviewer" && userSettingsRow?.default_pr_model) {
+          model = userSettingsRow.default_pr_model;
+        }
+        if (
+          t.agent === "issue-resolver" &&
+          userSettingsRow?.default_issue_fixer_model
+        ) {
+          model = userSettingsRow.default_issue_fixer_model;
+        }
+
+        return {
+          folder_name: repo.full_name.split("/")[1] ?? "",
+          task: t.task,
+          agent: t.agent,
+          project_session_id: session.id,
+          model,
+          done: false,
+          order_number: index,
+        };
+      }),
     );
 
     return session;
