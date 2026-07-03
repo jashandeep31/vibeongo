@@ -19,7 +19,7 @@ export const prompts = {
   createProject: {
     systemPrompt: createProjetSystemPrompt,
   },
-  namechat: {
+  newChatName: {
     systemPrompt: getChatNameSystemPrompt,
   },
 } as const;

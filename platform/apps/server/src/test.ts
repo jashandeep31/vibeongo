@@ -1,10 +1,7 @@
-import { getChatName } from "./ai/ai-agents/common-agents.js";
-import { projectAIAgent } from "./ai/ai-agents/project-agent.js";
+import dotenv from "dotenv";
+dotenv.config();
 
 export default async function test() {
-  console.log("test is working");
-
-  console.log(await getChatName("hi "));
   // for await (const i of projectAIAgent({
   //   query: "list my all the reposl ",
   //   userId: "634c805d-c70a-4333-9214-65d3fafc9481",
