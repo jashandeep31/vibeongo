@@ -14,7 +14,7 @@ import {
   sshKeys,
   users,
 } from "@repo/db";
-import { generateSessionNameAndDescription } from "../../../ai/ai-functions/get-session-name-and-description.js";
+import { getSessionNameAndDescriptionAgent } from "../../../ai/ai-agents/common-agents.js";
 import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
 import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
@@ -57,7 +57,7 @@ export const commentHandler = async (
   }
 
   // generating the name and the description of the sessoin
-  const sessionMetadata = await generateSessionNameAndDescription(body);
+  const sessionMetadata = await getSessionNameAndDescriptionAgent(body);
 
   const session = await db.transaction(async (tx) => {
     // creating session in db

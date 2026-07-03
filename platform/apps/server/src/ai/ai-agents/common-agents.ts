@@ -5,14 +5,34 @@ import { z } from "zod";
 
 export const getSessionNameAndDescriptionAgent = async (
   body: string,
-): Promise<string> => {
-  const res = await generateText({
-    model: "zai/glm-5.2",
-    system: prompts.getSessionNameAndDescription.systemPrompt(),
-    reasoning: "high",
-    prompt: body,
-  });
-  return res.text;
+): Promise<{
+  name: string;
+  description: string;
+}> => {
+  try {
+    const res = await generateText({
+      model: "openai/gpt-5-mini",
+      system: prompts.getSessionNameAndDescription.systemPrompt(),
+      reasoning: "high",
+      prompt: body,
+      output: Output.object({
+        schema: z.object({
+          name: z.string().describe("Short name"),
+          description: z.string().describe("Short description"),
+        }),
+      }),
+    });
+
+    return {
+      name: res.output.name || "New Session",
+      description: res.output.description || "",
+    };
+  } catch {
+    return {
+      name: "New Session",
+      description: "",
+    };
+  }
 };
 
 export const getChatName = async (body: string): Promise<string> => {

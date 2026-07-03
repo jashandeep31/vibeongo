@@ -14,14 +14,13 @@ import {
   userSettings,
 } from "@repo/db";
 import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
-import { generateSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
+import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import {
   spinUpAndSaveInstance,
   spinUpAndSaveInstanceResponse,
 } from "../instances/spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
-import { Models } from "@google/genai";
 
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
@@ -56,7 +55,7 @@ export const pullRequestOpenedHandler = async ({
     pull_number: prNumber,
   });
 
-  const sessionMeta = await generateSessionNameAndDescription(
+  const sessionMeta = await getSessionNameAndDescriptionAgent(
     pr.title + "\n" + pr.body,
   );
 

@@ -13,7 +13,6 @@ import {
   users,
   userSettings,
 } from "@repo/db";
-import { generateSessionNameAndDescription } from "../../ai/ai-functions/get-session-name-and-description.js";
 import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import {
   spinUpAndSaveInstance,
@@ -21,6 +20,7 @@ import {
 } from "../instances/spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
+import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
 
 interface issueHandlerProps {
   gitRepoId: string;
@@ -56,7 +56,7 @@ export const issueRequestHandler = async ({
     full_repo_name: repo.full_name,
   });
 
-  const sessionMeta = await generateSessionNameAndDescription(
+  const sessionMeta = await getSessionNameAndDescriptionAgent(
     issue.title + "\n" + issue.body,
   );
 
