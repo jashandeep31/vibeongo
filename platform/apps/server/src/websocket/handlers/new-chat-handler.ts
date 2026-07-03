@@ -1,4 +1,4 @@
-import { chatAnswer, chatQuestions, chats, db } from "@repo/db";
+import { chatAnswer, chatQuestions, chats, db, eq } from "@repo/db";
 import { z } from "zod";
 import WebSocket from "ws";
 import { AppError } from "../../lib/app-error.js";
@@ -10,6 +10,7 @@ import {
   setActiveStream,
 } from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
+import { getChatName } from "../../ai/ai-agents/common-agents.js";
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
@@ -231,6 +232,13 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
       data: getFinalQuestion(),
     });
     clearActiveStream(chatId);
+    const chatname = await getChatName(parsedData.question);
+    await db
+      .update(chats)
+      .set({
+        name: chatname,
+      })
+      .where(eq(chats.id, chatId));
   } catch (error) {
     clearActiveStream(chatId);
     throw error;
