@@ -13,6 +13,7 @@ import {
   routingAllowedIps,
   projectFiles,
   instances,
+  githubRepos,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -232,6 +233,13 @@ export const deleteProjectById = catchAsync(
       await tx
         .delete(projectFiles)
         .where(eq(projectFiles.project_id, updatedProject.id));
+
+      await tx
+        .update(githubRepos)
+        .set({
+          default_project_id: null,
+        })
+        .where(eq(githubRepos.default_project_id, updatedProject.id));
 
       return updatedProject;
     });
