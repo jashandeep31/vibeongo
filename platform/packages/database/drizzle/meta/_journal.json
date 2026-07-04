@@ -71,6 +71,13 @@
       "when": 1783014371854,
       "tag": "0009_amusing_gladiator",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783193285565,
+      "tag": "0010_mysterious_white_tiger",
+      "breakpoints": true
     }
   ]
 }

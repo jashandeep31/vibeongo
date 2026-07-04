@@ -69,6 +69,36 @@ const formatDuration = (
   return `${seconds}s`;
 };
 
+const formatTimeRemaining = (expiresAt: unknown, now: Date) => {
+  if (!expiresAt) return "N/A";
+
+  const expiresDate = new Date(String(expiresAt));
+  if (Number.isNaN(expiresDate.getTime())) return "N/A";
+
+  const remainingMs = expiresDate.getTime() - now.getTime();
+  if (remainingMs <= 0) return "Expired";
+
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m`;
+  }
+
+  if (hours > 0) {
+    return `${hours}h ${minutes}m`;
+  }
+
+  if (minutes > 0) {
+    return `${minutes}m ${seconds}s`;
+  }
+
+  return `${seconds}s`;
+};
+
 const getOpencodePassword = (config: unknown) => {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
     return null;
@@ -165,6 +195,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     instance?.terminated_at,
     now,
   );
+  const expiresIn = formatTimeRemaining(instance?.terminates_at, now);
+  const expiresAtTitle = instance?.terminates_at
+    ? new Date(instance.terminates_at).toISOString()
+    : undefined;
 
   const handleTerminate = async () => {
     if (!instance || isTerminated) {
@@ -563,7 +597,11 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               />
             </h1>
             <p className="text-muted-foreground mt-1 text-sm">
-              Spun up for <span className="font-medium">{spunUpFor}</span>
+              Spun up for <span className="font-medium">{spunUpFor}</span>{" "}
+              Terminates in{" "}
+              <span className="font-medium" title={expiresAtTitle}>
+                {expiresIn}
+              </span>
             </p>
           </div>
 

@@ -32,6 +32,7 @@ export const instances = pgTable("instances", {
     onDelete: "set null",
   }),
 
+  terminates_at: timestamp().notNull(),
   terminated_at: timestamp(),
   started_at: timestamp().notNull().defaultNow(),
   state: instanceState().notNull(),

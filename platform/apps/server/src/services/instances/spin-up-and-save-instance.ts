@@ -103,6 +103,7 @@ export const spinUpAndSaveInstance = async ({
       instance_type_id: project.instance_type_id,
       aws_instance_id: awsInstance.InstanceId,
       terminated_at: null,
+      terminates_at: new Date(new Date().getTime() + 2 * 60 * 60 * 1000), //expires at is by default after 2 hours
       started_at: new Date(),
       public_ip: publicIpAddress,
       state: "running",
