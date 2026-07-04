@@ -1,8 +1,16 @@
 import dotenv from "dotenv";
 import { createTasksForPRIssueOrCommentAgent } from "./ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
+import {
+  getProjectFilesAITool,
+  getProjectFilesDataAITool,
+} from "./ai/ai-tools/project-ai-tools.js";
 dotenv.config();
 
 export default async function test() {
+  // const tool = getProjectFilesDataAITool(
+  //   "634c805d-c70a-4333-9214-65d3fafc9481",
+  // );
+  // tool.execute({ projectId: "" });
   // const res = await createTasksForPRIssueOrCommentAgent(
   //   "comment",
   // "redesign the login page",

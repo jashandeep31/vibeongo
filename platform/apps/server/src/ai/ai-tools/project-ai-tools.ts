@@ -6,6 +6,8 @@ import {
   githubRepos,
   instanceRegions,
   instanceTypes,
+  projectDomainRouting,
+  projectFileData,
   projectFiles,
   projects,
   sshKeys,
@@ -22,6 +24,8 @@ import {
 import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 import { env } from "../../lib/env.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
+import { decryptData } from "../../lib/encryption-decryption.js";
+import { version } from "zod/v4/core";
 
 export const updateConfigInMemAITool: Tool = tool({
   description:
@@ -303,9 +307,65 @@ export const createNewGithubRepo = (userId: string): Tool =>
     },
   });
 
+const getProjectFilesDataAIToolSchema = z.object({
+  projectFileId: z.string(),
+  projectId: z.string(),
+  version: z.number().optional().nullable().default(null),
+});
+export const getProjectFilesDataAITool = (userId: string): Tool =>
+  tool({
+    description: "return the file content of the env file",
+    inputSchema: getProjectFilesDataAIToolSchema,
+    execute: async (
+      rawData: z.infer<typeof getProjectFilesDataAIToolSchema>,
+    ) => {
+      const data = getProjectFilesDataAIToolSchema.parse(rawData);
+
+      const versionfilter = [];
+      if (data.version) {
+        versionfilter.push(eq(projectFileData.version, data.version));
+      }
+      const [projectFileDataRow] = await db
+        .select({ projectFileData })
+        .from(projectFileData)
+        .innerJoin(
+          projectFiles,
+          and(
+            eq(projectFiles.id, data.projectFileId),
+            eq(projectFileData.project_file_id, projectFiles.id),
+          ),
+        )
+        .innerJoin(
+          projects,
+          and(
+            eq(projects.id, projectFiles.project_id),
+            eq(projects.user_id, userId),
+            ...versionfilter,
+          ),
+        )
+        .where(eq(projectFileData.project_file_id, data.projectFileId));
+      console.log(projectFileDataRow);
+
+      if (!projectFileDataRow?.projectFileData)
+        return JSON.stringify({ ok: false, error: "File not found " });
+
+      const { projectFileData: fileData } = projectFileDataRow;
+
+      return JSON.stringify({
+        ok: true,
+        content: decryptData({
+          iv: fileData.iv,
+          tag: fileData.tag,
+          encrypted: fileData.encrypted_content,
+        }),
+      });
+    },
+  });
+
 const getProjectFilesSchema = z.object({
   projectId: z.string(),
 });
+
 export const getProjectFilesAITool = (userId: string): Tool =>
   tool({
     description: "return all the env files",
