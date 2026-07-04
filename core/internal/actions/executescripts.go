@@ -39,7 +39,7 @@ func ExecuteSetupScript() error {
 	path := "/home/ubuntu/code"
 	tempScriptFile.Write([]byte(script))
 
-	cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
+	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, tempScriptFile.Name())
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
