@@ -19,6 +19,7 @@ export const workOnPullRequestByPrNumber = catchAsync(
     const instance = await pullRequestOpenedHandler({
       gitRepoId: id,
       prNumber,
+      requestedByUserId: user.id,
     });
 
     if (!instance) throw new AppError("Something went wrong", 500);

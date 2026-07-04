@@ -1,5 +1,6 @@
 import {
   db,
+  and,
   eq,
   githubRepos,
   instanceRegions,
@@ -26,11 +27,13 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
   prNumber: number;
+  requestedByUserId?: string;
   sessionCat?: (typeof projectSessionsCategory.enumValues)[number];
 }
 export const pullRequestOpenedHandler = async ({
   gitRepoId,
   prNumber,
+  requestedByUserId,
   sessionCat = "manual",
 }: pullRequestOpenedHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubReposWithUserAndProject] = await db
@@ -42,7 +45,14 @@ export const pullRequestOpenedHandler = async ({
     .from(githubRepos)
     .innerJoin(users, eq(githubRepos.user_id, users.id))
     .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
-    .where(eq(githubRepos.id, gitRepoId));
+    .where(
+      and(
+        eq(githubRepos.id, gitRepoId),
+        requestedByUserId
+          ? eq(githubRepos.user_id, requestedByUserId)
+          : undefined,
+      ),
+    );
 
   if (!githubReposWithUserAndProject) throw new Error("repo not found");
   const { project, user, repo } = githubReposWithUserAndProject;
@@ -117,7 +127,8 @@ export const pullRequestOpenedHandler = async ({
   const sshKeysArray = await db
     .select()
     .from(projectSshKeys)
-    .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id));
+    .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
+    .where(eq(projectSshKeys.project_id, project.id));
 
   // --- intialScript that we run after the vps setup ---
   const instanceId = crypto.randomUUID();

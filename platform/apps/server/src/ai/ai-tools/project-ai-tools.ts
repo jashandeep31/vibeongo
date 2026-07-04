@@ -6,6 +6,7 @@ import {
   githubRepos,
   instanceRegions,
   instanceTypes,
+  projectFiles,
   projects,
   sshKeys,
 } from "@repo/db";
@@ -299,5 +300,31 @@ export const createNewGithubRepo = (userId: string): Tool =>
         .returning();
 
       return newRepo;
+    },
+  });
+
+const getProjectFilesSchema = z.object({
+  projectId: z.string(),
+});
+export const getProjectFilesAITool = (userId: string): Tool =>
+  tool({
+    description: "return all the env files",
+    inputSchema: getProjectFilesSchema,
+    execute: async (rawData: z.infer<typeof getProjectFilesSchema>) => {
+      const data = getProjectFilesSchema.parse(rawData);
+      const projectFileRows = await db
+        .select({ projectFiles })
+        .from(projectFiles)
+        .innerJoin(
+          projects,
+          and(
+            eq(projects.id, projectFiles.project_id),
+            eq(projects.user_id, userId),
+          ),
+        )
+        .where(and(eq(projectFiles.project_id, data.projectId)));
+
+      const refinedRows = projectFileRows.map((i) => i.projectFiles);
+      return JSON.stringify(refinedRows);
     },
   });

@@ -19,6 +19,7 @@ export const workOnIssueByIssueId = catchAsync(
     const instance = await issueRequestHandler({
       gitRepoId: id,
       issueNumber,
+      requestedByUserId: user.id,
     });
     if (!instance) throw new AppError("Failed to work on the issue", 500);
 
