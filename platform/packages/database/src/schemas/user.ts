@@ -5,6 +5,7 @@ import {
   varchar,
   pgEnum,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
@@ -80,6 +81,16 @@ export const userSettings = pgTable("user_settings", {
   default_pr_model: varchar(),
   default_issue_fixer_model: varchar(),
   default_comment_model: varchar(),
+
+  default_issue_instance_auto_terminate_after_minutes: integer()
+    .default(30)
+    .notNull(),
+  default_pr_instance_auto_terminate_after_minutes: integer()
+    .default(30)
+    .notNull(),
+  default_manual_instance_auto_terminate_after_minutes: integer()
+    .default(120)
+    .notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

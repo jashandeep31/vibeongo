@@ -52,6 +52,9 @@ const themeOptions = [
   },
 ] as const;
 
+const AUTO_TERMINATE_MIN_MINUTES = 15;
+const AUTO_TERMINATE_MAX_MINUTES = 1200;
+
 export default function ClientView() {
   const { theme = "system", setTheme } = useTheme();
   const {
@@ -63,10 +66,17 @@ export default function ClientView() {
   const deleteSshKeyMutation = useDeleteSshKey();
   const updateUserSettingsMutation = useUpdateUserSettings();
   const [isEditingModels, setIsEditingModels] = useState(false);
+  const [isEditingInstanceTermination, setIsEditingInstanceTermination] =
+    useState(false);
   const [modelForm, setModelForm] = useState({
     defaultPrModel: "",
     defaultIssueFixerModel: "",
     defaultCommentModel: "",
+  });
+  const [instanceTerminationForm, setInstanceTerminationForm] = useState({
+    defaultIssueInstanceAutoTerminateAfterMinutes: "",
+    defaultPrInstanceAutoTerminateAfterMinutes: "",
+    defaultManualInstanceAutoTerminateAfterMinutes: "",
   });
 
   useEffect(() => {
@@ -78,6 +88,19 @@ export default function ClientView() {
       defaultCommentModel: userSettings.default_comment_model ?? "",
     });
   }, [isEditingModels, userSettings]);
+
+  useEffect(() => {
+    if (!userSettings || isEditingInstanceTermination) return;
+
+    setInstanceTerminationForm({
+      defaultIssueInstanceAutoTerminateAfterMinutes:
+        userSettings.default_issue_instance_auto_terminate_after_minutes.toString(),
+      defaultPrInstanceAutoTerminateAfterMinutes:
+        userSettings.default_pr_instance_auto_terminate_after_minutes.toString(),
+      defaultManualInstanceAutoTerminateAfterMinutes:
+        userSettings.default_manual_instance_auto_terminate_after_minutes.toString(),
+    });
+  }, [isEditingInstanceTermination, userSettings]);
 
   const modelSettings = [
     {
@@ -94,6 +117,26 @@ export default function ClientView() {
       label: "Default comment model",
       name: "defaultCommentModel",
       value: userSettings?.default_comment_model,
+    },
+  ] as const;
+
+  const instanceTerminationSettings = [
+    {
+      label: "Issue instances",
+      name: "defaultIssueInstanceAutoTerminateAfterMinutes",
+      value:
+        userSettings?.default_issue_instance_auto_terminate_after_minutes,
+    },
+    {
+      label: "PR instances",
+      name: "defaultPrInstanceAutoTerminateAfterMinutes",
+      value: userSettings?.default_pr_instance_auto_terminate_after_minutes,
+    },
+    {
+      label: "Manual instances",
+      name: "defaultManualInstanceAutoTerminateAfterMinutes",
+      value:
+        userSettings?.default_manual_instance_auto_terminate_after_minutes,
     },
   ] as const;
 
@@ -140,6 +183,73 @@ export default function ClientView() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to save default models", { id: toastId });
+    }
+  };
+
+  const handleEditInstanceTermination = () => {
+    if (!userSettings) return;
+
+    setInstanceTerminationForm({
+      defaultIssueInstanceAutoTerminateAfterMinutes:
+        userSettings.default_issue_instance_auto_terminate_after_minutes.toString(),
+      defaultPrInstanceAutoTerminateAfterMinutes:
+        userSettings.default_pr_instance_auto_terminate_after_minutes.toString(),
+      defaultManualInstanceAutoTerminateAfterMinutes:
+        userSettings.default_manual_instance_auto_terminate_after_minutes.toString(),
+    });
+    setIsEditingInstanceTermination(true);
+  };
+
+  const handleCancelEditInstanceTermination = () => {
+    if (userSettings) {
+      setInstanceTerminationForm({
+        defaultIssueInstanceAutoTerminateAfterMinutes:
+          userSettings.default_issue_instance_auto_terminate_after_minutes.toString(),
+        defaultPrInstanceAutoTerminateAfterMinutes:
+          userSettings.default_pr_instance_auto_terminate_after_minutes.toString(),
+        defaultManualInstanceAutoTerminateAfterMinutes:
+          userSettings.default_manual_instance_auto_terminate_after_minutes.toString(),
+      });
+    }
+    setIsEditingInstanceTermination(false);
+  };
+
+  const handleSaveInstanceTermination = async () => {
+    const parsedForm = {
+      defaultIssueInstanceAutoTerminateAfterMinutes: Number(
+        instanceTerminationForm.defaultIssueInstanceAutoTerminateAfterMinutes,
+      ),
+      defaultPrInstanceAutoTerminateAfterMinutes: Number(
+        instanceTerminationForm.defaultPrInstanceAutoTerminateAfterMinutes,
+      ),
+      defaultManualInstanceAutoTerminateAfterMinutes: Number(
+        instanceTerminationForm.defaultManualInstanceAutoTerminateAfterMinutes,
+      ),
+    };
+
+    const hasInvalidValue = Object.values(parsedForm).some(
+      (value) =>
+        !Number.isInteger(value) ||
+        value < AUTO_TERMINATE_MIN_MINUTES ||
+        value > AUTO_TERMINATE_MAX_MINUTES,
+    );
+
+    if (hasInvalidValue) {
+      toast.error(
+        "Auto-termination values must be whole minutes from 15 to 1200",
+      );
+      return;
+    }
+
+    const toastId = toast.loading("Saving auto-termination settings");
+
+    try {
+      await updateUserSettingsMutation.mutateAsync(parsedForm);
+      setIsEditingInstanceTermination(false);
+      toast.success("Auto-termination settings saved", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save auto-termination settings", { id: toastId });
     }
   };
 
@@ -269,6 +379,104 @@ export default function ClientView() {
                     ) : (
                       <div className="font-medium">
                         {setting.value?.trim() || "Not configured"}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-muted-foreground p-6 text-sm">
+                No user settings found.
+              </div>
+            )}
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-3">
+            <h2 className="text-lg font-semibold">
+              Instance auto-termination
+            </h2>
+            {userSettings ? (
+              isEditingInstanceTermination ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Cancel editing instance auto-termination"
+                    onClick={handleCancelEditInstanceTermination}
+                    disabled={updateUserSettingsMutation.isPending}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveInstanceTermination}
+                    disabled={updateUserSettingsMutation.isPending}
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Edit instance auto-termination"
+                  onClick={handleEditInstanceTermination}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )
+            ) : null}
+          </div>
+
+          <div className="mt-5 rounded-lg border">
+            {isUserSettingsLoading ? (
+              <div className="divide-y">
+                {[1, 2, 3].map((i) => (
+                  <div
+                    key={i}
+                    className="grid gap-2 p-4 sm:grid-cols-[220px_1fr] sm:items-center"
+                  >
+                    <Skeleton className="h-4 w-36" />
+                    <Skeleton className="h-4 w-24" />
+                  </div>
+                ))}
+              </div>
+            ) : isUserSettingsError ? (
+              <div className="text-muted-foreground p-6 text-sm">
+                Failed to load user settings.
+              </div>
+            ) : userSettings ? (
+              <div className="divide-y">
+                {instanceTerminationSettings.map((setting) => (
+                  <div
+                    key={setting.label}
+                    className="grid gap-1 p-4 sm:grid-cols-[220px_1fr] sm:items-center"
+                  >
+                    <div className="text-muted-foreground text-sm">
+                      {setting.label}
+                    </div>
+                    {isEditingInstanceTermination ? (
+                      <Input
+                        type="number"
+                        min={AUTO_TERMINATE_MIN_MINUTES}
+                        max={AUTO_TERMINATE_MAX_MINUTES}
+                        step={1}
+                        value={instanceTerminationForm[setting.name]}
+                        onChange={(event) =>
+                          setInstanceTerminationForm((current) => ({
+                            ...current,
+                            [setting.name]: event.target.value,
+                          }))
+                        }
+                        disabled={updateUserSettingsMutation.isPending}
+                        aria-label={`${setting.label} auto-termination minutes`}
+                      />
+                    ) : (
+                      <div className="font-medium">
+                        {setting.value} minutes
                       </div>
                     )}
                   </div>

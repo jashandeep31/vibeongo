@@ -20,6 +20,9 @@ export type UpdateUserSettingsPayload = {
   defaultPrModel?: string | null;
   defaultIssueFixerModel?: string | null;
   defaultCommentModel?: string | null;
+  defaultIssueInstanceAutoTerminateAfterMinutes?: number;
+  defaultPrInstanceAutoTerminateAfterMinutes?: number;
+  defaultManualInstanceAutoTerminateAfterMinutes?: number;
 };
 
 export const getUserMetadata = async (): Promise<{

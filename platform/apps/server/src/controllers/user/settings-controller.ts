@@ -8,6 +8,24 @@ const updateUserSettingsSchema = z.object({
   defaultPrModel: z.string().optional().nullable(),
   defaultIssueFixerModel: z.string().optional().nullable(),
   defaultCommentModel: z.string().optional().nullable(),
+  defaultIssueInstanceAutoTerminateAfterMinutes: z
+    .number()
+    .int()
+    .min(15)
+    .max(1200)
+    .optional(),
+  defaultPrInstanceAutoTerminateAfterMinutes: z
+    .number()
+    .int()
+    .min(15)
+    .max(1200)
+    .optional(),
+  defaultManualInstanceAutoTerminateAfterMinutes: z
+    .number()
+    .int()
+    .min(15)
+    .max(1200)
+    .optional(),
 });
 
 export const updateUserSettings = catchAsync(
@@ -26,6 +44,33 @@ export const updateUserSettings = catchAsync(
         : {}),
       ...(Object.hasOwn(parsedBody, "defaultCommentModel")
         ? { default_comment_model: parsedBody.defaultCommentModel }
+        : {}),
+      ...(Object.hasOwn(
+        parsedBody,
+        "defaultIssueInstanceAutoTerminateAfterMinutes",
+      )
+        ? {
+            default_issue_instance_auto_terminate_after_minutes:
+              parsedBody.defaultIssueInstanceAutoTerminateAfterMinutes,
+          }
+        : {}),
+      ...(Object.hasOwn(
+        parsedBody,
+        "defaultPrInstanceAutoTerminateAfterMinutes",
+      )
+        ? {
+            default_pr_instance_auto_terminate_after_minutes:
+              parsedBody.defaultPrInstanceAutoTerminateAfterMinutes,
+          }
+        : {}),
+      ...(Object.hasOwn(
+        parsedBody,
+        "defaultManualInstanceAutoTerminateAfterMinutes",
+      )
+        ? {
+            default_manual_instance_auto_terminate_after_minutes:
+              parsedBody.defaultManualInstanceAutoTerminateAfterMinutes,
+          }
         : {}),
     };
 
