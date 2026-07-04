@@ -52,7 +52,7 @@ export async function* projectAIAgent({
   });
 
   const result = streamText({
-    model: "zai/glm-5.2",
+    model: "openai/gpt-5.5",
     system: prompts.createProject.systemPrompt(),
     reasoning: "high",
     tools: {
@@ -72,7 +72,7 @@ export async function* projectAIAgent({
       updateProjectFileDataAITool: updateProjectFileDataAITool(userId),
       createProjectFileWithDataAITool: createProjectFileWithDataAITool(userId),
     },
-    stopWhen: stepCountIs(20),
+    stopWhen: stepCountIs(40),
     messages: [...history, { role: "user", content: query }],
     // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
