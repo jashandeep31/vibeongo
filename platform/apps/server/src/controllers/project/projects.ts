@@ -14,6 +14,7 @@ import {
   projectFiles,
   instances,
   githubRepos,
+  projectSessions,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -23,6 +24,7 @@ import { getDecryptedProjectConfig } from "../../services/project/project-config
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
+import { projectSessionRoutes } from "../../routes/project-session-routes.js";
 
 export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
@@ -240,6 +242,13 @@ export const deleteProjectById = catchAsync(
           default_project_id: null,
         })
         .where(eq(githubRepos.default_project_id, updatedProject.id));
+
+      await tx
+        .update(projectSessions)
+        .set({
+          archived: true,
+        })
+        .where(eq(projectSessions.project_id, updatedProject.id));
 
       return updatedProject;
     });
