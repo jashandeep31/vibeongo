@@ -11,7 +11,7 @@ import {
 import cron from "node-cron";
 import { terminateInstanceAndChargeUsageWithInstanceIdAndSessionId } from "../services/instances/terminate-instance-and-charge-usage.js";
 
-cron.schedule("*/5 * * * *", async () => {
+cron.schedule("*/2 * * * *", async () => {
   try {
     console.log("running cron");
     const rows = await db
@@ -24,7 +24,7 @@ cron.schedule("*/5 * * * *", async () => {
       )
       .where(
         and(
-          lt(instances.created_at, sql`NOW() - INTERVAL '2 hours'`),
+          lt(instances.terminates_at, sql`NOW()`),
           eq(instances.state, "running"),
         ),
       );
