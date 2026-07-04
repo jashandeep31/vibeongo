@@ -15,6 +15,7 @@ import {
   getProjectFilesAITool,
   getProjectFilesDataAITool,
   updateProjectFileDataAITool,
+  createProjectFileWithDataAITool,
 } from "../../ai/ai-tools/project-ai-tools.js";
 
 type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
@@ -69,6 +70,7 @@ export async function* projectAIAgent({
       getProjectFilesAITool: getProjectFilesAITool(userId),
       getProjectFilesDataAITool: getProjectFilesDataAITool(userId),
       updateProjectFileDataAITool: updateProjectFileDataAITool(userId),
+      createProjectFileWithDataAITool: createProjectFileWithDataAITool(userId),
     },
     stopWhen: stepCountIs(20),
     messages: [...history, { role: "user", content: query }],

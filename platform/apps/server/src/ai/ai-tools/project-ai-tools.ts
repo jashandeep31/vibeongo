@@ -458,6 +458,99 @@ export const updateProjectFileDataAITool = (userId: string): Tool =>
     },
   });
 
+const createProjectFileWithDataAIToolSchema = z.object({
+  projectId: z.string(),
+  path: z.string(),
+  name: z.string(),
+  content: z.string(),
+});
+
+export const createProjectFileWithDataAITool = (userId: string): Tool =>
+  tool({
+    description:
+      "Create a new project env file and its first encrypted file data version together.",
+    inputSchema: createProjectFileWithDataAIToolSchema,
+    execute: async (
+      rawData: z.infer<typeof createProjectFileWithDataAIToolSchema>,
+    ) => {
+      try {
+        const data = createProjectFileWithDataAIToolSchema.parse(rawData);
+
+        const newFile = await db.transaction(async (tx) => {
+          const [project] = await tx
+            .select({ id: projects.id })
+            .from(projects)
+            .where(
+              and(
+                eq(projects.id, data.projectId),
+                eq(projects.user_id, userId),
+                eq(projects.deleted, false),
+              ),
+            );
+
+          if (!project) {
+            return null;
+          }
+
+          const [projectFile] = await tx
+            .insert(projectFiles)
+            .values({
+              project_id: data.projectId,
+              path: data.path,
+              name: data.name,
+            })
+            .returning({
+              id: projectFiles.id,
+              project_id: projectFiles.project_id,
+              path: projectFiles.path,
+              name: projectFiles.name,
+            });
+
+          if (!projectFile) {
+            return null;
+          }
+
+          const enc = encryptData(data.content);
+          const [fileData] = await tx
+            .insert(projectFileData)
+            .values({
+              project_file_id: projectFile.id,
+              version: 1,
+              encrypted_content: enc.encryptedData,
+              iv: enc.iv,
+              tag: enc.tag,
+            })
+            .returning({
+              id: projectFileData.id,
+              version: projectFileData.version,
+            });
+
+          return {
+            ...projectFile,
+            projectFileData: fileData,
+          };
+        });
+
+        if (!newFile) {
+          return JSON.stringify({
+            ok: false,
+            error: "Project not found or unauthorized",
+          });
+        }
+
+        return JSON.stringify({
+          ok: true,
+          file: newFile,
+        });
+      } catch (e) {
+        return JSON.stringify({
+          ok: false,
+          error: String(e),
+        });
+      }
+    },
+  });
+
 const getProjectFilesSchema = z.object({
   projectId: z.string(),
 });
