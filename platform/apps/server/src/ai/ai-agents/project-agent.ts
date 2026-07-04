@@ -14,6 +14,7 @@ import {
   updateConfigInMemAITool,
   getProjectFilesAITool,
   getProjectFilesDataAITool,
+  updateProjectFileDataAITool,
 } from "../../ai/ai-tools/project-ai-tools.js";
 
 type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
@@ -67,6 +68,7 @@ export async function* projectAIAgent({
       updateProjectById: updateProjectByIdTool(userId),
       getProjectFilesAITool: getProjectFilesAITool(userId),
       getProjectFilesDataAITool: getProjectFilesDataAITool(userId),
+      updateProjectFileDataAITool: updateProjectFileDataAITool(userId),
     },
     stopWhen: stepCountIs(20),
     messages: [...history, { role: "user", content: query }],

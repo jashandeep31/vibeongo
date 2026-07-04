@@ -2,6 +2,7 @@ import {
   and,
   asc,
   db,
+  desc,
   eq,
   githubRepos,
   instanceRegions,
@@ -24,8 +25,7 @@ import {
 import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 import { env } from "../../lib/env.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
-import { decryptData } from "../../lib/encryption-decryption.js";
-import { version } from "zod/v4/core";
+import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
 
 export const updateConfigInMemAITool: Tool = tool({
   description:
@@ -359,6 +359,102 @@ export const getProjectFilesDataAITool = (userId: string): Tool =>
           encrypted: fileData.encrypted_content,
         }),
       });
+    },
+  });
+
+const updateProjectFileDataAIToolSchema = z.object({
+  projectFileId: z.string(),
+  projectId: z.string(),
+  content: z.string(),
+});
+
+export const updateProjectFileDataAITool = (userId: string): Tool =>
+  tool({
+    description:
+      "Update a project env file content. It creates a new file data version only when the content changes.",
+    inputSchema: updateProjectFileDataAIToolSchema,
+    execute: async (
+      rawData: z.infer<typeof updateProjectFileDataAIToolSchema>,
+    ) => {
+      try {
+        const data = updateProjectFileDataAIToolSchema.parse(rawData);
+
+        const [projectFile] = await db
+          .select({ id: projectFiles.id })
+          .from(projectFiles)
+          .innerJoin(
+            projects,
+            and(
+              eq(projects.id, projectFiles.project_id),
+              eq(projects.user_id, userId),
+              eq(projects.deleted, false),
+            ),
+          )
+          .where(
+            and(
+              eq(projectFiles.id, data.projectFileId),
+              eq(projectFiles.project_id, data.projectId),
+            ),
+          );
+
+        if (!projectFile) {
+          return JSON.stringify({
+            ok: false,
+            error: "File not found or unauthorized",
+          });
+        }
+
+        const [latestData] = await db
+          .select()
+          .from(projectFileData)
+          .where(eq(projectFileData.project_file_id, data.projectFileId))
+          .orderBy(desc(projectFileData.version))
+          .limit(1);
+
+        if (latestData) {
+          const latestContent = decryptData({
+            iv: latestData.iv,
+            tag: latestData.tag,
+            encrypted: latestData.encrypted_content,
+          });
+
+          if (latestContent === data.content) {
+            return JSON.stringify({
+              ok: true,
+              changed: false,
+              version: latestData.version,
+              message: "File content is already up to date",
+            });
+          }
+        }
+
+        const enc = encryptData(data.content);
+        const newVersion = latestData ? latestData.version + 1 : 1;
+        const [newFileData] = await db
+          .insert(projectFileData)
+          .values({
+            project_file_id: data.projectFileId,
+            version: newVersion,
+            encrypted_content: enc.encryptedData,
+            iv: enc.iv,
+            tag: enc.tag,
+          })
+          .returning({
+            id: projectFileData.id,
+            version: projectFileData.version,
+          });
+
+        return JSON.stringify({
+          ok: true,
+          changed: true,
+          fileData: newFileData,
+        });
+      } catch (e) {
+        return JSON.stringify({
+          ok: false,
+          error: String(e),
+        });
+      }
     },
   });
 
