@@ -147,6 +147,12 @@ If required information is missing, ask the user before generating the configura
 
 ---
 
+
+# Projectfile path 
+you already know that gitrepo get cloned at /home/ubuntu/code/REPO_NAME but in the path of the projectfiel you should only start after /home/ubuntu/code/REPO_NAME/ mean if in app folder then paht will be /app it doesn't need to include the /home/ubuntu/code/REPO_NAME/ in start
+
+
+
 # Goal
 
 Create project configurations that can run on a fresh VPS with the given environment. Ensure everything installs, configures, and runs correctly without manual intervention.
