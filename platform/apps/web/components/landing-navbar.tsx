@@ -14,10 +14,10 @@ export function LandingNavbar() {
           </Link>
           <nav className="flex items-center gap-4">
             <Button asChild variant="ghost" size="sm">
-              <Link href="https://l2.devsradar.com/login">Login</Link>
+              <Link href="/login">Login</Link>
             </Button>
             <Button asChild size="sm">
-              <Link href="https://l2.devsradar.com/signup">Sign up</Link>
+              <Link href="/signup">Sign up</Link>
             </Button>
           </nav>
         </div>

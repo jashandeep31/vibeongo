@@ -40,7 +40,7 @@ export default async function Page() {
                   size="lg"
                   className="bg-foreground text-background hover:bg-foreground/90 border-border h-12 border px-8 text-base"
                 >
-                  <Link href="https://l2.devsradar.com/signup">Sign up</Link>
+                  <Link href="/signup">Sign up</Link>
                 </Button>
                 <Button
                   asChild
@@ -48,7 +48,7 @@ export default async function Page() {
                   size="lg"
                   className="bg-background text-foreground hover:bg-muted border-border h-12 px-8 text-base"
                 >
-                  <Link href="https://l2.devsradar.com/login">Login</Link>
+                  <Link href="/login">Login</Link>
                 </Button>
               </div>
             </div>
@@ -101,9 +101,7 @@ export default async function Page() {
             </p>
             <div className="mt-10">
               <Button asChild size="lg" className="h-14 px-10 text-lg">
-                <Link href="https://l2.devsradar.com/signup">
-                  Get Started Now
-                </Link>
+                <Link href="/signup">Get Started Now</Link>
               </Button>
             </div>
           </div>
