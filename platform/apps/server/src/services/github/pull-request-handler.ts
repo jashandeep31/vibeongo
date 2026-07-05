@@ -157,6 +157,7 @@ export const pullRequestOpenedHandler = async ({
     sessionId: session.id,
     instanceId,
     terminate: true,
+    terminateSetting: "pr",
   });
   return instance;
 };

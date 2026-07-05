@@ -155,6 +155,7 @@ export const issueRequestHandler = async ({
     sessionId: session.id,
     instanceId,
     terminate: true,
+    terminateSetting: "issue",
   });
   return instance;
 };

@@ -1,0 +1,3 @@
+ALTER TABLE "user_settings" ADD COLUMN "default_issue_instance_auto_terminate_after_minutes" integer DEFAULT 30 NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD COLUMN "default_pr_instance_auto_terminate_after_minutes" integer DEFAULT 30 NOT NULL;--> statement-breakpoint
+ALTER TABLE "user_settings" ADD COLUMN "default_manual_instance_auto_terminate_after_minutes" integer DEFAULT 120 NOT NULL;

@@ -14,6 +14,10 @@ import { AppError } from "../../lib/app-error.js";
 import { getInstancePublicAddress } from "../../aws/services/get-instance-public-address.js";
 import { env } from "../../lib/env.js";
 import { createId } from "@paralleldrive/cuid2";
+import {
+  getUserInstanceAutoTerminateMinutes,
+  type InstanceAutoTerminateSetting,
+} from "./get-user-instance-auto-terminate-minutes.js";
 
 interface SpinUpAndSaveInstance {
   setupScript: string;
@@ -22,6 +26,8 @@ interface SpinUpAndSaveInstance {
   sessionId: null | string;
   instanceId: string;
   terminate?: boolean;
+  terminateAfterInMinutes?: number;
+  terminateSetting?: InstanceAutoTerminateSetting;
 }
 export type spinUpAndSaveInstanceResponse =
   | typeof instances.$inferSelect
@@ -37,6 +43,8 @@ export const spinUpAndSaveInstance = async ({
   sessionId = null,
   instanceId,
   terminate = false,
+  terminateAfterInMinutes,
+  terminateSetting = "manual",
 }: SpinUpAndSaveInstance): Promise<spinUpAndSaveInstanceResponse> => {
   const [userWalletRow] = await db
     .select()
@@ -88,6 +96,10 @@ export const spinUpAndSaveInstance = async ({
   if (!awsInstance?.InstanceId || !awsInstance)
     throw new AppError("Failed to create the ec2", 500);
 
+  const autoTerminateAfterInMinutes =
+    terminateAfterInMinutes ??
+    (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
+
   await new Promise<void>((res) => setTimeout(res, 5000));
   const publicIpAddress = await getInstancePublicAddress(
     awsInstance.InstanceId,
@@ -103,7 +115,9 @@ export const spinUpAndSaveInstance = async ({
       instance_type_id: project.instance_type_id,
       aws_instance_id: awsInstance.InstanceId,
       terminated_at: null,
-      terminates_at: new Date(new Date().getTime() + 2 * 60 * 60 * 1000), //expires at is by default after 2 hours
+      terminates_at: new Date(
+        new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
+      ),
       started_at: new Date(),
       public_ip: publicIpAddress,
       state: "running",
