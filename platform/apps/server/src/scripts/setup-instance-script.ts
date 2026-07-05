@@ -57,6 +57,7 @@ chmod +x /tmp/ubuntu-setup.sh
 sudo -u ubuntu /tmp/ubuntu-setup.sh
 
 sudo -iu ubuntu bash <<'VIBEONGO_COMMANDS'
+set -euo pipefail
 
 vibeongo provisiontools
 vibeongo initial-script

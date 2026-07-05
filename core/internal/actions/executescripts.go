@@ -26,20 +26,30 @@ func ExecuteSetupScript() error {
 	if err != nil {
 		return err
 	}
-	defer tempScriptFile.Close()
 	defer os.Remove(tempScriptFile.Name())
 
 	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
 	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
 
-	script := `
-	echo "intial script is running"
-	`
+	script := `#!/usr/bin/env bash
+source /home/ubuntu/.bashrc
+export NVM_DIR="/home/ubuntu/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+echo "initial script is running"
+`
 	script = script + cfg.InitialScript
 	path := "/home/ubuntu/code"
-	tempScriptFile.Write([]byte(script))
+	if _, err := tempScriptFile.Write([]byte(script)); err != nil {
+		return err
+	}
+	if err := tempScriptFile.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tempScriptFile.Name(), 0o755); err != nil {
+		return err
+	}
 
-	cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, tempScriptFile.Name())
+	cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
 	cmd.Dir = path
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -68,18 +78,28 @@ func ExecuteFinalScript() error {
 	if err != nil {
 		return err
 	}
-	defer tempScriptFile.Close()
 	defer os.Remove(tempScriptFile.Name())
 
 	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
 	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
 
-	script := `
-	echo "final script is running"
-	`
+	script := `#!/usr/bin/env bash
+source /home/ubuntu/.bashrc
+export NVM_DIR="/home/ubuntu/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+echo "final script is running"
+`
 	script = script + cfg.FinalScript
 	path := "/home/ubuntu/code"
-	tempScriptFile.Write([]byte(script))
+	if _, err := tempScriptFile.Write([]byte(script)); err != nil {
+		return err
+	}
+	if err := tempScriptFile.Close(); err != nil {
+		return err
+	}
+	if err := os.Chmod(tempScriptFile.Name(), 0o755); err != nil {
+		return err
+	}
 
 	cmd := utils.ExecCommand(utils.SudoShellScriptFile, tempScriptFile.Name())
 	cmd.Dir = path
