@@ -291,7 +291,7 @@ export const createNewGithubRepo = (userId: string): Tool =>
         throw new AppError("App access is required", 400);
 
       const { isPublic, repoData } = result;
-      const newRepo = await db
+      const [newRepo] = await db
         .insert(githubRepos)
         .values({
           user_id: userId,
@@ -303,7 +303,7 @@ export const createNewGithubRepo = (userId: string): Tool =>
         })
         .returning();
 
-      return newRepo;
+      return JSON.stringify(newRepo);
     },
   });
 
