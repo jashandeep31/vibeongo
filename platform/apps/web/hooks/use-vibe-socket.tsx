@@ -10,6 +10,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 
 const INITIAL_RECONNECT_DELAY_MS = 1000;
 const MAX_RECONNECT_DELAY_MS = 30000;
@@ -18,6 +19,33 @@ const VibeSocketContext = createContext<{
   websocket: WebSocket | null;
   sendJsonMessage: (message: unknown) => void;
 } | null>(null);
+
+const getSocketErrorMessage = (message: unknown) => {
+  if (
+    typeof message !== "object" ||
+    message === null ||
+    !("type" in message) ||
+    message.type !== "error"
+  ) {
+    return null;
+  }
+
+  if (
+    "data" in message &&
+    typeof message.data === "object" &&
+    message.data !== null &&
+    "error" in message.data &&
+    typeof message.data.error === "string"
+  ) {
+    return message.data.error;
+  }
+
+  if ("error" in message && typeof message.error === "string") {
+    return message.error;
+  }
+
+  return null;
+};
 
 export const VibeSocketProvider = ({ children }: { children: ReactNode }) => {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
@@ -90,6 +118,22 @@ export const VibeSocketProvider = ({ children }: { children: ReactNode }) => {
         const pendingMessages = pendingMessagesRef.current.splice(0);
         for (const message of pendingMessages) {
           vibeSocket.send(JSON.stringify(message));
+        }
+      };
+
+      vibeSocket.onmessage = (event) => {
+        if (!isMounted || typeof event.data !== "string") return;
+
+        let message: unknown;
+        try {
+          message = JSON.parse(event.data);
+        } catch {
+          return;
+        }
+
+        const errorMessage = getSocketErrorMessage(message);
+        if (errorMessage) {
+          toast.error(errorMessage);
         }
       };
 

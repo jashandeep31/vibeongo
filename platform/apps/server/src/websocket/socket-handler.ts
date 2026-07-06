@@ -16,7 +16,16 @@ export const SocketHandler = async (socket: WebSocket) => {
         .from(userWallet)
         .where(eq(userWallet.user_id, socket.userId));
       if (!userWalletRow || userWalletRow?.balance <= 0) {
-        throw new Error("No wallet found or wallet balance is 0");
+        socket.send(
+          JSON.stringify({
+            type: "error",
+            data: {
+              error:
+                "Either you don't have enough balance or you are not logged in",
+            },
+          }),
+        );
+        return;
       }
       switch (parsedEvent.type) {
         case "join-chat":
