@@ -141,6 +141,33 @@ Always change into the correct directory before running commands.
 
 ---
 
+## Docker package config
+
+Use the docker package only in this shape:
+
+```json
+{
+  "name": "docker",
+  "enabled": true,
+  "config": {
+    "containers": [
+      {
+        "name": "postgres",
+        "dockercomposecode": "services:\n  postgres:\n    image: postgres:16-alpine\n    ports:\n      - \"5432:5432\""
+      }
+    ]
+  }
+}
+```
+
+Before adding any Docker container, ask the user for approval and briefly state which container or service you want to add. Do not add Docker containers silently.
+
+Only put Docker Compose YAML content in `dockercomposecode`. Do not put markdown fences, explanations, shell commands, `docker run` commands, or Dockerfile content in `dockercomposecode`.
+
+If Docker is enabled but the user has not approved a container, use an empty `containers` array.
+
+---
+
 # Missing Information
 
 If required information is missing, ask the user before generating the configuration. This includes repository name, project name, instance type, required databases, programming language, or additional services. Do not make assumptions that could break the setup.
@@ -149,7 +176,7 @@ If required information is missing, ask the user before generating the configura
 
 
 # Projectfile path 
-you already know that gitrepo get cloned at /home/ubuntu/code/REPO_NAME but in the path of the projectfiel you should only start after /home/ubuntu/code/REPO_NAME/ mean if in app folder then paht will be /app it doesn't need to include the /home/ubuntu/code/REPO_NAME/ in start
+Repositories are cloned under `/home/ubuntu/code/`. Project file paths must start after `/home/ubuntu/code/`, so include the repository name as the first path segment. For example, if the repository is `my-app` and the file is in its `app` folder, use `/my-app/app`. Do not include `/home/ubuntu/code` in project file paths.
 
 
 
