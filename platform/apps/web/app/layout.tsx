@@ -5,6 +5,7 @@ import Provider from "./provider";
 import { Toaster } from "sonner";
 import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import { cn } from "@repo/ui/lib/utils";
+import { Analytics } from "@vercel/analytics/next";
 
 const instrumentSansHeading = Instrument_Sans({
   subsets: ["latin"],
@@ -51,6 +52,7 @@ export default function RootLayout({
         >
           {children}
         </Provider>
+        <Analytics />
       </body>
     </html>
   );
