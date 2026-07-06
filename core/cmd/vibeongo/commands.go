@@ -199,7 +199,7 @@ func ProvissionToolsCmd() *cobra.Command {
 				return err
 			}
 
-			if err := actions.ProvisionT3Code(); err != nil {
+			if err := actions.ProvisionT3Code(cfg.OpenCode, cfg.InstanceConfig); err != nil {
 				return err
 			}
 

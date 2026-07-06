@@ -31,10 +31,9 @@ func ProvisionCodex(cfg *config.CodexConfig) error {
 	return nil
 }
 
-func ProvisionT3Code() error {
-	cfg, err := config.LoadAndValidate()
-	if err != nil {
-		return err
+func ProvisionT3Code(cfg *config.OpenCodeConfig, instanceConfig config.InstanceConfig) error {
+	if cfg == nil {
+		return nil
 	}
 
 	settingsfolder := "/home/ubuntu/.t3/userdata"
@@ -45,7 +44,7 @@ func ProvisionT3Code() error {
 
 	settingfilepath := filepath.Join(settingsfolder, "settings.json")
 	settings := ``
-	if cfg.OpenCode.RequirePassword {
+	if cfg.RequirePassword {
 
 		settings = fmt.Sprintf(`{
   "providerInstances": {
@@ -62,7 +61,7 @@ func ProvisionT3Code() error {
     }
   }
 }
-	`, cfg.InstanceConfig.OpencodePassword)
+		`, instanceConfig.OpencodePassword)
 	} else {
 
 		settings = `{
@@ -114,6 +113,10 @@ func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 }
 
 func ProvisionDockerContainers(cfg *config.DockerConfig) error {
+	if cfg == nil {
+		return nil
+	}
+
 	fmt.Println("Setting up the docker containers")
 	for _, container := range cfg.Containers {
 		dir, err := os.MkdirTemp("", "compose-*")
