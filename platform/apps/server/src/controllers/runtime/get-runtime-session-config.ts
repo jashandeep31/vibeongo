@@ -78,7 +78,7 @@ export const getRuntimeSessionConfig = catchAsync(
       .map((r) => r.repo)
       .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
 
-    const [token] = await db
+    const [sessionToken] = await db
       .select()
       .from(sessionAuthTokens)
       .where(eq(sessionAuthTokens.session_id, sessionRow.project_session.id))
@@ -86,7 +86,7 @@ export const getRuntimeSessionConfig = catchAsync(
 
     const config = {
       ...(parsedConfig as any),
-      token: token?.token || "",
+      sessionToken: sessionToken?.token || "",
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
       instanceConfig: instance.config,

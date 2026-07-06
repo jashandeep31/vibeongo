@@ -125,6 +125,7 @@ export const spinUpAndSaveInstance = async ({
       config: {
         opencodePassword: createId(),
         terminate,
+        vibeongoLocalToken: createId(),
       },
     })
     .returning();

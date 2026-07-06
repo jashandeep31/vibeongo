@@ -13,7 +13,7 @@ type Config struct {
 	ProjectID      string          `json:"projectId"`
 	InstanceConfig InstanceConfig  `json:"instanceConfig"`
 	InstanceID     string          `json:"instanceId"`
-	Token          string          `json:"token"`
+	SessionToken   string          `json:"sessionToken"`
 	Packages       []PackageConfig `json:"packages"`
 	Repos          []GitRepoConfig `json:"repos"`
 	Docker         *DockerConfig   `json:"docker"`
@@ -26,8 +26,9 @@ type Config struct {
 	DevScript      string          `json:"devScript"`
 }
 type InstanceConfig struct {
-	OpencodePassword string `json:"opencodePassword"`
-	Terminate        bool   `json:"terminate"`
+	OpencodePassword   string `json:"opencodePassword"`
+	Terminate          bool   `json:"terminate"`
+	VibeongoLocalToken string `json:"vibeongoLocalToken"`
 }
 
 type TaskConfig struct {
