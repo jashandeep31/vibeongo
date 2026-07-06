@@ -17,8 +17,6 @@ import {
 } from "@repo/db";
 import { getSessionNameAndDescriptionAgent } from "../../../ai/ai-agents/common-agents.js";
 import { createTasksForPRIssueOrCommentAgent } from "../../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
-import { createSessionAuthToken } from "../../../lib/create-session-auth-token.js";
-import { setupInstanceScript } from "../../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
 
 export const commentHandler = async (

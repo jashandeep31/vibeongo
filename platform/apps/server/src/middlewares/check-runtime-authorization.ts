@@ -1,4 +1,4 @@
-import { db, eq, sessionAuthTokens } from "@repo/db";
+import { db, eq } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
 
 export const checkRuntimeAuthorization = async (
@@ -29,31 +29,20 @@ export const checkRuntimeAuthorization = async (
     });
   }
 
-  const [sessionToken] = await db
-    .select()
-    .from(sessionAuthTokens)
-    .where(eq(sessionAuthTokens.token, token));
+  // if (
+  //   sessionToken.expires_at &&
+  //   sessionToken.expires_at.getTime() <= Date.now()
+  // ) {
+  //   return res.status(401).json({
+  //     error: "API key has expired",
+  //   });
+  // }
+  //
+  // if (sessionToken.session_id !== sessionId) {
+  //   return res.status(403).json({
+  //     error: "Not authorized",
+  //   });
+  // }
 
-  if (!sessionToken) {
-    return res.status(401).json({
-      error: "Invalid API key",
-    });
-  }
-
-  if (
-    sessionToken.expires_at &&
-    sessionToken.expires_at.getTime() <= Date.now()
-  ) {
-    return res.status(401).json({
-      error: "API key has expired",
-    });
-  }
-
-  if (sessionToken.session_id !== sessionId) {
-    return res.status(403).json({
-      error: "Not authorized",
-    });
-  }
-  req.sessionToken = sessionToken;
   next();
 };

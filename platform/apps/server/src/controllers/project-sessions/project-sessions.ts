@@ -21,9 +21,7 @@ import {
   asc,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
-import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { z } from "zod";
-import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import {
   commonFilterSchema,
   projectSessionTaskSchema,

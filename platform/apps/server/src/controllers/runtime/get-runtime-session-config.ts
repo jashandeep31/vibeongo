@@ -12,7 +12,6 @@ import {
   projectSshKeys,
   projects,
   sshKeys,
-  sessionAuthTokens,
   instances,
   projectDomainRouting,
   proxyDomains,
@@ -78,15 +77,8 @@ export const getRuntimeSessionConfig = catchAsync(
       .map((r) => r.repo)
       .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
 
-    const [sessionToken] = await db
-      .select()
-      .from(sessionAuthTokens)
-      .where(eq(sessionAuthTokens.session_id, sessionRow.project_session.id))
-      .orderBy(sessionAuthTokens.created_at);
-
     const config = {
       ...(parsedConfig as any),
-      sessionToken: sessionToken?.token || "",
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
       instanceConfig: instance.config,
