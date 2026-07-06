@@ -30,7 +30,7 @@ func ProvisionProjectFiles() error {
 	}
 	headers := map[string]string{
 		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.SessionToken,
+		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
 	}
 	resp, err := apiClient.Get(
 		"/api/v1/runtime/sessions/"+cfg.SessionID+"/get-project-files",

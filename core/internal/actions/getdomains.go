@@ -31,7 +31,7 @@ func GetDomains() error {
 
 	headers := map[string]string{
 		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.SessionToken,
+		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
 	}
 	resp, err := apiClient.Get(apiRoute, headers, &res)
 	if err != nil {

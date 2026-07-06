@@ -9,7 +9,7 @@ import (
 func FormatConfigSummary(cfg config.Config) string {
 	var b strings.Builder
 	b.WriteString("API auth token: ")
-	b.WriteString(cfg.SessionToken)
+	b.WriteString(cfg.InstanceConfig.SessionToken)
 
 	for _, repo := range cfg.Repos {
 		b.WriteString("\nreponame: ")

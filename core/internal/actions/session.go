@@ -14,7 +14,7 @@ func UpdateSessionOverview(cfg config.Config, overview string) error {
 	var b any
 	headers := map[string]string{
 		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.SessionToken,
+		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
 	}
 	resp, err := apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionID+"/overview", struct {
 		Overview string `json:"overview"`
@@ -36,7 +36,7 @@ func ResumeSession(cfg config.Config) error {
 	}
 	headers := map[string]string{
 		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.SessionToken,
+		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
 	}
 	resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionID+"/overview", headers, &b)
 	if err != nil {

@@ -19,7 +19,7 @@ func Renewkeys() error {
 
 	headers := map[string]string{
 		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.SessionToken,
+		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
 	}
 
 	type renewKeysResponse struct {
