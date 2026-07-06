@@ -6,15 +6,16 @@ import { AppError } from "../../lib/app-error.js";
 
 export const suspendSessionInstance = catchAsync(
   async (req: Request, res: Response) => {
-    const sessionToken = req.sessionToken;
-    if (!sessionToken) throw new AppError("Session not found", 404);
-    const { instanceId } = z
+    const runtimeInstance = req.runtimeInstance;
+    if (!runtimeInstance) throw new AppError("Instance not found", 404);
+
+    const { id, instanceId } = z
       .object({ id: z.string(), instanceId: z.string() })
       .parse(req.params);
 
     await terminateInstanceAndChargeUsageWithInstanceIdAndSessionId({
       instanceId: instanceId,
-      sessionId: sessionToken.session_id,
+      sessionId: id,
     });
     res.status(200).json({ data: "Instance suspended" });
   },

@@ -1,4 +1,4 @@
-import { db, eq } from "@repo/db";
+import { and, db, eq, instances, sql } from "@repo/db";
 import { NextFunction, Request, Response } from "express";
 
 export const checkRuntimeAuthorization = async (
@@ -14,8 +14,9 @@ export const checkRuntimeAuthorization = async (
     });
   }
 
-  const token = authHeader.split(" ")[1];
+  const token = authHeader.slice("Bearer ".length).trim();
   const sessionId = req.params.id;
+  const instanceId = req.params.instanceId;
 
   if (!token) {
     return res.status(401).json({
@@ -29,20 +30,33 @@ export const checkRuntimeAuthorization = async (
     });
   }
 
-  // if (
-  //   sessionToken.expires_at &&
-  //   sessionToken.expires_at.getTime() <= Date.now()
-  // ) {
-  //   return res.status(401).json({
-  //     error: "API key has expired",
-  //   });
-  // }
-  //
-  // if (sessionToken.session_id !== sessionId) {
-  //   return res.status(403).json({
-  //     error: "Not authorized",
-  //   });
-  // }
+  const [runtimeInstance] = await db
+    .select()
+    .from(instances)
+    .where(
+      and(
+        eq(instances.project_session_id, sessionId),
+        eq(instances.state, "running"),
+        sql`${instances.config}->>'sessionToken' = ${token}`,
+      ),
+    );
 
+  if (!runtimeInstance) {
+    return res.status(401).json({
+      error: "Invalid API key",
+    });
+  }
+
+  if (
+    instanceId &&
+    typeof instanceId === "string" &&
+    runtimeInstance.id !== instanceId
+  ) {
+    return res.status(403).json({
+      error: "Not authorized",
+    });
+  }
+
+  req.runtimeInstance = runtimeInstance;
   next();
 };
