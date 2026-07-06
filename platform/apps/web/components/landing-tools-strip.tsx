@@ -2,7 +2,7 @@ const tools = [
   "Claude Code",
   "Codex",
   "OpenCode",
-  "T3",
+  "T3Code",
   "Terminal",
   "SSH",
   "HTTPS Proxy",
