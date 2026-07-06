@@ -4,7 +4,7 @@ export const dockerConfigValidator = z.object({
   containers: z.array(
     z.object({
       name: z.string(),
-      content: z.string(),
+      dockerfilecode: z.string(),
     }),
   ),
 });

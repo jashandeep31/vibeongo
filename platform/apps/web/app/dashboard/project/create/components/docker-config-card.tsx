@@ -51,6 +51,7 @@ const ContainerEditor = memo(function ContainerEditor({
           className="bg-transparent font-medium"
         />
         <Button
+          type="button"
           variant="ghost"
           size="icon"
           onClick={() => onRemoveContainer(container.id)}
@@ -179,6 +180,7 @@ function DockerConfigCard() {
                   </h4>
                   <div className="flex flex-wrap gap-2">
                     <Button
+                      type="button"
                       variant="outline"
                       onClick={() => addContainer("Custom Container")}
                       className="border-dashed"
@@ -189,6 +191,7 @@ function DockerConfigCard() {
                     {PREDEFINED_CONTAINERS.map((preset) => (
                       <Button
                         key={preset.name}
+                        type="button"
                         variant="secondary"
                         onClick={() =>
                           addContainer(preset.name, preset.content)

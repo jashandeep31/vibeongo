@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 func ProvisionCodex(cfg *config.CodexConfig) error {
@@ -110,4 +111,11 @@ func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 
 	fmt.Println("updated the auth.json")
 	return nil
+}
+
+func ProvisionDockerContainers(cfg *config.DockerConfig) {
+	for _, container := range cfg.Containers {
+		cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, container.Content)
+		cmd.Run()
+	}
 }
