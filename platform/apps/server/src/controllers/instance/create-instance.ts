@@ -15,11 +15,10 @@ import {
   projectSshKeys,
   sshKeys,
 } from "@repo/db";
-import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
-import { createSessionAuthToken } from "../../lib/create-session-auth-token.js";
 import { createInstanceSchema } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
+import * as crypto from "crypto";
 
 export const createInstance = catchAsync(
   async (req: Request, res: Response) => {
@@ -114,17 +113,11 @@ export const createInstance = catchAsync(
     if (!projectSession)
       throw new AppError("Failed to create a project session", 500);
 
-    const authToken = await createSessionAuthToken(projectSession.id);
+    // const authToken = await createSessionAuthToken(projectSession.id);
     const instanceId = crypto.randomUUID();
-    const setupScript = setupInstanceScript({
-      sshKey: sshKeysArray.join("\n"),
-      authToken: authToken,
-      projectSessionId: projectSession.id,
-      instanceId,
-    });
 
     const instance = await spinUpAndSaveInstance({
-      setupScript,
+      sshKeys: sshKeysArray,
       project,
       userId: user.id,
       sessionId: projectSession.id,

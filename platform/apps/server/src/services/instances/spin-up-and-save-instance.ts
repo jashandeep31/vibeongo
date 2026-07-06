@@ -18,12 +18,14 @@ import {
   getUserInstanceAutoTerminateMinutes,
   type InstanceAutoTerminateSetting,
 } from "./get-user-instance-auto-terminate-minutes.js";
+import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
+import * as crypto from "crypto";
 
 interface SpinUpAndSaveInstance {
-  setupScript: string;
+  sshKeys: string[];
   project: typeof projects.$inferSelect;
   userId: string;
-  sessionId: null | string;
+  sessionId: string;
   instanceId: string;
   terminate?: boolean;
   terminateAfterInMinutes?: number;
@@ -37,15 +39,23 @@ export type spinUpAndSaveInstanceResponse =
  * Create a aws ec2 instance as per the specs and save it to the user database. So after the response you are ready to no db saving is needed
  */
 export const spinUpAndSaveInstance = async ({
-  setupScript,
+  sshKeys,
   project,
   userId,
-  sessionId = null,
+  sessionId,
   instanceId,
   terminate = false,
   terminateAfterInMinutes,
   terminateSetting = "manual",
 }: SpinUpAndSaveInstance): Promise<spinUpAndSaveInstanceResponse> => {
+  const sessionToken = `vps_${createId()}${crypto.randomBytes(16).toString("hex")}`;
+
+  const setupScript = setupInstanceScript({
+    sshKey: sshKeys.join("\n"),
+    authToken: sessionToken,
+    projectSessionId: sessionId,
+    instanceId,
+  });
   const [userWalletRow] = await db
     .select()
     .from(userWallet)
@@ -126,6 +136,7 @@ export const spinUpAndSaveInstance = async ({
         opencodePassword: createId(),
         terminate,
         vibeongoLocalToken: createId(),
+        sessionToken: sessionToken,
       },
     })
     .returning();

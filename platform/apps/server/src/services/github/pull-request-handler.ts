@@ -123,25 +123,13 @@ export const pullRequestOpenedHandler = async ({
   });
 
   if (!session) return null;
-  const authToken = await createSessionAuthToken(session.id);
   const sshKeysArray = await db
     .select()
     .from(projectSshKeys)
     .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
     .where(eq(projectSshKeys.project_id, project.id));
 
-  // --- intialScript that we run after the vps setup ---
   const instanceId = crypto.randomUUID();
-  const intialScript = setupInstanceScript({
-    sshKey: sshKeysArray
-      .map((s) => s.shh_keys?.value || "")
-      .filter((s) => s)
-      .join("\n"),
-    authToken: authToken,
-    projectSessionId: session.id,
-    instanceId,
-    terminate: true,
-  });
 
   const [regionRow] = await db
     .select()
@@ -151,7 +139,9 @@ export const pullRequestOpenedHandler = async ({
   if (!regionRow || !regionRow.instance_regions) return null;
 
   const instance = await spinUpAndSaveInstance({
-    setupScript: intialScript,
+    sshKeys: sshKeysArray
+      .map((r) => r.shh_keys?.value)
+      .filter((key): key is string => Boolean(key)),
     project,
     userId: user.id,
     sessionId: session.id,
