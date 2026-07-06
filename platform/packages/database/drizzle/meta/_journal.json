@@ -85,6 +85,13 @@
       "when": 1783195358162,
       "tag": "0011_glossy_franklin_storm",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1783364088188,
+      "tag": "0012_tiny_exodus",
+      "breakpoints": true
     }
   ]
 }
