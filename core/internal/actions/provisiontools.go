@@ -3,10 +3,10 @@ package actions
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
-	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 func ProvisionCodex(cfg *config.CodexConfig) error {
@@ -113,9 +113,29 @@ func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	return nil
 }
 
-func ProvisionDockerContainers(cfg *config.DockerConfig) {
+func ProvisionDockerContainers(cfg *config.DockerConfig) error {
+	fmt.Println("Setting up the docker containers")
 	for _, container := range cfg.Containers {
-		cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, container.Content)
-		cmd.Run()
+		dir, err := os.MkdirTemp("", "compose-*")
+		if err != nil {
+			return err
+		}
+		defer os.RemoveAll(dir)
+		composePath := filepath.Join(dir, "docker-compose.yml")
+
+		if err := os.WriteFile(composePath, []byte(container.DockerComposeCode), 0644); err != nil {
+			return err
+		}
+
+		cmd := exec.Command("docker", "compose", "up", "-d")
+		cmd.Dir = dir
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to start %q: %w", container.Name, err)
+		}
 	}
+
+	return nil
 }

@@ -28,7 +28,7 @@ export const buildProjectConfigPayload = (
           containers: state.additionalServices.dockerConfig.containers.map(
             (container) => ({
               name: container.name,
-              content: container.content,
+              dockercomposecode: container.dockercomposecode,
             }),
           ),
         },

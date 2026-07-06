@@ -79,12 +79,12 @@ const ClientView = ({ projectId }: { projectId: string }) => {
       containers:
         (
           dockerPackage?.config?.containers as
-            | { name: string; content?: string }[]
+            | { name: string; dockercomposecode?: string }[]
             | undefined
         )?.map((container) => ({
           id: crypto.randomUUID(),
           name: container.name,
-          content: container.content ?? "",
+          dockercomposecode: container.dockercomposecode ?? "",
         })) ?? [],
     });
 

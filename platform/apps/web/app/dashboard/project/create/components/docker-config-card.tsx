@@ -12,7 +12,7 @@ import { useConfigStore } from "@/store/config-store";
 interface ContainerConfig {
   id: string;
   name: string;
-  content: string;
+  dockercomposecode: string;
 }
 
 interface ContainerEditorProps {
@@ -24,11 +24,11 @@ interface ContainerEditorProps {
 const PREDEFINED_CONTAINERS = [
   {
     name: "PostgreSQL Database",
-    content: `version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - "5432:5432"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:`,
+    dockercomposecode: `version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - "5432:5432"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:`,
   },
   {
     name: "Redis Cache",
-    content: `version: '3.8'\nservices:\n  redis:\n    image: redis:7-alpine\n    ports:\n      - "6379:6379"\n    command: redis-server --save 20 1 --loglevel warning\n    volumes:\n      - redis_data:/data\n\nvolumes:\n  redis_data:`,
+    dockercomposecode: `version: '3.8'\nservices:\n  redis:\n    image: redis:7-alpine\n    ports:\n      - "6379:6379"\n    command: redis-server --save 20 1 --loglevel warning\n    volumes:\n      - redis_data:/data\n\nvolumes:\n  redis_data:`,
   },
 ];
 
@@ -61,13 +61,13 @@ const ContainerEditor = memo(function ContainerEditor({
         </Button>
       </div>
       <Textarea
-        value={container.content}
+        value={container.dockercomposecode}
         onChange={(e) =>
           onUpdateContainer(container.id, {
-            content: e.target.value,
+            dockercomposecode: e.target.value,
           })
         }
-        placeholder="docker-compose.yml or Dockerfile content..."
+        placeholder="docker-compose.yml or Dockerfile code..."
         className="bg-muted/50 h-32 resize-y overflow-y-auto font-mono text-xs whitespace-pre"
       />
     </div>
@@ -84,11 +84,11 @@ function DockerConfigCard() {
   );
 
   const addContainer = useCallback(
-    (name: string, content: string = "") => {
+    (name: string, dockercomposecode: string = "") => {
       const newContainer = {
         id: crypto.randomUUID(),
         name,
-        content,
+        dockercomposecode,
       };
       updateDockerConfig({
         enabled: dockerEnabled,
@@ -194,7 +194,7 @@ function DockerConfigCard() {
                         type="button"
                         variant="secondary"
                         onClick={() =>
-                          addContainer(preset.name, preset.content)
+                          addContainer(preset.name, preset.dockercomposecode)
                         }
                       >
                         <Plus className="mr-2 h-4 w-4" />

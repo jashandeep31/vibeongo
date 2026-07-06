@@ -4,7 +4,7 @@ import { type PortRule } from "@/app/dashboard/project/create/types";
 interface ContainerConfig {
   id: string;
   name: string;
-  content: string;
+  dockercomposecode: string;
 }
 interface AdditionalService {
   dockerConfig: {
@@ -122,7 +122,7 @@ export const useConfigStore = create<ConfigStore>((set) => ({
         // {
         //   id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
         //   name: "PostgreSQL Database",
-        //   content:
+        //   dockercomposecode:
         //     "version: '3.8'\nservices:\n  postgres:\n    image: postgres:15-alpine\n    environment:\n      POSTGRES_USER: myuser\n      POSTGRES_PASSWORD: mypassword\n      POSTGRES_DB: mydatabase\n    ports:\n      - \"5432:5432\"\n    volumes:\n      - postgres_data:/var/lib/postgresql/data\n\nvolumes:\n  postgres_data:",
         // },
       ],

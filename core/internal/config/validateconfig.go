@@ -46,8 +46,8 @@ type PackageConfig struct {
 }
 
 type DockerContainerConfig struct {
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Name              string `json:"name"`
+	DockerComposeCode string `json:"dockercomposecode"`
 }
 
 type DockerConfig struct {

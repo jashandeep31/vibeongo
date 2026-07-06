@@ -20,6 +20,7 @@ export type ProjectConfig = {
     config?: {
       containers?: {
         name: string;
+        dockercomposecode?: string;
       }[];
     };
   }[];
