@@ -52,7 +52,7 @@ export async function* projectAIAgent({
   });
 
   const result = streamText({
-    model: "openai/gpt-5.5",
+    model: "zai/glm-5.2",
     system: prompts.createProject.systemPrompt(),
     reasoning: "high",
     tools: {
