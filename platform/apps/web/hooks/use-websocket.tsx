@@ -42,9 +42,11 @@ const SocketContext = createContext<{
 export const WebSocketProvider = ({
   children,
   socketUrl,
+  socketToken,
 }: {
   children: ReactNode;
   socketUrl: string | undefined | null;
+  socketToken: string | undefined | null;
 }) => {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
   const listenersRef = useRef(
@@ -104,11 +106,11 @@ export const WebSocketProvider = ({
     messageBufferRef.current = [];
     pendingMessagesRef.current = [];
     reconnectAttemptRef.current = 0;
-    if (!socketUrl) {
+    if (!socketUrl || !socketToken) {
       return;
     }
 
-    const wsUrl = `wss://${socketUrl}/ws`;
+    const wsUrl = `wss://${socketUrl}/ws?token=${encodeURIComponent(socketToken)}`;
 
     const handleMessage = (event: MessageEvent) => {
       if (typeof event.data !== "string") {
@@ -225,7 +227,7 @@ export const WebSocketProvider = ({
       setWebsocket((current) => (current === currentSocket ? null : current));
       currentSocket?.close();
     };
-  }, [socketUrl]);
+  }, [socketUrl, socketToken]);
 
   return (
     <SocketContext.Provider

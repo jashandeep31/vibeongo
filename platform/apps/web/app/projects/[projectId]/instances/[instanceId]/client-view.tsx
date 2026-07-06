@@ -113,6 +113,20 @@ const getOpencodePassword = (config: unknown) => {
   return opencodePassword;
 };
 
+const getVibeongoLocalToken = (config: unknown) => {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return null;
+  }
+
+  const { vibeongoLocalToken } = config as { vibeongoLocalToken?: unknown };
+
+  if (typeof vibeongoLocalToken !== "string" || !vibeongoLocalToken.trim()) {
+    return null;
+  }
+
+  return vibeongoLocalToken;
+};
+
 export default function ClientView({ instanceId }: { instanceId: string }) {
   const {
     data: instance,
@@ -190,6 +204,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     ? `ssh ubuntu@${String(Instance_IP)}`
     : null;
   const opencodePassword = getOpencodePassword(instance?.config);
+  const vibeongoLocalToken = getVibeongoLocalToken(instance?.config);
   const spunUpFor = formatDuration(
     instance?.started_at,
     instance?.terminated_at,
@@ -319,7 +334,12 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   const handleRestartFinalScript = async () => {
-    if (!vibeongoDomain || isTerminated || isRestartingFinalScript) {
+    if (
+      !vibeongoDomain ||
+      !vibeongoLocalToken ||
+      isTerminated ||
+      isRestartingFinalScript
+    ) {
       return;
     }
 
@@ -327,7 +347,15 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     setIsRestartingFinalScript(true);
 
     try {
-      await axios.post(`https://${vibeongoDomain}/restart-final-script`, {});
+      await axios.post(
+        `https://${vibeongoDomain}/restart-final-script`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${vibeongoLocalToken}`,
+          },
+        },
+      );
       toast.success("Dev script restarted", { id: toastId });
     } catch {
       toast.error("Failed to restart dev script", { id: toastId });
@@ -563,7 +591,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   };
 
   return (
-    <WebSocketProvider socketUrl={vibeongoDomain}>
+    <WebSocketProvider
+      socketUrl={vibeongoDomain}
+      socketToken={vibeongoLocalToken}
+    >
       <div className="w-full max-w-full min-w-0 space-y-12 overflow-x-hidden p-4 md:p-8">
         <ConfirmationDialog
           open={isCurrentIpDialogOpen}
