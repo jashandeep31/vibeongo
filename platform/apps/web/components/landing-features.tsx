@@ -1,28 +1,35 @@
+import Image from "next/image";
+
 const features = [
   {
     title: "AI agents, preconfigured",
     description:
       "Access Claude Code, Codex, OpenCode, and T3 from one cloud workspace.",
+    image: "/features/01.png",
   },
   {
     title: "Ready cloud workspaces",
     description:
       "Open your repo in an isolated machine with tools, terminal, and project setup already in place.",
+    image: "/features/02.png",
   },
   {
     title: "SSH access from anywhere",
     description:
       "Add SSH keys once and connect to your workspace from any machine.",
+    image: "/features/03.png",
   },
   {
     title: "Fast terminal access",
     description:
       "Use Termius and Mosh for responsive remote development sessions.",
+    image: "/features/04.png",
   },
   {
     title: "HTTPS previews for dev servers",
     description:
       "Expose local dev servers through dedicated proxy domains with HTTPS.",
+    image: "/features/05.png",
   },
 ];
 
@@ -67,7 +74,16 @@ export function LandingFeatures() {
                   </p>
                 </div>
 
-                <div className="bg-muted aspect-[16/10] rounded-2xl" />
+                <div className="bg-muted border-border overflow-hidden rounded-2xl border">
+                  <Image
+                    src={feature.image}
+                    alt={feature.title}
+                    width={480}
+                    height={360}
+                    sizes="(min-width: 1024px) 50vw, calc(100vw - 2rem)"
+                    className="h-auto w-full"
+                  />
+                </div>
               </div>
             );
           })}
