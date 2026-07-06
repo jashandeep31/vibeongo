@@ -16,7 +16,7 @@ export const checkRuntimeAuthorization = async (
 
   const token = authHeader.slice("Bearer ".length).trim();
   const sessionId = req.params.id;
-  const instanceId = req.params.instanceId;
+  const instanceId = req.header("X-Instance-Id");
 
   if (!token) {
     return res.status(401).json({
@@ -30,11 +30,18 @@ export const checkRuntimeAuthorization = async (
     });
   }
 
+  if (!instanceId || typeof instanceId !== "string") {
+    return res.status(401).json({
+      error: "Instance id is required",
+    });
+  }
+
   const [runtimeInstance] = await db
     .select()
     .from(instances)
     .where(
       and(
+        eq(instances.id, instanceId),
         eq(instances.project_session_id, sessionId),
         eq(instances.state, "running"),
         sql`${instances.config}->>'sessionToken' = ${token}`,
@@ -44,16 +51,6 @@ export const checkRuntimeAuthorization = async (
   if (!runtimeInstance) {
     return res.status(401).json({
       error: "Invalid API key",
-    });
-  }
-
-  if (
-    instanceId &&
-    typeof instanceId === "string" &&
-    runtimeInstance.id !== instanceId
-  ) {
-    return res.status(403).json({
-      error: "Not authorized",
     });
   }
 

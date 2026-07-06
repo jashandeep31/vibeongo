@@ -17,10 +17,7 @@ func Renewkeys() error {
 
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
 
-	headers := map[string]string{
-		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
-	}
+	headers := runtimeAuthHeaders(cfg)
 
 	type renewKeysResponse struct {
 		Data struct {

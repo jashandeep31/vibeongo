@@ -13,10 +13,7 @@ func TerminateInstance(cfg config.Config, force bool) error {
 
 	if cfg.InstanceConfig.Terminate || force {
 		var apiRes any
-		headers := map[string]string{
-			"Content-Type":  "application/json",
-			"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
-		}
+		headers := runtimeAuthHeaders(cfg)
 		resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionID+"/terminate/"+cfg.InstanceID, headers, &apiRes)
 		if err != nil {
 			return err

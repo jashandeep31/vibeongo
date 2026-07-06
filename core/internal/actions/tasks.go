@@ -39,9 +39,7 @@ func MarkTask(cmd *cobra.Command, args []string) error {
 	}{
 		Done: true,
 	},
-		map[string]string{
-			"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
-		},
+		runtimeAuthHeaders(cfg),
 		&b)
 
 	return nil

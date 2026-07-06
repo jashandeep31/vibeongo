@@ -28,10 +28,7 @@ func ProvisionProjectFiles() error {
 			} `json:"project_file_data"`
 		} `json:"data"`
 	}
-	headers := map[string]string{
-		"Content-Type":  "application/json",
-		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
-	}
+	headers := runtimeAuthHeaders(cfg)
 	resp, err := apiClient.Get(
 		"/api/v1/runtime/sessions/"+cfg.SessionID+"/get-project-files",
 		headers,
