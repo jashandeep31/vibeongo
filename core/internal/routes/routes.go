@@ -10,7 +10,7 @@ import (
 
 func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	e.GET("/", handlers.Health)
-	e.GET("/ws", ws.WebSocket(tools))
+	e.GET("/ws", ws.WebSocket(tools), middlewares.CheckLocalWebSocketAuth(localToken))
 
 	protected := e.Group("")
 	protected.Use(middlewares.CheckLocalAuth(localToken))

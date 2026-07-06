@@ -30,3 +30,20 @@ func CheckLocalAuth(expectedToken string) echo.MiddlewareFunc {
 		}
 	}
 }
+
+func CheckLocalWebSocketAuth(expectedToken string) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			token := c.QueryParam("token")
+			if expectedToken == "" || token == "" {
+				return c.String(http.StatusUnauthorized, "Unauthorized")
+			}
+
+			if subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) != 1 {
+				return c.String(http.StatusUnauthorized, "Unauthorized")
+			}
+
+			return next(c)
+		}
+	}
+}
