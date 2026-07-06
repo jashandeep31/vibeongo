@@ -10,7 +10,8 @@ import (
 
 // Start starts the application.
 func Start() error {
-	if _, err := config.LoadAndValidate(); err != nil {
+	cfg, err := config.LoadAndValidate()
+	if err != nil {
 		return err
 	}
 
@@ -37,13 +38,14 @@ func Start() error {
 			echo.HeaderOrigin,
 			echo.HeaderContentType,
 			echo.HeaderAccept,
+			echo.HeaderAuthorization,
 		},
 	}))
 
 	e.Use(middleware.RequestLogger())
 
 	// routes of app
-	routes.Register(e, tools)
+	routes.Register(e, tools, cfg.InstanceConfig.VibeongoLocalToken)
 
 	// address := ":" + config.ENV.PORT
 	address := ":" + "3101"
