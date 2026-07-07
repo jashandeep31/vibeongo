@@ -1,7 +1,16 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
-import { and, customQuery, db, desc, eq, instances, projects } from "@repo/db";
+import {
+  and,
+  customQuery,
+  db,
+  desc,
+  eq,
+  instances,
+  projects,
+  sql,
+} from "@repo/db";
 import { z } from "zod";
 import { commonFilterSchema } from "@repo/shared";
 
@@ -118,5 +127,61 @@ export const getInstanceById = catchAsync(
     res.status(200).json({
       data: row,
     });
+  },
+);
+
+export const updateInstanceById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 401);
+
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const { terminatesTimeUpdate } = z
+      .object({
+        terminatesTimeUpdate: z
+          .object({
+            action: z.enum(["increase", "decrease"]).default("increase"),
+            timeInMinutes: z.number().min(1),
+          })
+          .optional(),
+      })
+      .parse(req.body);
+
+    const updateData: Partial<{
+      [K in keyof typeof instances.$inferInsert]: any;
+    }> = {};
+
+    if (terminatesTimeUpdate) {
+      const sign = terminatesTimeUpdate.action === "decrease" ? -1 : 1;
+      const minutes = sign * terminatesTimeUpdate.timeInMinutes;
+      updateData.terminates_at = sql`${instances.terminates_at} + (${minutes} * interval '1 minute')`;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new AppError("No update fields provided", 400);
+    }
+
+    const [result] = await db
+      .update(instances)
+      .set(updateData)
+      .where(
+        and(
+          eq(instances.id, id),
+          eq(instances.user_id, user.id),
+          eq(instances.state, "running"),
+        ),
+      )
+      .returning();
+
+    if (!result) {
+      throw new AppError("Running instance not found", 404);
+    }
+
+    res.status(200).json({ data: result });
   },
 );
