@@ -9,12 +9,10 @@ import { ButtonGroup } from "@repo/ui/components/button-group";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useWebSocketContext } from "@/hooks/use-websocket";
 import "@xterm/xterm/css/xterm.css";
-import { useTheme } from "next-themes";
 
 export function ProjectInstanceTerminal() {
   const { websocket, sendJsonMessage, subscribeJsonMessage } =
     useWebSocketContext();
-  const { resolvedTheme } = useTheme();
   const [terminalSessionIds, setTerminalSessionIds] = useState<string[]>([]);
   const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
     string | null
@@ -28,31 +26,15 @@ export function ProjectInstanceTerminal() {
     const terminalElement = terminalRef.current;
     if (!terminalElement) return;
 
-    const rootStyles = getComputedStyle(document.documentElement);
-    const bodyStyles = getComputedStyle(document.body);
-    const terminalStyles = getComputedStyle(terminalElement);
-    const getThemeColor = (name: string, fallback: string) =>
-      rootStyles.getPropertyValue(name).trim() || fallback;
-    const background =
-      terminalStyles.backgroundColor ||
-      getThemeColor(
-        "--card",
-        getThemeColor("--background", bodyStyles.backgroundColor),
-      );
-    const foreground = getThemeColor(
-      "--card-foreground",
-      getThemeColor("--foreground", bodyStyles.color),
-    );
-
     const isMobileViewport = window.matchMedia("(max-width: 639px)").matches;
     const term = new Terminal({
       cursorBlink: true,
       fontSize: isMobileViewport ? 12 : 14,
       scrollback: 5000,
       theme: {
-        background,
-        foreground,
-        cursor: foreground,
+        background: "#000000",
+        foreground: "#f8f8f2",
+        cursor: "#f8f8f2",
       },
     });
 
@@ -170,7 +152,7 @@ export function ProjectInstanceTerminal() {
       dataSubscription.dispose();
       term.dispose();
     };
-  }, [resolvedTheme, sendJsonMessage, subscribeJsonMessage, websocket]);
+  }, [sendJsonMessage, subscribeJsonMessage, websocket]);
 
   return (
     <div className="max-w-full min-w-0 space-y-4 overflow-x-hidden">
@@ -237,11 +219,11 @@ export function ProjectInstanceTerminal() {
           </div>
         </div>
 
-        <div className="bg-card max-w-full min-w-0 overflow-hidden p-1.5 sm:p-2">
+        <div className="max-w-full min-w-0 overflow-hidden bg-black p-1.5 sm:p-2">
           <div
             ref={terminalRef}
             id="terminal"
-            className="bg-card h-[55svh] min-h-[280px] w-full max-w-full min-w-0 overflow-hidden rounded-md p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2 [&_.xterm-screen]:max-w-full [&_.xterm-viewport]:max-w-full [&_.xterm]:max-w-full"
+            className="h-[55svh] min-h-[280px] w-full max-w-full min-w-0 overflow-hidden rounded-md bg-black p-1.5 sm:h-[min(70vh,720px)] sm:min-h-[420px] sm:p-2 [&_.xterm-screen]:max-w-full [&_.xterm-viewport]:max-w-full [&_.xterm]:max-w-full"
           />
         </div>
       </div>
