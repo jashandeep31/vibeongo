@@ -8,7 +8,6 @@ interface SetupInstanceScriptOptions {
   terminate?: boolean;
 }
 
-//TODO: please fix the next ami with removing port 8000 and adding 8080
 export const setupInstanceScript = ({
   sshKey,
   authToken,
@@ -41,10 +40,25 @@ set -euxo pipefail
 CONFIG_DIR="\\$HOME/.config/vibeongo"
 mkdir -p "\\$CONFIG_DIR"
 
-curl --request GET \\
-  --url  ${env.NODE_ENV == "development" ? "https://l1.devsradar.com" : env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
-  --header "Authorization: Bearer ${authToken}" \\
-  | jq '.data' > "\\$CONFIG_DIR/config.json"
+CONFIG_TMP="\\$(mktemp)"
+for attempt in {1..30}; do
+  if curl -fsS --request GET \\
+    --url  ${env.NODE_ENV == "development" ? "https://l1.devsradar.com" : env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
+    --header "Authorization: Bearer ${authToken}" \\
+    --header "X-Instance-Id: ${instanceId}" \\
+    | jq -e '.data' > "\\$CONFIG_TMP"; then
+    mv "\\$CONFIG_TMP" "\\$CONFIG_DIR/config.json"
+    break
+  fi
+
+  if [ "\\$attempt" -eq 30 ]; then
+    echo "Failed to fetch runtime config after \\$attempt attempts" >&2
+    rm -f "\\$CONFIG_TMP"
+    exit 1
+  fi
+
+  sleep 2
+done
 
 #Now vibeongo is pre cooked in the ami
 curl -fsSL ${env.BACKEND_URL}/install | bash

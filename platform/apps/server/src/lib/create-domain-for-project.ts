@@ -28,7 +28,7 @@ export const createDomainsForProject = async ({
         return {
           domain: `${sub}`,
           target_port: port,
-          allow_any: true,
+          allow_all_ips: true,
           routing_id: routingId,
           user_id: userId,
           is_editable: ![4096, 3773, 3101].includes(port),
