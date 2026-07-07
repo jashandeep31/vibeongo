@@ -3,11 +3,15 @@ import { useEffect, useRef, useState } from "react";
 import {
   Check,
   Copy,
+  FileCode2,
   Globe,
   Loader2,
+  MoreHorizontal,
+  Settings,
   Trash2,
   TriangleAlert,
 } from "lucide-react";
+import Link from "next/link";
 
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
@@ -26,6 +30,12 @@ import { useCurrentUserIp } from "@/hooks/use-ip";
 import { Button } from "@repo/ui/components/button";
 import { Card } from "@repo/ui/components/card";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import { toast } from "sonner";
 import axios from "axios";
 import { ProjectInstanceTerminal } from "@/components/project/project-instance-terminal";
@@ -586,6 +596,36 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             )}
           </Button>
         </ConfirmationDialog>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              size="icon-sm"
+              variant="outline"
+              type="button"
+              aria-label="Project menu"
+              title="Project menu"
+              className="sm:h-9 sm:w-9"
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem asChild>
+              <Link href={`/dashboard/project/${instance.project_id}/edit`}>
+                <Settings className="h-4 w-4" />
+                Edit Config
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link
+                href={`/dashboard/project/${instance.project_id}/manage/env`}
+              >
+                <FileCode2 className="h-4 w-4" />
+                Edit Envs
+              </Link>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     );
   };
