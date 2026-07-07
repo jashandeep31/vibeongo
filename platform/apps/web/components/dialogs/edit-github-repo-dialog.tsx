@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useUpdateGithubRepoById } from "@/hooks/use-github-repos";
 import type { GithubRepo } from "@/services/github-repo-services";
 import { Button } from "@repo/ui/components/button";
+import { Checkbox } from "@repo/ui/components/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -47,10 +48,17 @@ export function EditGithubRepoDialog({
   const [setupScriptDraft, setSetupScriptDraft] = useState("");
   const [defaultProjectIdDraft, setDefaultProjectIdDraft] =
     useState(NO_DEFAULT_PROJECT);
+  const [autoReviewPullRequestsDraft, setAutoReviewPullRequestsDraft] =
+    useState(false);
+  const [autoFixIssuesDraft, setAutoFixIssuesDraft] = useState(false);
 
   useEffect(() => {
     setSetupScriptDraft(repo?.setup_script ?? "");
     setDefaultProjectIdDraft(repo?.default_project_id ?? NO_DEFAULT_PROJECT);
+    setAutoReviewPullRequestsDraft(
+      repo?.auto_review_pull_requests_enabled ?? false,
+    );
+    setAutoFixIssuesDraft(repo?.auto_fix_issues_enabled ?? false);
   }, [repo]);
 
   const closeDialog = () => {
@@ -67,7 +75,10 @@ export function EditGithubRepoDialog({
   const hasUnsavedChanges =
     !!repo &&
     (setupScriptDraft !== (repo.setup_script ?? "") ||
-      selectedProjectId !== (repo.default_project_id ?? null));
+      selectedProjectId !== (repo.default_project_id ?? null) ||
+      autoReviewPullRequestsDraft !==
+        repo.auto_review_pull_requests_enabled ||
+      autoFixIssuesDraft !== repo.auto_fix_issues_enabled);
 
   const handleSave = async () => {
     if (!repo) {
@@ -81,6 +92,8 @@ export function EditGithubRepoDialog({
         id: repo.id,
         setup_script: setupScriptDraft,
         default_project_id: selectedProjectId,
+        auto_review_pull_requests_enabled: autoReviewPullRequestsDraft,
+        auto_fix_issues_enabled: autoFixIssuesDraft,
       });
       toast.success("Repository settings updated", { id: toastId });
       onOpenChange(false);
@@ -143,6 +156,46 @@ export function EditGithubRepoDialog({
           placeholder="#!/usr/bin/env bash\nnpm install\nnpm run build"
           className="min-h-40 font-mono text-xs"
         />
+
+        <div className="space-y-4 rounded-md border p-4">
+          <label className="flex cursor-pointer items-start gap-3">
+            <Checkbox
+              checked={autoReviewPullRequestsDraft}
+              onCheckedChange={(checked) =>
+                setAutoReviewPullRequestsDraft(checked === true)
+              }
+              disabled={updateRepoMutation.isPending}
+              aria-label="Automatically review pull requests"
+            />
+            <span className="space-y-1">
+              <span className="block text-sm font-medium">
+                Automatically review pull requests
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Start an automated review when a pull request is opened.
+              </span>
+            </span>
+          </label>
+
+          <label className="flex cursor-pointer items-start gap-3">
+            <Checkbox
+              checked={autoFixIssuesDraft}
+              onCheckedChange={(checked) =>
+                setAutoFixIssuesDraft(checked === true)
+              }
+              disabled={updateRepoMutation.isPending}
+              aria-label="Automatically fix issues"
+            />
+            <span className="space-y-1">
+              <span className="block text-sm font-medium">
+                Automatically fix issues
+              </span>
+              <span className="block text-sm text-muted-foreground">
+                Start an automated fix when a new issue is opened.
+              </span>
+            </span>
+          </label>
+        </div>
 
         <DialogFooter>
           <Button

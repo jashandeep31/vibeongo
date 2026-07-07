@@ -273,15 +273,22 @@ export const updateGithubRepoById = catchAsync(
     if (!id || typeof id !== "string")
       throw new AppError("Repo id is required", 400);
 
-    const { setup_script, default_project_id } = z
+    const {
+      setup_script,
+      default_project_id,
+      auto_review_pull_requests_enabled,
+      auto_fix_issues_enabled,
+    } = z
       .object({
-        setup_script: z.string().default(""),
-        default_project_id: z.string().nullable(),
+        setup_script: z.string().optional(),
+        default_project_id: z.string().nullable().optional(),
+
+        auto_review_pull_requests_enabled: z.boolean().optional(),
+        auto_fix_issues_enabled: z.boolean().optional(),
       })
       .parse(req.body);
 
-    let project = null;
-    if (default_project_id) {
+    if (default_project_id !== undefined && default_project_id !== null) {
       const [projectRow] = await db
         .select()
         .from(projects)
@@ -292,13 +299,19 @@ export const updateGithubRepoById = catchAsync(
           ),
         );
       if (!projectRow) throw new AppError("Project not found", 404);
-      project = projectRow;
     }
+
     await db
       .update(githubRepos)
       .set({
-        setup_script,
-        default_project_id: project?.id || null,
+        ...(setup_script !== undefined ? { setup_script } : {}),
+        ...(default_project_id !== undefined ? { default_project_id } : {}),
+        ...(auto_review_pull_requests_enabled !== undefined
+          ? { auto_review_pull_requests_enabled }
+          : {}),
+        ...(auto_fix_issues_enabled !== undefined
+          ? { auto_fix_issues_enabled }
+          : {}),
       })
       .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
 

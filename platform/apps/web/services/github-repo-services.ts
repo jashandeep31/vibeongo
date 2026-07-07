@@ -121,16 +121,22 @@ export const updateGithubRepoById = async ({
   id,
   setup_script,
   default_project_id,
+  auto_review_pull_requests_enabled,
+  auto_fix_issues_enabled,
 }: {
   id: string;
   setup_script: string;
   default_project_id: string | null;
+  auto_review_pull_requests_enabled: boolean;
+  auto_fix_issues_enabled: boolean;
 }) => {
   const res = await axios.post(
     BACKEND_URL + `/api/v1/github-repos/${id}`,
     {
       setup_script,
       default_project_id,
+      auto_review_pull_requests_enabled,
+      auto_fix_issues_enabled,
     },
     {
       withCredentials: true,
