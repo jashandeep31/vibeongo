@@ -8,11 +8,7 @@ export const issueOpenedHandler = async (
 ) => {
   const { payload, octokit } = event;
 
-  const body = payload?.issue?.body;
-  if (!body) return;
-  if (!body.includes("@vibeongo")) return;
   const requestOpener = payload.issue.user.login;
-
   const full_name = payload.repository?.full_name;
   if (!full_name) {
     return;
@@ -23,13 +19,18 @@ export const issueOpenedHandler = async (
     .from(githubRepos)
     .where(eq(githubRepos.full_name, full_name));
 
-  if (!githubRepo || githubRepo.repo_owner_username !== requestOpener) {
-    return;
+  if (!githubRepo) return;
+
+  if (!githubRepo.auto_fix_issues_enabled) {
+    const body = payload.issue.body;
+
+    if (githubRepo.repo_owner_username !== requestOpener) return;
+    if (!body?.includes("@vibeongo")) return;
   }
 
   await issueRequestHandler({
     gitRepoId: githubRepo.id,
-    issueNumber: payload.issue.number!,
+    issueNumber: payload.issue.number,
     sessionCat: "auto",
   });
 

@@ -1,4 +1,4 @@
-import { App, PullRequestOpenedEvent } from "@octokit/webhooks-types";
+import { PullRequestOpenedEvent } from "@octokit/webhooks-types";
 import { WebhookHandler } from "../types.js";
 import { db, eq, githubRepos } from "@repo/db";
 import { pullRequestOpenedHandler } from "../../../services/github/pull-request-handler.js";
@@ -9,12 +9,7 @@ export const pullRequestOpenedWebhookHandler = async (
   const { payload, octokit } = event;
 
   const requestOpener = payload.pull_request.user.login;
-
-  // checking if the body contains the tagging
-  const body = payload?.pull_request?.body;
-  if (!body) return;
-
-  const full_name = payload.repository?.full_name;
+  const full_name = payload.repository.full_name;
   if (!full_name) {
     return;
   }
@@ -24,8 +19,13 @@ export const pullRequestOpenedWebhookHandler = async (
     .from(githubRepos)
     .where(eq(githubRepos.full_name, full_name));
 
-  if (!githubRepo || githubRepo.repo_owner_username !== requestOpener) {
-    return;
+  if (!githubRepo) return;
+
+  if (!githubRepo.auto_review_pull_requests_enabled) {
+    const body = payload.pull_request.body;
+
+    if (githubRepo.repo_owner_username !== requestOpener) return;
+    if (!body?.includes("@vibeongo")) return;
   }
 
   await pullRequestOpenedHandler({
