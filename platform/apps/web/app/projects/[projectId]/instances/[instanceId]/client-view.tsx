@@ -2,6 +2,7 @@
 import { useEffect, useRef, useState } from "react";
 import {
   Check,
+  Clock3,
   Copy,
   FileCode2,
   Globe,
@@ -19,6 +20,7 @@ import { OpencodeWebCard } from "@/components/opencode-web-card";
 import { T3CodeCard } from "@/components/t3-code-card";
 import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import { useGetInstanceById, useTerminateInstance } from "@/hooks/use-instance";
 import {
   useAddAllowedIpToProject,
@@ -610,6 +612,14 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
+            <UpdateInstanceTimeDialog instanceId={instance.id}>
+              <DropdownMenuItem
+                onSelect={(event) => event.preventDefault()}
+              >
+                <Clock3 className="h-4 w-4" />
+                Update Expiration
+              </DropdownMenuItem>
+            </UpdateInstanceTimeDialog>
             <DropdownMenuItem asChild>
               <Link href={`/dashboard/project/${instance.project_id}/edit`}>
                 <Settings className="h-4 w-4" />

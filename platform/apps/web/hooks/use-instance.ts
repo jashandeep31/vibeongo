@@ -3,8 +3,12 @@ import {
   getInstanceById,
   getInstances,
   terminateInstance,
+  updateInstanceTime,
 } from "@/services/instance-services";
-import type { GetInstancesFilters } from "@/services/instance-services";
+import type {
+  GetInstancesFilters,
+  UpdateInstanceTimeData,
+} from "@/services/instance-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useCreateInstance = () =>
@@ -39,6 +43,18 @@ export const useTerminateInstance = (id: string, sessionId?: string) => {
           queryKey: ["project-session", sessionId],
         });
       }
+    },
+  });
+};
+
+export const useUpdateInstanceTime = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (data: UpdateInstanceTimeData) => updateInstanceTime(data),
+    onSuccess: (instance) => {
+      queryClient.setQueryData(["instance", instance.id], instance);
+      queryClient.invalidateQueries({ queryKey: ["instances"] });
     },
   });
 };

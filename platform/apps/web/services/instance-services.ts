@@ -79,3 +79,25 @@ export const terminateInstance = async (
   );
   return res.data;
 };
+
+export type UpdateInstanceTimeData = {
+  id: string;
+  action: "increase" | "decrease";
+  timeInMinutes: number;
+};
+
+export const updateInstanceTime = async ({
+  id,
+  action,
+  timeInMinutes,
+}: UpdateInstanceTimeData): Promise<Instance> => {
+  const res = await axios.patch(
+    `${BACKEND_URL}/api/v1/instances/${id}`,
+    {
+      terminatesTimeUpdate: { action, timeInMinutes },
+    },
+    { withCredentials: true },
+  );
+
+  return res.data.data;
+};
