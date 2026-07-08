@@ -8,6 +8,7 @@ import (
 )
 
 type Config struct {
+	PublicIp       string          `json:"publicIp"`
 	ServerBaseURL  string          `json:"serverBaseUrl"`
 	SessionID      string          `json:"sessionId"`
 	ProjectID      string          `json:"projectId"`

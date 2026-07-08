@@ -79,6 +79,7 @@ export const getRuntimeSessionConfig = catchAsync(
 
     const config = {
       ...(parsedConfig as any),
+      publicIp: instance.public_ip,
       serverBaseUrl: env.BACKEND_URL,
       sessionId: sessionRow.project_session.id,
       instanceConfig: instance.config,

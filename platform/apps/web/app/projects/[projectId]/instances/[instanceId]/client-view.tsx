@@ -17,6 +17,7 @@ import Link from "next/link";
 import { ProjectInstanceInfoCard } from "@/components/project/project-instance-info-card";
 import { ProjectInstanceStats } from "@/components/project/project-instance-stats";
 import { OpencodeWebCard } from "@/components/opencode-web-card";
+import { ShellToolsCard } from "@/components/shell-tools-card";
 import { T3CodeCard } from "@/components/t3-code-card";
 import { ProjectDomainsCard } from "@/components/project/project-domains-card";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
@@ -747,6 +748,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               </div>
             </div>
             <ProjectInstanceTerminal />
+            <ShellToolsCard isTerminated={isTerminated} />
             <div className="bg-card text-card-foreground relative h-64 overflow-hidden lg:hidden">
               <div
                 ref={mobileServerLogsRef}

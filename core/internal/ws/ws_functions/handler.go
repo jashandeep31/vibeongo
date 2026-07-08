@@ -99,6 +99,14 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 			continue
 		}
 
+		handled, err = ShellToolsHandler(ctx, conn, &writeMu, msg)
+		if err != nil {
+			return err
+		}
+		if handled {
+			continue
+		}
+
 		// storehandler-> hanling things: switch the terminal session, add new terminal session
 		selectedSession, handled, err := StoreWsHandler(conn, &writeMu, msg, terminalStore)
 		if err != nil {
