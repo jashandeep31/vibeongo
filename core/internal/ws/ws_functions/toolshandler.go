@@ -11,28 +11,11 @@ import (
 
 func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools) (bool, error) {
 
-	// basic parsing to check the message is for this function or not
-	var parsedBaseMesasge struct {
-		Type string          `json:"type"`
-		Data json.RawMessage `json:"data"`
-	}
-
-	err := json.Unmarshal(msg, &parsedBaseMesasge)
-	if err != nil {
-		return false, nil
-	}
-
-	// if message is not for the tools that just return it
-	if parsedBaseMesasge.Type != "tool" {
-		return false, nil
-	}
-
-	// proper parsing with the tool and the action required
 	var parsedData struct {
 		Tool   string `json:"tool"`
 		Action string `json:"action"`
 	}
-	if err := json.Unmarshal(parsedBaseMesasge.Data, &parsedData); err != nil {
+	if err := json.Unmarshal(msg, &parsedData); err != nil {
 		return true, nil
 	}
 

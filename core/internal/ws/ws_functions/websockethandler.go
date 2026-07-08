@@ -90,45 +90,52 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 			return err
 		}
 
-		// passing the messages to the tools handler to check if it can do something with it
-		handled, err := ToolsHandler(ctx, conn, &writeMu, msg, tools)
-		if err != nil {
-			return err
+		type baseMessageType struct {
+			Type string          `json:"type"`
+			Data json.RawMessage `json:"data"`
 		}
-		if handled {
+
+		var baseMessage *baseMessageType
+
+		if err := json.Unmarshal(msg, &baseMessage); err != nil {
 			continue
 		}
 
-		handled, err = ShellToolsHandler(ctx, conn, &writeMu, msg)
-		if err != nil {
-			return err
-		}
-		if handled {
-			continue
-		}
-
-		// storehandler-> hanling things: switch the terminal session, add new terminal session
-		selectedSession, handled, err := StoreWsHandler(conn, &writeMu, msg, terminalStore)
-		if err != nil {
-			return err
-		}
-		if selectedSession != nil {
-			setActiveSession(selectedSession)
-			if err := StartPTY(selectedSession); err != nil {
-				_ = WriteTerminalMessage(conn, &writeMu, []byte("Failed to start terminal session\n"))
+		switch baseMessage.Type {
+		case "tool":
+			_, err := ToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), tools)
+			if err != nil {
 				return err
 			}
-			if err := SendPtyUpdate(selectedSession, conn, &writeMu); err != nil {
+		case "shelltools":
+			_, err = ShellToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data))
+			if err != nil {
 				return err
 			}
-			WritePTYBufferToWebSocket(conn, &writeMu, selectedSession)
-			pipeSession(selectedSession)
-		}
-		if handled {
-			continue
-		}
+		default:
+			// storehandler-> hanling things: switch the terminal session, add new terminal session
+			selectedSession, handled, err := StoreWsHandler(conn, &writeMu, msg, terminalStore)
+			if err != nil {
+				return err
+			}
+			if selectedSession != nil {
+				setActiveSession(selectedSession)
+				if err := StartPTY(selectedSession); err != nil {
+					_ = WriteTerminalMessage(conn, &writeMu, []byte("Failed to start terminal session\n"))
+					return err
+				}
+				if err := SendPtyUpdate(selectedSession, conn, &writeMu); err != nil {
+					return err
+				}
+				WritePTYBufferToWebSocket(conn, &writeMu, selectedSession)
+				pipeSession(selectedSession)
+			}
+			if handled {
+				continue
+			}
 
-		_ = HandlePTYInput(getActiveSession(), msg)
+			_ = HandlePTYInput(getActiveSession(), msg)
+		}
 	}
 }
 

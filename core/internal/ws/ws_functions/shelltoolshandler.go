@@ -20,25 +20,11 @@ type shellToolsOutput struct {
 }
 
 func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte) (bool, error) {
-	var parsedBaseMessage struct {
-		Type string          `json:"type"`
-		Data json.RawMessage `json:"data"`
-	}
-
-	err := json.Unmarshal(msg, &parsedBaseMessage)
-	if err != nil {
-		return false, nil
-	}
-
-	if parsedBaseMessage.Type != "shelltools" {
-		return false, nil
-	}
-
 	var parsedData struct {
 		Tool   string `json:"tool"`
 		Action string `json:"action"`
 	}
-	if err := json.Unmarshal(parsedBaseMessage.Data, &parsedData); err != nil {
+	if err := json.Unmarshal(msg, &parsedData); err != nil {
 		return true, err
 	}
 
