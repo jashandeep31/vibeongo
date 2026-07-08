@@ -19,13 +19,14 @@ type shellToolsOutput struct {
 	Output string `json:"output"`
 }
 
-func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte) (bool, error) {
+func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, errorSender func(string)) (bool, error) {
 	var parsedData struct {
 		Tool   string `json:"tool"`
 		Action string `json:"action"`
 	}
 	if err := json.Unmarshal(msg, &parsedData); err != nil {
-		return true, err
+		errorSender("invalid shelltools message")
+		return true, nil
 	}
 
 	if parsedData.Tool == "moshi" {
@@ -51,7 +52,7 @@ func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.
 		go func() {
 			cfg, err := config.LoadAndValidate()
 			if err != nil {
-				writeShellToolsOutput("error", err.Error())
+				errorSender(err.Error())
 				return
 			}
 
@@ -62,18 +63,18 @@ func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.
 
 			stdout, err := moshiCmd.StdoutPipe()
 			if err != nil {
-				writeShellToolsOutput("error", err.Error())
+				errorSender(err.Error())
 				return
 			}
 
 			stderr, err := moshiCmd.StderrPipe()
 			if err != nil {
-				writeShellToolsOutput("error", err.Error())
+				errorSender(err.Error())
 				return
 			}
 
 			if err := moshiCmd.Start(); err != nil {
-				writeShellToolsOutput("error", err.Error())
+				errorSender(err.Error())
 				return
 			}
 
@@ -90,7 +91,7 @@ func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.
 				}
 				if err := scanner.Err(); err != nil {
 					log.Printf("stdout scanner error: %v", err)
-					writeShellToolsOutput("error", err.Error())
+					errorSender(err.Error())
 				}
 			}()
 
@@ -102,14 +103,14 @@ func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.
 				}
 				if err := scanner.Err(); err != nil {
 					log.Printf("stderr scanner error: %v", err)
-					writeShellToolsOutput("error", err.Error())
+					errorSender(err.Error())
 				}
 			}()
 
 			err = moshiCmd.Wait()
 			scanWG.Wait()
 			if err != nil {
-				writeShellToolsOutput("error", err.Error())
+				errorSender(err.Error())
 				return
 			}
 

@@ -9,13 +9,14 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
-func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools) (bool, error) {
+func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools, errorSender func(string)) (bool, error) {
 
 	var parsedData struct {
 		Tool   string `json:"tool"`
 		Action string `json:"action"`
 	}
 	if err := json.Unmarshal(msg, &parsedData); err != nil {
+		errorSender("invalid tool message")
 		return true, nil
 	}
 
@@ -23,14 +24,16 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 	switch parsedData.Tool {
 	case "opencode":
 		if err := openCodeHanler(tools.OpenCode, parsedData.Action); err != nil {
-			return true, writeToolError(conn, writeMu, "opencode", tools.OpenCode.IsRunning(), err)
+			errorSender(err.Error())
+			return true, nil
 		}
 		return true, writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
 
 	case "codex", "t3Code":
 		password, err := t3CodeHandler(tools.T3Code, parsedData.Action)
 		if err != nil {
-			return true, writeToolError(conn, writeMu, "codex", tools.T3Code.Status(), err)
+			errorSender(err.Error())
+			return true, nil
 		}
 		return true, writeToolStatusWithPassword(conn, writeMu, "codex", tools.T3Code.Status(), password)
 	}
@@ -63,31 +66,6 @@ func writeToolStatusWithPassword(conn *websocket.Conn, writeMu *sync.Mutex, tool
 			Tool:     tool,
 			Status:   status,
 			Password: password,
-		},
-	})
-}
-
-func writeToolError(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool, err error) error {
-	writeMu.Lock()
-	defer writeMu.Unlock()
-
-	return conn.WriteJSON(struct {
-		Type string `json:"type"`
-		Data struct {
-			Tool   string `json:"tool"`
-			Status bool   `json:"status"`
-			Error  string `json:"error"`
-		} `json:"data"`
-	}{
-		Type: "tool",
-		Data: struct {
-			Tool   string `json:"tool"`
-			Status bool   `json:"status"`
-			Error  string `json:"error"`
-		}{
-			Tool:   tool,
-			Status: status,
-			Error:  err.Error(),
 		},
 	})
 }

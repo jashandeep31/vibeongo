@@ -16,14 +16,9 @@ export const SocketHandler = async (socket: WebSocket) => {
         .from(userWallet)
         .where(eq(userWallet.user_id, socket.userId));
       if (!userWalletRow || userWalletRow?.balance <= 0) {
-        socket.send(
-          JSON.stringify({
-            type: "error",
-            data: {
-              error:
-                "Either you don't have enough balance or you are not logged in",
-            },
-          }),
+        sendWSError(
+          socket,
+          "Either you don't have enough balance or you are not logged in",
         );
         return;
       }
@@ -59,7 +54,9 @@ export const sendWSError = (socket: WebSocket, error: string) => {
   socket.send(
     JSON.stringify({
       type: "error",
-      error,
+      data: {
+        error,
+      },
     }),
   );
   return;

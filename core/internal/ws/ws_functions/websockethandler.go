@@ -69,6 +69,8 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 		return err
 	}
 
+	errorSender := wsErrorSender(conn, &writeMu)
+
 	go StatsHandler(ctx, conn, &writeMu)
 	go LogsHandler(ctx, conn, &writeMu)
 
@@ -103,12 +105,13 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 
 		switch baseMessage.Type {
 		case "tool":
-			_, err := ToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), tools)
+			_, err := ToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), tools, errorSender)
 			if err != nil {
-				return err
+				errorSender(err.Error())
+				return nil
 			}
 		case "shelltools":
-			_, err = ShellToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data))
+			_, err = ShellToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), errorSender)
 			if err != nil {
 				return err
 			}
@@ -155,5 +158,24 @@ func waitForClientReady(conn *websocket.Conn) error {
 		if parsed.Type == "clientReady" {
 			return nil
 		}
+	}
+}
+
+func wsErrorSender(conn *websocket.Conn, writeMu *sync.Mutex) func(message string) {
+	return func(message string) {
+
+		writeMu.Lock()
+		defer writeMu.Unlock()
+
+		type Data struct {
+			Error string `json:"error"`
+		}
+		_ = conn.WriteJSON(struct {
+			Type string `json:"type"`
+			Data Data   `json:"data"`
+		}{
+			Type: "error",
+			Data: Data{Error: message},
+		})
 	}
 }
