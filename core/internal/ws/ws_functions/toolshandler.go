@@ -9,7 +9,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/store"
 )
 
-func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools, errorSender func(string)) (bool, error) {
+func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools, errorSender func(string)) error {
 
 	var parsedData struct {
 		Tool   string `json:"tool"`
@@ -17,7 +17,7 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 	}
 	if err := json.Unmarshal(msg, &parsedData); err != nil {
 		errorSender("invalid tool message")
-		return true, nil
+		return nil
 	}
 
 	// switch between the tools
@@ -25,20 +25,20 @@ func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex
 	case "opencode":
 		if err := openCodeHanler(tools.OpenCode, parsedData.Action); err != nil {
 			errorSender(err.Error())
-			return true, nil
+			return nil
 		}
-		return true, writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
+		return writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
 
 	case "codex", "t3Code":
 		password, err := t3CodeHandler(tools.T3Code, parsedData.Action)
 		if err != nil {
 			errorSender(err.Error())
-			return true, nil
+			return nil
 		}
-		return true, writeToolStatusWithPassword(conn, writeMu, "codex", tools.T3Code.Status(), password)
+		return writeToolStatusWithPassword(conn, writeMu, "codex", tools.T3Code.Status(), password)
 	}
 
-	return true, nil
+	return nil
 }
 
 func writeToolStatus(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool) error {

@@ -19,14 +19,14 @@ type shellToolsOutput struct {
 	Output string `json:"output"`
 }
 
-func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, errorSender func(string)) (bool, error) {
+func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, errorSender func(string)) error {
 	var parsedData struct {
 		Tool   string `json:"tool"`
 		Action string `json:"action"`
 	}
 	if err := json.Unmarshal(msg, &parsedData); err != nil {
 		errorSender("invalid shelltools message")
-		return true, nil
+		return nil
 	}
 
 	if parsedData.Tool == "moshi" {
@@ -116,8 +116,8 @@ func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.
 
 			writeShellToolsOutput("status", "Moshi setup finished")
 		}()
-		return true, nil
+		return nil
 	}
-	return false, nil
+	return nil
 
 }

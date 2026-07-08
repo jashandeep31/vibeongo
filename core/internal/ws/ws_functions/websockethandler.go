@@ -105,13 +105,13 @@ func HandleConnection(ctx context.Context, conn *websocket.Conn, terminalStore *
 
 		switch baseMessage.Type {
 		case "tool":
-			_, err := ToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), tools, errorSender)
+			err := ToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), tools, errorSender)
 			if err != nil {
 				errorSender(err.Error())
 				return nil
 			}
 		case "shelltools":
-			_, err = ShellToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), errorSender)
+			err = ShellToolsHandler(ctx, conn, &writeMu, []byte(baseMessage.Data), errorSender)
 			if err != nil {
 				return err
 			}
