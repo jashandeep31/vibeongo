@@ -58,7 +58,7 @@ func ShellToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.
 
 			moshiCmd := utils.ExecCommand(
 				utils.SudoUbuntuLoginShell,
-				fmt.Sprintf("moshi-hook host setup --host %s --name test", cfg.PublicIP),
+				fmt.Sprintf("moshi-hook host setup --host %s --name \"%s\"", cfg.PublicIP, cfg.InstanceName),
 			)
 
 			stdout, err := moshiCmd.StdoutPipe()

@@ -84,6 +84,7 @@ export const getRuntimeSessionConfig = catchAsync(
       sessionId: sessionRow.project_session.id,
       instanceConfig: instance.config,
       instanceId,
+      instanceName: instance.name,
       projectId: project.id,
       initialScript: project.initial_script,
       finalScript: project.final_script,

@@ -122,9 +122,7 @@ export function ProjectInstanceCard({
     <Card>
       <CardHeader>
         <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg">
-            {instance.project?.name ?? instance.name}
-          </CardTitle>
+          <CardTitle className="text-lg">{instance.name}</CardTitle>
 
           <div className="flex items-center gap-3">
             <Badge

@@ -14,6 +14,7 @@ type Config struct {
 	ProjectID      string          `json:"projectId"`
 	InstanceConfig InstanceConfig  `json:"instanceConfig"`
 	InstanceID     string          `json:"instanceId"`
+	InstanceName   string          `json:"instanceName"`
 	Packages       []PackageConfig `json:"packages"`
 	Repos          []GitRepoConfig `json:"repos"`
 	Docker         *DockerConfig   `json:"docker"`

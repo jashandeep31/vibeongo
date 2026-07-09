@@ -614,9 +614,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
             <UpdateInstanceTimeDialog instanceId={instance.id}>
-              <DropdownMenuItem
-                onSelect={(event) => event.preventDefault()}
-              >
+              <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
                 <Clock3 className="h-4 w-4" />
                 Update Expiration
               </DropdownMenuItem>
@@ -667,7 +665,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="flex min-w-0 items-center gap-2 text-3xl font-bold tracking-tight">
-              Instance
+              {instance.name}
               <span
                 className={
                   terminalConnectionStatus === "connected"

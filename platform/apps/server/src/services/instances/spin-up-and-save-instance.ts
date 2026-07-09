@@ -20,6 +20,7 @@ import {
 } from "./get-user-instance-auto-terminate-minutes.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import * as crypto from "crypto";
+import { uniqueNamesGenerator, animals, colors } from "unique-names-generator";
 
 interface SpinUpAndSaveInstance {
   sshKeys: string[];
@@ -119,6 +120,11 @@ export const spinUpAndSaveInstance = async ({
   const [instance] = await db
     .insert(instances)
     .values({
+      name: uniqueNamesGenerator({
+        dictionaries: [colors, animals],
+        style: "capital",
+        separator: " ",
+      }),
       id: instanceId,
       project_id: project.id,
       user_id: userId,
