@@ -3,10 +3,10 @@
 import { Checkbox } from "@repo/ui/components/checkbox";
 import { Label } from "@repo/ui/components/label";
 import { Terminal } from "lucide-react";
-import { Textarea } from "@repo/ui/components/textarea";
 import { memo, type ChangeEvent } from "react";
 import { useConfigStore } from "@/store/config-store";
 import { Input } from "@repo/ui/components/input";
+import SensitiveAuthJsonField from "./sensitive-auth-json-field";
 
 function OpencodeConfigCard() {
   const additionalServices = useConfigStore((s) => s.additionalServices);
@@ -15,9 +15,9 @@ function OpencodeConfigCard() {
   const model = additionalServices.opencodeConfig.model;
   const requirePassword = additionalServices.opencodeConfig.requirePassword;
 
-  const onAuthJsonChange = (e: ChangeEvent<HTMLTextAreaElement>) => {
+  const onAuthJsonChange = (authJsonValue: string) => {
     updateOpencodeConfig({
-      authJson: e.target.value,
+      authJson: authJsonValue,
       model,
       requirePassword,
     });
@@ -40,7 +40,7 @@ function OpencodeConfigCard() {
   };
 
   return (
-    <div className="border-primary bg-primary/5 ring-primary rounded-lg border p-6 ring-1">
+    <div className="bg-card border-border rounded-lg border p-6">
       <div className="flex items-start space-x-3">
         <div className="w-full space-y-1">
           <Label
@@ -96,24 +96,12 @@ function OpencodeConfigCard() {
                 </div>
               </div>
             </div>
-            <div className="grid space-y-4 overflow-auto">
-              <Label
-                htmlFor="opencode-authjson"
-                className="text-foreground text-sm font-semibold"
-              >
-                Auth JSON Configuration
-              </Label>
-              <Textarea
-                id="opencode-authjson"
-                value={authJson}
-                onChange={onAuthJsonChange}
-                placeholder='{"token": "xyz..."}'
-                className="min-h-25 font-mono text-sm"
-              />
-              <p className="text-muted-foreground text-xs">
-                Provide auth configuration in JSON format for Opencode.
-              </p>
-            </div>
+            <SensitiveAuthJsonField
+              id="opencode-authjson"
+              serviceName="Opencode"
+              value={authJson}
+              onChange={onAuthJsonChange}
+            />
           </div>
         </div>
       </div>

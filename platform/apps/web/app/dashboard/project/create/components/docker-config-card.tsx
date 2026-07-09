@@ -116,7 +116,7 @@ function DockerConfigCard() {
   );
 
   return (
-    <div className="border-primary bg-primary/5 ring-primary rounded-lg border p-6 ring-1">
+    <div className="bg-card border-border rounded-lg border p-6">
       <div className="flex items-start space-x-3">
         <div className="w-full space-y-1">
           <Label
