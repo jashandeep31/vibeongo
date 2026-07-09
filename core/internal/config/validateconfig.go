@@ -110,6 +110,13 @@ func calidateConfig(file []byte) (Config, error) {
 			}
 			cfg.Codex = &codexConfig
 
+		case "pi":
+			var piConfig PiConfig
+			if err := json.Unmarshal(pkg.Config, &piConfig); err != nil {
+				return cfg, fmt.Errorf("error parsing pi package config: %w", err)
+			}
+			cfg.Pi = &piConfig
+
 		case "nvim":
 			var nvimConfig NvimConfig
 			if err := json.Unmarshal(pkg.Config, &nvimConfig); err != nil {

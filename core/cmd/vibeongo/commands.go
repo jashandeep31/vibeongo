@@ -206,6 +206,10 @@ func ProvissionToolsCmd() *cobra.Command {
 			if err := actions.ProvisionCodex(cfg.Codex); err != nil {
 				return err
 			}
+
+			if err := actions.ProvisionPi(cfg.Pi); err != nil {
+				return err
+			}
 			return nil
 		},
 	}
@@ -278,42 +282,7 @@ func TestCommand() *cobra.Command {
 		Short: "Testing commmand",
 		Long:  "Testing commmand",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			// fmt.Println("working ")
-			// cfg, err := config.LoadAndValidate()
-			// if err != nil {
-			// 	return err
-			// }
-			// moshiCmd := exec.Command(
-			// 	"moshi-hook",
-			// 	"host",
-			// 	"setup",
-			// 	"--host", cfg.PublicIp,
-			// 	"--name", "test",
-			// )
-			// stdout, _ := moshiCmd.StdoutPipe()
-			// stderr, _ := moshiCmd.StderrPipe()
-			//
-			// if err := moshiCmd.Start(); err != nil {
-			// 	return err
-			// }
-			//
-			// go func() {
-			// 	scanner := bufio.NewScanner(stdout)
-			// 	for scanner.Scan() {
-			// 		fmt.Println(scanner.Text())
-			// 	}
-			// }()
-			//
-			// go func() {
-			// 	scanner := bufio.NewScanner(stderr)
-			// 	for scanner.Scan() {
-			// 		fmt.Println(scanner.Text())
-			// 	}
-			// }()
-			//
-			// return moshiCmd.Wait()
 			return nil
-			// return actions.GetDomains()
 		},
 	}
 }

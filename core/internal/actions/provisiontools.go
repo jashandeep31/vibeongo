@@ -31,6 +31,23 @@ func ProvisionCodex(cfg *config.CodexConfig) error {
 	return nil
 }
 
+func ProvisionPi(cfg *config.PiConfig) error {
+	if cfg == nil {
+		return nil
+	}
+	authJSON := cfg.AuthJSON
+	authDir := "/home/ubuntu/.pi/agent"
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create opencode auth directory: %w", err)
+	}
+	authfilePath := filepath.Join(authDir, "auth.json")
+	if err := os.WriteFile(authfilePath, authJSON, 0o600); err != nil {
+		return fmt.Errorf("failed to write opencode auth.json: %w", err)
+	}
+
+	fmt.Println("Pi agent setup is complete")
+	return nil
+}
 func ProvisionT3Code(cfg *config.OpenCodeConfig, instanceConfig config.InstanceConfig) error {
 	if cfg == nil {
 		return nil
