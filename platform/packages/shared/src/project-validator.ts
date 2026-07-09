@@ -14,6 +14,11 @@ export const opencodeConfigValidator = z.object({
   model: z.string().default("default"),
   requirePassword: z.boolean().default(false),
 });
+
+export const piConfigValidator = z.object({
+  auth_json: z.json(),
+});
+
 export const codexConfigValidator = z.object({
   auth_json: z.json(),
 });
@@ -64,10 +69,16 @@ export const projectConfigValidator = z.object({
           enabled: z.boolean(),
           config: opencodeConfigValidator,
         }),
+
         z.object({
           name: z.literal("codex"),
           enabled: z.boolean(),
           config: codexConfigValidator,
+        }),
+        z.object({
+          name: z.literal("pi"),
+          enabled: z.boolean(),
+          config: piConfigValidator,
         }),
         z.object({
           name: z.literal("tmux"),

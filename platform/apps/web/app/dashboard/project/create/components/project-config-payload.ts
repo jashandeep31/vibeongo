@@ -73,6 +73,24 @@ export const buildProjectConfigPayload = (
         },
       },
       {
+        name: "pi",
+        enabled: state.additionalServices.piConfig.enabled || false,
+        config: {
+          auth_json: (() => {
+            try {
+              return JSON.parse(
+                state.additionalServices.piConfig.authJson || "{}",
+              );
+            } catch {
+              return {
+                error: "Invalid JSON",
+                raw: state.additionalServices.piConfig.authJson,
+              };
+            }
+          })(),
+        },
+      },
+      {
         name: "nvim",
         enabled: state.additionalServices.nvimConfig.enabled || false,
         config: {

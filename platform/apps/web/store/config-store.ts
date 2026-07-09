@@ -21,6 +21,10 @@ interface AdditionalService {
     enabled: boolean;
     authJson: string;
   };
+  piConfig: {
+    enabled: boolean;
+    authJson: string;
+  };
   nvimConfig: {
     enabled: boolean;
     config: string;
@@ -72,6 +76,7 @@ interface ConfigStore {
     enabled: boolean;
     authJson: string;
   }) => void;
+  updatePiConfig: (piConfig: { enabled: boolean; authJson: string }) => void;
   updateNvimConfig: (nvimConfig: { enabled: boolean; config: string }) => void;
 
   errors: { message: string }[];
@@ -137,6 +142,10 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       enabled: false,
       authJson: "",
     },
+    piConfig: {
+      enabled: false,
+      authJson: "",
+    },
     nvimConfig: {
       enabled: false,
       config: "",
@@ -156,6 +165,11 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   updateCodexConfig: (codexConfig) =>
     set((state) => ({
       additionalServices: { ...state.additionalServices, codexConfig },
+    })),
+
+  updatePiConfig: (piConfig) =>
+    set((state) => ({
+      additionalServices: { ...state.additionalServices, piConfig },
     })),
 
   updateNvimConfig: (nvimConfig) =>

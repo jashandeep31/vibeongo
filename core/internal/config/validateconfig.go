@@ -8,7 +8,7 @@ import (
 )
 
 type Config struct {
-	PublicIp       string          `json:"publicIp"`
+	PublicIP       string          `json:"publicIp"`
 	ServerBaseURL  string          `json:"serverBaseUrl"`
 	SessionID      string          `json:"sessionId"`
 	ProjectID      string          `json:"projectId"`
@@ -18,6 +18,7 @@ type Config struct {
 	Repos          []GitRepoConfig `json:"repos"`
 	Docker         *DockerConfig   `json:"docker"`
 	OpenCode       *OpenCodeConfig `json:"opencode"`
+	Pi             *PiConfig       `json:"pi"`
 	Codex          *CodexConfig    `json:"codex"`
 	Nvim           *NvimConfig     `json:"nvim"`
 	Tasks          []TaskConfig    `json:"tasks"`
@@ -68,6 +69,10 @@ type OpenCodeConfig struct {
 	AuthJSON        json.RawMessage `json:"auth_json"`
 	Model           string          `json:"model"`
 	RequirePassword bool            `json:"requirePassword"`
+}
+
+type PiConfig struct {
+	AuthJSON json.RawMessage `json:"auth_json"`
 }
 
 type CodexConfig struct {

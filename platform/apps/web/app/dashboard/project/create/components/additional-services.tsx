@@ -3,6 +3,7 @@ import { Label } from "@repo/ui/components/label";
 import CodexConfigCard from "./codex-config-card";
 import DockerConfigCard from "./docker-config-card";
 import OpencodeConfigCard from "./opencode-config-card";
+import PiConfigCard from "./pi-config-card";
 
 function AdditionalServices() {
   return (
@@ -16,6 +17,7 @@ function AdditionalServices() {
         <DockerConfigCard />
         <OpencodeConfigCard />
         <CodexConfigCard />
+        <PiConfigCard />
         {/* <NvimConfigCard /> */}
       </div>
     </div>
