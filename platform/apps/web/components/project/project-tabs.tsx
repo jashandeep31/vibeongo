@@ -29,7 +29,7 @@ interface ProjectTabsProps {
 }
 
 export function ProjectTabs({ project }: ProjectTabsProps) {
-  const enabledPackages = project.config.packages?.filter((pkg) => pkg.enabled) || [];
+  const configuredPackages = project.config.packages || [];
 
   return (
     <Tabs defaultValue="services" className="mt-8 w-full flex-col">
@@ -67,9 +67,9 @@ export function ProjectTabs({ project }: ProjectTabsProps) {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {enabledPackages.length > 0 ? (
+            {configuredPackages.length > 0 ? (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-                {enabledPackages.map((pkg, idx) => (
+                {configuredPackages.map((pkg, idx) => (
                   <div
                     key={idx}
                     className="bg-background flex flex-col gap-3 rounded-lg border p-4"
@@ -80,32 +80,40 @@ export function ProjectTabs({ project }: ProjectTabsProps) {
                       ) : pkg.name === "opencode" ? (
                         <Terminal className="h-4 w-4 text-orange-500" />
                       ) : (
-                        <Activity className="h-4 w-4 text-primary" />
+                        <Activity className="text-primary h-4 w-4" />
                       )}
                       <span>{pkg.name}</span>
                     </div>
 
                     <div className="text-muted-foreground flex items-center gap-2 text-sm">
-                      <Check className="h-4 w-4 text-emerald-500 shrink-0" />
-                      <span>Configured and enabled</span>
+                      <Check className="h-4 w-4 shrink-0 text-emerald-500" />
+                      <span>Configured</span>
                     </div>
 
-                    {pkg.name === "docker" && pkg.config && pkg.config.containers && pkg.config.containers.length > 0 && (
-                      <div className="mt-2 space-y-2 border-t pt-2">
-                        <span className="text-xs font-medium text-muted-foreground">Containers</span>
-                        {pkg.config.containers.map((c, cIdx) => (
-                          <div key={cIdx} className="flex items-center gap-2 text-sm">
-                            <Database className="h-3 w-3 text-primary" />
-                            <span>{c.name}</span>
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                    {pkg.name === "docker" &&
+                      pkg.config &&
+                      pkg.config.containers &&
+                      pkg.config.containers.length > 0 && (
+                        <div className="mt-2 space-y-2 border-t pt-2">
+                          <span className="text-muted-foreground text-xs font-medium">
+                            Containers
+                          </span>
+                          {pkg.config.containers.map((c, cIdx) => (
+                            <div
+                              key={cIdx}
+                              className="flex items-center gap-2 text-sm"
+                            >
+                              <Database className="text-primary h-3 w-3" />
+                              <span>{c.name}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 No packages configured for this project.
               </div>
             )}
@@ -124,7 +132,8 @@ export function ProjectTabs({ project }: ProjectTabsProps) {
                 </div>
                 <div className="flex-1 space-y-1">
                   <CardTitle className="max-w-[200px] truncate text-base sm:max-w-[400px]">
-                    {repo.git_url.split("/").pop()?.replace(".git", "") || "Repository"}
+                    {repo.git_url.split("/").pop()?.replace(".git", "") ||
+                      "Repository"}
                   </CardTitle>
                 </div>
               </CardHeader>
@@ -148,7 +157,7 @@ export function ProjectTabs({ project }: ProjectTabsProps) {
             </Card>
           ))
         ) : (
-          <div className="text-sm text-muted-foreground">
+          <div className="text-muted-foreground text-sm">
             No repositories configured.
           </div>
         )}
@@ -169,18 +178,18 @@ export function ProjectTabs({ project }: ProjectTabsProps) {
                 {project.config.ports.map((portInfo, idx) => (
                   <div
                     key={idx}
-                    className="flex items-center gap-2 rounded-md border px-3 py-1.5 bg-muted/50"
+                    className="bg-muted/50 flex items-center gap-2 rounded-md border px-3 py-1.5"
                   >
-                    <Network className="h-4 w-4 text-muted-foreground" />
+                    <Network className="text-muted-foreground h-4 w-4" />
                     <span className="font-mono text-sm">{portInfo.port}</span>
-                    <span className="text-xs text-muted-foreground bg-background px-1.5 rounded uppercase border">
+                    <span className="text-muted-foreground bg-background rounded border px-1.5 text-xs uppercase">
                       {portInfo.protocol}
                     </span>
                   </div>
                 ))}
               </div>
             ) : (
-              <div className="text-sm text-muted-foreground">
+              <div className="text-muted-foreground text-sm">
                 No ports explicitly opened.
               </div>
             )}

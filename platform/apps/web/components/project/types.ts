@@ -16,7 +16,6 @@ export type ProjectConfig = {
   }[];
   packages?: {
     name: string;
-    enabled: boolean;
     config?: {
       containers?: {
         name: string;

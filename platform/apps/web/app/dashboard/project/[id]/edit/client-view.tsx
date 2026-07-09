@@ -8,7 +8,6 @@ import ConfigPreviewAndUpdate from "./config-preview-and-update";
 
 type ProjectPackage = {
   name: string;
-  enabled: boolean;
   config?: Record<string, unknown>;
 };
 
@@ -46,6 +45,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     (state) => state.updateOpencodeConfig,
   );
   const updateCodexConfig = useConfigStore((state) => state.updateCodexConfig);
+  const updatePiConfig = useConfigStore((state) => state.updatePiConfig);
   const updateNvimConfig = useConfigStore((state) => state.updateNvimConfig);
 
   useEffect(() => {
@@ -56,6 +56,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     const dockerPackage = getPackage(config, "docker");
     const opencodePackage = getPackage(config, "opencode");
     const codexPackage = getPackage(config, "codex");
+    const piPackage = getPackage(config, "pi");
     const nvimPackage = getPackage(config, "nvim");
 
     setProjectName(projectConfig.project.name);
@@ -75,7 +76,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     );
 
     updateDockerConfig({
-      enabled: dockerPackage?.enabled ?? false,
       containers:
         (
           dockerPackage?.config?.containers as
@@ -89,7 +89,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     });
 
     updateOpencodeConfig({
-      enabled: opencodePackage?.enabled ?? false,
       authJson: JSON.stringify(
         opencodePackage?.config?.auth_json ?? {},
         null,
@@ -106,12 +105,14 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     });
 
     updateCodexConfig({
-      enabled: codexPackage?.enabled ?? false,
       authJson: JSON.stringify(codexPackage?.config?.auth_json ?? {}, null, 2),
     });
 
+    updatePiConfig({
+      authJson: JSON.stringify(piPackage?.config?.auth_json ?? {}, null, 2),
+    });
+
     updateNvimConfig({
-      enabled: nvimPackage?.enabled ?? false,
       config:
         typeof nvimPackage?.config?.config_url === "string"
           ? nvimPackage.config.config_url
@@ -131,6 +132,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setSshKeys,
     updateDockerConfig,
     updateCodexConfig,
+    updatePiConfig,
     updateNvimConfig,
     updateOpencodeConfig,
   ]);

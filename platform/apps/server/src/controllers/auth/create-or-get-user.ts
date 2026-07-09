@@ -242,7 +242,6 @@ npm run dev
       packages: [
         {
           name: "opencode",
-          enabled: true,
           config: {
             auth_json: {},
             model: "default",

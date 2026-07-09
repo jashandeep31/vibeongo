@@ -66,7 +66,6 @@ pnpm i
     packages: [
       // {
       //   name: "docker",
-      //   enabled: true,
       //   config: {
       //     containers: [
       //       {
@@ -79,7 +78,6 @@ pnpm i
       // },
       {
         name: "opencode",
-        enabled: true,
         config: {
           auth_json: {
             google: {
@@ -91,7 +89,6 @@ pnpm i
       },
       {
         name: "nvim",
-        enabled: true,
         config: {
           config_url: "https://github.com/nvim-lua/kickstart.nvim.git",
         },

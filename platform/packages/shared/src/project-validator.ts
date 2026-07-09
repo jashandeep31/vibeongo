@@ -60,39 +60,32 @@ export const projectConfigValidator = z.object({
       z.discriminatedUnion("name", [
         z.object({
           name: z.literal("docker"),
-          enabled: z.boolean(),
           config: dockerConfigValidator,
         }),
 
         z.object({
           name: z.literal("opencode"),
-          enabled: z.boolean(),
           config: opencodeConfigValidator,
         }),
 
         z.object({
           name: z.literal("codex"),
-          enabled: z.boolean(),
           config: codexConfigValidator,
         }),
         z.object({
           name: z.literal("pi"),
-          enabled: z.boolean(),
           config: piConfigValidator,
         }),
         z.object({
           name: z.literal("tmux"),
-          enabled: z.boolean(),
           config: tmuxConfigValidator,
         }),
         z.object({
           name: z.literal("nvim"),
-          enabled: z.boolean(),
           config: nvimConfigValidator,
         }),
         z.object({
           name: z.literal("nodejs"),
-          enabled: z.boolean(),
           config: nodeConfigValidator,
         }),
       ]),

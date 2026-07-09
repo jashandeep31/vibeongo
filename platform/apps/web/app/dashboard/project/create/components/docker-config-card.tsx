@@ -1,6 +1,5 @@
 "use client";
 
-import { Checkbox } from "@repo/ui/components/checkbox";
 import { Label } from "@repo/ui/components/label";
 import { Package, Plus, Trash2 } from "lucide-react";
 import { Input } from "@repo/ui/components/input";
@@ -77,7 +76,6 @@ const ContainerEditor = memo(function ContainerEditor({
 function DockerConfigCard() {
   const additionalServices = useConfigStore((s) => s.additionalServices);
   const updateDockerConfig = useConfigStore((s) => s.updateDockerConfig);
-  const dockerEnabled = additionalServices.dockerConfig.enabled;
   const containers = useMemo(
     () => additionalServices.dockerConfig.containers || [],
     [additionalServices.dockerConfig.containers],
@@ -91,58 +89,39 @@ function DockerConfigCard() {
         dockercomposecode,
       };
       updateDockerConfig({
-        enabled: dockerEnabled,
         containers: [...containers, newContainer],
       });
     },
-    [containers, dockerEnabled, updateDockerConfig],
+    [containers, updateDockerConfig],
   );
 
   const removeContainer = useCallback(
     (id: string) => {
       updateDockerConfig({
-        enabled: dockerEnabled,
         containers: containers.filter((container) => container.id !== id),
       });
     },
-    [containers, dockerEnabled, updateDockerConfig],
+    [containers, updateDockerConfig],
   );
 
   const updateContainer = useCallback(
     (id: string, updates: Partial<ContainerConfig>) => {
       updateDockerConfig({
-        enabled: dockerEnabled,
         containers: containers.map((container) =>
           container.id === id ? { ...container, ...updates } : container,
         ),
       });
     },
-    [containers, dockerEnabled, updateDockerConfig],
+    [containers, updateDockerConfig],
   );
 
-  const onDockerEnabledChange = (enabled: boolean) => {
-    updateDockerConfig({ enabled, containers });
-  };
-
   return (
-    <div
-      className={`rounded-lg border p-6 transition-colors ${
-        dockerEnabled
-          ? "border-primary bg-primary/5 ring-1 ring-primary"
-          : "bg-card border-border"
-      }`}
-    >
+    <div className="border-primary bg-primary/5 ring-primary rounded-lg border p-6 ring-1">
       <div className="flex items-start space-x-3">
-        <Checkbox
-          onCheckedChange={(checked: boolean) => onDockerEnabledChange(checked)}
-          checked={dockerEnabled}
-          className="mt-1"
-          id="docker-engine-checkbox"
-        />
         <div className="w-full space-y-1">
           <Label
-            htmlFor="docker-engine-checkbox"
-            className="text-foreground flex cursor-pointer items-center text-base font-semibold"
+            htmlFor="docker-engine"
+            className="text-foreground flex items-center text-base font-semibold"
           >
             <Package className="mr-2 h-5 w-5" />
             Docker Engine
@@ -151,61 +130,57 @@ function DockerConfigCard() {
             Pre-install Docker and run popular containers.
           </p>
 
-          {dockerEnabled && (
-            <div className="animate-in fade-in slide-in-from-top-4 w-full pt-6 duration-300">
-              <div className="border-border mb-6 border-t"></div>
+          <div className="w-full pt-6">
+            <div className="border-border mb-6 border-t"></div>
 
-              <div className="space-y-8">
-                {/* Active Containers List */}
-                {containers.length > 0 && (
-                  <div className="space-y-4">
-                    <h4 className="text-foreground text-sm font-semibold">
-                      Active Containers
-                    </h4>
-                    {containers.map((container) => (
-                      <ContainerEditor
-                        key={container.id}
-                        container={container}
-                        onUpdateContainer={updateContainer}
-                        onRemoveContainer={removeContainer}
-                      />
-                    ))}
-                  </div>
-                )}
-
-                {/* Add Buttons */}
-                <div className="space-y-3">
+            <div className="space-y-8">
+              {containers.length > 0 && (
+                <div className="space-y-4">
                   <h4 className="text-foreground text-sm font-semibold">
-                    Add Container
+                    Active Containers
                   </h4>
-                  <div className="flex flex-wrap gap-2">
+                  {containers.map((container) => (
+                    <ContainerEditor
+                      key={container.id}
+                      container={container}
+                      onUpdateContainer={updateContainer}
+                      onRemoveContainer={removeContainer}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <h4 className="text-foreground text-sm font-semibold">
+                  Add Container
+                </h4>
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => addContainer("Custom Container")}
+                    className="border-dashed"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Custom Container
+                  </Button>
+                  {PREDEFINED_CONTAINERS.map((preset) => (
                     <Button
+                      key={preset.name}
                       type="button"
-                      variant="outline"
-                      onClick={() => addContainer("Custom Container")}
-                      className="border-dashed"
+                      variant="secondary"
+                      onClick={() =>
+                        addContainer(preset.name, preset.dockercomposecode)
+                      }
                     >
                       <Plus className="mr-2 h-4 w-4" />
-                      Custom Container
+                      {preset.name}
                     </Button>
-                    {PREDEFINED_CONTAINERS.map((preset) => (
-                      <Button
-                        key={preset.name}
-                        type="button"
-                        variant="secondary"
-                        onClick={() =>
-                          addContainer(preset.name, preset.dockercomposecode)
-                        }
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        {preset.name}
-                      </Button>
-                    ))}
-                  </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     </div>

@@ -30,7 +30,6 @@ interface ProjectConfigFormProps {
 
 type ProjectPackage = {
   name: string;
-  enabled: boolean;
   config?: Record<string, unknown>;
 };
 
@@ -104,7 +103,6 @@ export default function ProjectConfigForm({
     );
 
     updateDockerConfig({
-      enabled: dockerPackage?.enabled ?? false,
       containers:
         (
           dockerPackage?.config?.containers as
@@ -118,7 +116,6 @@ export default function ProjectConfigForm({
     });
 
     updateOpencodeConfig({
-      enabled: opencodePackage?.enabled ?? false,
       authJson: JSON.stringify(
         opencodePackage?.config?.auth_json ?? {},
         null,
@@ -135,17 +132,14 @@ export default function ProjectConfigForm({
     });
 
     updateCodexConfig({
-      enabled: codexPackage?.enabled ?? false,
       authJson: JSON.stringify(codexPackage?.config?.auth_json ?? {}, null, 2),
     });
 
     updatePiConfig({
-      enabled: piPackage?.enabled ?? false,
       authJson: JSON.stringify(piPackage?.config?.auth_json ?? {}, null, 2),
     });
 
     updateNvimConfig({
-      enabled: nvimPackage?.enabled ?? false,
       config:
         typeof nvimPackage?.config?.config_url === "string"
           ? nvimPackage.config.config_url

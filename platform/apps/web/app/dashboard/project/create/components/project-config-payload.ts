@@ -35,7 +35,6 @@ export const buildProjectConfigPayload = (
     packages: [
       {
         name: "docker",
-        enabled: state.additionalServices.dockerConfig.enabled || false,
         config: {
           containers: state.additionalServices.dockerConfig.containers.map(
             (container) => ({
@@ -47,7 +46,6 @@ export const buildProjectConfigPayload = (
       },
       {
         name: "opencode",
-        enabled: state.additionalServices.opencodeConfig.enabled || false,
         config: {
           model: state.additionalServices.opencodeConfig.model,
           requirePassword:
@@ -60,7 +58,6 @@ export const buildProjectConfigPayload = (
       },
       {
         name: "codex",
-        enabled: state.additionalServices.codexConfig.enabled || false,
         config: {
           auth_json: parseAuthJson(
             state.additionalServices.codexConfig.authJson,
@@ -70,7 +67,6 @@ export const buildProjectConfigPayload = (
       },
       {
         name: "pi",
-        enabled: state.additionalServices.piConfig.enabled || false,
         config: {
           auth_json: parseAuthJson(
             state.additionalServices.piConfig.authJson,
@@ -80,7 +76,6 @@ export const buildProjectConfigPayload = (
       },
       {
         name: "nvim",
-        enabled: state.additionalServices.nvimConfig.enabled || false,
         config: {
           config_url: state.additionalServices.nvimConfig.config,
         },

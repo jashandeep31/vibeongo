@@ -43,9 +43,8 @@ type TaskConfig struct {
 }
 
 type PackageConfig struct {
-	Name    string          `json:"name"`
-	Config  json.RawMessage `json:"config"`
-	Enabled bool            `json:"enabled"`
+	Name   string          `json:"name"`
+	Config json.RawMessage `json:"config"`
 }
 
 type DockerContainerConfig struct {
@@ -83,7 +82,7 @@ type NvimConfig struct {
 	ConfigJSON json.RawMessage `json:"config_json"`
 }
 
-func calidateConfig(file []byte) (Config, error) {
+func validateConfig(file []byte) (Config, error) {
 	var cfg Config
 	if err := json.Unmarshal(file, &cfg); err != nil {
 		return cfg, fmt.Errorf("error parsing config: %w", err)
@@ -151,5 +150,5 @@ func LoadAndValidate() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
-	return calidateConfig(file)
+	return validateConfig(file)
 }

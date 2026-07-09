@@ -8,25 +8,20 @@ interface ContainerConfig {
 }
 interface AdditionalService {
   dockerConfig: {
-    enabled: boolean;
     containers: ContainerConfig[];
   };
   opencodeConfig: {
-    enabled: boolean;
     authJson: string;
     model: string;
     requirePassword: boolean;
   };
   codexConfig: {
-    enabled: boolean;
     authJson: string;
   };
   piConfig: {
-    enabled: boolean;
     authJson: string;
   };
   nvimConfig: {
-    enabled: boolean;
     config: string;
   };
 }
@@ -62,22 +57,15 @@ interface ConfigStore {
   ) => void;
 
   additionalServices: AdditionalService;
-  updateDockerConfig: (dockerConfig: {
-    enabled: boolean;
-    containers: ContainerConfig[];
-  }) => void;
+  updateDockerConfig: (dockerConfig: { containers: ContainerConfig[] }) => void;
   updateOpencodeConfig: (opencodeConfig: {
-    enabled: boolean;
     authJson: string;
     model: string;
     requirePassword: boolean;
   }) => void;
-  updateCodexConfig: (codexConfig: {
-    enabled: boolean;
-    authJson: string;
-  }) => void;
-  updatePiConfig: (piConfig: { enabled: boolean; authJson: string }) => void;
-  updateNvimConfig: (nvimConfig: { enabled: boolean; config: string }) => void;
+  updateCodexConfig: (codexConfig: { authJson: string }) => void;
+  updatePiConfig: (piConfig: { authJson: string }) => void;
+  updateNvimConfig: (nvimConfig: { config: string }) => void;
 
   errors: { message: string }[];
   addError: (error: { message: string }) => void;
@@ -122,7 +110,6 @@ export const useConfigStore = create<ConfigStore>((set) => ({
 
   additionalServices: {
     dockerConfig: {
-      enabled: false,
       containers: [
         // {
         //   id: "9f4749f3-6758-45b7-a74e-d3ac27639e3f",
@@ -133,21 +120,17 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       ],
     },
     opencodeConfig: {
-      enabled: true,
       authJson: ``,
       model: "",
       requirePassword: false,
     },
     codexConfig: {
-      enabled: false,
       authJson: "",
     },
     piConfig: {
-      enabled: false,
       authJson: "",
     },
     nvimConfig: {
-      enabled: false,
       config: "",
     },
   },
