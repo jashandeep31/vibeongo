@@ -16,7 +16,6 @@ export default function ConfigPreviewAndUpdate({
   const router = useRouter();
   const configState = useConfigStore();
   const { mutateAsync, isPending } = useUpdateProject();
-  const config = buildProjectConfigPayload(configState);
 
   return (
     <div>
@@ -26,6 +25,7 @@ export default function ConfigPreviewAndUpdate({
         onClick={async () => {
           const toastId = toast.loading("Saving project");
           try {
+            const config = buildProjectConfigPayload(configState);
             projectConfigValidator.parse(config);
             await mutateAsync({
               id: projectId,
@@ -35,7 +35,10 @@ export default function ConfigPreviewAndUpdate({
             router.push(`/dashboard/project/${projectId}`);
           } catch (error) {
             console.error(error);
-            toast.error("Failed to save project", { id: toastId });
+            toast.error(
+              error instanceof Error ? error.message : "Failed to save project",
+              { id: toastId },
+            );
           }
         }}
       >

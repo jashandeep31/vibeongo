@@ -3,6 +3,18 @@ import { projectConfigValidator, z } from "@repo/shared";
 
 type ConfigStoreState = ReturnType<typeof useConfigStore.getState>;
 
+const parseAuthJson = (authJson: string, serviceName: string) => {
+  const trimmedAuthJson = authJson.trim();
+
+  if (!trimmedAuthJson) return {};
+
+  try {
+    return JSON.parse(trimmedAuthJson);
+  } catch {
+    throw new Error(`Invalid ${serviceName} auth JSON`);
+  }
+};
+
 export const buildProjectConfigPayload = (
   state: ConfigStoreState,
 ): z.infer<typeof projectConfigValidator> => ({
@@ -40,54 +52,30 @@ export const buildProjectConfigPayload = (
           model: state.additionalServices.opencodeConfig.model,
           requirePassword:
             state.additionalServices.opencodeConfig.requirePassword,
-          auth_json: (() => {
-            try {
-              return JSON.parse(
-                state.additionalServices.opencodeConfig.authJson || "{}",
-              );
-            } catch {
-              return {
-                error: "Invalid JSON",
-                raw: state.additionalServices.opencodeConfig.authJson,
-              };
-            }
-          })(),
+          auth_json: parseAuthJson(
+            state.additionalServices.opencodeConfig.authJson,
+            "Opencode",
+          ),
         },
       },
       {
         name: "codex",
         enabled: state.additionalServices.codexConfig.enabled || false,
         config: {
-          auth_json: (() => {
-            try {
-              return JSON.parse(
-                state.additionalServices.codexConfig.authJson || "{}",
-              );
-            } catch {
-              return {
-                error: "Invalid JSON",
-                raw: state.additionalServices.codexConfig.authJson,
-              };
-            }
-          })(),
+          auth_json: parseAuthJson(
+            state.additionalServices.codexConfig.authJson,
+            "Codex",
+          ),
         },
       },
       {
         name: "pi",
         enabled: state.additionalServices.piConfig.enabled || false,
         config: {
-          auth_json: (() => {
-            try {
-              return JSON.parse(
-                state.additionalServices.piConfig.authJson || "{}",
-              );
-            } catch {
-              return {
-                error: "Invalid JSON",
-                raw: state.additionalServices.piConfig.authJson,
-              };
-            }
-          })(),
+          auth_json: parseAuthJson(
+            state.additionalServices.piConfig.authJson,
+            "Pi",
+          ),
         },
       },
       {

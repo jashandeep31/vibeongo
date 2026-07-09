@@ -12,7 +12,6 @@ export default function ConfigPreviewAndCreate() {
   const router = useRouter();
   const configState = useConfigStore();
   const { mutateAsync } = useCreateProject();
-  const config = buildProjectConfigPayload(configState);
 
   return (
     <>
@@ -21,6 +20,7 @@ export default function ConfigPreviewAndCreate() {
           onClick={async () => {
             const toastId = toast.loading("Creating project");
             try {
+              const config = buildProjectConfigPayload(configState);
               projectConfigValidator.parse(config);
               await mutateAsync({
                 ...config,
@@ -30,7 +30,12 @@ export default function ConfigPreviewAndCreate() {
               router.push("/dashboard");
             } catch (error) {
               console.error(error);
-              toast.error("Failed to create project", { id: toastId });
+              toast.error(
+                error instanceof Error
+                  ? error.message
+                  : "Failed to create project",
+                { id: toastId },
+              );
             }
           }}
         >
