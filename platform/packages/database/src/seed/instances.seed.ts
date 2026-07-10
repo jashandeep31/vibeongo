@@ -14,6 +14,8 @@ const getRoundedPrice = (price: number): number => {
   return Math.ceil(price * 10000);
 };
 
+const digitalOceanRegions = [{ slug: "BLR1", name: "Bangalore" }] as const;
+
 const awsRegions = [
   // { slug: "af-south-1", name: "Africa (Cape Town)" },
   // { slug: "ap-east-1", name: "Asia Pacific (Hong Kong)" },
@@ -55,32 +57,43 @@ const awsRegions = [
   // { slug: "us-west-2", name: "US West (Oregon)" },
 ] as const;
 
-export const regionsSeed: (typeof instanceRegions.$inferInsert)[] =
-  awsRegions.map((region) => ({
+export const regionsSeed: (typeof instanceRegions.$inferInsert)[] = [
+  ...awsRegions.map((region: any) => ({
     ...region,
     ami: "Please change this ",
     provider: "aws",
-  }));
+  })),
+  ...digitalOceanRegions.map((region: any) => ({
+    ...region,
+    ami: "ubuntu-24-04-x64",
+    provider: "digitalocean",
+  })),
+];
 
-type RegionRecord = Pick<typeof instanceRegions.$inferSelect, "id" | "slug">;
+type RegionRecord = Pick<
+  typeof instanceRegions.$inferSelect,
+  "id" | "slug" | "provider"
+>;
 
 const buildInstancesSeed = (
   regions: RegionRecord[],
 ): (typeof instanceTypes.$inferInsert)[] =>
   regions.flatMap((region) =>
-    instancesData.map((template) => {
-      const pricePerHour = getRoundedPrice(template.price_per_hour_dollars);
-      return {
-        name: template.name,
-        slug: `${template.slug_prefix}-${region.slug}`,
-        description: template.description,
-        cpu: template.cpu,
-        ram: template.ram,
-        provider: "aws",
-        region_id: region.id,
-        price_per_hour: pricePerHour,
-      };
-    }),
+    instancesData
+      .filter((template) => template.provider === region.provider)
+      .map((template) => {
+        const pricePerHour = getRoundedPrice(template.price_per_hour_dollars);
+        return {
+          name: template.name,
+          slug: `${template.slug_prefix}-${region.slug}`,
+          description: template.description,
+          cpu: template.cpu,
+          ram: template.ram,
+          provider: template.provider,
+          region_id: region.id,
+          price_per_hour: pricePerHour,
+        };
+      }),
   );
 
 export const createInstances = async () => {
@@ -88,14 +101,15 @@ export const createInstances = async () => {
     .select({
       id: instanceRegions.id,
       slug: instanceRegions.slug,
+      provider: instanceRegions.provider,
     })
     .from(instanceRegions);
 
   const existingRegionSlugs = new Set(
-    existingRegions.map((region) => region.slug),
+    existingRegions.map((region) => `${region.provider}:${region.slug}`),
   );
   const missingRegions = regionsSeed.filter(
-    (region) => !existingRegionSlugs.has(region.slug),
+    (region) => !existingRegionSlugs.has(`${region.provider}:${region.slug}`),
   );
 
   if (missingRegions.length > 0) {
@@ -106,6 +120,7 @@ export const createInstances = async () => {
     .select({
       id: instanceRegions.id,
       slug: instanceRegions.slug,
+      provider: instanceRegions.provider,
     })
     .from(instanceRegions);
 

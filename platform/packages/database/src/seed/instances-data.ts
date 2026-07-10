@@ -9,6 +9,7 @@ export const instancesData = [
   //   price_per_hour_dollars: 0.0208,
   // },
   {
+    provider: "aws",
     name: "t3.medium",
     slug_prefix: "t3-medium",
     description:
@@ -27,6 +28,7 @@ export const instancesData = [
   //   price_per_hour_dollars: 0.0832,
   // },
   {
+    provider: "aws",
     name: "m6i.large",
     slug_prefix: "m6i-large",
     description:
@@ -36,6 +38,7 @@ export const instancesData = [
     price_per_hour_dollars: 0.101,
   },
   {
+    provider: "aws",
     name: "m6i.xlarge",
     slug_prefix: "m6i-xlarge",
     description:
@@ -45,6 +48,7 @@ export const instancesData = [
     price_per_hour_dollars: 0.202,
   },
   {
+    provider: "aws",
     name: "m6i.2xlarge",
     slug_prefix: "m6i-2xlarge",
     description:
@@ -52,6 +56,15 @@ export const instancesData = [
     cpu: "8 vCPU",
     ram: "32 GiB",
     price_per_hour_dollars: 0.404,
+  },
+  {
+    provider: "digitalocean",
+    name: "Basic Premium Intel",
+    slug_prefix: "s-2vcpu-4gb-120gb-intel",
+    description: "Basic Droplet with Premium Intel CPU, 120 GB disk",
+    cpu: "2 vCPU",
+    ram: "4 GB",
+    price_per_hour_dollars: 48 / (24 * 30),
   },
   // {
   //   name: "m6i.4xlarge",
