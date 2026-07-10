@@ -1,5 +1,5 @@
 import { db, eq, instanceRegions, instanceTypes, projects } from "@repo/db";
-import { awsSupportedRegions } from "../aws/configs/aws-supported-regions-configs.js";
+import { awsSupportedRegions } from "../providers/aws/configs/aws-supported-regions-configs.js";
 import { env } from "./env.js";
 import { AppError } from "./app-error.js";
 

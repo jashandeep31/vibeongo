@@ -1,5 +1,5 @@
 import { GetMetricStatisticsCommand } from "@aws-sdk/client-cloudwatch";
-import { awsSupportedRegions } from "../../aws/configs/aws-supported-regions-configs.js";
+import { awsSupportedRegions } from "../configs/aws-supported-regions-configs.js";
 import { getCloudWatchClient } from "../ec2-client.js";
 
 interface getInstanceNetworkUsageProps {

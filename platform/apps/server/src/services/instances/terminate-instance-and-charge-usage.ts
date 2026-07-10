@@ -1,4 +1,4 @@
-import { terminateEc2Instance } from "../../aws/services/terminate-ec2-instance.js";
+import { terminateEc2Instance } from "../../providers/aws/services/terminate-ec2-instance.js";
 import {
   and,
   instances,
@@ -17,7 +17,7 @@ import {
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { userWallet } from "@repo/db";
-import { getEc2InstanceNetworkUsage } from "../../aws/services/get-instance-network-usage.js";
+import { getEc2InstanceNetworkUsage } from "../../providers/aws/services/get-instance-network-usage.js";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
 //props of the fuction

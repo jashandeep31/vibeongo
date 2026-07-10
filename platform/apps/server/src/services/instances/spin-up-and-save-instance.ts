@@ -8,10 +8,10 @@ import {
   projects,
   userWallet,
 } from "@repo/db";
-import { awsSupportedRegions } from "../../aws/configs/aws-supported-regions-configs.js";
-import { createEc2Instance } from "../../aws/services/create-ec2-instance.js";
+import { awsSupportedRegions } from "../../providers/aws/configs/aws-supported-regions-configs.js";
+import { createEc2Instance } from "../../providers/aws/services/create-aws-instance.js";
 import { AppError } from "../../lib/app-error.js";
-import { getInstancePublicAddress } from "../../aws/services/get-instance-public-address.js";
+import { getInstancePublicAddress } from "../../providers/aws/services/get-instance-public-address.js";
 import { env } from "../../lib/env.js";
 import { createId } from "@paralleldrive/cuid2";
 import {
