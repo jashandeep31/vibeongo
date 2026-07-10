@@ -11,7 +11,10 @@ import {
 // currently we are only using the aws instances
 // TODO: please further add more regions to this
 
-export const instanceProvidersEnum = pgEnum("instance_providers", ["aws"]);
+export const instanceProvidersEnum = pgEnum("instance_providers", [
+  "aws",
+  "digitalocean",
+]);
 
 export const instanceRegions = pgTable("instance_regions", {
   id: uuid().defaultRandom().primaryKey(),

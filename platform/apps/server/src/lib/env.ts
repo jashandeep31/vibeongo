@@ -40,6 +40,7 @@ const envSchema = z.object({
   AWS_SES_SECRET_KEY: z.string(),
   ENCRYPTION_KEY: z.string(),
   AI_GATEWAY_API_KEY: z.string(),
+  DIGITALOCEAN_API_KEY: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
