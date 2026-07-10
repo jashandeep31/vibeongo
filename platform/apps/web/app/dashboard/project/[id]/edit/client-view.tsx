@@ -30,6 +30,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   } = useGetProjectConfigForEdit(projectId);
   const hydratedProjectIdRef = useRef<string | null>(null);
   const setProjectName = useConfigStore((state) => state.setProjectName);
+  const setProvider = useConfigStore((state) => state.setProvider);
   const setInstanceTypeId = useConfigStore((state) => state.setInstanceTypeId);
   const setInstanceRegion = useConfigStore((state) => state.setInstanceRegion);
   const setGitRepoIds = useConfigStore((state) => state.setGitRepoIds);
@@ -60,6 +61,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     const nvimPackage = getPackage(config, "nvim");
 
     setProjectName(projectConfig.project.name);
+    setProvider(projectConfig.config.provider);
     setInstanceTypeId(projectConfig.instanceTypeId);
     setInstanceRegion(projectConfig.instanceRegionId ?? "");
     setGitRepoIds(projectConfig.githubRepoIds);
@@ -121,6 +123,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     hydratedProjectIdRef.current = projectConfig.project.id;
   }, [
     projectConfig,
+    setProvider,
     setGitRepoIds,
     setInstanceTypeId,
     setInstanceRegion,

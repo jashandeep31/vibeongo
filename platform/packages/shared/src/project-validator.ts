@@ -29,6 +29,9 @@ export const nodeConfigValidator = z.object({
   version: z.number(),
 });
 
+export const projectProviderValidator = z.enum(["aws", "digitalocean"]);
+export type ProjectProvider = z.infer<typeof projectProviderValidator>;
+
 //TODO: make sure to check the git config url and show the error if it is not a valid git url
 export const nvimConfigValidator = z.object({
   config_url: z
@@ -39,6 +42,7 @@ export const nvimConfigValidator = z.object({
 export const projectConfigValidator = z.object({
   name: z.string(),
   description: z.string().optional(),
+  provider: projectProviderValidator,
   regionId: z.uuid(),
   instanceTypeId: z.uuid(),
   sshKeyIds: z.array(z.uuid()),

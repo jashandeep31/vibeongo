@@ -7,6 +7,7 @@ import InstanceRegionCards from "./instance-region-cards";
 import InstanceTypeCards from "./instance-type-cards";
 import NameCard from "./name-card";
 import ProjectScriptsCard from "./project-scripts-card";
+import ProviderCards from "./provider-cards";
 import SshKeysCard from "./ssh-keys-card";
 import {
   useGetProjectConfigForEdit,
@@ -58,6 +59,7 @@ export default function ProjectConfigForm({
     isError: isImportConfigError,
   } = useGetProjectConfigForEdit(selectedProjectId || null);
   const setInstanceTypeId = useConfigStore((state) => state.setInstanceTypeId);
+  const setProvider = useConfigStore((state) => state.setProvider);
   const setInstanceRegion = useConfigStore((state) => state.setInstanceRegion);
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
   const setInitialScript = useConfigStore((state) => state.setInitialScript);
@@ -88,6 +90,7 @@ export default function ProjectConfigForm({
     const piPackage = getPackage(config, "pi");
     const nvimPackage = getPackage(config, "nvim");
 
+    setProvider(selectedProjectConfig.config.provider);
     setInstanceTypeId(selectedProjectConfig.instanceTypeId);
     setInstanceRegion(selectedProjectConfig.instanceRegionId ?? "");
     setSshKeys(selectedProjectConfig.sshKeyIds);
@@ -224,6 +227,7 @@ export default function ProjectConfigForm({
         </div>
       ) : null}
       <NameCard />
+      <ProviderCards />
       <InstanceRegionCards />
       <InstanceTypeCards />
       <GitRepoConfigCard />

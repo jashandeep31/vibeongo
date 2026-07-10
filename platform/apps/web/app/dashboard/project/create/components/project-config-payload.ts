@@ -20,6 +20,7 @@ export const buildProjectConfigPayload = (
 ): z.infer<typeof projectConfigValidator> => ({
   name: state.projectName,
   description: "",
+  provider: state.provider,
   regionId: state.instanceRegionId,
   instanceTypeId: state.instanceTypeId,
   sshKeyIds: state.sshKeys,

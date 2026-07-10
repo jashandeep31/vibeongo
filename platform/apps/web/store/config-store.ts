@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { type PortRule } from "@/app/dashboard/project/create/types";
+import { type ProjectProvider } from "@repo/shared";
 
 interface ContainerConfig {
   id: string;
@@ -29,6 +30,9 @@ interface AdditionalService {
 interface ConfigStore {
   projectName: string;
   setProjectName: (name: string) => void;
+
+  provider: ProjectProvider;
+  setProvider: (provider: ProjectProvider) => void;
 
   initialScript: string;
   setInitialScript: (script: string) => void;
@@ -74,6 +78,15 @@ interface ConfigStore {
 export const useConfigStore = create<ConfigStore>((set) => ({
   setProjectName: (name) => set(() => ({ projectName: name })),
   projectName: "",
+
+  provider: "aws",
+  setProvider: (provider) =>
+    set((state) => ({
+      provider,
+      instanceRegionId:
+        state.provider === provider ? state.instanceRegionId : "",
+      instanceTypeId: state.provider === provider ? state.instanceTypeId : "",
+    })),
 
   initialScript: "",
   setInitialScript: (script) => set(() => ({ initialScript: script })),

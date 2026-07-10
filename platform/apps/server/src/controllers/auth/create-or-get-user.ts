@@ -215,6 +215,7 @@ const createDemoProjectConfig = async (): Promise<
 
   return {
     name: "Zed snippets",
+    provider: "aws",
     description: "Demo project configuration",
     regionId: metadata.regionId,
     instanceTypeId: metadata.instanceTypeId,
