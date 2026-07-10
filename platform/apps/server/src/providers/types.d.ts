@@ -1,9 +1,9 @@
 import { instanceProvidersEnum } from "@repo/db";
 
-export interface createInstanceProps<T> {
+export interface createInstanceProps {
   instanceName: string;
   provider: (typeof instanceProvidersEnum.enumValues)[number];
-  region: T[number];
+  region: string;
   instanceType: string;
   userData: string;
 }

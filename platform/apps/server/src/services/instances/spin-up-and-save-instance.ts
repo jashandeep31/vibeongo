@@ -9,7 +9,7 @@ import {
   userWallet,
 } from "@repo/db";
 import { awsSupportedRegions } from "../../providers/aws/configs/aws-supported-regions-configs.js";
-import { createEc2Instance } from "../../providers/aws/services/create-aws-instance.js";
+import { createAWSInstance } from "../../providers/aws/services/create-aws-instance.js";
 import { AppError } from "../../lib/app-error.js";
 import { getInstancePublicAddress } from "../../providers/aws/services/get-instance-public-address.js";
 import { env } from "../../lib/env.js";
@@ -96,7 +96,7 @@ export const spinUpAndSaveInstance = async ({
     throw new AppError("You can only have 4 instances running at a time", 400);
   }
 
-  const awsRes = await createEc2Instance({
+  const awsRes = await createAWSInstance({
     region: region.slug as (typeof awsSupportedRegions)[number],
     instanceType: instanceType.name,
     userData: setupScript,
@@ -129,7 +129,7 @@ export const spinUpAndSaveInstance = async ({
       project_id: project.id,
       user_id: userId,
       instance_type_id: project.instance_type_id,
-      aws_instance_id: awsInstance.InstanceId,
+      provider_instance_id: awsInstance.InstanceId,
       terminated_at: null,
       terminates_at: new Date(
         new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,

@@ -45,7 +45,7 @@ export const instances = pgTable("instances", {
   // instance data
   public_ip: varchar(),
   private_ip: varchar(),
-  aws_instance_id: varchar().notNull(), // NOTE: this refers to the aws instance is
+  provider_instance_id: varchar().notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

@@ -7,7 +7,7 @@ import { AppError } from "../../../lib/app-error.js";
 /**
  * Create a ec2 instance depending upon the user requirnments
  */
-export const createEc2Instance = async ({
+export const createAWSInstance = async ({
   region,
   instanceType,
   userData,

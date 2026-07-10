@@ -6,15 +6,13 @@ import { env } from "../../lib/env.js";
 
 const API_ENDPOINT = "https://api.digitalocean.com";
 
-const digitalOceanSupportedRegions = ["as", "ca"] as const;
-
-export const createDigitalOcneaInstance = async ({
+export const createDigitalOceanInstance = async ({
   provider,
   region,
   instanceType,
   instanceName,
   userData,
-}: createInstanceProps<typeof digitalOceanSupportedRegions>): Promise<{
+}: createInstanceProps): Promise<{
   instanceId: string;
   data: any;
 }> => {

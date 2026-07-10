@@ -70,7 +70,7 @@ export const terminateInstanceAndChargeUsage = async ({
   // NOTE: if the last transaction in db fails but aws termination works then it can cause issue as networkusage will throw error from the aws side need to be fixed
   const netWorkOutInGB = await getEc2InstanceNetworkUsage({
     region: instanceWithTypeAndRegion.instance_regions.slug,
-    instanceId: instance.aws_instance_id,
+    instanceId: instance.provider_instance_id,
     metricName: "NetworkOut",
     startTime: instance.started_at ?? instance.created_at,
     endTime: new Date(),
@@ -79,7 +79,7 @@ export const terminateInstanceAndChargeUsage = async ({
   // Terminating the instance on the aws
   const awsResponse = await terminateEc2Instance(
     instanceWithTypeAndRegion.instance_regions.slug,
-    [instance.aws_instance_id],
+    [instance.provider_instance_id],
   );
   if (awsResponse.$metadata.httpStatusCode !== 200)
     throw new AppError("Failed to terminate instance", 500);
@@ -183,7 +183,7 @@ export const terminateInstanceAndChargeUsage = async ({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
         description: `Instance ID: ${instanceId} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(netWorkOutInGB)}`,
-        raw_description: `Instance ${instanceId} (AWS instance ID: ${instance.aws_instance_id}) ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(netWorkOutInGB)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged.`,
+        raw_description: `Instance ${instanceId} (AWS instance ID: ${instance.provider_instance_id}) ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(netWorkOutInGB)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged.`,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
