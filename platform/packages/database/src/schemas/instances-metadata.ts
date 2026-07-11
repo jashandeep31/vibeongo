@@ -31,8 +31,7 @@ export const instanceTypes = pgTable("instance_types", {
   id: uuid().primaryKey().defaultRandom(),
   name: varchar().notNull(),
 
-  // WARN: slug should contain the region at the end of the slug
-  slug: varchar().notNull().unique(),
+  slug: varchar().notNull(),
   description: text(),
   cpu: text(),
   ram: text(),

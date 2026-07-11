@@ -1,0 +1,1 @@
+ALTER TABLE "instance_types" DROP CONSTRAINT "instance_types_slug_unique";
