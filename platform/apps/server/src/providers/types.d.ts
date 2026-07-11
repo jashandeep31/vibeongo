@@ -27,5 +27,10 @@ export interface CreateInstanceProviderResponse {
   pvtIPv4: string;
 }
 
+export interface InstanceIpAddresses {
+  publicIPv4: string;
+  pvtIPv4: string;
+}
+
 export type createInstanceProps = CreateInstanceProps;
 export type createInstanceProviderResponse = CreateInstanceProviderResponse;

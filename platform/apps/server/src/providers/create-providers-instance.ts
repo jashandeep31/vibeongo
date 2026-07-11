@@ -9,7 +9,7 @@ import type {
 } from "./types.js";
 import { AppError } from "../lib/app-error.js";
 import { awsSupportedRegions } from "./aws/configs/aws-supported-regions-configs.js";
-import { getInstancePublicAddress } from "./aws/services/get-instance-public-address.js";
+import { getInstanceIpAddresses } from "./aws/services/get-instance-ip-addresses.js";
 
 export const createProviderInstance = async ({
   provider,
@@ -66,19 +66,15 @@ const createAwsProviderInstance = async ({
     throw new AppError("AWS instance not found after creation", 404);
   }
 
-  const publicIpAddress = await getInstancePublicAddress(
+  const addresses = await getInstanceIpAddresses(
     instance.InstanceId,
     region,
   );
-  if (!publicIpAddress) {
-    throw new AppError("AWS instance public IP address not found", 404);
-  }
 
   return {
     instanceId: instance.InstanceId,
     instanceName,
-    publicIPv4: publicIpAddress,
-    pvtIPv4: instance.PrivateIpAddress ?? "",
+    ...addresses,
   };
 };
 
