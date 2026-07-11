@@ -1,5 +1,8 @@
 import { and, db, eq, instanceRegions } from "@repo/db";
-import { createInstanceProps } from "../types.js";
+import type {
+  CreateInstanceProps,
+  CreateInstanceProviderResponse,
+} from "../types.js";
 import { AppError } from "../../lib/app-error.js";
 import axios from "axios";
 import { env } from "../../lib/env.js";
@@ -12,10 +15,7 @@ export const createDigitalOceanInstance = async ({
   instanceType,
   instanceName,
   userData,
-}: createInstanceProps): Promise<{
-  instanceId: string;
-  data: any;
-}> => {
+}: CreateInstanceProps): Promise<CreateInstanceProviderResponse> => {
   const [regionRow] = await db
     .select()
     .from(instanceRegions)
@@ -27,7 +27,6 @@ export const createDigitalOceanInstance = async ({
     );
   if (!regionRow) throw new AppError("Not a valid region ", 404);
 
-  const instanceId = crypto.randomUUID();
   const res = await axios.post(
     API_ENDPOINT,
     {
@@ -39,7 +38,6 @@ export const createDigitalOceanInstance = async ({
       ipv6: false,
       monitoring: true,
       user_data: userData,
-      vpc_uuid: instanceId,
     },
     {
       headers: {
@@ -51,10 +49,21 @@ export const createDigitalOceanInstance = async ({
   if (res.status !== 202) {
     throw new AppError("Failed to create instance", 500);
   }
+  let publicIPv4 = "";
+  let pvtIPv4 = "";
+  for (const { type, ip_address } of res.data.droplet.networks.v4) {
+    if (type === "public") {
+      publicIPv4 = ip_address;
+    } else if (type === "private") {
+      pvtIPv4 = ip_address;
+    }
+  }
 
   return {
-    instanceId,
-    data: res.data,
+    instanceId: res.data.droplet.id,
+    instanceName,
+    publicIPv4,
+    pvtIPv4,
   };
 };
 

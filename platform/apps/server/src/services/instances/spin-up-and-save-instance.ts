@@ -21,6 +21,7 @@ import {
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import * as crypto from "crypto";
 import { uniqueNamesGenerator, animals, colors } from "unique-names-generator";
+import { createProviderInstance } from "../../providers/create-providers-instance.js";
 
 interface SpinUpAndSaveInstance {
   sshKeys: string[];
@@ -98,6 +99,13 @@ export const spinUpAndSaveInstance = async ({
 
   const awsRes = await createAWSInstance({
     region: region.slug as (typeof awsSupportedRegions)[number],
+    instanceType: instanceType.name,
+    userData: setupScript,
+  });
+
+  const createdInstanceMetadata = await createProviderInstance({
+    provider: region.provider,
+    region: region.slug,
     instanceType: instanceType.name,
     userData: setupScript,
   });
