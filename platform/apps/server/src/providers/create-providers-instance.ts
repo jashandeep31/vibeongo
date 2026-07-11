@@ -10,7 +10,9 @@ import type {
 import { AppError } from "../lib/app-error.js";
 import { awsSupportedRegions } from "./aws/configs/aws-supported-regions-configs.js";
 import { getInstanceIpAddresses } from "./aws/services/get-instance-ip-addresses.js";
+import { DigitalOceanClient } from "./digitalocean/digitalocean-client.js";
 
+const digitaloceanClient = new DigitalOceanClient();
 export const createProviderInstance = async ({
   provider,
   region,
@@ -52,7 +54,10 @@ const createAwsProviderInstance = async ({
   instanceType,
   userData,
   instanceName,
-}: Omit<CreateInstanceProps, "provider">): Promise<CreateInstanceProviderResponse> => {
+}: Omit<
+  CreateInstanceProps,
+  "provider"
+>): Promise<CreateInstanceProviderResponse> => {
   assertAwsRegion(region);
 
   const res = await createAWSInstance({
@@ -66,10 +71,7 @@ const createAwsProviderInstance = async ({
     throw new AppError("AWS instance not found after creation", 404);
   }
 
-  const addresses = await getInstanceIpAddresses(
-    instance.InstanceId,
-    region,
-  );
+  const addresses = await getInstanceIpAddresses(instance.InstanceId, region);
 
   return {
     instanceId: instance.InstanceId,
@@ -87,7 +89,7 @@ const createDigitalOceanProviderInstance = async ({
 }: CreateInstanceProps & {
   provider: "digitalocean";
 }): Promise<CreateInstanceProviderResponse> => {
-  return await createDigitalOceanInstance({
+  return await digitaloceanClient.createInstance({
     provider,
     region,
     instanceType,
