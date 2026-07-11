@@ -9,9 +9,7 @@ import {
   userWallet,
 } from "@repo/db";
 import { awsSupportedRegions } from "../../providers/aws/configs/aws-supported-regions-configs.js";
-import { createAWSInstance } from "../../providers/aws/services/create-aws-instance.js";
 import { AppError } from "../../lib/app-error.js";
-import { getInstancePublicAddress } from "../../providers/aws/services/get-instance-public-address.js";
 import { env } from "../../lib/env.js";
 import { createId } from "@paralleldrive/cuid2";
 import {
@@ -97,33 +95,18 @@ export const spinUpAndSaveInstance = async ({
     throw new AppError("You can only have 4 instances running at a time", 400);
   }
 
-  const awsRes = await createAWSInstance({
+  const newInstance = await createProviderInstance({
+    provider: instanceType.provider,
     region: region.slug as (typeof awsSupportedRegions)[number],
     instanceType: instanceType.name,
     userData: setupScript,
   });
-
-  const createdInstanceMetadata = await createProviderInstance({
-    provider: region.provider,
-    region: region.slug,
-    instanceType: instanceType.name,
-    userData: setupScript,
-  });
-
-  // Getting first instance of the list as we only spin up the one
-  const awsInstance = awsRes?.Instances?.[0];
-  if (!awsInstance?.InstanceId || !awsInstance)
-    throw new AppError("Failed to create the ec2", 500);
 
   const autoTerminateAfterInMinutes =
     terminateAfterInMinutes ??
     (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
 
   await new Promise<void>((res) => setTimeout(res, 5000));
-  const publicIpAddress = await getInstancePublicAddress(
-    awsInstance.InstanceId,
-    region.slug as (typeof awsSupportedRegions)[number],
-  );
 
   const [instance] = await db
     .insert(instances)
@@ -137,13 +120,13 @@ export const spinUpAndSaveInstance = async ({
       project_id: project.id,
       user_id: userId,
       instance_type_id: project.instance_type_id,
-      provider_instance_id: awsInstance.InstanceId,
+      provider_instance_id: newInstance.instanceId,
       terminated_at: null,
       terminates_at: new Date(
         new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
       ),
       started_at: new Date(),
-      public_ip: publicIpAddress,
+      public_ip: newInstance.publicIPv4,
       state: "running",
       project_session_id: sessionId,
       config: {
