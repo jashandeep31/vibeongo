@@ -3,14 +3,13 @@ import type { CreateInstanceProps } from "../types.js";
 import { AppError } from "../../lib/app-error.js";
 import axios from "axios";
 import { env } from "../../lib/env.js";
-import { getDigitalOceanInstanceIpAddresses } from "./get-digitalocean-instance-ip-addresses.js";
 
 export class DigitalOceanClient {
   private axiosClient = axios.create({
     baseURL: "https://api.digitalocean.com/v2",
     headers: {
       "Content-Type": "application/json",
-      Authorization: "Bearer" + env.DIGITALOCEAN_API_KEY,
+      Authorization: `Bearer ${env.DIGITALOCEAN_API_KEY}`,
     },
   });
 
@@ -45,9 +44,7 @@ export class DigitalOceanClient {
     if (res.status !== 202) {
       throw new AppError("Failed to create instance", 500);
     }
-    const addresses = await getDigitalOceanInstanceIpAddresses({
-      instanceId: String(res.data.droplet.id),
-    });
+    const addresses = await this.getIpsAddresses(String(res.data.droplet.id));
 
     return {
       instanceId: String(res.data.droplet.id),
