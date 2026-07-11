@@ -98,7 +98,7 @@ export const spinUpAndSaveInstance = async ({
   const newInstance = await createProviderInstance({
     provider: instanceType.provider,
     region: region.slug as (typeof awsSupportedRegions)[number],
-    instanceType: instanceType.name,
+    instanceType: instanceType.slug,
     userData: setupScript,
   });
 

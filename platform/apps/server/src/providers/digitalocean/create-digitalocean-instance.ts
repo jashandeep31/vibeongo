@@ -28,9 +28,9 @@ export const createDigitalOceanInstance = async ({
   if (!regionRow) throw new AppError("Not a valid region ", 404);
 
   const res = await axios.post(
-    API_ENDPOINT,
+    API_ENDPOINT + "/v2/droplets",
     {
-      name: instanceName,
+      name: instanceName.split(" ").join("-").toLocaleLowerCase(),
       region: regionRow.slug,
       size: instanceType,
       image: regionRow.ami,
@@ -42,10 +42,11 @@ export const createDigitalOceanInstance = async ({
     {
       headers: {
         "Content-Type": "application/json",
-        Authorization: "Bearer " + process.env["DIGITALOCEAN_TOKEN"],
+        Authorization: "Bearer " + env.DIGITALOCEAN_API_KEY,
       },
     },
   );
+  console.log(res.data);
   if (res.status !== 202) {
     throw new AppError("Failed to create instance", 500);
   }
