@@ -6,7 +6,6 @@ import type {
 import { AppError } from "../../lib/app-error.js";
 import axios from "axios";
 import { env } from "../../lib/env.js";
-import { getDigitalOceanInstanceIpAddresses } from "./get-digitalocean-instance-ip-addresses.js";
 
 const API_ENDPOINT = "https://api.digitalocean.com";
 
@@ -51,14 +50,21 @@ export const createDigitalOceanInstance = async ({
   if (res.status !== 202) {
     throw new AppError("Failed to create instance", 500);
   }
-  const addresses = await getDigitalOceanInstanceIpAddresses({
-    instanceId: String(res.data.droplet.id),
-  });
+  let publicIPv4 = "";
+  let pvtIPv4 = "";
+  for (const { type, ip_address } of res.data.droplet.networks.v4) {
+    if (type === "public") {
+      publicIPv4 = ip_address;
+    } else if (type === "private") {
+      pvtIPv4 = ip_address;
+    }
+  }
 
   return {
-    instanceId: String(res.data.droplet.id),
+    instanceId: res.data.droplet.id,
     instanceName,
-    ...addresses,
+    publicIPv4,
+    pvtIPv4,
   };
 };
 
