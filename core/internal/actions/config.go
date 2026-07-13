@@ -3,9 +3,11 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 
 	"github.com/jashandeep31/vibeongo/core/internal/config"
+	"github.com/jashandeep31/vibeongo/core/internal/utils"
 )
 
 type scripts struct {
@@ -88,4 +90,33 @@ func ModifyScripts(input string) error {
 	fmt.Printf("Updated scripts in %s\n", configPath)
 
 	return nil
+}
+
+func UpdateScripts() error {
+	cfg, err := config.LoadAndValidate()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
+	resp, err := apiClient.Post("/api/v1/runtime/sessions/", struct {
+		InitialScript string                `json:"initialScript"`
+		FinalScript   string                `json:"finalScript"`
+		DevScript     string                `json:"devScript"`
+		Config        config.InstanceConfig `json:"config"`
+	}{
+		InitialScript: cfg.InitialScript,
+		FinalScript:   cfg.FinalScript,
+		DevScript:     cfg.DevScript,
+		Config:        cfg.InstanceConfig,
+	}, runtimeAuthHeaders(cfg), nil)
+
+	if err != nil {
+		return fmt.Errorf("failed to update scripts: %w", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to update scripts: unexpected status code %d", resp.StatusCode)
+	}
+	return nil
+
 }
