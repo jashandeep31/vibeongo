@@ -11,6 +11,7 @@ import {
 } from "@repo/db";
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { AppError } from "../../lib/app-error.js";
+import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 
 export const updateRuntimeProjectBasicConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -20,7 +21,9 @@ export const updateRuntimeProjectBasicConfig = catchAsync(
       initialScript: projectConfigValidator.shape.initialScript,
       finalScript: projectConfigValidator.shape.finalScript,
       devScript: projectConfigValidator.shape.devScript,
-      config: projectConfigValidator.shape.config,
+      config: z.object({
+        packages: projectConfigValidator.shape.config.shape.packages,
+      }),
     });
 
     const parsedBody = basicConfigSchema.parse(req.body);
@@ -32,7 +35,15 @@ export const updateRuntimeProjectBasicConfig = catchAsync(
 
     if (!session) throw new AppError("Project session not found", 404);
 
-    const encryptedConfig = encryptData(JSON.stringify(parsedBody.config));
+    const storedConfig = projectConfigValidator.shape.config.parse(
+      JSON.parse(await getDecryptedProjectConfig(session.projectId)),
+    );
+    const encryptedConfig = encryptData(
+      JSON.stringify({
+        ...storedConfig,
+        packages: parsedBody.config.packages,
+      }),
+    );
 
     await db.transaction(async (tx) => {
       const [updatedProject] = await tx

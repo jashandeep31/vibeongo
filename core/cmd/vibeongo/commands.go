@@ -281,7 +281,7 @@ func ConfigCmd() *cobra.Command {
 		Long:  "Send the local project configuration to the Vibeongo backend server.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return nil
+			return actions.UpdateConfig()
 		},
 	}
 

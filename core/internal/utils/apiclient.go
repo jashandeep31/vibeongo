@@ -17,13 +17,11 @@ type APIClient struct {
 const defaultHTTPTimeout = 10 * time.Second
 
 func (c *APIClient) Post(path string, payload any, headers map[string]string, out any) (*http.Response, error) {
-	fmt.Println(payload)
 	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal payload: %w", err)
 	}
 
-	fmt.Printf("JSON Payload: %s\n", body)
 	req, err := http.NewRequest("POST", c.BaseURL+path, bytes.NewBuffer(body))
 	if err != nil {
 		return nil, err

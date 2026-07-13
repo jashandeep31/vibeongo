@@ -92,31 +92,39 @@ func ModifyScripts(input string) error {
 	return nil
 }
 
-func UpdateScripts() error {
+func UpdateConfig() error {
+	fmt.Println("updating the config may take a few seconds")
 	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
 	apiClient := utils.APIClient{BaseURL: cfg.ServerBaseURL}
-	resp, err := apiClient.Post("/api/v1/runtime/sessions/", struct {
-		InitialScript string                `json:"initialScript"`
-		FinalScript   string                `json:"finalScript"`
-		DevScript     string                `json:"devScript"`
-		Config        config.InstanceConfig `json:"config"`
+	resp, err := apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionID+"/config/"+cfg.InstanceID, struct {
+		InitialScript string `json:"initialScript"`
+		FinalScript   string `json:"finalScript"`
+		DevScript     string `json:"devScript"`
+		Config        struct {
+			Packages []config.PackageConfig `json:"packages"`
+		} `json:"config"`
 	}{
 		InitialScript: cfg.InitialScript,
 		FinalScript:   cfg.FinalScript,
 		DevScript:     cfg.DevScript,
-		Config:        cfg.InstanceConfig,
+		Config: struct {
+			Packages []config.PackageConfig `json:"packages"`
+		}{
+			Packages: cfg.Packages,
+		},
 	}, runtimeAuthHeaders(cfg), nil)
 
 	if err != nil {
-		return fmt.Errorf("failed to update scripts: %w", err)
+		return fmt.Errorf("failed to update project config: %w", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to update scripts: unexpected status code %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusNoContent {
+		return fmt.Errorf("failed to update project config: unexpected status code %d", resp.StatusCode)
 	}
-	return nil
 
+	fmt.Println("Project configuration updated successfully")
+	return nil
 }
