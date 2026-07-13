@@ -9,6 +9,7 @@ import {
   AwsSupportedRegion,
   CreateInstanceProps,
   CreateInstanceProviderResponse,
+  GetOutboundNetworkUsageProps,
   InstanceIpAddresses,
 } from "../../types.js";
 import { getCloudWatchClient, getEc2Client } from "../ec2-client.js";
@@ -21,14 +22,6 @@ const UNAVAILABLE_IP_ADDRESSES = {
   publicIPv4: "N/A",
   pvtIPv4: "N/A",
 };
-
-interface GetNetworkUsageProps {
-  region: string;
-  instanceId: string;
-  metricName: "NetworkIn" | "NetworkOut";
-  startTime: Date;
-  endTime: Date;
-}
 
 const isRetryableAwsError = (error: unknown) => {
   if (!error || typeof error !== "object") return false;
@@ -123,18 +116,17 @@ export class AWSClient {
     return await client.send(command);
   }
 
-  async getNetworkUsage({
+  async getOutboundNetworkUsage({
     region,
     instanceId,
-    metricName,
     startTime,
     endTime,
-  }: GetNetworkUsageProps): Promise<number> {
+  }: GetOutboundNetworkUsageProps): Promise<number> {
     const client = getCloudWatchClient(region as AwsSupportedRegion);
     const res = await client.send(
       new GetMetricStatisticsCommand({
         Namespace: "AWS/EC2",
-        MetricName: metricName,
+        MetricName: "NetworkOut",
         Dimensions: [{ Name: "InstanceId", Value: instanceId }],
         StartTime: startTime,
         EndTime: endTime,
@@ -149,7 +141,7 @@ export class AWSClient {
       (sum, datapoint) => sum + (datapoint.Sum ?? 0),
       0,
     );
-    return bytes / 1_073_741_824;
+    return bytes;
   }
 
   async getIpAddresses(

@@ -12,8 +12,10 @@ export interface CreateProviderInstanceProps {
   userData: string;
 }
 
-export interface CreateInstanceProps
-  extends Omit<CreateProviderInstanceProps, "provider"> {
+export interface CreateInstanceProps extends Omit<
+  CreateProviderInstanceProps,
+  "provider"
+> {
   instanceName: string;
 }
 
@@ -37,4 +39,16 @@ export interface TerminateProviderInstanceProps {
 
 export interface TerminateProviderInstanceResponse {
   terminated: boolean;
+}
+
+export interface GetOutboundNetworkUsageProps {
+  region: string;
+  instanceId: string;
+  startTime: Date;
+  endTime: Date;
+}
+
+export interface GetProviderOutboundNetworkUsageProps
+  extends GetOutboundNetworkUsageProps {
+  provider: InstanceProvider;
 }

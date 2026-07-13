@@ -19,6 +19,7 @@ import { userWallet } from "@repo/db";
 // import { getEc2InstanceNetworkUsage } from "../../providers/aws/services/get-instance-network-usage.js";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
+import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
 
 //props of the fuction
 interface terminateInstanceAndChargeUsageProps {
@@ -68,15 +69,14 @@ export const terminateInstanceAndChargeUsage = async ({
 
   // Getting the network out in DB
   // NOTE: if the last transaction in db fails but aws termination works then it can cause issue as networkusage will throw error from the aws side need to be fixed
-  // const netWorkOutInGB = await getEc2InstanceNetworkUsage({
-  //   region: instanceWithTypeAndRegion.instance_regions.slug,
-  //   instanceId: instance.provider_instance_id,
-  //   metricName: "NetworkOut",
-  //   startTime: instance.started_at ?? instance.created_at,
-  //   endTime: new Date(),
-  // });
+  const netWorkOutInGB = await getProviderOutboundNetworkUsage({
+    provider: instanceWithTypeAndRegion.instance_types.provider,
+    region: instanceWithTypeAndRegion.instance_regions.slug,
+    instanceId: instance.provider_instance_id,
+    startTime: instance.started_at ?? instance.created_at,
+    endTime: new Date(),
+  });
 
-  const netWorkOutInGB = 1;
   // Both providers return the same semantic termination response.
   const terminationResponse = await terminateProviderInstance({
     provider: instanceWithTypeAndRegion.instance_types.provider,
