@@ -265,13 +265,13 @@ func ConfigCmd() *cobra.Command {
 	}
 
 	modifyScriptsCmd := &cobra.Command{
-		Use:     "modify-scripts '<json>'",
+		Use:     "modify-scripts",
 		Short:   "Modify project scripts locally",
-		Long:    "Modify scripts in the local config.json file. Pass one JSON string containing all three required fields: initialScript, finalScript, and devScript.",
-		Example: `vibeongo config modify-scripts '{"initialScript":"npm install","finalScript":"npm run build","devScript":"npm run dev"}'`,
-		Args:    cobra.ExactArgs(1),
+		Long:    "Read a JSON object from standard input and modify scripts in the local config.json file. The JSON must contain initialScript, finalScript, and devScript.",
+		Example: `echo '{"initialScript":"npm install","finalScript":"npm run build","devScript":"npm run dev"}' | vibeongo config modify-scripts`,
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return actions.ModifyScripts(args[0])
+			return actions.ModifyScripts(cmd.InOrStdin())
 		},
 	}
 

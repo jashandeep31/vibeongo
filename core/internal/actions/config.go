@@ -3,6 +3,7 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 
@@ -43,10 +44,12 @@ func GetScripts() error {
 	return nil
 }
 
-func ModifyScripts(input string) error {
+func ModifyScripts(input io.Reader) error {
 	var inputData scriptsInput
 
-	if err := json.Unmarshal([]byte(input), &inputData); err != nil {
+	decoder := json.NewDecoder(input)
+	decoder.DisallowUnknownFields()
+	if err := decoder.Decode(&inputData); err != nil {
 		return fmt.Errorf("failed to parse scripts JSON: %w", err)
 	}
 	if inputData.InitialScript == nil || inputData.FinalScript == nil || inputData.DevScript == nil {
