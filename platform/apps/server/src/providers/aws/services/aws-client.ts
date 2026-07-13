@@ -4,7 +4,11 @@ import {
   RunInstancesCommand,
   TerminateInstancesCommand,
 } from "@aws-sdk/client-ec2";
-import { CreateAwsInstanceProps } from "../../types.js";
+import {
+  AwsSupportedRegion,
+  CreateInstanceProps,
+  CreateInstanceProviderResponse,
+} from "../../types.js";
 import { getEc2Client } from "../ec2-client.js";
 import { AppError } from "../../../lib/app-error.js";
 import { db, eq, instanceRegions } from "@repo/db";
@@ -47,13 +51,17 @@ const waitBeforeRetry = async (attempt: number) => {
 };
 
 export class AWSClient {
-  constructor() {}
-
   async createInstance({
     region,
     instanceType,
     userData,
-  }: CreateAwsInstanceProps) {
+    instanceName,
+  }: CreateInstanceProps): Promise<CreateInstanceProviderResponse> {
+    if (!awsSupportedRegions.includes(region as AwsSupportedRegion)) {
+      throw new AppError("AWS region is not supported", 404);
+    }
+
+    const awsRegion = region as AwsSupportedRegion;
     const [regionRow] = await db
       .select()
       .from(instanceRegions)
@@ -80,9 +88,22 @@ export class AWSClient {
         },
       ],
     });
-    const client = getEc2Client(region);
+    const client = getEc2Client(awsRegion);
 
-    return await client.send(command);
+    const res = await client.send(command);
+    const instanceId = res.Instances?.[0]?.InstanceId;
+
+    if (!instanceId) {
+      throw new AppError("AWS instance not found after creation", 404);
+    }
+
+    const addresses = await this.getIPs(instanceId, awsRegion);
+
+    return {
+      instanceName,
+      instanceId,
+      ...addresses,
+    };
   }
   async temrinateInstance(region: string, ids: string[]) {
     const command = new TerminateInstancesCommand({

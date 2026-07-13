@@ -1,5 +1,8 @@
 import { and, db, eq, instanceRegions } from "@repo/db";
-import type { CreateInstanceProps } from "../types.js";
+import type {
+  CreateInstanceProps,
+  CreateInstanceProviderResponse,
+} from "../types.js";
 import { AppError } from "../../lib/app-error.js";
 import axios from "axios";
 import { env } from "../../lib/env.js";
@@ -18,7 +21,7 @@ export class DigitalOceanClient {
     instanceType,
     instanceName,
     userData,
-  }: CreateInstanceProps) {
+  }: CreateInstanceProps): Promise<CreateInstanceProviderResponse> {
     const [regionRow] = await db
       .select()
       .from(instanceRegions)

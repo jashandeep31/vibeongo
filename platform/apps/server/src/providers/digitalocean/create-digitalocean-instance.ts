@@ -10,7 +10,6 @@ import { env } from "../../lib/env.js";
 const API_ENDPOINT = "https://api.digitalocean.com";
 
 export const createDigitalOceanInstance = async ({
-  provider,
   region,
   instanceType,
   instanceName,
@@ -22,7 +21,7 @@ export const createDigitalOceanInstance = async ({
     .where(
       and(
         eq(instanceRegions.slug, region),
-        eq(instanceRegions.provider, provider),
+        eq(instanceRegions.provider, "digitalocean"),
       ),
     );
   if (!regionRow) throw new AppError("Not a valid region ", 404);
