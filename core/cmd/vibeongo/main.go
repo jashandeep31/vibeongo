@@ -44,8 +44,8 @@ func init() {
 	rootCmd.AddCommand(ExecuteFinalScriptCmd())
 	// running the dev script
 	rootCmd.AddCommand(ExecuteDevScriptCmd())
-	// Print the config
-	rootCmd.AddCommand(PrintConfigCmd())
+	// View and manage the project config
+	rootCmd.AddCommand(ConfigCmd())
 	// print all the domains which point which port
 	rootCmd.AddCommand(GetDomainCmd())
 

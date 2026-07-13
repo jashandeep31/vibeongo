@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -248,21 +247,47 @@ func ExecuteDevScriptCmd() *cobra.Command {
 	}
 }
 
-func PrintConfigCmd() *cobra.Command {
-	return &cobra.Command{
+func ConfigCmd() *cobra.Command {
+	configCmd := &cobra.Command{
 		Use:   "config",
-		Short: "Print the raw Vibeongo configuration",
-		Long:  "Print the full raw configuration loaded by Vibeongo. This may include secrets, tokens, or credentials, so avoid sharing the output.",
+		Short: "View and manage the project configuration",
+		Long:  "View project scripts, modify the local configuration, or update the project configuration on the Vibeongo server.",
+	}
+
+	getScriptsCmd := &cobra.Command{
+		Use:   "get-scripts",
+		Short: "Return all configured project scripts",
+		Long:  "Return the initial, development, and final scripts from the local project configuration.",
+		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			cfg, err := config.LoadAndValidate()
-			if err != nil {
-				return err
-			}
-			marshalCfg, _ := json.Marshal(cfg)
-			fmt.Println(string(marshalCfg))
+			return actions.GetScripts()
+		},
+	}
+
+	modifyScriptsCmd := &cobra.Command{
+		Use:     "modify-scripts '<json>'",
+		Short:   "Modify project scripts locally",
+		Long:    "Modify scripts in the local config.json file. Pass one JSON string containing all three required fields: initialScript, finalScript, and devScript.",
+		Example: `vibeongo config modify-scripts '{"initialScript":"npm install","finalScript":"npm run build","devScript":"npm run dev"}'`,
+		Args:    cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return actions.ModifyScripts(args[0])
+		},
+	}
+
+	updateCmd := &cobra.Command{
+		Use:   "update",
+		Short: "Update the project configuration on the server",
+		Long:  "Send the local project configuration to the Vibeongo backend server.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			return nil
 		},
 	}
+
+	configCmd.AddCommand(getScriptsCmd, modifyScriptsCmd, updateCmd)
+
+	return configCmd
 }
 
 func GetDomainCmd() *cobra.Command {
