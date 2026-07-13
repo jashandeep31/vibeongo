@@ -12,12 +12,14 @@ import {
 import { suspendSessionInstance } from "../controllers/runtime/suspend-session-instance.js";
 import { runTaskActions } from "../controllers/runtime/task-actions.js";
 import { renewTokens } from "../controllers/runtime/renew-tokens.js";
+import { updateRuntimeProjectBasicConfig } from "../controllers/runtime/update-project-config.js";
 
 const routes: Router = Router();
 
 routes
   .route("/sessions/:id/config/:instanceId")
-  .get(checkRuntimeAuthorization, getRuntimeSessionConfig);
+  .get(checkRuntimeAuthorization, getRuntimeSessionConfig)
+  .post(checkRuntimeAuthorization, updateRuntimeProjectBasicConfig);
 
 routes
   .route("/sessions/:id/terminate/:instanceId")
