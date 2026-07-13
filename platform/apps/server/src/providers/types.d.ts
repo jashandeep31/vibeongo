@@ -12,11 +12,6 @@ export interface CreateProviderInstanceProps {
   userData: string;
 }
 
-export interface CreateAwsInstanceProps
-  extends Omit<CreateInstanceProps, "region"> {
-  region: AwsSupportedRegion;
-}
-
 export interface CreateInstanceProps
   extends Omit<CreateProviderInstanceProps, "provider"> {
   instanceName: string;
@@ -32,4 +27,10 @@ export interface CreateInstanceProviderResponse {
 export interface InstanceIpAddresses {
   publicIPv4: string;
   pvtIPv4: string;
+}
+
+export interface TerminateProviderInstanceProps {
+  provider: InstanceProvider;
+  region: string;
+  instanceId: string;
 }

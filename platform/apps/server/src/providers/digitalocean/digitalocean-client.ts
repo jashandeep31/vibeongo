@@ -2,6 +2,7 @@ import { and, db, eq, instanceRegions } from "@repo/db";
 import type {
   CreateInstanceProps,
   CreateInstanceProviderResponse,
+  InstanceIpAddresses,
 } from "../types.js";
 import { AppError } from "../../lib/app-error.js";
 import axios from "axios";
@@ -47,7 +48,7 @@ export class DigitalOceanClient {
     if (res.status !== 202) {
       throw new AppError("Failed to create instance", 500);
     }
-    const addresses = await this.getIpsAddresses(String(res.data.droplet.id));
+    const addresses = await this.getIpAddresses(String(res.data.droplet.id));
 
     return {
       instanceId: String(res.data.droplet.id),
@@ -56,11 +57,11 @@ export class DigitalOceanClient {
     };
   }
 
-  async teminateInstance({ instanceId }: { instanceId: string }) {
+  async terminateInstance({ instanceId }: { instanceId: string }) {
     return await this.axiosClient.delete("/droplets/" + instanceId);
   }
 
-  async getIpsAddresses(instanceId: string) {
+  async getIpAddresses(instanceId: string): Promise<InstanceIpAddresses> {
     const maxAttempts = 12;
     const unavailableAddresses = { publicIPv4: "N/A", pvtIPv4: "N/A" };
 

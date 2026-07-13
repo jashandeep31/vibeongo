@@ -4,12 +4,14 @@ import {
   RunInstancesCommand,
   TerminateInstancesCommand,
 } from "@aws-sdk/client-ec2";
+import { GetMetricStatisticsCommand } from "@aws-sdk/client-cloudwatch";
 import {
   AwsSupportedRegion,
   CreateInstanceProps,
   CreateInstanceProviderResponse,
+  InstanceIpAddresses,
 } from "../../types.js";
-import { getEc2Client } from "../ec2-client.js";
+import { getCloudWatchClient, getEc2Client } from "../ec2-client.js";
 import { AppError } from "../../../lib/app-error.js";
 import { db, eq, instanceRegions } from "@repo/db";
 import { awsSupportedRegions } from "../configs/aws-supported-regions-configs.js";
@@ -19,6 +21,14 @@ const UNAVAILABLE_IP_ADDRESSES = {
   publicIPv4: "N/A",
   pvtIPv4: "N/A",
 };
+
+interface GetNetworkUsageProps {
+  region: string;
+  instanceId: string;
+  metricName: "NetworkIn" | "NetworkOut";
+  startTime: Date;
+  endTime: Date;
+}
 
 const isRetryableAwsError = (error: unknown) => {
   if (!error || typeof error !== "object") return false;
@@ -97,7 +107,7 @@ export class AWSClient {
       throw new AppError("AWS instance not found after creation", 404);
     }
 
-    const addresses = await this.getIPs(instanceId, awsRegion);
+    const addresses = await this.getIpAddresses(instanceId, awsRegion);
 
     return {
       instanceName,
@@ -105,15 +115,47 @@ export class AWSClient {
       ...addresses,
     };
   }
-  async temrinateInstance(region: string, ids: string[]) {
+  async terminateInstance(region: string, ids: string[]) {
     const command = new TerminateInstancesCommand({
       InstanceIds: ids,
     });
-    // Temp solution of types may need to fix
-    const client = getEc2Client(region as (typeof awsSupportedRegions)[number]);
+    const client = getEc2Client(region as AwsSupportedRegion);
     return await client.send(command);
   }
-  async getIPs(id: string, region: (typeof awsSupportedRegions)[number]) {
+
+  async getNetworkUsage({
+    region,
+    instanceId,
+    metricName,
+    startTime,
+    endTime,
+  }: GetNetworkUsageProps): Promise<number> {
+    const client = getCloudWatchClient(region as AwsSupportedRegion);
+    const res = await client.send(
+      new GetMetricStatisticsCommand({
+        Namespace: "AWS/EC2",
+        MetricName: metricName,
+        Dimensions: [{ Name: "InstanceId", Value: instanceId }],
+        StartTime: startTime,
+        EndTime: endTime,
+        Period: 60 * 5,
+        Statistics: ["Sum"],
+      }),
+    );
+
+    if (!res.Datapoints?.length) return 0;
+
+    const bytes = res.Datapoints.reduce(
+      (sum, datapoint) => sum + (datapoint.Sum ?? 0),
+      0,
+    );
+    return bytes / 1_073_741_824;
+  }
+
+  async getIpAddresses(
+    id: string,
+    region: AwsSupportedRegion,
+  ): Promise<InstanceIpAddresses> {
     const awsClient = getEc2Client(region);
 
     for (
