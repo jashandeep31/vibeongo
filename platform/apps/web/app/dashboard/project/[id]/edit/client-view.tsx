@@ -61,7 +61,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     const nvimPackage = getPackage(config, "nvim");
 
     setProjectName(projectConfig.project.name);
-    setProvider(projectConfig.config.provider);
+    setProvider(projectConfig.provider);
     setInstanceTypeId(projectConfig.instanceTypeId);
     setInstanceRegion(projectConfig.instanceRegionId ?? "");
     setGitRepoIds(projectConfig.githubRepoIds);

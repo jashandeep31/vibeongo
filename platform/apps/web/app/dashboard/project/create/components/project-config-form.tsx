@@ -90,7 +90,7 @@ export default function ProjectConfigForm({
     const piPackage = getPackage(config, "pi");
     const nvimPackage = getPackage(config, "nvim");
 
-    setProvider(selectedProjectConfig.config.provider);
+    setProvider(selectedProjectConfig.provider);
     setInstanceTypeId(selectedProjectConfig.instanceTypeId);
     setInstanceRegion(selectedProjectConfig.instanceRegionId ?? "");
     setSshKeys(selectedProjectConfig.sshKeyIds);

@@ -114,6 +114,7 @@ export const getProjectConfigForEdit = catchAsync(
     res.status(200).json({
       data: {
         project: projectWithInstanceType.project,
+        provider: projectWithInstanceType.instanceType.provider,
         instanceRegionId: projectWithInstanceType.instanceType.region_id,
         instanceTypeId: projectWithInstanceType.project.instance_type_id,
         sshKeyIds: sshKeyRows.map((row) => row.sshKeyId),

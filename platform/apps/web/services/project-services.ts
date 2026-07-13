@@ -56,11 +56,12 @@ export const getProjectById = async (
 
 export type ProjectConfigForEdit = {
   project: typeof projects.$inferSelect;
+  provider: (typeof instanceRegions.$inferSelect)["provider"];
   instanceRegionId: (typeof instanceRegions.$inferSelect)["id"] | null;
   instanceTypeId: (typeof projects.$inferSelect)["instance_type_id"];
   sshKeyIds: string[];
   githubRepoIds: string[];
-  config: z.infer<typeof projectConfigValidator>;
+  config: z.infer<typeof projectConfigValidator>["config"];
 };
 
 export const getProjectConfigForEdit = async (
