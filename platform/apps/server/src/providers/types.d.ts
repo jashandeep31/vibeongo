@@ -34,3 +34,7 @@ export interface TerminateProviderInstanceProps {
   region: string;
   instanceId: string;
 }
+
+export interface TerminateProviderInstanceResponse {
+  terminated: boolean;
+}

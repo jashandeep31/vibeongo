@@ -1,4 +1,3 @@
-import { terminateEc2Instance } from "../../providers/aws/services/terminate-ec2-instance.js";
 import {
   and,
   instances,
@@ -17,8 +16,9 @@ import {
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { userWallet } from "@repo/db";
-import { getEc2InstanceNetworkUsage } from "../../providers/aws/services/get-instance-network-usage.js";
+// import { getEc2InstanceNetworkUsage } from "../../providers/aws/services/get-instance-network-usage.js";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
+import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
 
 //props of the fuction
 interface terminateInstanceAndChargeUsageProps {
@@ -68,21 +68,24 @@ export const terminateInstanceAndChargeUsage = async ({
 
   // Getting the network out in DB
   // NOTE: if the last transaction in db fails but aws termination works then it can cause issue as networkusage will throw error from the aws side need to be fixed
-  const netWorkOutInGB = await getEc2InstanceNetworkUsage({
+  // const netWorkOutInGB = await getEc2InstanceNetworkUsage({
+  //   region: instanceWithTypeAndRegion.instance_regions.slug,
+  //   instanceId: instance.provider_instance_id,
+  //   metricName: "NetworkOut",
+  //   startTime: instance.started_at ?? instance.created_at,
+  //   endTime: new Date(),
+  // });
+
+  const netWorkOutInGB = 1;
+  // Both providers return the same semantic termination response.
+  const terminationResponse = await terminateProviderInstance({
+    provider: instanceWithTypeAndRegion.instance_types.provider,
     region: instanceWithTypeAndRegion.instance_regions.slug,
-    instanceId: instance.provider_instance_id,
-    metricName: "NetworkOut",
-    startTime: instance.started_at ?? instance.created_at,
-    endTime: new Date(),
+    instanceId: instanceWithTypeAndRegion.instances.provider_instance_id,
   });
 
-  // Terminating the instance on the aws
-  const awsResponse = await terminateEc2Instance(
-    instanceWithTypeAndRegion.instance_regions.slug,
-    [instance.provider_instance_id],
-  );
-  if (awsResponse.$metadata.httpStatusCode !== 200)
-    throw new AppError("Failed to terminate instance", 500);
+  if (!terminationResponse.terminated)
+    throw new AppError("Failed to terminate instance", 502);
 
   // calculating the uptime
   const uptimeInMin = Math.ceil(
