@@ -30,7 +30,7 @@ export const buildProjectConfigPayload = (
   devScript: state.devScript,
   config: {
     ports: state.portRules.map((rule) => ({
-      port: parseInt(rule.port, 10),
+      port: Number(rule.port),
       protocol: rule.protocol,
     })),
     packages: [

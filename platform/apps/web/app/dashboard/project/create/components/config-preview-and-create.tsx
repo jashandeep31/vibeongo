@@ -7,17 +7,45 @@ import { projectConfigValidator } from "@repo/shared";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { buildProjectConfigPayload } from "./project-config-payload";
+import {
+  getProjectSubmissionError,
+  validateProjectConfig,
+} from "./project-config-validation";
+import { scrollToProjectConfigErrors } from "./project-config-errors";
 
 export default function ConfigPreviewAndCreate() {
   const router = useRouter();
   const configState = useConfigStore();
-  const { mutateAsync } = useCreateProject();
+  const { mutateAsync, isPending } = useCreateProject();
+  const setSubmissionErrors = useConfigStore(
+    (state) => state.setSubmissionErrors,
+  );
+  const setHasAttemptedSubmit = useConfigStore(
+    (state) => state.setHasAttemptedSubmit,
+  );
+  const resetSubmissionErrors = useConfigStore(
+    (state) => state.resetSubmissionErrors,
+  );
 
   return (
     <>
       <div>
         <Button
+          type="button"
+          disabled={isPending}
           onClick={async () => {
+            const validationErrors = validateProjectConfig(
+              useConfigStore.getState(),
+            );
+            setHasAttemptedSubmit(true);
+            setSubmissionErrors(validationErrors);
+
+            if (validationErrors.length) {
+              toast.error("Please fix the project configuration errors");
+              scrollToProjectConfigErrors();
+              return;
+            }
+
             const toastId = toast.loading("Creating project");
             try {
               const config = buildProjectConfigPayload(configState);
@@ -25,21 +53,20 @@ export default function ConfigPreviewAndCreate() {
               await mutateAsync({
                 ...config,
               });
-              //TODO: reset the form or even better redirect to the project dashboard
+              resetSubmissionErrors();
               toast.success("Project created", { id: toastId });
               router.push("/dashboard");
             } catch (error) {
               console.error(error);
-              toast.error(
-                error instanceof Error
-                  ? error.message
-                  : "Failed to create project",
-                { id: toastId },
-              );
+              setSubmissionErrors([
+                getProjectSubmissionError(error, "Failed to create project"),
+              ]);
+              toast.error("Project could not be created", { id: toastId });
+              scrollToProjectConfigErrors();
             }
           }}
         >
-          Create Project
+          {isPending ? "Creating..." : "Create Project"}
         </Button>
       </div>
     </>

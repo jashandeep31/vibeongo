@@ -1,12 +1,14 @@
 "use client";
 
-import { ReactNode, useMemo, useState } from "react";
+import { ReactNode, useEffect, useMemo, useState } from "react";
 import AdditionalServices from "./additional-services";
 import GitRepoConfigCard from "./git-repo-config-card";
 import InstanceRegionCards from "./instance-region-cards";
 import InstanceTypeCards from "./instance-type-cards";
 import NameCard from "./name-card";
 import ProjectScriptsCard from "./project-scripts-card";
+import ProjectConfigErrors from "./project-config-errors";
+import { validateProjectConfig } from "./project-config-validation";
 import ProviderCards from "./provider-cards";
 import SshKeysCard from "./ssh-keys-card";
 import {
@@ -75,10 +77,59 @@ export default function ProjectConfigForm({
   const updateCodexConfig = useConfigStore((state) => state.updateCodexConfig);
   const updatePiConfig = useConfigStore((state) => state.updatePiConfig);
   const updateNvimConfig = useConfigStore((state) => state.updateNvimConfig);
+  const projectName = useConfigStore((state) => state.projectName);
+  const provider = useConfigStore((state) => state.provider);
+  const instanceTypeId = useConfigStore((state) => state.instanceTypeId);
+  const instanceRegionId = useConfigStore((state) => state.instanceRegionId);
+  const gitRepoIds = useConfigStore((state) => state.gitRepoIds);
+  const sshKeys = useConfigStore((state) => state.sshKeys);
+  const initialScript = useConfigStore((state) => state.initialScript);
+  const finalScript = useConfigStore((state) => state.finalScript);
+  const devScript = useConfigStore((state) => state.devScript);
+  const portRules = useConfigStore((state) => state.portRules);
+  const additionalServices = useConfigStore(
+    (state) => state.additionalServices,
+  );
+  const hasAttemptedSubmit = useConfigStore(
+    (state) => state.hasAttemptedSubmit,
+  );
+  const setSubmissionErrors = useConfigStore(
+    (state) => state.setSubmissionErrors,
+  );
+  const resetSubmissionErrors = useConfigStore(
+    (state) => state.resetSubmissionErrors,
+  );
+  const [isLiveValidationReady, setIsLiveValidationReady] = useState(false);
   const selectedProjectName = useMemo(
     () => projects?.find((project) => project.id === selectedProjectId)?.name,
     [projects, selectedProjectId],
   );
+
+  useEffect(() => {
+    resetSubmissionErrors();
+    setIsLiveValidationReady(true);
+  }, [resetSubmissionErrors]);
+
+  useEffect(() => {
+    if (!isLiveValidationReady || !hasAttemptedSubmit) return;
+
+    setSubmissionErrors(validateProjectConfig(useConfigStore.getState()));
+  }, [
+    additionalServices,
+    devScript,
+    finalScript,
+    gitRepoIds,
+    hasAttemptedSubmit,
+    initialScript,
+    instanceRegionId,
+    instanceTypeId,
+    isLiveValidationReady,
+    portRules,
+    projectName,
+    provider,
+    setSubmissionErrors,
+    sshKeys,
+  ]);
 
   const handleImportProjectConfig = () => {
     if (!selectedProjectConfig) return;
@@ -235,6 +286,7 @@ export default function ProjectConfigForm({
       <AdditionalServices />
       <ProjectScriptsCard />
       {submitAction}
+      <ProjectConfigErrors />
     </div>
   );
 }

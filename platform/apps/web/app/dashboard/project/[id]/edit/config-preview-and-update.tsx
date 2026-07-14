@@ -7,6 +7,11 @@ import { projectConfigValidator } from "@repo/shared";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { buildProjectConfigPayload } from "../../create/components/project-config-payload";
+import {
+  getProjectSubmissionError,
+  validateProjectConfig,
+} from "../../create/components/project-config-validation";
+import { scrollToProjectConfigErrors } from "../../create/components/project-config-errors";
 
 export default function ConfigPreviewAndUpdate({
   projectId,
@@ -16,6 +21,15 @@ export default function ConfigPreviewAndUpdate({
   const router = useRouter();
   const configState = useConfigStore();
   const { mutateAsync, isPending } = useUpdateProject();
+  const setSubmissionErrors = useConfigStore(
+    (state) => state.setSubmissionErrors,
+  );
+  const setHasAttemptedSubmit = useConfigStore(
+    (state) => state.setHasAttemptedSubmit,
+  );
+  const resetSubmissionErrors = useConfigStore(
+    (state) => state.resetSubmissionErrors,
+  );
 
   return (
     <div>
@@ -23,6 +37,18 @@ export default function ConfigPreviewAndUpdate({
         disabled={isPending}
         type="button"
         onClick={async () => {
+          const validationErrors = validateProjectConfig(
+            useConfigStore.getState(),
+          );
+          setHasAttemptedSubmit(true);
+          setSubmissionErrors(validationErrors);
+
+          if (validationErrors.length) {
+            toast.error("Please fix the project configuration errors");
+            scrollToProjectConfigErrors();
+            return;
+          }
+
           const toastId = toast.loading("Saving project");
           try {
             const config = buildProjectConfigPayload(configState);
@@ -31,14 +57,16 @@ export default function ConfigPreviewAndUpdate({
               id: projectId,
               projectData: config,
             });
+            resetSubmissionErrors();
             toast.success("Project saved", { id: toastId });
             router.push(`/dashboard/project/${projectId}`);
           } catch (error) {
             console.error(error);
-            toast.error(
-              error instanceof Error ? error.message : "Failed to save project",
-              { id: toastId },
-            );
+            setSubmissionErrors([
+              getProjectSubmissionError(error, "Failed to save project"),
+            ]);
+            toast.error("Project changes could not be saved", { id: toastId });
+            scrollToProjectConfigErrors();
           }
         }}
       >

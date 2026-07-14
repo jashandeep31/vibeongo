@@ -40,22 +40,37 @@ export const nvimConfigValidator = z.object({
 });
 
 export const projectConfigValidator = z.object({
-  name: z.string(),
+  name: z
+    .string()
+    .trim()
+    .min(3, "Project name must be at least 3 characters")
+    .max(20, "Project name must be at most 20 characters"),
   description: z.string().optional(),
   provider: projectProviderValidator,
-  regionId: z.uuid(),
-  instanceTypeId: z.uuid(),
+  regionId: z.uuid("Select a deployment region"),
+  instanceTypeId: z.uuid("Select an instance type"),
   sshKeyIds: z.array(z.uuid()),
   githubRepoIds: z.array(z.uuid()),
 
-  initialScript: z.string().max(500),
-  finalScript: z.string().max(500),
-  devScript: z.string().max(500).default(""),
+  initialScript: z
+    .string()
+    .max(500, "Initial script must be at most 500 characters"),
+  finalScript: z
+    .string()
+    .max(500, "Final script must be at most 500 characters"),
+  devScript: z
+    .string()
+    .max(500, "Dev script must be at most 500 characters")
+    .default(""),
 
   config: z.object({
     ports: z.array(
       z.object({
-        port: z.number(),
+        port: z
+          .number()
+          .int("Port must be a whole number")
+          .min(1, "Port must be between 1 and 65535")
+          .max(65535, "Port must be between 1 and 65535"),
         protocol: z.enum(["TCP", "UDP"]),
       }),
     ),

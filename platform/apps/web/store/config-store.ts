@@ -27,6 +27,12 @@ interface AdditionalService {
   };
 }
 
+export interface ProjectConfigSubmissionError {
+  id: string;
+  message: string;
+  source: "validation" | "server";
+}
+
 interface ConfigStore {
   projectName: string;
   setProjectName: (name: string) => void;
@@ -71,8 +77,11 @@ interface ConfigStore {
   updatePiConfig: (piConfig: { authJson: string }) => void;
   updateNvimConfig: (nvimConfig: { config: string }) => void;
 
-  errors: { message: string }[];
-  addError: (error: { message: string }) => void;
+  submissionErrors: ProjectConfigSubmissionError[];
+  hasAttemptedSubmit: boolean;
+  setSubmissionErrors: (errors: ProjectConfigSubmissionError[]) => void;
+  setHasAttemptedSubmit: (hasAttempted: boolean) => void;
+  resetSubmissionErrors: () => void;
 }
 
 export const useConfigStore = create<ConfigStore>((set) => ({
@@ -173,6 +182,10 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       additionalServices: { ...state.additionalServices, nvimConfig },
     })),
 
-  errors: [],
-  addError: (error) => set((state) => ({ errors: [...state.errors, error] })),
+  submissionErrors: [],
+  hasAttemptedSubmit: false,
+  setSubmissionErrors: (submissionErrors) => set({ submissionErrors }),
+  setHasAttemptedSubmit: (hasAttemptedSubmit) => set({ hasAttemptedSubmit }),
+  resetSubmissionErrors: () =>
+    set({ submissionErrors: [], hasAttemptedSubmit: false }),
 }));

@@ -1,9 +1,14 @@
 {
   "name": "Test Project",
   "description": "A test project",
+  "provider": "aws",
   "regionId": "123e4567-e89b-12d3-a456-426614174000",
   "instanceTypeId": "123e4567-e89b-12d3-a456-426614174001",
   "sshKeyIds": ["123e4567-e89b-12d3-a456-426614174002"],
+  "githubRepoIds": ["123e4567-e89b-12d3-a456-426614174003"],
+  "initialScript": "",
+  "finalScript": "",
+  "devScript": "",
   "config": {
     "ports": [
       {
@@ -32,7 +37,7 @@
           "containers": [
             {
               "name": "web-server",
-              "content": "FROM node:18\nWORKDIR /app\nCOPY package.json .\nRUN npm install\nCOPY . .\nCMD [\"npm\", \"start\"]"
+              "dockercomposecode": "services:\n  web:\n    image: node:18"
             }
           ]
         }
