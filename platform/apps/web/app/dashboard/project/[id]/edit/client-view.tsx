@@ -4,23 +4,13 @@ import { useGetProjectConfigForEdit } from "@/hooks/use-project";
 import { useConfigStore } from "@/store/config-store";
 import { useEffect, useRef } from "react";
 import ProjectConfigForm from "../../create/components/project-config-form";
+import {
+  formatAuthJsonForForm,
+  getDockerContainers,
+  getProjectPackage,
+  type StoredProjectConfig,
+} from "../../create/components/project-config-hydration";
 import ConfigPreviewAndUpdate from "./config-preview-and-update";
-
-type ProjectPackage = {
-  name: string;
-  config?: Record<string, unknown>;
-};
-
-type ProjectConfig = {
-  ports?: {
-    port: number | string;
-    protocol: "TCP" | "UDP";
-  }[];
-  packages?: ProjectPackage[];
-};
-
-const getPackage = (config: ProjectConfig, name: string) =>
-  config.packages?.find((projectPackage) => projectPackage.name === name);
 
 const ClientView = ({ projectId }: { projectId: string }) => {
   const {
@@ -53,12 +43,12 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     if (!projectConfig) return;
     if (hydratedProjectIdRef.current === projectConfig.project.id) return;
 
-    const config = projectConfig.config as ProjectConfig;
-    const dockerPackage = getPackage(config, "docker");
-    const opencodePackage = getPackage(config, "opencode");
-    const codexPackage = getPackage(config, "codex");
-    const piPackage = getPackage(config, "pi");
-    const nvimPackage = getPackage(config, "nvim");
+    const config = projectConfig.config as StoredProjectConfig;
+    const dockerPackage = getProjectPackage(config, "docker");
+    const opencodePackage = getProjectPackage(config, "opencode");
+    const codexPackage = getProjectPackage(config, "codex");
+    const piPackage = getProjectPackage(config, "pi");
+    const nvimPackage = getProjectPackage(config, "nvim");
 
     setProjectName(projectConfig.project.name);
     setProvider(projectConfig.provider);
@@ -78,24 +68,11 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     );
 
     updateDockerConfig({
-      containers:
-        (
-          dockerPackage?.config?.containers as
-            | { name: string; dockercomposecode?: string }[]
-            | undefined
-        )?.map((container) => ({
-          id: crypto.randomUUID(),
-          name: container.name,
-          dockercomposecode: container.dockercomposecode ?? "",
-        })) ?? [],
+      containers: getDockerContainers(dockerPackage),
     });
 
     updateOpencodeConfig({
-      authJson: JSON.stringify(
-        opencodePackage?.config?.auth_json ?? {},
-        null,
-        2,
-      ),
+      authJson: formatAuthJsonForForm(opencodePackage?.config?.auth_json),
       model:
         typeof opencodePackage?.config?.model === "string"
           ? opencodePackage.config.model
@@ -107,11 +84,11 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     });
 
     updateCodexConfig({
-      authJson: JSON.stringify(codexPackage?.config?.auth_json ?? {}, null, 2),
+      authJson: formatAuthJsonForForm(codexPackage?.config?.auth_json),
     });
 
     updatePiConfig({
-      authJson: JSON.stringify(piPackage?.config?.auth_json ?? {}, null, 2),
+      authJson: formatAuthJsonForForm(piPackage?.config?.auth_json),
     });
 
     updateNvimConfig({
