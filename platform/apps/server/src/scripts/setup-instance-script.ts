@@ -43,7 +43,7 @@ mkdir -p "\\$CONFIG_DIR"
 CONFIG_TMP="\\$(mktemp)"
 for attempt in {1..30}; do
   if curl -fsS --request GET \\
-    --url  ${env.NODE_ENV == "development" ? "https://l1.devsradar.com" : env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
+    --url  ${env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
     --header "Authorization: Bearer ${authToken}" \\
     --header "X-Instance-Id: ${instanceId}" \\
     | jq -e '.data' > "\\$CONFIG_TMP"; then
