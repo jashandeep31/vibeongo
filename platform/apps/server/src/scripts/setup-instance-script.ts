@@ -43,7 +43,7 @@ mkdir -p "\\$CONFIG_DIR"
 CONFIG_TMP="\\$(mktemp)"
 for attempt in {1..30}; do
   if curl -fsS --request GET \\
-    --url  ${env.BACKEND_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
+    --url  ${env.SERVER_URL}/api/v1/runtime/sessions/${projectSessionId}/config/${instanceId} \\
     --header "Authorization: Bearer ${authToken}" \\
     --header "X-Instance-Id: ${instanceId}" \\
     | jq -e '.data' > "\\$CONFIG_TMP"; then
@@ -61,7 +61,7 @@ for attempt in {1..30}; do
 done
 
 #Now vibeongo is pre cooked in the ami
-curl -fsSL ${env.BACKEND_URL}/install | bash
+curl -fsSL ${env.SERVER_URL}/install | bash
 
 SCRIPT
 
