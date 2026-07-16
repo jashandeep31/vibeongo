@@ -111,11 +111,7 @@ export const spinUpAndSaveInstance = async ({
   const [instance] = await db
     .insert(instances)
     .values({
-      name: uniqueNamesGenerator({
-        dictionaries: [colors, animals],
-        style: "capital",
-        separator: " ",
-      }),
+      name: newInstance.instanceName,
       id: instanceId,
       project_id: project.id,
       user_id: userId,
