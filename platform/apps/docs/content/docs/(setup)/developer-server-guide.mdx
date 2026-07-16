@@ -1,0 +1,197 @@
+---
+title: Developer Server Guide
+description: Configure and run the VibeOngo API server for local development.
+---
+
+# Developer server guide
+
+This guide explains how to run the VibeOngo API server from this monorepo. It
+uses `apps/server/.env.example` as the source of truth for configuration.
+
+## Before you start
+
+You need:
+
+- Node.js 20;
+- pnpm 9;
+- access to a PostgreSQL database;
+- development credentials for the integrations you want to test.
+
+The server validates every variable in `.env.example` during startup. A value
+cannot be missing or empty, even if you are not currently testing its feature.
+
+## Install dependencies
+
+Run these commands from the repository root:
+
+```bash
+corepack enable
+pnpm install --frozen-lockfile
+```
+
+## Create the environment file
+
+Copy the maintained example into the server app:
+
+```bash
+cp apps/server/.env.example apps/server/.env
+```
+
+Do not commit `apps/server/.env`. Replace its placeholders with your own
+development values.
+
+### Local application values
+
+Use the following values when the web app and API server run directly on their
+default local ports:
+
+```dotenv
+PORT=4000
+NODE_ENV=development
+FRONTEND_URL=http://localhost:3000
+BACKEND_URL=http://localhost:4000
+DOMAIN=localhost
+ALLOWED_ORIGINS=http://localhost:3000,http://localhost:3001
+DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DATABASE
+```
+
+The example file uses `BACKEND_URL=http://localhost:8000`. Keep that value only
+if a local reverse proxy forwards port `8000` to the server. Otherwise, use
+`http://localhost:4000` so GitHub callbacks and generated server links use the
+port on which the API actually listens.
+
+`ALLOWED_ORIGINS` is a comma-separated list of complete browser origins. Include
+the scheme and port, and do not add paths or trailing slashes.
+
+### Application secrets
+
+Generate a different development value for each of these variables:
+
+```bash
+openssl rand -base64 32
+```
+
+| Variable             | Use                                                                  |
+| -------------------- | -------------------------------------------------------------------- |
+| `JWT_SECRET`         | Signs login session tokens.                                          |
+| `ENCRYPTION_KEY`     | Encrypts project file data. It must be a Base64-encoded 32-byte key. |
+| `PROXY_SERVER_TOKEN` | Authenticates requests shared with the workspace proxy.              |
+
+Changing `ENCRYPTION_KEY` makes data encrypted with the previous key unreadable.
+Never reuse production secrets locally.
+
+## Configure GitHub development credentials
+
+The server requires both a GitHub OAuth App and a GitHub App.
+
+For the OAuth App, configure this callback URL when the server runs on port
+`4000`:
+
+```text
+http://localhost:4000/api/v1/auth/github/callback
+```
+
+Add its values to:
+
+```dotenv
+GITHUB_CLIENT_ID=your-development-oauth-client-id
+GITHUB_CLIENT_SECRET=your-development-oauth-client-secret
+```
+
+For the GitHub App, set `GITHUB_APP_ID` and `GITHUB_WEBHOOK_SECRET`. Download its
+private key, rename it to `vibeongo.pem`, and save it at:
+
+```text
+apps/server/vibeongo.pem
+```
+
+The server reads this file during startup and cannot start without it. To test
+GitHub webhooks, expose the local server through your preferred HTTPS tunnel and
+configure the GitHub App webhook as:
+
+```text
+<PUBLIC_BACKEND_URL>/api/v1/github-app/webhook
+```
+
+Also set `BACKEND_URL` to that public origin while testing callbacks or
+webhooks.
+
+## Complete the remaining environment values
+
+Use development or test credentials for the rest of `.env`:
+
+| Feature                 | Variables                                                                              | Notes                                                                                        |
+| ----------------------- | -------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| Workspace proxy         | `PROXY_SERVER_URL`, `PROXY_DOMAIN`, `PROXY_SERVER_TOKEN`                               | The proxy must use the same token. `PROXY_DOMAIN` includes its leading dot.                  |
+| AWS workspaces          | `AWS_EC2_ACCESS_KEY_ID`, `AWS_EC2_ACCESS_KEY_SECRET`                                   | The current server supports `us-east-1` and `ap-south-1`. Cloud resources can incur charges. |
+| DigitalOcean workspaces | `DIGITALOCEAN_API_KEY`                                                                 | Use a restricted development token. Cloud resources can incur charges.                       |
+| Email                   | `AWS_SES_ACCESS_KEY_ID`, `AWS_SES_SECRET_KEY`                                          | The server sends through Amazon SES in `us-east-1`.                                          |
+| AI                      | `AI_GATEWAY_API_KEY`                                                                   | Required by validation, although the server does not currently read it directly.             |
+| Payments                | `DODO_PAYMENT_PRODUCT_ID`, `DODO_PAYMENT_BEARER_TOKEN`, `DODO_PAYMENTS_WEBHOOK_SECRET` | Development mode uses Dodo test mode, so use test credentials only.                          |
+| Pricing                 | `PROFIT_PRECENTAGE`                                                                    | Must be from `10` through `100`. Keep the existing `PRECENTAGE` spelling.                    |
+| Monitoring              | `DSN`                                                                                  | Required by validation. Sentry is enabled only in production mode.                           |
+
+Placeholder values allow validation to pass only when they satisfy the schema;
+the corresponding feature will still fail until valid credentials are added.
+
+## Apply the database migrations
+
+The database must already exist and be reachable through `DATABASE_URL`. The
+repository provides this migration script:
+
+```bash
+DATABASE_URL='postgresql://USER:PASSWORD@HOST:5432/DATABASE' pnpm --filter @repo/db drizzle:migrate
+```
+
+This command applies the migrations committed under `packages/database/drizzle`.
+It does not create or install PostgreSQL.
+
+## Start the development server
+
+From the repository root, run:
+
+```bash
+pnpm turbo dev --filter=server...
+```
+
+The trailing `...` includes the server's local workspace dependencies. The
+server compiles TypeScript in watch mode, restarts after successful builds, and
+listens on the configured `PORT`.
+
+To run the web application in another terminal:
+
+```bash
+pnpm --filter web dev
+```
+
+The web app starts on `http://localhost:3000`. Its API configuration must point
+to the same `BACKEND_URL` used by the server.
+
+## Common startup problems
+
+### Invalid environment variables
+
+Compare `apps/server/.env` with `apps/server/.env.example`. Every listed
+variable is required. `NODE_ENV` must be `development`, `production`, or `test`,
+and `PROFIT_PRECENTAGE` must be between `10` and `100`.
+
+### Missing `vibeongo.pem`
+
+Confirm the GitHub App private key is named exactly `vibeongo.pem` and is inside
+`apps/server`. The file is resolved from the server process's working directory.
+
+### CORS errors in the browser
+
+Add the exact frontend origin to `ALLOWED_ORIGINS`. For the default web server,
+that origin is `http://localhost:3000`.
+
+### GitHub redirects to the wrong URL
+
+Make the callback configured in GitHub match `BACKEND_URL`. Use the direct
+localhost URL for normal development and the public tunnel URL when GitHub must
+reach your machine.
+
+### Database connection errors
+
+Confirm the existing PostgreSQL database is reachable and that migrations and
+the server use the same `DATABASE_URL`.
