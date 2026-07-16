@@ -6,9 +6,13 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strings"
+
+	"github.com/jashandeep31/vibeongo/core/internal/config"
 )
 
 func SelfUpdate() error {
+	cfg, err := config.LoadAndValidate()
 	fmt.Println("Updating vibeongo...")
 	fmt.Println("always run as sudo vibeongo update")
 
@@ -18,7 +22,11 @@ func SelfUpdate() error {
 	}
 	fmt.Println("Binary path:", exePath)
 
-	url := "https://l1.devsradar.com/vibeongo"
+	url := cfg.ServerBaseURL + "/vibeongo"
+	if strings.Contains(cfg.ServerBaseURL, "vibeongo.com") {
+		url = "https://download.vibeongo.com"
+	}
+
 	tmpPath := exePath + ".new"
 
 	// Download
