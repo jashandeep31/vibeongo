@@ -24,6 +24,7 @@ var (
 var allowedCORSOrigins = map[string]struct{}{
 	"https://www.vibeongo.com": {},
 	"https://vibeongo.com":     {},
+	"http://localhost:3000":    {},
 }
 
 type ProxyServer struct {
