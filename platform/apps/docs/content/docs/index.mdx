@@ -1,0 +1,152 @@
+---
+title: What is Vibeongo?
+description: Learn how Vibeongo brings cloud development environments, GitHub repositories, and AI coding agents into one workspace.
+---
+
+# Vibeongo
+
+Vibeongo is a cloud development platform for building, testing, and reviewing
+software with AI coding assistants. It gives every project an isolated,
+ready-to-use development machine with your GitHub repository, terminal,
+development tools, and live previews in one place.
+
+Instead of spending time configuring a local environment, installing tools, and
+switching between multiple services, you can connect a repository and start
+working from your browser. You can write code yourself, ask an AI agent to
+complete a task, inspect the result, run the project, and move the finished work
+back into your normal GitHub workflow.
+
+## Why Vibeongo exists
+
+Modern development environments can take a long time to prepare. A developer
+may need the correct runtime, package manager, credentials, system dependencies,
+AI tools, and network configuration before making the first useful change.
+These differences also make it difficult to reproduce another developer's
+environment.
+
+Vibeongo moves that setup into a consistent cloud workspace. The workspace runs
+independently from your local computer, so you can focus on the repository and
+the task rather than machine configuration. This is especially useful when you
+want to evaluate a pull request, resolve an issue, experiment with an unfamiliar
+project, or let an AI coding assistant perform a longer task.
+
+## How it works
+
+1. **Connect GitHub.** Sign in with GitHub and select the repository you want to
+   use.
+2. **Configure a project.** Choose the repository, workspace resources, setup
+   commands, tasks, and the AI agent or model appropriate for the work.
+3. **Launch a workspace.** Vibeongo provisions an isolated cloud machine, clones
+   the selected repository, and prepares the development environment.
+4. **Build with an AI agent.** Give the agent a feature, bug fix, review, or
+   planning task. You can also work directly through the browser terminal or
+   connect over SSH.
+5. **Run and preview.** Start your development server and open its HTTPS preview
+   to check the application while it is running.
+6. **Review and publish.** Inspect and test all changes, then commit them and
+   create a pull request through your usual GitHub workflow.
+
+## Main capabilities
+
+### Isolated cloud workspaces
+
+Each active workspace runs on a dedicated cloud instance. It provides the
+compute, filesystem, and development environment needed by the project without
+depending on your laptop. Isolation helps keep separate projects and tasks from
+interfering with one another.
+
+### GitHub integration
+
+Vibeongo connects projects to GitHub repositories and clones the code into the
+workspace. This keeps AI-assisted development connected to familiar Git
+practices: branches, commits, issues, pull requests, and code review.
+
+### AI coding assistants
+
+The workspace is designed to support AI-assisted engineering workflows with
+tools such as Claude Code, Codex, OpenCode, and T3. Depending on the selected
+agent, you can use Vibeongo to:
+
+- plan an implementation;
+- build a feature;
+- investigate and resolve an issue;
+- review a pull request;
+- explain an unfamiliar codebase; or
+- run tests and iterate on failures.
+
+The agent works inside the same environment as the repository, which means it
+can inspect files, run commands, and validate its changes against the real
+project.
+
+### Browser terminal and SSH
+
+Vibeongo includes an interactive browser terminal for running commands and
+monitoring work without leaving the platform. You can open multiple terminal
+sessions, and you can add SSH keys when you prefer to connect from your own
+terminal, editor, or an SSH client such as Termius.
+
+### Live HTTPS previews
+
+When an application starts a development server, Vibeongo can expose it through
+an HTTPS preview. This lets you open the running application in a browser and
+verify UI or API changes without manually configuring ports, certificates, or a
+public deployment.
+
+### Reusable project configuration
+
+A project can describe how its repository should be prepared and what work
+should run in a session. Setup commands install dependencies or perform other
+bootstrap steps, while tasks tell the selected agent what to plan, build, fix,
+or review. Keeping this information with the project makes new workspaces faster
+and more consistent.
+
+## Who Vibeongo is for
+
+Vibeongo is useful for individual developers and teams that want to:
+
+- start contributing without configuring a local development machine;
+- use AI coding tools in a controlled, project-specific environment;
+- work from a lightweight computer while builds run in the cloud;
+- reproduce a development setup across multiple sessions;
+- investigate GitHub issues and pull requests in clean environments; or
+- share a predictable workflow across repositories and team members.
+
+## What Vibeongo does not replace
+
+Vibeongo helps agents and developers perform engineering work, but it does not
+replace human review. AI-generated changes can be incomplete, incorrect, or
+unsafe. Before merging code, you should inspect the diff, run the relevant test
+suite, check security-sensitive behavior, and confirm that the result meets the
+project's requirements.
+
+It also complements GitHub rather than replacing it. GitHub remains the source
+for your repository and collaboration workflow; Vibeongo provides the cloud
+environment in which the work is carried out.
+
+## Project architecture
+
+The Vibeongo codebase is divided into two major areas:
+
+- **Platform:** The web application, API server, documentation, database layer,
+  and shared packages. It handles the user experience, authentication, GitHub
+  integration, project configuration, and cloud instance management.
+- **Core runtime:** The service and command-line tools that run inside a
+  workspace. The runtime prepares repositories, executes configured tasks,
+  manages terminal sessions, reports workspace health, and connects the running
+  environment to the platform.
+
+Together, these components provide a complete path from choosing a repository
+to running an AI-assisted development session in the cloud.
+
+## The basic idea
+
+Think of Vibeongo as **a cloud computer for each coding task, combined with
+GitHub and your preferred AI coding assistant**. You bring the repository and
+the goal; Vibeongo prepares the workspace where you can build, run, review, and
+ship the result.
+
+<Cards>
+  <Card title="GitHub repository" href="https://github.com/jashandeep31/vibeongo">
+    Explore the source code and follow the development of Vibeongo.
+  </Card>
+</Cards>
