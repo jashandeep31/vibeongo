@@ -94,8 +94,7 @@ const upsertGithubAccount = async (
       provider: githubProvider,
       status: "active",
       token,
-      // TODO: remove  in the production on public release
-      verified: false,
+      verified: true,
       last_login_at: now,
     })
     .returning();

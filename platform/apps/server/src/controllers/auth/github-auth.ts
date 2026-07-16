@@ -6,9 +6,7 @@ import { env } from "../../lib/env.js";
 import axios from "axios";
 import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
-import { AppError } from "../../lib/app-error.js";
 import { sessionCookieOptions } from "../../lib/session-cookie.js";
-import { throwDeprecation } from "node:process";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
