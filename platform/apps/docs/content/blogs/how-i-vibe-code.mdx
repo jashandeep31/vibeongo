@@ -1,0 +1,126 @@
+---
+title: A Better Way to Vibe Code Without Managing a VPS
+description: Why I built Vibeongo, an open-source platform for launching isolated, fully configured AI development environments in your own AWS account.
+author: Jashandeep Singh
+date: 2026-07-17
+---
+
+# A Better Way to Vibe Code Without Managing a VPS
+
+Hi, I’m Jashandeep Singh, a full-stack software developer with more than four
+years of experience building web applications and developer tools.
+
+Over the past few months, I’ve noticed a growing trend: developers are coding
+from their phones, tablets, and web browsers. Many use AI coding tools such as
+Codex, Claude Code, or OpenCode by connecting to a virtual private server (VPS).
+
+That setup works, but I don’t think it offers the best workflow.
+
+## The problem with a typical VPS setup
+
+Most developers rent a VPS, connect to it over SSH, install their tools, and
+leave it running all day. This approach has a few major drawbacks:
+
+- **You pay for idle time.** The server often runs 24/7, even when you aren’t
+  coding.
+- **One machine becomes one shared workflow.** When the server is being used for
+  feature development, it is difficult to create a separate, isolated
+  environment for reviewing a pull request, investigating a bug, or trying an
+  experiment.
+- **Project setup is repetitive.** Every new server requires you to install
+  dependencies, databases, language servers, and developer tools before you can
+  start working.
+- **Scaling is difficult.** Running several AI agents at the same time quickly
+  becomes expensive and difficult to manage.
+
+I wanted a better option.
+
+## Building Vibeongo
+
+That is why I built [Vibeongo](https://vibeongo.com).
+
+Vibeongo is an open-source platform that launches fully configured development
+environments in your own AWS account in about a minute.
+
+Instead of paying for a VPS that is always running, you launch an instance when
+you need it and shut it down when you are finished. Your infrastructure remains
+in your AWS account, giving you control over where and how your development
+environments run.
+
+You can explore the source code in the
+[Vibeongo GitHub repository](https://github.com/jashandeep31/vibeongo).
+
+## How it works
+
+Getting started is straightforward:
+
+1. Create an account at [vibeongo.com](https://vibeongo.com).
+2. Install the Vibeongo GitHub App.
+3. Connect one or more GitHub repositories.
+4. Create a project for each repository.
+5. Configure the project with everything its environment needs, including:
+   - A programming language and language server
+   - A database, such as PostgreSQL or MySQL
+   - Runtimes and dependencies
+   - Any additional services required by the project
+
+You only need to configure each project once.
+
+## Launch an environment in one click
+
+When you are ready to work, click **Launch Instance**.
+
+Vibeongo provisions a fresh cloud instance that is already configured for your
+project. Each environment can include your preferred AI coding tools, such as:
+
+- OpenCode Web
+- T3 Chat Web
+- Codex
+- Claude Code
+
+Within about a minute, your development environment is ready to use.
+
+## Run multiple AI agents in parallel
+
+One of my favourite parts of this workflow is that every task can have its own
+isolated environment. Instead of making several tasks share a single VPS, you
+can launch multiple instances at the same time.
+
+For example:
+
+- One instance generates a new feature.
+- Another reviews a pull request.
+- A third investigates a production bug.
+- A fourth runs experiments or tests.
+
+Each environment is independent, so agents can work without interfering with
+one another.
+
+## Preview your work securely
+
+Every instance also includes secure proxy URLs. These let you access your
+application’s development server from anywhere without exposing it directly to
+the public internet.
+
+You can securely preview an application in a desktop or mobile browser while
+keeping the underlying infrastructure protected.
+
+## Why I built it
+
+My goal was not simply to make coding in a browser possible. I wanted to make
+it practical.
+
+I wanted a workflow where I could:
+
+- Launch a fully configured development environment in under a minute.
+- Stop paying for idle servers.
+- Run multiple AI agents in parallel.
+- Access my projects from any browser or mobile device.
+- Own the infrastructure by running everything in my AWS account.
+
+That is the workflow Vibeongo is designed to provide.
+
+If you have been using a single VPS for your AI coding tools, try
+[Vibeongo](https://vibeongo.com) and let me know what you think. Contributions
+and feedback are also welcome on
+[GitHub](https://github.com/jashandeep31/vibeongo).
