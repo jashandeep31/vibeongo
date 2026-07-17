@@ -23,7 +23,10 @@ export const docs = defineDocs({
 export const blogs = defineCollections({
   type: "doc",
   dir: "content/blogs",
-  schema: pageSchema,
+  schema: pageSchema.extend({
+    author: pageSchema.shape.title.optional(),
+    date: pageSchema.shape.title.optional(),
+  }),
 });
 
 export default defineConfig({
