@@ -73,6 +73,8 @@ export default function ClientView() {
     defaultIssueFixerModel: "",
     defaultCommentModel: "",
   });
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [isEditingTelegram, setIsEditingTelegram] = useState(false);
   const [instanceTerminationForm, setInstanceTerminationForm] = useState({
     defaultIssueInstanceAutoTerminateAfterMinutes: "",
     defaultPrInstanceAutoTerminateAfterMinutes: "",
@@ -101,6 +103,11 @@ export default function ClientView() {
         userSettings.default_manual_instance_auto_terminate_after_minutes.toString(),
     });
   }, [isEditingInstanceTermination, userSettings]);
+
+  useEffect(() => {
+    if (!userSettings || isEditingTelegram) return;
+    setTelegramChatId(userSettings.telegram_chat_id?.toString() ?? "");
+  }, [isEditingTelegram, userSettings]);
 
   const modelSettings = [
     {
@@ -183,6 +190,27 @@ export default function ClientView() {
     } catch (error) {
       console.error(error);
       toast.error("Failed to save default models", { id: toastId });
+    }
+  };
+
+  const handleSaveTelegram = async () => {
+    const parsedChatId = telegramChatId.trim() ? Number(telegramChatId) : null;
+
+    if (parsedChatId !== null && !Number.isSafeInteger(parsedChatId)) {
+      toast.error("Telegram chat ID must be a whole number");
+      return;
+    }
+
+    const toastId = toast.loading("Saving Telegram chat ID");
+    try {
+      await updateUserSettingsMutation.mutateAsync({
+        telegramChatId: parsedChatId,
+      });
+      setIsEditingTelegram(false);
+      toast.success("Telegram chat ID saved", { id: toastId });
+    } catch (error) {
+      console.error(error);
+      toast.error("Failed to save Telegram chat ID", { id: toastId });
     }
   };
 
@@ -297,6 +325,83 @@ export default function ClientView() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        <section className="mt-8">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-lg font-semibold">Telegram</h2>
+              <p className="text-muted-foreground mt-1 text-sm">
+                Add the chat ID that should receive bot notifications.
+              </p>
+            </div>
+            {userSettings ? (
+              isEditingTelegram ? (
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Cancel editing Telegram chat ID"
+                    onClick={() => {
+                      setTelegramChatId(
+                        userSettings.telegram_chat_id?.toString() ?? "",
+                      );
+                      setIsEditingTelegram(false);
+                    }}
+                    disabled={updateUserSettingsMutation.isPending}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleSaveTelegram}
+                    disabled={updateUserSettingsMutation.isPending}
+                  >
+                    <Save className="h-4 w-4" />
+                    Save
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  aria-label="Edit Telegram chat ID"
+                  onClick={() => setIsEditingTelegram(true)}
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )
+            ) : null}
+          </div>
+
+          <div className="mt-5 rounded-lg border">
+            {isUserSettingsLoading ? (
+              <div className="grid gap-2 p-4 sm:grid-cols-[220px_1fr] sm:items-center">
+                <Skeleton className="h-4 w-36" />
+                <Skeleton className="h-4 w-44" />
+              </div>
+            ) : userSettings ? (
+              <div className="grid gap-1 p-4 sm:grid-cols-[220px_1fr] sm:items-center">
+                <div className="text-muted-foreground text-sm">
+                  Telegram chat ID
+                </div>
+                {isEditingTelegram ? (
+                  <Input
+                    inputMode="numeric"
+                    value={telegramChatId}
+                    onChange={(event) => setTelegramChatId(event.target.value)}
+                    disabled={updateUserSettingsMutation.isPending}
+                    placeholder="e.g. -1001234567890"
+                    aria-label="Telegram chat ID"
+                  />
+                ) : (
+                  <div className="font-medium">
+                    {userSettings.telegram_chat_id ?? "Not configured"}
+                  </div>
+                )}
+              </div>
+            ) : null}
           </div>
         </section>
 
