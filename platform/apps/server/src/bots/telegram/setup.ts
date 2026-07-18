@@ -13,14 +13,14 @@ const TELEGRAM_BOT_CHAT_STATES = [
 export const telegramBot = new Bot(env.TELEGRAM_BOT_TOKEN);
 
 const commandsText = `
-Here are the commands of Bot
-/projects to list all your projects.
-/back to go one step back
-/main to go to main menu
+Available commands:
+/projects — View all your projects
+/back — Go back one step
+/main — Return to the main menu
 `;
 
 telegramBot.command("projects", (ctx) => {
-  ctx.reply("HI will list the projects");
+  ctx.reply("Here are your projects. Please choose one to continue.");
 });
 
 telegramBot.on("message", async (ctx) => {
@@ -46,8 +46,22 @@ Go to <a href="${env.FRONTEND_URL}/dashboard/settings">${env.FRONTEND_URL}/dashb
       return;
     }
 
-    if (chat.state === "HOME") {
-      ctx.reply(commandsText);
+    switch (chat.state) {
+      case "HOME":
+        await ctx.reply(commandsText);
+        break;
+
+      case "PROJECTS":
+        await ctx.reply("Choose a project to continue.");
+        break;
+
+      case "SELECTED_PROJECT":
+        await ctx.reply("Your project is selected. What would you like to do next?");
+        break;
+
+      case "NEW_SESSION":
+        await ctx.reply("Your new session is ready to begin.");
+        break;
     }
   } catch (e) {
     console.log(e);
