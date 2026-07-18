@@ -90,15 +90,16 @@ async function* streamSessionResponse({
 }: {
   sessionId: string;
   telegramChatId: number;
-  sessionMessages: Awaited<
-    ReturnType<typeof getTelegramChatSessionMessages>
-  >;
+  sessionMessages: Awaited<ReturnType<typeof getTelegramChatSessionMessages>>;
   message: string;
   projectId: string;
   userId: string;
 }): AsyncGenerator<string> {
   let hasText = false;
   let response = "";
+
+  // sending the blank chunk to handle the delay from ai
+  yield "\u200B";
 
   for await (const chunk of createProjectSessionAgent({
     sessionMessages,
