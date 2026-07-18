@@ -20,6 +20,7 @@ export type UpdateUserSettingsPayload = {
   defaultPrModel?: string | null;
   defaultIssueFixerModel?: string | null;
   defaultCommentModel?: string | null;
+  defaultModel?: string | null;
   telegramChatId?: number | null;
   defaultIssueInstanceAutoTerminateAfterMinutes?: number;
   defaultPrInstanceAutoTerminateAfterMinutes?: number;

@@ -11,6 +11,7 @@ import {
   projectSessionTasks,
   projectSshKeys,
   sshKeys,
+  userSettings,
 } from "@repo/db";
 import { createInstanceSchema } from "@repo/shared";
 import * as crypto from "node:crypto";
@@ -51,6 +52,16 @@ export const createProjectSessionInstance = async ({
   const sshKeysArray = rows
     .map((row) => row.sshKey?.value)
     .filter((key): key is string => Boolean(key));
+
+  let defaultModel = "";
+  if (input.tasks.some((task) => !task.model)) {
+    const [settings] = await db
+      .select({ defaultModel: userSettings.default_model })
+      .from(userSettings)
+      .where(eq(userSettings.user_id, userId));
+
+    defaultModel = settings?.defaultModel?.trim() ?? "";
+  }
 
   const projectSession = await db.transaction(async (tx) => {
     const [session] = await tx
@@ -104,7 +115,7 @@ export const createProjectSessionInstance = async ({
             project_session_id: session.id,
             order_number: index,
             task: task.task,
-            model: task.model,
+            model: task.model || defaultModel,
             folder_name: repo.full_name.split("/").at(-1),
             agent: task.agent,
           };

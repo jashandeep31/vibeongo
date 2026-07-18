@@ -49,7 +49,7 @@ export async function* createProjectSessionAgent({
     },
     // The model must be able to call the repository tool and then produce its
     // user-facing task proposal in a following step.
-    stopWhen: stepCountIs(5),
+    stopWhen: stepCountIs(10),
     messages: [...history, { role: "user", content: message }],
   });
 

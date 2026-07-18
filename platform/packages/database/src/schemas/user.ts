@@ -82,6 +82,7 @@ export const userSettings = pgTable("user_settings", {
   default_pr_model: varchar(),
   default_issue_fixer_model: varchar(),
   default_comment_model: varchar(),
+  default_model: varchar(),
   telegram_chat_id: bigint({ mode: "number" }).unique(),
 
   default_issue_instance_auto_terminate_after_minutes: integer()

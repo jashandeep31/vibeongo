@@ -72,6 +72,7 @@ export default function ClientView() {
     defaultPrModel: "",
     defaultIssueFixerModel: "",
     defaultCommentModel: "",
+    defaultModel: "",
   });
   const [telegramChatId, setTelegramChatId] = useState("");
   const [isEditingTelegram, setIsEditingTelegram] = useState(false);
@@ -88,6 +89,7 @@ export default function ClientView() {
       defaultPrModel: userSettings.default_pr_model ?? "",
       defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
       defaultCommentModel: userSettings.default_comment_model ?? "",
+      defaultModel: userSettings.default_model ?? "",
     });
   }, [isEditingModels, userSettings]);
 
@@ -124,6 +126,11 @@ export default function ClientView() {
       label: "Default comment model",
       name: "defaultCommentModel",
       value: userSettings?.default_comment_model,
+    },
+    {
+      label: "Default model",
+      name: "defaultModel",
+      value: userSettings?.default_model,
     },
   ] as const;
 
@@ -165,6 +172,7 @@ export default function ClientView() {
       defaultPrModel: userSettings.default_pr_model ?? "",
       defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
       defaultCommentModel: userSettings.default_comment_model ?? "",
+      defaultModel: userSettings.default_model ?? "",
     });
     setIsEditingModels(true);
   };
@@ -175,6 +183,7 @@ export default function ClientView() {
         defaultPrModel: userSettings.default_pr_model ?? "",
         defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
         defaultCommentModel: userSettings.default_comment_model ?? "",
+        defaultModel: userSettings.default_model ?? "",
       });
     }
     setIsEditingModels(false);
@@ -445,7 +454,7 @@ export default function ClientView() {
           <div className="mt-5 rounded-lg border">
             {isUserSettingsLoading ? (
               <div className="divide-y">
-                {[1, 2, 3].map((i) => (
+                {[1, 2, 3, 4].map((i) => (
                   <div
                     key={i}
                     className="grid gap-2 p-4 sm:grid-cols-[220px_1fr] sm:items-center"

@@ -8,6 +8,7 @@ const updateUserSettingsSchema = z.object({
   defaultPrModel: z.string().optional().nullable(),
   defaultIssueFixerModel: z.string().optional().nullable(),
   defaultCommentModel: z.string().optional().nullable(),
+  defaultModel: z.string().optional().nullable(),
   telegramChatId: z.number().int().optional().nullable(),
   defaultIssueInstanceAutoTerminateAfterMinutes: z
     .number()
@@ -45,6 +46,9 @@ export const updateUserSettings = catchAsync(
         : {}),
       ...(Object.hasOwn(parsedBody, "defaultCommentModel")
         ? { default_comment_model: parsedBody.defaultCommentModel }
+        : {}),
+      ...(Object.hasOwn(parsedBody, "defaultModel")
+        ? { default_model: parsedBody.defaultModel }
         : {}),
       ...(Object.hasOwn(parsedBody, "telegramChatId")
         ? { telegram_chat_id: parsedBody.telegramChatId }
