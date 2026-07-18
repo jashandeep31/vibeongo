@@ -38,9 +38,21 @@ telegramBot.on("message:text", async (ctx) => {
 
     if (session.chat.state === "NEW_SESSION_AI_CHAT") {
       const message = ctx.message.text.trim();
+      const projectId = session.chat.metadata?.project_id;
       if (!message) return;
 
-      await ctx.replyWithStream(streamSessionResponse(message));
+      if (!projectId) {
+        await ctx.reply("Select a project before starting a new session.");
+        return;
+      }
+
+      await ctx.replyWithStream(
+        streamSessionResponse({
+          message,
+          projectId,
+          userId: session.userId,
+        }),
+      );
       return;
     }
 
@@ -51,10 +63,22 @@ telegramBot.on("message:text", async (ctx) => {
   }
 });
 
-async function* streamSessionResponse(message: string): AsyncGenerator<string> {
+async function* streamSessionResponse({
+  message,
+  projectId,
+  userId,
+}: {
+  message: string;
+  projectId: string;
+  userId: string;
+}): AsyncGenerator<string> {
   let hasText = false;
 
-  for await (const chunk of createProjectSessionAgent({ message })) {
+  for await (const chunk of createProjectSessionAgent({
+    message,
+    projectId,
+    userId,
+  })) {
     if (chunk.text) {
       hasText = true;
       yield chunk.text;

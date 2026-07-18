@@ -1,10 +1,15 @@
-import { streamText } from "ai";
+import { stepCountIs, streamText } from "ai";
 import { prompts } from "../prompts/index.js";
+import { getProjectGithubRepos } from "../ai-tools/session-agent-tools.js";
 
 export async function* createProjectSessionAgent({
   message,
+  projectId,
+  userId,
 }: {
   message: string;
+  projectId: string;
+  userId: string;
 }): AsyncGenerator<{
   text: string;
   finish_reason: string | null;
@@ -17,7 +22,10 @@ export async function* createProjectSessionAgent({
     model: "zai/glm-5.2",
     system: prompts.createProjectSessionAgent.systemPrompt(),
     reasoning: "high",
-
+    tools: { getProjectGithubRepos: getProjectGithubRepos(userId, projectId) },
+    // The model must be able to call the repository tool and then produce its
+    // user-facing task proposal in a following step.
+    stopWhen: stepCountIs(5),
     messages: [{ role: "user", content: message }],
   });
 
