@@ -6,6 +6,7 @@ import {
   pgEnum,
   boolean,
   integer,
+  bigint,
 } from "drizzle-orm/pg-core";
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
@@ -81,7 +82,7 @@ export const userSettings = pgTable("user_settings", {
   default_pr_model: varchar(),
   default_issue_fixer_model: varchar(),
   default_comment_model: varchar(),
-  telegram_chat_id: varchar().unique(),
+  telegram_chat_id: bigint({ mode: "number" }).unique(),
 
   default_issue_instance_auto_terminate_after_minutes: integer()
     .default(30)

@@ -28,9 +28,11 @@ import { createServer } from "node:http";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import jwt from "jsonwebtoken";
 import { chatRoutes } from "./routes/chat-routes.js";
+import { telegramBot } from "./bots/telegram/setup.js";
 const app = express();
 
 const server = createServer(app);
+telegramBot.start();
 // --- dodopayments  Webhooks ---
 // Must be before express.json()
 app.post(
