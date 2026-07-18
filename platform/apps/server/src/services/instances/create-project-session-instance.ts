@@ -4,10 +4,10 @@ import {
   eq,
   githubRepos,
   inArray,
-  projectDomainRouting,
   projectGithubRepos,
   projects,
   projectSessions,
+  projectSessionsCategory,
   projectSessionTasks,
   projectSshKeys,
   sshKeys,
@@ -15,17 +15,23 @@ import {
 import { createInstanceSchema } from "@repo/shared";
 import * as crypto from "node:crypto";
 import { AppError } from "../../lib/app-error.js";
-import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { spinUpAndSaveInstance } from "./spin-up-and-save-instance.js";
+import type { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 
 type CreateInstanceInput = ReturnType<typeof createInstanceSchema.parse>;
 
 export const createProjectSessionInstance = async ({
   userId,
   input,
+  sessionCategory = "manual",
+  terminate = false,
+  terminateSetting = "manual",
 }: {
   userId: string;
   input: CreateInstanceInput;
+  sessionCategory?: (typeof projectSessionsCategory.enumValues)[number];
+  terminate?: boolean;
+  terminateSetting?: InstanceAutoTerminateSetting;
 }) => {
   const rows = await db
     .select({
@@ -54,7 +60,7 @@ export const createProjectSessionInstance = async ({
         description: input.sessionDescription || "",
         user_id: userId,
         project_id: project.id,
-        category: "manual",
+        category: sessionCategory,
       })
       .returning();
 
@@ -115,17 +121,11 @@ export const createProjectSessionInstance = async ({
     userId,
     sessionId: projectSession.id,
     instanceId: crypto.randomUUID(),
-    terminateSetting: "manual",
+    terminate,
+    terminateSetting,
   });
 
   if (!instance) throw new AppError("Failed to spin up the instance", 500);
-
-  await db
-    .update(projectDomainRouting)
-    .set({ target_instance_id: instance.id })
-    .where(eq(projectDomainRouting.project_id, project.id));
-
-  await invalidateProjectProxiesByPid(project.id);
 
   return {
     projectSession,

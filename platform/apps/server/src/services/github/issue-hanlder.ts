@@ -1,26 +1,19 @@
 import {
-  db,
   and,
+  db,
   eq,
   githubRepos,
-  instanceRegions,
-  instanceTypes,
   projects,
-  projectSessions,
   projectSessionsCategory,
-  projectSessionTasks,
-  projectSshKeys,
-  sshKeys,
   users,
   userSettings,
 } from "@repo/db";
-import {
-  spinUpAndSaveInstance,
-  spinUpAndSaveInstanceResponse,
-} from "../instances/spin-up-and-save-instance.js";
-import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
-import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
+import { createInstanceSchema } from "@repo/shared";
 import { createTasksForPRIssueOrCommentAgent } from "../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
+import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
+import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
+import { createProjectSessionInstance } from "../instances/create-project-session-instance.js";
+import type { spinUpAndSaveInstanceResponse } from "../instances/spin-up-and-save-instance.js";
 
 interface issueHandlerProps {
   gitRepoId: string;
@@ -28,16 +21,14 @@ interface issueHandlerProps {
   requestedByUserId?: string;
   sessionCat?: (typeof projectSessionsCategory.enumValues)[number];
 }
-/**
- * Receives the issue_id, then proccess as per that issue
- */
+
 export const issueRequestHandler = async ({
   gitRepoId,
   issueNumber,
   requestedByUserId,
   sessionCat = "manual",
 }: issueHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
-  const [githubReposWithUserAndProject] = await db
+  const [githubRepoWithUserAndProject] = await db
     .select({
       repo: githubRepos,
       user: users,
@@ -55,8 +46,8 @@ export const issueRequestHandler = async ({
       ),
     );
 
-  if (!githubReposWithUserAndProject) throw new Error("repo not found");
-  const { project, user, repo } = githubReposWithUserAndProject;
+  if (!githubRepoWithUserAndProject) throw new Error("repo not found");
+  const { project, user, repo } = githubRepoWithUserAndProject;
   if (!project || !user || !repo) throw new Error("repo not found");
 
   const issue = await getIssueDetailByIssueNumber({
@@ -64,91 +55,42 @@ export const issueRequestHandler = async ({
     issue_number: issueNumber,
     full_repo_name: repo.full_name,
   });
-
   const sessionMeta = await getSessionNameAndDescriptionAgent(
     issue.title + "\n" + issue.body,
   );
+  const generatedTasks = await createTasksForPRIssueOrCommentAgent(
+    "issue",
+    `${issue.url} body: ${issue.body}`,
+  );
+  const [settings] = await db
+    .select()
+    .from(userSettings)
+    .where(eq(userSettings.user_id, user.id));
 
-  const session = await db.transaction(async (tx) => {
-    const [session] = await tx
-      .insert(projectSessions)
-      .values({
-        name: sessionMeta.name || "New Session",
-        description: sessionMeta.description || "",
-        user_id: githubReposWithUserAndProject.user.id,
-        project_id: project.id,
-        category: sessionCat,
-      })
-      .returning();
-    if (!session) return;
-
-    const [userSettingsRow] = await db
-      .select()
-      .from(userSettings)
-      .where(eq(userSettings.user_id, user.id));
-    const tasks = await createTasksForPRIssueOrCommentAgent(
-      "issue",
-      `${issue.url}  body: ${issue.body}`,
-    );
-
-    await tx.insert(projectSessionTasks).values(
-      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => {
-        let model = "";
-        if (
-          t.agent === "issue-resolver" &&
-          userSettingsRow?.default_issue_fixer_model
-        ) {
-          model = userSettingsRow?.default_issue_fixer_model;
-        }
-        if (t.agent === "pr-reviewer" && userSettingsRow?.default_pr_model) {
-          model = userSettingsRow?.default_pr_model;
-        }
-
-        return {
-          folder_name: repo.full_name.split("/")[1] ?? "",
-          task: t.task,
-          agent: t.agent,
-          model,
-          project_session_id: session.id,
-          done: false,
-          order_number: index,
-        };
-      }),
-    );
-    return session;
+  const input = createInstanceSchema.parse({
+    projectId: project.id,
+    sessionName: sessionMeta.name || "New Session",
+    sessionDescription: sessionMeta.description || "",
+    tasks: generatedTasks.map((task) => ({
+      task: task.task,
+      agent: task.agent,
+      repoId: repo.id,
+      model:
+        task.agent === "issue-resolver"
+          ? (settings?.default_issue_fixer_model ?? "")
+          : task.agent === "pr-reviewer"
+            ? (settings?.default_pr_model ?? "")
+            : "",
+    })),
   });
-  if (!session) return null;
 
-  const sshKeysArray = await db
-    .select()
-    .from(projectSshKeys)
-    .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
-    .where(eq(projectSshKeys.project_id, project.id));
-
-  // --- intialScript that we run after the vps setup ---
-  const instanceId = crypto.randomUUID();
-
-  const [regionRow] = await db
-    .select()
-    .from(instanceTypes)
-    .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
-    .where(eq(instanceTypes.id, project.instance_type_id));
-  if (!regionRow || !regionRow.instance_regions) return null;
-
-  const instance = await spinUpAndSaveInstance({
-    sshKeys: sshKeysArray
-      .map((r) => r.shh_keys?.value)
-      .filter((key): key is string => Boolean(key)),
-    project,
+  const { instance } = await createProjectSessionInstance({
     userId: user.id,
-    sessionId: session.id,
-    instanceId,
+    input,
+    sessionCategory: sessionCat,
     terminate: true,
     terminateSetting: "issue",
   });
+
   return instance;
 };
-
-// Title: ${payload.issue.title}
-// URL: ${payload.issue.url}
-// Body: ${payload.issue.body}

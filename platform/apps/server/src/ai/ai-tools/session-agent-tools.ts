@@ -70,13 +70,15 @@ export const createProjectSessionInstanceAITool = (
     inputSchema: createProjectSessionInstanceAIToolSchema,
     execute: async (rawData: unknown) => {
       try {
-        const toolInput = createProjectSessionInstanceAIToolSchema.parse(rawData);
+        const toolInput =
+          createProjectSessionInstanceAIToolSchema.parse(rawData);
         const input = createInstanceSchema.parse({
           ...toolInput,
           projectId,
         });
-        const { projectSession, instance } =
-          await createProjectSessionInstance({ userId, input });
+        const { projectSession, instance } = await createProjectSessionInstance(
+          { userId, input, terminate: true },
+        );
 
         return {
           success: true,
