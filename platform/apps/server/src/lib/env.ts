@@ -42,6 +42,7 @@ const envSchema = z.object({
   AI_GATEWAY_API_KEY: z.string(),
   DIGITALOCEAN_API_KEY: z.string(),
   TELEGRAM_BOT_TOKEN: z.string(),
+  REDIS_URL: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
