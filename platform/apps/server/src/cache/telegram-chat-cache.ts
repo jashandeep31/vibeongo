@@ -1,5 +1,9 @@
 import { db, telegramBotChat, eq } from "@repo/db";
 import { redis } from "../lib/valkey.js";
+import type {
+  TelegramBotChatMetadata,
+  TelegramBotChatState,
+} from "../bots/telegram/types.js";
 
 const getKey = (userId: string) => `TELEGRAM_BOT_CHAT:${userId}`;
 
@@ -23,8 +27,8 @@ export const updateTelegramChat = async ({
   metadata,
 }: {
   id: string;
-  state: string;
-  metadata: unknown;
+  state: TelegramBotChatState;
+  metadata: TelegramBotChatMetadata | null;
 }) => {
   const [chat] = await db
     .update(telegramBotChat)

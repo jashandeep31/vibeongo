@@ -1,7 +1,8 @@
 import { type CallbackQueryContext, Context } from "grammy";
-import { and, db, eq, projects, userSettings } from "@repo/db";
-import { updateTelegramChat } from "../../../cache/telegram-chat-cache.js";
+import { and, db, eq, projects } from "@repo/db";
+import { getUserIdByTelegramChatId } from "../../../cache/telegram-user-cache.js";
 import { createOrGetTelegramChat } from "../telegram-chat.js";
+import { updateAndRenderTelegramState } from "../render-state.js";
 
 export const projectSelectionCallback = async (
   ctx: CallbackQueryContext<Context>,
@@ -15,12 +16,9 @@ export const projectSelectionCallback = async (
       return;
     }
 
-    const [user] = await db
-      .select({ user_id: userSettings.user_id })
-      .from(userSettings)
-      .where(eq(userSettings.telegram_chat_id, chatId));
+    const userId = await getUserIdByTelegramChatId(chatId);
 
-    if (!user) {
+    if (!userId) {
       await ctx.answerCallbackQuery({ text: "This chat is not registered." });
       return;
     }
@@ -31,7 +29,7 @@ export const projectSelectionCallback = async (
       .where(
         and(
           eq(projects.id, projectId),
-          eq(projects.user_id, user.user_id),
+          eq(projects.user_id, userId),
           eq(projects.deleted, false),
         ),
       );
@@ -41,25 +39,24 @@ export const projectSelectionCallback = async (
       return;
     }
 
-    const chat = await createOrGetTelegramChat(user.user_id);
+    const chat = await createOrGetTelegramChat(userId);
     if (!chat) {
       await ctx.answerCallbackQuery({ text: "Chat state could not be updated." });
       return;
     }
 
-    const currentMetadata =
-      chat.metadata && typeof chat.metadata === "object" ? chat.metadata : {};
-
-    await updateTelegramChat({
-      id: chat.id,
-      state: "SELECTED_PROJECT",
-      metadata: { ...currentMetadata, project_id: project.id },
-    });
-
     await ctx.answerCallbackQuery();
-    await ctx.reply(`Selected project: ${project.name}\nID: ${project.id}`);
+    await updateAndRenderTelegramState({
+      ctx,
+      userId,
+      chat,
+      state: "SELECTED_PROJECT",
+      metadata: { project_id: project.id },
+    });
   } catch (error) {
     console.error("Failed to select Telegram project", error);
-    await ctx.answerCallbackQuery({ text: "Could not select this project." });
+    await ctx
+      .answerCallbackQuery({ text: "Could not select this project." })
+      .catch(() => undefined);
   }
 };

@@ -1,33 +1,19 @@
-import { type CommandContext, Context } from "grammy";
-import { db, eq, userSettings } from "@repo/db";
-import { updateTelegramChat } from "../../../cache/telegram-chat-cache.js";
-import { createOrGetTelegramChat } from "../telegram-chat.js";
+import { Context } from "grammy";
+import { updateAndRenderTelegramState } from "../render-state.js";
+import { getTelegramSession } from "../telegram-chat.js";
 
-export const mainCommand = async (ctx: CommandContext<Context>) => {
+export const mainCommand = async (ctx: Context) => {
   try {
-    const [user] = await db
-      .select({ user_id: userSettings.user_id })
-      .from(userSettings)
-      .where(eq(userSettings.telegram_chat_id, ctx.chatId));
+    const session = await getTelegramSession(ctx);
+    if (!session) return;
 
-    if (!user) {
-      await ctx.reply("This Telegram chat is not registered with your account yet.");
-      return;
-    }
-
-    const chat = await createOrGetTelegramChat(user.user_id);
-    if (!chat) {
-      await ctx.reply("Something went wrong. Please try again.");
-      return;
-    }
-
-    await updateTelegramChat({
-      id: chat.id,
+    await updateAndRenderTelegramState({
+      ctx,
+      userId: session.userId,
+      chat: session.chat,
       state: "HOME",
-      metadata: {},
+      metadata: null,
     });
-
-    await ctx.reply("Main menu:\n\n/projects — View all your projects");
   } catch (error) {
     console.error("Failed to return Telegram chat to main menu", error);
     await ctx.reply("Could not open the main menu. Please try again.");
