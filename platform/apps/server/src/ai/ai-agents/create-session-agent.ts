@@ -1,7 +1,11 @@
 import { streamText } from "ai";
 import { prompts } from "../prompts/index.js";
 
-export async function* createProjectSessionAgent(): AsyncGenerator<{
+export async function* createProjectSessionAgent({
+  message,
+}: {
+  message: string;
+}): AsyncGenerator<{
   text: string;
   finish_reason: string | null;
   steps: any;
@@ -11,10 +15,10 @@ export async function* createProjectSessionAgent(): AsyncGenerator<{
 }> {
   const result = streamText({
     model: "zai/glm-5.2",
-    system: prompts.createProject.systemPrompt(),
+    system: prompts.createProjectSessionAgentSystemPrompt(),
     reasoning: "high",
 
-    messages: [],
+    messages: [{ role: "user", content: message }],
   });
 
   let updatedConfig = null;
