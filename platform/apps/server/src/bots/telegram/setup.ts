@@ -1,6 +1,7 @@
 import { Bot } from "grammy";
 import { env } from "../../lib/env.js";
 import { db, eq, telegramBotChat, userSettings } from "@repo/db";
+import { getCachedTelegramChat } from "../../cache/telegram-chat-cache.js";
 
 const TELEGRAM_BOT_CHAT_STATES = [
   "HOME",
@@ -10,6 +11,13 @@ const TELEGRAM_BOT_CHAT_STATES = [
 ] as const;
 
 export const telegramBot = new Bot(env.TELEGRAM_BOT_TOKEN);
+
+const commandsText = `
+Here are the commands of Bot
+/projects to list all your projects.
+/back to go one step back
+/main to go to main menu
+`;
 
 telegramBot.command("projects", (ctx) => {
   ctx.reply("HI will list the projects");
@@ -32,12 +40,14 @@ Go to <a href="${env.FRONTEND_URL}/dashboard/settings">${env.FRONTEND_URL}/dashb
     }
     const userId = user.user_id;
     const chat = await createOrGetTelegramChat(userId);
+
     if (!chat) {
       ctx.reply("Something went wrong please retry!");
       return;
     }
+
     if (chat.state === "HOME") {
-      ctx.reply("Run /projects to list all your projects");
+      ctx.reply(commandsText);
     }
   } catch (e) {
     console.log(e);
@@ -52,14 +62,8 @@ const createOrGetTelegramChat = async (
     })
   | undefined
 > => {
-  const [chat] = await db
-    .select()
-    .from(telegramBotChat)
-    .where(eq(telegramBotChat.user_id, userId));
-
-  if (chat) {
-    return chat as any;
-  }
+  const chat = await getCachedTelegramChat({ userId });
+  if (chat) return chat as any;
   const [newchat] = await db
     .insert(telegramBotChat)
     .values({

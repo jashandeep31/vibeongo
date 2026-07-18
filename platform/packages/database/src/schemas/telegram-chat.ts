@@ -9,7 +9,7 @@ export const telegramBotChat = pgTable("telegram_bot_chat", {
     .notNull()
     .unique(),
 
-  state: varchar().notNull().unique(),
+  state: varchar().notNull(),
   metadata: jsonb(),
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
