@@ -1,4 +1,6 @@
-import { Bot } from "grammy";
+import { Bot, type Context } from "grammy";
+import { autoRetry } from "@grammyjs/auto-retry";
+import { stream, type StreamFlavor } from "@grammyjs/stream";
 import { env } from "../../lib/env.js";
 import { getTelegramSession } from "./telegram-chat.js";
 import { projectsCommand } from "./commands/projects.js";
@@ -9,7 +11,14 @@ import { projectSelectionCallback } from "./callbacks/project-selection.js";
 import { navigationCallback } from "./callbacks/navigation.js";
 import { renderTelegramState } from "./render-state.js";
 
-export const telegramBot = new Bot(env.TELEGRAM_BOT_TOKEN);
+export type TelegramContext = StreamFlavor<Context>;
+
+export const telegramBot = new Bot<TelegramContext>(env.TELEGRAM_BOT_TOKEN);
+
+// Stream relies on message drafts, which can be rate limited by Telegram.
+// Install automatic retries before the streaming middleware.
+telegramBot.api.config.use(autoRetry());
+telegramBot.use(stream());
 
 telegramBot.command("projects", projectsCommand);
 telegramBot.command("back", backCommand);
