@@ -91,6 +91,14 @@ export const renderTelegramState = async (
         "New session setup will be available here. Choose an option below.",
         { reply_markup: navigationKeyboard() },
       );
+      return;
+
+    case "NEW_SESSION_AI_CHAT":
+      await ctx.reply(
+        "Tell me what you would like to set up for this new session. I’ll help you create it.",
+        { reply_markup: navigationKeyboard() },
+      );
+      return;
   }
 };
 

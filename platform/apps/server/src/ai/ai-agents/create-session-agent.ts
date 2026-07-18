@@ -15,7 +15,7 @@ export async function* createProjectSessionAgent({
 }> {
   const result = streamText({
     model: "zai/glm-5.2",
-    system: prompts.createProjectSessionAgentSystemPrompt(),
+    system: prompts.createProjectSessionAgent.systemPrompt(),
     reasoning: "high",
 
     messages: [{ role: "user", content: message }],

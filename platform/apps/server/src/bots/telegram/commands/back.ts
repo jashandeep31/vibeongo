@@ -28,6 +28,7 @@ export const backCommand = async (ctx: Context) => {
         metadata = null;
         break;
       case "NEW_SESSION":
+      case "NEW_SESSION_AI_CHAT":
         state = "SELECTED_PROJECT";
         metadata = session.chat.metadata;
         break;

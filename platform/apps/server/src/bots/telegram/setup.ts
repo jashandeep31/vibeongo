@@ -10,6 +10,7 @@ import { newSessionCommand } from "./commands/new-session.js";
 import { projectSelectionCallback } from "./callbacks/project-selection.js";
 import { navigationCallback } from "./callbacks/navigation.js";
 import { renderTelegramState } from "./render-state.js";
+import { createProjectSessionAgent } from "../../ai/ai-agents/create-session-agent.js";
 
 export type TelegramContext = StreamFlavor<Context>;
 
@@ -35,9 +36,32 @@ telegramBot.on("message:text", async (ctx) => {
     const session = await getTelegramSession(ctx);
     if (!session) return;
 
+    if (session.chat.state === "NEW_SESSION_AI_CHAT") {
+      const message = ctx.message.text.trim();
+      if (!message) return;
+
+      await ctx.replyWithStream(streamSessionResponse(message));
+      return;
+    }
+
     await renderTelegramState(ctx, session.userId, session.chat);
   } catch (error) {
     console.error("Failed to render Telegram state", error);
     await ctx.reply("Something went wrong. Please try again.");
   }
 });
+
+async function* streamSessionResponse(message: string): AsyncGenerator<string> {
+  let hasText = false;
+
+  for await (const chunk of createProjectSessionAgent({ message })) {
+    if (chunk.text) {
+      hasText = true;
+      yield chunk.text;
+    }
+  }
+
+  if (!hasText) {
+    yield "I couldn't generate a response for that. Please try again.";
+  }
+}

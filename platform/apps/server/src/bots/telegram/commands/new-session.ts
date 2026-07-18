@@ -26,7 +26,7 @@ export const newSessionCommand = async (ctx: Context) => {
       ctx,
       userId: session.userId,
       chat: session.chat,
-      state: "NEW_SESSION",
+      state: "NEW_SESSION_AI_CHAT",
       metadata: session.chat.metadata,
     });
   } catch (error) {

@@ -5,10 +5,10 @@ export const TELEGRAM_BOT_CHAT_STATES = [
   "PROJECTS",
   "SELECTED_PROJECT",
   "NEW_SESSION",
+  "NEW_SESSION_AI_CHAT",
 ] as const;
 
-export type TelegramBotChatState =
-  (typeof TELEGRAM_BOT_CHAT_STATES)[number];
+export type TelegramBotChatState = (typeof TELEGRAM_BOT_CHAT_STATES)[number];
 
 export type TelegramBotChatMetadata = {
   project_id?: string;

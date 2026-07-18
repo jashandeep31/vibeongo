@@ -23,5 +23,7 @@ export const prompts = {
   createTasksForPRIssueOrCommentAgent: {
     systemPrompt: createTasksForPRIssueOrCommaentSystemPrompt,
   },
-  createProjectSessionAgentSystemPrompt: createProjectSessionAgentSystemPrompt,
+  createProjectSessionAgent: {
+    systemPrompt: createProjectSessionAgentSystemPrompt,
+  },
 } as const;
