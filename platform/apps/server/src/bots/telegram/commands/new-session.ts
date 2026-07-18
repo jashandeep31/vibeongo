@@ -1,6 +1,7 @@
 import { Context } from "grammy";
 import { updateAndRenderTelegramState } from "../render-state.js";
 import { getTelegramSession } from "../telegram-chat.js";
+import { createTelegramChatSession } from "../chat-session.js";
 
 export const newSessionCommand = async (ctx: Context) => {
   try {
@@ -22,12 +23,25 @@ export const newSessionCommand = async (ctx: Context) => {
       return;
     }
 
+    const chatSession = await createTelegramChatSession({
+      telegramChatId: session.telegramChatId,
+      userId: session.userId,
+      projectId: session.chat.metadata.project_id,
+    });
+
+    if (!chatSession) {
+      throw new Error("Failed to create Telegram chat session");
+    }
+
     await updateAndRenderTelegramState({
       ctx,
       userId: session.userId,
       chat: session.chat,
       state: "NEW_SESSION_AI_CHAT",
-      metadata: session.chat.metadata,
+      metadata: {
+        ...session.chat.metadata,
+        session_id: chatSession.id,
+      },
     });
   } catch (error) {
     console.error("Failed to open Telegram new session", error);

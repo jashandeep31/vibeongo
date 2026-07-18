@@ -19,8 +19,6 @@ export const getProjectGithubRepos = (
       "Get all github Repos of project to use the paths in hte tasks",
     inputSchema: getProjectGithubReposSchema,
     execute: async (rawData: unknown) => {
-      const parsedData = getProjectGithubReposSchema.parse(rawData);
-
       const project = await db
         .select({ repo: githubRepos })
         .from(projects)

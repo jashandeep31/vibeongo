@@ -11,6 +11,10 @@ import { projectSelectionCallback } from "./callbacks/project-selection.js";
 import { navigationCallback } from "./callbacks/navigation.js";
 import { renderTelegramState } from "./render-state.js";
 import { createProjectSessionAgent } from "../../ai/ai-agents/create-session-agent.js";
+import {
+  getTelegramChatSessionMessages,
+  saveTelegramChatSessionMessage,
+} from "./chat-session.js";
 
 export type TelegramContext = StreamFlavor<Context>;
 
@@ -39,15 +43,28 @@ telegramBot.on("message:text", async (ctx) => {
     if (session.chat.state === "NEW_SESSION_AI_CHAT") {
       const message = ctx.message.text.trim();
       const projectId = session.chat.metadata?.project_id;
+      const sessionId = session.chat.metadata?.session_id;
       if (!message) return;
 
-      if (!projectId) {
+      if (!projectId || !sessionId) {
         await ctx.reply("Select a project before starting a new session.");
         return;
       }
 
+      const sessionMessages = await getTelegramChatSessionMessages(sessionId);
+      await saveTelegramChatSessionMessage({
+        sessionId,
+        telegramChatId: session.telegramChatId,
+        userId: session.userId,
+        role: "user",
+        text: message,
+      });
+
       await ctx.replyWithStream(
         streamSessionResponse({
+          sessionId,
+          telegramChatId: session.telegramChatId,
+          sessionMessages,
           message,
           projectId,
           userId: session.userId,
@@ -64,28 +81,48 @@ telegramBot.on("message:text", async (ctx) => {
 });
 
 async function* streamSessionResponse({
+  sessionId,
+  telegramChatId,
+  sessionMessages,
   message,
   projectId,
   userId,
 }: {
+  sessionId: string;
+  telegramChatId: number;
+  sessionMessages: Awaited<
+    ReturnType<typeof getTelegramChatSessionMessages>
+  >;
   message: string;
   projectId: string;
   userId: string;
 }): AsyncGenerator<string> {
   let hasText = false;
+  let response = "";
 
   for await (const chunk of createProjectSessionAgent({
+    sessionMessages,
     message,
     projectId,
     userId,
   })) {
     if (chunk.text) {
       hasText = true;
+      response += chunk.text;
       yield chunk.text;
     }
   }
 
   if (!hasText) {
-    yield "I couldn't generate a response for that. Please try again.";
+    response = "I couldn't generate a response for that. Please try again.";
+    yield response;
   }
+
+  await saveTelegramChatSessionMessage({
+    sessionId,
+    telegramChatId,
+    userId,
+    role: "bot",
+    text: response,
+  });
 }

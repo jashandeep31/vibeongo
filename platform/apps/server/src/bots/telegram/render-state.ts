@@ -2,6 +2,7 @@ import { and, db, eq, projects } from "@repo/db";
 import { Context, InlineKeyboard } from "grammy";
 import { updateTelegramChat } from "../../cache/telegram-chat-cache.js";
 import { toTelegramBotChat } from "./telegram-chat.js";
+import { saveTelegramChatSessionMessage } from "./chat-session.js";
 import type {
   TelegramBotChat,
   TelegramBotChatMetadata,
@@ -94,10 +95,24 @@ export const renderTelegramState = async (
       return;
 
     case "NEW_SESSION_AI_CHAT":
+      const sessionId = chat.metadata?.session_id;
+      const prompt =
+        "Tell me what you would like to set up for this new session. I’ll help you create it.";
+
       await ctx.reply(
-        "Tell me what you would like to set up for this new session. I’ll help you create it.",
+        prompt,
         { reply_markup: navigationKeyboard() },
       );
+
+      if (sessionId && ctx.chatId !== undefined) {
+        await saveTelegramChatSessionMessage({
+          sessionId,
+          telegramChatId: ctx.chatId,
+          userId,
+          role: "bot",
+          text: prompt,
+        });
+      }
       return;
   }
 };

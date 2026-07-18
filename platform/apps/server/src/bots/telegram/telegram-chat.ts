@@ -54,5 +54,5 @@ Go to <a href="${env.FRONTEND_URL}/dashboard/settings">your settings</a> to conn
     return;
   }
 
-  return { userId, chat };
+  return { userId, chat, telegramChatId: ctx.chatId };
 };

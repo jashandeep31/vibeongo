@@ -1,4 +1,5 @@
-import { stepCountIs, streamText } from "ai";
+import type { telegramBotChatSessionMessage } from "@repo/db";
+import { type ModelMessage, stepCountIs, streamText } from "ai";
 import { prompts } from "../prompts/index.js";
 import { getProjectGithubRepos } from "../ai-tools/session-agent-tools.js";
 
@@ -6,10 +7,15 @@ export async function* createProjectSessionAgent({
   message,
   projectId,
   userId,
+  sessionMessages,
 }: {
   message: string;
   projectId: string;
   userId: string;
+  sessionMessages: Pick<
+    typeof telegramBotChatSessionMessage.$inferSelect,
+    "role" | "text"
+  >[];
 }): AsyncGenerator<{
   text: string;
   finish_reason: string | null;
@@ -18,6 +24,15 @@ export async function* createProjectSessionAgent({
   updatedConfig: any;
   reasoning: string;
 }> {
+  const history: ModelMessage[] = [];
+
+  for (const sessionMessage of sessionMessages) {
+    history.push({
+      role: sessionMessage.role === "bot" ? "assistant" : "user",
+      content: sessionMessage.text,
+    });
+  }
+
   const result = streamText({
     model: "zai/glm-5.2",
     system: prompts.createProjectSessionAgent.systemPrompt(),
@@ -26,7 +41,7 @@ export async function* createProjectSessionAgent({
     // The model must be able to call the repository tool and then produce its
     // user-facing task proposal in a following step.
     stopWhen: stepCountIs(5),
-    messages: [{ role: "user", content: message }],
+    messages: [...history, { role: "user", content: message }],
   });
 
   let updatedConfig = null;

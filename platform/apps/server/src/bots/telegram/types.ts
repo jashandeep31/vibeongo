@@ -12,6 +12,7 @@ export type TelegramBotChatState = (typeof TELEGRAM_BOT_CHAT_STATES)[number];
 
 export type TelegramBotChatMetadata = {
   project_id?: string;
+  session_id?: string;
 };
 
 export type TelegramBotChat = Omit<
