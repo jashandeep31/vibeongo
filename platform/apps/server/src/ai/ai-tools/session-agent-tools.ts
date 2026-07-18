@@ -6,8 +6,11 @@ import {
   projectGithubRepos,
   projects,
 } from "@repo/db";
+import { createInstanceSchema } from "@repo/shared";
 import { tool, Tool } from "ai";
 import { z } from "zod";
+import { AppError } from "../../lib/app-error.js";
+import { createProjectSessionInstance } from "../../services/instances/create-project-session-instance.js";
 
 const getProjectGithubReposSchema = z.object({});
 export const getProjectGithubRepos = (
@@ -50,5 +53,47 @@ export const getProjectGithubRepos = (
         }
       }
       return repos;
+    },
+  });
+
+const createProjectSessionInstanceAIToolSchema = createInstanceSchema.omit({
+  projectId: true,
+});
+
+export const createProjectSessionInstanceAITool = (
+  userId: string,
+  projectId: string,
+): Tool =>
+  tool({
+    description:
+      "Create a project session with its ordered tasks and start the project's VPS. This is a paid, state-changing action. Call it exactly once and only after the user explicitly confirms the proposed tasks.",
+    inputSchema: createProjectSessionInstanceAIToolSchema,
+    execute: async (rawData: unknown) => {
+      try {
+        const toolInput = createProjectSessionInstanceAIToolSchema.parse(rawData);
+        const input = createInstanceSchema.parse({
+          ...toolInput,
+          projectId,
+        });
+        const { projectSession, instance } =
+          await createProjectSessionInstance({ userId, input });
+
+        return {
+          success: true,
+          sessionId: projectSession.id,
+          instanceId: instance.id,
+          message: "Project session created and instance started successfully.",
+        };
+      } catch (error) {
+        if (error instanceof AppError) {
+          return { success: false, error: error.message };
+        }
+
+        console.error("Failed to create project session from AI tool", error);
+        return {
+          success: false,
+          error: "Could not create the project session. Please try again.",
+        };
+      }
     },
   });
