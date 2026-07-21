@@ -29,6 +29,7 @@ import { SocketHandler } from "./websocket/socket-handler.js";
 import jwt from "jsonwebtoken";
 import { chatRoutes } from "./routes/chat-routes.js";
 import { telegramBot } from "./bots/telegram/setup.js";
+import "./jobs/repo-overview.js";
 const app = express();
 
 const server = createServer(app);

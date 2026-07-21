@@ -9,6 +9,7 @@ import {
 } from "../controllers/github-repo/github-repo-controller.js";
 import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.js";
 import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-pullrequest.js";
+import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/github-repo-overview.js";
 
 const routes: Router = Router();
 routes
@@ -29,4 +30,7 @@ routes
   .route("/:id/pull-request/:prNumber")
   .post(checkAuthorization(["all"]), workOnPullRequestByPrNumber);
 
+routes
+  .route("/:id/create-overview")
+  .post(checkAuthorization(["all"]), createGithubRepoOverviewWithAI);
 export const githubRepoRoutes = routes;

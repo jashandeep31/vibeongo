@@ -30,6 +30,7 @@ export const githubRepos = pgTable(
 
     auto_review_pull_requests_enabled: boolean().default(false).notNull(),
     auto_fix_issues_enabled: boolean().default(false).notNull(),
+    overview: text().default("").notNull(),
 
     public: boolean().default(false).notNull(),
     full_name: varchar({ length: 255 }).notNull(),
