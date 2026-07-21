@@ -149,7 +149,7 @@ export const updateGithubRepoById = async ({
 export const scheduleGithubRepoOverview = async (id: string) => {
   const res = await axios.post(
     BACKEND_URL + `/api/v1/github-repos/${id}/schedule-overview`,
-    { repoId: id },
+    {},
     {
       withCredentials: true,
     },
