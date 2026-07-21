@@ -38,6 +38,7 @@
     "cors": "^2.8.6",
     "dodopayments": "^2.32.0",
     "dotenv": "^17.2.4",
+    "e2b": "^2.35.0",
     "express": "^5.2.1",
     "google-auth-library": "^10.6.1",
     "grammy": "^1.45.1",

@@ -24,7 +24,7 @@ gitReposOverviewQueue.on("error", (error) => {
 export const addGitRepoOverviewJob = async (data: GitRepoOverviewJobData) => {
   await gitReposOverviewQueue.add("git-repo-overview-job", data, {
     jobId: data.overviewJobId,
-    attempts: 3,
+    attempts: 1,
     backoff: {
       type: "exponential",
       delay: 5_000,
