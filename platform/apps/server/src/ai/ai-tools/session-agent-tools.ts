@@ -48,6 +48,7 @@ export const getProjectGithubRepos = (
               id: p.repo.id,
               full_name: p.repo.full_name,
               setup_script: p.repo.setup_script,
+              overview: p.repo.overview,
             }),
           );
         }
