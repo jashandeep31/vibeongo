@@ -31,6 +31,6 @@ routes
   .post(checkAuthorization(["all"]), workOnPullRequestByPrNumber);
 
 routes
-  .route("/:id/create-overview")
+  .route("/:id/schedule-overview")
   .post(checkAuthorization(["all"]), createGithubRepoOverviewWithAI);
 export const githubRepoRoutes = routes;

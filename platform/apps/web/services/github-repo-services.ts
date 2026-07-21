@@ -146,6 +146,18 @@ export const updateGithubRepoById = async ({
   return res.data;
 };
 
+export const scheduleGithubRepoOverview = async (id: string) => {
+  const res = await axios.post(
+    BACKEND_URL + `/api/v1/github-repos/${id}/schedule-overview`,
+    { repoId: id },
+    {
+      withCredentials: true,
+    },
+  );
+
+  return res.data;
+};
+
 export const generateFixForIssue = async (
   id: string,
   issueNumber: number,

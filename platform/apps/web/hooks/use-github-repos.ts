@@ -10,6 +10,7 @@ import {
   type GithubRepoWithPullRequests,
   generateFixForIssue,
   generateFixForPullRequest,
+  scheduleGithubRepoOverview,
 } from "@/services/github-repo-services";
 import {
   useMutation,
@@ -89,6 +90,11 @@ export const useUpdateGithubRepoById = () => {
     },
   });
 };
+
+export const useScheduleGithubRepoOverview = () =>
+  useMutation({
+    mutationFn: scheduleGithubRepoOverview,
+  });
 
 export const useGenerateFixForIssue = (id: string, issueNumber: number) =>
   useMutation({

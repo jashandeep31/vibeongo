@@ -12,12 +12,14 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import type { ReactNode } from "react";
 
 type GithubRepoCardProps = {
   repo: GithubRepo;
   defaultProjectName: string;
   onEdit: (repo: GithubRepo) => void;
   onDelete: (id: string) => void;
+  footer?: ReactNode;
 };
 
 export function GithubRepoCard({
@@ -25,6 +27,7 @@ export function GithubRepoCard({
   defaultProjectName,
   onEdit,
   onDelete,
+  footer,
 }: GithubRepoCardProps) {
   return (
     <div className="bg-card flex h-full min-w-0 flex-col gap-4 rounded-lg border p-4 shadow-sm sm:p-6">
@@ -145,6 +148,8 @@ export function GithubRepoCard({
           Pull requests
         </Link>
       </div>
+
+      {footer}
     </div>
   );
 }

@@ -4,17 +4,74 @@ import { useMemo, useState } from "react";
 import {
   useGetGithubRepos,
   useDeleteGithubRepo,
+  useScheduleGithubRepoOverview,
 } from "@/hooks/use-github-repos";
 import { useGetProjects } from "@/hooks/use-project";
 import { CreateGithubRepoDialog } from "@/components/dialogs/create-github-repo-dialog";
 import { EditGithubRepoDialog } from "@/components/dialogs/edit-github-repo-dialog";
-import { ExternalLink, GitFork, Github } from "lucide-react";
+import {
+  ExternalLink,
+  GitFork,
+  Github,
+  Loader2,
+  RefreshCw,
+  Sparkles,
+} from "lucide-react";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { Button } from "@repo/ui/components/button";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { toast } from "sonner";
 import axios from "axios";
 import type { GithubRepo } from "@/services/github-repo-services";
 import { GithubRepoCard } from "@/components/github-repo-card";
+
+function GithubRepoOverviewAction({ repo }: { repo: GithubRepo }) {
+  const scheduleOverview = useScheduleGithubRepoOverview();
+  const hasOverview = repo.overview.trim().length > 0;
+
+  const handleScheduleOverview = async () => {
+    const toastId = toast.loading(
+      hasOverview ? "Scheduling overview refresh..." : "Scheduling overview...",
+    );
+
+    try {
+      await scheduleOverview.mutateAsync(repo.id);
+      toast.success(
+        hasOverview ? "Overview refresh queued" : "Overview generation queued",
+        { id: toastId },
+      );
+    } catch (error: unknown) {
+      console.error(error);
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to queue the overview")
+        : "Failed to queue the overview";
+      toast.error(message, { id: toastId });
+    }
+  };
+
+  return (
+    <Button
+      variant="secondary"
+      size="sm"
+      className="mt-auto w-full"
+      disabled={scheduleOverview.isPending}
+      onClick={() => void handleScheduleOverview()}
+    >
+      {scheduleOverview.isPending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      ) : hasOverview ? (
+        <RefreshCw className="h-3.5 w-3.5" />
+      ) : (
+        <Sparkles className="h-3.5 w-3.5" />
+      )}
+      {scheduleOverview.isPending
+        ? "Queuing..."
+        : hasOverview
+          ? "Refresh AI Overview"
+          : "Generate AI Overview"}
+    </Button>
+  );
+}
 
 export default function ClientView() {
   const { data: githubRepos, isLoading } = useGetGithubRepos();
@@ -109,6 +166,7 @@ export default function ClientView() {
                 onDelete={(id) => {
                   void handleDelete(id);
                 }}
+                footer={<GithubRepoOverviewAction repo={repo} />}
               />
             );
           })
