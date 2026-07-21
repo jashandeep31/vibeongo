@@ -1,8 +1,9 @@
 import { Queue, Worker } from "bullmq";
 import { redis } from "../lib/valkey.js";
-import Redis from "iovalkey";
 
 const gitReposOverviewQueue = new Queue("git-repos-overview");
+
+console.log("Running the queue");
 
 export const addGitRepoOverviewJob = async (repoId: string, userId: string) => {
   await gitReposOverviewQueue.add("git-repo-overview-job", {
@@ -18,6 +19,6 @@ new Worker(
     console.log(repoId, userId);
   },
   {
-    connection: redis,
+    connection: redis.duplicate({ maxRetriesPerRequest: null }) as any,
   },
 );
