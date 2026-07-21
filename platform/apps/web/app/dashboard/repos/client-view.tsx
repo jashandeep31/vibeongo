@@ -67,7 +67,7 @@ function GithubRepoOverviewAction({ repo }: { repo: GithubRepo }) {
       {scheduleOverview.isPending
         ? "Queuing..."
         : hasOverview
-          ? "Refresh AI Overview"
+          ? "Refresh Overview"
           : "Generate AI Overview"}
     </Button>
   );

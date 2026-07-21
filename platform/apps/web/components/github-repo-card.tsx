@@ -1,10 +1,21 @@
 "use client";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import MarkdownRenderer from "@/components/markdown-renderer";
 import type { GithubRepo } from "@/services/github-repo-services";
 import { Badge } from "@repo/ui/components/badge";
 import { Button, buttonVariants } from "@repo/ui/components/button";
 import {
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@repo/ui/components/drawer";
+import { ScrollArea } from "@repo/ui/components/scroll-area";
+import {
+  BookOpenText,
   CircleDot,
   Edit2,
   GitFork,
@@ -132,7 +143,7 @@ export function GithubRepoCard({
         </Badge>
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Link
           href={`/dashboard/repos/${repo.id}/issues`}
           className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -149,7 +160,32 @@ export function GithubRepoCard({
         </Link>
       </div>
 
-      {footer}
+      {repo.overview.trim() ? (
+        <div className="mt-auto grid grid-cols-2 gap-2">
+          <Drawer direction="right">
+            <DrawerTrigger asChild>
+              <Button variant="outline" size="sm" className="w-full">
+                <BookOpenText className="h-3.5 w-3.5" />
+                View Overview
+              </Button>
+            </DrawerTrigger>
+            <DrawerContent className="h-full overflow-hidden data-[vaul-drawer-direction=right]:w-full data-[vaul-drawer-direction=right]:sm:max-w-2xl">
+              <DrawerHeader className="shrink-0 border-b">
+                <DrawerTitle>{repo.full_name}</DrawerTitle>
+                <DrawerDescription>Repository overview</DrawerDescription>
+              </DrawerHeader>
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="p-4 sm:p-6">
+                  <MarkdownRenderer content={repo.overview} />
+                </div>
+              </ScrollArea>
+            </DrawerContent>
+          </Drawer>
+          {footer}
+        </div>
+      ) : (
+        footer
+      )}
     </div>
   );
 }
