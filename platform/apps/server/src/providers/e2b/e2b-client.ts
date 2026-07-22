@@ -2,6 +2,7 @@ import { Sandbox } from "e2b";
 import { env } from "../../lib/env.js";
 import { CreateInstanceProps } from "../types.js";
 import { AppError } from "../../lib/app-error.js";
+import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
 
 export class E2BClient {
   async terminateInstance(instanceId: string) {
@@ -19,22 +20,10 @@ export class E2BClient {
       timeoutMs: 1000 * 60 * 10,
     });
 
-    sandbox.commands.run(
-      `
-cat > setup.sh <<'EOF'
-${userData}
-EOF
-
-chmod +x setup.sh
-./setup.sh
-`,
-      {
-        // timeoutMs: 1000 * 60 * 10,
-        // onStdout: (data: string) => {
-        //   process.stdout.write(data);
-        // },
-      },
-    );
+    await addSandboxSetupJob({
+      sandboxId: sandbox.sandboxId,
+      userData,
+    });
 
     return {
       instanceId: sandbox.sandboxId,

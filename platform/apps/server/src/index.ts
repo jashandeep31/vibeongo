@@ -22,6 +22,7 @@ import { internalRoutes } from "./routes/internal-routes.js";
 import { paymentRoutes } from "./routes/payment-routes.js";
 import "./lib/cron.js";
 import "./jobs/repo-overview-worker.js";
+import "./jobs/sandbox-setup-worker.js";
 import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
 import * as Sentry from "@sentry/node";
 import { WebSocketServer } from "ws";
