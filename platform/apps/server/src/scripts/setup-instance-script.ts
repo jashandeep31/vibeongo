@@ -6,6 +6,7 @@ interface SetupInstanceScriptOptions {
   projectSessionId: string;
   instanceId: string;
   terminate?: boolean;
+  username?: string;
 }
 
 export const setupInstanceScript = ({
@@ -14,14 +15,15 @@ export const setupInstanceScript = ({
   projectSessionId,
   instanceId,
   terminate = false,
+  username = "ubuntu",
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
-exec > /var/log/user-data.log 2>&1
+exec > user-data.log 2>&1
 
 date
 
-USER_HOME="/home/ubuntu"
+USER_HOME="/home/${username}"
 
 echo "Step 1: Setup SSH"
 
@@ -30,10 +32,10 @@ echo "${sshKey}" >> "$USER_HOME/.ssh/authorized_keys"
 
 chmod 700 "$USER_HOME/.ssh"
 chmod 600 "$USER_HOME/.ssh/authorized_keys"
-chown -R ubuntu:ubuntu "$USER_HOME/.ssh"
+chown -R ${username}:${username} "$USER_HOME/.ssh"
 
-# Create ubuntu user script
-cat <<SCRIPT > /tmp/ubuntu-setup.sh
+# Create ${username} user script
+cat <<SCRIPT > /tmp/${username}-setup.sh
 #!/usr/bin/env bash
 set -euxo pipefail
 
@@ -65,12 +67,12 @@ curl -fsSL ${env.SERVER_URL}/install | bash
 
 SCRIPT
 
-chmod +x /tmp/ubuntu-setup.sh
+chmod +x /tmp/${username}-setup.sh
 
-# Run as ubuntu
-sudo -u ubuntu /tmp/ubuntu-setup.sh
+# Run as ${username}
+sudo -u ${username} /tmp/${username}-setup.sh
 
-sudo -iu ubuntu bash <<'VIBEONGO_COMMANDS'
+sudo -iu ${username} bash <<'VIBEONGO_COMMANDS'
 set -euo pipefail
 
 vibeongo provisiontools
