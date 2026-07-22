@@ -267,7 +267,7 @@ export function ProjectDomainsCard({
                   proxyDomains.map((domainRow) => (
                     <div
                       key={domainRow.id}
-                      className="flex flex-col gap-3 rounded-md border px-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                      className="hover:bg-muted flex flex-col gap-3 rounded-md border px-3 py-2 transition-colors sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex min-w-0 items-start gap-2 sm:items-center">
                         <a
