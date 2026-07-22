@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -12,13 +13,15 @@ import (
 )
 
 type Proxy struct {
-	// The domain the that i am proxing to ex: test.vibeongo.one -> 192.168.1.1
-	Host string
-	// Target is the upstream destination URL, ex: http://192.168.1.1:8080
-	Target      *url.URL
-	AllowedIPs  []string
-	AllowAllIPs bool
-	ExpiresAt   time.Time
+	ID          string    `json:"id"`
+	Domain      string    `json:"domain"`
+	AllowedIPs  []string  `json:"allowed_ips"`
+	AllowAllIPs bool      `json:"allowed_all_ips"`
+	ExpiresAt   time.Time `json:"expires_at"`
+
+	// Target is required by the reverse proxy, but must not be exposed by
+	// public proxy metadata endpoints.
+	Target *url.URL `json:"-"`
 }
 
 type ProxyManager struct {
@@ -35,19 +38,20 @@ func NewProxyManager() *ProxyManager {
 	return pm
 }
 
-// Add the proxy to the proxies map
-func (pm *ProxyManager) AddProxy(hostUrl string, target string, port int, allowedIPs []string) error {
-	t, err := url.Parse("http://" + target + ":" + fmt.Sprint(port))
+// AddProxy adds a resolved proxy to the local cache.
+func (pm *ProxyManager) AddProxy(domain string, target string, allowedIPs []string, allowAllIPs bool) error {
+	t, err := parseTarget(target)
 	if err != nil {
 		return err
 	}
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
-	pm.proxies[hostUrl] = &Proxy{
-		Host:       hostUrl,
-		Target:     t,
-		AllowedIPs: allowedIPs,
-		ExpiresAt:  time.Now().Add(5 * time.Minute),
+	pm.proxies[domain] = &Proxy{
+		Domain:      domain,
+		Target:      t,
+		AllowedIPs:  append([]string(nil), allowedIPs...),
+		AllowAllIPs: allowAllIPs,
+		ExpiresAt:   time.Now().Add(5 * time.Minute),
 	}
 	return nil
 }
@@ -66,8 +70,6 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 	if err != nil {
 		return nil, false
 	}
-	fmt.Println("proxy", proxy)
-
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	if p, ok := pm.proxies[host]; ok {
@@ -81,7 +83,6 @@ type Response struct {
 	Data struct {
 		ID          string   `json:"id"`
 		Domain      string   `json:"domain"`
-		Port        int      `json:"target_port"`
 		AllowAllIPs bool     `json:"allowed_all_ips"`
 		Target      string   `json:"target"`
 		AllowedIPs  []string `json:"allowed_ips"`
@@ -112,13 +113,13 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	// if parsedResponse.Data.Routing.Ip == "" {
-	// 	return nil, fmt.Errorf("invalid response: missing routing IP")
-	// }
+	if parsedResponse.Data.Domain == "" {
+		return nil, fmt.Errorf("invalid response: missing domain")
+	}
 
-	fmt.Println(parsedResponse.Data)
-	if parsedResponse.Data.Port == 0 {
-		return nil, fmt.Errorf("invalid response: missing port")
+	target, err := parseTarget(parsedResponse.Data.Target)
+	if err != nil {
+		return nil, err
 	}
 
 	allowedIPs := make([]string, 0, len(parsedResponse.Data.AllowedIPs))
@@ -128,17 +129,29 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		}
 	}
 
-	fullTargetURL, err := url.Parse(parsedResponse.Data.Host)
-	if err != nil {
-		return nil, err
-	}
 	return &Proxy{
-		Host:        host,
-		Target:      fullTargetURL,
+		ID:          parsedResponse.Data.ID,
+		Domain:      parsedResponse.Data.Domain,
+		Target:      target,
 		AllowedIPs:  allowedIPs,
 		AllowAllIPs: parsedResponse.Data.AllowAllIPs,
 		ExpiresAt:   time.Now().Add(5 * time.Minute),
 	}, nil
+}
+
+func parseTarget(raw string) (*url.URL, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, fmt.Errorf("invalid response: missing target")
+	}
+
+	target, err := url.Parse(raw)
+	if err != nil {
+		return nil, fmt.Errorf("invalid target: %w", err)
+	}
+	if (target.Scheme != "http" && target.Scheme != "https") || target.Host == "" {
+		return nil, fmt.Errorf("invalid target: expected an absolute HTTP URL")
+	}
+	return target, nil
 }
 
 func (pm *ProxyManager) InvalidateProxy(host string) {
@@ -165,5 +178,14 @@ func (pm *ProxyManager) cleanup() {
 
 // Return all the proxies
 func (pm *ProxyManager) GetAllProxies() map[string]*Proxy {
-	return pm.proxies
+	pm.mu.RLock()
+	defer pm.mu.RUnlock()
+
+	proxies := make(map[string]*Proxy, len(pm.proxies))
+	for host, proxy := range pm.proxies {
+		copy := *proxy
+		copy.AllowedIPs = append([]string(nil), proxy.AllowedIPs...)
+		proxies[host] = &copy
+	}
+	return proxies
 }

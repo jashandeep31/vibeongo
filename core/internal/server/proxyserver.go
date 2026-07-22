@@ -42,6 +42,7 @@ func (s *ProxyServer) Start(addr string) error {
 	mux.HandleFunc("GET /proxy/version", s.handleStatus)
 	mux.HandleFunc("POST /proxy/invalidate", s.handleInvalidate)
 	mux.HandleFunc("GET /proxy/my-ip", s.handleMyIP)
+	// mux.HandleFunc("GET /proxy/list", s.listAll)
 
 	// reverse proxy
 	mux.Handle("/", s.reverseProxy())
@@ -155,6 +156,18 @@ func hasValidBearerToken(authorizationHeader, expectedToken string) bool {
 
 	return subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
 }
+func (s *ProxyServer) listAll(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	proxies := s.store.GetAllProxies()
+
+	w.WriteHeader(http.StatusOK)
+	_ = json.NewEncoder(w).Encode(struct {
+		Proxies map[string]*store.Proxy `json:"proxies"`
+	}{
+		Proxies: proxies,
+	})
+}
 
 func (s *ProxyServer) handleMyIP(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -183,8 +196,8 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 		Director: func(r *http.Request) {
 			proxyData := r.Context().Value(proxyDataContextKey{}).(*store.Proxy)
 			r.URL.Scheme = proxyData.Target.Scheme
-			r.Host = proxyData.Host
 			r.URL.Host = proxyData.Target.Host
+			r.Host = proxyData.Target.Host
 		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			w.WriteHeader(http.StatusBadGateway)
@@ -193,7 +206,7 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 	}
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		proxyData, ok := s.store.GetProxyByHost(r.Host)
+		proxyData, ok := s.store.GetProxyByHost(normalizeHost(r.Host))
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			w.Write([]byte("404"))
@@ -227,21 +240,26 @@ func (s *ProxyServer) reverseProxy() http.Handler {
 	})
 }
 
+func normalizeHost(host string) string {
+	if parsedHost, _, err := net.SplitHostPort(host); err == nil {
+		return parsedHost
+	}
+	return host
+}
+
 type proxyDataContextKey struct{}
 
 func getRealIP(headers map[string][]string) (string, error) {
-	var XRealIP string
-
-	for k, v := range headers {
-		if len(v) <= 0 {
-
-			return "", fmt.Errorf("ip not found ")
+	for key, values := range headers {
+		if !strings.EqualFold(key, "X-Real-IP") {
+			continue
 		}
-		if k == "X-Real-Ip" {
-			XRealIP = v[0]
+		if len(values) == 0 || strings.TrimSpace(values[0]) == "" {
+			return "", fmt.Errorf("ip not found")
 		}
+		return strings.TrimSpace(values[0]), nil
 	}
-	return XRealIP, nil
+	return "", fmt.Errorf("ip not found")
 }
 
 func checkIPIsAllowed(headers map[string][]string, allowedIps []string) bool {

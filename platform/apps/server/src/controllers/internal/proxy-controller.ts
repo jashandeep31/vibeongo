@@ -1,13 +1,12 @@
 import {
   db,
   eq,
-  getTableColumns,
   instances,
   projectDomainRouting,
   proxyDomains,
   routingAllowedIps,
-  sql,
 } from "@repo/db";
+import { timingSafeEqual } from "node:crypto";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
@@ -16,9 +15,11 @@ import { env } from "../../lib/env.js";
 
 export const getTargetHostByDomain = catchAsync(
   async (req: Request, res: Response) => {
-    const authToken = req.headers.authorization;
-    if (authToken !== env.PROXY_SERVER_TOKEN) {
-      throw new AppError("unauthorized", 401);
+    if (!req.headers.authorization) {
+      throw new AppError("authorization token is required ", 401);
+    }
+    if (req.headers.authorization !== env.PROXY_SERVER_TOKEN) {
+      throw new AppError("authorization token is not valid ", 401);
     }
 
     const { domain } = z
@@ -62,21 +63,12 @@ export const getTargetHostByDomain = catchAsync(
       allowed_all_ips: first.proxy_domains.allow_all_ips,
       target:
         first.instances.runtime_kind === "sandbox"
-          ? "https://" + first.instances.public_ip
-          : "http://" +
-            first.instances.public_ip +
-            ":" +
-            first.proxy_domains.target_port,
+          ? `https://${first.proxy_domains.target_port}-${first.instances.public_ip?.split("-")[1]}`
+          : `http://${first.instances.public_ip}:${first.proxy_domains.target_port}`,
       allowed_ips: result
-        .map((r) => (r.routing_allowed_ips ? r.routing_allowed_ips.ip : null))
-        .filter(Boolean),
+        .map((r) => r.routing_allowed_ips?.ip)
+        .filter((ip): ip is string => Boolean(ip)),
     };
-    if (!proxy) {
-      res.status(404).json({
-        message: "Domain not round ",
-      });
-      return;
-    }
     console.log(proxy);
     res.status(200).json({
       data: proxy,
