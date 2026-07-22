@@ -3,15 +3,11 @@ import {
   and,
   db,
   eq,
-  instanceRegions,
-  instanceTypes,
   userLoginLogs,
   users,
   userSettings,
   userWallet,
 } from "@repo/db";
-import { projectConfigValidator, z } from "@repo/shared";
-import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 interface CreateUserInput {
   email: string;
   name?: string | undefined;
@@ -148,14 +144,6 @@ const createUserWithGithubAccount = async ({
     return { user, account };
   });
 
-  try {
-    const demoProject = await createDemoProjectConfig();
-    await createProjectWithConfigAndUserIdService(
-      demoProject,
-      userWithAccount.user.id,
-    );
-  } catch {}
-
   return userWithAccount;
 };
 
@@ -186,69 +174,4 @@ export const createOrGetUser = async (
   });
 
   return userWithAccount;
-};
-
-const createDemoProjectConfig = async (): Promise<
-  z.infer<typeof projectConfigValidator>
-> => {
-  const [metadata] = await db
-    .select({
-      regionId: instanceRegions.id,
-      instanceTypeId: instanceTypes.id,
-    })
-    .from(instanceTypes)
-    .innerJoin(instanceRegions, eq(instanceTypes.region_id, instanceRegions.id))
-    .where(
-      and(
-        eq(instanceRegions.slug, "us-east-1"),
-        eq(instanceTypes.name, "m6i.xlarge"),
-      ),
-    )
-    .limit(1);
-
-  if (!metadata) {
-    throw new Error(
-      "No us-east-1 m6i.xlarge instance metadata available for demo project",
-    );
-  }
-
-  return {
-    name: "Zed snippets",
-    provider: "aws",
-    description: "Demo project configuration",
-    regionId: metadata.regionId,
-    instanceTypeId: metadata.instanceTypeId,
-    sshKeyIds: [],
-    githubRepoIds: [],
-    initialScript: "",
-    finalScript: `cd /home/ubuntu/code 
-git clone https://github.com/jashandeep31/zed-snippets
-npm i
-npm i -D concurrently`,
-    devScript: `cd /home/ubuntu/code/zed-snippets
-npm run dev
-  `,
-    config: {
-      ports: [
-        {
-          port: 22,
-          protocol: "TCP",
-        },
-        {
-          port: 3000,
-          protocol: "TCP",
-        },
-      ],
-      packages: [
-        {
-          name: "opencode",
-          config: {
-            auth_json: {},
-            model: "default",
-            requirePassword: false,
-          },
-        },
-      ],
-    },
-  };
 };

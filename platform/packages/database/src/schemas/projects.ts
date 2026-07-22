@@ -27,7 +27,9 @@ export const projects = pgTable("projects", {
     .references(() => instanceTypes.id)
     .notNull(),
 
-  sandbox_type_id: uuid().references(() => sandboxTypes.id),
+  sandbox_type_id: uuid()
+    .references(() => sandboxTypes.id)
+    .notNull(),
 
   total_charges: integer().notNull().default(0),
 
