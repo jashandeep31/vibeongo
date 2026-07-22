@@ -22,6 +22,10 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   const setProjectName = useConfigStore((state) => state.setProjectName);
   const setProvider = useConfigStore((state) => state.setProvider);
   const setInstanceTypeId = useConfigStore((state) => state.setInstanceTypeId);
+  const setSandboxTypeId = useConfigStore((state) => state.setSandboxTypeId);
+  const setSandboxRegionId = useConfigStore(
+    (state) => state.setSandboxRegionId,
+  );
   const setInstanceRegion = useConfigStore((state) => state.setInstanceRegion);
   const setGitRepoIds = useConfigStore((state) => state.setGitRepoIds);
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
@@ -53,6 +57,8 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setProjectName(projectConfig.project.name);
     setProvider(projectConfig.provider);
     setInstanceTypeId(projectConfig.instanceTypeId);
+    setSandboxTypeId(projectConfig.sandboxTypeId ?? "");
+    setSandboxRegionId(projectConfig.sandboxRegionId ?? "");
     setInstanceRegion(projectConfig.instanceRegionId ?? "");
     setGitRepoIds(projectConfig.githubRepoIds);
     setSshKeys(projectConfig.sshKeyIds);
@@ -103,6 +109,8 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setProvider,
     setGitRepoIds,
     setInstanceTypeId,
+    setSandboxTypeId,
+    setSandboxRegionId,
     setInstanceRegion,
     setPortRules,
     setProjectName,

@@ -27,37 +27,22 @@ function SandboxConfigCard() {
     setSandboxTypeId("");
   };
 
-  const clearSandbox = () => {
-    setSandboxRegionId("");
-    setSandboxTypeId("");
-  };
-
   return (
     <section className="border-border bg-muted/20 space-y-4 rounded-lg border p-4">
       <div className="space-y-1">
-        <Label className="text-sm">Sandbox configuration (optional)</Label>
+        <Label className="text-sm">Sandbox configuration</Label>
         <p className="text-muted-foreground text-sm">
-          Choose a sandbox only when this project needs one. Leaving it unset
-          will not affect the project deployment.
+          Choose the sandbox environment for this project.
         </p>
       </div>
 
       <div className="space-y-2">
         <Label className="text-muted-foreground text-sm">Sandbox region</Label>
         <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            onClick={clearSandbox}
-            className={`hover:border-primary rounded-md border p-2 text-sm transition-colors ${
-              !sandboxRegionId
-                ? "border-primary bg-primary/5 text-primary ring-primary ring-1"
-                : "bg-muted hover:bg-muted/80"
-            }`}
-          >
-            No sandbox
-          </button>
           {isRegionsLoading
-            ? [1, 2].map((index) => <Skeleton key={index} className="h-12 w-28" />)
+            ? [1, 2].map((index) => (
+                <Skeleton key={index} className="h-12 w-28" />
+              ))
             : sandboxRegions?.map((region) => (
                 <button
                   type="button"
@@ -104,9 +89,21 @@ function SandboxConfigCard() {
                       </span>
                     ) : null}
                     <span className="text-muted-foreground mt-auto grid grid-cols-3 gap-2 pt-4 text-xs">
-                      <span>Price<br />{formatPricePerSecond(sandboxType.price_per_seconds)}</span>
-                      <span>CPU<br />{sandboxType.cpu || "N/A"}</span>
-                      <span>RAM<br />{sandboxType.ram || "N/A"}</span>
+                      <span>
+                        Price
+                        <br />
+                        {formatPricePerSecond(sandboxType.price_per_seconds)}
+                      </span>
+                      <span>
+                        CPU
+                        <br />
+                        {sandboxType.cpu || "N/A"}
+                      </span>
+                      <span>
+                        RAM
+                        <br />
+                        {sandboxType.ram || "N/A"}
+                      </span>
                     </span>
                   </button>
                 ))}
