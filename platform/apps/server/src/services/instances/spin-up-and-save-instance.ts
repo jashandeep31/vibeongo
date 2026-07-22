@@ -5,10 +5,11 @@ import {
   instanceRegions,
   instances,
   instanceTypes,
+  sandboxRegions,
+  sandboxTypes,
   projects,
   userWallet,
 } from "@repo/db";
-import { awsSupportedRegions } from "../../providers/aws/configs/aws-supported-regions-configs.js";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { createId } from "@paralleldrive/cuid2";
@@ -67,23 +68,66 @@ export const spinUpAndSaveInstance = async ({
     throw new AppError("User not found", 404);
   }
 
-  const [row] = await db
-    .select({ instanceType: instanceTypes, region: instanceRegions })
-    .from(instanceTypes)
-    .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
-    .where(eq(instanceTypes.id, project.instance_type_id));
+  let requiredBalance: number;
+  let instanceTypeId: string | null = null;
+  let sandboxTypeId: string | null = null;
+  let newInstance: Awaited<ReturnType<typeof createProviderInstance>>;
 
-  if (!row?.region || !row.instanceType) {
-    return null;
+  if (runtime === "vm") {
+    const [row] = await db
+      .select({ instanceType: instanceTypes, region: instanceRegions })
+      .from(instanceTypes)
+      .innerJoin(
+        instanceRegions,
+        eq(instanceRegions.id, instanceTypes.region_id),
+      )
+      .where(eq(instanceTypes.id, project.instance_type_id));
+
+    if (!row?.region || !row.instanceType) {
+      return null;
+    }
+
+    const twoHourCost = row.instanceType.price_per_hour * 2;
+    requiredBalance = Math.ceil(
+      twoHourCost + twoHourCost * (env.PROFIT_PRECENTAGE / 100),
+    );
+    instanceTypeId = row.instanceType.id;
+
+    newInstance = await createProviderInstance({
+      provider: row.instanceType.provider,
+      region: row.region.slug,
+      instanceType: row.instanceType.slug,
+      runtime,
+      userData: setupScript,
+    });
+  } else {
+    const [row] = await db
+      .select({ sandboxType: sandboxTypes, region: sandboxRegions })
+      .from(sandboxTypes)
+      .innerJoin(
+        sandboxRegions,
+        eq(sandboxRegions.id, sandboxTypes.sandbox_region),
+      )
+      .where(eq(sandboxTypes.id, project.sandbox_type_id));
+
+    if (!row?.region || !row.sandboxType) {
+      return null;
+    }
+
+    const twoHourCost = row.sandboxType.price_per_seconds * 60 * 120;
+    requiredBalance = Math.ceil(
+      twoHourCost + twoHourCost * (env.PROFIT_PRECENTAGE / 100),
+    );
+    sandboxTypeId = row.sandboxType.id;
+
+    newInstance = await createProviderInstance({
+      provider: row.sandboxType.provider,
+      region: row.region.slug,
+      instanceType: row.sandboxType.slug,
+      runtime,
+      userData: setupScript,
+    });
   }
-
-  const region = row.region;
-  const instanceType = row.instanceType;
-
-  const twoHourCost = row.instanceType.price_per_hour * 2;
-  const requiredBalance = Math.ceil(
-    twoHourCost + twoHourCost * (env.PROFIT_PRECENTAGE / 100),
-  );
 
   if (userWalletRow.balance < requiredBalance) {
     throw new AppError("Insufficient balance", 400);
@@ -97,14 +141,6 @@ export const spinUpAndSaveInstance = async ({
   if (runningInstances.length > 4) {
     throw new AppError("You can only have 4 instances running at a time", 400);
   }
-
-  const newInstance = await createProviderInstance({
-    provider: instanceType.provider,
-    region: region.slug as (typeof awsSupportedRegions)[number],
-    instanceType: instanceType.slug,
-    runtime,
-    userData: setupScript,
-  });
 
   const autoTerminateAfterInMinutes =
     terminateAfterInMinutes ??
@@ -120,7 +156,8 @@ export const spinUpAndSaveInstance = async ({
       project_id: project.id,
       user_id: userId,
       runtime_kind: runtime,
-      instance_type_id: project.instance_type_id,
+      instance_type_id: instanceTypeId,
+      sandbox_type_id: sandboxTypeId,
       provider_instance_id: newInstance.instanceId,
       terminated_at: null,
       terminates_at: new Date(

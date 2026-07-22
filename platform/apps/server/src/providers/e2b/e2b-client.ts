@@ -4,6 +4,10 @@ import { CreateInstanceProps } from "../types.js";
 import { AppError } from "../../lib/app-error.js";
 
 export class E2BClient {
+  async terminateInstance(instanceId: string) {
+    return Sandbox.kill(instanceId, { apiKey: env.E2B_KEY });
+  }
+
   async createInstance({
     region,
     instanceType,

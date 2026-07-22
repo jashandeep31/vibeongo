@@ -1,6 +1,7 @@
 import { AppError } from "../lib/app-error.js";
 import { AWSClient } from "./aws/services/aws-client.js";
 import { DigitalOceanClient } from "./digitalocean/digitalocean-client.js";
+import { E2BClient } from "./e2b/e2b-client.js";
 import type {
   TerminateProviderInstanceProps,
   TerminateProviderInstanceResponse,
@@ -8,6 +9,7 @@ import type {
 
 const awsClient = new AWSClient();
 const digitalOceanClient = new DigitalOceanClient();
+const e2bClient = new E2BClient();
 
 export const terminateProviderInstance = async ({
   provider,
@@ -19,8 +21,20 @@ export const terminateProviderInstance = async ({
     case "vm":
       return terminateEc2ProviderInstance({ provider, region, instanceId });
     case "sandbox":
-      throw new AppError("Sandbox instance termination is not supported", 501);
+      return terminateSandboxInstance(instanceId);
   }
+};
+
+const terminateSandboxInstance = async (
+  instanceId: string,
+): Promise<TerminateProviderInstanceResponse> => {
+  const terminated = await e2bClient.terminateInstance(instanceId);
+
+  if (!terminated) {
+    throw new AppError("Failed to terminate E2B sandbox", 502);
+  }
+
+  return { terminated: true };
 };
 
 const terminateEc2ProviderInstance = async ({

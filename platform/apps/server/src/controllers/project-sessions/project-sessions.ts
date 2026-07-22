@@ -19,6 +19,7 @@ import {
   exists,
   sql,
   asc,
+  instanceRuntimeKind,
 } from "@repo/db";
 import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { z } from "zod";
@@ -283,6 +284,11 @@ export const resumeProjectSession = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("User not found", 404);
     const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { runtime } = z
+      .object({
+        runtime: z.enum(instanceRuntimeKind.enumValues).default("vm"),
+      })
+      .parse(req.body ?? {});
 
     const rows = await db
       .select({
@@ -313,6 +319,7 @@ export const resumeProjectSession = catchAsync(
       userId: user.id,
       sessionId: projectSession.id,
       instanceId,
+      runtime,
     });
 
     if (!instance) throw new AppError("Failed to spin up the instance", 500);

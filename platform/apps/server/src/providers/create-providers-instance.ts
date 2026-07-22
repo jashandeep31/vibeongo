@@ -2,41 +2,59 @@ import { animals, colors, uniqueNamesGenerator } from "unique-names-generator";
 import type {
   CreateInstanceProps,
   CreateInstanceProviderResponse,
+  CreateSandboxProviderInstanceProps,
+  CreateVmProviderInstanceProps,
   CreateProviderInstanceProps,
 } from "./types.js";
 import { AppError } from "../lib/app-error.js";
 import { DigitalOceanClient } from "./digitalocean/digitalocean-client.js";
 import { AWSClient } from "./aws/services/aws-client.js";
+import { E2BClient } from "./e2b/e2b-client.js";
 
 const digitaloceanClient = new DigitalOceanClient();
 const awsInstancesClient = new AWSClient();
+const e2bClient = new E2BClient();
 
-export const createProviderInstance = async ({
-  provider,
-  region,
-  instanceType,
-  userData,
-  runtime,
-}: CreateProviderInstanceProps): Promise<CreateInstanceProviderResponse> => {
-  switch (runtime) {
+export const createProviderInstance = async (
+  props: CreateProviderInstanceProps,
+): Promise<CreateInstanceProviderResponse> => {
+  switch (props.runtime) {
     case "vm":
-      return createEc2ProviderInstance({
-        provider,
-        region,
-        instanceType,
-        userData,
-      });
+      return createVmProviderInstance(props);
     case "sandbox":
-      throw new AppError("Sandbox instance creation is not supported", 501);
+      return createSandboxProviderInstance(props);
   }
 };
 
-const createEc2ProviderInstance = async ({
+export const createSandboxProviderInstance = async ({
   provider,
   region,
   instanceType,
   userData,
-}: Omit<CreateProviderInstanceProps, "runtime">): Promise<CreateInstanceProviderResponse> => {
+}: CreateSandboxProviderInstanceProps): Promise<
+  CreateInstanceProviderResponse
+> => {
+  const instance: CreateInstanceProps = {
+    region,
+    instanceType,
+    userData,
+    instanceName: generateInstanceName(),
+  };
+
+  switch (provider) {
+    case "e2b":
+      return e2bClient.createInstance(instance);
+    default:
+      throw new AppError("Sandbox provider not found", 404);
+  }
+};
+
+export const createVmProviderInstance = async ({
+  provider,
+  region,
+  instanceType,
+  userData,
+}: CreateVmProviderInstanceProps): Promise<CreateInstanceProviderResponse> => {
   const instance: CreateInstanceProps = {
     region,
     instanceType,
