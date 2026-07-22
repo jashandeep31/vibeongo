@@ -73,6 +73,7 @@ export const udpateProjectConfigByProjectIdAndUserId = async (
         name: parsedData.name,
         description: parsedData.description,
         instance_type_id: parsedData.instanceTypeId,
+        sandbox_type_id: parsedData.sandboxTypeId,
         initial_script: parsedData.initialScript,
         final_script: parsedData.finalScript,
         dev_script: parsedData.devScript,

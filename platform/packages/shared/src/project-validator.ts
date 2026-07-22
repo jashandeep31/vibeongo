@@ -49,7 +49,7 @@ export const projectConfigValidator = z.object({
   provider: projectProviderValidator,
   regionId: z.uuid("Select a deployment region"),
   instanceTypeId: z.uuid("Select an instance type"),
-  sanboxTypeId: z.uuid("Select an sandbox type").nullable().optional(),
+  sandboxTypeId: z.uuid("Select an sandbox type").nullable().optional(),
   sshKeyIds: z.array(z.uuid()),
   githubRepoIds: z.array(z.uuid()),
 
