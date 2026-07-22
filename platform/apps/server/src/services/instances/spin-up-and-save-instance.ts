@@ -20,13 +20,15 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import * as crypto from "crypto";
 import { uniqueNamesGenerator, animals, colors } from "unique-names-generator";
 import { createProviderInstance } from "../../providers/create-providers-instance.js";
+import type { InstanceRuntime } from "../../providers/types.js";
 
-interface SpinUpAndSaveInstance {
+interface SpinUpAndSaveInstanceInput {
   sshKeys: string[];
   project: typeof projects.$inferSelect;
   userId: string;
   sessionId: string;
   instanceId: string;
+  runtime?: InstanceRuntime;
   terminate?: boolean;
   terminateAfterInMinutes?: number;
   terminateSetting?: InstanceAutoTerminateSetting;
@@ -44,10 +46,11 @@ export const spinUpAndSaveInstance = async ({
   userId,
   sessionId,
   instanceId,
+  runtime = "ec2",
   terminate = false,
   terminateAfterInMinutes,
   terminateSetting = "manual",
-}: SpinUpAndSaveInstance): Promise<spinUpAndSaveInstanceResponse> => {
+}: SpinUpAndSaveInstanceInput): Promise<spinUpAndSaveInstanceResponse> => {
   const sessionToken = `vps_${createId()}${crypto.randomBytes(16).toString("hex")}`;
 
   const setupScript = setupInstanceScript({
@@ -99,6 +102,7 @@ export const spinUpAndSaveInstance = async ({
     provider: instanceType.provider,
     region: region.slug as (typeof awsSupportedRegions)[number],
     instanceType: instanceType.slug,
+    runtime,
     userData: setupScript,
   });
 
@@ -115,6 +119,7 @@ export const spinUpAndSaveInstance = async ({
       id: instanceId,
       project_id: project.id,
       user_id: userId,
+      runtime_kind: runtime,
       instance_type_id: project.instance_type_id,
       provider_instance_id: newInstance.instanceId,
       terminated_at: null,

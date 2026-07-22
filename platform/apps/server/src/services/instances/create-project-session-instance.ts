@@ -20,12 +20,14 @@ import { AppError } from "../../lib/app-error.js";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { spinUpAndSaveInstance } from "./spin-up-and-save-instance.js";
 import type { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
+import type { InstanceRuntime } from "../../providers/types.js";
 
 type CreateInstanceInput = ReturnType<typeof createInstanceSchema.parse>;
 
 export const createProjectSessionInstance = async ({
   userId,
   input,
+  runtime = "ec2",
   sessionCategory = "manual",
   terminate = false,
   terminateSetting = "manual",
@@ -33,6 +35,7 @@ export const createProjectSessionInstance = async ({
 }: {
   userId: string;
   input: CreateInstanceInput;
+  runtime?: InstanceRuntime;
   sessionCategory?: (typeof projectSessionsCategory.enumValues)[number];
   terminate?: boolean;
   terminateSetting?: InstanceAutoTerminateSetting;
@@ -46,9 +49,7 @@ export const createProjectSessionInstance = async ({
     .from(projects)
     .leftJoin(projectSshKeys, eq(projectSshKeys.project_id, projects.id))
     .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
-    .where(
-      and(eq(projects.user_id, userId), eq(projects.id, input.projectId)),
-    );
+    .where(and(eq(projects.user_id, userId), eq(projects.id, input.projectId)));
 
   const project = rows[0]?.project;
   if (!project) throw new AppError("Project not found", 404);
@@ -136,6 +137,7 @@ export const createProjectSessionInstance = async ({
     userId,
     sessionId: projectSession.id,
     instanceId: crypto.randomUUID(),
+    runtime,
     terminate,
     terminateSetting,
   });

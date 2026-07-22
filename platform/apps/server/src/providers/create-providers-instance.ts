@@ -16,7 +16,27 @@ export const createProviderInstance = async ({
   region,
   instanceType,
   userData,
+  runtime,
 }: CreateProviderInstanceProps): Promise<CreateInstanceProviderResponse> => {
+  switch (runtime) {
+    case "ec2":
+      return createEc2ProviderInstance({
+        provider,
+        region,
+        instanceType,
+        userData,
+      });
+    case "sandbox":
+      throw new AppError("Sandbox instance creation is not supported", 501);
+  }
+};
+
+const createEc2ProviderInstance = async ({
+  provider,
+  region,
+  instanceType,
+  userData,
+}: Omit<CreateProviderInstanceProps, "runtime">): Promise<CreateInstanceProviderResponse> => {
   const instance: CreateInstanceProps = {
     region,
     instanceType,

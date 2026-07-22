@@ -1,8 +1,10 @@
-import { instanceProvidersEnum } from "@repo/db";
+import { instanceProvidersEnum, instanceRuntimeKind } from "@repo/db";
 import { awsSupportedRegions } from "./aws/configs/aws-supported-regions-configs.js";
 
 export type InstanceProvider =
   (typeof instanceProvidersEnum.enumValues)[number];
+export type InstanceRuntime =
+  (typeof instanceRuntimeKind.enumValues)[number];
 export type AwsSupportedRegion = (typeof awsSupportedRegions)[number];
 
 export interface CreateProviderInstanceProps {
@@ -10,11 +12,12 @@ export interface CreateProviderInstanceProps {
   region: string;
   instanceType: string;
   userData: string;
+  runtime: InstanceRuntime;
 }
 
 export interface CreateInstanceProps extends Omit<
   CreateProviderInstanceProps,
-  "provider"
+  "provider" | "runtime"
 > {
   instanceName: string;
 }
@@ -35,6 +38,7 @@ export interface TerminateProviderInstanceProps {
   provider: InstanceProvider;
   region: string;
   instanceId: string;
+  runtime: InstanceRuntime;
 }
 
 export interface TerminateProviderInstanceResponse {
@@ -48,7 +52,6 @@ export interface GetOutboundNetworkUsageProps {
   endTime: Date;
 }
 
-export interface GetProviderOutboundNetworkUsageProps
-  extends GetOutboundNetworkUsageProps {
+export interface GetProviderOutboundNetworkUsageProps extends GetOutboundNetworkUsageProps {
   provider: InstanceProvider;
 }

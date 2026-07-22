@@ -82,6 +82,7 @@ export const terminateInstanceAndChargeUsage = async ({
     provider: instanceWithTypeAndRegion.instance_types.provider,
     region: instanceWithTypeAndRegion.instance_regions.slug,
     instanceId: instanceWithTypeAndRegion.instances.provider_instance_id,
+    runtime: instance.runtime_kind,
   });
 
   if (!terminationResponse.terminated)

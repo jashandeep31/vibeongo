@@ -13,7 +13,21 @@ export const terminateProviderInstance = async ({
   provider,
   region,
   instanceId,
+  runtime,
 }: TerminateProviderInstanceProps): Promise<TerminateProviderInstanceResponse> => {
+  switch (runtime) {
+    case "ec2":
+      return terminateEc2ProviderInstance({ provider, region, instanceId });
+    case "sandbox":
+      throw new AppError("Sandbox instance termination is not supported", 501);
+  }
+};
+
+const terminateEc2ProviderInstance = async ({
+  provider,
+  region,
+  instanceId,
+}: Omit<TerminateProviderInstanceProps, "runtime">): Promise<TerminateProviderInstanceResponse> => {
   switch (provider) {
     case "aws": {
       const response = await awsClient.terminateInstance(region, [instanceId]);
