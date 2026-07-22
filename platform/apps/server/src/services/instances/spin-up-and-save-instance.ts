@@ -38,7 +38,7 @@ export type spinUpAndSaveInstanceResponse =
   | null;
 
 /**
- * Create a aws ec2 instance as per the specs and save it to the user database. So after the response you are ready to no db saving is needed
+ * Create a provider-backed VM and save it to the user database.
  */
 export const spinUpAndSaveInstance = async ({
   sshKeys,
@@ -46,7 +46,7 @@ export const spinUpAndSaveInstance = async ({
   userId,
   sessionId,
   instanceId,
-  runtime = "ec2",
+  runtime = "vm",
   terminate = false,
   terminateAfterInMinutes,
   terminateSetting = "manual",

@@ -27,7 +27,7 @@ type CreateInstanceInput = ReturnType<typeof createInstanceSchema.parse>;
 export const createProjectSessionInstance = async ({
   userId,
   input,
-  runtime = "ec2",
+  runtime = "vm",
   sessionCategory = "manual",
   terminate = false,
   terminateSetting = "manual",

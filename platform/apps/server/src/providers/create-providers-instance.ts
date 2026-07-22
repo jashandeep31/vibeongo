@@ -19,7 +19,7 @@ export const createProviderInstance = async ({
   runtime,
 }: CreateProviderInstanceProps): Promise<CreateInstanceProviderResponse> => {
   switch (runtime) {
-    case "ec2":
+    case "vm":
       return createEc2ProviderInstance({
         provider,
         region,

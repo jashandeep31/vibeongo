@@ -22,7 +22,7 @@ export const instanceState = pgEnum("instance_state", [
 ]);
 
 export const instanceRuntimeKind = pgEnum("instance_runtime_kind", [
-  "ec2",
+  "vm",
   "sandbox",
 ]);
 
@@ -37,7 +37,7 @@ export const instances = pgTable(
     user_id: uuid()
       .references(() => users.id, { onDelete: "cascade" })
       .notNull(),
-    runtime_kind: instanceRuntimeKind().notNull().default("ec2"),
+    runtime_kind: instanceRuntimeKind().notNull().default("vm"),
     instance_type_id: uuid().references(() => instanceTypes.id),
     sandbox_type_id: uuid().references(() => sandboxTypes.id),
     project_session_id: uuid().references(() => projectSessions.id, {
@@ -67,7 +67,7 @@ export const instances = pgTable(
       "instances_exactly_one_runtime_type",
       sql`
         (
-          ${table.runtime_kind} = 'ec2'
+          ${table.runtime_kind} = 'vm'
           AND ${table.instance_type_id} IS NOT NULL
           AND ${table.sandbox_type_id} IS NULL
         )
