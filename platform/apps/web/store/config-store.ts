@@ -51,6 +51,9 @@ interface ConfigStore {
   instanceTypeId: string;
   setInstanceTypeId: (id: string) => void;
 
+  sandboxTypeId: string;
+  setSandboxTypeId: (id: string) => void;
+
   instanceRegionId: string;
   setInstanceRegion: (region: string) => void;
 
@@ -107,6 +110,9 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   setDevScript: (script) => set(() => ({ devScript: script })),
   instanceTypeId: "",
   setInstanceTypeId: (id) => set(() => ({ instanceTypeId: id })),
+
+  sandboxTypeId: "",
+  setSandboxTypeId: (id) => set(() => ({ sandboxTypeId: id })),
 
   instanceRegionId: "",
   setInstanceRegion: (region) => set(() => ({ instanceRegionId: region })),

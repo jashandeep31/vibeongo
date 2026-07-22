@@ -59,6 +59,7 @@ export type ProjectConfigForEdit = {
   provider: (typeof instanceRegions.$inferSelect)["provider"];
   instanceRegionId: (typeof instanceRegions.$inferSelect)["id"] | null;
   instanceTypeId: (typeof projects.$inferSelect)["instance_type_id"];
+  sandboxTypeId: (typeof projects.$inferSelect)["sandbox_type_id"];
   sshKeyIds: string[];
   githubRepoIds: string[];
   config: z.infer<typeof projectConfigValidator>["config"];

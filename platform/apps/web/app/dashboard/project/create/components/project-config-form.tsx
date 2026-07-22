@@ -51,6 +51,7 @@ export default function ProjectConfigForm({
     isError: isImportConfigError,
   } = useGetProjectConfigForEdit(selectedProjectId || null);
   const setInstanceTypeId = useConfigStore((state) => state.setInstanceTypeId);
+  const setSandboxTypeId = useConfigStore((state) => state.setSandboxTypeId);
   const setProvider = useConfigStore((state) => state.setProvider);
   const setInstanceRegion = useConfigStore((state) => state.setInstanceRegion);
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
@@ -70,6 +71,7 @@ export default function ProjectConfigForm({
   const projectName = useConfigStore((state) => state.projectName);
   const provider = useConfigStore((state) => state.provider);
   const instanceTypeId = useConfigStore((state) => state.instanceTypeId);
+  const sandboxTypeId = useConfigStore((state) => state.sandboxTypeId);
   const instanceRegionId = useConfigStore((state) => state.instanceRegionId);
   const gitRepoIds = useConfigStore((state) => state.gitRepoIds);
   const sshKeys = useConfigStore((state) => state.sshKeys);
@@ -118,6 +120,7 @@ export default function ProjectConfigForm({
     projectName,
     provider,
     setSubmissionErrors,
+    sandboxTypeId,
     sshKeys,
   ]);
 
@@ -133,6 +136,7 @@ export default function ProjectConfigForm({
 
     setProvider(selectedProjectConfig.provider);
     setInstanceTypeId(selectedProjectConfig.instanceTypeId);
+    setSandboxTypeId(selectedProjectConfig.sandboxTypeId ?? "");
     setInstanceRegion(selectedProjectConfig.instanceRegionId ?? "");
     setSshKeys(selectedProjectConfig.sshKeyIds);
     setInitialScript(selectedProjectConfig.project.initial_script ?? "");

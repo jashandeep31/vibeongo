@@ -23,6 +23,7 @@ export const buildProjectConfigPayload = (
   provider: state.provider,
   regionId: state.instanceRegionId,
   instanceTypeId: state.instanceTypeId,
+  sandboxTypeId: state.sandboxTypeId || null,
   sshKeyIds: state.sshKeys,
   githubRepoIds: state.gitRepoIds,
   initialScript: state.initialScript,

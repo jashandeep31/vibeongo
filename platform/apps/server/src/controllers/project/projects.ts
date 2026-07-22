@@ -117,6 +117,7 @@ export const getProjectConfigForEdit = catchAsync(
         provider: projectWithInstanceType.instanceType.provider,
         instanceRegionId: projectWithInstanceType.instanceType.region_id,
         instanceTypeId: projectWithInstanceType.project.instance_type_id,
+        sandboxTypeId: projectWithInstanceType.project.sandbox_type_id,
         sshKeyIds: sshKeyRows.map((row) => row.sshKeyId),
         githubRepoIds: githubRepoRows.map((row) => row.githubRepoId),
         config: projectConfig,
