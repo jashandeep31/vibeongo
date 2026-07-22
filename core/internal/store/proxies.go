@@ -79,15 +79,12 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 
 type Response struct {
 	Data struct {
-		ID          string `json:"id"`
-		Port        int    `json:"target_port"`
-		AllowAllIPs bool   `json:"allow_all_ips"`
-		Routing     struct {
-			Ip         string `json:"ip"`
-			AllowedIPs []struct {
-				Ip string `json:"ip"`
-			} `json:"allowed_ips"`
-		} `json:"routing"`
+		ID          string   `json:"id"`
+		Domain      string   `json:"domain"`
+		Port        int      `json:"target_port"`
+		AllowAllIPs bool     `json:"allowed_all_ips"`
+		Target      string   `json:"target"`
+		AllowedIPs  []string `json:"allowed_ips"`
 	} `json:"data"`
 }
 
@@ -115,32 +112,29 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
-	if parsedResponse.Data.Routing.Ip == "" {
-		return nil, fmt.Errorf("invalid response: missing routing IP")
-	}
+	// if parsedResponse.Data.Routing.Ip == "" {
+	// 	return nil, fmt.Errorf("invalid response: missing routing IP")
+	// }
 
 	fmt.Println(parsedResponse.Data)
 	if parsedResponse.Data.Port == 0 {
 		return nil, fmt.Errorf("invalid response: missing port")
 	}
 
-	allowedIPs := make([]string, 0, len(parsedResponse.Data.Routing.AllowedIPs))
-	for _, ip := range parsedResponse.Data.Routing.AllowedIPs {
-		if ip.Ip != "" {
-			allowedIPs = append(allowedIPs, ip.Ip)
+	allowedIPs := make([]string, 0, len(parsedResponse.Data.AllowedIPs))
+	for _, ip := range parsedResponse.Data.AllowedIPs {
+		if ip != "" {
+			allowedIPs = append(allowedIPs, ip)
 		}
 	}
 
-	fmt.Println(parsedResponse.Data.Routing.Ip, parsedResponse.Data.Port)
-	fullTargetUrl, err := url.Parse("http://" + parsedResponse.Data.Routing.Ip + ":" + fmt.Sprint(parsedResponse.Data.Port))
-
-	fmt.Println("proxy", "fas", fullTargetUrl)
+	fullTargetURL, err := url.Parse(parsedResponse.Data.Host)
 	if err != nil {
 		return nil, err
 	}
 	return &Proxy{
 		Host:        host,
-		Target:      fullTargetUrl,
+		Target:      fullTargetURL,
 		AllowedIPs:  allowedIPs,
 		AllowAllIPs: parsedResponse.Data.AllowAllIPs,
 		ExpiresAt:   time.Now().Add(5 * time.Minute),
