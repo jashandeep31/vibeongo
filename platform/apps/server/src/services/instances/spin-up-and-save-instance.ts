@@ -131,7 +131,6 @@ export const spinUpAndSaveInstance = async ({
       authToken: sessionToken,
       projectSessionId: sessionId,
       instanceId,
-      username: "user",
     });
     newInstance = await createProviderInstance({
       provider: row.sandboxType.provider,

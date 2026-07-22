@@ -63,7 +63,7 @@ for attempt in {1..30}; do
 done
 
 #Now vibeongo is pre cooked in the ami
-# curl -fsSL ${env.SERVER_URL}/install | bash
+curl -fsSL ${env.SERVER_URL}/install | bash
 
 SCRIPT
 

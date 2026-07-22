@@ -21,6 +21,7 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
     await sandbox.commands.run(
       `echo '${encodedUserData}' | base64 -d > setup.sh && chmod +x setup.sh && ./setup.sh`,
       {
+        user: "ubuntu",
         timeoutMs: SETUP_TIMEOUT_MS,
         onStdout: (data: string): void => {
           process.stdout.write(data);
@@ -48,8 +49,5 @@ sandboxSetupWorker.on("error", (error) => {
 });
 
 sandboxSetupWorker.on("failed", (job, error) => {
-  console.error(
-    `Sandbox setup job ${job?.id ?? "unknown"} failed`,
-    error,
-  );
+  console.error(`Sandbox setup job ${job?.id ?? "unknown"} failed`, error);
 });
