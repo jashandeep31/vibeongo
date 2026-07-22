@@ -19,7 +19,7 @@ export const setupInstanceScript = ({
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
-exec > user-data.log 2>&1
+#exec > user-data.log 2>&1
 
 date
 
@@ -63,7 +63,7 @@ for attempt in {1..30}; do
 done
 
 #Now vibeongo is pre cooked in the ami
-curl -fsSL ${env.SERVER_URL}/install | bash
+# curl -fsSL ${env.SERVER_URL}/install | bash
 
 SCRIPT
 

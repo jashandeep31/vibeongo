@@ -54,12 +54,6 @@ export const spinUpAndSaveInstance = async ({
 }: SpinUpAndSaveInstanceInput): Promise<spinUpAndSaveInstanceResponse> => {
   const sessionToken = `vps_${createId()}${crypto.randomBytes(16).toString("hex")}`;
 
-  const setupScript = setupInstanceScript({
-    sshKey: sshKeys.join("\n"),
-    authToken: sessionToken,
-    projectSessionId: sessionId,
-    instanceId,
-  });
   const [userWalletRow] = await db
     .select()
     .from(userWallet)
@@ -93,6 +87,12 @@ export const spinUpAndSaveInstance = async ({
     );
     instanceTypeId = row.instanceType.id;
 
+    const setupScript = setupInstanceScript({
+      sshKey: sshKeys.join("\n"),
+      authToken: sessionToken,
+      projectSessionId: sessionId,
+      instanceId,
+    });
     newInstance = await createProviderInstance({
       provider: row.instanceType.provider,
       region: row.region.slug,
@@ -120,6 +120,19 @@ export const spinUpAndSaveInstance = async ({
     );
     sandboxTypeId = row.sandboxType.id;
 
+    if (userWalletRow.balance < 0.01) {
+      throw new AppError(
+        `Insufficient balance required is ${requiredBalance} you have ${userWalletRow.balance} `,
+        400,
+      );
+    }
+    const setupScript = setupInstanceScript({
+      sshKey: sshKeys.join("\n"),
+      authToken: sessionToken,
+      projectSessionId: sessionId,
+      instanceId,
+      username: "user",
+    });
     newInstance = await createProviderInstance({
       provider: row.sandboxType.provider,
       region: row.region.slug,
@@ -129,9 +142,6 @@ export const spinUpAndSaveInstance = async ({
     });
   }
 
-  if (userWalletRow.balance < requiredBalance) {
-    throw new AppError("Insufficient balance", 400);
-  }
   // TODO: Another temp fix
   const runningInstances = await db
     .select()
