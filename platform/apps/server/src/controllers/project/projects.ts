@@ -3,6 +3,7 @@ import {
   db,
   eq,
   instanceTypes,
+  sandboxTypes,
   projectGithubRepos,
   projects,
   projectSshKeys,
@@ -97,6 +98,14 @@ export const getProjectConfigForEdit = catchAsync(
 
     if (!projectWithInstanceType) throw new AppError("project not found", 404);
 
+    const sandboxTypeId = projectWithInstanceType.project.sandbox_type_id;
+    const [sandboxType] = sandboxTypeId
+      ? await db
+          .select({ sandboxRegionId: sandboxTypes.sandbox_region })
+          .from(sandboxTypes)
+          .where(eq(sandboxTypes.id, sandboxTypeId))
+      : [];
+
     const sshKeyRows = await db
       .select({ sshKeyId: projectSshKeys.ssh_key_id })
       .from(projectSshKeys)
@@ -118,6 +127,7 @@ export const getProjectConfigForEdit = catchAsync(
         instanceRegionId: projectWithInstanceType.instanceType.region_id,
         instanceTypeId: projectWithInstanceType.project.instance_type_id,
         sandboxTypeId: projectWithInstanceType.project.sandbox_type_id,
+        sandboxRegionId: sandboxType?.sandboxRegionId ?? null,
         sshKeyIds: sshKeyRows.map((row) => row.sshKeyId),
         githubRepoIds: githubRepoRows.map((row) => row.githubRepoId),
         config: projectConfig,

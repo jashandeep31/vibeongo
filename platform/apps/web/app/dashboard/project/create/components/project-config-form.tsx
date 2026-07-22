@@ -7,6 +7,7 @@ import InstanceRegionCards from "./instance-region-cards";
 import InstanceTypeCards from "./instance-type-cards";
 import NameCard from "./name-card";
 import ProjectScriptsCard from "./project-scripts-card";
+import SandboxConfigCard from "./sandbox-config-card";
 import ProjectConfigErrors from "./project-config-errors";
 import { validateProjectConfig } from "./project-config-validation";
 import ProviderCards from "./provider-cards";
@@ -52,6 +53,9 @@ export default function ProjectConfigForm({
   } = useGetProjectConfigForEdit(selectedProjectId || null);
   const setInstanceTypeId = useConfigStore((state) => state.setInstanceTypeId);
   const setSandboxTypeId = useConfigStore((state) => state.setSandboxTypeId);
+  const setSandboxRegionId = useConfigStore(
+    (state) => state.setSandboxRegionId,
+  );
   const setProvider = useConfigStore((state) => state.setProvider);
   const setInstanceRegion = useConfigStore((state) => state.setInstanceRegion);
   const setSshKeys = useConfigStore((state) => state.setSshKeys);
@@ -72,6 +76,7 @@ export default function ProjectConfigForm({
   const provider = useConfigStore((state) => state.provider);
   const instanceTypeId = useConfigStore((state) => state.instanceTypeId);
   const sandboxTypeId = useConfigStore((state) => state.sandboxTypeId);
+  const sandboxRegionId = useConfigStore((state) => state.sandboxRegionId);
   const instanceRegionId = useConfigStore((state) => state.instanceRegionId);
   const gitRepoIds = useConfigStore((state) => state.gitRepoIds);
   const sshKeys = useConfigStore((state) => state.sshKeys);
@@ -121,6 +126,7 @@ export default function ProjectConfigForm({
     provider,
     setSubmissionErrors,
     sandboxTypeId,
+    sandboxRegionId,
     sshKeys,
   ]);
 
@@ -137,6 +143,7 @@ export default function ProjectConfigForm({
     setProvider(selectedProjectConfig.provider);
     setInstanceTypeId(selectedProjectConfig.instanceTypeId);
     setSandboxTypeId(selectedProjectConfig.sandboxTypeId ?? "");
+    setSandboxRegionId(selectedProjectConfig.sandboxRegionId ?? "");
     setInstanceRegion(selectedProjectConfig.instanceRegionId ?? "");
     setSshKeys(selectedProjectConfig.sshKeyIds);
     setInitialScript(selectedProjectConfig.project.initial_script ?? "");
@@ -262,6 +269,7 @@ export default function ProjectConfigForm({
       <ProviderCards />
       <InstanceRegionCards />
       <InstanceTypeCards />
+      <SandboxConfigCard />
       <GitRepoConfigCard />
       <SshKeysCard />
       <AdditionalServices />
