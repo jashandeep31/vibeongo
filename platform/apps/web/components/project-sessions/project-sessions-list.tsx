@@ -27,6 +27,10 @@ import {
   useResumeProjectSession,
 } from "@/hooks/use-project-sessions";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import {
+  ProjectSessionRuntimeDialog,
+  type ProjectSessionRuntime,
+} from "@/components/dialogs/project-session-runtime-dialog";
 import { toast } from "sonner";
 import Link from "next/link";
 import axios from "axios";
@@ -308,16 +312,18 @@ export function ProjectSessionsList({
   const resumeSessionMutation = useResumeProjectSession();
   const archiveSessionMutation = useArchiveProjectSession();
   const [pendingSessionId, setPendingSessionId] = useState<string | null>(null);
+  const [runtimeDialogSessionId, setRuntimeDialogSessionId] =
+    useState<string | null>(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
 
   const handleResume = useCallback(
-    async (sessionId: string) => {
+    async (sessionId: string, runtime: ProjectSessionRuntime) => {
       setPendingSessionId(sessionId);
       const toastId = toast.loading("Launching instance...");
       try {
-        await resumeSessionMutation.mutateAsync(sessionId);
+        await resumeSessionMutation.mutateAsync({ id: sessionId, runtime });
         toast.success("Instance launched successfully", { id: toastId });
       } catch (error: unknown) {
         console.error(error);
@@ -330,6 +336,20 @@ export function ProjectSessionsList({
       }
     },
     [resumeSessionMutation],
+  );
+
+  const handleResumeRequest = useCallback((sessionId: string) => {
+    setRuntimeDialogSessionId(sessionId);
+  }, []);
+
+  const handleRuntimeSelect = useCallback(
+    (runtime: ProjectSessionRuntime) => {
+      if (!runtimeDialogSessionId) return;
+      const sessionId = runtimeDialogSessionId;
+      setRuntimeDialogSessionId(null);
+      void handleResume(sessionId, runtime);
+    },
+    [handleResume, runtimeDialogSessionId],
   );
 
   const handleArchive = useCallback(
@@ -375,13 +395,20 @@ export function ProjectSessionsList({
         <SessionCard
           key={session.id}
           session={session}
-          onResume={handleResume}
+          onResume={handleResumeRequest}
           onArchive={handleArchive}
           isPending={pendingSessionId === session.id}
           isArchiving={archivingSessionId === session.id}
           isArchivedView={isArchivedView}
         />
       ))}
+      <ProjectSessionRuntimeDialog
+        open={runtimeDialogSessionId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRuntimeDialogSessionId(null);
+        }}
+        onSelect={handleRuntimeSelect}
+      />
     </div>
   );
 }

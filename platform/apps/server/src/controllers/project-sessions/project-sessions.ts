@@ -286,7 +286,7 @@ export const resumeProjectSession = catchAsync(
     const { id } = z.object({ id: z.string() }).parse(req.params);
     const { runtime } = z
       .object({
-        runtime: z.enum(instanceRuntimeKind.enumValues).default("vm"),
+        runtime: z.enum(instanceRuntimeKind.enumValues),
       })
       .parse(req.body ?? {});
 

@@ -1,6 +1,7 @@
 import { BACKEND_URL } from "@/lib/constants";
 import {
   instances,
+  instanceRuntimeKind,
   projectSessionTaskAgents,
   projectSessionTasks,
   projectSessions,
@@ -33,6 +34,11 @@ export type ProjectSessionsResponse = {
 export type ArchiveProjectSessionInput = {
   id: string;
   action: boolean;
+};
+
+export type ResumeProjectSessionInput = {
+  id: string;
+  runtime: (typeof instanceRuntimeKind.enumValues)[number];
 };
 
 export type AddTaskToProjectSessionInput = {
@@ -77,10 +83,13 @@ export const getProjectSessions = async ({
   return res.data;
 };
 
-export const resumeProjectSession = async (id: string) => {
+export const resumeProjectSession = async ({
+  id,
+  runtime,
+}: ResumeProjectSessionInput) => {
   const res = await axios.post(
     `${BACKEND_URL}/api/v1/project-sessions/${id}`,
-    {},
+    { runtime },
     {
       withCredentials: true,
     },

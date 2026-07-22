@@ -6,6 +6,10 @@ import { useCallback, useMemo, useState } from "react";
 import { AddProjectSessionTaskDialog } from "@/components/dialogs/add-project-session-task-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { EditProjectSessionTaskDialog } from "@/components/dialogs/edit-project-session-task-dialog";
+import {
+  ProjectSessionRuntimeDialog,
+  type ProjectSessionRuntime,
+} from "@/components/dialogs/project-session-runtime-dialog";
 import { useTerminateInstance } from "@/hooks/use-instance";
 import {
   useDeleteProjectSessionTask,
@@ -191,6 +195,7 @@ const SessionTasks = ({
 const ClientView = ({ sessionId }: { sessionId: string }) => {
   const resumeSessionMutation = useResumeProjectSession();
   const [isResuming, setIsResuming] = useState(false);
+  const [isRuntimeDialogOpen, setIsRuntimeDialogOpen] = useState(false);
   const {
     data: session,
     isLoading,
@@ -210,11 +215,11 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
     [session?.tasks],
   );
 
-  const handleResume = useCallback(async () => {
+  const handleResume = useCallback(async (runtime: ProjectSessionRuntime) => {
     setIsResuming(true);
     const toastId = toast.loading("Launching instance...");
     try {
-      await resumeSessionMutation.mutateAsync(sessionId);
+      await resumeSessionMutation.mutateAsync({ id: sessionId, runtime });
       toast.success("Instance launched successfully", { id: toastId });
     } catch (error: unknown) {
       console.error(error);
@@ -226,6 +231,14 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
       setIsResuming(false);
     }
   }, [resumeSessionMutation, sessionId]);
+
+  const handleRuntimeSelect = useCallback(
+    (runtime: ProjectSessionRuntime) => {
+      setIsRuntimeDialogOpen(false);
+      void handleResume(runtime);
+    },
+    [handleResume],
+  );
 
   const handleTerminate = useCallback(
     async (instanceId: string) => {
@@ -276,7 +289,7 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
         <Button
           className="cursor-pointer"
           variant={isRunning ? "secondary" : "default"}
-          onClick={handleResume}
+          onClick={() => setIsRuntimeDialogOpen(true)}
           disabled={isResuming}
         >
           {isRunning ? (
@@ -292,6 +305,12 @@ const ClientView = ({ sessionId }: { sessionId: string }) => {
           )}
         </Button>
       </div>
+
+      <ProjectSessionRuntimeDialog
+        open={isRuntimeDialogOpen}
+        onOpenChange={setIsRuntimeDialogOpen}
+        onSelect={handleRuntimeSelect}
+      />
 
       <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <Card>
