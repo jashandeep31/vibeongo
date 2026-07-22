@@ -12,6 +12,7 @@ import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
 import { sshKeys } from "./ssh-key.js";
 import { githubRepos } from "./github-repos.js";
+import { sandboxTypes } from "./sandbox-metadata.js";
 
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -25,6 +26,9 @@ export const projects = pgTable("projects", {
   instance_type_id: uuid()
     .references(() => instanceTypes.id)
     .notNull(),
+
+  sandbox_type_id: uuid().references(() => sandboxTypes.id),
+
   total_charges: integer().notNull().default(0),
 
   overview: text().default("").notNull(),
