@@ -33,6 +33,29 @@ interface SpinUpAndSaveInstanceInput {
   terminateAfterInMinutes?: number;
   terminateSetting?: InstanceAutoTerminateSetting;
 }
+
+const SANDBOX_MAX_AUTO_TERMINATE_MINUTES = 60;
+
+const getValidatedAutoTerminateAfterInMinutes = async ({
+  runtime,
+  terminateAfterInMinutes,
+  userId,
+  terminateSetting,
+}: {
+  runtime: InstanceRuntime;
+  terminateAfterInMinutes: number | undefined;
+  userId: string;
+  terminateSetting: InstanceAutoTerminateSetting;
+}) => {
+  const requestedMinutes =
+    terminateAfterInMinutes ??
+    (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
+
+  return runtime === "sandbox"
+    ? Math.min(requestedMinutes, SANDBOX_MAX_AUTO_TERMINATE_MINUTES)
+    : requestedMinutes;
+};
+
 export type spinUpAndSaveInstanceResponse =
   | typeof instances.$inferSelect
   | null;
@@ -67,8 +90,12 @@ export const spinUpAndSaveInstance = async ({
   let newInstance: Awaited<ReturnType<typeof createProviderInstance>>;
 
   const autoTerminateAfterInMinutes =
-    terminateAfterInMinutes ??
-    (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
+    await getValidatedAutoTerminateAfterInMinutes({
+      runtime,
+      terminateAfterInMinutes,
+      userId,
+      terminateSetting,
+    });
 
   if (runtime === "vm") {
     const [row] = await db
