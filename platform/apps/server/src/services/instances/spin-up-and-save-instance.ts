@@ -19,7 +19,6 @@ import {
 } from "./get-user-instance-auto-terminate-minutes.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import * as crypto from "crypto";
-import { uniqueNamesGenerator, animals, colors } from "unique-names-generator";
 import { createProviderInstance } from "../../providers/create-providers-instance.js";
 import type { InstanceRuntime } from "../../providers/types.js";
 
@@ -47,7 +46,7 @@ export const spinUpAndSaveInstance = async ({
   userId,
   sessionId,
   instanceId,
-  runtime = "vm",
+  runtime = "sandbox",
   terminate = false,
   terminateAfterInMinutes,
   terminateSetting = "manual",
@@ -147,6 +146,7 @@ export const spinUpAndSaveInstance = async ({
   }
 
   // TODO: Another temp fix
+  const time = Date.now();
   const runningInstances = await db
     .select()
     .from(instances)
@@ -155,8 +155,6 @@ export const spinUpAndSaveInstance = async ({
   if (runningInstances.length > 4) {
     throw new AppError("You can only have 4 instances running at a time", 400);
   }
-
-  await new Promise<void>((res) => setTimeout(res, 5000));
 
   const [instance] = await db
     .insert(instances)
@@ -185,6 +183,8 @@ export const spinUpAndSaveInstance = async ({
       },
     })
     .returning();
+
+  console.log(time - Date.now());
 
   return instance || null;
 };

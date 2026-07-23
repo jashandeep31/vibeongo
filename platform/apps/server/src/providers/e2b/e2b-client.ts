@@ -11,12 +11,14 @@ export class E2BClient {
   async createInstance({
     instanceName,
     userData,
+    instanceType,
     terminatedAfterInMinutes,
   }: CreateInstanceProps) {
     const terminateInstanceInSecs =
       terminatedAfterInMinutes > 60 ? 60 * 60 : terminatedAfterInMinutes * 60;
 
-    const sandbox = await Sandbox.create("test", {
+    const time = Date.now();
+    const sandbox = await Sandbox.create(instanceType, {
       apiKey: env.E2B_API_KEY,
       timeoutMs: 1000 * terminateInstanceInSecs,
     });
@@ -26,6 +28,7 @@ export class E2BClient {
       userData,
     });
 
+    console.log(`time taken is ${Date.now() - time}`);
     return {
       instanceId: sandbox.sandboxId,
       instanceName: instanceName,

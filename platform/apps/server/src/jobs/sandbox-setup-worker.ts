@@ -26,13 +26,8 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
         onStdout: (data: string): void => {
           process.stdout.write(data);
         },
-        onStderr: (data: string): void => {
-          process.stderr.write(data);
-        },
       },
     );
-
-    console.log(`Sandbox ${sandboxId} setup completed`);
   },
   {
     connection: redis.duplicate({ maxRetriesPerRequest: null }) as any,
