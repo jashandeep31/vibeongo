@@ -69,6 +69,7 @@ export const spinUpAndSaveInstance = async ({
   const autoTerminateAfterInMinutes =
     terminateAfterInMinutes ??
     (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
+
   if (runtime === "vm") {
     const [row] = await db
       .select({ instanceType: instanceTypes, region: instanceRegions })

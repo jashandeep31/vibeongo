@@ -14,7 +14,7 @@ const getRoundedPrice = (price: number): number => {
   return Math.ceil(price * 10000);
 };
 
-const digitalOceanRegions = [{ slug: "BLR1", name: "Bangalore" }] as const;
+// const digitalOceanRegions = [{ slug: "BLR1", name: "Bangalore" }] as const;
 
 const awsRegions = [
   // { slug: "af-south-1", name: "Africa (Cape Town)" },
@@ -63,11 +63,11 @@ export const regionsSeed: (typeof instanceRegions.$inferInsert)[] = [
     ami: "Please change this ",
     provider: "aws",
   })),
-  ...digitalOceanRegions.map((region: any) => ({
-    ...region,
-    ami: "ubuntu-24-04-x64",
-    provider: "digitalocean",
-  })),
+  // ...digitalOceanRegions.map((region: any) => ({
+  //   ...region,
+  //   ami: "ubuntu-24-04-x64",
+  //   provider: "digitalocean",
+  // })),
 ];
 
 type RegionRecord = Pick<

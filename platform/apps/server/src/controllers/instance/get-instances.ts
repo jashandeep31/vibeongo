@@ -156,6 +156,17 @@ export const updateInstanceById = catchAsync(
       [K in keyof typeof instances.$inferInsert]: any;
     }> = {};
 
+    const [instance] = await db
+      .select()
+      .from(instances)
+      .where(and(eq(instances.user_id, user.id), eq(instances.id, id)));
+
+    if (!instance) throw new AppError("Instance not found ", 404);
+
+    if (instance.runtime_kind === "sandbox" && terminatesTimeUpdate) {
+      throw new AppError("Terminate time to sandbox can't be extended", 500);
+    }
+
     if (terminatesTimeUpdate) {
       const sign = terminatesTimeUpdate.action === "decrease" ? -1 : 1;
       const minutes = sign * terminatesTimeUpdate.timeInMinutes;

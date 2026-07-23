@@ -301,17 +301,30 @@ const terminateSandboxInstance = async ({
   const uptimeInMin = Math.ceil(
     (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
-  const costEachMin = 100;
 
+  const PRICE_SCALE = 1e7; // price_per_seconds stored as real_price * 10^7
+  const OUTPUT_SCALE = 1e4; // totalCostWithProfit stored as real_cost * 10^4 (4-decimal precision)
+  const MIN_CHARGE = 1; // minimum stored value = 0.0001 real dollars
+
+  // Step 1: convert stored price back to a real $/second value
+  const pricePerSecond = sandbox.price_per_seconds / PRICE_SCALE;
+
+  // Step 2: all math in real dollars, no scaling yet
+  const costEachMin = pricePerSecond * 60;
+  const totalCost = costEachMin * uptimeInMin;
+  console.log(totalCost);
+  const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
+  const totalCostWithProfit = totalCost + profit; // still real dollars
+
+  // Step 3: scale to 4-decimal integer for storage, enforce minimum charge
+  const scaled = Math.ceil(totalCostWithProfit * OUTPUT_SCALE);
+  const total = scaled < MIN_CHARGE ? MIN_CHARGE : scaled;
   const networkCharges = 0;
+
   return {
     networkCharges,
     uptimeInMin,
-    totalCostWithProfit: calculateTotalCostWithProfit({
-      costEachMin,
-      uptimeInMin,
-      networkCharges,
-    }),
+    totalCostWithProfit: total,
     networkOutInGb,
   };
 };
