@@ -52,23 +52,18 @@ export const terminateInstanceAndChargeUsage = async ({
   userId,
 }: terminateInstanceAndChargeUsageProps) => {
   // seleting the instance , region and its type
-  const [instanceWithTypeAndRegion] = await db
-    .select({ instances: instances })
+  const [instance] = await db
+    .select()
     .from(instances)
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
-
-  if (!instanceWithTypeAndRegion || !instanceWithTypeAndRegion?.instances)
-    throw new AppError("Instance not found", 404);
-
-  const instance = instanceWithTypeAndRegion.instances;
-
+  if (!instance) throw new AppError("instance not found", 404);
   const { totalCostWithProfit, networkCharges, uptimeInMin, netWorkOutInGB } =
     instance.runtime_kind === "vm"
       ? await terminateVMInstance({
-          instance: instanceWithTypeAndRegion.instances,
+          instance: instance,
         })
       : await terminateSandboxInstance({
-          instance: instanceWithTypeAndRegion.instances,
+          instance: instance,
         });
 
   // DB transaction starts from here
