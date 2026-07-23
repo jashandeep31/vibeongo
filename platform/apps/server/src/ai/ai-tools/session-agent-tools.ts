@@ -12,8 +12,7 @@ import { tool, Tool } from "ai";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { createProjectSessionInstance } from "../../services/instances/create-project-session-instance.js";
-import { raw } from "express";
-import { parse } from "dotenv";
+import sandbox from "bullmq/dist/esm/classes/sandbox.js";
 
 const getProjectGithubReposSchema = z.object({});
 export const getProjectGithubRepos = (
@@ -60,9 +59,13 @@ export const getProjectGithubRepos = (
     },
   });
 
-const createProjectSessionInstanceAIToolSchema = z.object({
-  runtime: z.enum(instanceRuntimeKind.enumValues).default("sandbox"),
-});
+const createProjectSessionInstanceAIToolSchema = createInstanceSchema
+  .omit({
+    projectId: true,
+  })
+  .extend({
+    sandbox: z.enum(instanceRuntimeKind.enumValues).default("sandbox"),
+  });
 
 export const createProjectSessionInstanceAITool = (
   userId: string,
@@ -74,9 +77,6 @@ export const createProjectSessionInstanceAITool = (
     inputSchema: createProjectSessionInstanceAIToolSchema,
     execute: async (rawData: unknown) => {
       try {
-        const parsedData =
-          createProjectSessionInstanceAIToolSchema.parse(rawData);
-
         const toolInput =
           createProjectSessionInstanceAIToolSchema.parse(rawData);
         const input = createInstanceSchema.parse({
@@ -84,7 +84,7 @@ export const createProjectSessionInstanceAITool = (
           projectId,
         });
         const { projectSession, instance } = await createProjectSessionInstance(
-          { userId, input, terminate: true, runtime: parsedData.runtime },
+          { userId, input, terminate: true, runtime: toolInput.sandbox },
         );
 
         return {

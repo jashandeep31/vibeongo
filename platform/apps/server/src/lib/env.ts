@@ -43,7 +43,7 @@ const envSchema = z.object({
   DIGITALOCEAN_API_KEY: z.string(),
   TELEGRAM_BOT_TOKEN: z.string(),
   REDIS_URL: z.string(),
-  E2B_KEY: z.string(),
+  E2B_API_KEY: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);

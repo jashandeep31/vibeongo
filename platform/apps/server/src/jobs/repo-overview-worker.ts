@@ -39,7 +39,7 @@ export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
     const sandbox = await Sandbox.create("opencode", {
       envs: {},
       timeoutMs: 1000 * 60 * 10,
-      apiKey: env.E2B_KEY,
+      apiKey: env.E2B_API_KEY,
     });
 
     await sandbox.git.clone(`https://github.com/${repo.full_name}.git`, {

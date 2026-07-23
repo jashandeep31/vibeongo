@@ -5,7 +5,7 @@ import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
 
 export class E2BClient {
   async terminateInstance(instanceId: string) {
-    return await Sandbox.kill(instanceId, { apiKey: env.E2B_KEY });
+    return await Sandbox.kill(instanceId, { apiKey: env.E2B_API_KEY });
   }
 
   async createInstance({
@@ -17,7 +17,7 @@ export class E2BClient {
       terminatedAfterInMinutes > 60 ? 60 * 60 : terminatedAfterInMinutes * 60;
 
     const sandbox = await Sandbox.create("test", {
-      apiKey: env.E2B_KEY,
+      apiKey: env.E2B_API_KEY,
       timeoutMs: 1000 * terminateInstanceInSecs,
     });
 

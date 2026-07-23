@@ -14,7 +14,7 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
   async (job) => {
     const { sandboxId, userData } = job.data;
     const sandbox = await Sandbox.connect(sandboxId, {
-      apiKey: env.E2B_KEY,
+      apiKey: env.E2B_API_KEY,
     });
     const encodedUserData = Buffer.from(userData, "utf8").toString("base64");
 
