@@ -23,26 +23,49 @@ import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-prox
 import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
 import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
 
-//props of the fuction
-interface terminateInstanceAndChargeUsageProps {
+interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
   userId: string;
 }
 
-//response
-interface terminateInstanceAndChargeUsageWithInstanceIdAndSessionId {
+interface TerminateInstanceAndChargeUsageWithSessionProps {
   instanceId: string;
   sessionId: string;
+}
+
+interface TerminationUsage {
+  networkCharges: number;
+  uptimeInMin: number;
+  totalCostWithProfit: number;
+  networkOutInGb: number;
 }
 
 const formatUptime = (uptimeInMin: number) =>
   `${uptimeInMin} ${uptimeInMin === 1 ? "minute" : "minutes"}`;
 
-const formatNetworkUsage = (networkUsageInGB: number) =>
-  `${networkUsageInGB.toFixed(6)} GB`;
+const formatNetworkUsage = (networkUsageInGb: number) =>
+  `${networkUsageInGb.toFixed(6)} GB`;
 
 const formatWalletAmount = (amount: number) =>
   `$${(amount / 10000).toFixed(4)}`;
+
+const calculateTotalCostWithProfit = ({
+  costEachMin,
+  uptimeInMin,
+  networkCharges,
+}: {
+  costEachMin: number;
+  uptimeInMin: number;
+  networkCharges: number;
+}) => {
+  const totalCost = costEachMin * uptimeInMin + networkCharges;
+  const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
+  const totalCostWithProfit = totalCost + profit;
+
+  return totalCostWithProfit < 0.0002 * 10000
+    ? 2
+    : Math.ceil(totalCostWithProfit);
+};
 
 /**
  * Terminate the instance and charge the user
@@ -50,29 +73,30 @@ const formatWalletAmount = (amount: number) =>
 export const terminateInstanceAndChargeUsage = async ({
   instanceId,
   userId,
-}: terminateInstanceAndChargeUsageProps) => {
-  // seleting the instance , region and its type
+}: TerminateInstanceAndChargeUsageProps) => {
+  // Select the instance, region, and type.
   const [instance] = await db
     .select()
     .from(instances)
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
   if (!instance) throw new AppError("instance not found", 404);
-  const { totalCostWithProfit, networkCharges, uptimeInMin, netWorkOutInGB } =
+
+  const { totalCostWithProfit, networkCharges, uptimeInMin, networkOutInGb } =
     instance.runtime_kind === "vm"
-      ? await terminateVMInstance({
+      ? await terminateVmInstance({
           instance: instance,
         })
       : await terminateSandboxInstance({
           instance: instance,
         });
 
-  // DB transaction starts from here
+  // Start the database transaction.
   await db.transaction(async (tx) => {
-    // Total cost include everything like network charges, normal usage charges
+    // Total cost includes network charges and normal usage charges.
     const totalCost = totalCostWithProfit;
 
     // Only one request can claim and charge a running instance.
-    // instance is set to terminated with the terminated time
+    // Mark the instance as terminated with the termination time.
     const [instanceToTerminate] = await tx
       .update(instances)
       .set({
@@ -83,7 +107,7 @@ export const terminateInstanceAndChargeUsage = async ({
       .returning({ id: instances.id });
     if (!instanceToTerminate) return;
 
-    // user wallet is only selected and locked for update
+    // Select and lock the user wallet for update.
     const [userWalletRow] = await tx
       .select()
       .from(userWallet)
@@ -91,7 +115,7 @@ export const terminateInstanceAndChargeUsage = async ({
       .for("update");
     if (!userWalletRow) throw new AppError("User wallet not found", 404);
 
-    // selecting all user credit wallet to charge  from the appropriate wallet and locked for update
+    // Select and lock all available credit wallets for update.
     const userCreditWalletRows = await tx
       .select()
       .from(userCreditGrants)
@@ -111,14 +135,14 @@ export const terminateInstanceAndChargeUsage = async ({
       0,
     );
 
-    // choosing the lower one between the user wallet total amount nad user spends to stop going to negative
+    // Prevent the charge from exceeding either wallet's available balance.
     const amountToCharge = Math.min(
       totalCost,
       Math.max(0, userWalletRow.balance),
       availableCreditBalance,
     );
 
-    // updating the user wallet amount
+    // Update the user wallet amount.
     await tx
       .update(userWallet)
       .set({
@@ -141,14 +165,14 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: `Instance ID: ${instanceId} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(netWorkOutInGB)}`,
-        raw_description: `Instance ${instanceId} (AWS instance ID: ${instance.provider_instance_id}) ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(netWorkOutInGB)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged.`,
+        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  `,
+        raw_description: `Instance ${instanceId} ${instance.instance_type_id || instance.sandbox_type_id}  ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(networkOutInGb)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged.`,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
     }
 
-    // updating the session cost
+    // Update the session cost.
     await tx
       .update(instances)
       .set({
@@ -156,7 +180,7 @@ export const terminateInstanceAndChargeUsage = async ({
       })
       .where(eq(instances.id, instanceId));
 
-    // updating the project total charges
+    // Update the project's total charges.
     if (instance.project_id) {
       await tx
         .update(projects)
@@ -167,8 +191,7 @@ export const terminateInstanceAndChargeUsage = async ({
     }
   });
 
-  // removing the routes
-  // NOTE: this is creating n calls to try to optimise this
+  // Remove the routes and invalidate affected project proxies.
   const updatedRoutings = await db
     .update(projectDomainRouting)
     .set({
@@ -187,32 +210,26 @@ export const terminateInstanceAndChargeUsage = async ({
   }
   return;
 };
-const terminateVMInstance = async ({
+const terminateVmInstance = async ({
   instance,
 }: {
   instance: typeof instances.$inferSelect;
-}): Promise<{
-  networkCharges: number;
-  uptimeInMin: number;
-  coastEachMin: number;
-  totalCostWithProfit: number;
-  netWorkOutInGB: number;
-}> => {
-  const [instancesTypeWithRegion] = await db
+}): Promise<TerminationUsage> => {
+  const [instanceTypeWithRegion] = await db
     .select()
     .from(instanceTypes)
     .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
     .where(eq(instanceTypes.id, instance.instance_type_id!));
 
-  const instance_type = instancesTypeWithRegion?.instance_types;
-  const instance_region = instancesTypeWithRegion?.instance_regions;
+  const instanceType = instanceTypeWithRegion?.instance_types;
+  const instanceRegion = instanceTypeWithRegion?.instance_regions;
 
-  if (!instance_type || !instance_region)
-    throw new AppError("Invalid requrest", 400);
+  if (!instanceType || !instanceRegion)
+    throw new AppError("Invalid request", 400);
 
-  const netWorkOutInGB = await getProviderOutboundNetworkUsage({
-    provider: instance_type.provider,
-    region: instance_region.slug,
+  const networkOutInGb = await getProviderOutboundNetworkUsage({
+    provider: instanceType.provider,
+    region: instanceRegion.slug,
     instanceId: instance.provider_instance_id,
     startTime: instance.started_at ?? instance.created_at,
     endTime: new Date(),
@@ -220,8 +237,8 @@ const terminateVMInstance = async ({
 
   // Both providers return the same semantic termination response.
   const terminationResponse = await terminateProviderInstance({
-    provider: instance_type.provider,
-    region: instance_region.slug,
+    provider: instanceType.provider,
+    region: instanceRegion.slug,
     instanceId: instance.provider_instance_id,
     runtime: instance.runtime_kind,
   });
@@ -229,32 +246,24 @@ const terminateVMInstance = async ({
   if (!terminationResponse.terminated)
     throw new AppError("Failed to terminate instance", 502);
 
-  // calculating the uptime
+  // Calculate the uptime.
   const uptimeInMin = Math.ceil(
     (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
-  const coastEachMin = Math.ceil(instance_type.price_per_hour / 60);
+  const costEachMin = Math.ceil(instanceType.price_per_hour / 60);
 
-  // This returns the price in are you format means 1.0001 is 10001 cents So no after conversion is needed
-  // source: https://aws.amazon.com/ec2/pricing/on-demand/
-  // TODO: make the network charges dynamic
-  const networkCharges = netWorkOutInGB * 0.13 * 10000;
-  // multiply by 10000 for cents that we use in our system
-  const totalCostWithProfit = (): number => {
-    const totalCost = coastEachMin * uptimeInMin + networkCharges;
-    const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
-    const totalCostWithProfit = totalCost + profit;
-    return totalCostWithProfit < 0.0002 * 10000
-      ? 2
-      : Math.ceil(totalCostWithProfit);
-  };
-
+  // Costs are stored in ten-thousandths of a dollar.
+  // TODO: Make the network charge rate dynamic.
+  const networkCharges = networkOutInGb * 0.13 * 10000;
   return {
     networkCharges,
     uptimeInMin,
-    coastEachMin,
-    totalCostWithProfit: totalCostWithProfit(),
-    netWorkOutInGB,
+    totalCostWithProfit: calculateTotalCostWithProfit({
+      costEachMin,
+      uptimeInMin,
+      networkCharges,
+    }),
+    networkOutInGb,
   };
 };
 
@@ -262,14 +271,8 @@ const terminateSandboxInstance = async ({
   instance,
 }: {
   instance: typeof instances.$inferSelect;
-}): Promise<{
-  networkCharges: number;
-  uptimeInMin: number;
-  coastEachMin: number;
-  totalCostWithProfit: number;
-  netWorkOutInGB: number;
-}> => {
-  const netWorkOutInGB = 0;
+}): Promise<TerminationUsage> => {
+  const networkOutInGb = 0;
   // Both providers return the same semantic termination response.
   const [sandboxWithRegion] = await db
     .select()
@@ -294,42 +297,33 @@ const terminateSandboxInstance = async ({
   if (!terminationResponse.terminated)
     throw new AppError("Failed to terminate instance", 502);
 
-  // calculating the uptime
+  // Calculate the uptime.
   const uptimeInMin = Math.ceil(
     (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
-  // const coastEachMin = Math.ceil(instance_type.price_per_hour / 60);
-  const coastEachMin = 100;
+  const costEachMin = 100;
 
   const networkCharges = 0;
-  // multiply by 10000 for cents that we use in our system
-  const totalCostWithProfit = (): number => {
-    const totalCost = coastEachMin * uptimeInMin + networkCharges;
-    const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
-    const totalCostWithProfit = totalCost + profit;
-    return totalCostWithProfit < 0.0002 * 10000
-      ? 2
-      : Math.ceil(totalCostWithProfit);
-  };
-
   return {
     networkCharges,
     uptimeInMin,
-    coastEachMin,
-    totalCostWithProfit: totalCostWithProfit(),
-    netWorkOutInGB,
+    totalCostWithProfit: calculateTotalCostWithProfit({
+      costEachMin,
+      uptimeInMin,
+      networkCharges,
+    }),
+    networkOutInGb,
   };
 };
 
 /**
- * Funciton take the intanceId and sessionId to terminate that session and charge user
- * User the hood it uses another main fuction of the termination terminateInstanceAndChargeUsage
+ * Terminates a session by instance ID and session ID, then charges the user.
  */
 export const terminateInstanceAndChargeUsageWithInstanceIdAndSessionId =
   async ({
     instanceId,
     sessionId,
-  }: terminateInstanceAndChargeUsageWithInstanceIdAndSessionId) => {
+  }: TerminateInstanceAndChargeUsageWithSessionProps) => {
     const where =
       sessionId === "iawareofshit"
         ? eq(instances.id, instanceId)

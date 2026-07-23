@@ -92,6 +92,7 @@ export const pullRequestOpenedHandler = async ({
     sessionCategory: sessionCat,
     terminate: true,
     terminateSetting: "pr",
+    runtime: "sandbox",
   });
 
   return instance;

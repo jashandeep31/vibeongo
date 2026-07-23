@@ -90,6 +90,7 @@ export const issueRequestHandler = async ({
     sessionCategory: sessionCat,
     terminate: true,
     terminateSetting: "issue",
+    runtime: "sandbox",
   });
 
   return instance;
