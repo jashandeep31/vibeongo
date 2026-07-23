@@ -1,23 +1,24 @@
 import { Sandbox } from "e2b";
 import { env } from "../../lib/env.js";
 import { CreateInstanceProps } from "../types.js";
-import { AppError } from "../../lib/app-error.js";
 import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
 
 export class E2BClient {
   async terminateInstance(instanceId: string) {
-    return Sandbox.kill(instanceId, { apiKey: env.E2B_KEY });
+    return await Sandbox.kill(instanceId, { apiKey: env.E2B_KEY });
   }
 
   async createInstance({
-    region,
-    instanceType,
     instanceName,
     userData,
+    terminatedAfterInMinutes,
   }: CreateInstanceProps) {
+    const terminateInstanceInSecs =
+      terminatedAfterInMinutes > 60 ? 60 * 60 : terminatedAfterInMinutes * 60;
+
     const sandbox = await Sandbox.create("test", {
       apiKey: env.E2B_KEY,
-      timeoutMs: 1000 * 60 * 10,
+      timeoutMs: 1000 * terminateInstanceInSecs,
     });
 
     await addSandboxSetupJob({

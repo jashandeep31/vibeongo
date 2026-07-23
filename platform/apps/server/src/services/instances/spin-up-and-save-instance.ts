@@ -67,6 +67,9 @@ export const spinUpAndSaveInstance = async ({
   let sandboxTypeId: string | null = null;
   let newInstance: Awaited<ReturnType<typeof createProviderInstance>>;
 
+  const autoTerminateAfterInMinutes =
+    terminateAfterInMinutes ??
+    (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
   if (runtime === "vm") {
     const [row] = await db
       .select({ instanceType: instanceTypes, region: instanceRegions })
@@ -99,6 +102,7 @@ export const spinUpAndSaveInstance = async ({
       instanceType: row.instanceType.slug,
       runtime,
       userData: setupScript,
+      terminatedAfterInMinutes: autoTerminateAfterInMinutes,
     });
   } else {
     const [row] = await db
@@ -138,6 +142,7 @@ export const spinUpAndSaveInstance = async ({
       instanceType: row.sandboxType.slug,
       runtime,
       userData: setupScript,
+      terminatedAfterInMinutes: autoTerminateAfterInMinutes,
     });
   }
 
@@ -150,10 +155,6 @@ export const spinUpAndSaveInstance = async ({
   if (runningInstances.length > 4) {
     throw new AppError("You can only have 4 instances running at a time", 400);
   }
-
-  const autoTerminateAfterInMinutes =
-    terminateAfterInMinutes ??
-    (await getUserInstanceAutoTerminateMinutes(userId, terminateSetting));
 
   await new Promise<void>((res) => setTimeout(res, 5000));
 

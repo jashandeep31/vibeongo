@@ -12,6 +12,8 @@ import {
   userWalletTransactions,
   projectDomainRouting,
   projects,
+  sandboxTypes,
+  sandboxRegions,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
@@ -51,70 +53,28 @@ export const terminateInstanceAndChargeUsage = async ({
 }: terminateInstanceAndChargeUsageProps) => {
   // seleting the instance , region and its type
   const [instanceWithTypeAndRegion] = await db
-    .select()
+    .select({ instances: instances })
     .from(instances)
-    .innerJoin(instanceTypes, eq(instances.instance_type_id, instanceTypes.id))
-    .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
 
-  if (
-    !instanceWithTypeAndRegion ||
-    !instanceWithTypeAndRegion?.instances ||
-    !instanceWithTypeAndRegion?.instance_regions ||
-    !instanceWithTypeAndRegion?.instance_types
-  )
+  if (!instanceWithTypeAndRegion || !instanceWithTypeAndRegion?.instances)
     throw new AppError("Instance not found", 404);
 
   const instance = instanceWithTypeAndRegion.instances;
 
-  // Getting the network out in DB
-  // NOTE: if the last transaction in db fails but aws termination works then it can cause issue as networkusage will throw error from the aws side need to be fixed
-  const netWorkOutInGB = await getProviderOutboundNetworkUsage({
-    provider: instanceWithTypeAndRegion.instance_types.provider,
-    region: instanceWithTypeAndRegion.instance_regions.slug,
-    instanceId: instance.provider_instance_id,
-    startTime: instance.started_at ?? instance.created_at,
-    endTime: new Date(),
-  });
-
-  // Both providers return the same semantic termination response.
-  const terminationResponse = await terminateProviderInstance({
-    provider: instanceWithTypeAndRegion.instance_types.provider,
-    region: instanceWithTypeAndRegion.instance_regions.slug,
-    instanceId: instanceWithTypeAndRegion.instances.provider_instance_id,
-    runtime: instance.runtime_kind,
-  });
-
-  if (!terminationResponse.terminated)
-    throw new AppError("Failed to terminate instance", 502);
-
-  // calculating the uptime
-  const uptimeInMin = Math.ceil(
-    (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
-  );
-  const coastEachMin = Math.ceil(
-    instanceWithTypeAndRegion.instance_types.price_per_hour / 60,
-  );
-
-  // This returns the price in are you format means 1.0001 is 10001 cents So no after conversion is needed
-  // source: https://aws.amazon.com/ec2/pricing/on-demand/
-  // TODO: make the network charges dynamic
-  const networkCharges = netWorkOutInGB * 0.13 * 10000;
-  // multiply by 10000 for cents that we use in our system
-  const totalCostWithProfit = (): number => {
-    console.log(networkCharges, netWorkOutInGB);
-    const totalCost = coastEachMin * uptimeInMin + networkCharges;
-    const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
-    const totalCostWithProfit = totalCost + profit;
-    return totalCostWithProfit < 0.0002 * 10000
-      ? 2
-      : Math.ceil(totalCostWithProfit);
-  };
+  const { totalCostWithProfit, networkCharges, uptimeInMin, netWorkOutInGB } =
+    instance.runtime_kind === "vm"
+      ? await terminateVMInstance({
+          instance: instanceWithTypeAndRegion.instances,
+        })
+      : await terminateSandboxInstance({
+          instance: instanceWithTypeAndRegion.instances,
+        });
 
   // DB transaction starts from here
   await db.transaction(async (tx) => {
     // Total cost include everything like network charges, normal usage charges
-    const totalCost = totalCostWithProfit();
+    const totalCost = totalCostWithProfit;
 
     // Only one request can claim and charge a running instance.
     // instance is set to terminated with the terminated time
@@ -231,6 +191,139 @@ export const terminateInstanceAndChargeUsage = async ({
     await invalidateProjectProxiesByPid(routing.project_id);
   }
   return;
+};
+const terminateVMInstance = async ({
+  instance,
+}: {
+  instance: typeof instances.$inferSelect;
+}): Promise<{
+  networkCharges: number;
+  uptimeInMin: number;
+  coastEachMin: number;
+  totalCostWithProfit: number;
+  netWorkOutInGB: number;
+}> => {
+  const [instancesTypeWithRegion] = await db
+    .select()
+    .from(instanceTypes)
+    .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
+    .where(eq(instanceTypes.id, instance.instance_type_id!));
+
+  const instance_type = instancesTypeWithRegion?.instance_types;
+  const instance_region = instancesTypeWithRegion?.instance_regions;
+
+  if (!instance_type || !instance_region)
+    throw new AppError("Invalid requrest", 400);
+
+  const netWorkOutInGB = await getProviderOutboundNetworkUsage({
+    provider: instance_type.provider,
+    region: instance_region.slug,
+    instanceId: instance.provider_instance_id,
+    startTime: instance.started_at ?? instance.created_at,
+    endTime: new Date(),
+  });
+
+  // Both providers return the same semantic termination response.
+  const terminationResponse = await terminateProviderInstance({
+    provider: instance_type.provider,
+    region: instance_region.slug,
+    instanceId: instance.provider_instance_id,
+    runtime: instance.runtime_kind,
+  });
+
+  if (!terminationResponse.terminated)
+    throw new AppError("Failed to terminate instance", 502);
+
+  // calculating the uptime
+  const uptimeInMin = Math.ceil(
+    (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
+  );
+  const coastEachMin = Math.ceil(instance_type.price_per_hour / 60);
+
+  // This returns the price in are you format means 1.0001 is 10001 cents So no after conversion is needed
+  // source: https://aws.amazon.com/ec2/pricing/on-demand/
+  // TODO: make the network charges dynamic
+  const networkCharges = netWorkOutInGB * 0.13 * 10000;
+  // multiply by 10000 for cents that we use in our system
+  const totalCostWithProfit = (): number => {
+    const totalCost = coastEachMin * uptimeInMin + networkCharges;
+    const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
+    const totalCostWithProfit = totalCost + profit;
+    return totalCostWithProfit < 0.0002 * 10000
+      ? 2
+      : Math.ceil(totalCostWithProfit);
+  };
+
+  return {
+    networkCharges,
+    uptimeInMin,
+    coastEachMin,
+    totalCostWithProfit: totalCostWithProfit(),
+    netWorkOutInGB,
+  };
+};
+
+const terminateSandboxInstance = async ({
+  instance,
+}: {
+  instance: typeof instances.$inferSelect;
+}): Promise<{
+  networkCharges: number;
+  uptimeInMin: number;
+  coastEachMin: number;
+  totalCostWithProfit: number;
+  netWorkOutInGB: number;
+}> => {
+  const netWorkOutInGB = 0;
+  // Both providers return the same semantic termination response.
+  const [sandboxWithRegion] = await db
+    .select()
+    .from(sandboxTypes)
+    .innerJoin(
+      sandboxRegions,
+      eq(sandboxRegions.id, sandboxTypes.sandbox_region),
+    )
+    .where(eq(sandboxTypes.id, instance.sandbox_type_id!));
+
+  const sandbox = sandboxWithRegion?.sandbox_types;
+  const sandboxRegion = sandboxWithRegion?.sandbox_regions;
+  if (!sandbox || !sandboxRegion) throw new AppError("Sandbox not found ", 404);
+
+  const terminationResponse = await terminateProviderInstance({
+    provider: sandbox.provider,
+    region: sandboxRegion.slug,
+    instanceId: instance.provider_instance_id,
+    runtime: instance.runtime_kind,
+  });
+
+  if (!terminationResponse.terminated)
+    throw new AppError("Failed to terminate instance", 502);
+
+  // calculating the uptime
+  const uptimeInMin = Math.ceil(
+    (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
+  );
+  // const coastEachMin = Math.ceil(instance_type.price_per_hour / 60);
+  const coastEachMin = 100;
+
+  const networkCharges = 0;
+  // multiply by 10000 for cents that we use in our system
+  const totalCostWithProfit = (): number => {
+    const totalCost = coastEachMin * uptimeInMin + networkCharges;
+    const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
+    const totalCostWithProfit = totalCost + profit;
+    return totalCostWithProfit < 0.0002 * 10000
+      ? 2
+      : Math.ceil(totalCostWithProfit);
+  };
+
+  return {
+    networkCharges,
+    uptimeInMin,
+    coastEachMin,
+    totalCostWithProfit: totalCostWithProfit(),
+    netWorkOutInGB,
+  };
 };
 
 /**

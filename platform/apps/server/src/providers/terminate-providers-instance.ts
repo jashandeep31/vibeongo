@@ -41,7 +41,10 @@ const terminateEc2ProviderInstance = async ({
   provider,
   region,
   instanceId,
-}: Omit<TerminateProviderInstanceProps, "runtime">): Promise<TerminateProviderInstanceResponse> => {
+}: Omit<
+  TerminateProviderInstanceProps,
+  "runtime"
+>): Promise<TerminateProviderInstanceResponse> => {
   switch (provider) {
     case "aws": {
       const response = await awsClient.terminateInstance(region, [instanceId]);
@@ -60,7 +63,9 @@ const terminateEc2ProviderInstance = async ({
       return { terminated: true };
     }
     case "digitalocean": {
-      const response = await digitalOceanClient.terminateInstance({ instanceId });
+      const response = await digitalOceanClient.terminateInstance({
+        instanceId,
+      });
 
       if (response.status !== 204) {
         throw new AppError("Failed to terminate DigitalOcean instance", 502);

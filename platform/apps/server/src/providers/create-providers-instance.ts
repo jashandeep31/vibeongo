@@ -31,14 +31,14 @@ export const createSandboxProviderInstance = async ({
   region,
   instanceType,
   userData,
-}: CreateSandboxProviderInstanceProps): Promise<
-  CreateInstanceProviderResponse
-> => {
+  terminatedAfterInMinutes,
+}: CreateSandboxProviderInstanceProps): Promise<CreateInstanceProviderResponse> => {
   const instance: CreateInstanceProps = {
     region,
     instanceType,
     userData,
     instanceName: generateInstanceName(),
+    terminatedAfterInMinutes,
   };
 
   switch (provider) {
@@ -54,12 +54,14 @@ export const createVmProviderInstance = async ({
   region,
   instanceType,
   userData,
+  terminatedAfterInMinutes,
 }: CreateVmProviderInstanceProps): Promise<CreateInstanceProviderResponse> => {
   const instance: CreateInstanceProps = {
     region,
     instanceType,
     userData,
     instanceName: generateInstanceName(),
+    terminatedAfterInMinutes,
   };
 
   switch (provider) {
