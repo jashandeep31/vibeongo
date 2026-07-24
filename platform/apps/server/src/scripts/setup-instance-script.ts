@@ -87,6 +87,7 @@ vibeongo tasks
 VIBEONGO_COMMANDS
 
 date
+echo ---done---
 `;
 };
 // ${terminate ? "vibeongo terminate" : ""}
