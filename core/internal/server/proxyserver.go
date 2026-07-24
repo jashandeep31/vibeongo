@@ -25,6 +25,7 @@ var allowedCORSOrigins = map[string]struct{}{
 	"https://www.vibeongo.com": {},
 	"https://vibeongo.com":     {},
 	"http://localhost:3000":    {},
+	"https://app.t3.codes":     {},
 }
 
 type ProxyServer struct {
@@ -57,7 +58,7 @@ func withCORS(next http.Handler) http.Handler {
 
 		if r.Method == http.MethodOptions {
 			if isAllowedOrigin {
-				setCORSHeaders(w.Header(), origin)
+				setCORSHeaders(w.Header(), origin, r.Header.Get("Access-Control-Request-Headers"))
 			}
 			w.WriteHeader(http.StatusNoContent)
 			return
@@ -81,7 +82,7 @@ type corsResponseWriter struct {
 func (w *corsResponseWriter) WriteHeader(statusCode int) {
 	if !w.wrote {
 		if w.allowed {
-			setCORSHeaders(w.Header(), w.origin)
+			setCORSHeaders(w.Header(), w.origin, "")
 		}
 		w.wrote = true
 	}
@@ -103,12 +104,19 @@ func (w *corsResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hijacker.Hijack()
 }
 
-func setCORSHeaders(headers http.Header, origin string) {
+func setCORSHeaders(headers http.Header, origin, requestedHeaders string) {
 	headers.Del("Access-Control-Allow-Origin")
 	headers.Set("Access-Control-Allow-Origin", origin)
 	headers.Set("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
-	headers.Set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept, Authorization")
+	if requestedHeaders == "" {
+		headers.Set("Access-Control-Allow-Headers", "*")
+	} else {
+		// Echo the browser's preflight request so custom application headers
+		// are allowed without maintaining a hard-coded list here.
+		headers.Set("Access-Control-Allow-Headers", requestedHeaders)
+	}
 	headers.Add("Vary", "Origin")
+	headers.Add("Vary", "Access-Control-Request-Headers")
 }
 
 // Return the version of the application along with the build time.
