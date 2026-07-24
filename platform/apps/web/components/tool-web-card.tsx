@@ -60,6 +60,7 @@ export function ToolWebCard({
   const shouldOpenPairOnPasswordReceiveRef = useRef(false);
   const shouldRequestPasswordOnStartedRef = useRef(false);
   const shouldRedirectOnStartedRef = useRef(false);
+  const pendingPairTokenRef = useRef<string | null>(null);
 
   const isRunning = status === "started";
   const isStarting = status === "starting";
@@ -74,20 +75,22 @@ export function ToolWebCard({
 
   const redirectToTool = useCallback(() => {
     if (!url) {
-      return;
+      return false;
     }
 
     window.open(url, "_blank", "noopener,noreferrer");
+    return true;
   }, [url]);
 
   const redirectToPair = useCallback(
     (token: string) => {
       if (!url) {
-        return;
+        return false;
       }
 
       const pairUrl = `${url.replace(/\/$/, "")}/pair#token=${encodeURIComponent(token)}`;
       window.open(pairUrl, "_blank", "noopener,noreferrer");
+      return true;
     },
     [url],
   );
@@ -131,12 +134,13 @@ export function ToolWebCard({
   }, []);
 
   useEffect(() => {
-    if (!url || isTerminated) {
+    if (isTerminated) {
       setStatus("stopped");
       setPendingAction(null);
       setError(null);
       setPasswordPendingAction(null);
       shouldRedirectOnStartedRef.current = false;
+      pendingPairTokenRef.current = null;
       shouldCopyPasswordOnReceiveRef.current = false;
       shouldOpenPairOnPasswordReceiveRef.current = false;
       shouldRequestPasswordOnStartedRef.current = false;
@@ -177,7 +181,10 @@ export function ToolWebCard({
 
       if (nextPassword && shouldOpenPairOnPasswordReceiveRef.current) {
         shouldOpenPairOnPasswordReceiveRef.current = false;
-        redirectToPair(nextPassword);
+        pendingPairTokenRef.current = nextPassword;
+        if (redirectToPair(nextPassword)) {
+          pendingPairTokenRef.current = null;
+        }
       }
 
       if (nextPassword && shouldCopyPasswordOnReceiveRef.current) {
@@ -202,12 +209,14 @@ export function ToolWebCard({
         nextStatus === "started" &&
         shouldRedirectOnStartedRef.current
       ) {
-        shouldRedirectOnStartedRef.current = false;
-        redirectToTool();
+        if (redirectToTool()) {
+          shouldRedirectOnStartedRef.current = false;
+        }
       }
 
       if (nextStatus === "stopped" || nextError) {
         shouldRedirectOnStartedRef.current = false;
+        pendingPairTokenRef.current = null;
         shouldCopyPasswordOnReceiveRef.current = false;
         shouldOpenPairOnPasswordReceiveRef.current = false;
         shouldRequestPasswordOnStartedRef.current = false;
@@ -226,6 +235,23 @@ export function ToolWebCard({
     tool,
     websocket,
   ]);
+
+  useEffect(() => {
+    if (!url || !isRunning) {
+      return;
+    }
+
+    if (shouldRedirectOnStartedRef.current) {
+      shouldRedirectOnStartedRef.current = false;
+      redirectToTool();
+    }
+
+    const pendingPairToken = pendingPairTokenRef.current;
+    if (pendingPairToken) {
+      pendingPairTokenRef.current = null;
+      redirectToPair(pendingPairToken);
+    }
+  }, [isRunning, redirectToPair, redirectToTool, url]);
 
   useEffect(() => {
     if (!websocket || !url || isTerminated) {
