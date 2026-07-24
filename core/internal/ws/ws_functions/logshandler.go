@@ -19,7 +19,7 @@ func LogsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex)
 		case <-ctx.Done():
 			return
 		case <-logT.C:
-			content, err := os.ReadFile("/var/log/user-data.log")
+			content, err := os.ReadFile("/home/ubuntu/.logs/user-data.log")
 			if err != nil {
 				content = []byte("Hi how are you")
 			}

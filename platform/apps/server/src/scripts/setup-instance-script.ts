@@ -19,7 +19,8 @@ export const setupInstanceScript = ({
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
 set -euxo pipefail
-#exec > user-data.log 2>&1
+mkdir -p /home/ubuntu/.logs
+exec > /home/ubuntu/.logs/user-data.log 2>&1
 
 date
 
