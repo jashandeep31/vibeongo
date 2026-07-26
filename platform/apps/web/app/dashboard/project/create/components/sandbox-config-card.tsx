@@ -1,4 +1,5 @@
-import { memo } from "react";
+import { memo, useEffect, useMemo, useState } from "react";
+import { sandboxProvidersEnums } from "@repo/db";
 import { Label } from "@repo/ui/components/label";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import {
@@ -10,6 +11,13 @@ import { useConfigStore } from "@/store/config-store";
 const formatPricePerSecond = (pricePerSecond: number) =>
   `$${(pricePerSecond / 10_000_000).toFixed(4)}/sec`;
 
+type SandboxProvider = (typeof sandboxProvidersEnums.enumValues)[number];
+
+const providerNames: Record<SandboxProvider, string> = {
+  e2b: "E2B",
+  vercel: "Vercel",
+};
+
 function SandboxConfigCard() {
   const {
     sandboxRegionId,
@@ -17,12 +25,49 @@ function SandboxConfigCard() {
     setSandboxRegionId,
     setSandboxTypeId,
   } = useConfigStore();
+  const [sandboxProvider, setSandboxProvider] = useState<SandboxProvider | "">(
+    "",
+  );
   const { data: sandboxRegions, isLoading: isRegionsLoading } =
     useSandboxRegions();
   const { data: sandboxTypes, isLoading: isTypesLoading } =
     useSandboxTypesByRegionId({ regionId: sandboxRegionId || null });
 
+  const providers = useMemo(
+    () =>
+      Array.from(
+        new Set(sandboxRegions?.map((region) => region.provider) ?? []),
+      ),
+    [sandboxRegions],
+  );
+  const providerRegions = useMemo(
+    () =>
+      sandboxRegions?.filter(
+        (region) => !sandboxProvider || region.provider === sandboxProvider,
+      ),
+    [sandboxProvider, sandboxRegions],
+  );
+
+  // The edit form hydrates the region id before metadata may have loaded.
+  // Derive the selected provider once that metadata is available.
+  useEffect(() => {
+    const selectedRegion = sandboxRegions?.find(
+      (region) => region.id === sandboxRegionId,
+    );
+    if (selectedRegion) setSandboxProvider(selectedRegion.provider);
+  }, [sandboxRegionId, sandboxRegions]);
+
+  const selectProvider = (provider: SandboxProvider) => {
+    if (sandboxProvider === provider) return;
+
+    setSandboxProvider(provider);
+    setSandboxRegionId("");
+    setSandboxTypeId("");
+  };
+
   const selectRegion = (regionId: string) => {
+    const region = sandboxRegions?.find((item) => item.id === regionId);
+    if (region) setSandboxProvider(region.provider);
     setSandboxRegionId(regionId);
     setSandboxTypeId("");
   };
@@ -37,13 +82,39 @@ function SandboxConfigCard() {
       </div>
 
       <div className="space-y-2">
+        <Label className="text-muted-foreground text-sm">
+          Sandbox provider
+        </Label>
+        <div className="flex flex-wrap items-center gap-3">
+          {isRegionsLoading
+            ? [1, 2].map((index) => (
+                <Skeleton key={index} className="h-10 w-24" />
+              ))
+            : providers.map((provider) => (
+                <button
+                  type="button"
+                  onClick={() => selectProvider(provider)}
+                  className={`hover:border-primary rounded-md border px-4 py-2 text-sm transition-colors ${
+                    sandboxProvider === provider
+                      ? "border-primary bg-primary/5 text-primary ring-primary ring-1"
+                      : "bg-muted hover:bg-muted/80"
+                  }`}
+                  key={provider}
+                >
+                  {providerNames[provider]}
+                </button>
+              ))}
+        </div>
+      </div>
+
+      <div className="space-y-2">
         <Label className="text-muted-foreground text-sm">Sandbox region</Label>
         <div className="flex flex-wrap items-center gap-3">
           {isRegionsLoading
             ? [1, 2].map((index) => (
                 <Skeleton key={index} className="h-12 w-28" />
               ))
-            : sandboxRegions?.map((region) => (
+            : providerRegions?.map((region) => (
                 <button
                   type="button"
                   onClick={() => selectRegion(region.id)}

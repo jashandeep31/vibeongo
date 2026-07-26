@@ -8,7 +8,10 @@ import {
   integer,
 } from "drizzle-orm/pg-core";
 
-export const sandboxProvidersEnums = pgEnum("sandbox_providers", ["e2b"]);
+export const sandboxProvidersEnums = pgEnum("sandbox_providers", [
+  "e2b",
+  "vercel",
+]);
 
 export const sandboxRegions = pgTable("sandbox_regions", {
   id: uuid().defaultRandom().primaryKey(),
