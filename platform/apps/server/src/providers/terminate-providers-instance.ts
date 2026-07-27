@@ -2,6 +2,8 @@ import { AppError } from "../lib/app-error.js";
 import { AWSClient } from "./aws/services/aws-client.js";
 import { DigitalOceanClient } from "./digitalocean/digitalocean-client.js";
 import { E2BClient } from "./e2b/e2b-client.js";
+import { DaytonaClient } from "./daytona/daytona-client.js";
+import { VercelSandboxClient } from "./vercel/vercel-sandbox-client.js";
 import type {
   TerminateProviderInstanceProps,
   TerminateProviderInstanceResponse,
@@ -10,6 +12,8 @@ import type {
 const awsClient = new AWSClient();
 const digitalOceanClient = new DigitalOceanClient();
 const e2bClient = new E2BClient();
+const daytonaClient = new DaytonaClient();
+const vercelClient = new VercelSandboxClient();
 
 export const terminateProviderInstance = async ({
   provider,
@@ -21,17 +25,32 @@ export const terminateProviderInstance = async ({
     case "vm":
       return terminateEc2ProviderInstance({ provider, region, instanceId });
     case "sandbox":
-      return terminateSandboxInstance(instanceId);
+      return terminateSandboxInstance({ provider, instanceId });
   }
 };
 
-const terminateSandboxInstance = async (
-  instanceId: string,
-): Promise<TerminateProviderInstanceResponse> => {
-  const terminated = await e2bClient.terminateInstance(instanceId);
+const terminateSandboxInstance = async ({
+  provider,
+  instanceId,
+}: Pick<
+  TerminateProviderInstanceProps,
+  "provider" | "instanceId"
+>): Promise<TerminateProviderInstanceResponse> => {
+  const terminated = await (() => {
+    switch (provider) {
+      case "e2b":
+        return e2bClient.terminateInstance(instanceId);
+      case "daytona":
+        return daytonaClient.terminateInstance(instanceId);
+      case "vercel":
+        return vercelClient.terminateInstance(instanceId);
+      default:
+        throw new AppError("Sandbox provider not found", 404);
+    }
+  })();
 
   if (!terminated) {
-    throw new AppError("Failed to terminate E2B sandbox", 502);
+    throw new AppError("Failed to terminate sandbox", 502);
   }
 
   return { terminated: true };

@@ -44,6 +44,10 @@ const envSchema = z.object({
   TELEGRAM_BOT_TOKEN: z.string(),
   REDIS_URL: z.string(),
   E2B_API_KEY: z.string(),
+  DAYTONA_API_KEY: z.string(),
+  VERCEL_TEAM_ID: z.string(),
+  VERCEL_PROJECT_ID: z.string(),
+  VERCEL_TOKEN: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
