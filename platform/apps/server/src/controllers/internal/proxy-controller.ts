@@ -63,7 +63,14 @@ export const getTargetHostByDomain = catchAsync(
       allowed_all_ips: first.proxy_domains.allow_all_ips,
       target:
         first.instances.runtime_kind === "sandbox"
-          ? `https://${first.proxy_domains.target_port}-${first.instances.public_ip?.split("-")[1]}`
+          ? (() => {
+              const domain = first.instances.public_ip
+                ?.split("-")
+                .slice(1)
+                .join("-");
+
+              return `https://${first.proxy_domains.target_port}-${domain}`;
+            })()
           : `http://${first.instances.public_ip}:${first.proxy_domains.target_port}`,
       allowed_ips: result
         .map((r) => r.routing_allowed_ips?.ip)

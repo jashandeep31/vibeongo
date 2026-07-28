@@ -22,24 +22,37 @@ export class DaytonaClient {
     terminatedAfterInMinutes,
   }: CreateInstanceProps) {
     const sandbox = await daytona.create({
-      image: Image.base("ubuntu:22.04"),
-      resources: { cpu: 2, memory: 4, disk: 8 },
+      // image: Image.base("ubuntu:22.04"),
+      snapshot: "vibeongo-ubuntu-1",
+      // resources: { cpu: 2, memory: 4, disk: 8 },
       public: true,
       ttlMinutes: terminatedAfterInMinutes,
+      networkBlockAll: false,
     });
 
     const encodedUserData = Buffer.from(userData, "utf8").toString("base64");
-    const setup = await sandbox.process.executeCommand(
-      `echo '${encodedUserData}' | base64 -d > /tmp/setup.sh && chmod +x /tmp/setup.sh && /tmp/setup.sh`,
-      undefined,
-      undefined,
-      600,
-    );
-    if (setup.exitCode !== 0) {
-      await daytona.delete(sandbox);
-      throw new Error("Daytona sandbox setup failed");
-    }
+    const setup = sandbox.process.executeCommand(`
+set -euo pipefail
 
+printf '%s' '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh
+chmod 700 /home/ubuntu/setup.sh
+chown ubuntu:ubuntu /home/ubuntu/setup.sh
+
+runuser -u ubuntu -- bash -lc '
+  sudo apt install jq -y
+  echo "Running as: $(whoami)"
+  echo "Home: $HOME"
+
+  cd "$HOME"
+  bash /home/ubuntu/setup.sh
+'
+`);
+    // console.log(setup.result);
+    // if (setup.exitCode !== 0) {
+    //   // await daytona.delete(sandbox);
+    //   throw new Error("Daytona sandbox setup failed");
+    // }
+    //
     const preview = await sandbox.getPreviewLink(3101);
 
     return {
