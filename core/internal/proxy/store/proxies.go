@@ -18,7 +18,7 @@ type Proxy struct {
 	AllowedIPs   []string  `json:"allowed_ips"`
 	AllowAllIPs  bool      `json:"allowed_all_ips"`
 	ExpiresAt    time.Time `json:"expires_at"`
-	Type         string    `json:"type"`
+	Provider     string    `json:"provider"`
 	PreviewToken string    `json:"previewToken"`
 
 	// Target stays parsed for use by the reverse proxy. ProxyInfo provides its
@@ -93,11 +93,15 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 
 type Response struct {
 	Data struct {
-		ID          string   `json:"id"`
-		Domain      string   `json:"domain"`
-		AllowAllIPs bool     `json:"allowed_all_ips"`
-		Target      string   `json:"target"`
-		AllowedIPs  []string `json:"allowed_ips"`
+		ID          string `json:"id"`
+		Domain      string `json:"domain"`
+		AllowAllIPs bool   `json:"allowed_all_ips"`
+		Target      struct {
+			TargetURL string `json:"targetUrl"`
+			Token     string `json:"token"`
+			Provider  string `json:"provider"`
+		} `json:"target"`
+		AllowedIPs []string `json:"allowed_ips"`
 	} `json:"data"`
 }
 
@@ -129,7 +133,7 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		return nil, fmt.Errorf("invalid response: missing domain")
 	}
 
-	target, err := parseTarget(parsedResponse.Data.Target)
+	target, err := parseTarget(parsedResponse.Data.Target.TargetURL)
 	if err != nil {
 		return nil, err
 	}
@@ -142,12 +146,14 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 	}
 
 	return &Proxy{
-		ID:          parsedResponse.Data.ID,
-		Domain:      parsedResponse.Data.Domain,
-		Target:      target,
-		AllowedIPs:  allowedIPs,
-		AllowAllIPs: parsedResponse.Data.AllowAllIPs,
-		ExpiresAt:   time.Now().Add(5 * time.Minute),
+		ID:           parsedResponse.Data.ID,
+		Domain:       parsedResponse.Data.Domain,
+		Target:       target,
+		AllowedIPs:   allowedIPs,
+		AllowAllIPs:  parsedResponse.Data.AllowAllIPs,
+		Provider:     parsedResponse.Data.Target.Provider,
+		PreviewToken: parsedResponse.Data.Target.Token,
+		ExpiresAt:    time.Now().Add(5 * time.Minute),
 	}, nil
 }
 

@@ -35,14 +35,7 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string) *Hand
 			r.URL.Host = proxyData.Target.Host
 			r.Host = proxyData.Target.Host
 
-			if strings.Contains(strings.ToLower(proxyData.Target.Hostname()), "daytona") {
-				// Daytona uses this header to retain the public preview domain.
-				// Replace any client-supplied value so it cannot be spoofed.
-				r.Header.Set("X-Forwarded-Host", originalHost)
-				// All Vibeongo Daytona previews are public, so no preview token is
-				// required to suppress Daytona's browser warning page.
-				r.Header.Set("X-Daytona-Skip-Preview-Warning", "true")
-			}
+			applyProviderHeaders(r, proxyData, originalHost)
 		},
 		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
 			w.WriteHeader(http.StatusBadGateway)
@@ -126,6 +119,29 @@ func normalizeHost(host string) string {
 }
 
 type proxyDataContextKey struct{}
+
+func applyProviderHeaders(request *http.Request, proxyData *store.Proxy, originalHost string) {
+	switch proxyData.Provider {
+	case "daytona":
+		handleDaytonaHeaders(request, originalHost)
+	case "e2b":
+		handleE2BHeaders(request, proxyData.PreviewToken)
+	}
+}
+
+func handleDaytonaHeaders(request *http.Request, originalHost string) {
+	// Daytona uses this header to retain the public preview domain.
+	// Replace any client-supplied value so it cannot be spoofed.
+	request.Header.Set("X-Forwarded-Host", originalHost)
+	// All Vibeongo Daytona previews are public, so no preview token is required
+	// to suppress Daytona's browser warning page.
+	request.Header.Set("X-Daytona-Skip-Preview-Warning", "true")
+}
+
+func handleE2BHeaders(request *http.Request, previewToken string) {
+	// Replace any client-supplied token with the token resolved by our server.
+	request.Header.Set("e2b-traffic-access-token", previewToken)
+}
 
 func getRealIP(headers http.Header) (string, error) {
 	ip := strings.TrimSpace(headers.Get(echo.HeaderXRealIP))
