@@ -1,9 +1,9 @@
 import { AppError } from "../lib/app-error.js";
-import { AWSClient } from "./aws/services/aws-client.js";
-import { DigitalOceanClient } from "./digitalocean/digitalocean-client.js";
-import { E2BClient } from "./e2b/e2b-client.js";
-import { DaytonaClient } from "./daytona/daytona-client.js";
-import { VercelSandboxClient } from "./vercel/vercel-sandbox-client.js";
+import { AWSClient } from "./client/aws-client.js";
+import { DigitalOceanClient } from "./client/digitalocean-client.js";
+import { E2BClient } from "./client/e2b-client.js";
+import { DaytonaClient } from "./client/daytona-client.js";
+import { VercelSandboxClient } from "./client/vercel-sandbox-client.js";
 import type {
   TerminateProviderInstanceProps,
   TerminateProviderInstanceResponse,

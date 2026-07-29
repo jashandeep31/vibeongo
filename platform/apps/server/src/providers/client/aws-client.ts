@@ -11,11 +11,11 @@ import {
   CreateInstanceProviderResponse,
   GetOutboundNetworkUsageProps,
   InstanceIpAddresses,
-} from "../../types.js";
-import { getCloudWatchClient, getEc2Client } from "../ec2-client.js";
-import { AppError } from "../../../lib/app-error.js";
+} from "../types.js";
+import { getCloudWatchClient, getEc2Client } from "./ec2-client.js";
+import { AppError } from "../../lib/app-error.js";
 import { db, eq, instanceRegions } from "@repo/db";
-import { awsSupportedRegions } from "../configs/aws-supported-regions-configs.js";
+import { awsSupportedRegions } from "../aws/configs/aws-supported-regions-configs.js";
 
 const MAX_INSTANCE_IP_LOOKUP_ATTEMPTS = 12;
 const UNAVAILABLE_IP_ADDRESSES = {

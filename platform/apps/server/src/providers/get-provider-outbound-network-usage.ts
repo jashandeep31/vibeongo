@@ -1,6 +1,6 @@
 import { AppError } from "../lib/app-error.js";
-import { AWSClient } from "./aws/services/aws-client.js";
-import { DigitalOceanClient } from "./digitalocean/digitalocean-client.js";
+import { AWSClient } from "./client/aws-client.js";
+import { DigitalOceanClient } from "./client/digitalocean-client.js";
 import type { GetProviderOutboundNetworkUsageProps } from "./types.js";
 
 const awsClient = new AWSClient();
