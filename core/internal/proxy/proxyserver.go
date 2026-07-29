@@ -13,7 +13,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/jashandeep31/vibeongo/core/internal/proxy/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
+	"github.com/labstack/echo/v5"
 )
 
 var (
@@ -34,6 +36,12 @@ type ProxyServer struct {
 
 func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 	return &ProxyServer{store: store}
+}
+
+func TempStart() {
+	e := echo.New()
+
+	routes.ProxyRouter(e)
 }
 
 func (s *ProxyServer) Start(addr string) error {
@@ -164,6 +172,7 @@ func hasValidBearerToken(authorizationHeader, expectedToken string) bool {
 
 	return subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
 }
+
 func (s *ProxyServer) listAll(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
