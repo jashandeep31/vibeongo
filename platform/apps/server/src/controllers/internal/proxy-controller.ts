@@ -15,8 +15,10 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
+import { DaytonaClient } from "../../providers/client/daytona-client.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
 
+const daytonaClient = new DaytonaClient();
 const e2bClient = new E2BClient();
 
 export const getTargetHostByDomain = catchAsync(
@@ -151,15 +153,19 @@ async function handleE2BClientProxyUrl({
 }
 
 async function handleDaytonaClientProxyUrl({
-  publicIp,
   targetPort,
+  providerInstanceId,
   provider,
 }: ProxyTargetOptions): Promise<ProxyTargetResponse> {
-  const domain = publicIp?.split("-").slice(1).join("-");
+  const signedUrl = await daytonaClient.getSignedPreviewUrl({
+    sandboxId: providerInstanceId,
+    port: targetPort,
+    expiresInSeconds: 60 * 5,
+  });
 
   return {
-    targetUrl: `https://${targetPort}-${domain}`,
-    token: "",
+    targetUrl: signedUrl.url,
+    token: signedUrl.token,
     provider,
   };
 }

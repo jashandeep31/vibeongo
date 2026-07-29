@@ -25,7 +25,7 @@ export class DaytonaClient {
       // image: Image.base("ubuntu:22.04"),
       snapshot: "vibeongo-ubuntu-1",
       // resources: { cpu: 2, memory: 4, disk: 8 },
-      public: true,
+      public: false,
       ttlMinutes: terminatedAfterInMinutes,
       networkBlockAll: false,
     });
@@ -61,5 +61,18 @@ runuser -u ubuntu -- bash -lc '
       publicIPv4: preview.url,
       pvtIPv4: preview.url,
     };
+  }
+
+  async getSignedPreviewUrl({
+    sandboxId,
+    port,
+    expiresInSeconds,
+  }: {
+    sandboxId: string;
+    port: number;
+    expiresInSeconds: number;
+  }): Promise<{ url: string; token: string }> {
+    const sandbox = await daytona.get(sandboxId);
+    return sandbox.getSignedPreviewUrl(port, expiresInSeconds);
   }
 }

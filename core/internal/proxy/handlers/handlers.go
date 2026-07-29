@@ -30,12 +30,11 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string) *Hand
 	h.reverseProxy = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
 			proxyData := r.Context().Value(proxyDataContextKey{}).(*store.Proxy)
-			originalHost := r.Host
 			r.URL.Scheme = proxyData.Target.Scheme
 			r.URL.Host = proxyData.Target.Host
 			r.Host = proxyData.Target.Host
 
-			applyProviderHeaders(r, proxyData, originalHost)
+			applyProviderHeaders(r, proxyData)
 		},
 		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
 			w.WriteHeader(http.StatusBadGateway)
@@ -120,21 +119,18 @@ func normalizeHost(host string) string {
 
 type proxyDataContextKey struct{}
 
-func applyProviderHeaders(request *http.Request, proxyData *store.Proxy, originalHost string) {
+func applyProviderHeaders(request *http.Request, proxyData *store.Proxy) {
 	switch proxyData.Provider {
 	case "daytona":
-		handleDaytonaHeaders(request, originalHost)
+		handleDaytonaHeaders(request)
 	case "e2b":
 		handleE2BHeaders(request, proxyData.PreviewToken)
 	}
 }
 
-func handleDaytonaHeaders(request *http.Request, originalHost string) {
-	// Daytona uses this header to retain the public preview domain.
-	// Replace any client-supplied value so it cannot be spoofed.
-	request.Header.Set("X-Forwarded-Host", originalHost)
-	// All Vibeongo Daytona previews are public, so no preview token is required
-	// to suppress Daytona's browser warning page.
+func handleDaytonaHeaders(request *http.Request) {
+	// Authentication is embedded in the signed target URL. This header only
+	// suppresses Daytona's browser warning page.
 	request.Header.Set("X-Daytona-Skip-Preview-Warning", "true")
 }
 
