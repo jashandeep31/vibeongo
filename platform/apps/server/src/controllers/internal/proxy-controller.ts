@@ -17,9 +17,11 @@ import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { DaytonaClient } from "../../providers/client/daytona-client.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
+import { VercelSandboxClient } from "../../providers/client/vercel-sandbox-client.js";
 
 const daytonaClient = new DaytonaClient();
 const e2bClient = new E2BClient();
+const vercelClient = new VercelSandboxClient();
 
 export const getTargetHostByDomain = catchAsync(
   async (req: Request, res: Response) => {
@@ -171,14 +173,17 @@ async function handleDaytonaClientProxyUrl({
 }
 
 async function handleVercelClientProxyUrl({
-  publicIp,
   targetPort,
+  providerInstanceId,
   provider,
 }: ProxyTargetOptions): Promise<ProxyTargetResponse> {
-  const domain = publicIp?.split("-").slice(1).join("-");
+  const targetUrl = await vercelClient.getPreviewUrl({
+    sandboxId: providerInstanceId,
+    port: targetPort,
+  });
 
   return {
-    targetUrl: `https://${targetPort}-${domain}`,
+    targetUrl,
     token: "",
     provider,
   };

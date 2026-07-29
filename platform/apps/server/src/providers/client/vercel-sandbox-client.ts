@@ -17,17 +17,21 @@ export class VercelSandboxClient {
   }: CreateInstanceProps) {
     const sandbox = await Sandbox.create({
       ...credentials,
-      name: instanceName,
-      runtime: "node24",
+      name: "test",
+      source: {
+        type: "snapshot",
+        snapshotId: "snap_Qms0lr3H0xEakarfGxsmULnoPT3O",
+      },
       ports: [3101],
       timeout: terminatedAfterInMinutes * 60 * 1000,
     });
     const encodedUserData = Buffer.from(userData, "utf8").toString("base64");
     const setup = await sandbox.runCommand({
       cmd: "bash",
+      cwd: "/home/ubuntu",
       args: [
         "-lc",
-        `echo '${encodedUserData}' | base64 -d > /tmp/setup.sh && chmod +x /tmp/setup.sh && /tmp/setup.sh`,
+        `echo '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh && chmod +x /home/ubuntu/setup.sh && /home/ubuntu/setup.sh`,
       ],
       timeoutMs: SETUP_TIMEOUT_MS,
     });
@@ -53,5 +57,16 @@ export class VercelSandboxClient {
       // An already deleted sandbox is considered terminated.
     }
     return true;
+  }
+
+  async getPreviewUrl({
+    sandboxId,
+    port,
+  }: {
+    sandboxId: string;
+    port: number;
+  }): Promise<string> {
+    const sandbox = await Sandbox.get({ ...credentials, name: sandboxId });
+    return sandbox.domain(port);
   }
 }
