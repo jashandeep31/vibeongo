@@ -4,6 +4,7 @@ import { redis } from "../lib/valkey.js";
 export const SANDBOX_SETUP_QUEUE_NAME = "sandbox-setup";
 
 export type SandboxSetupJobData = {
+  provider: "e2b" | "daytona" | "vercel";
   sandboxId: string;
   userData: string;
 };
@@ -21,7 +22,7 @@ sandboxSetupQueue.on("error", (error) => {
 
 export const addSandboxSetupJob = async (data: SandboxSetupJobData) => {
   await sandboxSetupQueue.add("sandbox-setup-job", data, {
-    jobId: data.sandboxId,
+    jobId: `${data.provider}-${data.sandboxId}`,
     attempts: 3,
     backoff: {
       type: "exponential",

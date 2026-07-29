@@ -30,6 +30,7 @@ export class E2BClient {
     });
 
     await addSandboxSetupJob({
+      provider: "e2b",
       sandboxId: sandbox.sandboxId,
       userData,
     });

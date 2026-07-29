@@ -1,6 +1,7 @@
 import { env } from "../../lib/env.js";
 import { CreateInstanceProps } from "../types.js";
-import { Daytona, Image } from "@daytona/sdk";
+import { Daytona } from "@daytona/sdk";
+import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
 
 const daytona = new Daytona({
   apiKey: env.DAYTONA_API_KEY,
@@ -30,29 +31,11 @@ export class DaytonaClient {
       networkBlockAll: false,
     });
 
-    const encodedUserData = Buffer.from(userData, "utf8").toString("base64");
-    const setup = sandbox.process.executeCommand(`
-set -euo pipefail
-
-printf '%s' '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh
-chmod 700 /home/ubuntu/setup.sh
-chown ubuntu:ubuntu /home/ubuntu/setup.sh
-
-runuser -u ubuntu -- bash -lc '
-  sudo apt install jq -y
-  echo "Running as: $(whoami)"
-  echo "Home: $HOME"
-
-  cd "$HOME"
-  bash /home/ubuntu/setup.sh
-'
-`);
-    // console.log(setup.result);
-    // if (setup.exitCode !== 0) {
-    //   // await daytona.delete(sandbox);
-    //   throw new Error("Daytona sandbox setup failed");
-    // }
-    //
+    await addSandboxSetupJob({
+      provider: "daytona",
+      sandboxId: sandbox.id,
+      userData,
+    });
     const preview = await sandbox.getPreviewLink(3101);
 
     return {
