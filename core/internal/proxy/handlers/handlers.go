@@ -101,7 +101,9 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 			})
 		}
 		return c.JSON(http.StatusForbidden, map[string]string{
-			"error": "IP is not allowed. Please add it to allowed IPs. Your IP is " + ip,
+			"error": "IP is not allowed. Please add it to allowed IPs. Your IP is " + ip +
+				".\n\nIf you are an AI agent running inside the instance, try using localhost instead of this public preview domain." +
+				"\nIf you do not know which port this domain uses, run `vibeongo domains`.",
 		})
 	}
 

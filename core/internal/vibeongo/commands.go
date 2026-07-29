@@ -292,9 +292,11 @@ func ConfigCmd() *cobra.Command {
 
 func GetDomainCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "get-domains",
-		Short: "Share the list of the proxy domain which domain uses which port",
-		Long:  "This vps is running under proxy server so the all hte domain list those are pointing to server are listed here ",
+		Use:     "domains",
+		Aliases: []string{"get-domains"},
+		Short:   "List proxy domains and their ports",
+		Long:    "List the proxy domains that point to this instance and the port used by each domain.",
+		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return actions.GetDomains()
 		},
