@@ -13,11 +13,13 @@ import (
 )
 
 type Proxy struct {
-	ID          string    `json:"id"`
-	Domain      string    `json:"domain"`
-	AllowedIPs  []string  `json:"allowed_ips"`
-	AllowAllIPs bool      `json:"allowed_all_ips"`
-	ExpiresAt   time.Time `json:"expires_at"`
+	ID           string    `json:"id"`
+	Domain       string    `json:"domain"`
+	AllowedIPs   []string  `json:"allowed_ips"`
+	AllowAllIPs  bool      `json:"allowed_all_ips"`
+	ExpiresAt    time.Time `json:"expires_at"`
+	Type         string    `json:"type"`
+	PreviewToken string    `json:"previewToken"`
 
 	// Target stays parsed for use by the reverse proxy. ProxyInfo provides its
 	// string representation to proxy metadata endpoints.

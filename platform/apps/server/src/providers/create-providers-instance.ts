@@ -30,7 +30,7 @@ export const createProviderInstance = async (
   }
 };
 
-export const createSandboxProviderInstance = async ({
+const createSandboxProviderInstance = async ({
   provider,
   region,
   instanceType,
@@ -57,7 +57,7 @@ export const createSandboxProviderInstance = async ({
   }
 };
 
-export const createVmProviderInstance = async ({
+const createVmProviderInstance = async ({
   provider,
   region,
   instanceType,

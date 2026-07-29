@@ -24,6 +24,9 @@ export class E2BClient {
     const sandbox = await Sandbox.create(instanceType, {
       apiKey: env.E2B_API_KEY,
       timeoutMs: 1000 * terminateInstanceInSecs,
+      network: {
+        allowPublicTraffic: false,
+      },
     });
 
     await addSandboxSetupJob({
@@ -36,5 +39,10 @@ export class E2BClient {
       publicIPv4: sandbox.getHost(3101),
       pvtIPv4: sandbox.getHost(3101),
     };
+  }
+
+  async getPreviewToken({ sandboxId }: { sandboxId: string }): Promise<string> {
+    const sandbox = await Sandbox.connect(sandboxId);
+    return sandbox.trafficAccessToken!;
   }
 }
