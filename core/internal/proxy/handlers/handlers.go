@@ -30,9 +30,19 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string) *Hand
 	h.reverseProxy = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
 			proxyData := r.Context().Value(proxyDataContextKey{}).(*store.Proxy)
+			originalHost := r.Host
 			r.URL.Scheme = proxyData.Target.Scheme
 			r.URL.Host = proxyData.Target.Host
 			r.Host = proxyData.Target.Host
+
+			if strings.Contains(strings.ToLower(proxyData.Target.Hostname()), "daytona") {
+				// Daytona uses this header to retain the public preview domain.
+				// Replace any client-supplied value so it cannot be spoofed.
+				r.Header.Set("X-Forwarded-Host", originalHost)
+				// All Vibeongo Daytona previews are public, so no preview token is
+				// required to suppress Daytona's browser warning page.
+				r.Header.Set("X-Daytona-Skip-Preview-Warning", "true")
+			}
 		},
 		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
 			w.WriteHeader(http.StatusBadGateway)
