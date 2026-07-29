@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2 } from "lucide-react";
+import { Loader2, TriangleAlert } from "lucide-react";
 import Image from "next/image";
 
 import { ShellToolOutputDrawer } from "@/components/dialogs/shell-tool-output-drawer";
@@ -12,11 +12,13 @@ const SHELL_TOOLS_LOGO_URL = "/tools/moshi.webp";
 
 interface ShellToolsCardProps {
   isTerminated: boolean;
+  isSandboxRuntime?: boolean;
   toolTitle?: string;
 }
 
 export function ShellToolsCard({
   isTerminated,
+  isSandboxRuntime = false,
   toolTitle = "Moshi",
 }: ShellToolsCardProps) {
   const { websocket, sendJsonMessage, subscribeJsonMessage } =
@@ -24,7 +26,10 @@ export function ShellToolsCard({
   const [toolOutput, setToolOutput] = useState<string[]>([]);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isStarting, setIsStarting] = useState(false);
-  const canStart = websocket?.readyState === WebSocket.OPEN && !isTerminated;
+  const canStart =
+    websocket?.readyState === WebSocket.OPEN &&
+    !isTerminated &&
+    !isSandboxRuntime;
 
   useEffect(() => {
     if (!websocket) {
@@ -104,12 +109,32 @@ export function ShellToolsCard({
             Shell Tools
           </h2>
 
+          {isSandboxRuntime ? (
+            <p
+              id="sandbox-shell-tools-warning"
+              className="flex max-w-md items-start gap-1.5 text-xs text-amber-700 dark:text-amber-400"
+            >
+              <TriangleAlert className="mt-0.5 size-3.5 shrink-0" />
+              <span>
+                Moshi is not supported on runtime sandboxes. Use an EC2-based
+                instance for shell tools.
+              </span>
+            </p>
+          ) : null}
+
           <Button
             variant="outline"
             type="button"
             disabled={!canStart || isStarting}
+            aria-describedby={
+              isSandboxRuntime ? "sandbox-shell-tools-warning" : undefined
+            }
             aria-label={`Start ${toolTitle}`}
-            title={`Start ${toolTitle}`}
+            title={
+              isSandboxRuntime
+                ? `${toolTitle} requires an EC2-based instance`
+                : `Start ${toolTitle}`
+            }
             className="h-24 w-24 flex-col gap-2 p-2"
             onClick={handleStart}
           >

@@ -746,7 +746,10 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               </div>
             </div>
             <ProjectInstanceTerminal />
-            <ShellToolsCard isTerminated={isTerminated} />
+            <ShellToolsCard
+              isTerminated={isTerminated}
+              isSandboxRuntime={instance.runtime_kind === "sandbox"}
+            />
             <div className="bg-card text-card-foreground relative h-64 overflow-hidden lg:hidden">
               <div
                 ref={mobileServerLogsRef}

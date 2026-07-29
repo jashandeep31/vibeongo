@@ -9,6 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Switch } from "@repo/ui/components/switch";
@@ -53,7 +54,7 @@ export function ProjectDomainsCard({
   const proxyDomains = useMemo(
     () =>
       [...(data?.proxy_domains ?? [])].sort((a, b) => {
-        const editabilityOrder = Number(a.is_editable) - Number(b.is_editable);
+        const editabilityOrder = Number(b.is_editable) - Number(a.is_editable);
         if (editabilityOrder !== 0) return editabilityOrder;
 
         const portOrder = a.target_port - b.target_port;
@@ -277,11 +278,18 @@ export function ProjectDomainsCard({
                           title={domainRow.domain}
                           className="flex min-w-0 items-start gap-2 text-sm text-blue-500 hover:underline sm:items-center"
                         >
-                          <Globe className="h-4 w-4 shrink-0" />
+                          <Badge
+                            variant="outline"
+                            className="hidden font-mono lg:inline-flex"
+                            title={`Target port ${domainRow.target_port}`}
+                          >
+                            {domainRow.target_port}
+                          </Badge>
 
                           <span className="min-w-0 break-all sm:truncate">
                             {domainRow.domain}
                           </span>
+
                           <ExternalLink className="h-3.5 w-3.5 shrink-0" />
                         </a>
                         <Button
