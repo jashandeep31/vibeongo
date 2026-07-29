@@ -32,6 +32,7 @@
     "@types/cors": "^2.8.19",
     "@types/express": "^5.0.6",
     "@types/ws": "^8.18.1",
+    "@vercel/sandbox": "^2.9.0",
     "ai": "^7.0.0",
     "axios": "^1.13.6",
     "bullmq": "^5.80.10",

@@ -49,6 +49,8 @@ function SandboxConfigCard() {
     [sandboxProvider, sandboxRegions],
   );
 
+  // The edit form hydrates the region id before metadata may have loaded.
+  // Derive the selected provider once that metadata is available.
   useEffect(() => {
     const selectedRegion = sandboxRegions?.find(
       (region) => region.id === sandboxRegionId,

@@ -52,7 +52,6 @@ export const createSandboxProviderInstance = async ({
       return daytonaClient.createInstance(instance);
     case "vercel":
       return vercelClient.createInstance(instance);
-
     default:
       throw new AppError("Sandbox provider not found", 404);
   }
