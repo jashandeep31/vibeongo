@@ -1,0 +1,115 @@
+package wsfunctions
+
+import (
+	"context"
+	"encoding/json"
+	"sync"
+
+	"github.com/gorilla/websocket"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
+)
+
+func ToolsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex, msg []byte, tools *store.Tools, errorSender func(string)) error {
+
+	var parsedData struct {
+		Tool   string `json:"tool"`
+		Action string `json:"action"`
+	}
+	if err := json.Unmarshal(msg, &parsedData); err != nil {
+		errorSender("invalid tool message")
+		return nil
+	}
+
+	// switch between the tools
+	switch parsedData.Tool {
+	case "opencode":
+		if err := openCodeHanler(tools.OpenCode, parsedData.Action); err != nil {
+			errorSender(err.Error())
+			return nil
+		}
+		return writeToolStatus(conn, writeMu, "opencode", tools.OpenCode.IsRunning())
+
+	case "codex", "t3Code":
+		password, err := t3CodeHandler(tools.T3Code, parsedData.Action)
+		if err != nil {
+			errorSender(err.Error())
+			return nil
+		}
+		return writeToolStatusWithPassword(conn, writeMu, "codex", tools.T3Code.Status(), password)
+	}
+
+	return nil
+}
+
+func writeToolStatus(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool) error {
+	return writeToolStatusWithPassword(conn, writeMu, tool, status, "")
+}
+
+func writeToolStatusWithPassword(conn *websocket.Conn, writeMu *sync.Mutex, tool string, status bool, password string) error {
+	writeMu.Lock()
+	defer writeMu.Unlock()
+
+	return conn.WriteJSON(struct {
+		Type string `json:"type"`
+		Data struct {
+			Tool     string `json:"tool"`
+			Status   bool   `json:"status"`
+			Password string `json:"password,omitempty"`
+		} `json:"data"`
+	}{
+		Type: "tool",
+		Data: struct {
+			Tool     string `json:"tool"`
+			Status   bool   `json:"status"`
+			Password string `json:"password,omitempty"`
+		}{
+			Tool:     tool,
+			Status:   status,
+			Password: password,
+		},
+	})
+}
+
+func openCodeHanler(opencode *store.OpencodeWeb, action string) error {
+	switch action {
+	case "start":
+		return opencode.StartWebServer()
+
+	case "stop":
+		return opencode.StopWebServer()
+
+	case "restart":
+		return opencode.RestartWebServer()
+
+	case "status":
+		return nil
+
+	}
+
+	return nil
+}
+
+func t3CodeHandler(t3Code *store.T3Code, action string) (string, error) {
+	switch action {
+	case "start":
+		return "", t3Code.StartT3Code()
+
+	case "stop":
+		return "", t3Code.StopT3Code()
+
+	case "restart":
+		return "", t3Code.RestartT3Code()
+
+	case "status":
+		return "", nil
+
+	case "password":
+		token, err := t3Code.SetAndGetPassword()
+		if err != nil {
+			return "", err
+		}
+		return token, nil
+
+	}
+	return "", nil
+}

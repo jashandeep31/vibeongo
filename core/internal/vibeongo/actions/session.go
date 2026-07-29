@@ -1,0 +1,44 @@
+package actions
+
+import (
+	"fmt"
+	"net/http"
+
+	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+)
+
+func UpdateSessionOverview(cfg config.Config, overview string) error {
+	fmt.Println("Updating the overview of the project")
+	apiClient := httpclient.Client{BaseURL: cfg.ServerBaseURL}
+	var b any
+	headers := runtimeAuthHeaders(cfg)
+	resp, err := apiClient.Post("/api/v1/runtime/sessions/"+cfg.SessionID+"/overview", struct {
+		Overview string `json:"overview"`
+	}{Overview: overview}, headers, &b)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusCreated {
+		return fmt.Errorf("failed to update session: unexpected status code %d", resp.StatusCode)
+	}
+	return nil
+}
+
+func ResumeSession(cfg config.Config) error {
+	fmt.Println("Resuming the session")
+	apiClient := httpclient.Client{BaseURL: cfg.ServerBaseURL}
+	var b struct {
+		data string
+	}
+	headers := runtimeAuthHeaders(cfg)
+	resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionID+"/overview", headers, &b)
+	if err != nil {
+		return err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to resume session: unexpected status code %d", resp.StatusCode)
+	}
+
+	return nil
+}

@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/jashandeep31/vibeongo/core/internal/server"
-	"github.com/jashandeep31/vibeongo/core/internal/store"
+	"github.com/jashandeep31/vibeongo/core/internal/proxy"
+	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
 	"github.com/joho/godotenv"
 )
 
@@ -16,7 +16,7 @@ func main() {
 	}
 
 	proxyStore := store.NewProxyManager()
-	srv := server.NewProxyServer(proxyStore)
+	srv := proxy.NewProxyServer(proxyStore)
 	log.Println("Starting proxy server on :", Port)
 
 	if err := srv.Start(":" + Port); err != nil {
