@@ -36,8 +36,8 @@ function ProjectScriptsCard() {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="space-y-3">
+    <div className="max-w-full min-w-0 space-y-5">
+      <div className="max-w-full min-w-0 space-y-3">
         <Label
           htmlFor="project-initial-script"
           className="text-muted-foreground text-sm"
@@ -50,7 +50,8 @@ function ProjectScriptsCard() {
           onChange={onInitialScriptChange}
           maxLength={500}
           placeholder="Install languages, start databases, or prepare system dependencies."
-          className="min-h-32 w-full max-w-full font-mono text-sm"
+          wrap="off"
+          className="min-h-32 max-w-full min-w-0 overflow-auto font-mono text-sm whitespace-pre"
         />
         <p className="text-muted-foreground text-sm">
           Runs before repositories are cloned or repository setup scripts run.
@@ -59,7 +60,7 @@ function ProjectScriptsCard() {
         </p>
       </div>
 
-      <div className="space-y-3">
+      <div className="max-w-full min-w-0 space-y-3">
         <Label
           htmlFor="project-final-script"
           className="text-muted-foreground text-sm"
@@ -72,7 +73,8 @@ function ProjectScriptsCard() {
           onChange={onFinalScriptChange}
           maxLength={500}
           placeholder="Run migrations, copy files, or build the project."
-          className="min-h-32 w-full max-w-full font-mono text-sm"
+          wrap="off"
+          className="min-h-32 max-w-full min-w-0 overflow-auto font-mono text-sm whitespace-pre"
         />
         <p className="text-muted-foreground text-sm">
           Runs after repositories are cloned and setup scripts finish. Use it
@@ -80,7 +82,7 @@ function ProjectScriptsCard() {
           building artifacts.
         </p>
       </div>
-      <div className="space-y-3">
+      <div className="max-w-full min-w-0 space-y-3">
         <Label
           htmlFor="project-dev-script"
           className="text-muted-foreground text-sm"
@@ -97,7 +99,8 @@ pnpm dev
 ---
 cd apps/server
 pnpm dev`}
-          className="min-h-32 w-full max-w-full font-mono text-sm"
+          wrap="off"
+          className="min-h-32 max-w-full min-w-0 overflow-auto font-mono text-sm whitespace-pre"
         />
         <p className="text-muted-foreground text-sm">
           Runs last in a tmux session. Use it for long-running development
@@ -105,18 +108,18 @@ pnpm dev`}
           work continues. Add <code className="font-mono">---</code> on its own
           line to run the next part in a new tmux window.
         </p>
-        <div className="space-y-3">
+        <div className="max-w-full min-w-0 space-y-3">
           <p className="text-muted-foreground text-sm">
             This will create {devScriptWindows.length} tmux{" "}
             {devScriptWindows.length === 1 ? "window" : "windows"}.
           </p>
 
           {devScriptWindows.length ? (
-            <div className="space-y-3">
+            <div className="max-w-full min-w-0 space-y-3">
               {devScriptWindows.map((windowScript, index) => (
                 <div
                   key={`${index}-${windowScript}`}
-                  className="border-border rounded-md border"
+                  className="border-border max-w-full min-w-0 overflow-hidden rounded-md border"
                 >
                   <div className="border-border bg-muted/40 flex items-center justify-between border-b px-3 py-2">
                     <p className="text-sm font-medium">
@@ -126,7 +129,7 @@ pnpm dev`}
                       task-{index}
                     </p>
                   </div>
-                  <pre className="max-h-48 overflow-auto p-3 text-sm whitespace-pre-wrap">
+                  <pre className="max-h-48 max-w-full min-w-0 overflow-auto p-3 text-sm break-all whitespace-pre-wrap">
                     <code>{windowScript}</code>
                   </pre>
                 </div>

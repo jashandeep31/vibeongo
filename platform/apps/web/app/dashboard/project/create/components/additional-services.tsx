@@ -7,13 +7,9 @@ import PiConfigCard from "./pi-config-card";
 
 function AdditionalServices() {
   return (
-    <div className="space-y-4">
-      <div>
-        <Label className="text-muted-foreground text-sm">
-          Additional Services
-        </Label>
-      </div>
-      <div className="space-y-4">
+    <div className="max-w-full min-w-0 space-y-2">
+      <Label className="text-sm">Additional services</Label>
+      <div className="max-w-full min-w-0 space-y-2">
         <DockerConfigCard />
         <OpencodeConfigCard />
         <CodexConfigCard />

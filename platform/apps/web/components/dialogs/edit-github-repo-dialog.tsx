@@ -76,8 +76,7 @@ export function EditGithubRepoDialog({
     !!repo &&
     (setupScriptDraft !== (repo.setup_script ?? "") ||
       selectedProjectId !== (repo.default_project_id ?? null) ||
-      autoReviewPullRequestsDraft !==
-        repo.auto_review_pull_requests_enabled ||
+      autoReviewPullRequestsDraft !== repo.auto_review_pull_requests_enabled ||
       autoFixIssuesDraft !== repo.auto_fix_issues_enabled);
 
   const handleSave = async () => {
@@ -154,7 +153,8 @@ export function EditGithubRepoDialog({
           value={setupScriptDraft}
           onChange={(e) => setSetupScriptDraft(e.target.value)}
           placeholder="#!/usr/bin/env bash\nnpm install\nnpm run build"
-          className="min-h-40 font-mono text-xs"
+          wrap="off"
+          className="min-h-40 max-w-full min-w-0 overflow-auto font-mono text-xs whitespace-pre"
         />
 
         <div className="space-y-4 rounded-md border p-4">
@@ -171,7 +171,7 @@ export function EditGithubRepoDialog({
               <span className="block text-sm font-medium">
                 Automatically review pull requests
               </span>
-              <span className="block text-sm text-muted-foreground">
+              <span className="text-muted-foreground block text-sm">
                 Start an automated review when a pull request is opened.
               </span>
             </span>
@@ -190,7 +190,7 @@ export function EditGithubRepoDialog({
               <span className="block text-sm font-medium">
                 Automatically fix issues
               </span>
-              <span className="block text-sm text-muted-foreground">
+              <span className="text-muted-foreground block text-sm">
                 Start an automated fix when a new issue is opened.
               </span>
             </span>

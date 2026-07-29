@@ -108,7 +108,8 @@ export function CreateGithubRepoDialog() {
                     id={field.name}
                     aria-invalid={fieldState.invalid}
                     placeholder="#!/usr/bin/env bash\nnpm install\nnpm run build"
-                    className="min-h-28 font-mono text-xs"
+                    wrap="off"
+                    className="min-h-28 max-w-full min-w-0 overflow-auto font-mono text-xs whitespace-pre"
                   />
                   {fieldState.invalid && (
                     <FieldError errors={[fieldState.error]} />

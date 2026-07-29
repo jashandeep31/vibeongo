@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@repo/ui/components/button";
 import { Label } from "@repo/ui/components/label";
 import { Textarea } from "@repo/ui/components/textarea";
-import { Eye, EyeOff, ShieldCheck } from "lucide-react";
+import { Eye, EyeOff, ShieldCheck, ShieldX } from "lucide-react";
 
 interface SensitiveAuthJsonFieldProps {
   id: string;
@@ -20,14 +20,43 @@ export default function SensitiveAuthJsonField({
   onChange,
 }: SensitiveAuthJsonFieldProps) {
   const [isRevealed, setIsRevealed] = useState(false);
-  const hasValue = value.trim().length > 0;
+  const hasValue = (() => {
+    const trimmedValue = value.trim();
+    if (!trimmedValue) return false;
+
+    try {
+      const parsedValue: unknown = JSON.parse(trimmedValue);
+      return !(
+        parsedValue !== null &&
+        typeof parsedValue === "object" &&
+        !Array.isArray(parsedValue) &&
+        Object.keys(parsedValue).length === 0
+      );
+    } catch {
+      return true;
+    }
+  })();
 
   return (
-    <div className="grid space-y-4 overflow-auto">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Label htmlFor={id} className="text-foreground text-sm font-semibold">
-          Auth JSON Configuration
-        </Label>
+    <div className="max-w-full min-w-0 space-y-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Label htmlFor={id} className="text-sm">
+            Auth JSON
+          </Label>
+          <span
+            className={`inline-flex items-center gap-1 text-xs ${
+              hasValue ? "text-emerald-600" : "text-amber-600"
+            }`}
+          >
+            {hasValue ? (
+              <ShieldCheck className="size-3.5" />
+            ) : (
+              <ShieldX className="size-3.5" />
+            )}
+            {hasValue ? "Configured" : "Not configured"}
+          </span>
+        </div>
         <Button
           type="button"
           variant="outline"
@@ -39,7 +68,7 @@ export default function SensitiveAuthJsonField({
           ) : (
             <Eye className="h-4 w-4" />
           )}
-          {isRevealed ? "Hide auth JSON" : "Show auth JSON"}
+          {isRevealed ? "Hide" : "Edit"}
         </Button>
       </div>
 
@@ -49,29 +78,11 @@ export default function SensitiveAuthJsonField({
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder='{"token": "xyz..."}'
-          className="min-h-25 font-mono text-sm"
+          aria-label={`${serviceName} auth JSON`}
+          wrap="soft"
+          className="min-h-24 max-w-full min-w-0 overflow-x-auto font-mono text-xs break-all whitespace-pre-wrap"
         />
-      ) : (
-        <div
-          className={`text-muted-foreground flex items-center gap-3 rounded-md border px-3 py-3 text-sm ${
-            hasValue
-              ? "border-border bg-muted/40"
-              : "border-yellow-500/60 bg-yellow-500/10"
-          }`}
-        >
-          <ShieldCheck className="h-4 w-4 shrink-0" />
-          <span>
-            {hasValue
-              ? `${serviceName} auth JSON is hidden.`
-              : `${serviceName} auth JSON is not configured.`}
-          </span>
-        </div>
-      )}
-
-      <p className="text-muted-foreground text-xs">
-        Reveal this field only when you need to view or edit sensitive auth
-        configuration.
-      </p>
+      ) : null}
     </div>
   );
 }

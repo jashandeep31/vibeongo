@@ -18,31 +18,23 @@ function PiConfigCard() {
   };
 
   return (
-    <div className="bg-card border-border rounded-lg border p-6">
-      <div className="flex items-start space-x-3">
-        <div className="w-full space-y-1">
+    <div className="bg-card border-border max-w-full min-w-0 overflow-hidden rounded-lg border p-3">
+      <div className="max-w-full min-w-0 space-y-3">
+        <div>
           <Label
             htmlFor="pi-authjson"
-            className="text-foreground flex items-center text-base font-semibold"
+            className="text-foreground flex items-center text-sm font-medium"
           >
-            <CircleDot className="mr-2 h-5 w-5" />
-            Pi Integration
+            <CircleDot className="mr-2 size-4" />
+            Pi
           </Label>
-          <p className="text-muted-foreground text-sm">
-            Setup and configure Pi agent.
-          </p>
-
-          <div className="w-full pt-6">
-            <div className="border-border mb-6 border-t"></div>
-
-            <SensitiveAuthJsonField
-              id="pi-authjson"
-              serviceName="Pi"
-              value={authJson}
-              onChange={onAuthJsonChange}
-            />
-          </div>
         </div>
+        <SensitiveAuthJsonField
+          id="pi-authjson"
+          serviceName="Pi"
+          value={authJson}
+          onChange={onAuthJsonChange}
+        />
       </div>
     </div>
   );

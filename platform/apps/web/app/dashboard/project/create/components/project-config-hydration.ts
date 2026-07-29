@@ -46,7 +46,8 @@ export const getDockerContainers = (
 };
 
 export const formatAuthJsonForForm = (authJson: unknown) => {
-  if (authJson === undefined || authJson === null || authJson === "") return "";
+  if (authJson === undefined || authJson === null || authJson === "")
+    return "{}";
 
   if (typeof authJson === "string") {
     try {

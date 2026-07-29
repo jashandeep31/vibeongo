@@ -154,15 +154,15 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       ],
     },
     opencodeConfig: {
-      authJson: ``,
+      authJson: "{}",
       model: "",
       requirePassword: false,
     },
     codexConfig: {
-      authJson: "",
+      authJson: "{}",
     },
     piConfig: {
-      authJson: "",
+      authJson: "{}",
     },
     nvimConfig: {
       config: "",

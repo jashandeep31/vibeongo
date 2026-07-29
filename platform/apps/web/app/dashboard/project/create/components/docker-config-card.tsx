@@ -37,8 +37,8 @@ const ContainerEditor = memo(function ContainerEditor({
   onRemoveContainer,
 }: ContainerEditorProps) {
   return (
-    <div className="border-border bg-card space-y-3 rounded-md border p-4">
-      <div className="flex items-center space-x-3">
+    <div className="border-border bg-card max-w-full min-w-0 space-y-2 overflow-hidden rounded-md border p-3">
+      <div className="flex min-w-0 items-center gap-2">
         <Input
           value={container.name}
           onChange={(e) =>
@@ -47,7 +47,7 @@ const ContainerEditor = memo(function ContainerEditor({
             })
           }
           placeholder="Container Name"
-          className="bg-transparent font-medium"
+          className="h-8 max-w-full min-w-0 bg-transparent font-medium"
         />
         <Button
           type="button"
@@ -67,7 +67,8 @@ const ContainerEditor = memo(function ContainerEditor({
           })
         }
         placeholder="docker-compose.yml or Dockerfile code..."
-        className="bg-muted/50 h-32 resize-y overflow-y-auto font-mono text-xs whitespace-pre"
+        wrap="off"
+        className="bg-muted/50 h-24 max-w-full min-w-0 resize-y overflow-auto font-mono text-xs whitespace-pre"
       />
     </div>
   );
@@ -116,71 +117,54 @@ function DockerConfigCard() {
   );
 
   return (
-    <div className="bg-card border-border rounded-lg border p-6">
-      <div className="flex items-start space-x-3">
-        <div className="w-full space-y-1">
-          <Label
-            htmlFor="docker-engine"
-            className="text-foreground flex items-center text-base font-semibold"
-          >
-            <Package className="mr-2 h-5 w-5" />
-            Docker Engine
-          </Label>
-          <p className="text-muted-foreground text-sm">
-            Pre-install Docker and run popular containers.
-          </p>
+    <div className="bg-card border-border max-w-full min-w-0 overflow-hidden rounded-lg border p-3">
+      <div className="max-w-full min-w-0 space-y-3">
+        <Label
+          htmlFor="docker-engine"
+          className="text-foreground flex items-center text-sm font-medium"
+        >
+          <Package className="mr-2 size-4" />
+          Docker
+        </Label>
 
-          <div className="w-full pt-6">
-            <div className="border-border mb-6 border-t"></div>
-
-            <div className="space-y-8">
-              {containers.length > 0 && (
-                <div className="space-y-4">
-                  <h4 className="text-foreground text-sm font-semibold">
-                    Active Containers
-                  </h4>
-                  {containers.map((container) => (
-                    <ContainerEditor
-                      key={container.id}
-                      container={container}
-                      onUpdateContainer={updateContainer}
-                      onRemoveContainer={removeContainer}
-                    />
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-3">
-                <h4 className="text-foreground text-sm font-semibold">
-                  Add Container
-                </h4>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => addContainer("Custom Container")}
-                    className="border-dashed"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Custom Container
-                  </Button>
-                  {PREDEFINED_CONTAINERS.map((preset) => (
-                    <Button
-                      key={preset.name}
-                      type="button"
-                      variant="secondary"
-                      onClick={() =>
-                        addContainer(preset.name, preset.dockercomposecode)
-                      }
-                    >
-                      <Plus className="mr-2 h-4 w-4" />
-                      {preset.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-            </div>
+        {containers.length > 0 ? (
+          <div className="max-w-full min-w-0 space-y-2">
+            {containers.map((container) => (
+              <ContainerEditor
+                key={container.id}
+                container={container}
+                onUpdateContainer={updateContainer}
+                onRemoveContainer={removeContainer}
+              />
+            ))}
           </div>
+        ) : null}
+
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => addContainer("Custom Container")}
+            className="border-dashed"
+          >
+            <Plus />
+            Custom
+          </Button>
+          {PREDEFINED_CONTAINERS.map((preset) => (
+            <Button
+              key={preset.name}
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() =>
+                addContainer(preset.name, preset.dockercomposecode)
+              }
+            >
+              <Plus />
+              {preset.name}
+            </Button>
+          ))}
         </div>
       </div>
     </div>

@@ -40,70 +40,58 @@ function OpencodeConfigCard() {
   };
 
   return (
-    <div className="bg-card border-border rounded-lg border p-6">
-      <div className="flex items-start space-x-3">
-        <div className="w-full space-y-1">
+    <div className="bg-card border-border max-w-full min-w-0 overflow-hidden rounded-lg border p-3">
+      <div className="max-w-full min-w-0 space-y-3">
+        <div>
           <Label
             htmlFor="opencode-model"
-            className="text-foreground flex items-center text-base font-semibold"
+            className="text-foreground flex items-center text-sm font-medium"
           >
-            <Terminal className="mr-2 h-5 w-5" />
-            Opencode Integration
+            <Terminal className="mr-2 size-4" />
+            OpenCode
           </Label>
-          <p className="text-muted-foreground text-sm">
-            Setup and configure Opencode CLI agent.
-          </p>
+        </div>
 
-          <div className="w-full pt-6">
-            <div className="border-border mb-6 border-t"></div>
-
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="mb-6 space-y-4">
-                <Label
-                  htmlFor="opencode-model"
-                  className="text-foreground text-sm font-semibold"
-                >
-                  AI Model
-                </Label>
-                <Input
-                  id="opencode-model"
-                  value={model}
-                  onChange={onModelChange}
-                  placeholder="default"
-                />
-              </div>
-              <div className="mb-6 space-y-4">
-                <Label
-                  htmlFor="opencode-require-password"
-                  className="text-foreground text-sm font-semibold"
-                >
-                  Require Password
-                </Label>
-                <div className="flex items-center gap-3 rounded-md border px-3 py-2">
-                  <Checkbox
-                    id="opencode-require-password"
-                    checked={requirePassword}
-                    onCheckedChange={(checked) =>
-                      onRequirePasswordChange(checked === true)
-                    }
-                  />
-                  <Label
-                    htmlFor="opencode-require-password"
-                    className="text-muted-foreground cursor-pointer text-sm"
-                  >
-                    Require a password for Opencode access
-                  </Label>
-                </div>
-              </div>
-            </div>
-            <SensitiveAuthJsonField
-              id="opencode-authjson"
-              serviceName="Opencode"
-              value={authJson}
-              onChange={onAuthJsonChange}
+        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+          <div className="min-w-0 space-y-1.5">
+            <Label htmlFor="opencode-model" className="text-xs">
+              AI model
+            </Label>
+            <Input
+              id="opencode-model"
+              value={model}
+              onChange={onModelChange}
+              placeholder="default"
+              className="h-8 max-w-full min-w-0"
             />
           </div>
+          <div className="min-w-0 space-y-1.5">
+            <Label htmlFor="opencode-require-password" className="text-xs">
+              Access
+            </Label>
+            <div className="flex h-8 min-w-0 items-center gap-2 overflow-hidden rounded-md border px-2.5">
+              <Checkbox
+                id="opencode-require-password"
+                checked={requirePassword}
+                onCheckedChange={(checked) =>
+                  onRequirePasswordChange(checked === true)
+                }
+              />
+              <Label
+                htmlFor="opencode-require-password"
+                className="text-muted-foreground min-w-0 cursor-pointer truncate text-xs"
+              >
+                Require password
+              </Label>
+            </div>
+          </div>
         </div>
+        <SensitiveAuthJsonField
+          id="opencode-authjson"
+          serviceName="OpenCode"
+          value={authJson}
+          onChange={onAuthJsonChange}
+        />
       </div>
     </div>
   );
