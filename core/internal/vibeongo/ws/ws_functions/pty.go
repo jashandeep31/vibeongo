@@ -53,6 +53,11 @@ func StartPTY(session *store.TerminalSession) error {
 
 	cmd := exec.Command("bash", "-l")
 	cmd.Dir = os.Getenv("HOME")
+	cmd.Env = append(
+		os.Environ(),
+		"TERM=xterm-256color",
+		"COLORTERM=truecolor",
+	)
 
 	ptmx, err := pty.StartWithSize(cmd, &pty.Winsize{Rows: defaultRows, Cols: defaultCols})
 	if err != nil {
