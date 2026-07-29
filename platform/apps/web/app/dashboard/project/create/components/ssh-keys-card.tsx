@@ -2,9 +2,11 @@
 import React from "react";
 import { useSshKeys } from "@/hooks/use-ssh-keys";
 import { Label } from "@repo/ui/components/label";
-import { Checkbox } from "@repo/ui/components/checkbox";
+import { Button } from "@repo/ui/components/button";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import { CreateSshKeyDialog } from "@/components/dialogs/create-ssh-key-dialog";
 import { useConfigStore } from "@/store/config-store";
+import { Check, KeyRound } from "lucide-react";
 
 const SshKeysCard = React.memo(() => {
   const { data: sshKeys, isLoading } = useSshKeys();
@@ -20,13 +22,15 @@ const SshKeysCard = React.memo(() => {
 
   if (isLoading) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-muted-foreground text-sm">SSH Keys</Label>
           <CreateSshKeyDialog />
         </div>
-        <div className="text-muted-foreground bg-card animate-pulse rounded-lg border p-4 text-sm">
-          Loading SSH keys...
+        <div className="flex flex-wrap gap-2">
+          {[1, 2].map((index) => (
+            <Skeleton key={index} className="h-9 w-36 rounded-lg" />
+          ))}
         </div>
       </div>
     );
@@ -34,12 +38,12 @@ const SshKeysCard = React.memo(() => {
 
   if (!sshKeys || sshKeys.length === 0) {
     return (
-      <div className="space-y-4">
+      <div className="space-y-2">
         <div className="flex items-center justify-between">
           <Label className="text-muted-foreground text-sm">SSH Keys</Label>
           <CreateSshKeyDialog />
         </div>
-        <div className="text-muted-foreground bg-muted/50 rounded-lg border p-4 text-sm">
+        <div className="text-muted-foreground py-2 text-sm">
           No SSH keys found.
         </div>
       </div>
@@ -47,39 +51,32 @@ const SshKeysCard = React.memo(() => {
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label className="text-muted-foreground text-sm">SSH Keys</Label>
         <CreateSshKeyDialog />
       </div>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+      <div className="flex flex-wrap gap-2">
         {sshKeys.map((sshKey) => {
           const isSelected = selectedKeys.includes(sshKey.id);
           return (
-            <button
+            <Button
               type="button"
+              variant="outline"
               key={sshKey.id}
+              title={sshKey.name}
+              aria-pressed={isSelected}
               onClick={() => toggleKey(sshKey.id)}
-              className={`hover:bg-muted/50 flex items-center space-x-3 rounded-lg border p-3 text-left transition-colors ${
+              className={`h-9 max-w-full justify-start gap-2 px-3 ${
                 isSelected
-                  ? "border-primary bg-primary/5 ring-primary ring-1"
-                  : "bg-card border-border"
+                  ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                  : ""
               }`}
             >
-              <Checkbox
-                checked={isSelected}
-                onCheckedChange={() => toggleKey(sshKey.id)}
-                onClick={(e) => e.stopPropagation()}
-                aria-label={`Select ${sshKey.name}`}
-              />
-              <div
-                className={`truncate text-sm font-medium ${
-                  isSelected ? "text-foreground" : "text-muted-foreground"
-                }`}
-              >
-                {sshKey.name}
-              </div>
-            </button>
+              <KeyRound className="size-4 shrink-0" />
+              <span className="max-w-52 truncate">{sshKey.name}</span>
+              {isSelected ? <Check className="ml-1 size-3.5 shrink-0" /> : null}
+            </Button>
           );
         })}
       </div>

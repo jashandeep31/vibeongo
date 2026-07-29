@@ -1,6 +1,13 @@
 import { memo } from "react";
 import { useInstanceRegions } from "@/hooks/use-instance-metadata";
 import { Label } from "@repo/ui/components/label";
+import { Button } from "@repo/ui/components/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import { useConfigStore } from "@/store/config-store";
 
 function InstanceRegionCards() {
@@ -13,34 +20,33 @@ function InstanceRegionCards() {
   const providerRegions = regions?.filter(
     (region) => region.provider === provider,
   );
-
   return (
-    <div className="space-y-4">
-      <Label className="text-muted-foreground text-sm">Deployment Region</Label>
-      <div className="flex flex-wrap items-center gap-4">
-        {providerRegions?.map((region) => (
-          <button
-            type="button"
-            onClick={() => setInstanceRegion(region.id)}
-            className={`hover:border-primary bg-muted hover:text-primary group rounded-md border p-2 text-sm transition-colors ${
-              instanceRegion === region.id
-                ? "border-primary text-primary ring-primary ring-1"
-                : ""
-            }`}
-            key={region.id}
-          >
-            {region.name}
-            <span
-              className={`text-muted-foreground group-hover:text-primary block text-left text-xs transition-colors ${
-                instanceRegion === region.id
-                  ? "text-primary group-hover:text-primary"
-                  : ""
-              }`}
-            >
-              {region.slug}
-            </span>
-          </button>
-        ))}
+    <div className="space-y-2">
+      <Label className="text-muted-foreground text-sm">Region</Label>
+      <div className="flex flex-wrap items-center gap-2">
+        <TooltipProvider>
+          {providerRegions?.map((region) => (
+            <Tooltip key={region.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  aria-pressed={instanceRegion === region.id}
+                  onClick={() => setInstanceRegion(region.id)}
+                  className={
+                    instanceRegion === region.id
+                      ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                      : ""
+                  }
+                >
+                  {region.name}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top">{region.slug}</TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
       </div>
     </div>
   );

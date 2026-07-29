@@ -1,5 +1,6 @@
 import { memo } from "react";
 import { Label } from "@repo/ui/components/label";
+import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import {
   Tooltip,
@@ -9,7 +10,7 @@ import {
 } from "@repo/ui/components/tooltip";
 import { useConfigStore } from "@/store/config-store";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
-import { CircleHelp } from "lucide-react";
+import { Cpu } from "lucide-react";
 
 const formatHourlyPrice = (pricePerHour: number) =>
   `$${(pricePerHour / 10000).toFixed(4)}/hr`;
@@ -28,32 +29,11 @@ function InstanceTypeCards() {
   });
   if (isLoading) {
     return (
-      <div className="space-y-4">
-        <Label className="text-muted-foreground text-sm">Instance Type</Label>
-        <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+      <div className="space-y-2">
+        <Label className="text-muted-foreground text-sm">Instance type</Label>
+        <div className="flex flex-wrap gap-2">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="flex h-[140px] flex-col rounded-lg border p-4 text-left"
-            >
-              <Skeleton className="mb-1 h-5 w-24" />
-              <Skeleton className="mb-2 h-4 w-full" />
-              <Skeleton className="mb-4 h-4 w-3/4" />
-              <div className="mt-auto w-full space-y-2">
-                <div className="flex justify-between">
-                  <Skeleton className="h-3 w-8" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
-                <div className="flex justify-between">
-                  <Skeleton className="h-3 w-16" />
-                  <Skeleton className="h-3 w-14" />
-                </div>
-                <div className="flex justify-between">
-                  <Skeleton className="h-3 w-8" />
-                  <Skeleton className="h-3 w-12" />
-                </div>
-              </div>
-            </div>
+            <Skeleton key={i} className="h-12 w-52 rounded-lg" />
           ))}
         </div>
       </div>
@@ -68,86 +48,48 @@ function InstanceTypeCards() {
     return null;
 
   return (
-    <div className="space-y-4">
-      <Label className="text-muted-foreground text-sm">Instance Type</Label>
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        {instanceTypes.map((instance) => (
-          <button
-            type="button"
-            onClick={() => setInstanceTypeId(instance.id)}
-            className={`hover:border-primary flex w-full min-w-0 flex-col rounded-lg border p-4 text-left transition-colors ${
-              instanceTypeId === instance.id
-                ? "border-primary bg-primary/5 ring-primary ring-1"
-                : "bg-muted hover:bg-muted/80"
-            }`}
-            key={instance.id}
-          >
-            <div
-              className={`mb-1 font-medium ${
-                instanceTypeId === instance.id ? "text-primary" : ""
-              }`}
-            >
-              {instance.name}
-            </div>
-            {instance.description && (
-              <div className="text-muted-foreground mb-4 line-clamp-2 text-xs">
-                {instance.description}
-              </div>
-            )}
-            <div className="mt-auto w-full min-w-0 space-y-3">
-              <div className="grid grid-cols-3 gap-2">
-                <div className="min-w-0">
-                  <span className="text-muted-foreground block text-[11px]">
-                    Price
+    <div className="space-y-2">
+      <Label className="text-muted-foreground text-sm">Instance type</Label>
+      <div className="flex flex-wrap gap-2">
+        <TooltipProvider>
+          {instanceTypes.map((instance) => (
+            <Tooltip key={instance.id}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  aria-pressed={instanceTypeId === instance.id}
+                  onClick={() => setInstanceTypeId(instance.id)}
+                  className={`h-12 min-w-52 justify-start gap-2 px-3 text-left ${
+                    instanceTypeId === instance.id
+                      ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                      : ""
+                  }`}
+                >
+                  <Cpu className="size-4 shrink-0" />
+                  <span className="min-w-0">
+                    <span className="block truncate">{instance.name}</span>
+                    <span className="text-muted-foreground mt-0.5 block text-[10px] font-normal">
+                      {instance.cpu || "N/A"} · {instance.ram || "N/A"} ·{" "}
+                      {formatHourlyPrice(instance.price_per_hour)}
+                    </span>
                   </span>
-                  <span className="text-foreground block break-words text-xs font-medium">
-                    {formatHourlyPrice(instance.price_per_hour)}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent side="top" className="max-w-72">
+                <span className="flex flex-col gap-1">
+                  {instance.description ? (
+                    <span>{instance.description}</span>
+                  ) : null}
+                  <span className="text-background/70">
+                    About {formatAverageMonthlyPrice(instance.price_per_hour)}{" "}
+                    at 8 hours/day.
                   </span>
-                </div>
-                <div className="min-w-0">
-                  <span className="text-muted-foreground block text-[11px]">
-                    CPU
-                  </span>
-                  <span className="text-foreground block break-words text-xs font-medium">
-                    {instance.cpu || "N/A"}
-                  </span>
-                </div>
-                <div className="min-w-0">
-                  <span className="text-muted-foreground block text-[11px]">
-                    RAM
-                  </span>
-                  <span className="text-foreground block break-words text-xs font-medium">
-                    {instance.ram || "N/A"}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex min-w-0 items-center justify-between gap-2 border-t pt-2 text-xs">
-                <span className="text-muted-foreground inline-flex min-w-0 items-center gap-1.5">
-                  Avg monthly
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <span
-                          className="text-muted-foreground hover:text-foreground inline-flex shrink-0"
-                          onClick={(event) => event.stopPropagation()}
-                        >
-                          <CircleHelp className="size-3.5" />
-                        </span>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">
-                        Calculated as hourly price x 8 hours/day x 30 days.
-                      </TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
                 </span>
-                <span className="text-foreground shrink-0 font-medium">
-                  {formatAverageMonthlyPrice(instance.price_per_hour)}
-                </span>
-              </div>
-            </div>
-          </button>
-        ))}
+              </TooltipContent>
+            </Tooltip>
+          ))}
+        </TooltipProvider>
       </div>
     </div>
   );

@@ -1,23 +1,56 @@
 import { memo, useEffect, useMemo, useState } from "react";
 import { sandboxProvidersEnums } from "@repo/db";
+import { Badge } from "@repo/ui/components/badge";
+import { Button } from "@repo/ui/components/button";
 import { Label } from "@repo/ui/components/label";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@repo/ui/components/tooltip";
 import {
   useSandboxRegions,
   useSandboxTypesByRegionId,
 } from "@/hooks/use-instance-metadata";
 import { useConfigStore } from "@/store/config-store";
+import { Box, Container, Cpu, Sparkles, Triangle } from "lucide-react";
 
 const formatPricePerSecond = (pricePerSecond: number) =>
   `$${(pricePerSecond / 10_000_000).toFixed(4)}/sec`;
 
 type SandboxProvider = (typeof sandboxProvidersEnums.enumValues)[number];
 
-const providerNames: Record<SandboxProvider, string> = {
-  e2b: "E2B",
-  vercel: "Vercel",
-  daytona: "Daytona",
-};
+const sandboxProviderOptions: {
+  id: SandboxProvider;
+  name: string;
+  description: string;
+  recommended: boolean;
+  Icon: typeof Box;
+}[] = [
+  {
+    id: "e2b",
+    name: "E2B",
+    description: "Use E2B as the sandbox runtime.",
+    recommended: true,
+    Icon: Box,
+  },
+  {
+    id: "vercel",
+    name: "Vercel",
+    description: "Use Vercel as the sandbox runtime.",
+    recommended: false,
+    Icon: Triangle,
+  },
+  {
+    id: "daytona",
+    name: "Daytona",
+    description: "Use Daytona as the sandbox runtime.",
+    recommended: false,
+    Icon: Container,
+  },
+];
 
 function SandboxConfigCard() {
   const {
@@ -74,111 +107,144 @@ function SandboxConfigCard() {
   };
 
   return (
-    <section className="border-border bg-muted/20 space-y-4 rounded-lg border p-4">
-      <div className="space-y-1">
-        <Label className="text-sm">Sandbox configuration</Label>
-        <p className="text-muted-foreground text-sm">
-          Choose the sandbox environment for this project.
-        </p>
-      </div>
+    <section className="border-border space-y-3 border-t pt-4">
+      <Label className="text-sm">Sandbox</Label>
 
       <div className="space-y-2">
-        <Label className="text-muted-foreground text-sm">
-          Sandbox provider
-        </Label>
-        <div className="flex flex-wrap items-center gap-3">
-          {isRegionsLoading
-            ? [1, 2, 3].map((index) => (
-                <Skeleton key={index} className="h-10 w-24" />
-              ))
-            : providers.map((provider) => (
-                <button
-                  type="button"
-                  onClick={() => selectProvider(provider)}
-                  className={`hover:border-primary rounded-md border px-4 py-2 text-sm transition-colors ${
-                    sandboxProvider === provider
-                      ? "border-primary bg-primary/5 text-primary ring-primary ring-1"
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                  key={provider}
-                >
-                  {providerNames[provider]}
-                </button>
-              ))}
+        <Label className="text-muted-foreground text-sm">Provider</Label>
+        <div className="flex flex-wrap items-center gap-2 pt-1.5">
+          {isRegionsLoading ? (
+            [1, 2, 3].map((index) => (
+              <Skeleton key={index} className="h-9 w-28" />
+            ))
+          ) : (
+            <TooltipProvider>
+              {sandboxProviderOptions
+                .filter((option) => providers.includes(option.id))
+                .map(({ id, name, description, recommended, Icon }) => (
+                  <Tooltip key={id}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-pressed={sandboxProvider === id}
+                        onClick={() => selectProvider(id)}
+                        className={`relative h-9 min-w-28 justify-start gap-2 px-3 ${
+                          sandboxProvider === id
+                            ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                            : recommended
+                              ? "border-amber-300/80 bg-amber-50/60 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/5"
+                              : ""
+                        }`}
+                      >
+                        {recommended ? (
+                          <Badge
+                            variant="outline"
+                            className="absolute -top-2 right-1 h-4 border-amber-300 bg-amber-100 px-1.5 text-[9px] leading-none text-amber-800 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300"
+                          >
+                            <Sparkles />
+                            Recommended
+                          </Badge>
+                        ) : null}
+                        <Icon className="size-4" />
+                        {name}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{description}</TooltipContent>
+                  </Tooltip>
+                ))}
+            </TooltipProvider>
+          )}
         </div>
       </div>
 
       <div className="space-y-2">
-        <Label className="text-muted-foreground text-sm">Sandbox region</Label>
-        <div className="flex flex-wrap items-center gap-3">
-          {isRegionsLoading
-            ? [1, 2].map((index) => (
-                <Skeleton key={index} className="h-12 w-28" />
-              ))
-            : providerRegions?.map((region) => (
-                <button
-                  type="button"
-                  onClick={() => selectRegion(region.id)}
-                  className={`hover:border-primary rounded-md border p-2 text-left text-sm transition-colors ${
-                    sandboxRegionId === region.id
-                      ? "border-primary bg-primary/5 text-primary ring-primary ring-1"
-                      : "bg-muted hover:bg-muted/80"
-                  }`}
-                  key={region.id}
-                >
-                  {region.name}
-                  <span className="text-muted-foreground block text-xs">
-                    {region.slug}
-                  </span>
-                </button>
+        <Label className="text-muted-foreground text-sm">Region</Label>
+        <div className="flex flex-wrap items-center gap-2">
+          {isRegionsLoading ? (
+            [1, 2].map((index) => <Skeleton key={index} className="h-7 w-28" />)
+          ) : (
+            <TooltipProvider>
+              {providerRegions?.map((region) => (
+                <Tooltip key={region.id}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      aria-pressed={sandboxRegionId === region.id}
+                      onClick={() => selectRegion(region.id)}
+                      className={
+                        sandboxRegionId === region.id
+                          ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                          : ""
+                      }
+                    >
+                      {region.name}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">{region.slug}</TooltipContent>
+                </Tooltip>
               ))}
+            </TooltipProvider>
+          )}
         </div>
       </div>
 
       {sandboxRegionId ? (
         <div className="space-y-2">
-          <Label className="text-muted-foreground text-sm">Sandbox type</Label>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
-            {isTypesLoading
-              ? [1, 2, 3].map((index) => (
-                  <Skeleton key={index} className="h-32 w-full" />
-                ))
-              : sandboxTypes?.map((sandboxType) => (
-                  <button
-                    type="button"
-                    onClick={() => setSandboxTypeId(sandboxType.id)}
-                    className={`hover:border-primary flex min-h-32 flex-col rounded-lg border p-4 text-left transition-colors ${
-                      sandboxTypeId === sandboxType.id
-                        ? "border-primary bg-primary/5 ring-primary ring-1"
-                        : "bg-muted hover:bg-muted/80"
-                    }`}
-                    key={sandboxType.id}
-                  >
-                    <span className="font-medium">{sandboxType.name}</span>
-                    {sandboxType.description ? (
-                      <span className="text-muted-foreground mt-1 text-xs">
-                        {sandboxType.description}
+          <Label className="text-muted-foreground text-sm">Machine type</Label>
+          <div className="flex flex-wrap gap-2">
+            {isTypesLoading ? (
+              [1, 2, 3].map((index) => (
+                <Skeleton key={index} className="h-12 w-52 rounded-lg" />
+              ))
+            ) : (
+              <TooltipProvider>
+                {sandboxTypes?.map((sandboxType) => (
+                  <Tooltip key={sandboxType.id}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-pressed={sandboxTypeId === sandboxType.id}
+                        onClick={() => setSandboxTypeId(sandboxType.id)}
+                        className={`h-12 min-w-52 justify-start gap-2 px-3 text-left ${
+                          sandboxTypeId === sandboxType.id
+                            ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                            : ""
+                        }`}
+                      >
+                        <Cpu className="size-4 shrink-0" />
+                        <span className="min-w-0">
+                          <span className="block truncate">
+                            {sandboxType.name}
+                          </span>
+                          <span className="text-muted-foreground mt-0.5 block text-[10px] font-normal">
+                            {sandboxType.cpu || "N/A"} ·{" "}
+                            {sandboxType.ram || "N/A"} ·{" "}
+                            {formatPricePerSecond(
+                              sandboxType.price_per_seconds,
+                            )}
+                          </span>
+                        </span>
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-72">
+                      <span className="flex flex-col gap-1">
+                        {sandboxType.description ? (
+                          <span>{sandboxType.description}</span>
+                        ) : null}
+                        <span className="text-background/70">
+                          Billed at{" "}
+                          {formatPricePerSecond(sandboxType.price_per_seconds)}.
+                        </span>
                       </span>
-                    ) : null}
-                    <span className="text-muted-foreground mt-auto grid grid-cols-3 gap-2 pt-4 text-xs">
-                      <span>
-                        Price
-                        <br />
-                        {formatPricePerSecond(sandboxType.price_per_seconds)}
-                      </span>
-                      <span>
-                        CPU
-                        <br />
-                        {sandboxType.cpu || "N/A"}
-                      </span>
-                      <span>
-                        RAM
-                        <br />
-                        {sandboxType.ram || "N/A"}
-                      </span>
-                    </span>
-                  </button>
+                    </TooltipContent>
+                  </Tooltip>
                 ))}
+              </TooltipProvider>
+            )}
           </div>
         </div>
       ) : null}
