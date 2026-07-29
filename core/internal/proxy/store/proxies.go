@@ -19,9 +19,19 @@ type Proxy struct {
 	AllowAllIPs bool      `json:"allowed_all_ips"`
 	ExpiresAt   time.Time `json:"expires_at"`
 
-	// Target is required by the reverse proxy, but must not be exposed by
-	// public proxy metadata endpoints.
+	// Target stays parsed for use by the reverse proxy. ProxyInfo provides its
+	// string representation to proxy metadata endpoints.
 	Target *url.URL `json:"-"`
+}
+
+// ProxyInfo is the serializable representation of a cached proxy.
+type ProxyInfo struct {
+	ID          string    `json:"id"`
+	Domain      string    `json:"domain"`
+	Target      string    `json:"target"`
+	AllowedIPs  []string  `json:"allowed_ips"`
+	AllowAllIPs bool      `json:"allowed_all_ips"`
+	ExpiresAt   time.Time `json:"expires_at"`
 }
 
 type ProxyManager struct {
@@ -177,15 +187,24 @@ func (pm *ProxyManager) cleanup() {
 }
 
 // Return all the proxies
-func (pm *ProxyManager) GetAllProxies() map[string]*Proxy {
+func (pm *ProxyManager) GetAllProxies() map[string]*ProxyInfo {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 
-	proxies := make(map[string]*Proxy, len(pm.proxies))
+	proxies := make(map[string]*ProxyInfo, len(pm.proxies))
 	for host, proxy := range pm.proxies {
-		copy := *proxy
-		copy.AllowedIPs = append([]string(nil), proxy.AllowedIPs...)
-		proxies[host] = &copy
+		target := ""
+		if proxy.Target != nil {
+			target = proxy.Target.String()
+		}
+		proxies[host] = &ProxyInfo{
+			ID:          proxy.ID,
+			Domain:      proxy.Domain,
+			Target:      target,
+			AllowedIPs:  append([]string(nil), proxy.AllowedIPs...),
+			AllowAllIPs: proxy.AllowAllIPs,
+			ExpiresAt:   proxy.ExpiresAt,
+		}
 	}
 	return proxies
 }
