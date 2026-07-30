@@ -144,11 +144,10 @@ export const useAddAllowedIpToProject = () => {
 
   return useMutation({
     mutationFn: addAllowedIpToProject,
-    onSuccess: (_, variables) => {
+    onSuccess: (_, variables) =>
       queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "domains"],
-      });
-    },
+      }),
   });
 };
 

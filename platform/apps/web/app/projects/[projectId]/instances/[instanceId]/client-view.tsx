@@ -167,9 +167,6 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const [isRestartingFinalScript, setIsRestartingFinalScript] = useState(false);
   const serverLogsRef = useRef<HTMLDivElement | null>(null);
   const mobileServerLogsRef = useRef<HTMLDivElement | null>(null);
-  const [isCurrentIpDialogOpen, setIsCurrentIpDialogOpen] = useState(false);
-  const [hasDismissedCurrentIpDialog, setHasDismissedCurrentIpDialog] =
-    useState(false);
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
 
@@ -301,15 +298,11 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
         id: instance.project_id,
         ip: normalizedIp,
       });
+
       toast.success(
         normalizedIp === currentIp ? "Current IP added" : "Allowed IP added",
         { id: toastId },
       );
-      if (normalizedIp === currentIp) {
-        setIsCurrentIpDialogOpen(false);
-        setHasDismissedCurrentIpDialog(true);
-      }
-      window.location.reload();
     } catch {
       toast.error(
         normalizedIp === currentIp
@@ -423,7 +416,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       isDisposed = true;
       window.clearInterval(intervalId);
     };
-  }, [terminalHealthCheckUrl]);
+  }, [isCurrentIpAllowed, terminalHealthCheckUrl]);
 
   useEffect(() => {
     if (!instance || isTerminated) {
@@ -466,30 +459,6 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
       }
     }
   }, [serverLogs]);
-
-  useEffect(() => {
-    if (
-      isLoadingDomains ||
-      isCurrentIpLoading ||
-      hasDismissedCurrentIpDialog ||
-      !instance?.project_id ||
-      !projectDomainsData ||
-      !currentIp ||
-      isCurrentIpAllowed
-    ) {
-      return;
-    }
-
-    setIsCurrentIpDialogOpen(true);
-  }, [
-    currentIp,
-    hasDismissedCurrentIpDialog,
-    instance?.project_id,
-    isCurrentIpAllowed,
-    isCurrentIpLoading,
-    isLoadingDomains,
-    projectDomainsData,
-  ]);
 
   if (isInstanceLoading) {
     return <InstancePageState type="loading" />;
@@ -643,25 +612,9 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     <WebSocketProvider
       socketUrl={vibeongoDomain}
       socketToken={vibeongoLocalToken}
+      reconnectKey={isCurrentIpAllowed}
     >
       <div className="w-full max-w-full min-w-0 space-y-12 overflow-x-hidden p-4 md:p-8">
-        <ConfirmationDialog
-          open={isCurrentIpDialogOpen}
-          onOpenChange={(open) => {
-            setIsCurrentIpDialogOpen(open);
-            if (!open) {
-              setHasDismissedCurrentIpDialog(true);
-            }
-          }}
-          title="Allow current IP"
-          description={`Your current IP ${currentIp || "is not available"} is not in this project's allowlist. Add it so project domains can be accessed from this device.`}
-          confirmText="Add current IP"
-          cancelText="Not now"
-          onConfirm={() => {
-            void handleAddAllowedIp(currentIp);
-          }}
-        />
-
         <div className="flex min-w-0 flex-wrap items-start justify-between gap-3">
           <div className="min-w-0">
             <h1 className="flex min-w-0 items-center gap-2 text-3xl font-bold tracking-tight">
@@ -687,6 +640,40 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
           {renderControls()}
         </div>
+
+        {!isLoadingDomains &&
+          !isCurrentIpLoading &&
+          projectDomainsData &&
+          currentIp &&
+          !isCurrentIpAllowed && (
+            <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+              <TriangleAlert />
+              <AlertTitle>Allow this device to connect</AlertTitle>
+              <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <span>
+                  Your current IP,{" "}
+                  <span className="font-mono font-medium">{currentIp}</span>, is
+                  not in this project&apos;s allowlist.
+                </span>
+                <Button
+                  type="button"
+                  size="sm"
+                  className="w-fit shrink-0"
+                  disabled={addAllowedIpMutation.isPending}
+                  onClick={() => {
+                    void handleAddAllowedIp(currentIp).catch(() => undefined);
+                  }}
+                >
+                  {addAllowedIpMutation.isPending && (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  )}
+                  {addAllowedIpMutation.isPending
+                    ? "Allowing..."
+                    : "Allow this IP"}
+                </Button>
+              </AlertDescription>
+            </Alert>
+          )}
 
         {!isLoadingDomains && !isTargetInstance ? (
           <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">

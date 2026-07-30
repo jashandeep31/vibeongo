@@ -43,10 +43,12 @@ export const WebSocketProvider = ({
   children,
   socketUrl,
   socketToken,
+  reconnectKey,
 }: {
   children: ReactNode;
   socketUrl: string | undefined | null;
   socketToken: string | undefined | null;
+  reconnectKey?: string | number | boolean;
 }) => {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
   const listenersRef = useRef(
@@ -227,7 +229,7 @@ export const WebSocketProvider = ({
       setWebsocket((current) => (current === currentSocket ? null : current));
       currentSocket?.close();
     };
-  }, [socketUrl, socketToken]);
+  }, [reconnectKey, socketUrl, socketToken]);
 
   return (
     <SocketContext.Provider
