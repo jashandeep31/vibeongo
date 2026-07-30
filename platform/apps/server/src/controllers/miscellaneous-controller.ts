@@ -8,11 +8,6 @@ const RootPath = process.cwd();
 
 export const installScript = catchAsync(
   async (_req: Request, res: Response) => {
-    const downloadUrl =
-      env.NODE_ENV === "production"
-        ? "https://download.vibeongo.com/vibeongo"
-        : `${env.SERVER_URL}/vibeongo`;
-
     res.status(200).type("text/plain").send(`
 #!/usr/bin/env bash
 set -euo pipefail
@@ -23,7 +18,7 @@ BINARY_PATH="/usr/local/bin/$APP"
 echo "Installing $APP..."
 
 # Download binary
-sudo curl -# -L  ${env.NODE_ENV === "production" ? "https://download.vibeongo.com" : env.BACKEND_URL}/vibeongo -o "$BINARY_PATH"
+sudo curl -# -L  ${env.NODE_ENV === "production" ? "https://download.vibeongo.com" : env.SERVER_URL}/vibeongo -o "$BINARY_PATH"
 
 # Make executable
 
@@ -57,6 +52,7 @@ sudo systemctl start vibeongo
 `);
   },
 );
+
 export const serveServer = catchAsync(async (_req: Request, res: Response) => {
   const binaryPath = path.join(RootPath, "../../../core/api");
   const stat = fs.statSync(binaryPath);
