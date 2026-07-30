@@ -9,6 +9,7 @@ interface ProviderOption {
   serviceName: string;
   description: string;
   recommended: boolean;
+  available: boolean;
   Logo: ProviderLogo;
 }
 
@@ -46,6 +47,7 @@ export const providerOptions = [
     serviceName: "EC2",
     description: "Amazon EC2 regions and instance types.",
     recommended: true,
+    available: true,
     Logo: AwsLogo,
   },
   {
@@ -54,6 +56,7 @@ export const providerOptions = [
     serviceName: "Droplets",
     description: "DigitalOcean regions and Droplet sizes.",
     recommended: false,
+    available: false,
     Logo: DigitalOceanLogo,
   },
 ] satisfies ProviderOption[];

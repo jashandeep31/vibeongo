@@ -21,15 +21,28 @@ function ProviderCards() {
       <div className="flex flex-wrap items-center gap-2 pt-1.5">
         <TooltipProvider>
           {providerOptions.map(
-            ({ id, name, serviceName, description, recommended, Logo }) => (
+            ({
+              id,
+              name,
+              serviceName,
+              description,
+              recommended,
+              available,
+              Logo,
+            }) => (
               <Tooltip key={id}>
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
                     variant="outline"
-                    aria-label={`${name} ${serviceName}`}
+                    aria-label={`${name} ${serviceName}${
+                      available ? "" : " (coming soon)"
+                    }`}
                     aria-pressed={provider === id}
-                    onClick={() => setProvider(id)}
+                    disabled={!available}
+                    onClick={() => {
+                      if (available) setProvider(id);
+                    }}
                     className={`relative h-10 min-w-32 justify-start gap-2.5 px-3 ${
                       provider === id
                         ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
@@ -47,6 +60,14 @@ function ProviderCards() {
                         Recommended
                       </Badge>
                     ) : null}
+                    {!available ? (
+                      <Badge
+                        variant="secondary"
+                        className="absolute -top-2 right-1 h-4 px-1.5 text-[9px] leading-none shadow-sm"
+                      >
+                        Coming soon
+                      </Badge>
+                    ) : null}
                     <span className="h-5 w-7 shrink-0">
                       <Logo className="size-full" />
                     </span>
@@ -58,7 +79,10 @@ function ProviderCards() {
                     </span>
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="top">{description}</TooltipContent>
+                <TooltipContent side="top">
+                  {description}
+                  {!available ? " Coming soon." : ""}
+                </TooltipContent>
               </Tooltip>
             ),
           )}

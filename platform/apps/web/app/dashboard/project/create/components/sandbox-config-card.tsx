@@ -27,6 +27,7 @@ const sandboxProviderOptions: {
   name: string;
   description: string;
   recommended: boolean;
+  available: boolean;
   Icon: typeof Box;
 }[] = [
   {
@@ -34,6 +35,7 @@ const sandboxProviderOptions: {
     name: "E2B",
     description: "Use E2B as the sandbox runtime.",
     recommended: true,
+    available: true,
     Icon: Box,
   },
   {
@@ -41,6 +43,7 @@ const sandboxProviderOptions: {
     name: "Vercel",
     description: "Use Vercel as the sandbox runtime.",
     recommended: false,
+    available: false,
     Icon: Triangle,
   },
   {
@@ -48,9 +51,13 @@ const sandboxProviderOptions: {
     name: "Daytona",
     description: "Use Daytona as the sandbox runtime.",
     recommended: false,
+    available: false,
     Icon: Container,
   },
 ];
+
+const isSandboxProviderAvailable = (provider: SandboxProvider | ""): boolean =>
+  provider === "e2b";
 
 function SandboxConfigCard() {
   const {
@@ -92,6 +99,7 @@ function SandboxConfigCard() {
   }, [sandboxRegionId, sandboxRegions]);
 
   const selectProvider = (provider: SandboxProvider) => {
+    if (!isSandboxProviderAvailable(provider)) return;
     if (sandboxProvider === provider) return;
 
     setSandboxProvider(provider);
@@ -121,38 +129,55 @@ function SandboxConfigCard() {
             <TooltipProvider>
               {sandboxProviderOptions
                 .filter((option) => providers.includes(option.id))
-                .map(({ id, name, description, recommended, Icon }) => (
-                  <Tooltip key={id}>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        aria-pressed={sandboxProvider === id}
-                        onClick={() => selectProvider(id)}
-                        className={`relative h-9 min-w-28 justify-start gap-2 px-3 ${
-                          sandboxProvider === id
-                            ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
-                            : recommended
-                              ? "border-amber-300/80 bg-amber-50/60 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/5"
-                              : ""
-                        }`}
-                      >
-                        {recommended ? (
-                          <Badge
-                            variant="outline"
-                            className="absolute -top-2 right-1 h-4 border-amber-300 bg-amber-100 px-1.5 text-[9px] leading-none text-amber-800 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300"
-                          >
-                            <Sparkles />
-                            Recommended
-                          </Badge>
-                        ) : null}
-                        <Icon className="size-4" />
-                        {name}
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">{description}</TooltipContent>
-                  </Tooltip>
-                ))}
+                .map(
+                  ({ id, name, description, recommended, available, Icon }) => (
+                    <Tooltip key={id}>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          aria-label={`${name}${
+                            available ? "" : " (coming soon)"
+                          }`}
+                          aria-pressed={sandboxProvider === id}
+                          disabled={!available}
+                          onClick={() => selectProvider(id)}
+                          className={`relative h-9 min-w-28 justify-start gap-2 px-3 ${
+                            sandboxProvider === id
+                              ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                              : recommended
+                                ? "border-amber-300/80 bg-amber-50/60 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/5"
+                                : ""
+                          }`}
+                        >
+                          {recommended ? (
+                            <Badge
+                              variant="outline"
+                              className="absolute -top-2 right-1 h-4 border-amber-300 bg-amber-100 px-1.5 text-[9px] leading-none text-amber-800 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300"
+                            >
+                              <Sparkles />
+                              Recommended
+                            </Badge>
+                          ) : null}
+                          {!available ? (
+                            <Badge
+                              variant="secondary"
+                              className="absolute -top-2 right-1 h-4 px-1.5 text-[9px] leading-none shadow-sm"
+                            >
+                              Coming soon
+                            </Badge>
+                          ) : null}
+                          <Icon className="size-4" />
+                          {name}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        {description}
+                        {!available ? " Coming soon." : ""}
+                      </TooltipContent>
+                    </Tooltip>
+                  ),
+                )}
             </TooltipProvider>
           )}
         </div>
@@ -173,6 +198,7 @@ function SandboxConfigCard() {
                       variant="outline"
                       size="sm"
                       aria-pressed={sandboxRegionId === region.id}
+                      disabled={!isSandboxProviderAvailable(region.provider)}
                       onClick={() => selectRegion(region.id)}
                       className={
                         sandboxRegionId === region.id
@@ -208,6 +234,7 @@ function SandboxConfigCard() {
                         type="button"
                         variant="outline"
                         aria-pressed={sandboxTypeId === sandboxType.id}
+                        disabled={!isSandboxProviderAvailable(sandboxProvider)}
                         onClick={() => setSandboxTypeId(sandboxType.id)}
                         className={`h-12 min-w-52 justify-start gap-2 px-3 text-left ${
                           sandboxTypeId === sandboxType.id
