@@ -188,13 +188,29 @@ const SessionCard = memo(
     }, [session.id, onArchive]);
 
     return (
-      <Card className="flex flex-col">
-        <CardHeader className="pb-3">
-          <div className="flex min-w-0 items-center justify-between gap-2">
-            <div className="flex min-w-0 items-center gap-2">
-              <Clock3 className="text-muted-foreground h-5 w-5 shrink-0" />
+      <Card className="relative flex flex-col transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:ring-foreground/20">
+        <CardHeader className="gap-3 px-5 pt-2 pb-0">
+          {showProjectName && (
+            <Link
+              href={`/projects/${session.project_id}`}
+              className="bg-muted/70 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:ring-ring flex w-fit max-w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs outline-none transition-colors focus-visible:ring-2"
+            >
+              <FolderKanban className="text-primary h-3.5 w-3.5 shrink-0" />
+              <span className="shrink-0 text-[10px] font-semibold tracking-wider uppercase">
+                Project
+              </span>
+              <span className="text-border">/</span>
+              <span className="truncate font-medium">{session.project_name}</span>
+            </Link>
+          )}
+
+          <div className="flex min-w-0 items-start justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
+              <div className="bg-primary/10 text-primary flex h-9 w-9 shrink-0 items-center justify-center rounded-lg">
+                <Clock3 className="h-4.5 w-4.5" />
+              </div>
               <CardTitle
-                className="min-w-0 truncate text-sm sm:text-base"
+                className="min-w-0 truncate text-base font-semibold sm:text-lg"
                 title={session.name}
               >
                 <Link
@@ -206,29 +222,22 @@ const SessionCard = memo(
               </CardTitle>
             </div>
             {isRunning ? (
-              <Badge className="shrink-0 border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25 dark:text-emerald-400">
+              <Badge className="shrink-0 gap-1.5 border-0 bg-emerald-500/15 text-emerald-700 hover:bg-emerald-500/25 dark:text-emerald-400">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                 Running
               </Badge>
             ) : (
-              <Badge variant="secondary" className="shrink-0 border-0">
+              <Badge variant="secondary" className="shrink-0 gap-1.5 border-0">
+                <span className="bg-muted-foreground/60 h-1.5 w-1.5 rounded-full" />
                 Idle
               </Badge>
             )}
           </div>
-          {showProjectName && (
-            <Link
-              href={`/projects/${session.project_id}`}
-              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex w-fit items-center gap-1.5 rounded-sm text-xs outline-none focus-visible:ring-2"
-            >
-              <FolderKanban className="h-3.5 w-3.5" />
-              <span className="truncate">{session.project_name}</span>
-            </Link>
-          )}
-          <CardDescription className="line-clamp-2 pt-1 text-xs">
+          <CardDescription className="line-clamp-2 text-sm leading-relaxed">
             {session.description || "No description provided."}
           </CardDescription>
         </CardHeader>
-        <CardContent className="flex-1 pb-4">
+        <CardContent className="flex-1 px-5 pb-1">
           {isRunning ? (
             <div className="space-y-3">
               {runningInstances.map((instance) => (
@@ -240,15 +249,21 @@ const SessionCard = memo(
               ))}
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center py-4">
-              <p className="text-muted-foreground text-sm italic">
-                No active instance.
-              </p>
+            <div className="bg-muted/25 flex items-center gap-3 rounded-lg border border-dashed px-4 py-3">
+              <div className="bg-background text-muted-foreground flex h-8 w-8 shrink-0 items-center justify-center rounded-full ring-1 ring-foreground/10">
+                <Server className="h-3.5 w-3.5" />
+              </div>
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Ready to resume</p>
+                <p className="text-muted-foreground text-xs">
+                  No instance is currently running.
+                </p>
+              </div>
             </div>
           )}
         </CardContent>
 
-        <CardFooter className="mt-auto grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 border-t px-6 py-4 pt-4">
+        <CardFooter className="mt-auto grid grid-cols-[minmax(0,1fr)_auto_auto] gap-2 px-5 py-4">
           <Button
             className="w-full cursor-pointer"
             variant={isRunning ? "secondary" : "default"}
