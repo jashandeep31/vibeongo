@@ -21,6 +21,7 @@ import {
   Plus,
   Archive,
   RotateCcw,
+  FolderKanban,
 } from "lucide-react";
 import {
   useArchiveProjectSession,
@@ -162,6 +163,7 @@ type SessionCardProps = {
   isPending: boolean;
   isArchiving: boolean;
   isArchivedView: boolean;
+  showProjectName: boolean;
 };
 
 const SessionCard = memo(
@@ -172,6 +174,7 @@ const SessionCard = memo(
     isPending,
     isArchiving,
     isArchivedView,
+    showProjectName,
   }: SessionCardProps) => {
     const runningInstances = session.instances;
     const isRunning = runningInstances && runningInstances.length > 0;
@@ -212,6 +215,15 @@ const SessionCard = memo(
               </Badge>
             )}
           </div>
+          {showProjectName && (
+            <Link
+              href={`/projects/${session.project_id}`}
+              className="text-muted-foreground hover:text-foreground focus-visible:ring-ring flex w-fit items-center gap-1.5 rounded-sm text-xs outline-none focus-visible:ring-2"
+            >
+              <FolderKanban className="h-3.5 w-3.5" />
+              <span className="truncate">{session.project_name}</span>
+            </Link>
+          )}
           <CardDescription className="line-clamp-2 pt-1 text-xs">
             {session.description || "No description provided."}
           </CardDescription>
@@ -297,6 +309,7 @@ type ProjectSessionsListProps = {
   isLoading: boolean;
   isError: boolean;
   isArchivedView?: boolean;
+  showProjectName?: boolean;
   emptyTitle?: string;
   emptyDescription?: string;
 };
@@ -306,6 +319,7 @@ export function ProjectSessionsList({
   isLoading,
   isError,
   isArchivedView = false,
+  showProjectName = false,
   emptyTitle,
   emptyDescription,
 }: ProjectSessionsListProps) {
@@ -400,6 +414,7 @@ export function ProjectSessionsList({
           isPending={pendingSessionId === session.id}
           isArchiving={archivingSessionId === session.id}
           isArchivedView={isArchivedView}
+          showProjectName={showProjectName}
         />
       ))}
       <ProjectSessionRuntimeDialog

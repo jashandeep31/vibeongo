@@ -10,6 +10,7 @@ import axios from "axios";
 
 export type ProjectSessionWithRunningInstances =
   typeof projectSessions.$inferSelect & {
+    project_name: string;
     instances: (typeof instances.$inferSelect)[];
   };
 

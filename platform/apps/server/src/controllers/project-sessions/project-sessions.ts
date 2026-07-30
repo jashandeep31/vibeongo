@@ -234,9 +234,11 @@ export const getUserProjectSessions = catchAsync(
       db
         .select({
           projectSession: projectSessions,
+          projectName: projects.name,
           instance: instances,
         })
         .from(projectSessions)
+        .innerJoin(projects, eq(projects.id, projectSessions.project_id))
         .leftJoin(
           instances,
           and(
@@ -255,13 +257,18 @@ export const getUserProjectSessions = catchAsync(
     const sessions = new Map<
       string,
       typeof projectSessions.$inferSelect & {
+        project_name: string;
         instances: (typeof instances.$inferSelect)[];
       }
     >();
     for (const row of rows) {
       const s = row.projectSession;
       if (!sessions.has(s.id)) {
-        sessions.set(s.id, { ...s, instances: [] });
+        sessions.set(s.id, {
+          ...s,
+          project_name: row.projectName,
+          instances: [],
+        });
       }
       if (row.instance) {
         sessions.get(s.id)?.instances.push(row.instance);

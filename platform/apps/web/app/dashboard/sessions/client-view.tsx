@@ -59,6 +59,7 @@ export default function ClientView() {
           isLoading={isLoading}
           isError={isError}
           isArchivedView={isArchivedView}
+          showProjectName
         />
         <PaginationControls
           className="mt-4 flex items-center justify-end gap-2"
