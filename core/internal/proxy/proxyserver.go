@@ -20,6 +20,7 @@ var allowedCORSOrigins = []string{
 	"https://vibeongo.com",
 	"http://localhost:3000",
 	"https://app.t3.codes",
+	"https://app.opencode.ai",
 }
 
 type ProxyServer struct {
@@ -30,10 +31,8 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 	return &ProxyServer{store: store}
 }
 
-func (s *ProxyServer) Start(addr string) error {
-	e := echo.New()
-	e.Use(middleware.RequestLogger())
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+func proxyCORSConfig() middleware.CORSConfig {
+	return middleware.CORSConfig{
 		AllowOrigins: allowedCORSOrigins,
 		AllowMethods: []string{
 			http.MethodGet,
@@ -43,9 +42,15 @@ func (s *ProxyServer) Start(addr string) error {
 			http.MethodDelete,
 			http.MethodOptions,
 		},
-		// Keep AllowHeaders empty so Echo reflects the browser's
-		// Access-Control-Request-Headers, including custom T3 headers.
-	}))
+		// Keep AllowHeaders empty so Echo reflects every header from the
+		// browser's Access-Control-Request-Headers value.
+	}
+}
+
+func (s *ProxyServer) Start(addr string) error {
+	e := echo.New()
+	e.Use(middleware.RequestLogger())
+	e.Use(middleware.CORSWithConfig(proxyCORSConfig()))
 
 	routes.Register(
 		e,
