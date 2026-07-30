@@ -24,7 +24,7 @@ export class DaytonaClient {
   }: CreateInstanceProps) {
     const sandbox = await daytona.create({
       // image: Image.base("ubuntu:22.04"),
-      snapshot: "vibeongo-ubuntu-1",
+      snapshot: instanceType,
       // resources: { cpu: 2, memory: 4, disk: 8 },
       public: false,
       ttlMinutes: terminatedAfterInMinutes,
