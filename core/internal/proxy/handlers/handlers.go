@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httputil"
@@ -36,7 +37,25 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string) *Hand
 
 			applyProviderHeaders(r, proxyData)
 		},
-		ErrorHandler: func(w http.ResponseWriter, _ *http.Request, _ error) {
+		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
+			proxyData, _ := r.Context().Value(proxyDataContextKey{}).(*store.Proxy)
+			if proxyData != nil && proxyData.Target != nil {
+				slog.Error(
+					"reverse proxy upstream request failed",
+					"error", err,
+					"method", r.Method,
+					"domain", proxyData.Domain,
+					"upstream", proxyData.Target.Scheme+"://"+proxyData.Target.Host,
+				)
+			} else {
+				slog.Error(
+					"reverse proxy upstream request failed",
+					"error", err,
+					"method", r.Method,
+					"host", r.Host,
+				)
+			}
+
 			w.WriteHeader(http.StatusBadGateway)
 			_, _ = w.Write([]byte("502"))
 		},

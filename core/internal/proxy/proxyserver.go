@@ -32,6 +32,7 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 
 func (s *ProxyServer) Start(addr string) error {
 	e := echo.New()
+	e.Use(middleware.RequestLogger())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: allowedCORSOrigins,
 		AllowMethods: []string{
