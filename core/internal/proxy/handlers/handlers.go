@@ -37,6 +37,13 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string) *Hand
 
 			applyProviderHeaders(r, proxyData)
 		},
+		ModifyResponse: func(response *http.Response) error {
+			// The proxy server owns the CORS policy. An upstream application may
+			// return its own value (commonly "*"), which would otherwise be
+			// appended to Echo's value and rejected by browsers.
+			response.Header.Del(echo.HeaderAccessControlAllowOrigin)
+			return nil
+		},
 		ErrorHandler: func(w http.ResponseWriter, r *http.Request, err error) {
 			proxyData, _ := r.Context().Value(proxyDataContextKey{}).(*store.Proxy)
 			if proxyData != nil && proxyData.Target != nil {

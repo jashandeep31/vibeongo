@@ -43,7 +43,8 @@ func (s *ProxyServer) Start(addr string) error {
 			http.MethodDelete,
 			http.MethodOptions,
 		},
-		AllowHeaders: []string{"*"},
+		// Keep AllowHeaders empty so Echo reflects the browser's
+		// Access-Control-Request-Headers, including custom T3 headers.
 	}))
 
 	routes.Register(
