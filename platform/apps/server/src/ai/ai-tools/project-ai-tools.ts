@@ -11,7 +11,10 @@ import {
   projectFileData,
   projectFiles,
   projects,
+  sandboxRegions,
+  sandboxTypes,
   sshKeys,
+  userConfigs,
 } from "@repo/db";
 import { tool, Tool } from "ai";
 import { z } from "zod";
@@ -26,10 +29,11 @@ import { createProjectWithConfigAndUserIdService } from "../../services/project/
 import { env } from "../../lib/env.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
+import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 
 export const updateConfigInMemAITool: Tool = tool({
   description:
-    "After making any changes in config make a call to this tool it update local meomoy",
+    "Store the current project configuration in memory after making changes. Pass every field collected so far, including provider, sandboxTypeId, ports, and packages when known.",
   inputSchema: projectValidatorForAIInput.extend({}),
   execute: async (data: unknown) => {
     const valid = projectValidatorForAIInput.parse(data);
@@ -180,14 +184,14 @@ export const getOtherProjectConfigById = (userId: string): Tool =>
           error: "Project not found or doesn't belong to you",
         };
       }
-      const decryptedConfig = await getDecryptedProjectConfig(project.id);
-
-      let config: unknown;
+      let config;
       try {
-        config = JSON.parse(decryptedConfig);
+        config = parseStoredProjectConfig(
+          await getDecryptedProjectConfig(project.id),
+        );
       } catch {
         return {
-          error: "Project config is not valid JSON",
+          error: "Project config is invalid",
         };
       }
 
@@ -219,42 +223,89 @@ export const getUserSshKeysAITool = (userId: string): Tool =>
     },
   });
 
+export const getUserConfigsAITool = (userId: string): Tool =>
+  tool({
+    description:
+      "Get the account configuration types available for OpenCode, Codex, and Pi. This returns metadata only and never returns decrypted credentials.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const configs = await db
+        .select({ config_type: userConfigs.config_type })
+        .from(userConfigs)
+        .where(eq(userConfigs.user_id, userId));
+
+      return configs.map((config) => config.config_type);
+    },
+  });
+
 export const getInstanceCatalogAITool = (): Tool =>
   tool({
     description:
-      "Get available instance regions and instance types so the user can choose where the project should run",
+      "Get available VPS regions/types and sandbox regions/types so the user can choose valid regionId, instanceTypeId, provider, and sandboxTypeId values",
     inputSchema: z.object({}),
     execute: async () => {
-      const [regions, types] = await Promise.all([
-        db
-          .select({
-            id: instanceRegions.id,
-            name: instanceRegions.name,
-            slug: instanceRegions.slug,
-            provider: instanceRegions.provider,
-          })
-          .from(instanceRegions)
-          .orderBy(asc(instanceRegions.name)),
-        db
-          .select({
-            id: instanceTypes.id,
-            name: instanceTypes.name,
-            slug: instanceTypes.slug,
-            description: instanceTypes.description,
-            cpu: instanceTypes.cpu,
-            ram: instanceTypes.ram,
-            provider: instanceTypes.provider,
-            region_id: instanceTypes.region_id,
-            price_per_hour: instanceTypes.price_per_hour,
-          })
-          .from(instanceTypes)
-          .orderBy(asc(instanceTypes.name)),
-      ]);
+      const [regions, types, availableSandboxRegions, availableSandboxTypes] =
+        await Promise.all([
+          db
+            .select({
+              id: instanceRegions.id,
+              name: instanceRegions.name,
+              slug: instanceRegions.slug,
+              provider: instanceRegions.provider,
+            })
+            .from(instanceRegions)
+            .orderBy(asc(instanceRegions.name)),
+          db
+            .select({
+              id: instanceTypes.id,
+              name: instanceTypes.name,
+              slug: instanceTypes.slug,
+              description: instanceTypes.description,
+              cpu: instanceTypes.cpu,
+              ram: instanceTypes.ram,
+              provider: instanceTypes.provider,
+              region_id: instanceTypes.region_id,
+              price_per_hour: instanceTypes.price_per_hour,
+            })
+            .from(instanceTypes)
+            .orderBy(asc(instanceTypes.name)),
+          db
+            .select({
+              id: sandboxRegions.id,
+              name: sandboxRegions.name,
+              slug: sandboxRegions.slug,
+              provider: sandboxRegions.provider,
+            })
+            .from(sandboxRegions)
+            .orderBy(asc(sandboxRegions.name)),
+          db
+            .select({
+              id: sandboxTypes.id,
+              name: sandboxTypes.name,
+              slug: sandboxTypes.slug,
+              description: sandboxTypes.description,
+              cpu: sandboxTypes.cpu,
+              ram: sandboxTypes.ram,
+              provider: sandboxTypes.provider,
+              sandbox_region: sandboxTypes.sandbox_region,
+              price_per_seconds: sandboxTypes.price_per_seconds,
+            })
+            .from(sandboxTypes)
+            .orderBy(asc(sandboxTypes.name)),
+        ]);
 
-      return regions.map((region) => ({
-        ...region,
-        instanceTypes: types.filter((type) => type.region_id === region.id),
-      }));
+      return {
+        instances: regions.map((region) => ({
+          ...region,
+          instanceTypes: types.filter((type) => type.region_id === region.id),
+        })),
+        sandboxes: availableSandboxRegions.map((region) => ({
+          ...region,
+          sandboxTypes: availableSandboxTypes.filter(
+            (type) => type.sandbox_region === region.id,
+          ),
+        })),
+      };
     },
   });
 

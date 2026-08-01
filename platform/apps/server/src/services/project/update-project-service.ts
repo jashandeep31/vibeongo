@@ -13,6 +13,7 @@ import {
 import { projectConfigValidator } from "@repo/shared";
 import { AppError } from "../../lib/app-error.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
+import { normalizeProjectConfigForStorage } from "./normalize-project-config-for-storage.js";
 
 import { z } from "zod";
 export const udpateProjectConfigByProjectIdAndUserId = async (
@@ -84,7 +85,10 @@ export const udpateProjectConfigByProjectIdAndUserId = async (
 
     if (!updatedProjectRow) throw new AppError("project not updated", 400);
 
-    const enc = encryptData(JSON.stringify(parsedData.config));
+    const configForStorage = normalizeProjectConfigForStorage(
+      parsedData.config,
+    );
+    const enc = encryptData(JSON.stringify(configForStorage));
     await tx
       .update(projectConfig)
       .set({

@@ -15,6 +15,7 @@ import { projectConfigValidator } from "@repo/shared";
 import { createDomainsForProject } from "../../lib/create-domain-for-project.js";
 import { AppError } from "../../lib/app-error.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
+import { normalizeProjectConfigForStorage } from "./normalize-project-config-for-storage.js";
 
 export const createProjectWithConfigAndUserIdService = async (
   rawData: unknown,
@@ -59,7 +60,10 @@ export const createProjectWithConfigAndUserIdService = async (
       .returning();
     if (!projectRow) throw new AppError("project not created", 400);
 
-    const enc = encryptData(JSON.stringify(parsedData.config));
+    const configForStorage = normalizeProjectConfigForStorage(
+      parsedData.config,
+    );
+    const enc = encryptData(JSON.stringify(configForStorage));
     await tx.insert(projectConfig).values({
       project_id: projectRow.id,
       encrypted_config: enc.encryptedData,

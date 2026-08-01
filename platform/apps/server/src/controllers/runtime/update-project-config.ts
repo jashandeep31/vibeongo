@@ -7,6 +7,7 @@ import { encryptData } from "../../lib/encryption-decryption.js";
 import { AppError } from "../../lib/app-error.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
+import { normalizeProjectConfigForStorage } from "../../services/project/normalize-project-config-for-storage.js";
 
 export const updateRuntimeProjectBasicConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -33,12 +34,11 @@ export const updateRuntimeProjectBasicConfig = catchAsync(
     const storedConfig = parseStoredProjectConfig(
       await getDecryptedProjectConfig(session.projectId),
     );
-    const encryptedConfig = encryptData(
-      JSON.stringify({
-        ...storedConfig,
-        packages: parsedBody.config.packages,
-      }),
-    );
+    const configForStorage = normalizeProjectConfigForStorage({
+      ...storedConfig,
+      packages: parsedBody.config.packages,
+    });
+    const encryptedConfig = encryptData(JSON.stringify(configForStorage));
 
     await db.transaction(async (tx) => {
       const [updatedProject] = await tx

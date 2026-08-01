@@ -72,6 +72,12 @@ Generate a short description based on the repository if possible. If not, ask th
 
 ---
 
+## provider
+
+This must be `aws` or `digitalocean` and must match the selected VPS region and instance type returned by the instance catalog tool.
+
+---
+
 ## regionId
 
 This is a UUID for the region where the VPS should run. Use the instance catalog tool to list available regions. Ask the user to choose if the region is missing or ambiguous. Do not invent this value.
@@ -81,6 +87,12 @@ This is a UUID for the region where the VPS should run. Use the instance catalog
 ## instanceTypeId
 
 This is a UUID for the VPS configuration. Use the instance catalog tool to list available instance types. Always ask the user which VPS configuration they want, and recommend a setup with extra resources for AI tools and development workloads. Do not invent this value.
+
+---
+
+## sandboxTypeId
+
+This is the UUID of the sandbox type used for the project. Use the sandbox catalog returned by the instance catalog tool and ask the user to choose when needed. Never invent this value.
 
 ---
 
@@ -141,6 +153,63 @@ Always change into the correct directory before running commands.
 
 ---
 
+## config
+
+The config object must always contain `ports` and `packages` arrays. Each port must contain a numeric `port` and a `protocol` of either `TCP` or `UDP`.
+
+Only these package names are supported:
+
+- `docker`
+- `opencode`
+- `codex`
+- `pi`
+
+Never create any other package type.
+
+Before configuring OpenCode, Codex, or Pi, call `getUserConfigsAITool`. Set `use_user_config` to `true` when the matching account configuration exists. When account configuration is selected, always set `auth_json` to an empty object because the backend resolves credentials securely at runtime.
+
+Use OpenCode only in this shape:
+
+```json
+{
+  "name": "opencode",
+  "config": {
+    "auth_json": {},
+    "use_user_config": true,
+    "model": "default",
+    "requirePassword": false
+  }
+}
+```
+
+Use Codex only in this shape:
+
+```json
+{
+  "name": "codex",
+  "config": {
+    "auth_json": {},
+    "use_user_config": true
+  }
+}
+```
+
+Use Pi only in this shape:
+
+```json
+{
+  "name": "pi",
+  "config": {
+    "auth_json": {},
+    "use_user_config": true
+  }
+}
+```
+
+If the matching account configuration does not exist, explain that it must be added in account settings. Use `use_user_config: false` and `auth_json: {}` unless the user explicitly provides a project-specific configuration.
+
+---
+
 ## Docker package config
 
 Use the docker package only in this shape:
@@ -148,7 +217,6 @@ Use the docker package only in this shape:
 ```json
 {
   "name": "docker",
-  "enabled": true,
   "config": {
     "containers": [
       {
