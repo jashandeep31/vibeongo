@@ -22,6 +22,7 @@ export class E2BClient {
     const terminateInstanceInSecs = terminatedAfterInMinutes * 60;
 
     const sandbox = await Sandbox.create(instanceType, {
+      metadata: { name: instanceName },
       apiKey: env.E2B_API_KEY,
       timeoutMs: 1000 * terminateInstanceInSecs,
       network: {
