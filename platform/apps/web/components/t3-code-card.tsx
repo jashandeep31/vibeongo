@@ -344,8 +344,14 @@ export function T3CodeCard({ domainFor3773, isTerminated }: T3CodeCardProps) {
                   Get pairing token
                 </DropdownMenuItem>
                 <DropdownMenuItem
-                  disabled={!isRunning || Boolean(pendingTokenAction)}
-                  onSelect={() => requestToken("copy-url")}
+                  disabled={
+                    !toolUrl ||
+                    !canSendAction ||
+                    isStarting ||
+                    isStopping ||
+                    Boolean(pendingTokenAction)
+                  }
+                  onSelect={() => startForTokenAction("copy-url")}
                 >
                   {pendingTokenAction === "copy-url" ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
