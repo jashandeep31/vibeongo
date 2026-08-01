@@ -25,9 +25,6 @@ interface AdditionalService {
     authJson: string;
     useUserConfig: boolean;
   };
-  nvimConfig: {
-    config: string;
-  };
 }
 
 export interface ProjectConfigSubmissionError {
@@ -91,7 +88,6 @@ interface ConfigStore {
     authJson: string;
     useUserConfig: boolean;
   }) => void;
-  updateNvimConfig: (nvimConfig: { config: string }) => void;
 
   submissionErrors: ProjectConfigSubmissionError[];
   hasAttemptedSubmit: boolean;
@@ -177,9 +173,6 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       authJson: "{}",
       useUserConfig: true,
     },
-    nvimConfig: {
-      config: "",
-    },
   },
 
   updateDockerConfig: (dockerConfig) =>
@@ -200,11 +193,6 @@ export const useConfigStore = create<ConfigStore>((set) => ({
   updatePiConfig: (piConfig) =>
     set((state) => ({
       additionalServices: { ...state.additionalServices, piConfig },
-    })),
-
-  updateNvimConfig: (nvimConfig) =>
-    set((state) => ({
-      additionalServices: { ...state.additionalServices, nvimConfig },
     })),
 
   submissionErrors: [],

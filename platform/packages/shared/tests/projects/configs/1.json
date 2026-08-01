@@ -41,25 +41,6 @@
             }
           ]
         }
-      },
-      {
-        "name": "tmux",
-        "enabled": true,
-        "config": {}
-      },
-      {
-        "name": "nvim",
-        "enabled": true,
-        "config": {
-          "config_url": "https://github.com/nvim-lua/kickstart.nvim.git"
-        }
-      },
-      {
-        "name": "nodejs",
-        "enabled": true,
-        "config": {
-          "version": 25
-        }
       }
     ]
   }

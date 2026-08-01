@@ -27,15 +27,12 @@ export default function ClientView() {
   ]);
   const [enableDocker, setEnableDocker] = useState(false);
   const [enableOpencode, setEnableOpencode] = useState(false);
-  const [enableTmux, setEnableTmux] = useState(false);
-  const [enableNvim, setEnableNvim] = useState(false);
   const [enableCodex, setEnableCodex] = useState(false);
   const [enableClaudeCode, setEnableClaudeCode] = useState(false);
   const [enablePostgres, setEnablePostgres] = useState(false);
   const [opencodePassword, setOpencodePassword] = useState("");
   const [opencodeApiProvider, setOpencodeApiProvider] = useState("openai");
   const [opencodeApiKey, setOpencodeApiKey] = useState("");
-  const [nvimConfigUrl, setNvimConfigUrl] = useState("");
 
   const addRepository = () => {
     setRepositories((current) => [
@@ -123,26 +120,20 @@ export default function ClientView() {
         <AdditionalServicesSection
           enableDocker={enableDocker}
           enableOpencode={enableOpencode}
-          enableTmux={enableTmux}
-          enableNvim={enableNvim}
           enableCodex={enableCodex}
           enableClaudeCode={enableClaudeCode}
           enablePostgres={enablePostgres}
           opencodePassword={opencodePassword}
           opencodeApiProvider={opencodeApiProvider}
           opencodeApiKey={opencodeApiKey}
-          nvimConfigUrl={nvimConfigUrl}
           onEnableDockerChange={setEnableDocker}
           onEnableOpencodeChange={setEnableOpencode}
-          onEnableTmuxChange={setEnableTmux}
-          onEnableNvimChange={setEnableNvim}
           onEnableCodexChange={setEnableCodex}
           onEnableClaudeCodeChange={setEnableClaudeCode}
           onEnablePostgresChange={setEnablePostgres}
           onOpencodePasswordChange={setOpencodePassword}
           onOpencodeApiProviderChange={setOpencodeApiProvider}
           onOpencodeApiKeyChange={setOpencodeApiKey}
-          onNvimConfigUrlChange={setNvimConfigUrl}
         />
 
         <div className="pt-6">

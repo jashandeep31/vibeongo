@@ -14,7 +14,6 @@ function AdditionalServices() {
         <OpencodeConfigCard />
         <CodexConfigCard />
         <PiConfigCard />
-        {/* <NvimConfigCard /> */}
       </div>
     </div>
   );

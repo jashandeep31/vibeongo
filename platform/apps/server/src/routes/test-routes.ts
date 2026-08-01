@@ -87,12 +87,6 @@ pnpm i
           },
         },
       },
-      {
-        name: "nvim",
-        config: {
-          config_url: "https://github.com/nvim-lua/kickstart.nvim.git",
-        },
-      },
     ],
     // task: "Please review this is pull request and what we can do and write in the plan.md https://github.com/jashandeep31/mailstudio/pull/4",
     tasks: [

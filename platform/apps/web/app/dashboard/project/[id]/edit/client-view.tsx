@@ -42,7 +42,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
   );
   const updateCodexConfig = useConfigStore((state) => state.updateCodexConfig);
   const updatePiConfig = useConfigStore((state) => state.updatePiConfig);
-  const updateNvimConfig = useConfigStore((state) => state.updateNvimConfig);
 
   useEffect(() => {
     if (!projectConfig) return;
@@ -53,7 +52,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     const opencodePackage = getProjectPackage(config, "opencode");
     const codexPackage = getProjectPackage(config, "codex");
     const piPackage = getProjectPackage(config, "pi");
-    const nvimPackage = getProjectPackage(config, "nvim");
 
     setProjectName(projectConfig.project.name);
     setProvider(projectConfig.provider);
@@ -101,12 +99,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
       useUserConfig: getUseUserConfig(piPackage),
     });
 
-    updateNvimConfig({
-      config:
-        typeof nvimPackage?.config?.config_url === "string"
-          ? nvimPackage.config.config_url
-          : "",
-    });
     hydratedProjectIdRef.current = projectConfig.project.id;
   }, [
     projectConfig,
@@ -125,7 +117,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     updateDockerConfig,
     updateCodexConfig,
     updatePiConfig,
-    updateNvimConfig,
     updateOpencodeConfig,
   ]);
 

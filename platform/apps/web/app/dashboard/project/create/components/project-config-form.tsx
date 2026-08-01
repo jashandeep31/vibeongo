@@ -72,7 +72,6 @@ export default function ProjectConfigForm({
   );
   const updateCodexConfig = useConfigStore((state) => state.updateCodexConfig);
   const updatePiConfig = useConfigStore((state) => state.updatePiConfig);
-  const updateNvimConfig = useConfigStore((state) => state.updateNvimConfig);
   const projectName = useConfigStore((state) => state.projectName);
   const provider = useConfigStore((state) => state.provider);
   const instanceTypeId = useConfigStore((state) => state.instanceTypeId);
@@ -139,7 +138,6 @@ export default function ProjectConfigForm({
     const opencodePackage = getProjectPackage(config, "opencode");
     const codexPackage = getProjectPackage(config, "codex");
     const piPackage = getProjectPackage(config, "pi");
-    const nvimPackage = getProjectPackage(config, "nvim");
 
     setProvider(selectedProjectConfig.provider);
     setInstanceTypeId(selectedProjectConfig.instanceTypeId);
@@ -183,13 +181,6 @@ export default function ProjectConfigForm({
     updatePiConfig({
       authJson: formatAuthJsonForForm(piPackage?.config?.auth_json),
       useUserConfig: getUseUserConfig(piPackage),
-    });
-
-    updateNvimConfig({
-      config:
-        typeof nvimPackage?.config?.config_url === "string"
-          ? nvimPackage.config.config_url
-          : "",
     });
   };
 

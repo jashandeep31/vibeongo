@@ -26,21 +26,8 @@ export const codexConfigValidator = z.object({
   use_user_config: z.boolean().default(true),
 });
 
-export const tmuxConfigValidator = z.object({});
-
-export const nodeConfigValidator = z.object({
-  version: z.number(),
-});
-
 export const projectProviderValidator = z.enum(["aws", "digitalocean"]);
 export type ProjectProvider = z.infer<typeof projectProviderValidator>;
-
-//TODO: make sure to check the git config url and show the error if it is not a valid git url
-export const nvimConfigValidator = z.object({
-  config_url: z
-    .string()
-    .default("https://github.com/nvim-lua/kickstart.nvim.git"),
-});
 
 export const projectConfigValidator = z.object({
   name: z
@@ -98,18 +85,6 @@ export const projectConfigValidator = z.object({
         z.object({
           name: z.literal("pi"),
           config: piConfigValidator,
-        }),
-        z.object({
-          name: z.literal("tmux"),
-          config: tmuxConfigValidator,
-        }),
-        z.object({
-          name: z.literal("nvim"),
-          config: nvimConfigValidator,
-        }),
-        z.object({
-          name: z.literal("nodejs"),
-          config: nodeConfigValidator,
         }),
       ]),
     ),

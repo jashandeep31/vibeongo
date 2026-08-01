@@ -11,40 +11,25 @@ import {
   SelectValue,
 } from "@repo/ui/components/select";
 import { cn } from "@repo/ui/lib/utils";
-import {
-  Bot,
-  Code,
-  Container,
-  FileCode,
-  Github,
-  Sparkles,
-  Terminal,
-  type LucideIcon,
-} from "lucide-react";
+import { Bot, Code, Container, Sparkles, type LucideIcon } from "lucide-react";
 
 type AdditionalServicesSectionProps = {
   enableDocker: boolean;
   enableOpencode: boolean;
-  enableTmux: boolean;
-  enableNvim: boolean;
   enableCodex: boolean;
   enableClaudeCode: boolean;
   enablePostgres: boolean;
   opencodePassword: string;
   opencodeApiProvider: string;
   opencodeApiKey: string;
-  nvimConfigUrl: string;
   onEnableDockerChange: (checked: boolean) => void;
   onEnableOpencodeChange: (checked: boolean) => void;
-  onEnableTmuxChange: (checked: boolean) => void;
-  onEnableNvimChange: (checked: boolean) => void;
   onEnableCodexChange: (checked: boolean) => void;
   onEnableClaudeCodeChange: (checked: boolean) => void;
   onEnablePostgresChange: (checked: boolean) => void;
   onOpencodePasswordChange: (value: string) => void;
   onOpencodeApiProviderChange: (value: string) => void;
   onOpencodeApiKeyChange: (value: string) => void;
-  onNvimConfigUrlChange: (value: string) => void;
 };
 
 type ServiceCardProps = {
@@ -104,26 +89,20 @@ function ServiceCard({
 export function AdditionalServicesSection({
   enableDocker,
   enableOpencode,
-  enableTmux,
-  enableNvim,
   enableCodex,
   enableClaudeCode,
   enablePostgres,
   opencodePassword,
   opencodeApiProvider,
   opencodeApiKey,
-  nvimConfigUrl,
   onEnableDockerChange,
   onEnableOpencodeChange,
-  onEnableTmuxChange,
-  onEnableNvimChange,
   onEnableCodexChange,
   onEnableClaudeCodeChange,
   onEnablePostgresChange,
   onOpencodePasswordChange,
   onOpencodeApiProviderChange,
   onOpencodeApiKeyChange,
-  onNvimConfigUrlChange,
 }: AdditionalServicesSectionProps) {
   return (
     <div className="space-y-4 border-t pt-6">
@@ -212,40 +191,6 @@ export function AdditionalServicesSection({
               onChange={(event) => onOpencodeApiKeyChange(event.target.value)}
               className="bg-background"
             />
-          </div>
-        </ServiceCard>
-
-        <ServiceCard
-          id="enable-tmux"
-          checked={enableTmux}
-          icon={Terminal}
-          title="Tmux"
-          description="Terminal multiplexer for managing multiple sessions."
-          onCheckedChange={onEnableTmuxChange}
-        />
-
-        <ServiceCard
-          id="enable-nvim"
-          checked={enableNvim}
-          icon={FileCode}
-          title="Neovim"
-          description="Hyperextensible Vim-based text editor."
-          onCheckedChange={onEnableNvimChange}
-        >
-          <div className="space-y-2">
-            <Label htmlFor="nvim-config-url">
-              Custom Config Repository (Optional)
-            </Label>
-            <div className="relative">
-              <Github className="text-muted-foreground absolute top-2.5 left-2.5 h-4 w-4" />
-              <Input
-                id="nvim-config-url"
-                placeholder="https://github.com/user/nvim-config"
-                value={nvimConfigUrl}
-                onChange={(event) => onNvimConfigUrlChange(event.target.value)}
-                className="bg-background pl-8"
-              />
-            </div>
           </div>
         </ServiceCard>
 

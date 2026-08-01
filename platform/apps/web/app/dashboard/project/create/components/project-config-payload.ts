@@ -83,12 +83,6 @@ export const buildProjectConfigPayload = (
             : parseAuthJson(state.additionalServices.piConfig.authJson, "Pi"),
         },
       },
-      {
-        name: "nvim",
-        config: {
-          config_url: state.additionalServices.nvimConfig.config,
-        },
-      },
     ],
   },
 });
