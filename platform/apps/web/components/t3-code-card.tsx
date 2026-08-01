@@ -31,7 +31,7 @@ interface T3CodeCardProps {
 
 type ToolStatus = "stopped" | "starting" | "started" | "stopping";
 type PendingToolAction = "start" | "restart" | "stop" | null;
-type TokenAction = "open" | "external" | "copy";
+type TokenAction = "open" | "external" | "copy" | "copy-url";
 
 const TOOL = "codex";
 
@@ -71,8 +71,13 @@ export function T3CodeCard({ domainFor3773, isTerminated }: T3CodeCardProps) {
         return;
       }
 
-      if (action === "copy") {
-        void navigator.clipboard.writeText(token).then(() => {
+      if (action === "copy" || action === "copy-url") {
+        const valueToCopy =
+          action === "copy-url"
+            ? `${toolUrl}/pair#token=${encodeURIComponent(token)}`
+            : token;
+
+        void navigator.clipboard.writeText(valueToCopy).then(() => {
           setIsTokenCopied(true);
           if (copyResetTimerRef.current) {
             window.clearTimeout(copyResetTimerRef.current);
@@ -337,6 +342,19 @@ export function T3CodeCard({ domainFor3773, isTerminated }: T3CodeCardProps) {
                     <Copy className="h-4 w-4" />
                   )}
                   Get pairing token
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  disabled={!isRunning || Boolean(pendingTokenAction)}
+                  onSelect={() => requestToken("copy-url")}
+                >
+                  {pendingTokenAction === "copy-url" ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : isTokenCopied ? (
+                    <Check className="h-4 w-4 text-emerald-600" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                  Copy pairing URL
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   disabled={
