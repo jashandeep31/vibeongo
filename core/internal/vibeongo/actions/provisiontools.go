@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
 func ProvisionCodex(cfg *config.CodexConfig) error {
@@ -49,62 +50,21 @@ func ProvisionPi(cfg *config.PiConfig) error {
 	return nil
 }
 
-func ProvisionT3Code(cfg *config.OpenCodeConfig, instanceConfig config.InstanceConfig) error {
-	// NOTE: disabling the custom config  for now as if user just wanna use the t3 code it also need to start the opencde to start it
-	//
-	//
-	// 	if cfg == nil {
-	// 		return nil
-	// 	}
-	//
-	// 	settingsfolder := "/home/ubuntu/.t3/userdata"
-	//
-	// 	if err := os.MkdirAll(settingsfolder, 0o755); err != nil {
-	// 		return fmt.Errorf("failed to create t3 code folder: %w", err)
-	// 	}
-	//
-	// 	settingfilepath := filepath.Join(settingsfolder, "settings.json")
-	// 	settings := ``
-	// 	if cfg.RequirePassword {
-	//
-	// 		settings = fmt.Sprintf(`{
-	//   "providerInstances": {
-	//     "opencode": {
-	//       "driver": "opencode",
-	//       "enabled": true,
-	//       "config": {
-	//         "enabled": true,
-	//         "binaryPath": "opencode",
-	//         "serverUrl": "http://localhost:4096",
-	//         "serverPassword": "%s",
-	//         "customModels": []
-	//       }
-	//     }
-	//   }
-	// }
-	// 		`, instanceConfig.OpencodePassword)
-	// 	} else {
-	//
-	// 		settings = `{
-	//   "providerInstances": {
-	//     "opencode": {
-	//       "driver": "opencode",
-	//       "enabled": true,
-	//       "config": {
-	//         "enabled": true,
-	//         "binaryPath": "opencode",
-	//         "serverUrl": "http://localhost:4096",
-	//         "serverPassword": "",
-	//         "customModels": []
-	//       }
-	//     }
-	//   }
-	// }
-	// 	`
-	// 	}
-	// 	if err := os.WriteFile(settingfilepath, []byte(settings), 0o600); err != nil {
-	// 		return fmt.Errorf("failed to write t3 settings.json: %w", err)
-	// 	}
+func ProvisionT3Code(cfg config.Config) error {
+	fmt.Println("Adding the projects to the t3")
+	for _, repo := range cfg.Repos {
+		projectFolderPath := filepath.Join("/home/ubuntu/code", repo.FolderName)
+		if err := os.MkdirAll(projectFolderPath, 0o755); err != nil {
+			return fmt.Errorf("failed to create project directory %q: %w", projectFolderPath, err)
+		}
+
+		cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, "t3 project add "+projectFolderPath)
+		output, err := cmd.Output()
+		if err != nil {
+			fmt.Println(err, "failed to add project to t3")
+		}
+		fmt.Println(string(output))
+	}
 	return nil
 }
 

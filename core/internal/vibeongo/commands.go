@@ -33,7 +33,6 @@ func RenewKeysCmd() *cobra.Command {
 		Short: "Renew the expired keys example: github token",
 		Long:  "Renew the expired token and updates them in the config.json",
 		RunE: func(cmd *cobra.Command, args []string) error {
-
 			return actions.Renewkeys()
 		},
 	}
@@ -126,7 +125,6 @@ func MarkTaskCmd() *cobra.Command {
 			return actions.MarkTask(cmd, args)
 		},
 	}
-
 }
 
 // TerminateInstanceCmd terminates the instance
@@ -198,7 +196,7 @@ func ProvissionToolsCmd() *cobra.Command {
 				return err
 			}
 
-			if err := actions.ProvisionT3Code(cfg.OpenCode, cfg.InstanceConfig); err != nil {
+			if err := actions.ProvisionT3Code(cfg); err != nil {
 				return err
 			}
 
