@@ -25,7 +25,15 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@repo/ui/components/sidebar";
-import { LogOut, Monitor, Moon, MoreVertical, Sun, Wallet } from "lucide-react";
+import {
+  LogOut,
+  Monitor,
+  Moon,
+  MoreVertical,
+  Settings,
+  Sun,
+  Wallet,
+} from "lucide-react";
 import { useTheme } from "next-themes";
 import { formatInternalMoney } from "@repo/shared";
 import Link from "next/link";
@@ -67,7 +75,7 @@ export function SidebarUserMenu({ user }: { user: SidebarUser }) {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "U";
-  const walletBalance = formatInternalMoney(user.balance);
+  const walletBalance = formatInternalMoney(user.balance, 2);
 
   const closeMobileSidebar = () => {
     if (isMobile) {
@@ -143,6 +151,12 @@ export function SidebarUserMenu({ user }: { user: SidebarUser }) {
                 <span className="ml-auto font-medium">
                   ${walletBalance} credits
                 </span>
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild>
+              <Link href="/dashboard/settings" onClick={closeMobileSidebar}>
+                <Settings />
+                <span>Settings</span>
               </Link>
             </DropdownMenuItem>
             <DropdownMenuSub>

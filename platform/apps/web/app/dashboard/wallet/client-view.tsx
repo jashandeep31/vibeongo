@@ -70,7 +70,7 @@ export default function ClientView() {
   const transactions = data?.data.transactions ?? [];
   const creditGrants =
     creditGrantsData?.grants.slice(0, CREDIT_GRANTS_LIMIT) ?? [];
-  const walletBalance = formatInternalMoney(wallet?.balance ?? 0);
+  const walletBalance = formatInternalMoney(wallet?.balance ?? 0, 2);
   const currentTransactionsPage = data?.page ?? transactionsPage;
   const hasNextTransactionPage = data?.hasNext ?? false;
   const previousTransactionsDisabled =
