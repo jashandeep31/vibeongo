@@ -2,16 +2,11 @@ import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { z } from "zod";
 import { projectConfigValidator } from "@repo/shared";
-import {
-  db,
-  eq,
-  projectConfig,
-  projects,
-  projectSessions,
-} from "@repo/db";
+import { db, eq, projectConfig, projects, projectSessions } from "@repo/db";
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { AppError } from "../../lib/app-error.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
+import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 
 export const updateRuntimeProjectBasicConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -35,8 +30,8 @@ export const updateRuntimeProjectBasicConfig = catchAsync(
 
     if (!session) throw new AppError("Project session not found", 404);
 
-    const storedConfig = projectConfigValidator.shape.config.parse(
-      JSON.parse(await getDecryptedProjectConfig(session.projectId)),
+    const storedConfig = parseStoredProjectConfig(
+      await getDecryptedProjectConfig(session.projectId),
     );
     const encryptedConfig = encryptData(
       JSON.stringify({

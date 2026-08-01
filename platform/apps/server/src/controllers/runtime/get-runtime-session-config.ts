@@ -21,6 +21,8 @@ import { getConfigReadyGithubRepos } from "../../github-app-functions/get-projec
 import { env } from "../../lib/env.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
+import { resolveProjectUserConfigs } from "../../services/user-config/resolve-project-user-configs.js";
+import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -48,7 +50,11 @@ export const getRuntimeSessionConfig = catchAsync(
 
     const { project, instance } = sessionRow;
     const stringfiedConfig = await getDecryptedProjectConfig(project.id);
-    const parsedConfig = JSON.parse(stringfiedConfig);
+    const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
+    const resolvedProjectConfig = await resolveProjectUserConfigs(
+      parsedConfig,
+      project.user_id,
+    );
 
     const [tasks, repos, keys] = await Promise.all([
       db
@@ -78,7 +84,7 @@ export const getRuntimeSessionConfig = catchAsync(
       .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
 
     const config = {
-      ...(parsedConfig as any),
+      ...resolvedProjectConfig,
       publicIp: instance.public_ip,
       serverBaseUrl: env.SERVER_URL,
       sessionId: sessionRow.project_session.id,
@@ -101,7 +107,6 @@ export const getRuntimeSessionConfig = catchAsync(
       })),
     };
 
-    console.log(config);
     res.status(200).json({ data: config });
   },
 );
