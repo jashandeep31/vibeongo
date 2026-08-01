@@ -48,61 +48,64 @@ func ProvisionPi(cfg *config.PiConfig) error {
 	fmt.Println("Pi agent setup is complete")
 	return nil
 }
+
 func ProvisionT3Code(cfg *config.OpenCodeConfig, instanceConfig config.InstanceConfig) error {
-	if cfg == nil {
-		return nil
-	}
-
-	settingsfolder := "/home/ubuntu/.t3/userdata"
-
-	if err := os.MkdirAll(settingsfolder, 0o755); err != nil {
-		return fmt.Errorf("failed to create t3 code folder: %w", err)
-	}
-
-	settingfilepath := filepath.Join(settingsfolder, "settings.json")
-	settings := ``
-	if cfg.RequirePassword {
-
-		settings = fmt.Sprintf(`{
-  "providerInstances": {
-    "opencode": {
-      "driver": "opencode",
-      "enabled": true,
-      "config": {
-        "enabled": true,
-        "binaryPath": "opencode",
-        "serverUrl": "http://localhost:4096",
-        "serverPassword": "%s",
-        "customModels": []
-      }
-    }
-  }
-}
-		`, instanceConfig.OpencodePassword)
-	} else {
-
-		settings = `{
-  "providerInstances": {
-    "opencode": {
-      "driver": "opencode",
-      "enabled": true,
-      "config": {
-        "enabled": true,
-        "binaryPath": "opencode",
-        "serverUrl": "http://localhost:4096",
-        "serverPassword": "",
-        "customModels": []
-      }
-    }
-  }
-}
-	`
-	}
-	if err := os.WriteFile(settingfilepath, []byte(settings), 0o600); err != nil {
-		return fmt.Errorf("failed to write t3 settings.json: %w", err)
-	}
+	// NOTE: disabling the custom config  for now as if user just wanna use the t3 code it also need to start the opencde to start it
+	//
+	//
+	// 	if cfg == nil {
+	// 		return nil
+	// 	}
+	//
+	// 	settingsfolder := "/home/ubuntu/.t3/userdata"
+	//
+	// 	if err := os.MkdirAll(settingsfolder, 0o755); err != nil {
+	// 		return fmt.Errorf("failed to create t3 code folder: %w", err)
+	// 	}
+	//
+	// 	settingfilepath := filepath.Join(settingsfolder, "settings.json")
+	// 	settings := ``
+	// 	if cfg.RequirePassword {
+	//
+	// 		settings = fmt.Sprintf(`{
+	//   "providerInstances": {
+	//     "opencode": {
+	//       "driver": "opencode",
+	//       "enabled": true,
+	//       "config": {
+	//         "enabled": true,
+	//         "binaryPath": "opencode",
+	//         "serverUrl": "http://localhost:4096",
+	//         "serverPassword": "%s",
+	//         "customModels": []
+	//       }
+	//     }
+	//   }
+	// }
+	// 		`, instanceConfig.OpencodePassword)
+	// 	} else {
+	//
+	// 		settings = `{
+	//   "providerInstances": {
+	//     "opencode": {
+	//       "driver": "opencode",
+	//       "enabled": true,
+	//       "config": {
+	//         "enabled": true,
+	//         "binaryPath": "opencode",
+	//         "serverUrl": "http://localhost:4096",
+	//         "serverPassword": "",
+	//         "customModels": []
+	//       }
+	//     }
+	//   }
+	// }
+	// 	`
+	// 	}
+	// 	if err := os.WriteFile(settingfilepath, []byte(settings), 0o600); err != nil {
+	// 		return fmt.Errorf("failed to write t3 settings.json: %w", err)
+	// 	}
 	return nil
-
 }
 
 // Setup the opencode auth.json file
@@ -143,7 +146,7 @@ func ProvisionDockerContainers(cfg *config.DockerConfig) error {
 		defer os.RemoveAll(dir)
 		composePath := filepath.Join(dir, "docker-compose.yml")
 
-		if err := os.WriteFile(composePath, []byte(container.DockerComposeCode), 0644); err != nil {
+		if err := os.WriteFile(composePath, []byte(container.DockerComposeCode), 0o644); err != nil {
 			return err
 		}
 
