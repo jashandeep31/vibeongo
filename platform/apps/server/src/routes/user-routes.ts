@@ -15,7 +15,12 @@ import {
   getUserSettings,
   updateUserSettings,
 } from "../controllers/user/settings-controller.js";
-import { getUserConfigs } from "../controllers/user/config-controller.js";
+import {
+  createUserConfig,
+  getUserConfig,
+  getUserConfigs,
+  updateUserConfig,
+} from "../controllers/user/config-controller.js";
 
 const routes: Router = Router();
 
@@ -30,7 +35,15 @@ routes
   .put(checkAuthorization(["all"]), updateUserSettings);
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
 
-routes.route("/configs").get(checkAuthorization(["all"]), getUserConfigs);
+routes
+  .route("/configs")
+  .get(checkAuthorization(["all"]), getUserConfigs)
+  .post(checkAuthorization(["all"]), createUserConfig);
+
+routes
+  .route("/configs/:configType")
+  .get(checkAuthorization(["all"]), getUserConfig)
+  .put(checkAuthorization(["all"]), updateUserConfig);
 
 routes.route("/wallet").get(checkAuthorization(["all"]), getUserWallet);
 routes

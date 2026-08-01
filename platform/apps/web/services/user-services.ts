@@ -8,6 +8,9 @@ export type UserConfig = Pick<
   typeof userConfigs.$inferSelect,
   "id" | "user_id" | "config_type" | "created_at" | "updated_at"
 >;
+export type UserConfigType = UserConfig["config_type"];
+export type UserConfigValue = Record<string, unknown>;
+export type UserConfigDetail = UserConfig & { config: UserConfigValue };
 
 export type GetUserCreditGrantsParams = {
   page?: number;
@@ -55,6 +58,41 @@ export const getUserConfigs = async (): Promise<UserConfig[]> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/users/configs`, {
     withCredentials: true,
   });
+  return res.data.data;
+};
+
+export const getUserConfig = async (
+  configType: UserConfigType,
+): Promise<UserConfigDetail | null> => {
+  const res = await axios.get(
+    `${BACKEND_URL}/api/v1/users/configs/${configType}`,
+    { withCredentials: true },
+  );
+  return res.data.data;
+};
+
+export const createUserConfig = async (payload: {
+  configType: UserConfigType;
+  config: UserConfigValue;
+}): Promise<UserConfig> => {
+  const res = await axios.post(`${BACKEND_URL}/api/v1/users/configs`, payload, {
+    withCredentials: true,
+  });
+  return res.data.data;
+};
+
+export const updateUserConfig = async ({
+  configType,
+  config,
+}: {
+  configType: UserConfigType;
+  config: UserConfigValue;
+}): Promise<UserConfig> => {
+  const res = await axios.put(
+    `${BACKEND_URL}/api/v1/users/configs/${configType}`,
+    { config },
+    { withCredentials: true },
+  );
   return res.data.data;
 };
 

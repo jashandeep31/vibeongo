@@ -1,7 +1,7 @@
 "use client";
 
 import { useUserConfigs } from "@/hooks/use-user";
-import { Button } from "@repo/ui/components/button";
+import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
 import { Skeleton } from "@repo/ui/components/skeleton";
 
 const configTypes = [
@@ -59,13 +59,11 @@ export function UserConfigsSection() {
                   Failed to load configuration.
                 </p>
               ) : (
-                <Button
-                  type="button"
-                  className="mt-5 w-full"
-                  variant={isConfigured ? "outline" : "default"}
-                >
-                  {isConfigured ? "Edit" : "Configure"}
-                </Button>
+                <UserConfigDialog
+                  configType={config.type}
+                  name={config.name}
+                  isConfigured={isConfigured}
+                />
               )}
             </div>
           );

@@ -1,10 +1,14 @@
 import {
+  createUserConfig,
   GetUserCreditGrantsParams,
   getUserCreditGrants,
+  getUserConfig,
   getUserConfigs,
   getUserMetadata,
   getUserSettings,
+  updateUserConfig,
   updateUserSettings,
+  UserConfigType,
 } from "@/services/user-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
@@ -57,6 +61,43 @@ export const useUserConfigs = () =>
       return failureCount < 3;
     },
   });
+
+export const useUserConfig = (configType: UserConfigType, enabled: boolean) =>
+  useQuery({
+    queryKey: ["user-config", configType],
+    queryFn: () => getUserConfig(configType),
+    enabled,
+    staleTime: Infinity,
+    retry: (failureCount, error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        return false;
+      }
+
+      return failureCount < 3;
+    },
+  });
+
+export const useCreateUserConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createUserConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-configs"] });
+    },
+  });
+};
+
+export const useUpdateUserConfig = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateUserConfig,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["user-configs"] });
+    },
+  });
+};
 
 export const useUpdateUserSettings = () => {
   const queryClient = useQueryClient();
