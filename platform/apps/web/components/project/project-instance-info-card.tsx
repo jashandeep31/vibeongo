@@ -1,17 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ArrowUpRight, Check, Copy, Loader2, RefreshCw } from "lucide-react";
+import { Check, Copy, Loader2, RefreshCw } from "lucide-react";
 import { instances } from "@repo/db";
-import { Button, buttonVariants } from "@repo/ui/components/button";
-import Link from "next/link";
+import { Button } from "@repo/ui/components/button";
 
 type ProjectInstance = typeof instances.$inferSelect;
-
-const formatValue = (value: unknown) => {
-  if (value === null || value === undefined || value === "") return "N/A";
-  return String(value);
-};
 
 interface ProjectInstanceInfoCardProps {
   instance: ProjectInstance;
@@ -63,12 +57,20 @@ export function ProjectInstanceInfoCard({
       <div>
         <p className="text-muted-foreground">Public IP</p>
         <div className="mt-1 flex items-center gap-2">
-          <p className="font-medium">{formatValue(instance.public_ip)}</p>
+          <p
+            aria-hidden="true"
+            className="select-none font-mono font-medium blur-[5px]"
+          >
+            123.456.789.012
+          </p>
+          <span className="sr-only">IPv4 address hidden</span>
           <Button
             size="sm"
             type="button"
             variant="outline"
             aria-label="Copy IPv4 address"
+            title="Copy IPv4 address"
+            disabled={!instance.public_ip}
             onClick={() => {
               void handleCopyPublicIp();
             }}
@@ -79,14 +81,6 @@ export function ProjectInstanceInfoCard({
               <Copy className="h-4 w-4" />
             )}
           </Button>
-
-          <Link
-            href={`http://${instance.public_ip}:8080`}
-            target="_blank"
-            className={buttonVariants({ variant: "link" })}
-          >
-            <ArrowUpRight className="h-4 w-4" />
-          </Link>
         </div>
       </div>
 

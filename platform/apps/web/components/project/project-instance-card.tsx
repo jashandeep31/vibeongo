@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
-import { ArrowDownRight, Check, Copy, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowDownRight, Loader2 } from "lucide-react";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -57,6 +57,28 @@ const formatDuration = (startedAt: unknown, terminatedAt: unknown) => {
   return `${seconds}s`;
 };
 
+const formatTimeRemaining = (terminatesAt: unknown, now: Date) => {
+  if (!terminatesAt) return "N/A";
+
+  const terminatesDate = new Date(String(terminatesAt));
+  if (Number.isNaN(terminatesDate.getTime())) return "N/A";
+
+  const remainingMs = terminatesDate.getTime() - now.getTime();
+  if (remainingMs <= 0) return "Expired";
+
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+
+  return `${seconds}s`;
+};
+
 interface ProjectInstanceCardProps {
   projectId: string;
   instance: ProjectInstance;
@@ -68,41 +90,20 @@ export function ProjectInstanceCard({
 }: ProjectInstanceCardProps) {
   const { mutateAsync: terminateInstance, isPending } =
     useTerminateInstance(projectId);
-  const [copied, setCopied] = useState(false);
-  const copyResetTimerRef = useRef<number | null>(null);
+  const [now, setNow] = useState(() => new Date());
   const isTerminated =
     instance.state === "terminated" || !!instance.terminated_at;
+  const projectName = instance.project?.name;
 
   useEffect(() => {
-    return () => {
-      if (copyResetTimerRef.current) {
-        window.clearTimeout(copyResetTimerRef.current);
-      }
-    };
-  }, []);
+    if (isTerminated) return;
 
-  const handleCopyPublicIp = async () => {
-    const publicIp = instance.public_ip;
+    const timer = window.setInterval(() => {
+      setNow(new Date());
+    }, 1000);
 
-    if (!publicIp) {
-      return;
-    }
-
-    try {
-      await navigator.clipboard.writeText(String(publicIp));
-      setCopied(true);
-
-      if (copyResetTimerRef.current) {
-        window.clearTimeout(copyResetTimerRef.current);
-      }
-
-      copyResetTimerRef.current = window.setTimeout(() => {
-        setCopied(false);
-      }, 1800);
-    } catch {
-      setCopied(false);
-    }
-  };
+    return () => window.clearInterval(timer);
+  }, [isTerminated]);
 
   const handleTerminate = async () => {
     if (isTerminated) {
@@ -119,53 +120,54 @@ export function ProjectInstanceCard({
   };
 
   return (
-    <Card>
-      <CardHeader>
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-lg">{instance.name}</CardTitle>
-
-          <div className="flex items-center gap-3">
-            <Badge
-              variant={instance.state === "running" ? "default" : "secondary"}
-              className={
-                instance.state === "running"
-                  ? "border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
-                  : "text-muted-foreground border-0"
-              }
-            >
-              {formatValue(instance.state)}
-            </Badge>
+    <Card className="overflow-hidden">
+      <CardHeader className="gap-3">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <CardTitle className="truncate text-xl">
+              {projectName && projectId ? (
+                <Link
+                  href={`/projects/${projectId}`}
+                  className="hover:underline"
+                >
+                  {projectName}
+                </Link>
+              ) : (
+                formatValue(projectName)
+              )}
+            </CardTitle>
+            <p className="text-muted-foreground mt-1 truncate text-xs">
+              Instance: {formatValue(instance.name)}
+            </p>
           </div>
+
+          <Badge
+            variant={instance.state === "running" ? "default" : "secondary"}
+            className={
+              instance.state === "running"
+                ? "shrink-0 border-0 bg-emerald-500/15 text-emerald-600 hover:bg-emerald-500/25"
+                : "text-muted-foreground shrink-0 border-0"
+            }
+          >
+            {formatValue(instance.state)}
+          </Badge>
         </div>
       </CardHeader>
 
       <CardContent>
         <div className="grid gap-3 text-sm md:grid-cols-2">
           <div>
-            <p className="text-muted-foreground">Public IP</p>
-            <div className="mt-1 flex items-center gap-2">
-              <p className="font-medium">{formatValue(instance.public_ip)}</p>
-              <Button
-                size="sm"
-                type="button"
-                variant="outline"
-                aria-label="Copy IPv4 address"
-                onClick={() => {
-                  void handleCopyPublicIp();
-                }}
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-emerald-600" />
-                ) : (
-                  <Copy className="h-4 w-4" />
-                )}
-              </Button>
-            </div>
-          </div>
-          <div>
             <p className="text-muted-foreground">Spun Up For</p>
             <p className="font-medium">
               {formatDuration(instance.started_at, instance.terminated_at)}
+            </p>
+          </div>
+          <div>
+            <p className="text-muted-foreground">Terminates In</p>
+            <p className="font-medium">
+              {isTerminated
+                ? "Terminated"
+                : formatTimeRemaining(instance.terminates_at, now)}
             </p>
           </div>
         </div>
