@@ -7,6 +7,8 @@ import {
   boolean,
   integer,
   bigint,
+  text,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
@@ -98,3 +100,34 @@ export const userSettings = pgTable("user_settings", {
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
+
+export const userConfigTypeEnum = pgEnum("user_config_type", [
+  "opencode",
+  "codex",
+  "pi",
+]);
+
+export const userConfigs = pgTable(
+  "user_configs",
+  {
+    id: uuid().unique().defaultRandom().notNull(),
+
+    config_type: userConfigTypeEnum().notNull(),
+    user_id: uuid()
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+
+    iv: varchar().notNull(),
+    encrypted_config: text().notNull(),
+    tag: text().notNull(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("config_user_id_type_unique").on(
+      table.user_id,
+      table.config_type,
+    ),
+  ],
+);
