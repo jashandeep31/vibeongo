@@ -1,4 +1,20 @@
-FROM alpine:latest
+FROM golang:1.26 AS builder
+
 WORKDIR /app
-COPY proxyserver .
-CMD ["/app/proxyserver"]
+
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 \
+  go build -ldflags="-s -w" \
+  -o proxyserver ./cmd/proxy/main.go
+
+FROM scratch
+
+WORKDIR /app
+
+COPY --from=builder /app/proxyserver ./proxyserver
+
+CMD ["./proxyserver"]
