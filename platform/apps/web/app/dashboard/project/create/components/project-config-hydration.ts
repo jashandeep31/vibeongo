@@ -14,6 +14,13 @@ export type StoredProjectConfig = {
 export const getProjectPackage = (config: StoredProjectConfig, name: string) =>
   config.packages?.find((projectPackage) => projectPackage.name === name);
 
+export const getUseUserConfig = (
+  projectPackage: StoredProjectPackage | undefined,
+) =>
+  typeof projectPackage?.config?.use_user_config === "boolean"
+    ? projectPackage.config.use_user_config
+    : true;
+
 export const getDockerContainers = (
   dockerPackage: StoredProjectPackage | undefined,
 ) => {

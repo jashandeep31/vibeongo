@@ -15,18 +15,24 @@ const authJsonFields = [
     name: "Opencode",
     getValue: (state: ConfigStoreState) =>
       state.additionalServices.opencodeConfig.authJson,
+    usesUserConfig: (state: ConfigStoreState) =>
+      state.additionalServices.opencodeConfig.useUserConfig,
   },
   {
     id: "codex-auth-json",
     name: "Codex",
     getValue: (state: ConfigStoreState) =>
       state.additionalServices.codexConfig.authJson,
+    usesUserConfig: (state: ConfigStoreState) =>
+      state.additionalServices.codexConfig.useUserConfig,
   },
   {
     id: "pi-auth-json",
     name: "Pi",
     getValue: (state: ConfigStoreState) =>
       state.additionalServices.piConfig.authJson,
+    usesUserConfig: (state: ConfigStoreState) =>
+      state.additionalServices.piConfig.useUserConfig,
   },
 ] as const;
 
@@ -78,7 +84,8 @@ export const validateProjectConfig = (
   state: ConfigStoreState,
 ): ProjectConfigSubmissionError[] => {
   const invalidAuthFields = authJsonFields.filter(
-    (field) => !isValidJson(field.getValue(state)),
+    (field) =>
+      !field.usesUserConfig(state) && !isValidJson(field.getValue(state)),
   );
   const authErrors: ProjectConfigSubmissionError[] = invalidAuthFields.map(
     (field) => ({

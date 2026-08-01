@@ -13,14 +13,17 @@ interface AdditionalService {
   };
   opencodeConfig: {
     authJson: string;
+    useUserConfig: boolean;
     model: string;
     requirePassword: boolean;
   };
   codexConfig: {
     authJson: string;
+    useUserConfig: boolean;
   };
   piConfig: {
     authJson: string;
+    useUserConfig: boolean;
   };
   nvimConfig: {
     config: string;
@@ -76,11 +79,18 @@ interface ConfigStore {
   updateDockerConfig: (dockerConfig: { containers: ContainerConfig[] }) => void;
   updateOpencodeConfig: (opencodeConfig: {
     authJson: string;
+    useUserConfig: boolean;
     model: string;
     requirePassword: boolean;
   }) => void;
-  updateCodexConfig: (codexConfig: { authJson: string }) => void;
-  updatePiConfig: (piConfig: { authJson: string }) => void;
+  updateCodexConfig: (codexConfig: {
+    authJson: string;
+    useUserConfig: boolean;
+  }) => void;
+  updatePiConfig: (piConfig: {
+    authJson: string;
+    useUserConfig: boolean;
+  }) => void;
   updateNvimConfig: (nvimConfig: { config: string }) => void;
 
   submissionErrors: ProjectConfigSubmissionError[];
@@ -155,14 +165,17 @@ export const useConfigStore = create<ConfigStore>((set) => ({
     },
     opencodeConfig: {
       authJson: "{}",
+      useUserConfig: true,
       model: "",
       requirePassword: false,
     },
     codexConfig: {
       authJson: "{}",
+      useUserConfig: true,
     },
     piConfig: {
       authJson: "{}",
+      useUserConfig: true,
     },
     nvimConfig: {
       config: "",

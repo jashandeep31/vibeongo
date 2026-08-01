@@ -8,6 +8,7 @@ import {
   formatAuthJsonForForm,
   getDockerContainers,
   getProjectPackage,
+  getUseUserConfig,
   type StoredProjectConfig,
 } from "../../create/components/project-config-hydration";
 import ConfigPreviewAndUpdate from "./config-preview-and-update";
@@ -79,6 +80,7 @@ const ClientView = ({ projectId }: { projectId: string }) => {
 
     updateOpencodeConfig({
       authJson: formatAuthJsonForForm(opencodePackage?.config?.auth_json),
+      useUserConfig: getUseUserConfig(opencodePackage),
       model:
         typeof opencodePackage?.config?.model === "string"
           ? opencodePackage.config.model
@@ -91,10 +93,12 @@ const ClientView = ({ projectId }: { projectId: string }) => {
 
     updateCodexConfig({
       authJson: formatAuthJsonForForm(codexPackage?.config?.auth_json),
+      useUserConfig: getUseUserConfig(codexPackage),
     });
 
     updatePiConfig({
       authJson: formatAuthJsonForForm(piPackage?.config?.auth_json),
+      useUserConfig: getUseUserConfig(piPackage),
     });
 
     updateNvimConfig({

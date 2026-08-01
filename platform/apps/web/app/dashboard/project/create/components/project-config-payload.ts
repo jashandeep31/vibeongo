@@ -50,30 +50,37 @@ export const buildProjectConfigPayload = (
         name: "opencode",
         config: {
           model: state.additionalServices.opencodeConfig.model,
+          use_user_config:
+            state.additionalServices.opencodeConfig.useUserConfig,
           requirePassword:
             state.additionalServices.opencodeConfig.requirePassword,
-          auth_json: parseAuthJson(
-            state.additionalServices.opencodeConfig.authJson,
-            "Opencode",
-          ),
+          auth_json: state.additionalServices.opencodeConfig.useUserConfig
+            ? {}
+            : parseAuthJson(
+                state.additionalServices.opencodeConfig.authJson,
+                "Opencode",
+              ),
         },
       },
       {
         name: "codex",
         config: {
-          auth_json: parseAuthJson(
-            state.additionalServices.codexConfig.authJson,
-            "Codex",
-          ),
+          use_user_config: state.additionalServices.codexConfig.useUserConfig,
+          auth_json: state.additionalServices.codexConfig.useUserConfig
+            ? {}
+            : parseAuthJson(
+                state.additionalServices.codexConfig.authJson,
+                "Codex",
+              ),
         },
       },
       {
         name: "pi",
         config: {
-          auth_json: parseAuthJson(
-            state.additionalServices.piConfig.authJson,
-            "Pi",
-          ),
+          use_user_config: state.additionalServices.piConfig.useUserConfig,
+          auth_json: state.additionalServices.piConfig.useUserConfig
+            ? {}
+            : parseAuthJson(state.additionalServices.piConfig.authJson, "Pi"),
         },
       },
       {

@@ -12,12 +12,14 @@ function OpencodeConfigCard() {
   const additionalServices = useConfigStore((s) => s.additionalServices);
   const updateOpencodeConfig = useConfigStore((s) => s.updateOpencodeConfig);
   const authJson = additionalServices.opencodeConfig.authJson;
+  const useUserConfig = additionalServices.opencodeConfig.useUserConfig;
   const model = additionalServices.opencodeConfig.model;
   const requirePassword = additionalServices.opencodeConfig.requirePassword;
 
   const onAuthJsonChange = (authJsonValue: string) => {
     updateOpencodeConfig({
       authJson: authJsonValue,
+      useUserConfig,
       model,
       requirePassword,
     });
@@ -26,6 +28,7 @@ function OpencodeConfigCard() {
   const onModelChange = (e: ChangeEvent<HTMLInputElement>) => {
     updateOpencodeConfig({
       authJson,
+      useUserConfig,
       model: e.target.value,
       requirePassword,
     });
@@ -34,8 +37,18 @@ function OpencodeConfigCard() {
   const onRequirePasswordChange = (checked: boolean) => {
     updateOpencodeConfig({
       authJson,
+      useUserConfig,
       model,
       requirePassword: checked,
+    });
+  };
+
+  const onUseUserConfigChange = (checked: boolean) => {
+    updateOpencodeConfig({
+      authJson,
+      useUserConfig: checked,
+      model,
+      requirePassword,
     });
   };
 
@@ -49,6 +62,21 @@ function OpencodeConfigCard() {
           >
             <Terminal className="mr-2 size-4" />
             OpenCode
+          </Label>
+        </div>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="opencode-use-user-config"
+            checked={useUserConfig}
+            onCheckedChange={(checked) =>
+              onUseUserConfigChange(checked === true)
+            }
+          />
+          <Label
+            htmlFor="opencode-use-user-config"
+            className="cursor-pointer text-xs"
+          >
+            Use configuration from account settings
           </Label>
         </div>
 
@@ -86,12 +114,14 @@ function OpencodeConfigCard() {
             </div>
           </div>
         </div>
-        <SensitiveAuthJsonField
-          id="opencode-authjson"
-          serviceName="OpenCode"
-          value={authJson}
-          onChange={onAuthJsonChange}
-        />
+        {!useUserConfig ? (
+          <SensitiveAuthJsonField
+            id="opencode-authjson"
+            serviceName="OpenCode"
+            value={authJson}
+            onChange={onAuthJsonChange}
+          />
+        ) : null}
       </div>
     </div>
   );

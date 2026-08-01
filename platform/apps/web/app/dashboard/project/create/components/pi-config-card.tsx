@@ -1,6 +1,7 @@
 "use client";
 
 import { Label } from "@repo/ui/components/label";
+import { Checkbox } from "@repo/ui/components/checkbox";
 import { CircleDot } from "lucide-react";
 import { memo } from "react";
 import { useConfigStore } from "@/store/config-store";
@@ -10,11 +11,17 @@ function PiConfigCard() {
   const additionalServices = useConfigStore((s) => s.additionalServices);
   const updatePiConfig = useConfigStore((s) => s.updatePiConfig);
   const authJson = additionalServices.piConfig.authJson;
+  const useUserConfig = additionalServices.piConfig.useUserConfig;
 
   const onAuthJsonChange = (authJsonValue: string) => {
     updatePiConfig({
       authJson: authJsonValue,
+      useUserConfig,
     });
+  };
+
+  const onUseUserConfigChange = (checked: boolean) => {
+    updatePiConfig({ authJson, useUserConfig: checked });
   };
 
   return (
@@ -29,12 +36,29 @@ function PiConfigCard() {
             Pi
           </Label>
         </div>
-        <SensitiveAuthJsonField
-          id="pi-authjson"
-          serviceName="Pi"
-          value={authJson}
-          onChange={onAuthJsonChange}
-        />
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="pi-use-user-config"
+            checked={useUserConfig}
+            onCheckedChange={(checked) =>
+              onUseUserConfigChange(checked === true)
+            }
+          />
+          <Label
+            htmlFor="pi-use-user-config"
+            className="cursor-pointer text-xs"
+          >
+            Use configuration from account settings
+          </Label>
+        </div>
+        {!useUserConfig ? (
+          <SensitiveAuthJsonField
+            id="pi-authjson"
+            serviceName="Pi"
+            value={authJson}
+            onChange={onAuthJsonChange}
+          />
+        ) : null}
       </div>
     </div>
   );
