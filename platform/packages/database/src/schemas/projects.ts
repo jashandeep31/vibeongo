@@ -1,9 +1,10 @@
 import {
+  bigint,
+  integer,
   pgTable,
   timestamp,
   uuid,
   varchar,
-  integer,
   text,
   unique,
   boolean,
@@ -31,7 +32,8 @@ export const projects = pgTable("projects", {
     .references(() => sandboxTypes.id)
     .notNull(),
 
-  total_charges: integer().notNull().default(0),
+  // Stored as real cost * 10^7.
+  total_charges: bigint({ mode: "number" }).notNull().default(0),
 
   overview: text().default("").notNull(),
 

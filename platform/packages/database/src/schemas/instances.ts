@@ -1,12 +1,12 @@
 import {
   check,
+  bigint,
   pgEnum,
   pgTable,
   timestamp,
   uuid,
   varchar,
   text,
-  integer,
   json,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
@@ -48,7 +48,8 @@ export const instances = pgTable(
     terminated_at: timestamp(),
     started_at: timestamp().notNull().defaultNow(),
     state: instanceState().notNull(),
-    session_cost: integer().notNull().default(0),
+    // Stored as real cost * 10^7.
+    session_cost: bigint({ mode: "number" }).notNull().default(0),
     config: json().notNull().default("{}"),
 
     // Overview by the ai so if needed then we can resume the session with context

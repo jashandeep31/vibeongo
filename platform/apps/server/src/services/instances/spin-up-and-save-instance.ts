@@ -151,7 +151,7 @@ export const spinUpAndSaveInstance = async ({
     );
     sandboxTypeId = row.sandboxType.id;
 
-    if (userWalletRow.balance < 0.01) {
+    if (userWalletRow.balance < requiredBalance) {
       throw new AppError(
         `Insufficient balance required is ${requiredBalance} you have ${userWalletRow.balance} `,
         400,

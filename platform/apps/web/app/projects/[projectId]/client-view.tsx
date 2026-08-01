@@ -32,6 +32,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import axios from "axios";
 import { useGetProjectSessions } from "@/hooks/use-project-sessions";
+import { formatInternalMoney } from "@repo/shared";
 
 type InstanceFilter = ProjectInstanceStateFilter;
 const PROJECT_INSTANCES_LIMIT = 10;
@@ -124,7 +125,7 @@ export default function ClientView({ projectId }: { projectId: string }) {
 
   const projectInstances = instances?.data ?? [];
   const projectSessions = sessions?.data ?? [];
-  const totalCharges = (project.total_charges / 10000).toFixed(2);
+  const totalCharges = formatInternalMoney(project.total_charges);
   const instanceEmptyCopy = getInstanceEmptyCopy(instanceFilter);
 
   return (

@@ -1,5 +1,6 @@
 import {
   boolean,
+  bigint,
   integer,
   pgEnum,
   pgTable,
@@ -18,7 +19,7 @@ export const userWallet = pgTable("user_wallet", {
     .notNull()
     .unique(),
 
-  balance: integer().default(0).notNull(),
+  balance: bigint({ mode: "number" }).default(0).notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow().notNull(),
@@ -31,8 +32,8 @@ export const userWalletTransactionType = pgEnum(
 
 export const userCreditGrants = pgTable("user_credit_grants", {
   id: uuid().primaryKey().defaultRandom(),
-  total_balance: integer().default(0).notNull(),
-  balance: integer().default(0).notNull(),
+  total_balance: bigint({ mode: "number" }).default(0).notNull(),
+  balance: bigint({ mode: "number" }).default(0).notNull(),
   user_id: uuid()
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
@@ -55,7 +56,7 @@ export const userWalletTransactions = pgTable("user_wallet_transactions", {
   description: text().notNull(),
   raw_description: text().notNull(),
 
-  amount: integer().notNull(),
+  amount: bigint({ mode: "number" }).notNull(),
   user_wallet_credit_id: uuid().references(() => userCreditGrants.id, {
     onDelete: "cascade",
   }),

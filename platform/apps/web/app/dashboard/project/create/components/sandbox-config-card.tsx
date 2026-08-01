@@ -16,9 +16,10 @@ import {
 } from "@/hooks/use-instance-metadata";
 import { useConfigStore } from "@/store/config-store";
 import { Box, Container, Cpu, Sparkles, Triangle } from "lucide-react";
+import { formatInternalMoney } from "@repo/shared";
 
 const formatPricePerSecond = (pricePerSecond: number) =>
-  `$${(pricePerSecond / 10_000_000).toFixed(4)}/sec`;
+  `$${formatInternalMoney(pricePerSecond)}/sec`;
 
 type SandboxProvider = (typeof sandboxProvidersEnums.enumValues)[number];
 

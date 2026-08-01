@@ -1,11 +1,11 @@
 import {
+  bigint,
   pgTable,
   uuid,
   varchar,
   timestamp,
   pgEnum,
   text,
-  integer,
 } from "drizzle-orm/pg-core";
 
 export const sandboxProvidersEnums = pgEnum("sandbox_providers", [
@@ -39,9 +39,8 @@ export const sandboxTypes = pgTable("sandbox_types", {
     onDelete: "cascade",
   }),
 
-  // NOTE: When using this pricing, we multiply by 1000_000_0.
-  // The price per second needs more precision, so it is 10^7.
-  price_per_seconds: integer().notNull(),
+  // Stored as real price * 10^7.
+  price_per_seconds: bigint({ mode: "number" }).notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

@@ -1,5 +1,5 @@
 import {
-  integer,
+  bigint,
   pgEnum,
   pgTable,
   text,
@@ -39,7 +39,8 @@ export const instanceTypes = pgTable("instance_types", {
   provider: instanceProvidersEnum().notNull(),
   region_id: uuid().references(() => instanceRegions.id),
 
-  price_per_hour: integer().notNull(),
+  // Stored as real price * 10^7.
+  price_per_hour: bigint({ mode: "number" }).notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

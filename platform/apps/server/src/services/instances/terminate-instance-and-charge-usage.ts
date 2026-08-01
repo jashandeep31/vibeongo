@@ -22,6 +22,7 @@ import { userWallet } from "@repo/db";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
 import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
+import { formatInternalMoney, INTERNAL_MONEY_SCALE } from "@repo/shared";
 
 interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -47,7 +48,7 @@ const formatNetworkUsage = (networkUsageInGb: number) =>
   `${networkUsageInGb.toFixed(6)} GB`;
 
 const formatWalletAmount = (amount: number) =>
-  `$${(amount / 10000).toFixed(4)}`;
+  `$${formatInternalMoney(amount)}`;
 
 const calculateTotalCostWithProfit = ({
   costEachMin,
@@ -62,8 +63,9 @@ const calculateTotalCostWithProfit = ({
   const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
   const totalCostWithProfit = totalCost + profit;
 
-  return totalCostWithProfit < 0.0002 * 10000
-    ? 2
+  const minimumCharge = Math.ceil(0.0002 * INTERNAL_MONEY_SCALE);
+  return totalCostWithProfit < minimumCharge
+    ? minimumCharge
     : Math.ceil(totalCostWithProfit);
 };
 
@@ -252,9 +254,9 @@ const terminateVmInstance = async ({
   );
   const costEachMin = Math.ceil(instanceType.price_per_hour / 60);
 
-  // Costs are stored in ten-thousandths of a dollar.
+  // Costs use the internal 10^7 fixed-point representation.
   // TODO: Make the network charge rate dynamic.
-  const networkCharges = networkOutInGb * 0.13 * 10000;
+  const networkCharges = networkOutInGb * 0.13 * INTERNAL_MONEY_SCALE;
   return {
     networkCharges,
     uptimeInMin,
@@ -302,22 +304,19 @@ const terminateSandboxInstance = async ({
     (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
 
-  const PRICE_SCALE = 1e7; // price_per_seconds stored as real_price * 10^7
-  const OUTPUT_SCALE = 1e4; // totalCostWithProfit stored as real_cost * 10^4 (4-decimal precision)
-  const MIN_CHARGE = 1; // minimum stored value = 0.0001 real dollars
+  const MIN_CHARGE = Math.ceil(0.0001 * INTERNAL_MONEY_SCALE);
 
   // Step 1: convert stored price back to a real $/second value
-  const pricePerSecond = sandbox.price_per_seconds / PRICE_SCALE;
+  const pricePerSecond = sandbox.price_per_seconds / INTERNAL_MONEY_SCALE;
 
   // Step 2: all math in real dollars, no scaling yet
   const costEachMin = pricePerSecond * 60;
   const totalCost = costEachMin * uptimeInMin;
-  console.log(totalCost);
   const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
   const totalCostWithProfit = totalCost + profit; // still real dollars
 
-  // Step 3: scale to 4-decimal integer for storage, enforce minimum charge
-  const scaled = Math.ceil(totalCostWithProfit * OUTPUT_SCALE);
+  // Step 3: scale to the internal 10^7 integer representation.
+  const scaled = Math.ceil(totalCostWithProfit * INTERNAL_MONEY_SCALE);
   const total = scaled < MIN_CHARGE ? MIN_CHARGE : scaled;
   const networkCharges = 0;
 

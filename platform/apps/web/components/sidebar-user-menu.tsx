@@ -27,6 +27,7 @@ import {
 } from "@repo/ui/components/sidebar";
 import { LogOut, Monitor, Moon, MoreVertical, Sun, Wallet } from "lucide-react";
 import { useTheme } from "next-themes";
+import { formatInternalMoney } from "@repo/shared";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -66,9 +67,7 @@ export function SidebarUserMenu({ user }: { user: SidebarUser }) {
       .join("")
       .slice(0, 2)
       .toUpperCase() || "U";
-  const walletBalance = (
-    Math.trunc((user.balance / 10000) * 100) / 100
-  ).toFixed(2);
+  const walletBalance = formatInternalMoney(user.balance);
 
   const closeMobileSidebar = () => {
     if (isMobile) {

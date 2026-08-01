@@ -3,6 +3,7 @@
 import { CreditCard, Server } from "lucide-react";
 import { Card, CardContent } from "@repo/ui/components/card";
 import { Project, DbInstance } from "./types";
+import { formatInternalMoney } from "@repo/shared";
 
 interface UsageBillingProps {
   project: Project;
@@ -23,7 +24,7 @@ export function UsageBilling({ project }: UsageBillingProps) {
               Total Charges
             </p>
             <p className="text-3xl font-bold">
-              ${(project.total_charges / 10000).toFixed(4)}
+              ${formatInternalMoney(project.total_charges)}
             </p>
             <p className="text-muted-foreground mt-1 text-xs">
               Current billing cycle

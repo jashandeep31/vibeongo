@@ -11,13 +11,17 @@ import {
 } from "@repo/db";
 import { dodoPaymentClient } from "./dodo-payments.js";
 import { Request, Response } from "express";
+import {
+  PAYMENT_GATEWAY_SCALE,
+  PAYMENT_GATEWAY_TO_INTERNAL_SCALE,
+} from "@repo/shared";
 
-function formatToPrecissionAmount(amount: number): number {
-  return amount * 100;
+function gatewayAmountToInternal(amount: number): number {
+  return amount * PAYMENT_GATEWAY_TO_INTERNAL_SCALE;
 }
 
 const formatSettlementAmount = (amount: number, currency: string) =>
-  `${(amount / 100).toFixed(2)} ${currency.toUpperCase()}`;
+  `${(amount / PAYMENT_GATEWAY_SCALE).toFixed(2)} ${currency.toUpperCase()}`;
 
 const firstHeaderValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
@@ -97,7 +101,7 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
       const rawDescription = `Dodo Payments checkout session ${checkoutSessionId} completed successfully. The gross settlement amount was ${formatSettlementAmount(settlement_amount, settlement_currency)}, tax was ${formatSettlementAmount(settlement_tax, settlement_currency)}, and the net amount credited was ${formatSettlementAmount(receivedAmountAfterTax, settlement_currency)}. The wallet credit expires on ${expiresAt.toISOString()}.`;
 
       await db.transaction(async (tx) => {
-        // precision amount is not needed here
+        // Gateway transaction amounts remain in the gateway's smallest unit.
         const [updatedPaymentGatewayTransaction] = await tx
           .update(paymentGatewayTransactions)
           .set({
@@ -116,23 +120,22 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
 
         if (!updatedPaymentGatewayTransaction) return;
 
-        // precision amount is required here
+        // Wallet amounts use the internal 10^7 fixed-point representation.
         const [updatedUserWallet] = await tx
           .update(userWallet)
           .set({
-            balance: sql`${userWallet.balance} + ${formatToPrecissionAmount(receivedAmountAfterTax)}`,
+            balance: sql`${userWallet.balance} + ${gatewayAmountToInternal(receivedAmountAfterTax)}`,
           })
           .where(eq(userWallet.user_id, user.id))
           .returning();
         if (!updatedUserWallet) throw new Error("User wallet not found");
 
-        // precision amount is required
         const [userWalletCredit] = await tx
           .insert(userCreditGrants)
           .values({
             user_id: user.id,
-            balance: formatToPrecissionAmount(receivedAmountAfterTax),
-            total_balance: formatToPrecissionAmount(receivedAmountAfterTax),
+            balance: gatewayAmountToInternal(receivedAmountAfterTax),
+            total_balance: gatewayAmountToInternal(receivedAmountAfterTax),
             wallet_id: updatedUserWallet.id,
             description,
             expires_at: expiresAt,
@@ -145,7 +148,7 @@ export const dodoPaymentsWebhook = async (req: Request, res: Response) => {
           wallet_id: updatedUserWallet.id,
           description,
           raw_description: rawDescription,
-          amount: formatToPrecissionAmount(receivedAmountAfterTax),
+          amount: gatewayAmountToInternal(receivedAmountAfterTax),
           user_wallet_credit_id: userWalletCredit.id,
         });
       });

@@ -11,12 +11,13 @@ import {
 import { useConfigStore } from "@/store/config-store";
 import { useInstanceTypesByRegionID } from "@/hooks/use-instance-metadata";
 import { Cpu } from "lucide-react";
+import { formatInternalMoney } from "@repo/shared";
 
 const formatHourlyPrice = (pricePerHour: number) =>
-  `$${(pricePerHour / 10000).toFixed(4)}/hr`;
+  `$${formatInternalMoney(pricePerHour)}/hr`;
 
 const formatAverageMonthlyPrice = (pricePerHour: number) =>
-  `$${((pricePerHour / 10000) * 8 * 30).toFixed(2)}/mo`;
+  `$${formatInternalMoney(pricePerHour * 8 * 30)}/mo`;
 
 function InstanceTypeCards() {
   const {

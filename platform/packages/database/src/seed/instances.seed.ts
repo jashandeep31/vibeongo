@@ -6,12 +6,12 @@ import {
 import { instancesData } from "./instances-data.js";
 
 /**
- * Convert dollars → micro dollars
+ * Convert dollars to the internal 10^7 fixed-point representation.
  * example:
- * $5 -> 50000
+ * $5 -> 50000000
  */
 const getRoundedPrice = (price: number): number => {
-  return Math.ceil(price * 10000);
+  return Math.ceil(price * 10_000_000);
 };
 
 // const digitalOceanRegions = [{ slug: "BLR1", name: "Bangalore" }] as const;

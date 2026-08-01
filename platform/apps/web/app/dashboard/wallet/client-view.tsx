@@ -30,15 +30,11 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { CreditCard, Gift } from "lucide-react";
+import { formatInternalMoney } from "@repo/shared";
 
 const TRANSACTIONS_LIMIT = 10;
 const CREDIT_GRANTS_LIMIT = 10;
 type WalletTab = "transactions" | "credit-grants";
-
-const formatWalletCredits = (amount: number) => {
-  const realamount = amount / 10000;
-  return (Math.trunc(realamount * 100) / 100).toFixed(2);
-};
 
 const formatDate = (value: unknown) => {
   if (!value) return "-";
@@ -74,8 +70,7 @@ export default function ClientView() {
   const transactions = data?.data.transactions ?? [];
   const creditGrants =
     creditGrantsData?.grants.slice(0, CREDIT_GRANTS_LIMIT) ?? [];
-  // Note: wallet returns the precision so divide by 10**4
-  const walletBalance = formatWalletCredits(wallet?.balance ?? 0);
+  const walletBalance = formatInternalMoney(wallet?.balance ?? 0);
   const currentTransactionsPage = data?.page ?? transactionsPage;
   const hasNextTransactionPage = data?.hasNext ?? false;
   const previousTransactionsDisabled =
@@ -208,10 +203,10 @@ export default function ClientView() {
                           {grant.description ?? "-"}
                         </TableCell>
                         <TableCell className="text-right font-medium whitespace-nowrap">
-                          ${formatWalletCredits(grant.balance)}
+                          ${formatInternalMoney(grant.balance)}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
-                          ${formatWalletCredits(grant.total_balance)}
+                          ${formatInternalMoney(grant.total_balance)}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -341,7 +336,7 @@ export default function ClientView() {
                         </TableCell>
                         <TableCell className="text-right font-medium whitespace-nowrap">
                           {amountPrefix}$
-                          {(transaction.amount / 10000).toFixed(4)}
+                          {formatInternalMoney(transaction.amount)}
                         </TableCell>
 
                         <TableCell className="whitespace-nowrap">

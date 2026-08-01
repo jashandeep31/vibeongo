@@ -5,10 +5,10 @@ import { env } from "../../lib/env.js";
 import { AppError } from "../../lib/app-error.js";
 import { z } from "zod";
 import { db, paymentGatewayTransactions } from "@repo/db";
+import { PAYMENT_GATEWAY_SCALE } from "@repo/shared";
 
 const MIN_CREDIT_AMOUNT_DOLLARS = 5;
 const MAX_CREDIT_AMOUNT_DOLLARS = 300;
-const CENTS_PER_DOLLAR = 100;
 
 export const dodoPaymentClient = new DodoPayments({
   bearerToken: env.DODO_PAYMENT_BEARER_TOKEN,
@@ -30,7 +30,7 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
           .max(MAX_CREDIT_AMOUNT_DOLLARS),
       })
       .parse(req.body);
-    const amount = amountInDollars * CENTS_PER_DOLLAR;
+    const amount = amountInDollars * PAYMENT_GATEWAY_SCALE;
 
     const checkoutSession = await dodoPaymentClient.checkoutSessions.create({
       customer: {
@@ -43,7 +43,7 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
       ],
     });
 
-    // amount is as per the dollar not as are real *4 one
+    // Gateway transactions remain in the currency's smallest unit (cents for USD).
     await db.insert(paymentGatewayTransactions).values({
       user_id: user.id,
       amount,
