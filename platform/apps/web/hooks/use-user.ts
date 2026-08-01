@@ -1,6 +1,7 @@
 import {
   GetUserCreditGrantsParams,
   getUserCreditGrants,
+  getUserConfigs,
   getUserMetadata,
   getUserSettings,
   updateUserSettings,
@@ -35,6 +36,19 @@ export const useUserSettings = () =>
   useQuery({
     queryKey: ["user-settings"],
     queryFn: getUserSettings,
+    retry: (failureCount, error) => {
+      if (axios.isAxiosError(error) && error.response?.status === 401) {
+        return false;
+      }
+
+      return failureCount < 3;
+    },
+  });
+
+export const useUserConfigs = () =>
+  useQuery({
+    queryKey: ["user-configs"],
+    queryFn: getUserConfigs,
     retry: (failureCount, error) => {
       if (axios.isAxiosError(error) && error.response?.status === 401) {
         return false;

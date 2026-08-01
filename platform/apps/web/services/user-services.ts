@@ -1,9 +1,13 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { userCreditGrants, userSettings } from "@repo/db";
+import { userConfigs, userCreditGrants, userSettings } from "@repo/db";
 import axios from "axios";
 
 export type UserCreditGrant = typeof userCreditGrants.$inferSelect;
 export type UserSettings = typeof userSettings.$inferSelect;
+export type UserConfig = Pick<
+  typeof userConfigs.$inferSelect,
+  "id" | "user_id" | "config_type" | "created_at" | "updated_at"
+>;
 
 export type GetUserCreditGrantsParams = {
   page?: number;
@@ -42,6 +46,13 @@ export const getUserMetadata = async (): Promise<{
 
 export const getUserSettings = async (): Promise<UserSettings | null> => {
   const res = await axios.get(`${BACKEND_URL}/api/v1/users/settings`, {
+    withCredentials: true,
+  });
+  return res.data.data;
+};
+
+export const getUserConfigs = async (): Promise<UserConfig[]> => {
+  const res = await axios.get(`${BACKEND_URL}/api/v1/users/configs`, {
     withCredentials: true,
   });
   return res.data.data;

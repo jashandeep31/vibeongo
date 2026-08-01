@@ -30,6 +30,7 @@ import {
 } from "@repo/ui/components/table";
 import { toast } from "sonner";
 import { useTheme } from "next-themes";
+import { UserConfigsSection } from "./components/user-configs-section";
 
 const themeOptions = [
   {
@@ -336,6 +337,8 @@ export default function ClientView() {
             })}
           </div>
         </section>
+
+        <UserConfigsSection />
 
         <section className="mt-8">
           <div className="flex items-center justify-between gap-3">

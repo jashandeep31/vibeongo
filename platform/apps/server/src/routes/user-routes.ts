@@ -15,6 +15,7 @@ import {
   getUserSettings,
   updateUserSettings,
 } from "../controllers/user/settings-controller.js";
+import { getUserConfigs } from "../controllers/user/config-controller.js";
 
 const routes: Router = Router();
 
@@ -28,6 +29,8 @@ routes
   .get(checkAuthorization(["all"]), getUserSettings)
   .put(checkAuthorization(["all"]), updateUserSettings);
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
+
+routes.route("/configs").get(checkAuthorization(["all"]), getUserConfigs);
 
 routes.route("/wallet").get(checkAuthorization(["all"]), getUserWallet);
 routes
