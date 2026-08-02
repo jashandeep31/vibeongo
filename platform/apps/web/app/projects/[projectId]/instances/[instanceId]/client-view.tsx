@@ -169,6 +169,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
   const mobileServerLogsRef = useRef<HTMLDivElement | null>(null);
   const isTerminated =
     instance?.state === "terminated" || !!instance?.terminated_at;
+  const isSandboxRuntime = instance?.runtime_kind === "sandbox";
 
   const isTargetInstance =
     projectDomainsData?.target_instance_id === instanceId;
@@ -581,13 +582,29 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-44">
-            <UpdateInstanceTimeDialog instanceId={instance.id}>
-              <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
-                <Clock3 className="h-4 w-4" />
-                Update Expiration
+          <DropdownMenuContent
+            align="end"
+            className={isSandboxRuntime ? "w-72" : "w-44"}
+          >
+            {isSandboxRuntime ? (
+              <DropdownMenuItem
+                disabled
+                className="h-auto items-start py-2 whitespace-normal"
+              >
+                <TriangleAlert className="mt-0.5 text-amber-500" />
+                <span>
+                  Sandbox instances cannot extend their time. Use a VM runtime
+                  instance instead. Its coming to sanboxes
+                </span>
               </DropdownMenuItem>
-            </UpdateInstanceTimeDialog>
+            ) : (
+              <UpdateInstanceTimeDialog instanceId={instance.id}>
+                <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
+                  <Clock3 className="h-4 w-4" />
+                  Update Expiration
+                </DropdownMenuItem>
+              </UpdateInstanceTimeDialog>
+            )}
             <DropdownMenuItem asChild>
               <Link href={`/dashboard/project/${instance.project_id}/edit`}>
                 <Settings className="h-4 w-4" />
@@ -735,7 +752,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
             <ProjectInstanceTerminal />
             <ShellToolsCard
               isTerminated={isTerminated}
-              isSandboxRuntime={instance.runtime_kind === "sandbox"}
+              isSandboxRuntime={isSandboxRuntime}
             />
             <div className="bg-card text-card-foreground relative h-64 overflow-hidden lg:hidden">
               <div
