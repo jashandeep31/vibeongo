@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./aiplayground.css";
+import Provider from "./provider";
 
 export const metadata: Metadata = {
   title: "AI Playground",
@@ -13,7 +14,9 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="h-full antialiased">
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-full">
+        <Provider>{children}</Provider>
+      </body>
     </html>
   );
 }

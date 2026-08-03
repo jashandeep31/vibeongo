@@ -2,9 +2,11 @@
 
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
+import { PlaygroundUserMenu } from "@/components/playground-user-menu";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
@@ -90,6 +92,9 @@ export function PlaygroundSidebar() {
         </SidebarGroup>
         <NavProjects projects={demoProjects} />
       </SidebarContent>
+      <SidebarFooter className="border-sidebar-border border-t p-2">
+        <PlaygroundUserMenu />
+      </SidebarFooter>
     </Sidebar>
   );
 }
