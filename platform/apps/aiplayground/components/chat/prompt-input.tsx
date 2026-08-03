@@ -1,11 +1,24 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { ArrowUp, Plus } from "lucide-react";
-import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
+import { ArrowUp, Plus, X } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type KeyboardEvent,
+} from "react";
+
+type LocalAttachment = {
+  id: string;
+  file: File;
+  previewUrl: string;
+};
 
 type PromptInputProps = {
-  onSubmit: (question: string) => void;
+  onSubmit: (question: string, attachments: File[]) => void;
   disabled?: boolean;
   onSubmitSuccess?: () => void;
 };
@@ -16,18 +29,67 @@ export function PromptInput({
   onSubmitSuccess,
 }: PromptInputProps) {
   const [question, setQuestion] = useState("");
+  const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
+  const attachmentsRef = useRef<LocalAttachment[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const trimmedQuestion = question.trim();
-  const isSubmitDisabled = disabled || !trimmedQuestion;
+  const isSubmitDisabled =
+    disabled || (!trimmedQuestion && attachments.length === 0);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(
+    () => () => {
+      attachmentsRef.current.forEach((attachment) => {
+        URL.revokeObjectURL(attachment.previewUrl);
+      });
+    },
+    [],
+  );
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitDisabled) return;
 
-    onSubmit(trimmedQuestion);
+    onSubmit(
+      trimmedQuestion,
+      attachments.map((attachment) => attachment.file),
+    );
     setQuestion("");
+    attachments.forEach((attachment) => {
+      URL.revokeObjectURL(attachment.previewUrl);
+    });
+    setAttachments([]);
     onSubmitSuccess?.();
+  };
+
+  const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []).filter((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    setAttachments((current) => [
+      ...current,
+      ...files.map((file) => ({
+        id: crypto.randomUUID(),
+        file,
+        previewUrl: URL.createObjectURL(file),
+      })),
+    ]);
+    event.target.value = "";
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments((current) =>
+      current.filter((attachment) => {
+        if (attachment.id !== id) return true;
+        URL.revokeObjectURL(attachment.previewUrl);
+        return false;
+      }),
+    );
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -40,6 +102,29 @@ export function PromptInput({
   return (
     <form ref={formRef} onSubmit={handleSubmit} className="relative w-full">
       <div className="bg-card focus-within:border-foreground/20 relative overflow-hidden rounded-[28px] border shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-colors">
+        {attachments.length > 0 ? (
+          <div className="flex flex-wrap gap-3 px-5 pt-5">
+            {attachments.map((attachment) => (
+              <div key={attachment.id} className="relative">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={attachment.previewUrl}
+                  alt={attachment.file.name}
+                  className="size-20 rounded-xl border object-cover"
+                />
+                <button
+                  type="button"
+                  aria-label={`Remove ${attachment.file.name}`}
+                  onClick={() => removeAttachment(attachment.id)}
+                  className="bg-foreground text-background absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full"
+                >
+                  <X className="size-3.5" />
+                </button>
+              </div>
+            ))}
+          </div>
+        ) : null}
+
         <textarea
           aria-label="Write an AI message"
           placeholder="Work on anything"
@@ -54,9 +139,11 @@ export function PromptInput({
           <input
             ref={fileInputRef}
             type="file"
+            accept="image/*"
             className="hidden"
             multiple
             tabIndex={-1}
+            onChange={handleFiles}
           />
           <Button
             type="button"

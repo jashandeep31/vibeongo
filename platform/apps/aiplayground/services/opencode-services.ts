@@ -17,6 +17,14 @@ export type OpencodeSessionData = {
   changes: SnapshotFileDiff[];
 };
 
+export type UploadAttachment = {
+  type: "image";
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error((await response.text()) || "OpenCode request failed");
@@ -31,7 +39,9 @@ export async function getOpencodeSessionsByChat(
   const entries = await Promise.all(
     connections.map(async ({ chatId, projectId }) => {
       const sessions = await readJson<Session[]>(
-        await fetch(`/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`),
+        await fetch(
+          `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`,
+        ),
       );
 
       console.log(`[OpenCode] sessions for ${projectId}/${chatId}`, sessions);
@@ -42,10 +52,7 @@ export async function getOpencodeSessionsByChat(
   return Object.fromEntries(entries);
 }
 
-export async function getOpencodeSessionRaw(
-  chatId: string,
-  sessionId: string,
-) {
+export async function getOpencodeSessionRaw(chatId: string, sessionId: string) {
   return readJson<OpencodeSessionData>(
     await fetch(
       `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
@@ -57,18 +64,21 @@ export async function sendOpencodePrompt(
   chatId: string,
   sessionId: string,
   text: string,
+  attachments: UploadAttachment[],
 ) {
   const response = await fetch(
     `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text }),
+      body: JSON.stringify({ text, attachments }),
     },
   );
 
   if (!response.ok) {
-    throw new Error((await response.text()) || "Could not send OpenCode prompt");
+    throw new Error(
+      (await response.text()) || "Could not send OpenCode prompt",
+    );
   }
 }
 

@@ -6,6 +6,7 @@ import {
   sendOpencodePrompt,
   type Event,
   type OpencodeSessionData,
+  type UploadAttachment,
 } from "@/services/opencode-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
@@ -203,7 +204,30 @@ export const useSendOpencodePrompt = ({
   const queryKey = ["opencode", "session", chatId, sessionId];
 
   return useMutation({
-    mutationFn: (text: string) => sendOpencodePrompt(chatId, sessionId, text),
+    mutationFn: async ({ text, files }: { text: string; files: File[] }) => {
+      const attachments: UploadAttachment[] = await Promise.all(
+        files.map(async (file) => ({
+          type: "image" as const,
+          name: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          dataUrl: await fileToDataUrl(file),
+        })),
+      );
+
+      return sendOpencodePrompt(chatId, sessionId, text, attachments);
+    },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
+
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    reader.onload = () => resolve(String(reader.result));
+    reader.onerror = () => reject(reader.error);
+
+    reader.readAsDataURL(file);
+  });
+}

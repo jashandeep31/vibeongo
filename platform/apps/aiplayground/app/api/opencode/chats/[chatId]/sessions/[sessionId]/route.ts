@@ -1,4 +1,5 @@
 import { getOpencodeServerClient } from "@/services/opencode-server";
+import type { FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 
 type RouteParams = {
   params: Promise<{ chatId: string; sessionId: string }>;
@@ -40,15 +41,32 @@ export async function GET(_request: Request, { params }: RouteParams) {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
-    const body = (await request.json()) as { text?: unknown };
-    if (typeof body.text !== "string" || !body.text.trim()) {
-      return new Response("Prompt text is required", { status: 400 });
+    const body = (await request.json()) as {
+      text?: unknown;
+      attachments?: unknown;
+    };
+    const text = typeof body.text === "string" ? body.text.trim() : "";
+    const attachments = parseImageAttachments(body.attachments);
+
+    if (!text && attachments.length === 0) {
+      return new Response("Prompt text or an image is required", {
+        status: 400,
+      });
     }
 
     const client = getOpencodeServerClient(chatId);
+    const parts: Array<TextPartInput | FilePartInput> = [
+      ...(text ? [{ type: "text" as const, text }] : []),
+      ...attachments.map((attachment) => ({
+        type: "file" as const,
+        mime: attachment.mimeType,
+        filename: attachment.name,
+        url: attachment.dataUrl,
+      })),
+    ];
     const result = await client.session.promptAsync({
       sessionID: sessionId,
-      parts: [{ type: "text", text: body.text.trim() }],
+      parts,
     });
 
     if (result.error) {
@@ -60,4 +78,34 @@ export async function POST(request: Request, { params }: RouteParams) {
     console.error("OpenCode prompt failed", error);
     return new Response("OpenCode prompt failed", { status: 500 });
   }
+}
+
+type ImageAttachment = {
+  type: "image";
+  name: string;
+  mimeType: string;
+  sizeBytes: number;
+  dataUrl: string;
+};
+
+function parseImageAttachments(value: unknown): ImageAttachment[] {
+  if (!Array.isArray(value)) return [];
+
+  return value.filter(
+    (attachment): attachment is ImageAttachment =>
+      typeof attachment === "object" &&
+      attachment !== null &&
+      "type" in attachment &&
+      attachment.type === "image" &&
+      "name" in attachment &&
+      typeof attachment.name === "string" &&
+      "mimeType" in attachment &&
+      typeof attachment.mimeType === "string" &&
+      attachment.mimeType.startsWith("image/") &&
+      "sizeBytes" in attachment &&
+      typeof attachment.sizeBytes === "number" &&
+      "dataUrl" in attachment &&
+      typeof attachment.dataUrl === "string" &&
+      attachment.dataUrl.startsWith("data:image/"),
+  );
 }

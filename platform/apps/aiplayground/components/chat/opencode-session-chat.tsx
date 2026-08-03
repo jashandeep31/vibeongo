@@ -35,6 +35,17 @@ function createChatTurns(messages: SessionMessages) {
     .map((message) => ({
       id: message.info.id,
       question: getPartText(message.parts, "text"),
+      images: message.parts.flatMap((part) =>
+        part.type === "file" && part.mime.startsWith("image/")
+          ? [
+              {
+                id: part.id,
+                url: part.url,
+                name: part.filename ?? "Attached image",
+              },
+            ]
+          : [],
+      ),
       content: [] as Array<
         | { id: string; type: "text"; text: string }
         | { id: string; type: "tools"; tools: ToolPart[] }
@@ -187,7 +198,9 @@ export function OpencodeSessionChat({
           </div>
           <PromptInput
             disabled={sendPrompt.isPending || isStreaming}
-            onSubmit={(question) => sendPrompt.mutate(question)}
+            onSubmit={(question, files) =>
+              sendPrompt.mutate({ text: question, files })
+            }
             onSubmitSuccess={() => scrollToBottom("smooth")}
           />
         </div>

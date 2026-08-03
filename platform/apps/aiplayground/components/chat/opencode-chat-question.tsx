@@ -11,6 +11,7 @@ import { useState } from "react";
 export type OpencodeChatTurn = {
   id: string;
   question: string;
+  images: Array<{ id: string; url: string; name: string }>;
   content: Array<
     | { id: string; type: "text"; text: string }
     | { id: string; type: "tools"; tools: ToolPart[] }
@@ -53,10 +54,23 @@ export function OpencodeChatQuestion({
         reserveBottomSpace && "min-h-[42dvh] md:min-h-[60dvh]",
       )}
     >
-      {item.question ? (
+      {item.question || item.images.length > 0 ? (
         <div className="flex justify-end">
-          <div className="bg-muted text-foreground border-border max-w-[90%] rounded-2xl border px-3 py-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
-            {item.question}
+          <div className="bg-muted text-foreground border-border max-w-[90%] space-y-2 rounded-2xl border p-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
+            {item.images.length > 0 ? (
+              <div className="flex flex-wrap justify-end gap-2">
+                {item.images.map((image) => (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    key={image.id}
+                    src={image.url}
+                    alt={image.name}
+                    className="max-h-72 max-w-full rounded-xl object-contain"
+                  />
+                ))}
+              </div>
+            ) : null}
+            {item.question ? <div className="px-1">{item.question}</div> : null}
           </div>
         </div>
       ) : null}
