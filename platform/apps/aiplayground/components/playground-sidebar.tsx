@@ -7,7 +7,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
   SidebarHeader,
-} from "@repo/ui/components/sidebar";
+} from "@repo/ui/components/sidebar-v2";
 import { CreditCard, Gauge, Settings, Sparkles, SquarePen } from "lucide-react";
 import Link from "next/link";
 
@@ -36,7 +36,7 @@ const navigation = [
 
 export function PlaygroundSidebar() {
   return (
-    <Sidebar className="bg-background" collapsible="offcanvas">
+    <Sidebar className="bg-background">
       <SidebarHeader className="h-12 justify-center px-3 py-2">
         <Link
           href="/"

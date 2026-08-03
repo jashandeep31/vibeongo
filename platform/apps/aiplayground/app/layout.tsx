@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "./aiplayground.css";
 
 export const metadata: Metadata = {
   title: "AI Playground",
