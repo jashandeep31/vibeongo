@@ -1,7 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
-import { Send } from "lucide-react";
+import { ArrowUp, Plus } from "lucide-react";
 import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
 type PromptInputProps = {
@@ -17,6 +17,7 @@ export function PromptInput({
 }: PromptInputProps) {
   const [question, setQuestion] = useState("");
   const formRef = useRef<HTMLFormElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const trimmedQuestion = question.trim();
   const isSubmitDisabled = disabled || !trimmedQuestion;
 
@@ -37,29 +38,48 @@ export function PromptInput({
   };
 
   return (
-    <form
-      ref={formRef}
-      onSubmit={handleSubmit}
-      className="border-border focus-within:border-primary/50 bg-muted relative w-full rounded-lg border p-0 transition-colors"
-    >
-      <textarea
-        aria-label="Describe what you want to build"
-        placeholder="Describe the app, repo workflow, or development environment you want to run..."
-        value={question}
-        onChange={(event) => setQuestion(event.target.value)}
-        onKeyDown={handleKeyDown}
-        className="placeholder:text-muted-foreground/50 min-h-[80px] w-full resize-none overflow-y-auto border-0 p-2 text-base leading-normal outline-none [scrollbar-width:none] focus:outline-none focus-visible:ring-0 focus-visible:outline-none md:min-h-[120px] md:text-base [&::-webkit-scrollbar]:hidden"
-      />
-      <div className="flex items-center justify-end p-2">
-        <Button
-          type="submit"
-          disabled={isSubmitDisabled}
-          className="bg-primary text-primary-foreground h-12 w-12 rounded-full shadow-sm transition-all duration-300 hover:scale-105 hover:shadow-md active:scale-95"
-          size="icon"
-        >
-          <Send className="h-5 w-5" />
-          <span className="sr-only">Submit prompt</span>
-        </Button>
+    <form ref={formRef} onSubmit={handleSubmit} className="relative w-full">
+      <div className="bg-card focus-within:border-foreground/20 relative overflow-hidden rounded-[28px] border shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-colors">
+        <textarea
+          aria-label="Write an AI message"
+          placeholder="Work on anything"
+          value={question}
+          disabled={disabled}
+          onChange={(event) => setQuestion(event.target.value)}
+          onKeyDown={handleKeyDown}
+          className="placeholder:text-muted-foreground min-h-32 w-full resize-none border-0 bg-transparent px-6 pt-6 pb-3 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-36 sm:text-lg"
+        />
+
+        <div className="flex items-center justify-between px-4 pb-3">
+          <input
+            ref={fileInputRef}
+            type="file"
+            className="hidden"
+            multiple
+            tabIndex={-1}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            disabled={disabled}
+            className="size-11 rounded-full"
+            aria-label="Add an attachment"
+            onClick={() => fileInputRef.current?.click()}
+          >
+            <Plus className="size-6" />
+          </Button>
+
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isSubmitDisabled}
+            className="size-12 rounded-full"
+            aria-label="Submit message"
+          >
+            <ArrowUp className="size-6" strokeWidth={2.5} />
+          </Button>
+        </div>
       </div>
     </form>
   );
