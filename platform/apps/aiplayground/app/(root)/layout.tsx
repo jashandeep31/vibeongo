@@ -15,11 +15,7 @@ export default function PlaygroundLayout({
     >
       <PlaygroundSidebar />
       <SidebarTrigger className="fixed top-3 left-3 z-[60] md:hidden" />
-      <main className="flex min-h-svh w-full flex-col">
-        <div className="flex flex-1 items-center justify-center p-6">
-          {children}
-        </div>
-      </main>
+      <main className="flex min-h-svh min-w-0 w-full flex-col">{children}</main>
     </SidebarProvider>
   );
 }

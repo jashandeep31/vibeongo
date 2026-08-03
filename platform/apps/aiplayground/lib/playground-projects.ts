@@ -3,7 +3,7 @@ export type PlaygroundChat = {
   name: string;
   url: string;
   isRunning?: boolean;
-  opencodeServerUrl?: string;
+  hasOpencodeServer?: boolean;
 };
 
 export type PlaygroundProject = {
@@ -26,7 +26,7 @@ export const playgroundProjects: PlaygroundProject[] = [
         name: "Landing page copy",
         url: "/projects/website-launch/chats/landing-page-copy",
         isRunning: true,
-        opencodeServerUrl: "http://192.168.1.69:4096",
+        hasOpencodeServer: true,
       },
       {
         id: "fix-authentication",

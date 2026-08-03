@@ -10,12 +10,11 @@ import { useQuery } from "@tanstack/react-query";
 const connections: OpencodeChatConnection[] = playgroundProjects.flatMap(
   (project) =>
     project.chats.flatMap((chat) =>
-      chat.opencodeServerUrl
+      chat.hasOpencodeServer
         ? [
             {
               projectId: project.id,
               chatId: chat.id,
-              serverUrl: chat.opencodeServerUrl,
             },
           ]
         : [],

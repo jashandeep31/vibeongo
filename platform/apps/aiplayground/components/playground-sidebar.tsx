@@ -45,7 +45,7 @@ export function PlaygroundSidebar() {
     ...project,
     chats: project.chats.map((chat) => ({
       ...chat,
-      defaultOpen: Boolean(chat.opencodeServerUrl),
+      defaultOpen: Boolean(chat.hasOpencodeServer),
       sessions: (sessionsByChat?.[chat.id] ?? []).map((session) => ({
         id: session.id,
         name: session.title,

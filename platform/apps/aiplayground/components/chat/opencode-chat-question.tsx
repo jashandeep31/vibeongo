@@ -1,0 +1,156 @@
+"use client";
+
+import MarkdownRenderer from "@/components/markdown-renderer";
+import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
+import type { ToolPart } from "@opencode-ai/sdk/v2/client";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import { cn } from "@repo/ui/lib/utils";
+import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { useState } from "react";
+
+export type OpencodeChatTurn = {
+  id: string;
+  question: string;
+  content: Array<
+    | { id: string; type: "text"; text: string }
+    | { id: string; type: "tools"; tools: ToolPart[] }
+  >;
+  reasoning: string;
+  agent?: string;
+  model?: string;
+  durationMs?: number;
+};
+
+const LoadingResponseSkeleton = () => (
+  <div className="space-y-3">
+    <Skeleton className="h-4 w-full max-w-2xl" />
+    <Skeleton className="h-4 w-full max-w-xl" />
+    <Skeleton className="h-4 w-full max-w-lg" />
+  </div>
+);
+
+export function OpencodeChatQuestion({
+  item,
+  isStreaming = false,
+  reserveBottomSpace = false,
+}: {
+  item: OpencodeChatTurn;
+  isStreaming?: boolean;
+  reserveBottomSpace?: boolean;
+}) {
+  const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
+  const [isCopied, setIsCopied] = useState(false);
+  const reasoning = item.reasoning.trim();
+  const answer = item.content
+    .flatMap((content) => (content.type === "text" ? [content.text] : []))
+    .join("\n\n")
+    .trim();
+
+  return (
+    <div
+      className={cn(
+        "flex flex-col gap-8",
+        reserveBottomSpace && "min-h-[42dvh] md:min-h-[60dvh]",
+      )}
+    >
+      {item.question ? (
+        <div className="flex justify-end">
+          <div className="bg-muted text-foreground border-border max-w-[90%] rounded-2xl border px-3 py-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
+            {item.question}
+          </div>
+        </div>
+      ) : null}
+
+      <div>
+        {reasoning ? (
+          <div className="mb-4 max-w-[75%]">
+            <div
+              className={
+                isReasoningExpanded
+                  ? "bg-muted/70 text-muted-foreground rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-sm"
+                  : "bg-muted/70 text-muted-foreground relative h-32 overflow-hidden rounded-lg text-sm leading-relaxed shadow-sm"
+              }
+            >
+              {isReasoningExpanded ? (
+                reasoning
+              ) : (
+                <>
+                  <div className="absolute inset-x-0 bottom-0 px-4 py-3 whitespace-pre-wrap">
+                    {reasoning}
+                  </div>
+                  <div className="from-muted pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b to-transparent" />
+                </>
+              )}
+            </div>
+            <button
+              type="button"
+              aria-expanded={isReasoningExpanded}
+              onClick={() => setIsReasoningExpanded((expanded) => !expanded)}
+              className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs font-medium transition-colors"
+            >
+              {isReasoningExpanded ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  Collapse reasoning
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  Expand reasoning
+                </>
+              )}
+            </button>
+          </div>
+        ) : null}
+        {item.content.length > 0 ? (
+          <>
+            <div className="grid grid-cols-1 gap-2">
+              {item.content.map((content) =>
+                content.type === "text" ? (
+                  <MarkdownRenderer key={content.id} content={content.text} />
+                ) : (
+                  <OpencodeToolCall key={content.id} tools={content.tools} />
+                ),
+              )}
+            </div>
+            {answer ? (
+              <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs">
+                <button
+                  type="button"
+                  aria-label="Copy response"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(answer);
+                    setIsCopied(true);
+                    window.setTimeout(() => setIsCopied(false), 1500);
+                  }}
+                >
+                  {isCopied ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                </button>
+                {[item.agent, item.model, formatDuration(item.durationMs)]
+                  .filter(Boolean)
+                  .map((value, index) => (
+                    <span key={`${value}-${index}`}>
+                      {index > 0 ? "· " : ""}
+                      {value}
+                    </span>
+                  ))}
+              </div>
+            ) : null}
+          </>
+        ) : isStreaming ? (
+          <LoadingResponseSkeleton />
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function formatDuration(durationMs?: number) {
+  if (durationMs === undefined) return undefined;
+  if (durationMs < 1000) return `${durationMs}ms`;
+  return `${Math.round(durationMs / 1000)}s`;
+}

@@ -1,14 +1,9 @@
 "use client";
 
+import { OpencodeSessionChat } from "@/components/chat/opencode-session-chat";
 import { useOpencodeSession } from "@/hooks/use-opencode-session";
 import { playgroundProjects } from "@/lib/playground-projects";
 import { useParams } from "next/navigation";
-
-function RawJson({ value }: { value: unknown }) {
-  const output = JSON.stringify(value, null, 2).replaceAll("\\n", "\n");
-
-  return <pre className="w-full whitespace-pre-wrap break-words">{output}</pre>;
-}
 
 export default function OpencodeSessionPage() {
   const { projectId, chatId, sessionId } = useParams<{
@@ -18,27 +13,34 @@ export default function OpencodeSessionPage() {
   }>();
   const project = playgroundProjects.find((item) => item.id === projectId);
   const chat = project?.chats.find((item) => item.id === chatId);
-  const { data, error, isPending } = useOpencodeSession({
+  const { data, error, isPending, isStreaming } = useOpencodeSession({
     chatId,
-    serverUrl: chat?.opencodeServerUrl,
     sessionId,
   });
 
   if (!project || !chat) {
-    return <RawJson value={{ error: "Saved chat not found" }} />;
+    return <div>Saved chat not found.</div>;
   }
 
-  if (!chat.opencodeServerUrl) {
-    return <RawJson value={{ error: "Chat has no OpenCode server" }} />;
+  if (!chat.hasOpencodeServer) {
+    return <div>Chat has no OpenCode server.</div>;
   }
 
   if (isPending) {
-    return <RawJson value={{ loading: true }} />;
+    return null;
   }
 
   if (error) {
-    return <RawJson value={{ error: error.message }} />;
+    return <div>{error.message}</div>;
   }
 
-  return <RawJson value={data} />;
+  return (
+    <OpencodeSessionChat
+      chatId={chatId}
+      sessionId={sessionId}
+      messages={data.messages}
+      rawResponse={data}
+      isStreaming={isStreaming}
+    />
+  );
 }

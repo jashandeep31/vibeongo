@@ -1,48 +1,41 @@
-import {
-  createOpencodeClient,
-  type OpencodeClient,
-} from "@opencode-ai/sdk/client";
-import type { Session } from "@opencode-ai/sdk";
+import type {
+  Event,
+  Message,
+  Part,
+  Session,
+  SnapshotFileDiff,
+} from "@opencode-ai/sdk/v2/client";
 
 export type OpencodeChatConnection = {
   chatId: string;
   projectId: string;
-  serverUrl: string;
 };
 
-const chatClients = new Map<
-  string,
-  { serverUrl: string; client: OpencodeClient }
->();
+export type OpencodeSessionData = {
+  session: Session;
+  messages: Array<{ info: Message; parts: Part[] }>;
+  changes: SnapshotFileDiff[];
+};
 
-export function getOpencodeChatClient(chatId: string, serverUrl: string) {
-  const existingConnection = chatClients.get(chatId);
-  if (existingConnection?.serverUrl === serverUrl) {
-    return existingConnection.client;
+async function readJson<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    throw new Error((await response.text()) || "OpenCode request failed");
   }
 
-  const client = createOpencodeClient({
-    baseUrl: serverUrl,
-  });
-
-  chatClients.set(chatId, { serverUrl, client });
-  return client;
+  return response.json() as Promise<T>;
 }
 
 export async function getOpencodeSessionsByChat(
   connections: OpencodeChatConnection[],
 ): Promise<Record<string, Session[]>> {
   const entries = await Promise.all(
-    connections.map(async ({ chatId, projectId, serverUrl }) => {
-      const client = getOpencodeChatClient(chatId, serverUrl);
-      const result = await client.session.list();
+    connections.map(async ({ chatId, projectId }) => {
+      const sessions = await readJson<Session[]>(
+        await fetch(`/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`),
+      );
 
-      if (result.error || !result.data) {
-        throw new Error(`Could not load OpenCode sessions for chat ${chatId}`);
-      }
-
-      console.log(`[OpenCode] sessions for ${projectId}/${chatId}`, result.data);
-      return [chatId, result.data] as const;
+      console.log(`[OpenCode] sessions for ${projectId}/${chatId}`, sessions);
+      return [chatId, sessions] as const;
     }),
   );
 
@@ -51,32 +44,36 @@ export async function getOpencodeSessionsByChat(
 
 export async function getOpencodeSessionRaw(
   chatId: string,
-  serverUrl: string,
   sessionId: string,
 ) {
-  const client = getOpencodeChatClient(chatId, serverUrl);
-  const path = { id: sessionId };
-  const [sessionResult, messagesResult, changesResult] = await Promise.all([
-    client.session.get({ path }),
-    client.session.messages({ path }),
-    client.session.diff({ path }),
-  ]);
-
-  if (sessionResult.error || !sessionResult.data) {
-    throw new Error(`Could not load OpenCode session ${sessionId}`);
-  }
-
-  if (messagesResult.error || !messagesResult.data) {
-    throw new Error(`Could not load messages for OpenCode session ${sessionId}`);
-  }
-
-  if (changesResult.error || !changesResult.data) {
-    throw new Error(`Could not load changes for OpenCode session ${sessionId}`);
-  }
-
-  return {
-    session: sessionResult.data,
-    messages: messagesResult.data,
-    changes: changesResult.data,
-  };
+  return readJson<OpencodeSessionData>(
+    await fetch(
+      `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
+    ),
+  );
 }
+
+export async function sendOpencodePrompt(
+  chatId: string,
+  sessionId: string,
+  text: string,
+) {
+  const response = await fetch(
+    `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
+    {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error((await response.text()) || "Could not send OpenCode prompt");
+  }
+}
+
+export function getOpencodeEventUrl(chatId: string) {
+  return `/api/opencode/chats/${encodeURIComponent(chatId)}/events`;
+}
+
+export type { Event };
