@@ -2,6 +2,7 @@
 
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { PromptInput } from "@/components/chat/prompt-input";
+import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import {
   useOpencodeInventory,
   useSendOpencodePrompt,
@@ -101,6 +102,7 @@ function createChatTurns(messages: SessionMessages) {
 }
 
 export function OpencodeSessionChat({
+  projectId,
   chatId,
   sessionId,
   serverUrl,
@@ -108,6 +110,7 @@ export function OpencodeSessionChat({
   rawResponse,
   isStreaming,
 }: {
+  projectId: string;
   chatId: string;
   sessionId: string;
   serverUrl: string;
@@ -180,12 +183,15 @@ export function OpencodeSessionChat({
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
+      <div className="absolute top-3 right-3 z-50">
+        <ProjectDomainsDialog projectId={projectId} />
+      </div>
       <div
         ref={scrollAreaRef}
         onScroll={updateScrollButtonVisibility}
         className="grid min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
       >
-        <div className="flex-1 px-4 py-8 md:px-8">
+        <div className="flex-1 px-4 pt-16 pb-8 md:px-8">
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
             {showRawResponse ? (
               <pre className="w-full text-xs break-words whitespace-pre-wrap">

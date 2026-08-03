@@ -13,6 +13,11 @@ export type ProjectDomains = {
     id: string;
     domain: string;
     target_port: number;
+    allow_all_ips: boolean;
+  }[];
+  allowed_ips: {
+    id: string;
+    ip: string;
   }[];
 };
 

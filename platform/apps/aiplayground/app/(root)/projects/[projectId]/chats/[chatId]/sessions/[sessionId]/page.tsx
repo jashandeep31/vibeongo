@@ -5,7 +5,8 @@ import { useOpencodeSession } from "@/hooks/use-opencode-session";
 import { useParams, useSearchParams } from "next/navigation";
 
 export default function OpencodeSessionPage() {
-  const { chatId, sessionId } = useParams<{
+  const { projectId, chatId, sessionId } = useParams<{
+    projectId: string;
     chatId: string;
     sessionId: string;
   }>();
@@ -31,6 +32,7 @@ export default function OpencodeSessionPage() {
 
   return (
     <OpencodeSessionChat
+      projectId={projectId}
       chatId={chatId}
       sessionId={sessionId}
       serverUrl={serverUrl}
