@@ -3,8 +3,8 @@
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
-import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
-import { playgroundProjects } from "@/lib/playground-projects";
+import { useGetProjects } from "@/hooks/use-project";
+import { useGetProjectSessions } from "@/hooks/use-project-sessions";
 import {
   Sidebar,
   SidebarContent,
@@ -40,20 +40,20 @@ const navigation = [
 ];
 
 export function PlaygroundSidebar() {
-  const { data: sessionsByChat } = useOpencodeSessions();
-  const projects = playgroundProjects.map((project) => ({
-    ...project,
-    chats: project.chats.map((chat) => ({
-      ...chat,
-      defaultOpen: Boolean(chat.hasOpencodeServer),
-      canCreateSession: Boolean(chat.hasOpencodeServer),
-      sessions: (sessionsByChat?.[chat.id] ?? []).map((session) => ({
+  const { data: projectData } = useGetProjects();
+  const { data: sessionData } = useGetProjectSessions({ limit: 100 });
+  const projects = (projectData ?? []).map((project) => ({
+    id: project.id,
+    name: project.name,
+    url: `/projects/${project.id}`,
+    sessions: (sessionData?.data ?? [])
+      .filter((session) => session.project_id === project.id)
+      .map((session) => ({
         id: session.id,
-        name: session.title,
-        url: `${chat.url}/sessions/${encodeURIComponent(session.id)}`,
-        directory: session.directory,
+        name: session.name,
+        url: `/projects/${project.id}/sessions/${session.id}`,
+        isRunning: session.instances.length > 0,
       })),
-    })),
   }));
 
   return (
