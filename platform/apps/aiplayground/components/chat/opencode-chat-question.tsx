@@ -5,7 +5,7 @@ import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
 import type { ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { cn } from "@repo/ui/lib/utils";
-import { Check, ChevronDown, ChevronUp, Copy } from "lucide-react";
+import { Check, Copy } from "lucide-react";
 import { useState } from "react";
 
 export type OpencodeChatTurn = {
@@ -15,8 +15,8 @@ export type OpencodeChatTurn = {
   content: Array<
     | { id: string; type: "text"; text: string }
     | { id: string; type: "tools"; tools: ToolPart[] }
+    | { id: string; type: "thinking"; active: boolean }
   >;
-  reasoning: string;
   agent?: string;
   model?: string;
   durationMs?: number;
@@ -39,9 +39,7 @@ export function OpencodeChatQuestion({
   isStreaming?: boolean;
   reserveBottomSpace?: boolean;
 }) {
-  const [isReasoningExpanded, setIsReasoningExpanded] = useState(false);
   const [isCopied, setIsCopied] = useState(false);
-  const reasoning = item.reasoning.trim();
   const answer = item.content
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
@@ -75,60 +73,27 @@ export function OpencodeChatQuestion({
         </div>
       ) : null}
 
-      <div>
-        {reasoning ? (
-          <div className="mb-4 max-w-[75%]">
-            <div
-              className={
-                isReasoningExpanded
-                  ? "bg-muted/70 text-muted-foreground rounded-lg px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-sm"
-                  : "bg-muted/70 text-muted-foreground relative h-32 overflow-hidden rounded-lg text-sm leading-relaxed shadow-sm"
-              }
-            >
-              {isReasoningExpanded ? (
-                reasoning
-              ) : (
-                <>
-                  <div className="absolute inset-x-0 bottom-0 px-4 py-3 whitespace-pre-wrap">
-                    {reasoning}
-                  </div>
-                  <div className="from-muted pointer-events-none absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b to-transparent" />
-                </>
-              )}
-            </div>
-            <button
-              type="button"
-              aria-expanded={isReasoningExpanded}
-              onClick={() => setIsReasoningExpanded((expanded) => !expanded)}
-              className="text-muted-foreground hover:text-foreground mt-2 inline-flex items-center gap-1 text-xs font-medium transition-colors"
-            >
-              {isReasoningExpanded ? (
-                <>
-                  <ChevronUp className="h-3.5 w-3.5" />
-                  Collapse reasoning
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="h-3.5 w-3.5" />
-                  Expand reasoning
-                </>
-              )}
-            </button>
-          </div>
-        ) : null}
+      <div className="group/response">
         {item.content.length > 0 ? (
           <>
             <div className="grid grid-cols-1 gap-2">
               {item.content.map((content) =>
                 content.type === "text" ? (
                   <MarkdownRenderer key={content.id} content={content.text} />
-                ) : (
+                ) : content.type === "tools" ? (
                   <OpencodeToolCall key={content.id} tools={content.tools} />
-                ),
+                ) : isStreaming && content.active ? (
+                  <div
+                    key={content.id}
+                    className="text-muted-foreground animate-pulse py-1 text-sm"
+                  >
+                    Thinking…
+                  </div>
+                ) : null,
               )}
             </div>
             {answer ? (
-              <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs">
+              <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs opacity-0 transition-opacity group-hover/response:opacity-100 focus-within:opacity-100">
                 <button
                   type="button"
                   aria-label="Copy response"

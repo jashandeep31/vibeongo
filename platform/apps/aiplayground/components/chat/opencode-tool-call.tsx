@@ -1,11 +1,47 @@
 "use client";
 
 import type { ToolPart } from "@opencode-ai/sdk/v2/client";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ExternalLink } from "lucide-react";
 
 export function OpencodeToolCall({ tools }: { tools: ToolPart[] }) {
   const firstTool = tools[0];
   if (!firstTool) return null;
+
+  const isWebfetchGroup = tools.every((tool) => tool.tool === "webfetch");
+  if (isWebfetchGroup) {
+    return (
+      <div className="space-y-1 py-1 text-sm">
+        {tools.map((tool) => {
+          const url = getSafeWebUrl(getStringInput(tool, "url"));
+
+          return (
+            <div key={tool.id} className="flex min-w-0 items-center gap-2 py-1">
+              <span className="text-foreground shrink-0 font-medium">
+                Webfetch
+              </span>
+              {url ? (
+                <a
+                  href={url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="min-w-0 truncate text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  {url}
+                </a>
+              ) : (
+                <span className="text-muted-foreground truncate">
+                  Unknown URL
+                </span>
+              )}
+              {url ? (
+                <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   const isSearchGroup = tools.every((tool) => tool.tool === "glob");
 
@@ -96,4 +132,15 @@ function getToolName(tool: ToolPart) {
 function getStringInput(tool: ToolPart, key: string) {
   const value = tool.state.input[key];
   return typeof value === "string" ? value : "";
+}
+
+function getSafeWebUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "http:" || url.protocol === "https:"
+      ? url.toString()
+      : undefined;
+  } catch {
+    return undefined;
+  }
 }

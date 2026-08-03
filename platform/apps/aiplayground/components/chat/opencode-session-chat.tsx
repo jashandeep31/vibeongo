@@ -16,18 +16,11 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SessionMessages = OpencodeSessionData["messages"];
 
-function getPartText(
-  parts: SessionMessages[number]["parts"],
-  type: "text" | "reasoning",
-) {
+function getPartText(parts: SessionMessages[number]["parts"], type: "text") {
   return parts
     .flatMap((part) => {
       if (type === "text" && part.type === "text") {
         return part.ignored ? [] : [part.text];
-      }
-
-      if (type === "reasoning" && part.type === "reasoning") {
-        return [part.text];
       }
 
       return [];
@@ -55,8 +48,8 @@ function createChatTurns(messages: SessionMessages) {
       content: [] as Array<
         | { id: string; type: "text"; text: string }
         | { id: string; type: "tools"; tools: ToolPart[] }
+        | { id: string; type: "thinking"; active: boolean }
       >,
-      reasoning: "",
       agent: undefined as string | undefined,
       model: undefined as string | undefined,
       durationMs: undefined as number | undefined,
@@ -69,10 +62,17 @@ function createChatTurns(messages: SessionMessages) {
     const turn = turnsByMessageId.get(message.info.parentID);
     if (!turn) continue;
 
-    const reasoning = getPartText(message.parts, "reasoning");
-    turn.reasoning = [turn.reasoning, reasoning].filter(Boolean).join("\n\n");
-
     for (const part of message.parts) {
+      if (part.type === "reasoning") {
+        if (!part.time?.end) {
+          turn.content.push({
+            id: part.id,
+            type: "thinking",
+            active: true,
+          });
+        }
+      }
+
       if (part.type === "text" && !part.ignored && part.text.trim()) {
         turn.content.push({ id: part.id, type: "text", text: part.text });
       }
