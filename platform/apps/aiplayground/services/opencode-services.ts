@@ -47,12 +47,40 @@ export type OpencodePromptSelection = {
   agent?: string;
 };
 
+export type OpencodeProject = {
+  id: string;
+  worktree: string;
+  sandboxes: string[];
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error((await response.text()) || "OpenCode request failed");
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function getOpencodeSessions(chatId: string, serverUrl: string) {
+  return readJson<Session[]>(
+    await fetch(
+      withServerUrl(
+        `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`,
+        serverUrl,
+      ),
+    ),
+  );
+}
+
+export async function getOpencodeProjects(chatId: string, serverUrl: string) {
+  return readJson<OpencodeProject[]>(
+    await fetch(
+      withServerUrl(
+        `/api/opencode/chats/${encodeURIComponent(chatId)}/projects`,
+        serverUrl,
+      ),
+    ),
+  );
 }
 
 export async function getOpencodeSessionRaw(

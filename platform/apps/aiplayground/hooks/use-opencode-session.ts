@@ -191,6 +191,15 @@ export const useOpencodeSession = ({
         setIsStreaming(false);
       }
 
+      if (
+        event.type === "session.updated" &&
+        event.properties.sessionID === sessionId
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
+        });
+      }
+
       updateCachedSession(event);
     };
 

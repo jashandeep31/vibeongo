@@ -1,10 +1,15 @@
 "use client";
 
+import { OpencodeProjectDialog } from "@/components/dialogs/opencode-project-dialog";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
 import { useGetInstances } from "@/hooks/use-instance";
+import {
+  useOpencodeProjects,
+  useOpencodeSessions,
+} from "@/hooks/use-opencode-sessions";
 import { useGetProjectDomainsById } from "@/hooks/use-project";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import {
@@ -24,9 +29,17 @@ import {
   SidebarMenuSubItem,
 } from "@repo/ui/components/sidebar-v2";
 import { Button } from "@repo/ui/components/button";
-import { ChevronRight, Folder, Play, SquareTerminal } from "lucide-react";
+import {
+  ChevronRight,
+  Folder,
+  MessageCircle,
+  Play,
+  Plus,
+  SquareDashedMousePointer,
+  SquareTerminal,
+} from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
 type Project = {
@@ -52,6 +65,8 @@ function ProjectSessionNavItem({
   onResume,
 }: ProjectSessionNavItemProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
   const {
     data: instancesData,
     isPending: isInstancePending,
@@ -71,47 +86,124 @@ function ProjectSessionNavItem({
       ? domainsData.proxy_domains.find((domain) => domain.target_port === 4096)
           ?.domain
       : undefined;
-  const sessionUrl = opencodeDomain
-    ? `/projects/${session.projectId}/chats/${session.id}?serverUrl=${encodeURIComponent(`https://${opencodeDomain}`)}`
-    : null;
+  const serverUrl = opencodeDomain ? `https://${opencodeDomain}` : "";
+  const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
+  const { data: opencodeSessions } = useOpencodeSessions(
+    session.id,
+    serverUrl,
+    !!serverUrl,
+  );
+  const {
+    data: opencodeProjects,
+    isPending: isProjectsPending,
+    isError: isProjectsError,
+  } = useOpencodeProjects(
+    session.id,
+    serverUrl,
+    isProjectDialogOpen && !!serverUrl,
+  );
+
+  const handleProjectSelect = (directory: string) => {
+    setIsProjectDialogOpen(false);
+    const params = new URLSearchParams({ serverUrl, directory });
+    router.push(`${chatUrl}?${params.toString()}`);
+  };
+
+  if (serverUrl) {
+    return (
+      <>
+        <Collapsible asChild defaultOpen className="group/session">
+          <SidebarMenuSubItem>
+            <CollapsibleTrigger asChild>
+              <SidebarMenuSubButton asChild>
+                <button type="button">
+                  <MessageCircle />
+                  <span
+                    className="min-w-0 flex-1 truncate"
+                    title={session.name}
+                  >
+                    {session.name}
+                  </span>
+                  <span
+                    className="ml-1 size-2 shrink-0 rounded-full bg-emerald-500"
+                    title="Running"
+                  >
+                    <span className="sr-only">Running</span>
+                  </span>
+                  <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
+                </button>
+              </SidebarMenuSubButton>
+            </CollapsibleTrigger>
+
+            <CollapsibleContent>
+              <SidebarMenuSub className="mr-0 ml-4">
+                {(opencodeSessions ?? []).map((opencodeSession) => {
+                  const params = new URLSearchParams({ serverUrl });
+                  const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+
+                  return (
+                    <SidebarMenuSubItem key={opencodeSession.id}>
+                      <SidebarMenuSubButton
+                        asChild
+                        size="sm"
+                        isActive={pathname === url.split("?")[0]}
+                      >
+                        <Link href={url}>
+                          <SquareTerminal />
+                          <span
+                            className="min-w-0 flex-1 truncate"
+                            title={opencodeSession.title}
+                          >
+                            {opencodeSession.title}
+                          </span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  );
+                })}
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild size="sm">
+                    <button
+                      type="button"
+                      onClick={() => setIsProjectDialogOpen(true)}
+                    >
+                      <Plus />
+                      <span>New chat</span>
+                    </button>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuSubItem>
+        </Collapsible>
+        <OpencodeProjectDialog
+          open={isProjectDialogOpen}
+          onOpenChange={setIsProjectDialogOpen}
+          projects={opencodeProjects ?? []}
+          isLoading={isProjectsPending}
+          isError={isProjectsError}
+          onSelect={handleProjectSelect}
+        />
+      </>
+    );
+  }
 
   return (
     <SidebarMenuSubItem>
       <div className="flex items-center gap-1">
-        <SidebarMenuSubButton
-          asChild={!!sessionUrl}
-          isActive={!!sessionUrl && pathname === sessionUrl.split("?")[0]}
-          className="min-w-0 flex-1"
-        >
-          {sessionUrl ? (
-            <Link href={sessionUrl}>
-              <SquareTerminal />
-              <span className="min-w-0 flex-1 truncate" title={session.name}>
-                {session.name}
-              </span>
-              <span
-                className="ml-auto size-2 shrink-0 rounded-full bg-emerald-500"
-                title="Running"
-              >
-                <span className="sr-only">Running</span>
-              </span>
-            </Link>
-          ) : (
-            <span>
-              <SquareTerminal />
-              <span className="min-w-0 flex-1 truncate" title={session.name}>
-                {session.name}
-              </span>
-              {instance ? (
-                <span
-                  className="ml-auto size-2 shrink-0 rounded-full bg-amber-500"
-                  title="OpenCode domain unavailable"
-                >
-                  <span className="sr-only">OpenCode domain unavailable</span>
-                </span>
-              ) : null}
+        <SidebarMenuSubButton className="min-w-0 flex-1">
+          <SquareDashedMousePointer />
+          <span className="min-w-0 flex-1 truncate" title={session.name}>
+            {session.name}
+          </span>
+          {instance ? (
+            <span
+              className="ml-auto size-2 shrink-0 rounded-full bg-amber-500"
+              title="OpenCode domain unavailable"
+            >
+              <span className="sr-only">OpenCode domain unavailable</span>
             </span>
-          )}
+          ) : null}
         </SidebarMenuSubButton>
         {!isInstancePending && !isInstanceError && !instance ? (
           <Button

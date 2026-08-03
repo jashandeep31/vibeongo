@@ -33,6 +33,19 @@ export async function getOpencodeProjectDirectories(
   connectionId: string,
   serverUrl: string,
 ) {
+  const projects = await getOpencodeProjects(connectionId, serverUrl);
+  const projectDirectories = projects.flatMap((project) => [
+    project.worktree,
+    ...project.sandboxes,
+  ]);
+
+  return [...new Set(projectDirectories.filter(Boolean))];
+}
+
+export async function getOpencodeProjects(
+  connectionId: string,
+  serverUrl: string,
+) {
   const client = getOpencodeServerClient(connectionId, serverUrl);
   const result = await client.project.list();
 
@@ -40,17 +53,11 @@ export async function getOpencodeProjectDirectories(
     throw new Error("Could not load OpenCode projects");
   }
 
-  const projects = [...result.data].sort((left, right) => {
+  return [...result.data].sort((left, right) => {
     if (left.id === "global") return 1;
     if (right.id === "global") return -1;
     return right.time.updated - left.time.updated;
   });
-  const projectDirectories = projects.flatMap((project) => [
-    project.worktree,
-    ...project.sandboxes,
-  ]);
-
-  return [...new Set(projectDirectories.filter(Boolean))];
 }
 
 export async function getOpencodeSessionsAcrossProjects(

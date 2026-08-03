@@ -46,7 +46,6 @@ export async function POST(
     const client = getOpencodeServerClient(chatId, serverUrl);
     const result = await client.session.create({
       directory,
-      title: "New chat",
     });
 
     if (result.error || !result.data) {

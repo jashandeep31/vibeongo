@@ -2,11 +2,35 @@
 
 import {
   createOpencodeSession,
+  getOpencodeProjects,
+  getOpencodeSessions,
   sendOpencodePrompt,
   type OpencodePromptSelection,
   type UploadAttachment,
 } from "@/services/opencode-services";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export const useOpencodeSessions = (
+  chatId: string,
+  serverUrl: string,
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
+    queryFn: () => getOpencodeSessions(chatId, serverUrl),
+    enabled: enabled && !!chatId && !!serverUrl,
+  });
+
+export const useOpencodeProjects = (
+  chatId: string,
+  serverUrl: string,
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: ["opencode", "projects", chatId, serverUrl],
+    queryFn: () => getOpencodeProjects(chatId, serverUrl),
+    enabled: enabled && !!chatId && !!serverUrl,
+  });
 
 export const useStartOpencodeSession = () => {
   const queryClient = useQueryClient();
