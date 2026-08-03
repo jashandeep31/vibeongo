@@ -6,30 +6,34 @@ import {
   type Session,
 } from "@opencode-ai/sdk/v2/client";
 
-const serverUrls: Record<string, string | undefined> = {
-  "landing-page-copy":
-    process.env.OPENCODE_LANDING_PAGE_COPY_URL ??
-    "https://aeh0l2q99e.in.vibeongo.one",
-};
-
 const clients = new Map<string, OpencodeClient>();
 
-export function getOpencodeServerClient(chatId: string) {
-  const serverUrl = serverUrls[chatId];
-  if (!serverUrl) {
-    throw new Error("OpenCode server is not configured for this chat");
-  }
+export function getOpencodeServerUrl(request: Request) {
+  const serverUrl = new URL(request.url).searchParams.get("serverUrl");
+  if (!serverUrl) throw new Error("OpenCode server URL is required");
+  return normalizeOpencodeServerUrl(serverUrl);
+}
 
-  const existingClient = clients.get(chatId);
+export function getOpencodeServerClient(
+  connectionId: string,
+  serverUrl: string,
+) {
+  const normalizedServerUrl = normalizeOpencodeServerUrl(serverUrl);
+  const cacheKey = `${connectionId}:${normalizedServerUrl}`;
+
+  const existingClient = clients.get(cacheKey);
   if (existingClient) return existingClient;
 
-  const client = createOpencodeClient({ baseUrl: serverUrl });
-  clients.set(chatId, client);
+  const client = createOpencodeClient({ baseUrl: normalizedServerUrl });
+  clients.set(cacheKey, client);
   return client;
 }
 
-export async function getOpencodeProjectDirectories(chatId: string) {
-  const client = getOpencodeServerClient(chatId);
+export async function getOpencodeProjectDirectories(
+  connectionId: string,
+  serverUrl: string,
+) {
+  const client = getOpencodeServerClient(connectionId, serverUrl);
   const result = await client.project.list();
 
   if (result.error || !result.data) {
@@ -49,9 +53,15 @@ export async function getOpencodeProjectDirectories(chatId: string) {
   return [...new Set(projectDirectories.filter(Boolean))];
 }
 
-export async function getOpencodeSessionsAcrossProjects(chatId: string) {
-  const client = getOpencodeServerClient(chatId);
-  const directories = await getOpencodeProjectDirectories(chatId);
+export async function getOpencodeSessionsAcrossProjects(
+  connectionId: string,
+  serverUrl: string,
+) {
+  const client = getOpencodeServerClient(connectionId, serverUrl);
+  const directories = await getOpencodeProjectDirectories(
+    connectionId,
+    serverUrl,
+  );
   const results = await Promise.all(
     directories.map((directory) =>
       client.session.list({ directory, roots: true, limit: 100 }),
@@ -72,9 +82,16 @@ export async function getOpencodeSessionsAcrossProjects(chatId: string) {
   );
 }
 
-export async function findOpencodeSession(chatId: string, sessionId: string) {
-  const client = getOpencodeServerClient(chatId);
-  const directories = await getOpencodeProjectDirectories(chatId);
+export async function findOpencodeSession(
+  connectionId: string,
+  sessionId: string,
+  serverUrl: string,
+) {
+  const client = getOpencodeServerClient(connectionId, serverUrl);
+  const directories = await getOpencodeProjectDirectories(
+    connectionId,
+    serverUrl,
+  );
   const results = await Promise.all(
     directories.map((directory) =>
       client.session.get({ sessionID: sessionId, directory }),
@@ -82,4 +99,20 @@ export async function findOpencodeSession(chatId: string, sessionId: string) {
   );
 
   return results.find((result) => !result.error && result.data)?.data;
+}
+
+function normalizeOpencodeServerUrl(serverUrl: string) {
+  const url = new URL(serverUrl);
+
+  if (
+    url.protocol !== "https:" ||
+    (!url.hostname.endsWith(".vibeongo.one") && url.hostname !== "vibeongo.one")
+  ) {
+    throw new Error("Invalid OpenCode server URL");
+  }
+
+  url.pathname = "";
+  url.search = "";
+  url.hash = "";
+  return url.toString().replace(/\/$/, "");
 }

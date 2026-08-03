@@ -2,28 +2,23 @@
 
 import { OpencodeSessionChat } from "@/components/chat/opencode-session-chat";
 import { useOpencodeSession } from "@/hooks/use-opencode-session";
-import { playgroundProjects } from "@/lib/playground-projects";
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 
 export default function OpencodeSessionPage() {
-  const { projectId, chatId, sessionId } = useParams<{
-    projectId: string;
+  const { chatId, sessionId } = useParams<{
     chatId: string;
     sessionId: string;
   }>();
-  const project = playgroundProjects.find((item) => item.id === projectId);
-  const chat = project?.chats.find((item) => item.id === chatId);
+  const searchParams = useSearchParams();
+  const serverUrl = searchParams.get("serverUrl") ?? "";
   const { data, error, isPending, isStreaming } = useOpencodeSession({
     chatId,
     sessionId,
+    serverUrl,
   });
 
-  if (!project || !chat) {
-    return <div>Saved chat not found.</div>;
-  }
-
-  if (!chat.hasOpencodeServer) {
-    return <div>Chat has no OpenCode server.</div>;
+  if (!serverUrl) {
+    return <div>OpenCode server is not available for this session.</div>;
   }
 
   if (isPending) {
@@ -38,6 +33,7 @@ export default function OpencodeSessionPage() {
     <OpencodeSessionChat
       chatId={chatId}
       sessionId={sessionId}
+      serverUrl={serverUrl}
       messages={data.messages}
       rawResponse={data}
       isStreaming={isStreaming}

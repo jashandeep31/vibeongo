@@ -103,19 +103,21 @@ function createChatTurns(messages: SessionMessages) {
 export function OpencodeSessionChat({
   chatId,
   sessionId,
+  serverUrl,
   messages,
   rawResponse,
   isStreaming,
 }: {
   chatId: string;
   sessionId: string;
+  serverUrl: string;
   messages: SessionMessages;
   rawResponse: OpencodeSessionData;
   isStreaming: boolean;
 }) {
   const turns = useMemo(() => createChatTurns(messages), [messages]);
-  const sendPrompt = useSendOpencodePrompt({ chatId, sessionId });
-  const { data: inventory } = useOpencodeInventory(chatId);
+  const sendPrompt = useSendOpencodePrompt({ chatId, sessionId, serverUrl });
+  const { data: inventory } = useOpencodeInventory(chatId, serverUrl);
   const [selection, setSelection] = useState<OpencodePromptSelection>(() => {
     const sessionSelection = getSessionSelection(rawResponse);
     if (typeof window === "undefined") return sessionSelection;

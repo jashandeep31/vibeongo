@@ -51,8 +51,7 @@ export function PlaygroundSidebar() {
       .map((session) => ({
         id: session.id,
         name: session.name,
-        url: `/projects/${project.id}/sessions/${session.id}`,
-        isRunning: session.instances.length > 0,
+        projectId: project.id,
       })),
   }));
 

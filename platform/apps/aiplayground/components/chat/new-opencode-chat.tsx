@@ -10,15 +10,17 @@ import { useState } from "react";
 export function NewOpencodeChat({
   chatId,
   chatUrl,
+  serverUrl,
   directory,
 }: {
   chatId: string;
   chatUrl: string;
+  serverUrl: string;
   directory?: string;
 }) {
   const router = useRouter();
   const startSession = useStartOpencodeSession();
-  const { data: inventory } = useOpencodeInventory(chatId);
+  const { data: inventory } = useOpencodeInventory(chatId, serverUrl);
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const effectiveSelection: OpencodePromptSelection = {
     model: selection.model ?? inventory?.models[0]?.id,
@@ -32,12 +34,16 @@ export function NewOpencodeChat({
   const handleSubmit = async (text: string, files: File[]) => {
     const session = await startSession.mutateAsync({
       chatId,
+      serverUrl,
       directory,
       text,
       files,
       selection: effectiveSelection,
     });
-    router.replace(`${chatUrl}/sessions/${encodeURIComponent(session.id)}`);
+    const params = new URLSearchParams({ serverUrl });
+    router.replace(
+      `${chatUrl}/sessions/${encodeURIComponent(session.id)}?${params.toString()}`,
+    );
   };
 
   return (

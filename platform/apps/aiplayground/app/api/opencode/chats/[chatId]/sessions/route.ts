@@ -1,16 +1,20 @@
 import {
   getOpencodeProjectDirectories,
   getOpencodeServerClient,
+  getOpencodeServerUrl,
   getOpencodeSessionsAcrossProjects,
 } from "@/services/opencode-server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ chatId: string }> },
 ) {
   try {
     const { chatId } = await params;
-    const sessions = await getOpencodeSessionsAcrossProjects(chatId);
+    const sessions = await getOpencodeSessionsAcrossProjects(
+      chatId,
+      getOpencodeServerUrl(request),
+    );
     return Response.json(sessions);
   } catch (error) {
     console.error("OpenCode session list failed", error);
@@ -24,10 +28,11 @@ export async function POST(
 ) {
   try {
     const { chatId } = await params;
+    const serverUrl = getOpencodeServerUrl(request);
     const body = (await request.json().catch(() => ({}))) as {
       directory?: unknown;
     };
-    const directories = await getOpencodeProjectDirectories(chatId);
+    const directories = await getOpencodeProjectDirectories(chatId, serverUrl);
     const requestedDirectory =
       typeof body.directory === "string" ? body.directory : undefined;
     const directory = requestedDirectory ?? directories[0];
@@ -38,7 +43,7 @@ export async function POST(
       });
     }
 
-    const client = getOpencodeServerClient(chatId);
+    const client = getOpencodeServerClient(chatId, serverUrl);
     const result = await client.session.create({
       directory,
       title: "New chat",

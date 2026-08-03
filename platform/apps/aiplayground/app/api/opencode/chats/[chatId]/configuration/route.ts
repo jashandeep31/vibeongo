@@ -1,12 +1,18 @@
-import { getOpencodeServerClient } from "@/services/opencode-server";
+import {
+  getOpencodeServerClient,
+  getOpencodeServerUrl,
+} from "@/services/opencode-server";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ chatId: string }> },
 ) {
   try {
     const { chatId } = await params;
-    const client = getOpencodeServerClient(chatId);
+    const client = getOpencodeServerClient(
+      chatId,
+      getOpencodeServerUrl(request),
+    );
     const [providerResponse, agentsResponse] = await Promise.all([
       client.provider.list(),
       client.app.agents(),

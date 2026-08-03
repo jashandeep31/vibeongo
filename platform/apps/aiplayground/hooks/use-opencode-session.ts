@@ -16,23 +16,28 @@ import { useEffect, useMemo, useState } from "react";
 export const useOpencodeSession = ({
   chatId,
   sessionId,
+  serverUrl,
 }: {
   chatId: string;
   sessionId: string;
+  serverUrl: string;
 }) => {
   const queryClient = useQueryClient();
   const [isStreaming, setIsStreaming] = useState(false);
   const queryKey = useMemo(
-    () => ["opencode", "session", chatId, sessionId],
-    [chatId, sessionId],
+    () => ["opencode", "session", chatId, sessionId, serverUrl],
+    [chatId, serverUrl, sessionId],
   );
   const query = useQuery({
     queryKey,
-    queryFn: () => getOpencodeSessionRaw(chatId, sessionId),
+    queryFn: () => getOpencodeSessionRaw(chatId, sessionId, serverUrl),
+    enabled: !!serverUrl,
   });
 
   useEffect(() => {
-    const source = new EventSource(getOpencodeEventUrl(chatId));
+    if (!serverUrl) return;
+
+    const source = new EventSource(getOpencodeEventUrl(chatId, serverUrl));
 
     const updateCachedSession = (event: Event) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) => {
@@ -190,7 +195,7 @@ export const useOpencodeSession = ({
     };
 
     return () => source.close();
-  }, [chatId, queryClient, queryKey, sessionId]);
+  }, [chatId, queryClient, queryKey, serverUrl, sessionId]);
 
   return { ...query, isStreaming };
 };
@@ -198,12 +203,14 @@ export const useOpencodeSession = ({
 export const useSendOpencodePrompt = ({
   chatId,
   sessionId,
+  serverUrl,
 }: {
   chatId: string;
   sessionId: string;
+  serverUrl: string;
 }) => {
   const queryClient = useQueryClient();
-  const queryKey = ["opencode", "session", chatId, sessionId];
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
 
   return useMutation({
     mutationFn: async ({
@@ -231,16 +238,17 @@ export const useSendOpencodePrompt = ({
         text,
         attachments,
         selection,
+        serverUrl,
       );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
 
-export const useOpencodeInventory = (chatId: string) =>
+export const useOpencodeInventory = (chatId: string, serverUrl: string) =>
   useQuery({
-    queryKey: ["opencode", "inventory", chatId],
-    queryFn: () => getOpencodeInventory(chatId),
+    queryKey: ["opencode", "inventory", chatId, serverUrl],
+    queryFn: () => getOpencodeInventory(chatId, serverUrl),
     staleTime: 60_000,
   });
 

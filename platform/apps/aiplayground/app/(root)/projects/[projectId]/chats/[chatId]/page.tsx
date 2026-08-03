@@ -1,7 +1,6 @@
 "use client";
 
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
-import { playgroundProjects } from "@/lib/playground-projects";
 import { useParams, useSearchParams } from "next/navigation";
 
 export default function NewOpencodeChatPage() {
@@ -10,21 +9,19 @@ export default function NewOpencodeChatPage() {
     chatId: string;
   }>();
   const searchParams = useSearchParams();
-  const project = playgroundProjects.find((item) => item.id === projectId);
-  const chat = project?.chats.find((item) => item.id === chatId);
+  const serverUrl = searchParams.get("serverUrl");
 
-  if (!project || !chat) {
-    return <div>Saved chat not found.</div>;
+  if (!serverUrl) {
+    return <div>OpenCode server is not available for this session.</div>;
   }
 
-  if (!chat.hasOpencodeServer) {
-    return <div>Chat has no OpenCode server.</div>;
-  }
+  const chatUrl = `/projects/${projectId}/chats/${chatId}`;
 
   return (
     <NewOpencodeChat
       chatId={chatId}
-      chatUrl={chat.url}
+      chatUrl={chatUrl}
+      serverUrl={serverUrl}
       directory={searchParams.get("directory") ?? undefined}
     />
   );

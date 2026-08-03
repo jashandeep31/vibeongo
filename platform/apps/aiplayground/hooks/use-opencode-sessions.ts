@@ -1,39 +1,12 @@
 "use client";
 
-import { playgroundProjects } from "@/lib/playground-projects";
 import {
   createOpencodeSession,
-  getOpencodeSessionsByChat,
   sendOpencodePrompt,
-  type OpencodeChatConnection,
   type OpencodePromptSelection,
   type UploadAttachment,
 } from "@/services/opencode-services";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-const connections: OpencodeChatConnection[] = playgroundProjects.flatMap(
-  (project) =>
-    project.chats.flatMap((chat) =>
-      chat.hasOpencodeServer
-        ? [
-            {
-              projectId: project.id,
-              chatId: chat.id,
-            },
-          ]
-        : [],
-    ),
-);
-
-export const useOpencodeSessions = () =>
-  useQuery({
-    queryKey: ["opencode", "chat-sessions", connections],
-    queryFn: () => {
-      console.log("[Playground] saved projects", playgroundProjects);
-      return getOpencodeSessionsByChat(connections);
-    },
-    enabled: connections.length > 0,
-  });
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 export const useStartOpencodeSession = () => {
   const queryClient = useQueryClient();
@@ -41,18 +14,20 @@ export const useStartOpencodeSession = () => {
   return useMutation({
     mutationFn: async ({
       chatId,
+      serverUrl,
       directory,
       text,
       files,
       selection,
     }: {
       chatId: string;
+      serverUrl: string;
       directory?: string;
       text: string;
       files: File[];
       selection: OpencodePromptSelection;
     }) => {
-      const session = await createOpencodeSession(chatId, directory);
+      const session = await createOpencodeSession(chatId, serverUrl, directory);
       const attachments: UploadAttachment[] = await Promise.all(
         files.map(async (file) => ({
           type: "image" as const,
@@ -69,6 +44,7 @@ export const useStartOpencodeSession = () => {
         text,
         attachments,
         selection,
+        serverUrl,
       );
       return session;
     },

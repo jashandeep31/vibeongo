@@ -1,4 +1,7 @@
-import { getOpencodeServerClient } from "@/services/opencode-server";
+import {
+  getOpencodeServerClient,
+  getOpencodeServerUrl,
+} from "@/services/opencode-server";
 
 export const dynamic = "force-dynamic";
 
@@ -7,7 +10,7 @@ export async function GET(
   { params }: { params: Promise<{ chatId: string }> },
 ) {
   const { chatId } = await params;
-  const client = getOpencodeServerClient(chatId);
+  const client = getOpencodeServerClient(chatId, getOpencodeServerUrl(request));
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({

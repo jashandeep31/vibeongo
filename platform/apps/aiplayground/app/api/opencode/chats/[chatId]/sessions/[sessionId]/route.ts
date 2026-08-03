@@ -1,6 +1,7 @@
 import {
   findOpencodeSession,
   getOpencodeServerClient,
+  getOpencodeServerUrl,
 } from "@/services/opencode-server";
 import type { FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 
@@ -8,11 +9,12 @@ type RouteParams = {
   params: Promise<{ chatId: string; sessionId: string }>;
 };
 
-export async function GET(_request: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
-    const client = getOpencodeServerClient(chatId);
-    const session = await findOpencodeSession(chatId, sessionId);
+    const serverUrl = getOpencodeServerUrl(request);
+    const client = getOpencodeServerClient(chatId, serverUrl);
+    const session = await findOpencodeSession(chatId, sessionId, serverUrl);
 
     if (!session) {
       return new Response("OpenCode session not found", { status: 404 });
@@ -52,6 +54,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
 export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
+    const serverUrl = getOpencodeServerUrl(request);
     const body = (await request.json()) as {
       text?: unknown;
       attachments?: unknown;
@@ -67,8 +70,8 @@ export async function POST(request: Request, { params }: RouteParams) {
       });
     }
 
-    const client = getOpencodeServerClient(chatId);
-    const session = await findOpencodeSession(chatId, sessionId);
+    const client = getOpencodeServerClient(chatId, serverUrl);
+    const session = await findOpencodeSession(chatId, sessionId, serverUrl);
     if (!session) {
       return new Response("OpenCode session not found", { status: 404 });
     }

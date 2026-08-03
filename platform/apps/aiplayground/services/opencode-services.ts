@@ -6,11 +6,6 @@ import type {
   SnapshotFileDiff,
 } from "@opencode-ai/sdk/v2/client";
 
-export type OpencodeChatConnection = {
-  chatId: string;
-  projectId: string;
-};
-
 export type OpencodeSessionData = {
   session: Session;
   messages: Array<{ info: Message; parts: Part[] }>;
@@ -60,50 +55,48 @@ async function readJson<T>(response: Response): Promise<T> {
   return response.json() as Promise<T>;
 }
 
-export async function getOpencodeSessionsByChat(
-  connections: OpencodeChatConnection[],
-): Promise<Record<string, Session[]>> {
-  const entries = await Promise.all(
-    connections.map(async ({ chatId, projectId }) => {
-      const sessions = await readJson<Session[]>(
-        await fetch(
-          `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`,
-        ),
-      );
-
-      console.log(`[OpenCode] sessions for ${projectId}/${chatId}`, sessions);
-      return [chatId, sessions] as const;
-    }),
-  );
-
-  return Object.fromEntries(entries);
-}
-
-export async function getOpencodeSessionRaw(chatId: string, sessionId: string) {
+export async function getOpencodeSessionRaw(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+) {
   return readJson<OpencodeSessionData>(
     await fetch(
-      `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
+      withServerUrl(
+        `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
+        serverUrl,
+      ),
     ),
   );
 }
 
 export async function createOpencodeSession(
   chatId: string,
+  serverUrl: string,
   directory?: string,
 ) {
   return readJson<Session>(
-    await fetch(`/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ directory }),
-    }),
+    await fetch(
+      withServerUrl(
+        `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`,
+        serverUrl,
+      ),
+      {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ directory }),
+      },
+    ),
   );
 }
 
-export async function getOpencodeInventory(chatId: string) {
+export async function getOpencodeInventory(chatId: string, serverUrl: string) {
   return readJson<OpencodeInventory>(
     await fetch(
-      `/api/opencode/chats/${encodeURIComponent(chatId)}/configuration`,
+      withServerUrl(
+        `/api/opencode/chats/${encodeURIComponent(chatId)}/configuration`,
+        serverUrl,
+      ),
     ),
   );
 }
@@ -114,9 +107,13 @@ export async function sendOpencodePrompt(
   text: string,
   attachments: UploadAttachment[],
   selection: OpencodePromptSelection,
+  serverUrl: string,
 ) {
   const response = await fetch(
-    `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
+    withServerUrl(
+      `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
+      serverUrl,
+    ),
     {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -131,8 +128,16 @@ export async function sendOpencodePrompt(
   }
 }
 
-export function getOpencodeEventUrl(chatId: string) {
-  return `/api/opencode/chats/${encodeURIComponent(chatId)}/events`;
+export function getOpencodeEventUrl(chatId: string, serverUrl: string) {
+  return withServerUrl(
+    `/api/opencode/chats/${encodeURIComponent(chatId)}/events`,
+    serverUrl,
+  );
 }
 
 export type { Event };
+
+function withServerUrl(path: string, serverUrl: string) {
+  const params = new URLSearchParams({ serverUrl });
+  return `${path}?${params.toString()}`;
+}
