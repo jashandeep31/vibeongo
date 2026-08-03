@@ -48,3 +48,35 @@ export async function getOpencodeSessionsByChat(
 
   return Object.fromEntries(entries);
 }
+
+export async function getOpencodeSessionRaw(
+  chatId: string,
+  serverUrl: string,
+  sessionId: string,
+) {
+  const client = getOpencodeChatClient(chatId, serverUrl);
+  const path = { id: sessionId };
+  const [sessionResult, messagesResult, changesResult] = await Promise.all([
+    client.session.get({ path }),
+    client.session.messages({ path }),
+    client.session.diff({ path }),
+  ]);
+
+  if (sessionResult.error || !sessionResult.data) {
+    throw new Error(`Could not load OpenCode session ${sessionId}`);
+  }
+
+  if (messagesResult.error || !messagesResult.data) {
+    throw new Error(`Could not load messages for OpenCode session ${sessionId}`);
+  }
+
+  if (changesResult.error || !changesResult.data) {
+    throw new Error(`Could not load changes for OpenCode session ${sessionId}`);
+  }
+
+  return {
+    session: sessionResult.data,
+    messages: messagesResult.data,
+    changes: changesResult.data,
+  };
+}
