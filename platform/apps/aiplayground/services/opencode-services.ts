@@ -47,7 +47,7 @@ export type OpencodePromptSelection = {
   agent?: string;
 };
 
-export type OpencodeProject = {
+export type OpencodeProjectDirectories = {
   id: string;
   worktree: string;
   sandboxes: string[];
@@ -72,8 +72,11 @@ export async function getOpencodeSessions(chatId: string, serverUrl: string) {
   );
 }
 
-export async function getOpencodeProjects(chatId: string, serverUrl: string) {
-  return readJson<OpencodeProject[]>(
+export async function getOpencodeProjectDirectories(
+  chatId: string,
+  serverUrl: string,
+) {
+  return readJson<OpencodeProjectDirectories[]>(
     await fetch(
       withServerUrl(
         `/api/opencode/chats/${encodeURIComponent(chatId)}/projects`,

@@ -17,14 +17,19 @@ export function getOpencodeServerUrl(request: Request) {
 export function getOpencodeServerClient(
   connectionId: string,
   serverUrl: string,
+  directory?: string,
 ) {
   const normalizedServerUrl = normalizeOpencodeServerUrl(serverUrl);
-  const cacheKey = `${connectionId}:${normalizedServerUrl}`;
+  const cacheKey = `${connectionId}:${normalizedServerUrl}:${directory ?? ""}`;
 
   const existingClient = clients.get(cacheKey);
   if (existingClient) return existingClient;
 
-  const client = createOpencodeClient({ baseUrl: normalizedServerUrl });
+  const client = createOpencodeClient({
+    baseUrl: normalizedServerUrl,
+    directory,
+    throwOnError: true,
+  });
   clients.set(cacheKey, client);
   return client;
 }
@@ -53,11 +58,13 @@ export async function getOpencodeProjects(
     throw new Error("Could not load OpenCode projects");
   }
 
-  return [...result.data].sort((left, right) => {
+  const projects = [...result.data].sort((left, right) => {
     if (left.id === "global") return 1;
     if (right.id === "global") return -1;
     return right.time.updated - left.time.updated;
   });
+
+  return projects;
 }
 
 export async function getOpencodeSessionsAcrossProjects(

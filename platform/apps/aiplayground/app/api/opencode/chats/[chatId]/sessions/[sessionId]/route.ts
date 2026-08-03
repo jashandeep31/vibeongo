@@ -13,12 +13,17 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
     const serverUrl = getOpencodeServerUrl(request);
-    const client = getOpencodeServerClient(chatId, serverUrl);
     const session = await findOpencodeSession(chatId, sessionId, serverUrl);
 
     if (!session) {
       return new Response("OpenCode session not found", { status: 404 });
     }
+
+    const client = getOpencodeServerClient(
+      chatId,
+      serverUrl,
+      session.directory,
+    );
 
     const [messagesResult, changesResult] = await Promise.all([
       client.session.messages({
@@ -70,11 +75,16 @@ export async function POST(request: Request, { params }: RouteParams) {
       });
     }
 
-    const client = getOpencodeServerClient(chatId, serverUrl);
     const session = await findOpencodeSession(chatId, sessionId, serverUrl);
     if (!session) {
       return new Response("OpenCode session not found", { status: 404 });
     }
+
+    const client = getOpencodeServerClient(
+      chatId,
+      serverUrl,
+      session.directory,
+    );
 
     const parts: Array<TextPartInput | FilePartInput> = [
       ...(text ? [{ type: "text" as const, text }] : []),

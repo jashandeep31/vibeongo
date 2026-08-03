@@ -32,18 +32,26 @@ export async function POST(
     const body = (await request.json().catch(() => ({}))) as {
       directory?: unknown;
     };
-    const directories = await getOpencodeProjectDirectories(chatId, serverUrl);
     const requestedDirectory =
       typeof body.directory === "string" ? body.directory : undefined;
-    const directory = requestedDirectory ?? directories[0];
+    if (
+      requestedDirectory &&
+      !/^\/home\/ubuntu\/code\/[A-Za-z0-9._-]+$/.test(requestedDirectory)
+    ) {
+      return new Response("Invalid repository directory", { status: 400 });
+    }
 
-    if (!directory || !directories.includes(directory)) {
+    const directory =
+      requestedDirectory ??
+      (await getOpencodeProjectDirectories(chatId, serverUrl))[0];
+
+    if (!directory) {
       return new Response("OpenCode project directory not found", {
         status: 404,
       });
     }
 
-    const client = getOpencodeServerClient(chatId, serverUrl);
+    const client = getOpencodeServerClient(chatId, serverUrl, directory);
     const result = await client.session.create({
       directory,
     });

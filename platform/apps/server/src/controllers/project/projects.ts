@@ -1,5 +1,6 @@
 import {
   and,
+  asc,
   db,
   eq,
   instanceTypes,
@@ -43,6 +44,37 @@ export const getProjects = catchAsync(async (req: Request, res: Response) => {
     data: dbProjects,
   });
 });
+
+export const getProjectGithubReposById = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+
+    const { id } = z.object({ id: z.uuid() }).parse(req.params);
+    const repos = await db
+      .select({
+        id: githubRepos.id,
+        full_name: githubRepos.full_name,
+      })
+      .from(projectGithubRepos)
+      .innerJoin(
+        githubRepos,
+        eq(githubRepos.id, projectGithubRepos.github_repo_id),
+      )
+      .innerJoin(projects, eq(projects.id, projectGithubRepos.project_id))
+      .where(
+        and(
+          eq(projectGithubRepos.project_id, id),
+          eq(projects.user_id, user.id),
+          eq(projects.deleted, false),
+          eq(githubRepos.user_id, user.id),
+        ),
+      )
+      .orderBy(asc(githubRepos.full_name));
+
+    res.status(200).json({ data: repos });
+  },
+);
 
 export const getProjectById = catchAsync(
   async (req: Request, res: Response) => {

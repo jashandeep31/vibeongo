@@ -5,6 +5,7 @@ import {
   deleteProjectById,
   getProjectConfigForEdit,
   getProjectDomainsById,
+  getProjectGithubReposById,
   getProjectById,
   getProjects,
   updateProjectById,
@@ -41,6 +42,9 @@ routes
 routes
   .route("/:id/domains")
   .get(checkAuthorization(["all"]), getProjectDomainsById);
+routes
+  .route("/:id/github-repos")
+  .get(checkAuthorization(["all"]), getProjectGithubReposById);
 routes
   .route("/:id/domains/:domainId")
   .patch(checkAuthorization(["all"]), updateProxyDomain);

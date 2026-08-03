@@ -21,6 +21,11 @@ export type ProjectDomains = {
   }[];
 };
 
+export type ProjectGithubRepo = {
+  id: string;
+  full_name: string;
+};
+
 export const getProjects = async (): Promise<Project[]> => {
   const response = await axios.get(`${BACKEND_URL}/api/v1/projects`, {
     withCredentials: true,
@@ -34,6 +39,17 @@ export const getProjectDomainsById = async (
 ): Promise<ProjectDomains> => {
   const response = await axios.get(
     `${BACKEND_URL}/api/v1/projects/${id}/domains`,
+    { withCredentials: true },
+  );
+
+  return response.data.data;
+};
+
+export const getProjectGithubReposById = async (
+  id: string,
+): Promise<ProjectGithubRepo[]> => {
+  const response = await axios.get(
+    `${BACKEND_URL}/api/v1/projects/${id}/github-repos`,
     { withCredentials: true },
   );
 

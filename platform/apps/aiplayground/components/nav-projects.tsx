@@ -1,16 +1,20 @@
 "use client";
 
-import { OpencodeProjectDialog } from "@/components/dialogs/opencode-project-dialog";
+import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
 import { useGetInstances, useTerminateInstance } from "@/hooks/use-instance";
 import {
-  useOpencodeProjects,
+  useOpencodeProjectDirectories,
   useOpencodeSessions,
 } from "@/hooks/use-opencode-sessions";
-import { useGetProjectDomainsById } from "@/hooks/use-project";
+import {
+  useGetProjectDomainsById,
+  useGetProjectGithubReposById,
+} from "@/hooks/use-project";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import {
   Collapsible,
@@ -44,7 +48,6 @@ import {
   Ellipsis,
   Folder,
   Loader2,
-  MessageCircle,
   Play,
   Plus,
   SquareDashedMousePointer,
@@ -102,6 +105,8 @@ function InstanceControls({
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [isOpen, setIsOpen] = useState(false);
+  const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
+    useState(false);
   const terminateInstance = useTerminateInstance(projectId, sessionId);
 
   useEffect(() => {
@@ -112,55 +117,65 @@ function InstanceControls({
   }, [isOpen]);
 
   return (
-    <DropdownMenu
-      open={isOpen}
-      onOpenChange={(open) => {
-        setIsOpen(open);
-        if (open) setNow(Date.now());
-      }}
-    >
-      <DropdownMenuTrigger asChild>
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-xs"
-          aria-label="Instance controls"
-          title="Instance controls"
-          disabled={terminateInstance.isPending}
-        >
-          {terminateInstance.isPending ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Ellipsis />
-          )}
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
-        <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
-        <div className="flex items-center gap-2 px-1.5 py-2">
-          <Clock3 className="text-muted-foreground size-4 shrink-0" />
-          <div className="min-w-0">
-            <p className="text-muted-foreground text-xs">Terminates in</p>
-            <p className="font-mono text-sm font-medium tabular-nums">
-              {formatTimeRemaining(instance.terminates_at, now)}
-            </p>
+    <>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) setNow(Date.now());
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Instance controls"
+            title="Instance controls"
+            disabled={terminateInstance.isPending}
+          >
+            {terminateInstance.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Ellipsis />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
+          <div className="flex items-center gap-2 px-1.5 py-2">
+            <Clock3 className="text-muted-foreground size-4 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">Terminates in</p>
+              <p className="font-mono text-sm font-medium tabular-nums">
+                {formatTimeRemaining(instance.terminates_at, now)}
+              </p>
+            </div>
           </div>
-        </div>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem
-          variant="destructive"
-          disabled={terminateInstance.isPending}
-          onSelect={() => terminateInstance.mutate(instance.id)}
-        >
-          {terminateInstance.isPending ? (
-            <Loader2 className="animate-spin" />
-          ) : (
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={terminateInstance.isPending}
+            onSelect={() => setIsTerminationConfirmationOpen(true)}
+          >
             <Trash2 />
-          )}
-          {terminateInstance.isPending ? "Terminating..." : "Terminate now"}
-        </DropdownMenuItem>
-      </DropdownMenuContent>
-    </DropdownMenu>
+            Terminate now
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ConfirmationDialog
+        open={isTerminationConfirmationOpen}
+        onOpenChange={setIsTerminationConfirmationOpen}
+        title="Terminate this instance?"
+        description="The running session instance will be terminated immediately. Any unsaved work on the instance may be lost."
+        confirmText="Terminate now"
+        isDestructive
+        onConfirm={() => {
+          setIsTerminationConfirmationOpen(false);
+          terminateInstance.mutate(instance.id);
+        }}
+      />
+    </>
   );
 }
 
@@ -171,7 +186,7 @@ function ProjectSessionNavItem({
 }: ProjectSessionNavItemProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [isProjectDialogOpen, setIsProjectDialogOpen] = useState(false);
+  const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const {
     data: instancesData,
     isPending: isInstancePending,
@@ -198,18 +213,18 @@ function ProjectSessionNavItem({
     serverUrl,
     !!serverUrl,
   );
+  useOpencodeProjectDirectories(session.id, serverUrl, !!serverUrl);
   const {
-    data: opencodeProjects,
-    isPending: isProjectsPending,
-    isError: isProjectsError,
-  } = useOpencodeProjects(
-    session.id,
-    serverUrl,
-    isProjectDialogOpen && !!serverUrl,
+    data: githubRepos,
+    isPending: isReposPending,
+    isError: isReposError,
+  } = useGetProjectGithubReposById(
+    session.projectId,
+    isRepoDialogOpen && !!serverUrl,
   );
 
-  const handleProjectSelect = (directory: string) => {
-    setIsProjectDialogOpen(false);
+  const handleRepoSelect = (directory: string) => {
+    setIsRepoDialogOpen(false);
     const params = new URLSearchParams({ serverUrl, directory });
     router.push(`${chatUrl}?${params.toString()}`);
   };
@@ -223,7 +238,7 @@ function ProjectSessionNavItem({
               <CollapsibleTrigger asChild>
                 <SidebarMenuSubButton asChild className="min-w-0 flex-1">
                   <button type="button">
-                    <MessageCircle />
+                    <SquareDashedMousePointer />
                     <span
                       className="min-w-0 flex-1 truncate"
                       title={session.name}
@@ -277,7 +292,7 @@ function ProjectSessionNavItem({
                   <SidebarMenuSubButton asChild size="sm">
                     <button
                       type="button"
-                      onClick={() => setIsProjectDialogOpen(true)}
+                      onClick={() => setIsRepoDialogOpen(true)}
                     >
                       <Plus />
                       <span>New chat</span>
@@ -288,13 +303,13 @@ function ProjectSessionNavItem({
             </CollapsibleContent>
           </SidebarMenuSubItem>
         </Collapsible>
-        <OpencodeProjectDialog
-          open={isProjectDialogOpen}
-          onOpenChange={setIsProjectDialogOpen}
-          projects={opencodeProjects ?? []}
-          isLoading={isProjectsPending}
-          isError={isProjectsError}
-          onSelect={handleProjectSelect}
+        <GithubRepoDirectoryDialog
+          open={isRepoDialogOpen}
+          onOpenChange={setIsRepoDialogOpen}
+          repos={githubRepos ?? []}
+          isLoading={isReposPending}
+          isError={isReposError}
+          onSelect={handleRepoSelect}
         />
       </>
     );

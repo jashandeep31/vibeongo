@@ -2,7 +2,7 @@
 
 import {
   createOpencodeSession,
-  getOpencodeProjects,
+  getOpencodeProjectDirectories,
   getOpencodeSessions,
   sendOpencodePrompt,
   type OpencodePromptSelection,
@@ -21,14 +21,14 @@ export const useOpencodeSessions = (
     enabled: enabled && !!chatId && !!serverUrl,
   });
 
-export const useOpencodeProjects = (
+export const useOpencodeProjectDirectories = (
   chatId: string,
   serverUrl: string,
   enabled = true,
 ) =>
   useQuery({
-    queryKey: ["opencode", "projects", chatId, serverUrl],
-    queryFn: () => getOpencodeProjects(chatId, serverUrl),
+    queryKey: ["opencode", "project-directories", chatId, serverUrl],
+    queryFn: () => getOpencodeProjectDirectories(chatId, serverUrl),
     enabled: enabled && !!chatId && !!serverUrl,
   });
 
