@@ -23,6 +23,12 @@ importers:
 
   apps/aiplayground:
     dependencies:
+      '@repo/ui':
+        specifier: workspace:*
+        version: link:../../packages/ui
+      lucide-react:
+        specifier: ^0.563.0
+        version: 0.563.0(react@19.2.4)
       next:
         specifier: 16.2.12
         version: 16.2.12(@opentelemetry/api@1.9.1)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -14998,6 +15004,10 @@ snapshots:
   lucide-react@0.563.0(react@19.2.0):
     dependencies:
       react: 19.2.0
+
+  lucide-react@0.563.0(react@19.2.4):
+    dependencies:
+      react: 19.2.4
 
   lucide-react@0.563.0(react@19.2.7):
     dependencies:

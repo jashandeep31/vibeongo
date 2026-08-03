@@ -1,33 +1,25 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
-import "../globals.css";
+import { PlaygroundSidebar } from "@/components/playground-sidebar";
+import {
+  SidebarProvider,
+  SidebarTrigger,
+} from "@repo/ui/components/sidebar";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
-  title: "AI Playground",
-  description: "AI Playground",
-};
-
-export default function RootLayout({
+export default function PlaygroundLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
-    >
-      <body className="flex min-h-full flex-col">{children}</body>
-    </html>
+    <SidebarProvider>
+      <PlaygroundSidebar />
+      <main className="flex min-h-svh w-full flex-col">
+        <header className="flex h-14 items-center border-b px-4">
+          <SidebarTrigger />
+        </header>
+        <div className="flex flex-1 items-center justify-center p-6">
+          {children}
+        </div>
+      </main>
+    </SidebarProvider>
   );
 }
