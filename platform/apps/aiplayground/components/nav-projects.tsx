@@ -5,7 +5,7 @@ import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
-import { useGetInstances } from "@/hooks/use-instance";
+import { useGetInstances, useTerminateInstance } from "@/hooks/use-instance";
 import {
   useOpencodeProjects,
   useOpencodeSessions,
@@ -30,17 +30,30 @@ import {
 } from "@repo/ui/components/sidebar-v2";
 import { Button } from "@repo/ui/components/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
+import type { Instance } from "@/services/instance-services";
+import {
+  Clock3,
   ChevronRight,
+  Ellipsis,
   Folder,
+  Loader2,
   MessageCircle,
   Play,
   Plus,
   SquareDashedMousePointer,
   SquareTerminal,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Project = {
   id: string;
@@ -58,6 +71,98 @@ type ProjectSessionNavItemProps = {
   isResumePending: boolean;
   onResume: (sessionId: string) => void;
 };
+
+function formatTimeRemaining(terminatesAt: string, now: number) {
+  const expiresAt = new Date(terminatesAt).getTime();
+  if (Number.isNaN(expiresAt)) return "N/A";
+
+  const remainingMs = expiresAt - now;
+  if (remainingMs <= 0) return "Expired";
+
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function InstanceControls({
+  instance,
+  projectId,
+  sessionId,
+}: {
+  instance: Instance;
+  projectId: string;
+  sessionId: string;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const [isOpen, setIsOpen] = useState(false);
+  const terminateInstance = useTerminateInstance(projectId, sessionId);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [isOpen]);
+
+  return (
+    <DropdownMenu
+      open={isOpen}
+      onOpenChange={(open) => {
+        setIsOpen(open);
+        if (open) setNow(Date.now());
+      }}
+    >
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          aria-label="Instance controls"
+          title="Instance controls"
+          disabled={terminateInstance.isPending}
+        >
+          {terminateInstance.isPending ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Ellipsis />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
+        <div className="flex items-center gap-2 px-1.5 py-2">
+          <Clock3 className="text-muted-foreground size-4 shrink-0" />
+          <div className="min-w-0">
+            <p className="text-muted-foreground text-xs">Terminates in</p>
+            <p className="font-mono text-sm font-medium tabular-nums">
+              {formatTimeRemaining(instance.terminates_at, now)}
+            </p>
+          </div>
+        </div>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          variant="destructive"
+          disabled={terminateInstance.isPending}
+          onSelect={() => terminateInstance.mutate(instance.id)}
+        >
+          {terminateInstance.isPending ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Trash2 />
+          )}
+          {terminateInstance.isPending ? "Terminating..." : "Terminate now"}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 function ProjectSessionNavItem({
   session,
@@ -109,31 +214,38 @@ function ProjectSessionNavItem({
     router.push(`${chatUrl}?${params.toString()}`);
   };
 
-  if (serverUrl) {
+  if (serverUrl && instance) {
     return (
       <>
         <Collapsible asChild defaultOpen className="group/session">
           <SidebarMenuSubItem>
-            <CollapsibleTrigger asChild>
-              <SidebarMenuSubButton asChild>
-                <button type="button">
-                  <MessageCircle />
-                  <span
-                    className="min-w-0 flex-1 truncate"
-                    title={session.name}
-                  >
-                    {session.name}
-                  </span>
-                  <span
-                    className="ml-1 size-2 shrink-0 rounded-full bg-emerald-500"
-                    title="Running"
-                  >
-                    <span className="sr-only">Running</span>
-                  </span>
-                  <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
-                </button>
-              </SidebarMenuSubButton>
-            </CollapsibleTrigger>
+            <div className="flex items-center gap-1">
+              <CollapsibleTrigger asChild>
+                <SidebarMenuSubButton asChild className="min-w-0 flex-1">
+                  <button type="button">
+                    <MessageCircle />
+                    <span
+                      className="min-w-0 flex-1 truncate"
+                      title={session.name}
+                    >
+                      {session.name}
+                    </span>
+                    <span
+                      className="ml-1 size-2 shrink-0 rounded-full bg-emerald-500"
+                      title="Running"
+                    >
+                      <span className="sr-only">Running</span>
+                    </span>
+                    <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
+                  </button>
+                </SidebarMenuSubButton>
+              </CollapsibleTrigger>
+              <InstanceControls
+                instance={instance}
+                projectId={session.projectId}
+                sessionId={session.id}
+              />
+            </div>
 
             <CollapsibleContent>
               <SidebarMenuSub className="mr-0 ml-4">
@@ -205,6 +317,13 @@ function ProjectSessionNavItem({
             </span>
           ) : null}
         </SidebarMenuSubButton>
+        {instance ? (
+          <InstanceControls
+            instance={instance}
+            projectId={session.projectId}
+            sessionId={session.id}
+          />
+        ) : null}
         {!isInstancePending && !isInstanceError && !instance ? (
           <Button
             type="button"

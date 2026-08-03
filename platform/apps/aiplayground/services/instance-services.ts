@@ -6,6 +6,7 @@ export type Instance = {
   project_id: string | null;
   project_session_id: string | null;
   state: "running" | "terminated";
+  terminates_at: string;
 };
 
 export type GetInstancesFilters = {
@@ -39,6 +40,18 @@ export const getInstances = async ({
       limit,
     },
   });
+
+  return response.data;
+};
+
+export const terminateInstance = async (
+  id: string,
+): Promise<{ message: string }> => {
+  const response = await axios.post(
+    `${BACKEND_URL}/api/v1/instances/${id}`,
+    undefined,
+    { withCredentials: true },
+  );
 
   return response.data;
 };
