@@ -25,6 +25,33 @@ export type UploadAttachment = {
   dataUrl: string;
 };
 
+export type OpencodeModelOption = {
+  id: string;
+  providerID: string;
+  modelID: string;
+  name: string;
+  providerName: string;
+  variants: string[];
+};
+
+export type OpencodeAgentOption = {
+  id: string;
+  name: string;
+  description?: string;
+  mode: "subagent" | "primary" | "all";
+};
+
+export type OpencodeInventory = {
+  models: OpencodeModelOption[];
+  agents: OpencodeAgentOption[];
+};
+
+export type OpencodePromptSelection = {
+  model?: string;
+  variant?: string;
+  agent?: string;
+};
+
 async function readJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     throw new Error((await response.text()) || "OpenCode request failed");
@@ -60,18 +87,27 @@ export async function getOpencodeSessionRaw(chatId: string, sessionId: string) {
   );
 }
 
+export async function getOpencodeInventory(chatId: string) {
+  return readJson<OpencodeInventory>(
+    await fetch(
+      `/api/opencode/chats/${encodeURIComponent(chatId)}/configuration`,
+    ),
+  );
+}
+
 export async function sendOpencodePrompt(
   chatId: string,
   sessionId: string,
   text: string,
   attachments: UploadAttachment[],
+  selection: OpencodePromptSelection,
 ) {
   const response = await fetch(
     `/api/opencode/chats/${encodeURIComponent(chatId)}/sessions/${encodeURIComponent(sessionId)}`,
     {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ text, attachments }),
+      body: JSON.stringify({ text, attachments, selection }),
     },
   );
 

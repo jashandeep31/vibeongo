@@ -44,9 +44,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     const body = (await request.json()) as {
       text?: unknown;
       attachments?: unknown;
+      selection?: unknown;
     };
     const text = typeof body.text === "string" ? body.text.trim() : "";
     const attachments = parseImageAttachments(body.attachments);
+    const selection = parsePromptSelection(body.selection);
 
     if (!text && attachments.length === 0) {
       return new Response("Prompt text or an image is required", {
@@ -66,6 +68,9 @@ export async function POST(request: Request, { params }: RouteParams) {
     ];
     const result = await client.session.promptAsync({
       sessionID: sessionId,
+      ...(selection.model ? { model: selection.model } : {}),
+      ...(selection.variant ? { variant: selection.variant } : {}),
+      ...(selection.agent ? { agent: selection.agent } : {}),
       parts,
     });
 
@@ -88,6 +93,12 @@ type ImageAttachment = {
   dataUrl: string;
 };
 
+type ParsedPromptSelection = {
+  model?: { providerID: string; modelID: string };
+  variant?: string;
+  agent?: string;
+};
+
 function parseImageAttachments(value: unknown): ImageAttachment[] {
   if (!Array.isArray(value)) return [];
 
@@ -108,4 +119,27 @@ function parseImageAttachments(value: unknown): ImageAttachment[] {
       typeof attachment.dataUrl === "string" &&
       attachment.dataUrl.startsWith("data:image/"),
   );
+}
+
+function parsePromptSelection(value: unknown): ParsedPromptSelection {
+  if (typeof value !== "object" || value === null) return {};
+
+  const selection = value as Record<string, unknown>;
+  const modelSlug =
+    typeof selection.model === "string" ? selection.model : undefined;
+  const separatorIndex = modelSlug?.indexOf("/") ?? -1;
+  const model =
+    modelSlug && separatorIndex > 0 && separatorIndex < modelSlug.length - 1
+      ? {
+          providerID: modelSlug.slice(0, separatorIndex),
+          modelID: modelSlug.slice(separatorIndex + 1),
+        }
+      : undefined;
+
+  return {
+    model,
+    variant:
+      typeof selection.variant === "string" ? selection.variant : undefined,
+    agent: typeof selection.agent === "string" ? selection.agent : undefined,
+  };
 }

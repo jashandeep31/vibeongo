@@ -2,10 +2,12 @@
 
 import {
   getOpencodeEventUrl,
+  getOpencodeInventory,
   getOpencodeSessionRaw,
   sendOpencodePrompt,
   type Event,
   type OpencodeSessionData,
+  type OpencodePromptSelection,
   type UploadAttachment,
 } from "@/services/opencode-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -204,7 +206,15 @@ export const useSendOpencodePrompt = ({
   const queryKey = ["opencode", "session", chatId, sessionId];
 
   return useMutation({
-    mutationFn: async ({ text, files }: { text: string; files: File[] }) => {
+    mutationFn: async ({
+      text,
+      files,
+      selection,
+    }: {
+      text: string;
+      files: File[];
+      selection: OpencodePromptSelection;
+    }) => {
       const attachments: UploadAttachment[] = await Promise.all(
         files.map(async (file) => ({
           type: "image" as const,
@@ -215,11 +225,24 @@ export const useSendOpencodePrompt = ({
         })),
       );
 
-      return sendOpencodePrompt(chatId, sessionId, text, attachments);
+      return sendOpencodePrompt(
+        chatId,
+        sessionId,
+        text,
+        attachments,
+        selection,
+      );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
+
+export const useOpencodeInventory = (chatId: string) =>
+  useQuery({
+    queryKey: ["opencode", "inventory", chatId],
+    queryFn: () => getOpencodeInventory(chatId),
+    staleTime: 60_000,
+  });
 
 function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {

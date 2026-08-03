@@ -2,8 +2,14 @@
 
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { PromptInput } from "@/components/chat/prompt-input";
-import { useSendOpencodePrompt } from "@/hooks/use-opencode-session";
-import type { OpencodeSessionData } from "@/services/opencode-services";
+import {
+  useOpencodeInventory,
+  useSendOpencodePrompt,
+} from "@/hooks/use-opencode-session";
+import type {
+  OpencodePromptSelection,
+  OpencodeSessionData,
+} from "@/services/opencode-services";
 import type { ToolPart } from "@opencode-ai/sdk/v2/client";
 import { ArrowDown, Braces, MessagesSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -109,10 +115,46 @@ export function OpencodeSessionChat({
 }) {
   const turns = useMemo(() => createChatTurns(messages), [messages]);
   const sendPrompt = useSendOpencodePrompt({ chatId, sessionId });
+  const { data: inventory } = useOpencodeInventory(chatId);
+  const [selection, setSelection] = useState<OpencodePromptSelection>(() => {
+    const sessionSelection = getSessionSelection(rawResponse);
+    if (typeof window === "undefined") return sessionSelection;
+
+    try {
+      const savedSelection = window.localStorage.getItem(
+        `opencode-selection:${chatId}`,
+      );
+      return savedSelection
+        ? (JSON.parse(savedSelection) as OpencodePromptSelection)
+        : sessionSelection;
+    } catch {
+      return sessionSelection;
+    }
+  });
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const effectiveSelection: OpencodePromptSelection = {
+    model:
+      selection.model ??
+      getSessionSelection(rawResponse).model ??
+      inventory?.models[0]?.id,
+    variant: selection.variant ?? getSessionSelection(rawResponse).variant,
+    agent:
+      selection.agent ??
+      getSessionSelection(rawResponse).agent ??
+      inventory?.agents.find((agent) => agent.mode === "primary")?.id ??
+      inventory?.agents[0]?.id,
+  };
+
+  const updateSelection = (nextSelection: OpencodePromptSelection) => {
+    setSelection(nextSelection);
+    window.localStorage.setItem(
+      `opencode-selection:${chatId}`,
+      JSON.stringify(nextSelection),
+    );
+  };
 
   const updateScrollButtonVisibility = useCallback(() => {
     const scrollArea = scrollAreaRef.current;
@@ -198,8 +240,15 @@ export function OpencodeSessionChat({
           </div>
           <PromptInput
             disabled={sendPrompt.isPending || isStreaming}
+            inventory={inventory}
+            selection={effectiveSelection}
+            onSelectionChange={updateSelection}
             onSubmit={(question, files) =>
-              sendPrompt.mutate({ text: question, files })
+              sendPrompt.mutate({
+                text: question,
+                files,
+                selection: effectiveSelection,
+              })
             }
             onSubmitSuccess={() => scrollToBottom("smooth")}
           />
@@ -207,4 +256,16 @@ export function OpencodeSessionChat({
       </div>
     </div>
   );
+}
+
+function getSessionSelection(
+  rawResponse: OpencodeSessionData,
+): OpencodePromptSelection {
+  const model = rawResponse.session.model;
+
+  return {
+    model: model ? `${model.providerID}/${model.id}` : undefined,
+    variant: model?.variant,
+    agent: rawResponse.session.agent,
+  };
 }
