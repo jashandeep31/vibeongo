@@ -13,14 +13,14 @@ export async function GET(
   const stream = new ReadableStream<Uint8Array>({
     async start(controller) {
       try {
-        const subscription = await client.event.subscribe(undefined, {
+        const subscription = await client.global.event({
           signal: request.signal,
         });
 
         for await (const event of subscription.stream) {
           if (request.signal.aborted) break;
           controller.enqueue(
-            encoder.encode(`data: ${JSON.stringify(event)}\n\n`),
+            encoder.encode(`data: ${JSON.stringify(event.payload)}\n\n`),
           );
         }
       } catch (error) {

@@ -87,6 +87,19 @@ export async function getOpencodeSessionRaw(chatId: string, sessionId: string) {
   );
 }
 
+export async function createOpencodeSession(
+  chatId: string,
+  directory?: string,
+) {
+  return readJson<Session>(
+    await fetch(`/api/opencode/chats/${encodeURIComponent(chatId)}/sessions`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ directory }),
+    }),
+  );
+}
+
 export async function getOpencodeInventory(chatId: string) {
   return readJson<OpencodeInventory>(
     await fetch(

@@ -1,4 +1,7 @@
-import { getOpencodeServerClient } from "@/services/opencode-server";
+import {
+  findOpencodeSession,
+  getOpencodeServerClient,
+} from "@/services/opencode-server";
 import type { FilePartInput, TextPartInput } from "@opencode-ai/sdk/v2/client";
 
 type RouteParams = {
@@ -9,15 +12,23 @@ export async function GET(_request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
     const client = getOpencodeServerClient(chatId);
-    const [sessionResult, messagesResult, changesResult] = await Promise.all([
-      client.session.get({ sessionID: sessionId }),
-      client.session.messages({ sessionID: sessionId, limit: 100 }),
-      client.session.diff({ sessionID: sessionId }),
-    ]);
+    const session = await findOpencodeSession(chatId, sessionId);
 
-    if (sessionResult.error || !sessionResult.data) {
-      return new Response("Could not load OpenCode session", { status: 502 });
+    if (!session) {
+      return new Response("OpenCode session not found", { status: 404 });
     }
+
+    const [messagesResult, changesResult] = await Promise.all([
+      client.session.messages({
+        sessionID: sessionId,
+        directory: session.directory,
+        limit: 100,
+      }),
+      client.session.diff({
+        sessionID: sessionId,
+        directory: session.directory,
+      }),
+    ]);
 
     if (messagesResult.error) {
       return new Response("Could not load OpenCode messages", { status: 502 });
@@ -28,7 +39,7 @@ export async function GET(_request: Request, { params }: RouteParams) {
     }
 
     return Response.json({
-      session: sessionResult.data,
+      session,
       messages: messagesResult.data ?? [],
       changes: changesResult.data ?? [],
     });
@@ -57,6 +68,11 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const client = getOpencodeServerClient(chatId);
+    const session = await findOpencodeSession(chatId, sessionId);
+    if (!session) {
+      return new Response("OpenCode session not found", { status: 404 });
+    }
+
     const parts: Array<TextPartInput | FilePartInput> = [
       ...(text ? [{ type: "text" as const, text }] : []),
       ...attachments.map((attachment) => ({
@@ -68,6 +84,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     ];
     const result = await client.session.promptAsync({
       sessionID: sessionId,
+      directory: session.directory,
       ...(selection.model ? { model: selection.model } : {}),
       ...(selection.variant ? { variant: selection.variant } : {}),
       ...(selection.agent ? { agent: selection.agent } : {}),

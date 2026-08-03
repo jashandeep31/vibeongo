@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Folder,
   MessageCircle,
+  Plus,
   SquareTerminal,
 } from "lucide-react";
 import Link from "next/link";
@@ -35,10 +36,12 @@ type Project = {
     url: string;
     isRunning?: boolean;
     defaultOpen?: boolean;
+    canCreateSession?: boolean;
     sessions: {
       id: string;
       name: string;
       url: string;
+      directory: string;
     }[];
   }[];
 };
@@ -46,7 +49,7 @@ type Project = {
 export function NavProjects({ projects }: { projects: Project[] }) {
   return (
     <SidebarGroup className="px-2 py-3">
-      <SidebarGroupLabel className="px-3 text-sm font-semibold text-sidebar-foreground">
+      <SidebarGroupLabel className="text-sidebar-foreground px-3 text-sm font-semibold">
         Projects
       </SidebarGroupLabel>
       <SidebarGroupContent>
@@ -115,6 +118,26 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                                   </SidebarMenuSubButton>
                                 </SidebarMenuSubItem>
                               ))}
+                              {chat.canCreateSession ? (
+                                <SidebarMenuSubItem>
+                                  <SidebarMenuSubButton asChild size="sm">
+                                    <Link
+                                      href={{
+                                        pathname: chat.url,
+                                        query: chat.sessions[0]?.directory
+                                          ? {
+                                              directory:
+                                                chat.sessions[0].directory,
+                                            }
+                                          : undefined,
+                                      }}
+                                    >
+                                      <Plus />
+                                      <span>New chat</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ) : null}
                             </SidebarMenuSub>
                           </CollapsibleContent>
                         </SidebarMenuSubItem>

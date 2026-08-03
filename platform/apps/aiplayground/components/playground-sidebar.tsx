@@ -46,10 +46,12 @@ export function PlaygroundSidebar() {
     chats: project.chats.map((chat) => ({
       ...chat,
       defaultOpen: Boolean(chat.hasOpencodeServer),
+      canCreateSession: Boolean(chat.hasOpencodeServer),
       sessions: (sessionsByChat?.[chat.id] ?? []).map((session) => ({
         id: session.id,
         name: session.title,
         url: `${chat.url}/sessions/${encodeURIComponent(session.id)}`,
+        directory: session.directory,
       })),
     })),
   }));
