@@ -1,12 +1,10 @@
 "use client";
 
 import { WorkComposer } from "@/components/work-composer";
-
-const projects = [
-  { id: "website-launch", name: "Website Launch" },
-  { id: "mobile-app", name: "Mobile App" },
-];
+import { playgroundProjects } from "@/lib/playground-projects";
 
 export default function ClientView() {
+  const projects = playgroundProjects.map(({ id, name }) => ({ id, name }));
+
   return <WorkComposer projects={projects} />;
 }

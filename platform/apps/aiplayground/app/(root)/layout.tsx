@@ -10,7 +10,9 @@ export default function PlaygroundLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <SidebarProvider>
+    <SidebarProvider
+      style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
+    >
       <PlaygroundSidebar />
       <SidebarTrigger className="fixed top-3 left-3 z-[60] md:hidden" />
       <main className="flex min-h-svh w-full flex-col">

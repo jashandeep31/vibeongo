@@ -3,6 +3,8 @@
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
+import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
+import { playgroundProjects } from "@/lib/playground-projects";
 import {
   Sidebar,
   SidebarContent,
@@ -37,42 +39,21 @@ const navigation = [
   },
 ];
 
-const demoProjects = [
-  {
-    name: "Website Launch",
-    url: "/projects/website-launch",
-    defaultOpen: true,
-    chats: [
-      {
-        name: "Landing page copy",
-        url: "/projects/website-launch/chats/landing-page-copy",
-        isRunning: true,
-      },
-      {
-        name: "Fix authentication",
-        url: "/projects/website-launch/chats/fix-authentication",
-      },
-    ],
-  },
-  {
-    name: "Mobile App",
-    url: "/projects/mobile-app",
-    defaultOpen: true,
-    chats: [
-      {
-        name: "API integration",
-        url: "/projects/mobile-app/chats/api-integration",
-        isRunning: true,
-      },
-      {
-        name: "Onboarding flow",
-        url: "/projects/mobile-app/chats/onboarding-flow",
-      },
-    ],
-  },
-];
-
 export function PlaygroundSidebar() {
+  const { data: sessionsByChat } = useOpencodeSessions();
+  const projects = playgroundProjects.map((project) => ({
+    ...project,
+    chats: project.chats.map((chat) => ({
+      ...chat,
+      defaultOpen: Boolean(chat.opencodeServerUrl),
+      sessions: (sessionsByChat?.[chat.id] ?? []).map((session) => ({
+        id: session.id,
+        name: session.title,
+        url: `${chat.url}/sessions/${encodeURIComponent(session.id)}`,
+      })),
+    })),
+  }));
+
   return (
     <Sidebar className="bg-background">
       <SidebarHeader className="h-12 justify-center px-3 py-2">
@@ -90,7 +71,7 @@ export function PlaygroundSidebar() {
             <NavMain items={navigation} />
           </SidebarGroupContent>
         </SidebarGroup>
-        <NavProjects projects={demoProjects} />
+        <NavProjects projects={projects} />
       </SidebarContent>
       <SidebarFooter className="border-sidebar-border border-t p-2">
         <PlaygroundUserMenu />

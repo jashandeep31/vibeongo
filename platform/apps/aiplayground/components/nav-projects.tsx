@@ -16,17 +16,30 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
 } from "@repo/ui/components/sidebar-v2";
-import { ChevronRight, Folder, MessageCircle } from "lucide-react";
+import {
+  ChevronRight,
+  Folder,
+  MessageCircle,
+  SquareTerminal,
+} from "lucide-react";
 import Link from "next/link";
 
 type Project = {
+  id: string;
   name: string;
   url: string;
   defaultOpen?: boolean;
   chats: {
+    id: string;
     name: string;
     url: string;
     isRunning?: boolean;
+    defaultOpen?: boolean;
+    sessions: {
+      id: string;
+      name: string;
+      url: string;
+    }[];
   }[];
 };
 
@@ -40,7 +53,7 @@ export function NavProjects({ projects }: { projects: Project[] }) {
         <SidebarMenu className="gap-1">
           {projects.map((project) => (
             <Collapsible
-              key={project.name}
+              key={project.id}
               defaultOpen={project.defaultOpen}
               className="group/project"
             >
@@ -56,22 +69,56 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                 <CollapsibleContent>
                   <SidebarMenuSub>
                     {project.chats.map((chat) => (
-                      <SidebarMenuSubItem key={chat.name}>
-                        <SidebarMenuSubButton asChild>
-                          <Link href={chat.url}>
-                            <MessageCircle />
-                            <span>{chat.name}</span>
-                            {chat.isRunning ? (
-                              <span
-                                className="ml-auto size-2 shrink-0 rounded-full bg-emerald-500"
-                                title="Running"
-                              >
-                                <span className="sr-only">Running</span>
-                              </span>
-                            ) : null}
-                          </Link>
-                        </SidebarMenuSubButton>
-                      </SidebarMenuSubItem>
+                      <Collapsible
+                        key={chat.id}
+                        asChild
+                        defaultOpen={chat.defaultOpen}
+                        className="group/chat"
+                      >
+                        <SidebarMenuSubItem>
+                          <CollapsibleTrigger asChild>
+                            <SidebarMenuSubButton asChild>
+                              <button type="button">
+                                <MessageCircle />
+                                <span className="min-w-0 flex-1 truncate">
+                                  {chat.name}
+                                </span>
+                                {chat.isRunning ? (
+                                  <span
+                                    className="ml-auto size-2 shrink-0 rounded-full bg-emerald-500"
+                                    title="Running"
+                                  >
+                                    <span className="sr-only">Running</span>
+                                  </span>
+                                ) : null}
+                                <ChevronRight
+                                  className={`${chat.isRunning ? "ml-1" : "ml-auto"} transition-transform group-data-[state=open]/chat:rotate-90`}
+                                />
+                              </button>
+                            </SidebarMenuSubButton>
+                          </CollapsibleTrigger>
+
+                          <CollapsibleContent>
+                            <SidebarMenuSub className="mr-0 ml-4">
+                              {chat.sessions.map((session) => (
+                                <SidebarMenuSubItem key={session.id}>
+                                  <SidebarMenuSubButton asChild size="sm">
+                                    <Link href={session.url}>
+                                      <SquareTerminal />
+                                      <span
+                                        className="min-w-0 flex-1 truncate"
+                                        title={session.name}
+                                      >
+                                        {session.name}
+                                      </span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              ))}
+                            </SidebarMenuSub>
+                          </CollapsibleContent>
+                        </SidebarMenuSubItem>
+                      </Collapsible>
                     ))}
                   </SidebarMenuSub>
                 </CollapsibleContent>
