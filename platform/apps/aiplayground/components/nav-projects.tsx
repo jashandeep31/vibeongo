@@ -41,7 +41,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
-import type { Instance } from "@/services/instance-services";
 import {
   Clock3,
   ChevronRight,
@@ -57,6 +56,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { instances } from "@repo/db";
 
 type Project = {
   id: string;
@@ -99,7 +99,7 @@ function InstanceControls({
   projectId,
   sessionId,
 }: {
-  instance: Instance;
+  instance: typeof instances.$inferSelect;
   projectId: string;
   sessionId: string;
 }) {
@@ -148,7 +148,8 @@ function InstanceControls({
             <div className="min-w-0">
               <p className="text-muted-foreground text-xs">Terminates in</p>
               <p className="font-mono text-sm font-medium tabular-nums">
-                {formatTimeRemaining(instance.terminates_at, now)}
+                {/*  NOTE: fix this later by checking what is function i doing its ai generated */}
+                {formatTimeRemaining(String(instance.terminates_at), now)}
               </p>
             </div>
           </div>
@@ -201,11 +202,10 @@ function ProjectSessionNavItem({
     session.projectId,
     !!instance,
   );
-  const opencodeDomain =
-    instance && domainsData?.target_instance_id === instance.id
-      ? domainsData.proxy_domains.find((domain) => domain.target_port === 4096)
-          ?.domain
-      : undefined;
+  const opencodeDomain = instance
+    ? `4096-${instance.id}${instance!.proxy_domain}`
+    : undefined;
+
   const serverUrl = opencodeDomain ? `https://${opencodeDomain}` : "";
   const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
   const { data: opencodeSessions } = useOpencodeSessions(
