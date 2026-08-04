@@ -26,6 +26,9 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.11
         version: 1.18.11
+      '@repo/db':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@repo/shared':
         specifier: workspace:*
         version: link:../../packages/shared

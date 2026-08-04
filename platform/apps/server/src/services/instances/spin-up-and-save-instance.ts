@@ -21,6 +21,7 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import * as crypto from "crypto";
 import { createProviderInstance } from "../../providers/create-providers-instance.js";
 import type { InstanceRuntime } from "../../providers/types.js";
+import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 
 interface SpinUpAndSaveInstanceInput {
   sshKeys: string[];
@@ -195,6 +196,7 @@ export const spinUpAndSaveInstance = async ({
       instance_type_id: instanceTypeId,
       sandbox_type_id: sandboxTypeId,
       provider_instance_id: newInstance.instanceId,
+      proxy_domain: await getProxyServerUrl(project.id),
       terminated_at: null,
       terminates_at: new Date(
         new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,

@@ -59,6 +59,7 @@ export const instances = pgTable(
     public_ip: varchar(),
     private_ip: varchar(),
     provider_instance_id: varchar().notNull(),
+    proxy_domain: varchar().notNull(),
 
     created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),

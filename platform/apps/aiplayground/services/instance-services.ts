@@ -1,14 +1,6 @@
 import { BACKEND_URL } from "@/lib/constants";
 import axios from "axios";
-
-export type Instance = {
-  id: string;
-  project_id: string | null;
-  project_session_id: string | null;
-  state: "running" | "terminated";
-  terminates_at: string;
-};
-
+import { instances } from "@repo/db";
 export type GetInstancesFilters = {
   projectId?: string;
   sessionId?: string;
@@ -18,7 +10,7 @@ export type GetInstancesFilters = {
 };
 
 export type GetInstancesResponse = {
-  data: Instance[];
+  data: (typeof instances.$inferSelect)[];
   page: number;
   hasNext: boolean;
 };
