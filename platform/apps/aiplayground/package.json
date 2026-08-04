@@ -12,9 +12,9 @@
   },
   "dependencies": {
     "@opencode-ai/sdk": "^1.18.11",
+    "@repo/db": "workspace:*",
     "@repo/shared": "workspace:*",
     "@repo/ui": "workspace:*",
-    "@repo/db": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "axios": "^1.13.6",
     "lucide-react": "^0.563.0",
@@ -22,7 +22,8 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "zustand": "^5.0.11"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

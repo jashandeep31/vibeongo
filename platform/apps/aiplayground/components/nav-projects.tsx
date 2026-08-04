@@ -207,7 +207,7 @@ function ProjectSessionNavItem({
     serverUrl,
     !!serverUrl,
   );
-  useOpencodeProjectDirectories(session.id, serverUrl, !!serverUrl);
+
   const {
     data: githubRepos,
     isPending: isReposPending,
