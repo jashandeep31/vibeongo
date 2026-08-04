@@ -3,12 +3,16 @@ import {
   githubRepos,
   projectDomainRouting,
   projects,
+  projectSessions,
   proxyDomains,
   routingAllowedIps,
 } from "@repo/db";
 import axios from "axios";
 
 export type Project = typeof projects.$inferSelect;
+export type ProjectWithSessions = Project & {
+  sessions: (typeof projectSessions.$inferSelect)[];
+};
 
 export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
   proxy_domains: (typeof proxyDomains.$inferSelect)[];
@@ -24,6 +28,17 @@ export const getProjects = async (): Promise<Project[]> => {
   const response = await axios.get(`${BACKEND_URL}/api/v1/projects`, {
     withCredentials: true,
   });
+
+  return response.data.data;
+};
+
+export const getProjectsWithSessions = async (): Promise<
+  ProjectWithSessions[]
+> => {
+  const response = await axios.get(
+    `${BACKEND_URL}/api/v1/projects/with-sessions`,
+    { withCredentials: true },
+  );
 
   return response.data.data;
 };

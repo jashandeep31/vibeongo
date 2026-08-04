@@ -34,7 +34,7 @@ export const useProjectsStore = create<ProjectsStore>((set) => ({
 type SessionState = "running" | "stopped" | "processing";
 type SessionEntry = {
   session: typeof projectSessions.$inferSelect;
-  instance: typeof instances.$inferSelect;
+  instance: typeof instances.$inferSelect | null;
   state: SessionState;
 };
 
@@ -92,6 +92,6 @@ export const useSessionsStore = create<SessionsStore>((set, get) => ({
 interface SessionChatsStore {
   chats: [];
 }
-export const useSessionChatsStore = create<SessionChatsStore>((set) => ({
+export const useSessionChatsStore = create<SessionChatsStore>(() => ({
   chats: [],
 }));

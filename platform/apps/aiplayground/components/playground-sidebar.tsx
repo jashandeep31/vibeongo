@@ -3,8 +3,7 @@
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
-import { useGetProjects } from "@/hooks/use-project";
-import { useGetProjectSessions } from "@/hooks/use-project-sessions";
+import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
 import {
   Sidebar,
   SidebarContent,
@@ -38,16 +37,16 @@ const navigation = [
 ];
 
 export function PlaygroundSidebar() {
-  const { data: projectData } = useGetProjects();
-  /// TODO:  Try get session linked with the projects not like this on 100
-  const { data: sessionData } = useGetProjectSessions({ limit: 100 });
-  const projects = (projectData ?? []).map((project) => ({
+  const projectData = useProjectsStore((store) => store.projects);
+  const sessionData = useSessionsStore((store) => store.sessions);
+
+  const projects = projectData.map((project) => ({
     id: project.id,
     name: project.name,
     url: `/projects/${project.id}`,
-    sessions: (sessionData?.data ?? [])
-      .filter((session) => session.project_id === project.id)
-      .map((session) => ({
+    sessions: sessionData
+      .filter(({ session }) => session.project_id === project.id)
+      .map(({ session }) => ({
         id: session.id,
         name: session.name,
         projectId: project.id,

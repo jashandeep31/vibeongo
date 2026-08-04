@@ -1,4 +1,5 @@
 import { PlaygroundSidebar } from "@/components/playground-sidebar";
+import { PlaygroundStoreSync } from "@/components/playground-store-sync";
 import {
   SidebarProvider,
   SidebarTrigger,
@@ -13,9 +14,10 @@ export default function PlaygroundLayout({
     <SidebarProvider
       style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
     >
+      <PlaygroundStoreSync />
       <PlaygroundSidebar />
       <SidebarTrigger className="fixed top-3 left-3 z-[60] md:hidden" />
-      <main className="flex min-h-svh min-w-0 w-full flex-col">{children}</main>
+      <main className="flex min-h-svh w-full min-w-0 flex-col">{children}</main>
     </SidebarProvider>
   );
 }

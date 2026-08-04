@@ -2,6 +2,7 @@ import {
   getProjectDomainsById,
   getProjectGithubReposById,
   getProjects,
+  getProjectsWithSessions,
 } from "@/services/project-services";
 import { useQuery } from "@tanstack/react-query";
 
@@ -9,6 +10,13 @@ export const useGetProjects = (enabled = true) =>
   useQuery({
     queryKey: ["projects"],
     queryFn: getProjects,
+    enabled,
+  });
+
+export const useGetProjectsWithSessions = (enabled = true) =>
+  useQuery({
+    queryKey: ["projects", "with-sessions"],
+    queryFn: getProjectsWithSessions,
     enabled,
   });
 

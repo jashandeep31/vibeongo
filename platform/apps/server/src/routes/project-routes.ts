@@ -8,6 +8,7 @@ import {
   getProjectGithubReposById,
   getProjectById,
   getProjects,
+  getProjectsWithSessions,
   updateProjectById,
 } from "../controllers/project/projects.js";
 import {
@@ -30,6 +31,9 @@ routes
   .route("/")
   .post(checkAuthorization(["all"]), createProject)
   .get(checkAuthorization(["all"]), getProjects);
+routes
+  .route("/with-sessions")
+  .get(checkAuthorization(["all"]), getProjectsWithSessions);
 routes
   .route("/:id")
   .get(checkAuthorization(["all"]), getProjectById)

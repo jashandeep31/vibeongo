@@ -45,6 +45,49 @@ export const getProjects = catchAsync(async (req: Request, res: Response) => {
   });
 });
 
+export const getProjectsWithSessions = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authentication is required", 401);
+
+    const rows = await db
+      .select({
+        project: projects,
+        session: projectSessions,
+      })
+      .from(projects)
+      .leftJoin(
+        projectSessions,
+        and(
+          eq(projectSessions.project_id, projects.id),
+          eq(projectSessions.archived, false),
+        ),
+      )
+      .where(and(eq(projects.user_id, user.id), eq(projects.deleted, false)))
+      .orderBy(desc(projects.created_at), desc(projectSessions.created_at));
+
+    type ProjectWithSessions = typeof projects.$inferSelect & {
+      sessions: (typeof projectSessions.$inferSelect)[];
+    };
+
+    const projectsById = new Map<string, ProjectWithSessions>();
+
+    for (const row of rows) {
+      if (!projectsById.has(row.project.id)) {
+        projectsById.set(row.project.id, { ...row.project, sessions: [] });
+      }
+
+      if (!row.session) continue;
+      projectsById.get(row.project.id)?.sessions.push(row.session);
+    }
+
+    res.status(200).json({
+      message: "Projects with sessions retrieved successfully",
+      data: Array.from(projectsById.values()),
+    });
+  },
+);
+
 export const getProjectGithubReposById = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
