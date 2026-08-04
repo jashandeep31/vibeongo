@@ -52,6 +52,7 @@ import {
   SquareDashedMousePointer,
   SquareTerminal,
   Trash2,
+  BotMessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -239,10 +240,7 @@ function ProjectSessionNavItem({
                 <SidebarMenuSubButton asChild className="min-w-0 flex-1">
                   <button type="button">
                     <SquareDashedMousePointer />
-                    <span
-                      className="min-w-0 flex-1 truncate"
-                      title={session.name}
-                    >
+                    <span className="min-w-0 truncate" title={session.name}>
                       {session.name}
                     </span>
                     <span
@@ -276,7 +274,7 @@ function ProjectSessionNavItem({
                         isActive={pathname === url.split("?")[0]}
                       >
                         <Link href={url}>
-                          <SquareTerminal />
+                          <BotMessageSquare />
                           <span
                             className="min-w-0 flex-1 truncate"
                             title={opencodeSession.title}
