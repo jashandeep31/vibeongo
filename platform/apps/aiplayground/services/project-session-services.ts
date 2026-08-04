@@ -1,14 +1,15 @@
 import { BACKEND_URL } from "@/lib/constants";
+import {
+  instances,
+  instanceRuntimeKind,
+  projects,
+  projectSessions,
+} from "@repo/db";
 import axios from "axios";
 
-export type ProjectSession = {
-  id: string;
-  name: string;
-  description: string | null;
-  project_id: string;
-  archived: boolean;
-  project_name: string;
-  instances: unknown[];
+export type ProjectSession = typeof projectSessions.$inferSelect & {
+  project_name: (typeof projects.$inferSelect)["name"];
+  instances: (typeof instances.$inferSelect)[];
 };
 
 export type GetProjectSessionsParams = {
@@ -25,8 +26,8 @@ export type ProjectSessionsResponse = {
 };
 
 export type ResumeProjectSessionInput = {
-  id: string;
-  runtime: "vm" | "sandbox";
+  id: (typeof projectSessions.$inferSelect)["id"];
+  runtime: (typeof instanceRuntimeKind.enumValues)[number];
 };
 
 export const getProjectSessions = async ({

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { projects } from "@repo/db";
 import {
   Select,
   SelectContent,
@@ -9,17 +10,9 @@ import {
   SelectValue,
 } from "@repo/ui/components/select";
 import { ArrowUp, Plus } from "lucide-react";
-import {
-  useRef,
-  useState,
-  type FormEvent,
-  type KeyboardEvent,
-} from "react";
+import { useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 
-type ProjectOption = {
-  id: string;
-  name: string;
-};
+type ProjectOption = Pick<typeof projects.$inferSelect, "id" | "name">;
 
 type WorkComposerProps = {
   projects: ProjectOption[];
@@ -54,11 +47,7 @@ export function WorkComposer({ projects }: WorkComposerProps) {
         What should we work on?
       </h1>
 
-      <form
-        ref={formRef}
-        onSubmit={handleSubmit}
-        className="relative pb-14"
-      >
+      <form ref={formRef} onSubmit={handleSubmit} className="relative pb-14">
         <div className="bg-card focus-within:border-foreground/20 relative z-10 overflow-hidden rounded-[28px] border shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-colors">
           <textarea
             aria-label="Write an AI message"
@@ -104,7 +93,7 @@ export function WorkComposer({ projects }: WorkComposerProps) {
           <Select value={projectId} onValueChange={setProjectId}>
             <SelectTrigger
               aria-label="Choose project"
-              className="bg-background hover:border-foreground/15 hover:bg-background h-11 min-w-[190px] max-w-[280px] rounded-xl border px-3 shadow-sm transition-all hover:shadow-md focus-visible:ring-2"
+              className="bg-background hover:border-foreground/15 hover:bg-background h-11 max-w-[280px] min-w-[190px] rounded-xl border px-3 shadow-sm transition-all hover:shadow-md focus-visible:ring-2"
             >
               <SelectValue placeholder="Choose a project" />
             </SelectTrigger>

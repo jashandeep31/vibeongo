@@ -11,10 +11,7 @@ import {
   useOpencodeProjectDirectories,
   useOpencodeSessions,
 } from "@/hooks/use-opencode-sessions";
-import {
-  useGetProjectDomainsById,
-  useGetProjectGithubReposById,
-} from "@/hooks/use-project";
+import { useGetProjectGithubReposById } from "@/hooks/use-project";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import {
   Collapsible,
@@ -50,24 +47,24 @@ import {
   Play,
   Plus,
   SquareDashedMousePointer,
-  SquareTerminal,
   Trash2,
   BotMessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { instances } from "@repo/db";
+import { instances, projects, projectSessions } from "@repo/db";
 
-type Project = {
-  id: string;
-  name: string;
+type ProjectSessionNavItem = Pick<
+  typeof projectSessions.$inferSelect,
+  "id" | "name"
+> & {
+  projectId: (typeof projectSessions.$inferSelect)["project_id"];
+};
+
+type Project = Pick<typeof projects.$inferSelect, "id" | "name"> & {
   url: string;
-  sessions: {
-    id: string;
-    name: string;
-    projectId: string;
-  }[];
+  sessions: ProjectSessionNavItem[];
 };
 
 type ProjectSessionNavItemProps = {
@@ -199,10 +196,6 @@ function ProjectSessionNavItem({
     limit: 1,
   });
   const instance = instancesData?.data[0];
-  const { data: domainsData } = useGetProjectDomainsById(
-    session.projectId,
-    !!instance,
-  );
   const opencodeDomain = instance
     ? `4096-${instance.id}${instance!.proxy_domain}`
     : undefined;

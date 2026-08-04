@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "@repo/ui/components/button";
+import { instanceRuntimeKind } from "@repo/db";
 import {
   Dialog,
   DialogContent,
@@ -11,7 +12,8 @@ import {
 } from "@repo/ui/components/dialog";
 import { Box, Cloud } from "lucide-react";
 
-export type ProjectSessionRuntime = "vm" | "sandbox";
+export type ProjectSessionRuntime =
+  (typeof instanceRuntimeKind.enumValues)[number];
 
 type ProjectSessionRuntimeDialogProps = {
   open: boolean;

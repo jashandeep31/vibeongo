@@ -1,30 +1,24 @@
 import { BACKEND_URL } from "@/lib/constants";
+import {
+  githubRepos,
+  projectDomainRouting,
+  projects,
+  proxyDomains,
+  routingAllowedIps,
+} from "@repo/db";
 import axios from "axios";
 
-export type Project = {
-  id: string;
-  name: string;
-  description: string | null;
+export type Project = typeof projects.$inferSelect;
+
+export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
+  proxy_domains: (typeof proxyDomains.$inferSelect)[];
+  allowed_ips: (typeof routingAllowedIps.$inferSelect)[];
 };
 
-export type ProjectDomains = {
-  target_instance_id: string | null;
-  proxy_domains: {
-    id: string;
-    domain: string;
-    target_port: number;
-    allow_all_ips: boolean;
-  }[];
-  allowed_ips: {
-    id: string;
-    ip: string;
-  }[];
-};
-
-export type ProjectGithubRepo = {
-  id: string;
-  full_name: string;
-};
+export type ProjectGithubRepo = Pick<
+  typeof githubRepos.$inferSelect,
+  "id" | "full_name"
+>;
 
 export const getProjects = async (): Promise<Project[]> => {
   const response = await axios.get(`${BACKEND_URL}/api/v1/projects`, {

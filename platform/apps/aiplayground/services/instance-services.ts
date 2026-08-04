@@ -1,10 +1,11 @@
 import { BACKEND_URL } from "@/lib/constants";
 import axios from "axios";
-import { instances } from "@repo/db";
+import { instances, instanceState } from "@repo/db";
+
 export type GetInstancesFilters = {
   projectId?: string;
   sessionId?: string;
-  state?: "running" | "terminated" | "all";
+  state?: (typeof instanceState.enumValues)[number] | "all";
   page?: number;
   limit?: number;
 };
