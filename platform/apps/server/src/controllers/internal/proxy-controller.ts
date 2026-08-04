@@ -23,6 +23,11 @@ const daytonaClient = new DaytonaClient();
 const e2bClient = new E2BClient();
 const vercelClient = new VercelSandboxClient();
 
+// current regex can accepts all domains. needs to fix it
+// depending upon the future needs
+const instanceUrlRegex =
+  /^(?:https?:\/\/)?([1-9]\d{0,3}|[1-5]\d{4}|65535)-([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12})(?:\.[a-zA-Z0-9-]+)+\/?$/;
+
 export const getTargetHostByDomain = catchAsync(
   async (req: Request, res: Response) => {
     if (!req.headers.authorization) {
@@ -38,74 +43,157 @@ export const getTargetHostByDomain = catchAsync(
       })
       .parse(req.body);
 
-    const subdomain = domain.split(".")[0];
-
-    if (!subdomain) throw new AppError("Domain is not valid", 400);
-
-    const result = await db
-      .select()
-      .from(proxyDomains)
-      .leftJoin(
-        projectDomainRouting,
-        eq(projectDomainRouting.id, proxyDomains.routing_id),
-      )
-      .innerJoin(
-        instances,
-        eq(instances.id, projectDomainRouting.target_instance_id),
-      )
-      .leftJoin(sandboxTypes, eq(sandboxTypes.id, instances.sandbox_type_id))
-      .leftJoin(instanceTypes, eq(instanceTypes.id, instances.instance_type_id))
-      .leftJoin(
-        routingAllowedIps,
-        eq(routingAllowedIps.routing_id, projectDomainRouting.id),
-      )
-      .where(eq(proxyDomains.domain, subdomain));
-
-    const [domainRouting] = result;
-    const {
-      proxy_domains: proxyDomain,
-      instances: instance,
-      sandbox_types: sandboxType,
-      instance_types: instanceType,
-    } = domainRouting ?? {};
-
-    if (!proxyDomain || !instance) {
-      res.status(404).json({
-        message: "Domain not round ",
+    const match = domain.match(instanceUrlRegex);
+    if (match) {
+      return handleInstanceProxyUrl({
+        domain,
+        port: Number(match[1]),
+        instanceId: match[2]!,
+        res,
       });
-      return;
     }
 
-    const provider = sandboxType?.provider ?? instanceType?.provider;
-    if (!provider) {
-      throw new AppError("Instance provider not found", 404);
-    }
-
-    const proxy = {
-      id: proxyDomain.id,
-      domain: proxyDomain.domain,
-      target_port: proxyDomain.target_port,
-      allowed_all_ips: proxyDomain.allow_all_ips,
-      target: await getProxyTargetUrl({
-        provider,
-        publicIp: instance.public_ip,
-        targetPort: proxyDomain.target_port,
-        providerInstanceId: instance.provider_instance_id,
-      }),
-      allowed_ips: result
-        .map((r) => r.routing_allowed_ips?.ip)
-        .filter((ip): ip is string => Boolean(ip)),
-    };
-    console.log(proxy);
-    res.status(200).json({
-      data: proxy,
-    });
+    return handleCustomProxyUrl(domain, res);
   },
 );
+
+type InstanceProxyUrlOptions = {
+  domain: string;
+  port: number;
+  instanceId: string;
+  res: Response;
+};
+
+async function handleInstanceProxyUrl({
+  domain,
+  port,
+  instanceId,
+  res,
+}: InstanceProxyUrlOptions) {
+  const result = await db
+    .select()
+    .from(instances)
+    .leftJoin(
+      projectDomainRouting,
+      eq(projectDomainRouting.target_instance_id, instances.id),
+    )
+    .leftJoin(sandboxTypes, eq(sandboxTypes.id, instances.sandbox_type_id))
+    .leftJoin(instanceTypes, eq(instanceTypes.id, instances.instance_type_id))
+    .leftJoin(
+      routingAllowedIps,
+      eq(routingAllowedIps.routing_id, projectDomainRouting.id),
+    )
+    .where(eq(instances.id, instanceId));
+
+  const [row] = result;
+  if (!row?.instances) {
+    res.status(404).json({ message: "Instance not found" });
+    return;
+  }
+
+  return sendProxyResponse(res, {
+    id: crypto.randomUUID(),
+    domain,
+    targetPort: port,
+    allowAllIps: false,
+    instance: row.instances,
+    provider: row.sandbox_types?.provider ?? row.instance_types?.provider,
+    allowedIps: collectAllowedIps(result),
+  });
+}
+
+// Handles custom URLs such as randomID.vibeongo.one.
+async function handleCustomProxyUrl(domain: string, res: Response) {
+  const subdomain = domain.split(".")[0];
+
+  if (!subdomain) throw new AppError("Domain is not valid", 400);
+
+  const result = await db
+    .select()
+    .from(proxyDomains)
+    .leftJoin(
+      projectDomainRouting,
+      eq(projectDomainRouting.id, proxyDomains.routing_id),
+    )
+    .innerJoin(
+      instances,
+      eq(instances.id, projectDomainRouting.target_instance_id),
+    )
+    .leftJoin(sandboxTypes, eq(sandboxTypes.id, instances.sandbox_type_id))
+    .leftJoin(instanceTypes, eq(instanceTypes.id, instances.instance_type_id))
+    .leftJoin(
+      routingAllowedIps,
+      eq(routingAllowedIps.routing_id, projectDomainRouting.id),
+    )
+    .where(eq(proxyDomains.domain, subdomain));
+
+  const [row] = result;
+  const proxyDomain = row?.proxy_domains;
+  const instance = row?.instances;
+
+  if (!proxyDomain || !instance) {
+    res.status(404).json({
+      message: "Domain not found",
+    });
+    return;
+  }
+
+  return sendProxyResponse(res, {
+    id: proxyDomain.id,
+    domain: proxyDomain.domain,
+    targetPort: proxyDomain.target_port,
+    allowAllIps: proxyDomain.allow_all_ips,
+    instance,
+    provider: row.sandbox_types?.provider ?? row.instance_types?.provider,
+    allowedIps: collectAllowedIps(result),
+  });
+}
 
 type ProxyProvider =
   | (typeof sandboxProvidersEnums.enumValues)[number]
   | (typeof instanceProvidersEnum.enumValues)[number];
+
+type ProxyResponseOptions = {
+  id: string;
+  domain: string;
+  targetPort: number;
+  allowAllIps: boolean;
+  instance: typeof instances.$inferSelect;
+  provider: ProxyProvider | null | undefined;
+  allowedIps: string[];
+};
+
+function collectAllowedIps(
+  rows: { routing_allowed_ips: { ip: string } | null }[],
+) {
+  return rows
+    .map((row) => row.routing_allowed_ips?.ip)
+    .filter((ip): ip is string => Boolean(ip));
+}
+
+async function sendProxyResponse(res: Response, options: ProxyResponseOptions) {
+  if (!options.provider) {
+    throw new AppError("Instance provider not found", 404);
+  }
+
+  const target = await getProxyTargetUrl({
+    provider: options.provider,
+    publicIp: options.instance.public_ip,
+    targetPort: options.targetPort,
+    providerInstanceId: options.instance.provider_instance_id,
+  });
+
+  res.status(200).json({
+    data: {
+      id: options.id,
+      domain: options.domain,
+      target_port: options.targetPort,
+      allowed_all_ips: options.allowAllIps,
+      target,
+      allowed_ips: options.allowedIps,
+    },
+  });
+}
 
 type ProxyTargetOptions = {
   publicIp: string | null;
