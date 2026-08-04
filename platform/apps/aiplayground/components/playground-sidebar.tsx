@@ -39,6 +39,7 @@ const navigation = [
 
 export function PlaygroundSidebar() {
   const { data: projectData } = useGetProjects();
+  /// TODO:  Try get session linked with the projects not like this on 100
   const { data: sessionData } = useGetProjectSessions({ limit: 100 });
   const projects = (projectData ?? []).map((project) => ({
     id: project.id,
