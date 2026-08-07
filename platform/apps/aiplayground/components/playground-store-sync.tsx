@@ -20,13 +20,20 @@ export function PlaygroundStoreSync() {
 
     addAllProjects(projects);
 
+    const existingSessions = new Map(
+      useSessionsStore
+        .getState()
+        .sessions.map((entry) => [entry.session.id, entry]),
+    );
+
     addAllSessions(
       projectsWithSessions.flatMap((project) =>
-        project.sessions.map((session) => ({
-          session,
-          instance: null,
-          state: "stopped",
-        })),
+        project.sessions.map((session) => {
+          const existing = existingSessions.get(session.id);
+          return existing
+            ? { ...existing, session }
+            : { session, instance: null, state: "stopped" as const };
+        }),
       ),
     );
   }, [addAllProjects, addAllSessions, projectsWithSessions]);

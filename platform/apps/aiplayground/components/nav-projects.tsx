@@ -7,12 +7,11 @@ import {
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
 import { useGetInstances, useTerminateInstance } from "@/hooks/use-instance";
-import {
-  useOpencodeProjectDirectories,
-  useOpencodeSessions,
-} from "@/hooks/use-opencode-sessions";
+import { useOpencodeStatus } from "@/hooks/use-opencode-status";
+import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
 import { useGetProjectGithubReposById } from "@/hooks/use-project";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
+import { useSessionsStore } from "@/store/playground-store";
 import {
   Collapsible,
   CollapsibleContent,
@@ -186,6 +185,7 @@ function ProjectSessionNavItem({
   const pathname = usePathname();
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
+  const updateSession = useSessionsStore((store) => store.updateSession);
   const {
     data: instancesData,
     isPending: isInstancePending,
@@ -196,17 +196,58 @@ function ProjectSessionNavItem({
     limit: 1,
   });
   const instance = instancesData?.data[0];
+  const instanceConfig =
+    instance?.config &&
+    typeof instance.config === "object" &&
+    !Array.isArray(instance.config)
+      ? instance.config
+      : undefined;
+  const localToken =
+    instanceConfig && "vibeongoLocalToken" in instanceConfig
+      ? instanceConfig.vibeongoLocalToken
+      : undefined;
+  const runtimeDomain = instance
+    ? `3101-${instance.id}${instance.proxy_domain}`
+    : undefined;
   const opencodeDomain = instance
-    ? `4096-${instance.id}${instance!.proxy_domain}`
+    ? `4096-${instance.id}${instance.proxy_domain}`
     : undefined;
 
-  const serverUrl = opencodeDomain ? `https://${opencodeDomain}` : "";
+  const { data: opencodeStatus } = useOpencodeStatus(
+    instance?.id ?? "",
+    runtimeDomain ? `https://${runtimeDomain}` : "",
+    typeof localToken === "string" ? localToken : "",
+    !!instance,
+  );
+  const isOpencodeRunning = opencodeStatus?.running === true;
+  const serverUrl =
+    isOpencodeRunning && opencodeDomain ? `https://${opencodeDomain}` : "";
   const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
   const { data: opencodeSessions } = useOpencodeSessions(
     session.id,
     serverUrl,
     !!serverUrl,
   );
+
+  useEffect(() => {
+    if (isInstancePending) return;
+
+    if (!instance) {
+      updateSession(session.id, { instance: null, state: "stopped" });
+      return;
+    }
+
+    updateSession(session.id, {
+      instance,
+      state: isOpencodeRunning ? "running" : "processing",
+    });
+  }, [
+    instance,
+    isInstancePending,
+    isOpencodeRunning,
+    session.id,
+    updateSession,
+  ]);
 
   const {
     data: githubRepos,
@@ -316,10 +357,10 @@ function ProjectSessionNavItem({
           </span>
           {instance ? (
             <span
-              className="ml-auto size-2 shrink-0 rounded-full bg-amber-500"
-              title="OpenCode domain unavailable"
+              className="ml-auto size-2 shrink-0 animate-pulse rounded-full bg-amber-500"
+              title="OpenCode is starting"
             >
-              <span className="sr-only">OpenCode domain unavailable</span>
+              <span className="sr-only">OpenCode is starting</span>
             </span>
           ) : null}
         </SidebarMenuSubButton>

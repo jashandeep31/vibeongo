@@ -45,14 +45,14 @@ export function PromptInput({
   selection,
   onSelectionChange,
 }: PromptInputProps) {
-  const [question, setQuestion] = useState("");
+  const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const attachmentsRef = useRef<LocalAttachment[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const trimmedQuestion = question.trim();
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isSubmitDisabled =
-    disabled || (!trimmedQuestion && attachments.length === 0);
+    disabled || (!hasQuestion && attachments.length === 0);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
   );
@@ -74,11 +74,13 @@ export function PromptInput({
     event.preventDefault();
     if (isSubmitDisabled) return;
 
+    const trimmedQuestion = textareaRef.current?.value.trim() ?? "";
     onSubmit(
       trimmedQuestion,
       attachments.map((attachment) => attachment.file),
     );
-    setQuestion("");
+    if (textareaRef.current) textareaRef.current.value = "";
+    setHasQuestion(false);
     attachments.forEach((attachment) => {
       URL.revokeObjectURL(attachment.previewUrl);
     });
@@ -146,11 +148,13 @@ export function PromptInput({
         ) : null}
 
         <textarea
+          ref={textareaRef}
           aria-label="Write an AI message"
           placeholder="Work on anything"
-          value={question}
           disabled={disabled}
-          onChange={(event) => setQuestion(event.target.value)}
+          onChange={(event) =>
+            setHasQuestion(event.target.value.trim().length > 0)
+          }
           onKeyDown={handleKeyDown}
           className="placeholder:text-muted-foreground min-h-32 w-full resize-none border-0 bg-transparent px-6 pt-6 pb-3 text-base outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:min-h-36 sm:text-lg"
         />

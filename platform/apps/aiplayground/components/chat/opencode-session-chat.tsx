@@ -11,11 +11,12 @@ import type {
   OpencodePromptSelection,
   OpencodeSessionData,
 } from "@/services/opencode-services";
-import type { ToolPart } from "@opencode-ai/sdk/v2/client";
+import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { ArrowDown, Braces, MessagesSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 type SessionMessages = OpencodeSessionData["messages"];
+type ChatError = NonNullable<AssistantMessage["error"]>;
 
 function getPartText(parts: SessionMessages[number]["parts"], type: "text") {
   return parts
@@ -50,6 +51,13 @@ function createChatTurns(messages: SessionMessages) {
         | { id: string; type: "text"; text: string }
         | { id: string; type: "tools"; tools: ToolPart[] }
         | { id: string; type: "thinking"; active: boolean }
+        | {
+            id: string;
+            type: "error";
+            title: string;
+            message: string;
+            statusCode?: number;
+          }
       >,
       agent: undefined as string | undefined,
       model: undefined as string | undefined,
@@ -91,6 +99,15 @@ function createChatTurns(messages: SessionMessages) {
         }
       }
     }
+
+    if (message.info.error) {
+      turn.content.push({
+        id: `${message.info.id}-error`,
+        type: "error",
+        ...getChatError(message.info.error),
+      });
+    }
+
     turn.agent = message.info.agent;
     turn.model = message.info.modelID;
     turn.durationMs = message.info.time.completed
@@ -99,6 +116,42 @@ function createChatTurns(messages: SessionMessages) {
   }
 
   return turns;
+}
+
+function getChatError(error: ChatError) {
+  const message =
+    "message" in error.data && typeof error.data.message === "string"
+      ? error.data.message
+      : "OpenCode could not complete this request.";
+  const statusCode =
+    "statusCode" in error.data && typeof error.data.statusCode === "number"
+      ? error.data.statusCode
+      : undefined;
+
+  return {
+    title: getChatErrorTitle(error.name),
+    message,
+    statusCode,
+  };
+}
+
+function getChatErrorTitle(name: ChatError["name"]) {
+  switch (name) {
+    case "ProviderAuthError":
+      return "Provider authentication failed";
+    case "ContextOverflowError":
+      return "Context limit exceeded";
+    case "ContentFilterError":
+      return "Response blocked";
+    case "MessageOutputLengthError":
+      return "Response was too long";
+    case "MessageAbortedError":
+      return "Request was stopped";
+    case "StructuredOutputError":
+      return "Invalid structured response";
+    default:
+      return "OpenCode request failed";
+  }
 }
 
 export function OpencodeSessionChat({

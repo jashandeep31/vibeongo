@@ -4,8 +4,13 @@ import MarkdownRenderer from "@/components/markdown-renderer";
 import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
 import type { ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@repo/ui/components/alert";
 import { cn } from "@repo/ui/lib/utils";
-import { Check, Copy } from "lucide-react";
+import { Check, CircleAlert, Copy } from "lucide-react";
 import { useState } from "react";
 
 export type OpencodeChatTurn = {
@@ -16,6 +21,13 @@ export type OpencodeChatTurn = {
     | { id: string; type: "text"; text: string }
     | { id: string; type: "tools"; tools: ToolPart[] }
     | { id: string; type: "thinking"; active: boolean }
+    | {
+        id: string;
+        type: "error";
+        title: string;
+        message: string;
+        statusCode?: number;
+      }
   >;
   agent?: string;
   model?: string;
@@ -82,6 +94,21 @@ export function OpencodeChatQuestion({
                   <MarkdownRenderer key={content.id} content={content.text} />
                 ) : content.type === "tools" ? (
                   <OpencodeToolCall key={content.id} tools={content.tools} />
+                ) : content.type === "error" ? (
+                  <Alert
+                    key={content.id}
+                    variant="destructive"
+                    className="my-2 py-3"
+                  >
+                    <CircleAlert />
+                    <AlertTitle>
+                      {content.title}
+                      {content.statusCode ? ` (${content.statusCode})` : ""}
+                    </AlertTitle>
+                    <AlertDescription className="break-words whitespace-pre-wrap">
+                      {content.message}
+                    </AlertDescription>
+                  </Alert>
                 ) : isStreaming && content.active ? (
                   <div
                     key={content.id}

@@ -115,7 +115,7 @@ export async function findOpencodeSession(
   return results.find((result) => !result.error && result.data)?.data;
 }
 
-function normalizeOpencodeServerUrl(serverUrl: string) {
+export function normalizeOpencodeServerUrl(serverUrl: string) {
   const url = new URL(serverUrl);
 
   if (

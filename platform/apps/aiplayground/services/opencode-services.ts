@@ -47,6 +47,10 @@ export type OpencodePromptSelection = {
   agent?: string;
 };
 
+export type OpencodeStatus = {
+  running: boolean;
+};
+
 export type OpencodeProjectDirectories = {
   id: string;
   worktree: string;
@@ -59,6 +63,16 @@ async function readJson<T>(response: Response): Promise<T> {
   }
 
   return response.json() as Promise<T>;
+}
+
+export async function getOpencodeStatus(runtimeUrl: string, token: string) {
+  return readJson<OpencodeStatus>(
+    await fetch("/api/opencode/status", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ runtimeUrl, token }),
+    }),
+  );
 }
 
 export async function getOpencodeSessions(chatId: string, serverUrl: string) {
