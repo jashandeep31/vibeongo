@@ -6,13 +6,19 @@ import type {
 } from "@/services/opencode-services";
 import { Button } from "@repo/ui/components/button";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@repo/ui/components/select";
-import { ArrowUp, Plus, X } from "lucide-react";
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@repo/ui/components/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@repo/ui/components/popover";
+import { ArrowUp, ChevronsUpDown, Plus, X } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -47,6 +53,9 @@ export function PromptInput({
 }: PromptInputProps) {
   const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
+  const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
+  const [isVariantPickerOpen, setIsVariantPickerOpen] = useState(false);
+  const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
   const attachmentsRef = useRef<LocalAttachment[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -55,6 +64,9 @@ export function PromptInput({
     disabled || (!hasQuestion && attachments.length === 0);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
+  );
+  const selectedAgent = inventory?.agents.find(
+    (agent) => agent.id === selection.agent,
   );
 
   useEffect(() => {
@@ -183,84 +195,174 @@ export function PromptInput({
             </Button>
 
             {inventory?.models.length ? (
-              <Select
-                value={selection.model}
-                onValueChange={(model) =>
-                  onSelectionChange({
-                    ...selection,
-                    model,
-                    variant: undefined,
-                  })
-                }
+              <Popover
+                open={isModelPickerOpen}
+                onOpenChange={setIsModelPickerOpen}
               >
-                <SelectTrigger
-                  size="sm"
-                  aria-label="Choose model"
-                  className="max-w-52 border-0 bg-transparent shadow-none"
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Choose model"
+                    className="max-w-52 justify-between gap-2 font-normal"
+                  >
+                    <span className="truncate">
+                      {selectedModel?.name ?? "Choose model"}
+                    </span>
+                    <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side="top"
+                  className="w-80 gap-0 overflow-hidden p-0"
                 >
-                  <SelectValue placeholder="Choose model" />
-                </SelectTrigger>
-                <SelectContent align="start" className="max-h-80 min-w-72">
-                  {inventory.models.map((model) => (
-                    <SelectItem key={model.id} value={model.id}>
-                      <span className="flex min-w-0 flex-col items-start">
-                        <span>{model.name}</span>
-                        <span className="text-muted-foreground text-xs">
-                          {model.providerName}
-                        </span>
-                      </span>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Command>
+                    <CommandInput autoFocus placeholder="Search models..." />
+                    <CommandList className="max-h-72">
+                      <CommandEmpty>No models found.</CommandEmpty>
+                      <CommandGroup>
+                        {inventory.models.map((model) => (
+                          <CommandItem
+                            key={model.id}
+                            value={`${model.name} ${model.providerName} ${model.id}`}
+                            data-checked={
+                              selection.model === model.id ? true : undefined
+                            }
+                            onSelect={() => {
+                              onSelectionChange({
+                                ...selection,
+                                model: model.id,
+                                variant: undefined,
+                              });
+                              setIsModelPickerOpen(false);
+                            }}
+                          >
+                            <span className="flex min-w-0 flex-1 flex-col items-start">
+                              <span className="truncate">{model.name}</span>
+                              <span className="text-muted-foreground text-xs">
+                                {model.providerName}
+                              </span>
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             ) : null}
 
             {selectedModel?.variants.length ? (
-              <Select
-                value={selection.variant}
-                onValueChange={(variant) =>
-                  onSelectionChange({ ...selection, variant })
-                }
+              <Popover
+                open={isVariantPickerOpen}
+                onOpenChange={setIsVariantPickerOpen}
               >
-                <SelectTrigger
-                  size="sm"
-                  aria-label="Choose model variant"
-                  className="border-0 bg-transparent shadow-none"
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Choose model variant"
+                    className="max-w-40 justify-between gap-2 font-normal"
+                  >
+                    <span className="truncate">
+                      {selection.variant ?? "Variant"}
+                    </span>
+                    <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side="top"
+                  className="w-64 gap-0 overflow-hidden p-0"
                 >
-                  <SelectValue placeholder="Variant" />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  {selectedModel.variants.map((variant) => (
-                    <SelectItem key={variant} value={variant}>
-                      {variant}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Command>
+                    <CommandInput autoFocus placeholder="Search variants..." />
+                    <CommandList className="max-h-72">
+                      <CommandEmpty>No variants found.</CommandEmpty>
+                      <CommandGroup>
+                        {selectedModel.variants.map((variant) => (
+                          <CommandItem
+                            key={variant}
+                            value={variant}
+                            data-checked={
+                              selection.variant === variant ? true : undefined
+                            }
+                            onSelect={() => {
+                              onSelectionChange({ ...selection, variant });
+                              setIsVariantPickerOpen(false);
+                            }}
+                          >
+                            <span className="min-w-0 flex-1 truncate">
+                              {variant}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             ) : null}
 
             {inventory?.agents.length ? (
-              <Select
-                value={selection.agent}
-                onValueChange={(agent) =>
-                  onSelectionChange({ ...selection, agent })
-                }
+              <Popover
+                open={isAgentPickerOpen}
+                onOpenChange={setIsAgentPickerOpen}
               >
-                <SelectTrigger
-                  size="sm"
-                  aria-label="Choose agent"
-                  className="max-w-32 border-0 bg-transparent shadow-none"
+                <PopoverTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    aria-label="Choose agent"
+                    className="max-w-40 justify-between gap-2 font-normal"
+                  >
+                    <span className="truncate">
+                      {selectedAgent?.name ?? "Agent"}
+                    </span>
+                    <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent
+                  align="start"
+                  side="top"
+                  className="w-72 gap-0 overflow-hidden p-0"
                 >
-                  <SelectValue placeholder="Agent" />
-                </SelectTrigger>
-                <SelectContent align="start">
-                  {inventory.agents.map((agent) => (
-                    <SelectItem key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Command>
+                    <CommandInput autoFocus placeholder="Search agents..." />
+                    <CommandList className="max-h-72">
+                      <CommandEmpty>No agents found.</CommandEmpty>
+                      <CommandGroup>
+                        {inventory.agents.map((agent) => (
+                          <CommandItem
+                            key={agent.id}
+                            value={`${agent.name} ${agent.description ?? ""}`}
+                            data-checked={
+                              selection.agent === agent.id ? true : undefined
+                            }
+                            onSelect={() => {
+                              onSelectionChange({ ...selection, agent: agent.id });
+                              setIsAgentPickerOpen(false);
+                            }}
+                          >
+                            <span className="flex min-w-0 flex-1 flex-col items-start">
+                              <span className="truncate">{agent.name}</span>
+                              {agent.description ? (
+                                <span className="text-muted-foreground line-clamp-1 text-xs">
+                                  {agent.description}
+                                </span>
+                              ) : null}
+                            </span>
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             ) : null}
           </div>
 
