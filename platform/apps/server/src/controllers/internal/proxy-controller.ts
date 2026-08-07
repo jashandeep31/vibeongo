@@ -99,6 +99,8 @@ async function handleInstanceProxyUrl({
     instance: row.instances,
     provider: row.sandbox_types?.provider ?? row.instance_types?.provider,
     allowedIps: collectAllowedIps(result),
+    protected: true,
+    accessToken: "",
   });
 }
 
@@ -146,6 +148,8 @@ async function handleCustomProxyUrl(domain: string, res: Response) {
     instance,
     provider: row.sandbox_types?.provider ?? row.instance_types?.provider,
     allowedIps: collectAllowedIps(result),
+    protected: false,
+    accessToken: "",
   });
 }
 
@@ -161,6 +165,8 @@ type ProxyResponseOptions = {
   instance: typeof instances.$inferSelect;
   provider: ProxyProvider | null | undefined;
   allowedIps: string[];
+  protected: boolean;
+  accessToken: string;
 };
 
 function collectAllowedIps(
@@ -191,6 +197,8 @@ async function sendProxyResponse(res: Response, options: ProxyResponseOptions) {
       allowed_all_ips: options.allowAllIps,
       target,
       allowed_ips: options.allowedIps,
+      protected: options.protected,
+      access_token: options.accessToken,
     },
   });
 }
