@@ -42,8 +42,8 @@ export function NewOpencodeChat({
       inventory?.agents[0]?.id,
   };
 
-  const handleSubmit = async (text: string, files: File[]) => {
-    const session = await startSession.mutateAsync({
+  const handleSubmit = (text: string, files: File[]) => {
+    startSession.mutate({
       chatId,
       serverUrl,
       accessToken,
@@ -51,11 +51,13 @@ export function NewOpencodeChat({
       text,
       files,
       selection: effectiveSelection,
+      onSessionCreated: (sessionId) => {
+        const params = new URLSearchParams({ serverUrl });
+        router.replace(
+          `${chatUrl}/sessions/${encodeURIComponent(sessionId)}?${params.toString()}`,
+        );
+      },
     });
-    const params = new URLSearchParams({ serverUrl });
-    router.replace(
-      `${chatUrl}/sessions/${encodeURIComponent(session.id)}?${params.toString()}`,
-    );
   };
 
   return (
@@ -79,7 +81,7 @@ export function NewOpencodeChat({
           <span className="shrink-0">New chat</span>
         </h1>
         <PromptInput
-          onSubmit={(text, files) => void handleSubmit(text, files)}
+          onSubmit={handleSubmit}
           disabled={startSession.isPending}
           inventory={inventory}
           selection={effectiveSelection}

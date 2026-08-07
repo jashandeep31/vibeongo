@@ -63,6 +63,7 @@ export const useStartOpencodeSession = () => {
       text,
       files,
       selection,
+      onSessionCreated,
     }: {
       chatId: string;
       serverUrl: string;
@@ -71,6 +72,7 @@ export const useStartOpencodeSession = () => {
       text: string;
       files: File[];
       selection: OpencodePromptSelection;
+      onSessionCreated?: (sessionId: string) => void;
     }) => {
       const session = await createOpencodeSession(
         chatId,
@@ -78,6 +80,9 @@ export const useStartOpencodeSession = () => {
         accessToken,
         directory,
       );
+      upsertSessionChat(chatId, session);
+      onSessionCreated?.(session.id);
+
       const attachments: UploadAttachment[] = await Promise.all(
         files.map(async (file) => ({
           type: "image" as const,
@@ -99,9 +104,8 @@ export const useStartOpencodeSession = () => {
       );
       return session;
     },
-    onSuccess: (session, variables) => {
-      upsertSessionChat(variables.chatId, session);
-      return queryClient.invalidateQueries({
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
         queryKey: ["opencode", "chat-sessions"],
       });
     },

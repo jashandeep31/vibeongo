@@ -278,7 +278,9 @@ export const useSendOpencodePrompt = ({
         accessToken,
       );
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
   });
 };
 
