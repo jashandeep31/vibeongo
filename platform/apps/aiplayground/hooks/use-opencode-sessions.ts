@@ -5,6 +5,7 @@ import {
   getOpencodeProjectDirectories,
   getOpencodeSessions,
   sendOpencodePrompt,
+  type OpencodeSessionData,
   type OpencodePromptSelection,
   type UploadAttachment,
 } from "@/services/opencode-services";
@@ -81,6 +82,53 @@ export const useStartOpencodeSession = () => {
         directory,
       );
       upsertSessionChat(chatId, session);
+
+      const [providerID = session.model?.providerID ?? "", ...modelParts] =
+        selection.model?.split("/") ?? [];
+      const modelID = modelParts.join("/") || session.model?.id || "";
+      const optimisticMessageId = `optimistic:${session.id}`;
+      const now = Date.now();
+      const optimisticSession: OpencodeSessionData = {
+        session,
+        changes: [],
+        optimistic: true,
+        messages: [
+          {
+            info: {
+              id: optimisticMessageId,
+              sessionID: session.id,
+              role: "user",
+              time: { created: now },
+              agent: selection.agent ?? session.agent ?? "",
+              model: {
+                providerID,
+                modelID,
+                ...(selection.variant
+                  ? { variant: selection.variant }
+                  : session.model?.variant
+                    ? { variant: session.model.variant }
+                    : {}),
+              },
+            },
+            parts: text
+              ? [
+                  {
+                    id: `${optimisticMessageId}:text`,
+                    sessionID: session.id,
+                    messageID: optimisticMessageId,
+                    type: "text",
+                    text,
+                  },
+                ]
+              : [],
+          },
+        ],
+      };
+
+      queryClient.setQueryData(
+        ["opencode", "session", chatId, session.id, serverUrl],
+        optimisticSession,
+      );
       onSessionCreated?.(session.id);
 
       const attachments: UploadAttachment[] = await Promise.all(

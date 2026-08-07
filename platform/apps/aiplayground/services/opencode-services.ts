@@ -20,6 +20,7 @@ export type OpencodeSessionData = {
   session: Session;
   messages: Array<{ info: Message; parts: Part[] }>;
   changes: SnapshotFileDiff[];
+  optimistic?: boolean;
 };
 
 export type UploadAttachment = {

@@ -25,16 +25,20 @@ export const useOpencodeSession = ({
   accessToken: string;
 }) => {
   const queryClient = useQueryClient();
-  const [isStreaming, setIsStreaming] = useState(false);
   const queryKey = useMemo(
     () => ["opencode", "session", chatId, sessionId, serverUrl],
     [chatId, serverUrl, sessionId],
   );
+  const hasOptimisticSession =
+    queryClient.getQueryData<OpencodeSessionData>(queryKey)?.optimistic ===
+    true;
+  const [isStreaming, setIsStreaming] = useState(hasOptimisticSession);
   const query = useQuery({
     queryKey,
     queryFn: () =>
       getOpencodeSessionRaw(chatId, sessionId, serverUrl, accessToken),
     enabled: !!serverUrl && !!accessToken,
+    staleTime: hasOptimisticSession ? Infinity : 0,
   });
 
   useEffect(() => {
@@ -50,10 +54,16 @@ export const useOpencodeSession = ({
           event.type === "message.updated" &&
           event.properties.sessionID === sessionId
         ) {
-          const messageIndex = current.messages.findIndex(
+          const currentMessages =
+            event.properties.info.role === "user"
+              ? current.messages.filter(
+                  (message) => !message.info.id.startsWith("optimistic:"),
+                )
+              : current.messages;
+          const messageIndex = currentMessages.findIndex(
             (message) => message.info.id === event.properties.info.id,
           );
-          const messages = [...current.messages];
+          const messages = [...currentMessages];
 
           if (messageIndex === -1) {
             messages.push({ info: event.properties.info, parts: [] });
@@ -64,7 +74,14 @@ export const useOpencodeSession = ({
             };
           }
 
-          return { ...current, messages };
+          return {
+            ...current,
+            messages,
+            optimistic:
+              event.properties.info.role === "user"
+                ? false
+                : current.optimistic,
+          };
         }
 
         if (
