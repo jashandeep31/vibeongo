@@ -127,7 +127,20 @@ export function PromptInput({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) return;
+    if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
+
+    if (event.metaKey || event.ctrlKey) {
+      event.preventDefault();
+      const textarea = event.currentTarget;
+      textarea.setRangeText(
+        "\n",
+        textarea.selectionStart,
+        textarea.selectionEnd,
+        "end",
+      );
+      setHasQuestion(textarea.value.trim().length > 0);
+      return;
+    }
 
     event.preventDefault();
     formRef.current?.requestSubmit();
@@ -344,7 +357,10 @@ export function PromptInput({
                               selection.agent === agent.id ? true : undefined
                             }
                             onSelect={() => {
-                              onSelectionChange({ ...selection, agent: agent.id });
+                              onSelectionChange({
+                                ...selection,
+                                agent: agent.id,
+                              });
                               setIsAgentPickerOpen(false);
                             }}
                           >

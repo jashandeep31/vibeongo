@@ -4,6 +4,7 @@ import {
   type GetProjectSessionsParams,
   type ProjectSessionsResponse,
 } from "@/services/project-session-services";
+import { useSessionsStore } from "@/store/playground-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetProjectSessions = (
@@ -21,6 +22,20 @@ export const useResumeProjectSession = () => {
 
   return useMutation({
     mutationFn: resumeProjectSession,
+    onMutate: ({ id }) => {
+      const previousState = useSessionsStore
+        .getState()
+        .sessions.find((entry) => entry.session.id === id)?.state;
+      useSessionsStore.getState().updateSessionState(id, "processing");
+      return { id, previousState };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousState) {
+        useSessionsStore
+          .getState()
+          .updateSessionState(context.id, context.previousState);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["instances"] });
