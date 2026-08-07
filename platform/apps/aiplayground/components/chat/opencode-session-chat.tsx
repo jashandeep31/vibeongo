@@ -239,7 +239,7 @@ export function OpencodeSessionChat({
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
       <div className="absolute top-3 right-3 z-50">
-        <ProjectDomainsDialog projectId={projectId} />
+        <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
       </div>
       <div
         ref={scrollAreaRef}

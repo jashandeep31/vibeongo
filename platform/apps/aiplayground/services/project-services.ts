@@ -1,6 +1,7 @@
 import { BACKEND_URL } from "@/lib/constants";
 import {
   githubRepos,
+  instances,
   projectDomainRouting,
   projects,
   projectSessions,
@@ -23,6 +24,11 @@ export type ProjectGithubRepo = Pick<
   typeof githubRepos.$inferSelect,
   "id" | "full_name"
 >;
+
+export type UpdateProjectRoutingTargetInstanceInput = {
+  id: (typeof projects.$inferSelect)["id"];
+  instanceId: (typeof instances.$inferSelect)["id"];
+};
 
 export const getProjects = async (): Promise<Project[]> => {
   const response = await axios.get(`${BACKEND_URL}/api/v1/projects`, {
@@ -52,6 +58,19 @@ export const getProjectDomainsById = async (
   );
 
   return response.data.data;
+};
+
+export const updateProjectRoutingTargetInstance = async ({
+  id,
+  instanceId,
+}: UpdateProjectRoutingTargetInstanceInput): Promise<{ message: string }> => {
+  const response = await axios.patch(
+    `${BACKEND_URL}/api/v1/projects/${id}/routing/target-instance`,
+    { instanceId },
+    { withCredentials: true },
+  );
+
+  return response.data;
 };
 
 export const getProjectGithubReposById = async (

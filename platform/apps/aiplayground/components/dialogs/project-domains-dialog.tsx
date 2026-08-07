@@ -1,6 +1,10 @@
 "use client";
 
-import { useGetProjectDomainsById } from "@/hooks/use-project";
+import {
+  useGetProjectDomainsById,
+  useUpdateProjectRoutingTargetInstance,
+} from "@/hooks/use-project";
+import { useSessionsStore } from "@/store/playground-store";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -10,15 +14,34 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@repo/ui/components/dialog";
-import { ExternalLink, Globe, Network } from "lucide-react";
+import { ExternalLink, Globe, LoaderCircle, Network } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
-export function ProjectDomainsDialog({ projectId }: { projectId: string }) {
+export function ProjectDomainsDialog({
+  projectId,
+  projectSessionId,
+}: {
+  projectId: string;
+  projectSessionId?: string;
+}) {
   const [open, setOpen] = useState(false);
+  const instanceId = useSessionsStore((state) =>
+    projectSessionId
+      ? state.sessions.find((entry) => entry.session.id === projectSessionId)
+          ?.instance?.id
+      : undefined,
+  );
   const { data, isPending, isError } = useGetProjectDomainsById(
     projectId,
-    open,
+    open || !!instanceId,
   );
+  const assignDomains = useUpdateProjectRoutingTargetInstance();
+  const needsAssignment =
+    !!instanceId &&
+    !isPending &&
+    !isError &&
+    data?.target_instance_id !== instanceId;
   const domains = useMemo(
     () =>
       [...(data?.proxy_domains ?? [])].sort((left, right) => {
@@ -35,17 +58,40 @@ export function ProjectDomainsDialog({ projectId }: { projectId: string }) {
     [data?.allowed_ips],
   );
 
+  const handleDomainAction = async () => {
+    if (!needsAssignment || !instanceId) {
+      setOpen(true);
+      return;
+    }
+
+    try {
+      await assignDomains.mutateAsync({ id: projectId, instanceId });
+      toast.success("Project domains assigned to this session");
+    } catch {
+      toast.error("Failed to assign project domains");
+    }
+  };
+
   return (
     <>
       <Button
         type="button"
         variant="outline"
         size="sm"
-        className="bg-background/90 shadow-sm backdrop-blur"
-        onClick={() => setOpen(true)}
+        className={
+          needsAssignment
+            ? "border-blue-600 bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:text-white"
+            : "bg-background/90 shadow-sm backdrop-blur"
+        }
+        disabled={assignDomains.isPending}
+        onClick={handleDomainAction}
       >
-        <Globe />
-        Domains
+        {assignDomains.isPending ? (
+          <LoaderCircle className="animate-spin" />
+        ) : (
+          <Globe />
+        )}
+        {needsAssignment ? "Assign domains" : "Domains"}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>

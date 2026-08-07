@@ -3,8 +3,9 @@ import {
   getProjectGithubReposById,
   getProjects,
   getProjectsWithSessions,
+  updateProjectRoutingTargetInstance,
 } from "@/services/project-services";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetProjects = (enabled = true) =>
   useQuery({
@@ -26,6 +27,20 @@ export const useGetProjectDomainsById = (id: string | null, enabled = true) =>
     queryFn: () => getProjectDomainsById(id!),
     enabled: enabled && !!id,
   });
+
+export const useUpdateProjectRoutingTargetInstance = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProjectRoutingTargetInstance,
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "domains"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["instances"] });
+    },
+  });
+};
 
 export const useGetProjectGithubReposById = (
   id: string | null,

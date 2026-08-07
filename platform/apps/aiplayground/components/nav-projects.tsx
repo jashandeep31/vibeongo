@@ -10,7 +10,10 @@ import {
 import { useGetInstances, useTerminateInstance } from "@/hooks/use-instance";
 import { useOpencodeStatus } from "@/hooks/use-opencode-status";
 import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
-import { useGetProjectGithubReposById } from "@/hooks/use-project";
+import {
+  useGetProjectDomainsById,
+  useGetProjectGithubReposById,
+} from "@/hooks/use-project";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import { useSessionsStore } from "@/store/playground-store";
 import {
@@ -197,6 +200,12 @@ function ProjectSessionNavItem({
     limit: 1,
   });
   const instance = instancesData?.data[0];
+  const { data: projectDomains } = useGetProjectDomainsById(
+    session.projectId,
+    !!instance,
+  );
+  const needsDomainAssignment =
+    !!instance && projectDomains?.target_instance_id !== instance.id;
   const instanceConfig =
     instance?.config &&
     typeof instance.config === "object" &&
@@ -279,10 +288,20 @@ function ProjectSessionNavItem({
                       {session.name}
                     </span>
                     <span
-                      className="ml-1 size-2 shrink-0 rounded-full bg-emerald-500"
-                      title="Running"
+                      className={`ml-1 size-2 shrink-0 rounded-full ${
+                        needsDomainAssignment ? "bg-blue-500" : "bg-emerald-500"
+                      }`}
+                      title={
+                        needsDomainAssignment
+                          ? "Running — domains need assignment"
+                          : "Running"
+                      }
                     >
-                      <span className="sr-only">Running</span>
+                      <span className="sr-only">
+                        {needsDomainAssignment
+                          ? "Running — domains need assignment"
+                          : "Running"}
+                      </span>
                     </span>
                     <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
                   </button>
