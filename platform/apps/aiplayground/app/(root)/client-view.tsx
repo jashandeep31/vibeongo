@@ -12,7 +12,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
-import { ChevronDown, Loader2 } from "lucide-react";
+import { ChevronDown, Loader2, Play } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -78,13 +78,17 @@ function SessionRow({
       ) : (
         <Button
           type="button"
-          variant="ghost"
+          variant="outline"
           size="sm"
           className="shrink-0"
           disabled={isResumePending}
           onClick={() => onResume(entry.session.id)}
         >
-          {isResumePending ? <Loader2 className="animate-spin" /> : null}
+          {isResumePending ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Play />
+          )}
           Resume
         </Button>
       )}
