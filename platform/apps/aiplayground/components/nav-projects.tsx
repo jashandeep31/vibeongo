@@ -453,6 +453,7 @@ export function NavProjects({ projects }: { projects: Project[] }) {
   const activeProjectId = params.projectId;
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
+  const sessions = useSessionsStore((store) => store.sessions);
   const { isMobile, setOpenMobile } = useSidebar();
   const [openProjectId, setOpenProjectId] = useState<string | null>(
     activeProjectId ?? null,
@@ -510,13 +511,54 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                 className="group/project"
               >
                 <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton className="h-9 rounded-xl px-3 font-normal">
-                      <Folder />
-                      <span>{project.name}</span>
-                      <ChevronRight className="ml-auto transition-transform group-data-[state=open]/project:rotate-90" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
+                  <div className="flex items-center gap-1">
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton className="h-9 min-w-0 flex-1 rounded-xl px-3 font-normal">
+                        <Folder
+                          className={
+                            sessions.some(
+                              (entry) =>
+                                entry.session.project_id === project.id &&
+                                entry.state === "running",
+                            )
+                              ? "text-orange-500"
+                              : undefined
+                          }
+                        />
+                        <span className="min-w-0 truncate">
+                          {project.name}
+                        </span>
+                        <ChevronRight className="ml-auto transition-transform group-data-[state=open]/project:rotate-90" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          className="shrink-0"
+                          aria-label={`Actions for ${project.name}`}
+                          title={`Actions for ${project.name}`}
+                        >
+                          <Ellipsis />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <CreateProjectSessionDialog
+                          projectId={project.id}
+                          projectName={project.name}
+                        >
+                          <DropdownMenuItem
+                            onSelect={(event) => event.preventDefault()}
+                          >
+                            <Plus />
+                            New session
+                          </DropdownMenuItem>
+                        </CreateProjectSessionDialog>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
 
                   <CollapsibleContent>
                     <SidebarMenuSub>
@@ -531,17 +573,6 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                           onNavigate={closeMobileSidebar}
                         />
                       ))}
-                      <SidebarMenuSubItem>
-                        <CreateProjectSessionDialog
-                          projectId={project.id}
-                          projectName={project.name}
-                        >
-                          <SidebarMenuSubButton size="sm">
-                            <Plus />
-                            <span>New session</span>
-                          </SidebarMenuSubButton>
-                        </CreateProjectSessionDialog>
-                      </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 </SidebarMenuItem>
