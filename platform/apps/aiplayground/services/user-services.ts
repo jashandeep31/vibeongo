@@ -1,5 +1,11 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { userConfigs, users, userSettings, userWallet } from "@repo/db";
+import {
+  userConfigs,
+  userCreditGrants,
+  users,
+  userSettings,
+  userWallet,
+} from "@repo/db";
 import axios from "axios";
 
 type UserRow = typeof users.$inferSelect;
@@ -19,6 +25,11 @@ export type UserConfigValue = Record<string, unknown>;
 type UserConfigPayload = {
   configType: (typeof userConfigs.$inferSelect)["config_type"];
   config: UserConfigValue;
+};
+
+export type GetUserCreditGrantsParams = {
+  page?: number;
+  limit?: number;
 };
 
 export type UpdateUserSettingsPayload = {
@@ -96,6 +107,21 @@ export const updateUserConfig = async ({
     `${BACKEND_URL}/api/v1/users/configs/${configType}`,
     { config },
     { withCredentials: true },
+  );
+  return response.data.data;
+};
+
+export const getUserCreditGrants = async ({
+  page,
+  limit,
+}: GetUserCreditGrantsParams = {}): Promise<{
+  grants: (typeof userCreditGrants.$inferSelect)[];
+  page: number;
+  hasNext: boolean;
+}> => {
+  const response = await axios.get(
+    `${BACKEND_URL}/api/v1/users/credit-grants`,
+    { params: { page, limit }, withCredentials: true },
   );
   return response.data.data;
 };

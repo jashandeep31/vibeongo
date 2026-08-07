@@ -11,7 +11,7 @@ import {
   SidebarGroup,
   SidebarGroupContent,
 } from "@repo/ui/components/sidebar-v2";
-import { CreditCard, Gauge, Settings, SquarePen } from "lucide-react";
+import { Gauge, Settings, SquarePen, WalletCards } from "lucide-react";
 
 const navigation = [
   {
@@ -25,9 +25,9 @@ const navigation = [
     icon: Gauge,
   },
   {
-    title: "Billing",
-    url: "/billing",
-    icon: CreditCard,
+    title: "Wallet",
+    url: "/wallet",
+    icon: WalletCards,
   },
   {
     title: "Settings",

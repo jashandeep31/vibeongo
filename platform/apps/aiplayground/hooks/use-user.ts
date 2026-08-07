@@ -2,10 +2,12 @@ import {
   createUserConfig,
   getUserConfig,
   getUserConfigs,
+  getUserCreditGrants,
   getUserMetadata,
   getUserSettings,
   updateUserConfig,
   updateUserSettings,
+  type GetUserCreditGrantsParams,
 } from "@/services/user-services";
 import type { userConfigs } from "@repo/db";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -28,6 +30,16 @@ const retryUnlessUnauthorized = (failureCount: number, error: Error) => {
   if (axios.isAxiosError(error) && error.response?.status === 401) return false;
   return failureCount < 3;
 };
+
+export const useUserCreditGrants = (
+  params: GetUserCreditGrantsParams = {},
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: ["user-credit-grants", params],
+    queryFn: () => getUserCreditGrants(params),
+    enabled,
+  });
 
 export const useUserSettings = () =>
   useQuery({
