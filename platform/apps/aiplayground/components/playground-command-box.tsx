@@ -1,5 +1,6 @@
 "use client";
 
+import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import {
   ProjectSessionRuntimeDialog,
@@ -35,6 +36,7 @@ import {
   Loader2,
   MessageSquarePlus,
   Play,
+  Plus,
   SquareDashedMousePointer,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -77,6 +79,9 @@ export function PlaygroundCommandBox() {
     { kind: "projects" },
   ]);
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
+    string | null
+  >(null);
+  const [createSessionProjectId, setCreateSessionProjectId] = useState<
     string | null
   >(null);
   const [repoDialogSessionId, setRepoDialogSessionId] = useState<string | null>(
@@ -362,6 +367,16 @@ export function PlaygroundCommandBox() {
                   ) : (
                     <CommandItem disabled>No sessions found.</CommandItem>
                   )}
+                  <CommandItem
+                    value={`new session ${project?.name ?? "project"}`}
+                    onSelect={() => {
+                      setCreateSessionProjectId(view.projectId);
+                      setOpen(false);
+                    }}
+                  >
+                    <Plus />
+                    New session
+                  </CommandItem>
                 </CommandGroup>
                 <CommandGroup heading={heading}>
                   <CommandItem
@@ -586,6 +601,22 @@ export function PlaygroundCommandBox() {
         }}
         onSelect={handleRuntimeSelect}
       />
+      {createSessionProjectId ? (
+        <CreateProjectSessionDialog
+          projectId={createSessionProjectId}
+          projectName={
+            projects.find((item) => item.id === createSessionProjectId)?.name ??
+            "Project"
+          }
+          open
+          onOpenChange={(nextOpen) => {
+            if (!nextOpen) {
+              setCreateSessionProjectId(null);
+              setOpen(true);
+            }
+          }}
+        />
+      ) : null}
       <GithubRepoDirectoryDialog
         open={repoDialogSessionId !== null}
         onOpenChange={(nextOpen) => {

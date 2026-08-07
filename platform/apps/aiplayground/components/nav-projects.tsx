@@ -1,5 +1,6 @@
 "use client";
 
+import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
@@ -436,6 +437,17 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                           onResume={setRuntimeDialogSessionId}
                         />
                       ))}
+                      <SidebarMenuSubItem>
+                        <CreateProjectSessionDialog
+                          projectId={project.id}
+                          projectName={project.name}
+                        >
+                          <SidebarMenuSubButton size="sm">
+                            <Plus />
+                            <span>New session</span>
+                          </SidebarMenuSubButton>
+                        </CreateProjectSessionDialog>
+                      </SidebarMenuSubItem>
                     </SidebarMenuSub>
                   </CollapsibleContent>
                 </SidebarMenuItem>

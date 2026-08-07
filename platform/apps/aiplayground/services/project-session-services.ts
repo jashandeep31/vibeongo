@@ -30,6 +30,17 @@ export type ResumeProjectSessionInput = {
   runtime: (typeof instanceRuntimeKind.enumValues)[number];
 };
 
+export type CreateProjectSessionInput = {
+  projectId: (typeof projects.$inferSelect)["id"];
+  sessionName: (typeof projectSessions.$inferSelect)["name"];
+  sessionDescription?: string;
+};
+
+export type CreateProjectSessionResponse = {
+  message: string;
+  data: typeof projectSessions.$inferSelect;
+};
+
 export const getProjectSessions = async ({
   projectId,
   page,
@@ -51,6 +62,18 @@ export const resumeProjectSession = async ({
   const response = await axios.post(
     `${BACKEND_URL}/api/v1/project-sessions/${id}`,
     { runtime },
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const createProjectSession = async (
+  input: CreateProjectSessionInput,
+): Promise<CreateProjectSessionResponse> => {
+  const response = await axios.post(
+    `${BACKEND_URL}/api/v1/project-sessions/`,
+    input,
     { withCredentials: true },
   );
 

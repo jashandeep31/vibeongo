@@ -1,4 +1,5 @@
 import {
+  createProjectSession,
   getProjectSessions,
   resumeProjectSession,
   type GetProjectSessionsParams,
@@ -16,6 +17,24 @@ export const useGetProjectSessions = (
     queryFn: () => getProjectSessions(params),
     enabled,
   });
+
+export const useCreateProjectSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProjectSession,
+    onSuccess: ({ data: session }) => {
+      useSessionsStore.getState().addSession({
+        session,
+        instance: null,
+        state: "stopped",
+      });
+      return queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+  });
+};
 
 export const useResumeProjectSession = () => {
   const queryClient = useQueryClient();

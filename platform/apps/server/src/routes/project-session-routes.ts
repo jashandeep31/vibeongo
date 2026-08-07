@@ -3,6 +3,7 @@ import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   addTaskToProjectSession,
   archiveProjectSession,
+  createProjectSession,
   deleteProjectSessionTask,
   getProjectSessionById,
   getUserProjectSessions,
@@ -12,7 +13,10 @@ import {
 
 const routes: Router = Router();
 
-routes.route("/").get(checkAuthorization(["all"]), getUserProjectSessions);
+routes
+  .route("/")
+  .get(checkAuthorization(["all"]), getUserProjectSessions)
+  .post(checkAuthorization(["all"]), createProjectSession);
 routes
   .route("/:id")
   .post(checkAuthorization(["all"]), resumeProjectSession)
