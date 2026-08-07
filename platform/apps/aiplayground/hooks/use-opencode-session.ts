@@ -1,10 +1,10 @@
 "use client";
 
 import {
-  getOpencodeEventUrl,
   getOpencodeInventory,
   getOpencodeSessionRaw,
   sendOpencodePrompt,
+  streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
   type OpencodePromptSelection,
@@ -17,10 +17,12 @@ export const useOpencodeSession = ({
   chatId,
   sessionId,
   serverUrl,
+  accessToken,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
+  accessToken: string;
 }) => {
   const queryClient = useQueryClient();
   const [isStreaming, setIsStreaming] = useState(false);
@@ -30,14 +32,15 @@ export const useOpencodeSession = ({
   );
   const query = useQuery({
     queryKey,
-    queryFn: () => getOpencodeSessionRaw(chatId, sessionId, serverUrl),
-    enabled: !!serverUrl,
+    queryFn: () =>
+      getOpencodeSessionRaw(chatId, sessionId, serverUrl, accessToken),
+    enabled: !!serverUrl && !!accessToken,
   });
 
   useEffect(() => {
-    if (!serverUrl) return;
+    if (!serverUrl || !accessToken) return;
 
-    const source = new EventSource(getOpencodeEventUrl(chatId, serverUrl));
+    const controller = new AbortController();
 
     const updateCachedSession = (event: Event) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) => {
@@ -166,9 +169,7 @@ export const useOpencodeSession = ({
       });
     };
 
-    source.onmessage = (message) => {
-      const event = JSON.parse(message.data) as Event;
-
+    const handleEvent = (event: Event) => {
       if (
         event.type === "session.status" &&
         event.properties.sessionID === sessionId
@@ -203,8 +204,32 @@ export const useOpencodeSession = ({
       updateCachedSession(event);
     };
 
-    return () => source.close();
-  }, [chatId, queryClient, queryKey, serverUrl, sessionId]);
+    const connect = async () => {
+      while (!controller.signal.aborted) {
+        try {
+          await streamOpencodeEvents(
+            chatId,
+            serverUrl,
+            accessToken,
+            controller.signal,
+            handleEvent,
+          );
+        } catch (error) {
+          if (!controller.signal.aborted) {
+            console.error("OpenCode event stream failed", error);
+          }
+        }
+
+        if (!controller.signal.aborted) {
+          await new Promise((resolve) => window.setTimeout(resolve, 1_000));
+        }
+      }
+    };
+
+    void connect();
+
+    return () => controller.abort();
+  }, [accessToken, chatId, queryClient, queryKey, serverUrl, sessionId]);
 
   return { ...query, isStreaming };
 };
@@ -213,10 +238,12 @@ export const useSendOpencodePrompt = ({
   chatId,
   sessionId,
   serverUrl,
+  accessToken,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
+  accessToken: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
@@ -248,16 +275,22 @@ export const useSendOpencodePrompt = ({
         attachments,
         selection,
         serverUrl,
+        accessToken,
       );
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
 
-export const useOpencodeInventory = (chatId: string, serverUrl: string) =>
+export const useOpencodeInventory = (
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+) =>
   useQuery({
     queryKey: ["opencode", "inventory", chatId, serverUrl],
-    queryFn: () => getOpencodeInventory(chatId, serverUrl),
+    queryFn: () => getOpencodeInventory(chatId, serverUrl, accessToken),
+    enabled: !!serverUrl && !!accessToken,
     staleTime: 60_000,
   });
 

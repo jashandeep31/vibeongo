@@ -11,16 +11,22 @@ export function NewOpencodeChat({
   chatId,
   chatUrl,
   serverUrl,
+  accessToken,
   directory,
 }: {
   chatId: string;
   chatUrl: string;
   serverUrl: string;
+  accessToken: string;
   directory?: string;
 }) {
   const router = useRouter();
   const startSession = useStartOpencodeSession();
-  const { data: inventory } = useOpencodeInventory(chatId, serverUrl);
+  const { data: inventory } = useOpencodeInventory(
+    chatId,
+    serverUrl,
+    accessToken,
+  );
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const effectiveSelection: OpencodePromptSelection = {
     model: selection.model ?? inventory?.models[0]?.id,
@@ -35,6 +41,7 @@ export function NewOpencodeChat({
     const session = await startSession.mutateAsync({
       chatId,
       serverUrl,
+      accessToken,
       directory,
       text,
       files,

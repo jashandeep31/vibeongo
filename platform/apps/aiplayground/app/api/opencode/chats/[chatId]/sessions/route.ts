@@ -1,5 +1,6 @@
 import {
   getOpencodeProjectDirectories,
+  getOpencodeProxyAuthorization,
   getOpencodeServerClient,
   getOpencodeServerUrl,
   getOpencodeSessionsAcrossProjects,
@@ -11,9 +12,11 @@ export async function GET(
 ) {
   try {
     const { chatId } = await params;
+    const proxyAuthorization = getOpencodeProxyAuthorization(request);
     const sessions = await getOpencodeSessionsAcrossProjects(
       chatId,
       getOpencodeServerUrl(request),
+      proxyAuthorization,
     );
     return Response.json(sessions);
   } catch (error) {
@@ -29,6 +32,7 @@ export async function POST(
   try {
     const { chatId } = await params;
     const serverUrl = getOpencodeServerUrl(request);
+    const proxyAuthorization = getOpencodeProxyAuthorization(request);
     const body = (await request.json().catch(() => ({}))) as {
       directory?: unknown;
     };
@@ -43,7 +47,13 @@ export async function POST(
 
     const directory =
       requestedDirectory ??
-      (await getOpencodeProjectDirectories(chatId, serverUrl))[0];
+      (
+        await getOpencodeProjectDirectories(
+          chatId,
+          serverUrl,
+          proxyAuthorization,
+        )
+      )[0];
 
     if (!directory) {
       return new Response("OpenCode project directory not found", {
@@ -51,7 +61,12 @@ export async function POST(
       });
     }
 
-    const client = getOpencodeServerClient(chatId, serverUrl, directory);
+    const client = getOpencodeServerClient(
+      chatId,
+      serverUrl,
+      proxyAuthorization,
+      directory,
+    );
     const result = await client.session.create({
       directory,
     });

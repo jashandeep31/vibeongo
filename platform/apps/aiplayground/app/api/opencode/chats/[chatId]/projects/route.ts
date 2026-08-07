@@ -1,4 +1,5 @@
 import {
+  getOpencodeProxyAuthorization,
   getOpencodeProjects,
   getOpencodeServerUrl,
 } from "@/services/opencode-server";
@@ -12,6 +13,7 @@ export async function GET(
     const projects = await getOpencodeProjects(
       chatId,
       getOpencodeServerUrl(request),
+      getOpencodeProxyAuthorization(request),
     );
 
     return Response.json(

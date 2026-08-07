@@ -1,5 +1,6 @@
 import {
   findOpencodeSession,
+  getOpencodeProxyAuthorization,
   getOpencodeServerClient,
   getOpencodeServerUrl,
 } from "@/services/opencode-server";
@@ -13,7 +14,13 @@ export async function GET(request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
     const serverUrl = getOpencodeServerUrl(request);
-    const session = await findOpencodeSession(chatId, sessionId, serverUrl);
+    const proxyAuthorization = getOpencodeProxyAuthorization(request);
+    const session = await findOpencodeSession(
+      chatId,
+      sessionId,
+      serverUrl,
+      proxyAuthorization,
+    );
 
     if (!session) {
       return new Response("OpenCode session not found", { status: 404 });
@@ -22,6 +29,7 @@ export async function GET(request: Request, { params }: RouteParams) {
     const client = getOpencodeServerClient(
       chatId,
       serverUrl,
+      proxyAuthorization,
       session.directory,
     );
 
@@ -60,6 +68,7 @@ export async function POST(request: Request, { params }: RouteParams) {
   try {
     const { chatId, sessionId } = await params;
     const serverUrl = getOpencodeServerUrl(request);
+    const proxyAuthorization = getOpencodeProxyAuthorization(request);
     const body = (await request.json()) as {
       text?: unknown;
       attachments?: unknown;
@@ -75,7 +84,12 @@ export async function POST(request: Request, { params }: RouteParams) {
       });
     }
 
-    const session = await findOpencodeSession(chatId, sessionId, serverUrl);
+    const session = await findOpencodeSession(
+      chatId,
+      sessionId,
+      serverUrl,
+      proxyAuthorization,
+    );
     if (!session) {
       return new Response("OpenCode session not found", { status: 404 });
     }
@@ -83,6 +97,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     const client = getOpencodeServerClient(
       chatId,
       serverUrl,
+      proxyAuthorization,
       session.directory,
     );
 

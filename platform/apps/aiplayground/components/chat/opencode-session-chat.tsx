@@ -159,6 +159,7 @@ export function OpencodeSessionChat({
   chatId,
   sessionId,
   serverUrl,
+  accessToken,
   messages,
   rawResponse,
   isStreaming,
@@ -167,13 +168,23 @@ export function OpencodeSessionChat({
   chatId: string;
   sessionId: string;
   serverUrl: string;
+  accessToken: string;
   messages: SessionMessages;
   rawResponse: OpencodeSessionData;
   isStreaming: boolean;
 }) {
   const turns = useMemo(() => createChatTurns(messages), [messages]);
-  const sendPrompt = useSendOpencodePrompt({ chatId, sessionId, serverUrl });
-  const { data: inventory } = useOpencodeInventory(chatId, serverUrl);
+  const sendPrompt = useSendOpencodePrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  });
+  const { data: inventory } = useOpencodeInventory(
+    chatId,
+    serverUrl,
+    accessToken,
+  );
   const sessionModelProviderId = rawResponse.session.model?.providerID;
   const sessionModelId = rawResponse.session.model?.id;
   const sessionModelVariant = rawResponse.session.model?.variant;

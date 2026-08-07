@@ -5,6 +5,10 @@ import {
   type OpencodeClient,
   type Session,
 } from "@opencode-ai/sdk/v2/client";
+import {
+  getProxyAuthorizationFromRequest,
+  PROXY_AUTHORIZATION_HEADER,
+} from "@/services/proxy-auth";
 
 const clients = new Map<string, OpencodeClient>();
 
@@ -14,13 +18,18 @@ export function getOpencodeServerUrl(request: Request) {
   return normalizeOpencodeServerUrl(serverUrl);
 }
 
+export function getOpencodeProxyAuthorization(request: Request) {
+  return getProxyAuthorizationFromRequest(request);
+}
+
 export function getOpencodeServerClient(
   connectionId: string,
   serverUrl: string,
+  proxyAuthorization: string,
   directory?: string,
 ) {
   const normalizedServerUrl = normalizeOpencodeServerUrl(serverUrl);
-  const cacheKey = `${connectionId}:${normalizedServerUrl}:${directory ?? ""}`;
+  const cacheKey = `${connectionId}:${normalizedServerUrl}:${directory ?? ""}:${proxyAuthorization}`;
 
   const existingClient = clients.get(cacheKey);
   if (existingClient) return existingClient;
@@ -28,6 +37,7 @@ export function getOpencodeServerClient(
   const client = createOpencodeClient({
     baseUrl: normalizedServerUrl,
     directory,
+    headers: { [PROXY_AUTHORIZATION_HEADER]: proxyAuthorization },
     throwOnError: true,
   });
   clients.set(cacheKey, client);
@@ -37,8 +47,13 @@ export function getOpencodeServerClient(
 export async function getOpencodeProjectDirectories(
   connectionId: string,
   serverUrl: string,
+  proxyAuthorization: string,
 ) {
-  const projects = await getOpencodeProjects(connectionId, serverUrl);
+  const projects = await getOpencodeProjects(
+    connectionId,
+    serverUrl,
+    proxyAuthorization,
+  );
   const projectDirectories = projects.flatMap((project) => [
     project.worktree,
     ...project.sandboxes,
@@ -50,8 +65,13 @@ export async function getOpencodeProjectDirectories(
 export async function getOpencodeProjects(
   connectionId: string,
   serverUrl: string,
+  proxyAuthorization: string,
 ) {
-  const client = getOpencodeServerClient(connectionId, serverUrl);
+  const client = getOpencodeServerClient(
+    connectionId,
+    serverUrl,
+    proxyAuthorization,
+  );
   const result = await client.project.list();
 
   if (result.error || !result.data) {
@@ -70,11 +90,17 @@ export async function getOpencodeProjects(
 export async function getOpencodeSessionsAcrossProjects(
   connectionId: string,
   serverUrl: string,
+  proxyAuthorization: string,
 ) {
-  const client = getOpencodeServerClient(connectionId, serverUrl);
+  const client = getOpencodeServerClient(
+    connectionId,
+    serverUrl,
+    proxyAuthorization,
+  );
   const directories = await getOpencodeProjectDirectories(
     connectionId,
     serverUrl,
+    proxyAuthorization,
   );
   const results = await Promise.all(
     directories.map((directory) =>
@@ -100,11 +126,17 @@ export async function findOpencodeSession(
   connectionId: string,
   sessionId: string,
   serverUrl: string,
+  proxyAuthorization: string,
 ) {
-  const client = getOpencodeServerClient(connectionId, serverUrl);
+  const client = getOpencodeServerClient(
+    connectionId,
+    serverUrl,
+    proxyAuthorization,
+  );
   const directories = await getOpencodeProjectDirectories(
     connectionId,
     serverUrl,
+    proxyAuthorization,
   );
   const results = await Promise.all(
     directories.map((directory) =>

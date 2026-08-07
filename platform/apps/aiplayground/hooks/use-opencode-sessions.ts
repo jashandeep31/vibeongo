@@ -15,6 +15,7 @@ import { useEffect } from "react";
 export const useOpencodeSessions = (
   chatId: string,
   serverUrl: string,
+  accessToken: string,
   enabled = true,
 ) => {
   const setSessionChats = useSessionChatsStore(
@@ -22,8 +23,8 @@ export const useOpencodeSessions = (
   );
   const query = useQuery({
     queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
-    queryFn: () => getOpencodeSessions(chatId, serverUrl),
-    enabled: enabled && !!chatId && !!serverUrl,
+    queryFn: () => getOpencodeSessions(chatId, serverUrl, accessToken),
+    enabled: enabled && !!chatId && !!serverUrl && !!accessToken,
   });
 
   useEffect(() => {
@@ -37,12 +38,14 @@ export const useOpencodeSessions = (
 export const useOpencodeProjectDirectories = (
   chatId: string,
   serverUrl: string,
+  accessToken: string,
   enabled = true,
 ) =>
   useQuery({
     queryKey: ["opencode", "project-directories", chatId, serverUrl],
-    queryFn: () => getOpencodeProjectDirectories(chatId, serverUrl),
-    enabled: enabled && !!chatId && !!serverUrl,
+    queryFn: () =>
+      getOpencodeProjectDirectories(chatId, serverUrl, accessToken),
+    enabled: enabled && !!chatId && !!serverUrl && !!accessToken,
   });
 
 export const useStartOpencodeSession = () => {
@@ -55,6 +58,7 @@ export const useStartOpencodeSession = () => {
     mutationFn: async ({
       chatId,
       serverUrl,
+      accessToken,
       directory,
       text,
       files,
@@ -62,12 +66,18 @@ export const useStartOpencodeSession = () => {
     }: {
       chatId: string;
       serverUrl: string;
+      accessToken: string;
       directory?: string;
       text: string;
       files: File[];
       selection: OpencodePromptSelection;
     }) => {
-      const session = await createOpencodeSession(chatId, serverUrl, directory);
+      const session = await createOpencodeSession(
+        chatId,
+        serverUrl,
+        accessToken,
+        directory,
+      );
       const attachments: UploadAttachment[] = await Promise.all(
         files.map(async (file) => ({
           type: "image" as const,
@@ -85,6 +95,7 @@ export const useStartOpencodeSession = () => {
         attachments,
         selection,
         serverUrl,
+        accessToken,
       );
       return session;
     },

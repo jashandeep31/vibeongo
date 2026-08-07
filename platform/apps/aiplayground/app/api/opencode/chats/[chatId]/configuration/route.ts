@@ -1,4 +1,5 @@
 import {
+  getOpencodeProxyAuthorization,
   getOpencodeServerClient,
   getOpencodeServerUrl,
 } from "@/services/opencode-server";
@@ -12,6 +13,7 @@ export async function GET(
     const client = getOpencodeServerClient(
       chatId,
       getOpencodeServerUrl(request),
+      getOpencodeProxyAuthorization(request),
     );
     const [providerResponse, agentsResponse] = await Promise.all([
       client.provider.list(),

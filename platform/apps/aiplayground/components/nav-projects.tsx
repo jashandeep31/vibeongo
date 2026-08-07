@@ -247,6 +247,7 @@ function ProjectSessionNavItem({
     instance?.id ?? "",
     runtimeDomain ? `https://${runtimeDomain}` : "",
     typeof localToken === "string" ? localToken : "",
+    instance?.access_token ?? "",
     !!instance,
   );
   const isOpencodeRunning = opencodeStatus?.running === true;
@@ -256,6 +257,7 @@ function ProjectSessionNavItem({
   const { data: opencodeSessions } = useOpencodeSessions(
     session.id,
     serverUrl,
+    instance?.access_token ?? "",
     !!serverUrl,
   );
 

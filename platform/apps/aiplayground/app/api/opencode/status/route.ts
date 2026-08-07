@@ -1,4 +1,8 @@
 import { normalizeOpencodeServerUrl } from "@/services/opencode-server";
+import {
+  getProxyAuthorizationFromRequest,
+  PROXY_AUTHORIZATION_HEADER,
+} from "@/services/proxy-auth";
 
 const OPENCODE_CONNECTION_DELAY_MS = 3_000;
 
@@ -28,7 +32,11 @@ export async function POST(request: Request) {
     }
 
     const response = await fetch(`${runtimeUrl}/tools-stats`, {
-      headers: { authorization: `Bearer ${body.token}` },
+      headers: {
+        authorization: `Bearer ${body.token}`,
+        [PROXY_AUTHORIZATION_HEADER]:
+          getProxyAuthorizationFromRequest(request),
+      },
       cache: "no-store",
       signal: AbortSignal.timeout(5_000),
     });

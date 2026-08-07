@@ -1,4 +1,5 @@
 import {
+  getOpencodeProxyAuthorization,
   getOpencodeServerClient,
   getOpencodeServerUrl,
 } from "@/services/opencode-server";
@@ -10,7 +11,11 @@ export async function GET(
   { params }: { params: Promise<{ chatId: string }> },
 ) {
   const { chatId } = await params;
-  const client = getOpencodeServerClient(chatId, getOpencodeServerUrl(request));
+  const client = getOpencodeServerClient(
+    chatId,
+    getOpencodeServerUrl(request),
+    getOpencodeProxyAuthorization(request),
+  );
   const encoder = new TextEncoder();
 
   const stream = new ReadableStream<Uint8Array>({
