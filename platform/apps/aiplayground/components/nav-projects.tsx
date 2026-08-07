@@ -31,6 +31,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubButton,
   SidebarMenuSubItem,
+  useSidebar,
 } from "@repo/ui/components/sidebar-v2";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -74,6 +75,7 @@ type ProjectSessionNavItemProps = {
   session: Project["sessions"][number];
   isResumePending: boolean;
   onResume: (sessionId: string) => void;
+  onNavigate: () => void;
 };
 
 function formatTimeRemaining(terminatesAt: string, now: number) {
@@ -190,6 +192,7 @@ function ProjectSessionNavItem({
   session,
   isResumePending,
   onResume,
+  onNavigate,
 }: ProjectSessionNavItemProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -279,6 +282,7 @@ function ProjectSessionNavItem({
     setIsRepoDialogOpen(false);
     const params = new URLSearchParams({ serverUrl, directory });
     router.push(`${chatUrl}?${params.toString()}`);
+    onNavigate();
   };
 
   const handleNewChat = async () => {
@@ -350,7 +354,7 @@ function ProjectSessionNavItem({
                         size="sm"
                         isActive={pathname === url.split("?")[0]}
                       >
-                        <Link href={url}>
+                        <Link href={url} onClick={onNavigate}>
                           <BotMessageSquare />
                           <span
                             className="min-w-0 flex-1 truncate"
@@ -439,9 +443,14 @@ function ProjectSessionNavItem({
 
 export function NavProjects({ projects }: { projects: Project[] }) {
   const resumeSession = useResumeProjectSession();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
     string | null
   >(null);
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
 
   const handleRuntimeSelect = (runtime: ProjectSessionRuntime) => {
     if (!runtimeDialogSessionId) return;
@@ -482,6 +491,7 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                           session={session}
                           isResumePending={resumeSession.isPending}
                           onResume={setRuntimeDialogSessionId}
+                          onNavigate={closeMobileSidebar}
                         />
                       ))}
                       <SidebarMenuSubItem>
