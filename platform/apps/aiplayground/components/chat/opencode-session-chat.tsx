@@ -174,21 +174,24 @@ export function OpencodeSessionChat({
   const turns = useMemo(() => createChatTurns(messages), [messages]);
   const sendPrompt = useSendOpencodePrompt({ chatId, sessionId, serverUrl });
   const { data: inventory } = useOpencodeInventory(chatId, serverUrl);
-  const [selection, setSelection] = useState<OpencodePromptSelection>(() => {
-    const sessionSelection = getSessionSelection(rawResponse);
-    if (typeof window === "undefined") return sessionSelection;
-
-    try {
-      const savedSelection = window.localStorage.getItem(
-        `opencode-selection:${chatId}`,
-      );
-      return savedSelection
-        ? (JSON.parse(savedSelection) as OpencodePromptSelection)
-        : sessionSelection;
-    } catch {
-      return sessionSelection;
-    }
-  });
+  const sessionModelProviderId = rawResponse.session.model?.providerID;
+  const sessionModelId = rawResponse.session.model?.id;
+  const sessionModelVariant = rawResponse.session.model?.variant;
+  const sessionAgent = rawResponse.session.agent;
+  const sessionSelection = useMemo(
+    () => ({
+      model:
+        sessionModelProviderId && sessionModelId
+          ? `${sessionModelProviderId}/${sessionModelId}`
+          : undefined,
+      variant: sessionModelVariant,
+      agent: sessionAgent,
+    }),
+    [sessionAgent, sessionModelId, sessionModelProviderId, sessionModelVariant],
+  );
+  const [selection, setSelection] = useState<OpencodePromptSelection>(
+    sessionSelection,
+  );
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -196,23 +199,22 @@ export function OpencodeSessionChat({
   const effectiveSelection: OpencodePromptSelection = {
     model:
       selection.model ??
-      getSessionSelection(rawResponse).model ??
+      sessionSelection.model ??
       inventory?.models[0]?.id,
-    variant: selection.variant ?? getSessionSelection(rawResponse).variant,
+    variant: selection.variant ?? sessionSelection.variant,
     agent:
       selection.agent ??
-      getSessionSelection(rawResponse).agent ??
+      sessionSelection.agent ??
       inventory?.agents.find((agent) => agent.mode === "primary")?.id ??
       inventory?.agents[0]?.id,
   };
 
-  const updateSelection = (nextSelection: OpencodePromptSelection) => {
+  useEffect(() => {
+    setSelection(sessionSelection);
+  }, [sessionId, sessionSelection]);
+
+  const updateSelection = (nextSelection: OpencodePromptSelection) =>
     setSelection(nextSelection);
-    window.localStorage.setItem(
-      `opencode-selection:${chatId}`,
-      JSON.stringify(nextSelection),
-    );
-  };
 
   const updateScrollButtonVisibility = useCallback(() => {
     const scrollArea = scrollAreaRef.current;
@@ -317,16 +319,4 @@ export function OpencodeSessionChat({
       </div>
     </div>
   );
-}
-
-function getSessionSelection(
-  rawResponse: OpencodeSessionData,
-): OpencodePromptSelection {
-  const model = rawResponse.session.model;
-
-  return {
-    model: model ? `${model.providerID}/${model.id}` : undefined,
-    variant: model?.variant,
-    agent: rawResponse.session.agent,
-  };
 }

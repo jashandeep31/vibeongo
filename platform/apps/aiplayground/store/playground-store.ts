@@ -1,4 +1,5 @@
 import { instances, projects, projectSessions } from "@repo/db";
+import type { Session as OpencodeSession } from "@opencode-ai/sdk/v2/client";
 import { create } from "zustand";
 
 interface ProjectsStore {
@@ -90,8 +91,65 @@ export const useSessionsStore = create<SessionsStore>((set, get) => ({
 }));
 
 interface SessionChatsStore {
-  chats: [];
+  chatsBySessionId: Record<string, OpencodeSession[]>;
+  getSessionChats: (projectSessionId: string) => OpencodeSession[];
+  setSessionChats: (
+    projectSessionId: string,
+    chats: OpencodeSession[],
+  ) => void;
+  upsertSessionChat: (
+    projectSessionId: string,
+    chat: OpencodeSession,
+  ) => void;
+  deleteSessionChat: (projectSessionId: string, chatId: string) => void;
+  clearSessionChats: (projectSessionId: string) => void;
 }
-export const useSessionChatsStore = create<SessionChatsStore>(() => ({
-  chats: [],
+
+export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
+  chatsBySessionId: {},
+  getSessionChats: (projectSessionId) =>
+    get().chatsBySessionId[projectSessionId] ?? [],
+  setSessionChats: (projectSessionId, chats) =>
+    set((state) => ({
+      chatsBySessionId: {
+        ...state.chatsBySessionId,
+        [projectSessionId]: chats,
+      },
+    })),
+  upsertSessionChat: (projectSessionId, chat) =>
+    set((state) => {
+      const sessionChats = state.chatsBySessionId[projectSessionId] ?? [];
+      const existingChatIndex = sessionChats.findIndex(
+        (existingChat) => existingChat.id === chat.id,
+      );
+      const nextSessionChats = [...sessionChats];
+
+      if (existingChatIndex === -1) {
+        nextSessionChats.push(chat);
+      } else {
+        nextSessionChats[existingChatIndex] = chat;
+      }
+
+      return {
+        chatsBySessionId: {
+          ...state.chatsBySessionId,
+          [projectSessionId]: nextSessionChats,
+        },
+      };
+    }),
+  deleteSessionChat: (projectSessionId, chatId) =>
+    set((state) => ({
+      chatsBySessionId: {
+        ...state.chatsBySessionId,
+        [projectSessionId]: (
+          state.chatsBySessionId[projectSessionId] ?? []
+        ).filter((chat) => chat.id !== chatId),
+      },
+    })),
+  clearSessionChats: (projectSessionId) =>
+    set((state) => {
+      const remainingChats = { ...state.chatsBySessionId };
+      Reflect.deleteProperty(remainingChats, projectSessionId);
+      return { chatsBySessionId: remainingChats };
+    }),
 }));
