@@ -56,7 +56,7 @@ export function PlaygroundSidebar() {
   return (
     <Sidebar className="bg-background">
       <SidebarContent className="bg-background">
-        <SidebarGroup className="px-2 py-1">
+        <SidebarGroup className="px-2 pt-4 pb-1">
           <SidebarGroupContent>
             <NavMain items={navigation} />
           </SidebarGroupContent>
