@@ -104,6 +104,7 @@ export const updateProjectSessionTaskSchema = projectSessionTaskSchema.extend({
 
 export const createInstanceSchema = z.object({
   projectId: z.uuid("Project id must be valid"),
+  runtime: z.enum(["vm", "sandbox"]).default("vm"),
   sessionName: z
     .string()
     .min(4, "Session name must be at least 4 characters long"),

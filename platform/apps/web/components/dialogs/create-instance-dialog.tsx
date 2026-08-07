@@ -30,6 +30,7 @@ import axios from "axios";
 import { Plus, Trash2 } from "lucide-react";
 
 type TaskAgent = "build" | "plan" | "issue-resolver" | "pr-reviewer";
+type InstanceRuntime = "vm" | "sandbox";
 type TaskDraft = {
   id: string;
   task: string;
@@ -71,6 +72,7 @@ export function CreateInstanceDialog({
   const [open, setOpen] = useState(false);
   const [sessionName, setSessionName] = useState("");
   const [sessionDescription, setSessionDescription] = useState("");
+  const [runtime, setRuntime] = useState<InstanceRuntime>("vm");
   const [tasks, setTasks] = useState<TaskDraft[]>([]);
   const { mutateAsync: createInstance, isPending } = useCreateInstance();
   const { data: repos = [], isLoading: isLoadingRepos } = useGetGithubRepos();
@@ -87,6 +89,7 @@ export function CreateInstanceDialog({
   const resetForm = () => {
     setSessionName("");
     setSessionDescription("");
+    setRuntime("vm");
     setTasks([]);
   };
 
@@ -108,6 +111,7 @@ export function CreateInstanceDialog({
   const handleCreate = async () => {
     const parsedData = createInstanceSchema.safeParse({
       projectId,
+      runtime,
       sessionName: sessionName.trim(),
       sessionDescription: sessionDescription.trim() || undefined,
       tasks: tasks.map(({ task, model, agent, repoId }) => ({
@@ -182,6 +186,28 @@ export function CreateInstanceDialog({
               onChange={(e) => setSessionDescription(e.target.value)}
               className="resize-none"
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="instanceRuntime">Runtime</Label>
+            <Select
+              value={runtime}
+              onValueChange={(value) => setRuntime(value as InstanceRuntime)}
+              disabled={isPending}
+            >
+              <SelectTrigger id="instanceRuntime" className="w-full">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="vm">Virtual machine</SelectItem>
+                <SelectItem value="sandbox">Sandbox</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-muted-foreground text-xs">
+              {runtime === "vm"
+                ? "Launch using the project's configured virtual machine."
+                : "Launch using the project's configured sandbox provider."}
+            </p>
           </div>
 
           <div className="grid gap-3">

@@ -13,6 +13,7 @@ export const createInstance = catchAsync(
     await createProjectSessionInstance({
       userId: user.id,
       input,
+      runtime: input.runtime,
       assign_domains: true,
     });
 
