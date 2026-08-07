@@ -1,0 +1,495 @@
+"use client";
+
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
+import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
+import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
+import {
+  useUpdateUserSettings,
+  useUserConfigs,
+  useUserSettings,
+} from "@/hooks/use-user";
+import { Button } from "@repo/ui/components/button";
+import { Input } from "@repo/ui/components/input";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import {
+  Bot,
+  Check,
+  KeyRound,
+  Monitor,
+  Moon,
+  Pencil,
+  Plus,
+  Save,
+  Settings2,
+  Sun,
+  TimerReset,
+  Trash2,
+} from "lucide-react";
+import { useTheme } from "next-themes";
+import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
+
+const AUTO_TERMINATE_MIN_MINUTES = 15;
+const AUTO_TERMINATE_MAX_MINUTES = 1200;
+
+const themeOptions = [
+  {
+    value: "light",
+    label: "Light",
+    description: "Bright and clear.",
+    icon: Sun,
+  },
+  {
+    value: "dark",
+    label: "Dark",
+    description: "Easy on the eyes.",
+    icon: Moon,
+  },
+  {
+    value: "system",
+    label: "System",
+    description: "Match your device.",
+    icon: Monitor,
+  },
+] as const;
+
+const configTypes = [
+  {
+    type: "opencode",
+    name: "OpenCode",
+    description: "Authentication and provider configuration.",
+  },
+  {
+    type: "codex",
+    name: "Codex",
+    description: "Codex authentication configuration.",
+  },
+  {
+    type: "pi",
+    name: "Pi",
+    description: "Pi authentication configuration.",
+  },
+] as const;
+
+function SettingsSection({
+  title,
+  description,
+  icon: Icon,
+  action,
+  children,
+}: {
+  title: string;
+  description: string;
+  icon: typeof Settings2;
+  action?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <section className="py-3 md:py-4">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-4">
+          <Icon className="text-muted-foreground mt-1 size-4 shrink-0" />
+          <div>
+            <h2 className="font-semibold">{title}</h2>
+            <p className="text-muted-foreground mt-0.5 text-sm">
+              {description}
+            </p>
+          </div>
+        </div>
+        {action}
+      </div>
+      <div className="mt-7 pl-0 md:pl-8">{children}</div>
+    </section>
+  );
+}
+
+export default function SettingsPage() {
+  const { theme = "system", setTheme } = useTheme();
+  const settingsQuery = useUserSettings();
+  const configsQuery = useUserConfigs();
+  const sshKeysQuery = useSshKeys();
+  const updateSettings = useUpdateUserSettings();
+  const deleteSshKey = useDeleteSshKey();
+  const userSettings = settingsQuery.data;
+  const [telegramChatId, setTelegramChatId] = useState("");
+  const [modelForm, setModelForm] = useState({
+    defaultPrModel: "",
+    defaultIssueFixerModel: "",
+    defaultCommentModel: "",
+    defaultModel: "",
+  });
+  const [terminationForm, setTerminationForm] = useState({
+    defaultIssueInstanceAutoTerminateAfterMinutes: "",
+    defaultPrInstanceAutoTerminateAfterMinutes: "",
+    defaultManualInstanceAutoTerminateAfterMinutes: "",
+  });
+
+  useEffect(() => {
+    if (!userSettings) return;
+    setTelegramChatId(userSettings.telegram_chat_id?.toString() ?? "");
+    setModelForm({
+      defaultPrModel: userSettings.default_pr_model ?? "",
+      defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
+      defaultCommentModel: userSettings.default_comment_model ?? "",
+      defaultModel: userSettings.default_model ?? "",
+    });
+    setTerminationForm({
+      defaultIssueInstanceAutoTerminateAfterMinutes:
+        userSettings.default_issue_instance_auto_terminate_after_minutes.toString(),
+      defaultPrInstanceAutoTerminateAfterMinutes:
+        userSettings.default_pr_instance_auto_terminate_after_minutes.toString(),
+      defaultManualInstanceAutoTerminateAfterMinutes:
+        userSettings.default_manual_instance_auto_terminate_after_minutes.toString(),
+    });
+  }, [userSettings]);
+
+  const saveTelegram = async () => {
+    const parsedChatId = telegramChatId.trim() ? Number(telegramChatId) : null;
+    if (parsedChatId !== null && !Number.isSafeInteger(parsedChatId)) {
+      toast.error("Telegram chat ID must be a whole number");
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync({ telegramChatId: parsedChatId });
+      toast.success("Telegram chat ID saved");
+    } catch {
+      toast.error("Failed to save Telegram chat ID");
+    }
+  };
+
+  const saveModels = async () => {
+    try {
+      await updateSettings.mutateAsync(modelForm);
+      toast.success("Default models saved");
+    } catch {
+      toast.error("Failed to save default models");
+    }
+  };
+
+  const saveTermination = async () => {
+    const values = {
+      defaultIssueInstanceAutoTerminateAfterMinutes: Number(
+        terminationForm.defaultIssueInstanceAutoTerminateAfterMinutes,
+      ),
+      defaultPrInstanceAutoTerminateAfterMinutes: Number(
+        terminationForm.defaultPrInstanceAutoTerminateAfterMinutes,
+      ),
+      defaultManualInstanceAutoTerminateAfterMinutes: Number(
+        terminationForm.defaultManualInstanceAutoTerminateAfterMinutes,
+      ),
+    };
+    if (
+      Object.values(values).some(
+        (value) =>
+          !Number.isInteger(value) ||
+          value < AUTO_TERMINATE_MIN_MINUTES ||
+          value > AUTO_TERMINATE_MAX_MINUTES,
+      )
+    ) {
+      toast.error("Use whole minutes from 15 to 1200");
+      return;
+    }
+    try {
+      await updateSettings.mutateAsync(values);
+      toast.success("Auto-termination settings saved");
+    } catch {
+      toast.error("Failed to save auto-termination settings");
+    }
+  };
+
+  const handleDeleteSshKey = async (id: string) => {
+    try {
+      await deleteSshKey.mutateAsync(id);
+      toast.success("SSH key deleted");
+    } catch {
+      toast.error("Failed to delete SSH key");
+    }
+  };
+
+  const modelRows = [
+    { label: "Default model", name: "defaultModel" },
+    { label: "Pull request model", name: "defaultPrModel" },
+    { label: "Issue fixer model", name: "defaultIssueFixerModel" },
+    { label: "Comment model", name: "defaultCommentModel" },
+  ] as const;
+  const terminationRows = [
+    {
+      label: "Manual instances",
+      name: "defaultManualInstanceAutoTerminateAfterMinutes",
+    },
+    {
+      label: "Issue instances",
+      name: "defaultIssueInstanceAutoTerminateAfterMinutes",
+    },
+    {
+      label: "Pull request instances",
+      name: "defaultPrInstanceAutoTerminateAfterMinutes",
+    },
+  ] as const;
+
+  return (
+    <div className="mx-auto w-full max-w-4xl space-y-12 px-5 py-8 md:space-y-16 md:px-10 md:py-12">
+      <header>
+        <p className="text-muted-foreground text-sm">Workspace preferences</p>
+        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
+        <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
+          Personalize the playground, configure agents, and manage runtime
+          access from one place.
+        </p>
+      </header>
+
+      <SettingsSection
+        title="Appearance"
+        description="Choose how the AI Playground looks on this device."
+        icon={Sun}
+      >
+        <div className="grid gap-3 sm:grid-cols-3">
+          {themeOptions.map((option) => {
+            const Icon = option.icon;
+            const selected = theme === option.value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setTheme(option.value)}
+                className="hover:bg-muted/50 aria-pressed:border-foreground flex items-center gap-3 rounded-lg border px-4 py-3 text-left transition-colors"
+              >
+                <span className="bg-muted rounded-md p-2">
+                  <Icon className="size-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-sm font-medium">
+                    {option.label}
+                  </span>
+                  <span className="text-muted-foreground block text-xs">
+                    {option.description}
+                  </span>
+                </span>
+                {selected ? <Check className="text-primary size-4" /> : null}
+              </button>
+            );
+          })}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Tool configurations"
+        description="Encrypted authentication settings for your coding tools."
+        icon={Bot}
+      >
+        <div className="space-y-3">
+          {configTypes.map((config) => {
+            const configured = (configsQuery.data ?? []).some(
+              (item) => item.config_type === config.type,
+            );
+            return (
+              <div
+                key={config.type}
+                className="flex items-center justify-between gap-8 py-2"
+              >
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm font-medium">{config.name}</h3>
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {config.description}
+                  </p>
+                </div>
+                {configsQuery.isLoading ? (
+                  <Skeleton className="h-8 w-24" />
+                ) : configsQuery.isError ? (
+                  <p className="text-destructive text-xs">Load failed</p>
+                ) : (
+                  <UserConfigDialog
+                    configType={config.type}
+                    name={config.name}
+                    isConfigured={configured}
+                  />
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </SettingsSection>
+
+      <div className="space-y-12 md:space-y-16">
+        <SettingsSection
+          title="Telegram"
+          description="Chat ID used for bot notifications."
+          icon={Bot}
+          action={
+            <Button
+              size="sm"
+              onClick={saveTelegram}
+              disabled={!userSettings || updateSettings.isPending}
+            >
+              <Save /> Save
+            </Button>
+          }
+        >
+          {settingsQuery.isLoading ? (
+            <Skeleton className="h-9 max-w-xl" />
+          ) : settingsQuery.isError ? (
+            <p className="text-destructive text-sm">Failed to load settings.</p>
+          ) : (
+            <Input
+              inputMode="numeric"
+              value={telegramChatId}
+              onChange={(event) => setTelegramChatId(event.target.value)}
+              placeholder="e.g. -1001234567890"
+              disabled={!userSettings || updateSettings.isPending}
+              aria-label="Telegram chat ID"
+              className="max-w-xl"
+            />
+          )}
+        </SettingsSection>
+
+        <SettingsSection
+          title="Default models"
+          description="Models used when a workflow does not specify one."
+          icon={Settings2}
+          action={
+            <Button
+              size="sm"
+              onClick={saveModels}
+              disabled={!userSettings || updateSettings.isPending}
+            >
+              <Save /> Save
+            </Button>
+          }
+        >
+          <div className="grid max-w-2xl gap-5">
+            {modelRows.map((row) => (
+              <label key={row.name} className="grid gap-1.5">
+                <span className="text-muted-foreground text-xs">
+                  {row.label}
+                </span>
+                <Input
+                  value={modelForm[row.name]}
+                  onChange={(event) =>
+                    setModelForm((current) => ({
+                      ...current,
+                      [row.name]: event.target.value,
+                    }))
+                  }
+                  disabled={!userSettings || updateSettings.isPending}
+                />
+              </label>
+            ))}
+          </div>
+        </SettingsSection>
+      </div>
+
+      <SettingsSection
+        title="Instance auto-termination"
+        description="Stop idle runtimes automatically. Values are in minutes (15–1200)."
+        icon={TimerReset}
+        action={
+          <Button
+            size="sm"
+            onClick={saveTermination}
+            disabled={!userSettings || updateSettings.isPending}
+          >
+            <Save /> Save
+          </Button>
+        }
+      >
+        <div className="grid gap-3 md:grid-cols-3">
+          {terminationRows.map((row) => (
+            <label key={row.name} className="grid gap-1.5">
+              <span className="text-muted-foreground text-xs">{row.label}</span>
+              <Input
+                type="number"
+                min={AUTO_TERMINATE_MIN_MINUTES}
+                max={AUTO_TERMINATE_MAX_MINUTES}
+                step={1}
+                value={terminationForm[row.name]}
+                onChange={(event) =>
+                  setTerminationForm((current) => ({
+                    ...current,
+                    [row.name]: event.target.value,
+                  }))
+                }
+                disabled={!userSettings || updateSettings.isPending}
+              />
+            </label>
+          ))}
+        </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="SSH keys"
+        description="Public keys allowed to connect to your workspaces."
+        icon={KeyRound}
+        action={
+          <SshKeyDialog>
+            <Button size="sm" variant="outline">
+              <Plus /> Add key
+            </Button>
+          </SshKeyDialog>
+        }
+      >
+        {sshKeysQuery.isLoading ? (
+          <div className="grid gap-2">
+            {[1, 2].map((item) => (
+              <Skeleton key={item} className="h-14 w-full rounded-xl" />
+            ))}
+          </div>
+        ) : sshKeysQuery.isError ? (
+          <p className="text-destructive text-sm">Failed to load SSH keys.</p>
+        ) : sshKeysQuery.data?.length ? (
+          <div className="space-y-3">
+            {sshKeysQuery.data.map((sshKey) => (
+              <div
+                key={sshKey.id}
+                className="flex items-center justify-between gap-6 py-2"
+              >
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="bg-muted rounded-md p-2">
+                    <KeyRound className="size-4" />
+                  </span>
+                  <span className="truncate text-sm font-medium">
+                    {sshKey.name}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <SshKeyDialog sshKey={sshKey}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`Edit ${sshKey.name}`}
+                    >
+                      <Pencil />
+                    </Button>
+                  </SshKeyDialog>
+                  <ConfirmationDialog
+                    title="Delete SSH key?"
+                    description={`Remove ${sshKey.name} from your account. This cannot be undone.`}
+                    confirmText="Delete"
+                    isDestructive
+                    onConfirm={() => void handleDeleteSshKey(sshKey.id)}
+                  >
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      className="text-destructive hover:text-destructive"
+                      aria-label={`Delete ${sshKey.name}`}
+                      disabled={deleteSshKey.isPending}
+                    >
+                      <Trash2 />
+                    </Button>
+                  </ConfirmationDialog>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="text-muted-foreground py-12 text-center text-sm">
+            <KeyRound className="mx-auto mb-3 size-7 opacity-50" />
+            No SSH keys configured.
+          </div>
+        )}
+      </SettingsSection>
+    </div>
+  );
+}
