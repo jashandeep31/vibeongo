@@ -75,7 +75,7 @@ async function handleInstanceProxyUrl({
     .from(instances)
     .leftJoin(
       projectDomainRouting,
-      eq(projectDomainRouting.target_instance_id, instances.id),
+      eq(projectDomainRouting.project_id, instances.project_id),
     )
     .leftJoin(sandboxTypes, eq(sandboxTypes.id, instances.sandbox_type_id))
     .leftJoin(instanceTypes, eq(instanceTypes.id, instances.instance_type_id))
