@@ -15,7 +15,7 @@ import { Gauge, Settings, SquarePen, WalletCards } from "lucide-react";
 
 const navigation = [
   {
-    title: "New Project",
+    title: "Home",
     url: "/",
     icon: SquarePen,
   },

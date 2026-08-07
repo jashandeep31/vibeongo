@@ -30,6 +30,22 @@ export type UpdateProjectRoutingTargetInstanceInput = {
   instanceId: (typeof instances.$inferSelect)["id"];
 };
 
+type AddAllowedIpInput = {
+  id: string;
+  ip: string;
+};
+
+type DeleteMultipleAllowedIpsInput = {
+  id: string;
+  ids: string[];
+};
+
+type UpdateProjectDomainInput = {
+  id: string;
+  domainId: string;
+  allow_all_ips: boolean;
+};
+
 export const getProjects = async (): Promise<Project[]> => {
   const response = await axios.get(`${BACKEND_URL}/api/v1/projects`, {
     withCredentials: true,
@@ -67,6 +83,45 @@ export const updateProjectRoutingTargetInstance = async ({
   const response = await axios.patch(
     `${BACKEND_URL}/api/v1/projects/${id}/routing/target-instance`,
     { instanceId },
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const addAllowedIpToProject = async ({
+  id,
+  ip,
+}: AddAllowedIpInput): Promise<{ message: string }> => {
+  const response = await axios.post(
+    `${BACKEND_URL}/api/v1/projects/${id}/allowed-ips`,
+    { ip },
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const deleteMultipleAllowedIpsFromProject = async ({
+  id,
+  ids,
+}: DeleteMultipleAllowedIpsInput): Promise<{ message: string }> => {
+  const response = await axios.delete(
+    `${BACKEND_URL}/api/v1/projects/${id}/allowed-ips`,
+    { data: { ids }, withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const updateProjectDomainAccess = async ({
+  id,
+  domainId,
+  allow_all_ips,
+}: UpdateProjectDomainInput): Promise<{ message: string }> => {
+  const response = await axios.patch(
+    `${BACKEND_URL}/api/v1/projects/${id}/domains/${domainId}`,
+    { allow_all_ips },
     { withCredentials: true },
   );
 

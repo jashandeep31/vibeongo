@@ -1,10 +1,15 @@
 "use client";
 
 import {
+  useAddAllowedIpToProject,
+  useDeleteMultipleAllowedIpsFromProject,
   useGetProjectDomainsById,
+  useUpdateProjectDomainAccess,
   useUpdateProjectRoutingTargetInstance,
 } from "@/hooks/use-project";
+import { useCurrentUserIp } from "@/hooks/use-ip";
 import { useSessionsStore } from "@/store/playground-store";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -14,9 +19,19 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@repo/ui/components/dialog";
-import { ExternalLink, Globe, LoaderCircle, Network } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Input } from "@repo/ui/components/input";
+import { Switch } from "@repo/ui/components/switch";
+import {
+  ExternalLink,
+  Globe,
+  LoaderCircle,
+  Network,
+  Plus,
+  TriangleAlert,
+} from "lucide-react";
+import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 
 export function ProjectDomainsDialog({
   projectId,
@@ -26,6 +41,8 @@ export function ProjectDomainsDialog({
   projectSessionId?: string;
 }) {
   const [open, setOpen] = useState(false);
+  const [newIp, setNewIp] = useState("");
+  const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
   const instanceId = useSessionsStore((state) =>
     projectSessionId
       ? state.sessions.find((entry) => entry.session.id === projectSessionId)
@@ -37,6 +54,9 @@ export function ProjectDomainsDialog({
     open || !!instanceId,
   );
   const assignDomains = useUpdateProjectRoutingTargetInstance();
+  const addAllowedIp = useAddAllowedIpToProject();
+  const deleteOtherAllowedIps = useDeleteMultipleAllowedIpsFromProject();
+  const updateDomainAccess = useUpdateProjectDomainAccess();
   const needsAssignment =
     !!instanceId &&
     !isPending &&
@@ -57,6 +77,27 @@ export function ProjectDomainsDialog({
       ),
     [data?.allowed_ips],
   );
+  const currentIpDomain = data?.proxy_domains.find(
+    (domain) => domain.target_port === 3101,
+  )?.domain;
+  const { data: currentUserIp, isLoading: isCurrentIpLoading } =
+    useCurrentUserIp(currentIpDomain);
+  const currentIp = currentUserIp?.trim() ?? "";
+  const isCurrentIpAllowed =
+    !!currentIp &&
+    allowedIps.some((allowedIp) => allowedIp.ip.trim() === currentIp);
+  const otherAllowedIps = useMemo(
+    () =>
+      currentIp
+        ? allowedIps.filter((allowedIp) => allowedIp.ip.trim() !== currentIp)
+        : [],
+    [allowedIps, currentIp],
+  );
+  const showIpWarning =
+    !needsAssignment &&
+    !isCurrentIpLoading &&
+    !!currentIp &&
+    !isCurrentIpAllowed;
 
   const handleDomainAction = async () => {
     if (!needsAssignment || !instanceId) {
@@ -72,6 +113,79 @@ export function ProjectDomainsDialog({
     }
   };
 
+  const handleAddAllowedIp = async (ip: string) => {
+    const normalizedIp = ip.trim();
+
+    if (!normalizedIp) {
+      toast.error("Please enter an IP address");
+      return;
+    }
+
+    const toastId = toast.loading(
+      normalizedIp === currentIp
+        ? "Adding current IP..."
+        : "Adding allowed IP...",
+    );
+
+    try {
+      await addAllowedIp.mutateAsync({ id: projectId, ip: normalizedIp });
+      setNewIp("");
+      toast.success(
+        normalizedIp === currentIp ? "Current IP added" : "Allowed IP added",
+        { id: toastId },
+      );
+    } catch {
+      toast.error(
+        normalizedIp === currentIp
+          ? "Failed to add current IP"
+          : "Failed to add allowed IP",
+        { id: toastId },
+      );
+    }
+  };
+
+  const handleAddCustomIp = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    void handleAddAllowedIp(newIp);
+  };
+
+  const handleDeleteOtherAllowedIps = async () => {
+    if (!otherAllowedIps.length) {
+      toast.info("No other allowed IPs to remove");
+      return;
+    }
+
+    const toastId = toast.loading("Removing other allowed IPs...");
+
+    try {
+      await deleteOtherAllowedIps.mutateAsync({
+        id: projectId,
+        ids: otherAllowedIps.map((allowedIp) => allowedIp.id),
+      });
+      toast.success("Other allowed IPs removed", { id: toastId });
+    } catch {
+      toast.error("Failed to remove other allowed IPs", { id: toastId });
+    }
+  };
+
+  const handleAllowAllIps = async (domainId: string, allowAllIps: boolean) => {
+    const toastId = toast.loading("Updating domain access...");
+    setUpdatingDomainId(domainId);
+
+    try {
+      await updateDomainAccess.mutateAsync({
+        id: projectId,
+        domainId,
+        allow_all_ips: allowAllIps,
+      });
+      toast.success("Domain access updated", { id: toastId });
+    } catch {
+      toast.error("Failed to update domain access", { id: toastId });
+    } finally {
+      setUpdatingDomainId(null);
+    }
+  };
+
   return (
     <>
       <Button
@@ -81,17 +195,25 @@ export function ProjectDomainsDialog({
         className={
           needsAssignment
             ? "border-blue-600 bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:text-white"
-            : "bg-background/90 shadow-sm backdrop-blur"
+            : showIpWarning
+              ? "border-amber-500/50 bg-amber-500/10 text-amber-700 shadow-sm hover:bg-amber-500/20 hover:text-amber-800 dark:text-amber-400 dark:hover:text-amber-300"
+              : "bg-background/90 shadow-sm backdrop-blur"
         }
         disabled={assignDomains.isPending}
         onClick={handleDomainAction}
       >
         {assignDomains.isPending ? (
           <LoaderCircle className="animate-spin" />
+        ) : showIpWarning ? (
+          <TriangleAlert />
         ) : (
           <Globe />
         )}
-        {needsAssignment ? "Assign domains" : "Domains"}
+        {needsAssignment
+          ? "Assign domains"
+          : showIpWarning
+            ? "IP not allowed"
+            : "Domains"}
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
@@ -117,6 +239,34 @@ export function ProjectDomainsDialog({
 
           {!isPending && !isError ? (
             <div className="max-h-[65vh] space-y-6 overflow-y-auto pr-1">
+              {!isCurrentIpLoading && currentIp && !isCurrentIpAllowed ? (
+                <Alert className="border-amber-500/40 bg-amber-500/10 text-amber-800 dark:text-amber-300">
+                  <TriangleAlert />
+                  <AlertTitle>Allow this device to connect</AlertTitle>
+                  <AlertDescription className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <span>
+                      Your current IP,{" "}
+                      <span className="font-mono font-medium">{currentIp}</span>
+                      , is not in this project&apos;s allowlist.
+                    </span>
+                    <Button
+                      type="button"
+                      size="sm"
+                      className="w-fit shrink-0"
+                      disabled={addAllowedIp.isPending}
+                      onClick={() => void handleAddAllowedIp(currentIp)}
+                    >
+                      {addAllowedIp.isPending ? (
+                        <LoaderCircle className="animate-spin" />
+                      ) : (
+                        <Plus />
+                      )}
+                      {addAllowedIp.isPending ? "Allowing..." : "Allow this IP"}
+                    </Button>
+                  </AlertDescription>
+                </Alert>
+              ) : null}
+
               <section className="space-y-3">
                 <div className="flex items-center justify-between gap-3">
                   <h3 className="flex items-center gap-2 text-sm font-medium">
@@ -129,29 +279,42 @@ export function ProjectDomainsDialog({
                 {domains.length ? (
                   <div className="grid gap-2">
                     {domains.map((domain) => (
-                      <a
+                      <div
                         key={domain.id}
-                        href={`https://${domain.domain}`}
-                        target="_blank"
-                        rel="noreferrer"
                         className="hover:border-primary hover:bg-muted/50 flex min-w-0 items-center gap-3 rounded-lg border p-3 transition-colors"
                       >
-                        <span className="bg-muted rounded-md p-2">
-                          <Globe className="size-4" />
-                        </span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block truncate text-sm font-medium">
-                            {domain.domain}
+                        <a
+                          href={`https://${domain.domain}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="flex min-w-0 flex-1 items-center gap-3"
+                        >
+                          <span className="bg-muted rounded-md p-2">
+                            <Globe className="size-4" />
                           </span>
-                          <span className="text-muted-foreground text-xs">
-                            Port {domain.target_port} ·{" "}
-                            {domain.allow_all_ips
-                              ? "Public access"
-                              : "Restricted access"}
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate text-sm font-medium">
+                              {domain.domain}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              Port {domain.target_port}
+                            </span>
                           </span>
+                          <ExternalLink className="text-muted-foreground size-4 shrink-0" />
+                        </a>
+                        <span className="flex shrink-0 items-center gap-2 text-xs">
+                          All IPs
+                          <Switch
+                            size="sm"
+                            aria-label={`Allow all IPs for ${domain.domain}`}
+                            checked={domain.allow_all_ips}
+                            disabled={updatingDomainId === domain.id}
+                            onCheckedChange={(checked) =>
+                              void handleAllowAllIps(domain.id, checked)
+                            }
+                          />
                         </span>
-                        <ExternalLink className="text-muted-foreground size-4 shrink-0" />
-                      </a>
+                      </div>
                     ))}
                   </div>
                 ) : (
@@ -170,8 +333,31 @@ export function ProjectDomainsDialog({
                   <Badge variant="outline">{allowedIps.length}</Badge>
                 </div>
 
+                <p className="text-muted-foreground text-sm">
+                  Your current IP:{" "}
+                  <span className="text-foreground font-mono">
+                    {isCurrentIpLoading
+                      ? "Loading..."
+                      : currentIp || "Unavailable"}
+                  </span>
+                </p>
+
+                <form onSubmit={handleAddCustomIp} className="flex gap-2">
+                  <Input
+                    name="ip"
+                    placeholder="Enter IP address (e.g. 203.0.113.10)"
+                    autoComplete="off"
+                    value={newIp}
+                    onChange={(event) => setNewIp(event.target.value)}
+                    disabled={addAllowedIp.isPending}
+                  />
+                  <Button type="submit" disabled={addAllowedIp.isPending}>
+                    {addAllowedIp.isPending ? "Adding..." : "Add IP"}
+                  </Button>
+                </form>
+
                 {allowedIps.length ? (
-                  <div className="flex flex-wrap gap-2 rounded-lg border p-3">
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border p-3">
                     {allowedIps.map((allowedIp) => (
                       <Badge
                         key={allowedIp.id}
@@ -181,12 +367,36 @@ export function ProjectDomainsDialog({
                         {allowedIp.ip}
                       </Badge>
                     ))}
+                    {isCurrentIpAllowed && otherAllowedIps.length ? (
+                      <ConfirmationDialog
+                        title="Remove other allowed IPs"
+                        description={`Remove ${otherAllowedIps.length} allowed IP${otherAllowedIps.length === 1 ? "" : "s"} and keep ${currentIp}?`}
+                        confirmText="Remove others"
+                        isDestructive
+                        onConfirm={() => void handleDeleteOtherAllowedIps()}
+                      >
+                        <Button
+                          type="button"
+                          size="sm"
+                          variant="outline"
+                          disabled={deleteOtherAllowedIps.isPending}
+                        >
+                          {deleteOtherAllowedIps.isPending
+                            ? "Removing..."
+                            : "Remove others"}
+                        </Button>
+                      </ConfirmationDialog>
+                    ) : null}
                   </div>
                 ) : (
                   <p className="text-muted-foreground rounded-lg border border-dashed p-4 text-center text-sm">
                     No IP addresses have been added.
                   </p>
                 )}
+                <p className="text-muted-foreground text-xs">
+                  Allowed IP or domain access changes can take up to 30 seconds
+                  to take effect.
+                </p>
               </section>
             </div>
           ) : null}
