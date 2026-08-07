@@ -95,6 +95,11 @@ function formatTimeRemaining(terminatesAt: string, now: number) {
   return `${seconds}s`;
 }
 
+function getRepoDirectory(fullName: string) {
+  const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
+  return `/home/ubuntu/code/${repoName}`;
+}
+
 function InstanceControls({
   instance,
   projectId,
@@ -189,6 +194,7 @@ function ProjectSessionNavItem({
   const pathname = usePathname();
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const updateSession = useSessionsStore((store) => store.updateSession);
   const {
     data: instancesData,
@@ -263,6 +269,7 @@ function ProjectSessionNavItem({
     data: githubRepos,
     isPending: isReposPending,
     isError: isReposError,
+    refetch: refetchGithubRepos,
   } = useGetProjectGithubReposById(
     session.projectId,
     isRepoDialogOpen && !!serverUrl,
@@ -272,6 +279,22 @@ function ProjectSessionNavItem({
     setIsRepoDialogOpen(false);
     const params = new URLSearchParams({ serverUrl, directory });
     router.push(`${chatUrl}?${params.toString()}`);
+  };
+
+  const handleNewChat = async () => {
+    setIsStartingNewChat(true);
+
+    const result = await refetchGithubRepos();
+    const repos = result.data ?? [];
+    const [onlyRepo] = repos;
+
+    if (result.isSuccess && repos.length === 1 && onlyRepo) {
+      handleRepoSelect(getRepoDirectory(onlyRepo.full_name));
+    } else {
+      setIsRepoDialogOpen(true);
+    }
+
+    setIsStartingNewChat(false);
   };
 
   if (serverUrl && instance) {
@@ -344,9 +367,14 @@ function ProjectSessionNavItem({
                   <SidebarMenuSubButton asChild size="sm">
                     <button
                       type="button"
-                      onClick={() => setIsRepoDialogOpen(true)}
+                      disabled={isStartingNewChat}
+                      onClick={handleNewChat}
                     >
-                      <Plus />
+                      {isStartingNewChat ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Plus />
+                      )}
                       <span>New chat</span>
                     </button>
                   </SidebarMenuSubButton>
