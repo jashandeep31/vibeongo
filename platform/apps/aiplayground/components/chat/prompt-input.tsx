@@ -18,7 +18,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@repo/ui/components/popover";
-import { ArrowUp, ChevronsUpDown, Plus, X } from "lucide-react";
+import {
+  ArrowUp,
+  Bot,
+  BrainCircuit,
+  ChevronsUpDown,
+  Plus,
+  SlidersHorizontal,
+  X,
+} from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -218,12 +226,14 @@ export function PromptInput({
                     variant="ghost"
                     size="sm"
                     aria-label="Choose model"
-                    className="max-w-52 justify-between gap-2 font-normal"
+                    title={selectedModel?.name ?? "Choose model"}
+                    className="size-10 shrink-0 justify-center p-0 font-normal sm:h-8 sm:w-auto sm:max-w-52 sm:justify-between sm:gap-2 sm:px-3"
                   >
-                    <span className="truncate">
+                    <BrainCircuit className="size-4 sm:hidden" />
+                    <span className="hidden truncate sm:inline">
                       {selectedModel?.name ?? "Choose model"}
                     </span>
-                    <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
+                    <ChevronsUpDown className="text-muted-foreground hidden size-3.5 shrink-0 sm:block" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -278,12 +288,14 @@ export function PromptInput({
                     variant="ghost"
                     size="sm"
                     aria-label="Choose model variant"
-                    className="max-w-40 justify-between gap-2 font-normal"
+                    title={selection.variant ?? "Choose model variant"}
+                    className="size-10 shrink-0 justify-center p-0 font-normal sm:h-8 sm:w-auto sm:max-w-40 sm:justify-between sm:gap-2 sm:px-3"
                   >
-                    <span className="truncate">
+                    <SlidersHorizontal className="size-4 sm:hidden" />
+                    <span className="hidden truncate sm:inline">
                       {selection.variant ?? "Variant"}
                     </span>
-                    <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
+                    <ChevronsUpDown className="text-muted-foreground hidden size-3.5 shrink-0 sm:block" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -331,12 +343,14 @@ export function PromptInput({
                     variant="ghost"
                     size="sm"
                     aria-label="Choose agent"
-                    className="max-w-40 justify-between gap-2 font-normal"
+                    title={selectedAgent?.name ?? "Choose agent"}
+                    className="size-10 shrink-0 justify-center p-0 font-normal sm:h-8 sm:w-auto sm:max-w-40 sm:justify-between sm:gap-2 sm:px-3"
                   >
-                    <span className="truncate">
+                    <Bot className="size-4 sm:hidden" />
+                    <span className="hidden truncate sm:inline">
                       {selectedAgent?.name ?? "Agent"}
                     </span>
-                    <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
+                    <ChevronsUpDown className="text-muted-foreground hidden size-3.5 shrink-0 sm:block" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent

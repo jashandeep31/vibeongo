@@ -22,7 +22,7 @@ import {
   SidebarMenuSkeleton,
   useSidebar,
 } from "@repo/ui/components/sidebar-v2";
-import { CreditCard, MoreHorizontal, Settings, UserRound } from "lucide-react";
+import { MoreHorizontal, Settings, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 export function PlaygroundUserMenu() {
@@ -81,7 +81,7 @@ export function PlaygroundUserMenu() {
           <DropdownMenuTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              className="h-14 rounded-xl px-2.5 data-[state=open]:bg-sidebar-accent"
+              className="data-[state=open]:bg-sidebar-accent h-14 rounded-xl px-2.5"
             >
               <Avatar className="size-9 rounded-xl">
                 <AvatarImage
@@ -135,9 +135,9 @@ export function PlaygroundUserMenu() {
 
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="rounded-lg">
-              <Link href="/billing" onClick={closeMobileSidebar}>
-                <CreditCard />
-                Billing
+              <Link href="/wallet" onClick={closeMobileSidebar}>
+                <WalletCards />
+                Wallet
               </Link>
             </DropdownMenuItem>
             <DropdownMenuItem asChild className="rounded-lg">
