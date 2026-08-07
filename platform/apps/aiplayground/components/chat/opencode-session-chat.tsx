@@ -89,9 +89,11 @@ function createChatTurns(messages: SessionMessages) {
       if (part.type === "tool") {
         const previousContent = turn.content.at(-1);
         if (
-          part.tool === "glob" &&
+          (part.tool === "glob" || part.tool === "read") &&
           previousContent?.type === "tools" &&
-          previousContent.tools.every((tool) => tool.tool === "glob")
+          previousContent.tools.every(
+            (tool) => tool.tool === "glob" || tool.tool === "read",
+          )
         ) {
           previousContent.tools.push(part);
         } else {
