@@ -3,6 +3,10 @@ import {
   terminateInstance,
   type GetInstancesFilters,
 } from "@/services/instance-services";
+import {
+  useSessionChatsStore,
+  useSessionsStore,
+} from "@/store/playground-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useGetInstances = (
@@ -21,6 +25,17 @@ export const useTerminateInstance = (projectId: string, sessionId: string) => {
   return useMutation({
     mutationFn: terminateInstance,
     onSuccess: (_, instanceId) => {
+      useSessionChatsStore.getState().clearSessionChats(sessionId);
+      useSessionsStore.getState().updateSession(sessionId, {
+        instance: null,
+        state: "stopped",
+        instanceSyncState: "success",
+      });
+      queryClient.removeQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "opencode" &&
+          query.queryKey.includes(sessionId),
+      });
       queryClient.invalidateQueries({ queryKey: ["instances"] });
       queryClient.invalidateQueries({ queryKey: ["instance", instanceId] });
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });

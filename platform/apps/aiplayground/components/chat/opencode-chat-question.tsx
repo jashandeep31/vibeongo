@@ -3,12 +3,7 @@
 import MarkdownRenderer from "@/components/markdown-renderer";
 import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
 import type { ToolPart } from "@opencode-ai/sdk/v2/client";
-import { Skeleton } from "@repo/ui/components/skeleton";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@repo/ui/components/alert";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { cn } from "@repo/ui/lib/utils";
 import { Check, CircleAlert, Copy } from "lucide-react";
 import { useState } from "react";
@@ -33,14 +28,6 @@ export type OpencodeChatTurn = {
   model?: string;
   durationMs?: number;
 };
-
-const LoadingResponseSkeleton = () => (
-  <div className="space-y-3">
-    <Skeleton className="h-4 w-full max-w-2xl" />
-    <Skeleton className="h-4 w-full max-w-xl" />
-    <Skeleton className="h-4 w-full max-w-lg" />
-  </div>
-);
 
 export function OpencodeChatQuestion({
   item,
@@ -148,7 +135,9 @@ export function OpencodeChatQuestion({
             ) : null}
           </>
         ) : isStreaming ? (
-          <LoadingResponseSkeleton />
+          <div className="text-muted-foreground animate-pulse py-1 text-sm">
+            Thinking…
+          </div>
         ) : null}
       </div>
     </div>
