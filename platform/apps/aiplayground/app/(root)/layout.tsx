@@ -1,10 +1,8 @@
+import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 import { PlaygroundCommandBox } from "@/components/playground-command-box";
 import { PlaygroundSidebar } from "@/components/playground-sidebar";
 import { PlaygroundStoreSync } from "@/components/playground-store-sync";
-import {
-  SidebarProvider,
-  SidebarTrigger,
-} from "@repo/ui/components/sidebar-v2";
+import { SidebarProvider } from "@repo/ui/components/sidebar-v2";
 
 export default function PlaygroundLayout({
   children,
@@ -18,7 +16,7 @@ export default function PlaygroundLayout({
       <PlaygroundStoreSync />
       <PlaygroundCommandBox />
       <PlaygroundSidebar />
-      <SidebarTrigger className="fixed top-3 left-3 z-[60] md:hidden" />
+      <MobileSidebarTrigger />
       <main className="flex min-h-svh w-full min-w-0 flex-col">{children}</main>
     </SidebarProvider>
   );

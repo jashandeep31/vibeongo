@@ -33,10 +33,12 @@ export const useProjectsStore = create<ProjectsStore>((set) => ({
 }));
 
 type SessionState = "running" | "stopped" | "processing";
+type InstanceSyncState = "pending" | "success" | "error";
 type SessionEntry = {
   session: typeof projectSessions.$inferSelect;
   instance: typeof instances.$inferSelect | null;
   state: SessionState;
+  instanceSyncState: InstanceSyncState;
 };
 
 interface SessionsStore {

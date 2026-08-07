@@ -7,9 +7,7 @@ import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
-import { useGetInstances, useTerminateInstance } from "@/hooks/use-instance";
-import { useOpencodeStatus } from "@/hooks/use-opencode-status";
-import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
+import { useTerminateInstance } from "@/hooks/use-instance";
 import {
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
@@ -18,7 +16,10 @@ import {
   useArchiveProjectSession,
   useResumeProjectSession,
 } from "@/hooks/use-project-sessions";
-import { useSessionsStore } from "@/store/playground-store";
+import {
+  useSessionChatsStore,
+  useSessionsStore,
+} from "@/store/playground-store";
 import {
   Collapsible,
   CollapsibleContent,
@@ -59,7 +60,7 @@ import {
   BotMessageSquare,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { instances, projects, projectSessions } from "@repo/db";
 import { toast } from "sonner";
@@ -209,77 +210,29 @@ function ProjectSessionNavItem({
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
     useState(false);
-  const updateSession = useSessionsStore((store) => store.updateSession);
-  const {
-    data: instancesData,
-    isPending: isInstancePending,
-    isError: isInstanceError,
-  } = useGetInstances({
-    sessionId: session.id,
-    state: "running",
-    limit: 1,
-  });
-  const instance = instancesData?.data[0];
+  const sessionEntry = useSessionsStore((store) =>
+    store.sessions.find((entry) => entry.session.id === session.id),
+  );
+  const opencodeSessions = useSessionChatsStore(
+    (store) => store.chatsBySessionId[session.id],
+  );
+  const instance = sessionEntry?.instance ?? null;
+  const isInstancePending = sessionEntry?.instanceSyncState === "pending";
+  const isInstanceError = sessionEntry?.instanceSyncState === "error";
   const { data: projectDomains } = useGetProjectDomainsById(
     session.projectId,
     !!instance,
   );
   const needsDomainAssignment =
     !!instance && projectDomains?.target_instance_id !== instance.id;
-  const instanceConfig =
-    instance?.config &&
-    typeof instance.config === "object" &&
-    !Array.isArray(instance.config)
-      ? instance.config
-      : undefined;
-  const localToken =
-    instanceConfig && "vibeongoLocalToken" in instanceConfig
-      ? instanceConfig.vibeongoLocalToken
-      : undefined;
-  const runtimeDomain = instance
-    ? `3101-${instance.id}${instance.proxy_domain}`
-    : undefined;
   const opencodeDomain = instance
     ? `4096-${instance.id}${instance.proxy_domain}`
     : undefined;
-
-  const { data: opencodeStatus } = useOpencodeStatus(
-    instance?.id ?? "",
-    runtimeDomain ? `https://${runtimeDomain}` : "",
-    typeof localToken === "string" ? localToken : "",
-    instance?.access_token ?? "",
-    !!instance,
-  );
-  const isOpencodeRunning = opencodeStatus?.running === true;
   const serverUrl =
-    isOpencodeRunning && opencodeDomain ? `https://${opencodeDomain}` : "";
+    sessionEntry?.state === "running" && opencodeDomain
+      ? `https://${opencodeDomain}`
+      : "";
   const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
-  const { data: opencodeSessions } = useOpencodeSessions(
-    session.id,
-    serverUrl,
-    instance?.access_token ?? "",
-    !!serverUrl,
-  );
-
-  useEffect(() => {
-    if (isInstancePending) return;
-
-    if (!instance) {
-      updateSession(session.id, { instance: null, state: "stopped" });
-      return;
-    }
-
-    updateSession(session.id, {
-      instance,
-      state: isOpencodeRunning ? "running" : "processing",
-    });
-  }, [
-    instance,
-    isInstancePending,
-    isOpencodeRunning,
-    session.id,
-    updateSession,
-  ]);
 
   const {
     data: githubRepos,
@@ -496,15 +449,24 @@ function ProjectSessionNavItem({
 }
 
 export function NavProjects({ projects }: { projects: Project[] }) {
+  const params = useParams<{ projectId?: string }>();
+  const activeProjectId = params.projectId;
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [openProjectId, setOpenProjectId] = useState<string | null>(
+    activeProjectId ?? null,
+  );
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
     string | null
   >(null);
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
+
+  useEffect(() => {
+    setOpenProjectId(activeProjectId ?? null);
+  }, [activeProjectId]);
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
@@ -541,7 +503,10 @@ export function NavProjects({ projects }: { projects: Project[] }) {
             {projects.map((project) => (
               <Collapsible
                 key={project.id}
-                defaultOpen
+                open={openProjectId === project.id}
+                onOpenChange={(open) =>
+                  setOpenProjectId(open ? project.id : null)
+                }
                 className="group/project"
               >
                 <SidebarMenuItem>

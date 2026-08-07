@@ -29,6 +29,7 @@ export const useCreateProjectSession = () => {
         session,
         instance: null,
         state: "stopped",
+        instanceSyncState: "pending",
       });
       return queryClient.invalidateQueries({
         queryKey: ["projects", "with-sessions"],

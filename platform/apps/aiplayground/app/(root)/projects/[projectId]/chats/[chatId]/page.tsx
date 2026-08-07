@@ -33,7 +33,7 @@ export default function NewOpencodeChatPage() {
   const chatUrl = `/projects/${projectId}/chats/${chatId}`;
 
   return (
-    <div className="relative flex min-h-0 flex-1">
+    <div className="relative flex min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
       <div className="absolute top-3 right-3 z-50">
         <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
       </div>
