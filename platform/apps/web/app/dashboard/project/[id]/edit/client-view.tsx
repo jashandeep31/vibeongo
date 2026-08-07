@@ -66,7 +66,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
     setDevScript(projectConfig.project.dev_script ?? "");
     setPortRules(
       config.ports?.map((rule) => ({
-        id: crypto.randomUUID(),
         port: String(rule.port),
         protocol: rule.protocol,
       })) ?? [],

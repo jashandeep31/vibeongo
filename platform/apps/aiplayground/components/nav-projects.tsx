@@ -14,7 +14,10 @@ import {
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
 } from "@/hooks/use-project";
-import { useResumeProjectSession } from "@/hooks/use-project-sessions";
+import {
+  useArchiveProjectSession,
+  useResumeProjectSession,
+} from "@/hooks/use-project-sessions";
 import { useSessionsStore } from "@/store/playground-store";
 import {
   Collapsible,
@@ -43,6 +46,7 @@ import {
   DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import {
+  Archive,
   Clock3,
   ChevronRight,
   Ellipsis,
@@ -58,6 +62,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { instances, projects, projectSessions } from "@repo/db";
+import { toast } from "sonner";
 
 type ProjectSessionNavItem = Pick<
   typeof projectSessions.$inferSelect,
@@ -74,7 +79,9 @@ type Project = Pick<typeof projects.$inferSelect, "id" | "name"> & {
 type ProjectSessionNavItemProps = {
   session: Project["sessions"][number];
   isResumePending: boolean;
+  isArchivePending: boolean;
   onResume: (sessionId: string) => void;
+  onArchive: (sessionId: string) => void;
   onNavigate: () => void;
 };
 
@@ -191,13 +198,17 @@ function InstanceControls({
 function ProjectSessionNavItem({
   session,
   isResumePending,
+  isArchivePending,
   onResume,
+  onArchive,
   onNavigate,
 }: ProjectSessionNavItemProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
+  const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
+    useState(false);
   const updateSession = useSessionsStore((store) => store.updateSession);
   const {
     data: instancesData,
@@ -400,53 +411,98 @@ function ProjectSessionNavItem({
   }
 
   return (
-    <SidebarMenuSubItem>
-      <div className="flex items-center gap-1">
-        <SidebarMenuSubButton className="min-w-0 flex-1">
-          <SquareDashedMousePointer />
-          <span className="min-w-0 flex-1 truncate" title={session.name}>
-            {session.name}
-          </span>
-          {instance ? (
-            <span
-              className="ml-auto size-2 shrink-0 animate-pulse rounded-full bg-amber-500"
-              title="OpenCode is starting"
-            >
-              <span className="sr-only">OpenCode is starting</span>
+    <>
+      <SidebarMenuSubItem>
+        <div className="flex items-center gap-1">
+          <SidebarMenuSubButton className="min-w-0 flex-1">
+            <SquareDashedMousePointer />
+            <span className="min-w-0 flex-1 truncate" title={session.name}>
+              {session.name}
             </span>
+            {instance ? (
+              <span
+                className="ml-auto size-2 shrink-0 animate-pulse rounded-full bg-amber-500"
+                title="OpenCode is starting"
+              >
+                <span className="sr-only">OpenCode is starting</span>
+              </span>
+            ) : null}
+          </SidebarMenuSubButton>
+          {instance ? (
+            <InstanceControls
+              instance={instance}
+              projectId={session.projectId}
+              sessionId={session.id}
+            />
           ) : null}
-        </SidebarMenuSubButton>
-        {instance ? (
-          <InstanceControls
-            instance={instance}
-            projectId={session.projectId}
-            sessionId={session.id}
-          />
-        ) : null}
-        {!isInstancePending && !isInstanceError && !instance ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="xs"
-            className="h-7 shrink-0 px-2"
-            disabled={isResumePending}
-            onClick={() => onResume(session.id)}
-          >
-            <Play />
-            Resume
-          </Button>
-        ) : null}
-      </div>
-    </SidebarMenuSubItem>
+          {!isInstancePending && !isInstanceError && !instance ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Resume ${session.name}`}
+                title="Resume session"
+                disabled={isResumePending || isArchivePending}
+                onClick={() => onResume(session.id)}
+              >
+                <Play />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`More options for ${session.name}`}
+                    title="Session options"
+                    disabled={isArchivePending}
+                  >
+                    {isArchivePending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Ellipsis />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => setIsArchiveConfirmationOpen(true)}
+                  >
+                    <Archive />
+                    Archive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : null}
+        </div>
+      </SidebarMenuSubItem>
+      <ConfirmationDialog
+        open={isArchiveConfirmationOpen}
+        onOpenChange={setIsArchiveConfirmationOpen}
+        title="Archive session?"
+        description={`Archive "${session.name}"? It will be hidden from your active sessions list.`}
+        confirmText="Archive"
+        onConfirm={() => {
+          setIsArchiveConfirmationOpen(false);
+          onArchive(session.id);
+        }}
+      />
+    </>
   );
 }
 
 export function NavProjects({ projects }: { projects: Project[] }) {
   const resumeSession = useResumeProjectSession();
+  const archiveSession = useArchiveProjectSession();
   const { isMobile, setOpenMobile } = useSidebar();
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
     string | null
   >(null);
+  const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
+    null,
+  );
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
@@ -458,6 +514,18 @@ export function NavProjects({ projects }: { projects: Project[] }) {
     const sessionId = runtimeDialogSessionId;
     setRuntimeDialogSessionId(null);
     resumeSession.mutate({ id: sessionId, runtime });
+  };
+
+  const handleArchive = (sessionId: string) => {
+    setArchivingSessionId(sessionId);
+    archiveSession.mutate(
+      { id: sessionId, action: true },
+      {
+        onSuccess: () => toast.success("Session archived"),
+        onError: () => toast.error("Failed to archive session"),
+        onSettled: () => setArchivingSessionId(null),
+      },
+    );
   };
 
   return (
@@ -490,7 +558,9 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                           key={session.id}
                           session={session}
                           isResumePending={resumeSession.isPending}
+                          isArchivePending={archivingSessionId === session.id}
                           onResume={setRuntimeDialogSessionId}
+                          onArchive={handleArchive}
                           onNavigate={closeMobileSidebar}
                         />
                       ))}

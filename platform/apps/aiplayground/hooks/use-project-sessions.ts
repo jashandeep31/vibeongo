@@ -1,4 +1,5 @@
 import {
+  archiveProjectSession,
   createProjectSession,
   getProjectSessions,
   resumeProjectSession,
@@ -58,6 +59,21 @@ export const useResumeProjectSession = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       queryClient.invalidateQueries({ queryKey: ["instances"] });
+    },
+  });
+};
+
+export const useArchiveProjectSession = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: archiveProjectSession,
+    onSuccess: (_, variables) => {
+      useSessionsStore.getState().deleteSession(variables.id);
+      queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
+      queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
     },
   });
 };
