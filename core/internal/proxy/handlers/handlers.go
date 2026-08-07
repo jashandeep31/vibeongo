@@ -122,7 +122,12 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 		return c.String(http.StatusNotFound, "404")
 	}
 
-	if !proxyData.AllowAllIPs && !checkIPIsAllowed(request.Header, proxyData.AllowedIPs) {
+	hasValidAccessToken := proxyData.Protected &&
+		hasValidProxyAccessToken(request.Header, proxyData.AccessToken)
+
+	// A valid access token is sufficient authorization for a protected proxy,
+	// regardless of the caller's IP address.
+	if !hasValidAccessToken && !proxyData.AllowAllIPs && !checkIPIsAllowed(request.Header, proxyData.AllowedIPs) {
 		ip, err := getRealIP(request.Header)
 		if err != nil {
 			return c.JSON(http.StatusForbidden, map[string]string{
@@ -136,7 +141,7 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 		})
 	}
 
-	if proxyData.Protected && !hasValidProxyAccessToken(request.Header, proxyData.AccessToken) {
+	if proxyData.Protected && !hasValidAccessToken {
 		return c.String(http.StatusUnauthorized, "401")
 	}
 
