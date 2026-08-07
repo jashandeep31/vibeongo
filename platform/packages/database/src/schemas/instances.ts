@@ -61,6 +61,9 @@ export const instances = pgTable(
     provider_instance_id: varchar().notNull(),
     proxy_domain: varchar().notNull(),
 
+    // used by the instance id based route
+    access_token: varchar().notNull(),
+
     created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },

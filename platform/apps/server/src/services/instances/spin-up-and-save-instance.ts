@@ -205,6 +205,7 @@ export const spinUpAndSaveInstance = async ({
       public_ip: newInstance.publicIPv4,
       state: "running",
       project_session_id: sessionId,
+      access_token: createId(),
       config: {
         opencodePassword: createId(),
         terminate,
