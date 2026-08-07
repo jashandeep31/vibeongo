@@ -16,7 +16,7 @@ export default function PlaygroundLayout({
       <PlaygroundStoreSync />
       <PlaygroundCommandBox />
       <PlaygroundSidebar />
-      <MobileSidebarTrigger />
+      <MobileSidebarTrigger className="bg-background/90 border shadow-sm backdrop-blur" />
       <main className="flex min-h-svh w-full min-w-0 flex-col">{children}</main>
     </SidebarProvider>
   );

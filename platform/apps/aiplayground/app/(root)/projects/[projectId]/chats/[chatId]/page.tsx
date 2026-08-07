@@ -2,11 +2,11 @@
 
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
+import { Button } from "@repo/ui/components/button";
+import { ArrowLeft, TriangleAlert } from "lucide-react";
+import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import {
-  useProjectsStore,
-  useSessionsStore,
-} from "@/store/playground-store";
+import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
 
 export default function NewOpencodeChatPage() {
   const { projectId, chatId } = useParams<{
@@ -27,7 +27,28 @@ export default function NewOpencodeChatPage() {
   const sessionName = sessionEntry?.session.name ?? "Session";
 
   if (!serverUrl || !accessToken) {
-    return <div>OpenCode server is not available for this session.</div>;
+    return (
+      <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <div className="bg-destructive/10 text-destructive flex size-11 items-center justify-center rounded-full">
+            <TriangleAlert className="size-5" />
+          </div>
+          <div className="space-y-1">
+            <h1 className="font-medium">OpenCode server unavailable</h1>
+            <p className="text-muted-foreground text-sm">
+              This session is no longer running or its connection has expired.
+              Return home to start or resume a session.
+            </p>
+          </div>
+          <Button asChild>
+            <Link href="/">
+              <ArrowLeft />
+              Back to home
+            </Link>
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   const chatUrl = `/projects/${projectId}/chats/${chatId}`;
