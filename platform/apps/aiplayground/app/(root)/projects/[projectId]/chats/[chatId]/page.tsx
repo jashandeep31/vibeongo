@@ -3,7 +3,10 @@
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import { useParams, useSearchParams } from "next/navigation";
-import { useSessionsStore } from "@/store/playground-store";
+import {
+  useProjectsStore,
+  useSessionsStore,
+} from "@/store/playground-store";
 
 export default function NewOpencodeChatPage() {
   const { projectId, chatId } = useParams<{
@@ -12,11 +15,16 @@ export default function NewOpencodeChatPage() {
   }>();
   const searchParams = useSearchParams();
   const serverUrl = searchParams.get("serverUrl");
-  const accessToken = useSessionsStore(
+  const projectName = useProjectsStore(
     (store) =>
-      store.sessions.find((entry) => entry.session.id === chatId)?.instance
-        ?.access_token ?? "",
+      store.projects.find((project) => project.id === projectId)?.name ??
+      "Project",
   );
+  const sessionEntry = useSessionsStore((store) =>
+    store.sessions.find((entry) => entry.session.id === chatId),
+  );
+  const accessToken = sessionEntry?.instance?.access_token ?? "";
+  const sessionName = sessionEntry?.session.name ?? "Session";
 
   if (!serverUrl || !accessToken) {
     return <div>OpenCode server is not available for this session.</div>;
@@ -35,6 +43,8 @@ export default function NewOpencodeChatPage() {
         serverUrl={serverUrl}
         accessToken={accessToken}
         directory={searchParams.get("directory") ?? undefined}
+        projectName={projectName}
+        sessionName={sessionName}
       />
     </div>
   );
