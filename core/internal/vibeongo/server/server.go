@@ -1,6 +1,8 @@
 package server
 
 import (
+	"time"
+
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
@@ -30,6 +32,13 @@ func Start() error {
 	// 		e.Logger.Error("failed to start opencode web server", "error", err)
 	// 	}
 	// }()
+	//
+	//
+	//NOTE: testing purposes remove this in the production
+	go func() {
+		time.Sleep(10 * time.Second)
+		tools.OpenCode.StartWebServer()
+	}()
 
 	// TODO: please use the proper cors way
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{

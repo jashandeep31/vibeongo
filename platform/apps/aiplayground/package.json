@@ -1,0 +1,41 @@
+{
+  "name": "aiplayground",
+  "version": "0.1.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --port 3003",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint --max-warnings 0",
+    "check-types": "next typegen && tsc --noEmit"
+  },
+  "dependencies": {
+    "@opencode-ai/sdk": "^1.18.11",
+    "@repo/db": "workspace:*",
+    "@repo/shared": "workspace:*",
+    "@repo/ui": "workspace:*",
+    "@tanstack/react-query": "^5.90.21",
+    "axios": "^1.13.6",
+    "lucide-react": "^0.563.0",
+    "next": "16.2.12",
+    "next-themes": "^0.4.6",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "react-markdown": "^10.1.0",
+    "remark-gfm": "^4.0.1",
+    "sonner": "^2.0.7",
+    "zustand": "^5.0.11"
+  },
+  "devDependencies": {
+    "@repo/eslint-config": "workspace:*",
+    "@repo/typescript-config": "workspace:*",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^22.15.3",
+    "@types/react": "19.2.2",
+    "@types/react-dom": "19.2.2",
+    "eslint": "^9.39.1",
+    "tailwindcss": "^4",
+    "typescript": "5.9.2"
+  }
+}

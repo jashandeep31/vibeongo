@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"fmt"
 	"log/slog"
@@ -14,6 +15,8 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
 	"github.com/labstack/echo/v5"
 )
+
+const proxyAuthorizationHeader = "X-Vibeongo-Proxy-Authorization"
 
 type Handler struct {
 	store        *store.ProxyManager
@@ -133,9 +136,25 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 		})
 	}
 
+	if proxyData.Protected && !hasValidProxyAccessToken(request.Header, proxyData.AccessToken) {
+		return c.String(http.StatusUnauthorized, "401")
+	}
+
 	ctx := context.WithValue(request.Context(), proxyDataContextKey{}, proxyData)
 	h.reverseProxy.ServeHTTP(c.Response(), request.WithContext(ctx))
 	return nil
+}
+
+// hasValidProxyAccessToken authenticates the request to this proxy only. The
+// standard Authorization header is deliberately reserved for the upstream app.
+func hasValidProxyAccessToken(headers http.Header, expectedToken string) bool {
+	scheme, token, found := strings.Cut(headers.Get(proxyAuthorizationHeader), " ")
+	return expectedToken != "" &&
+		found &&
+		strings.EqualFold(scheme, "Bearer") &&
+		token != "" &&
+		!strings.Contains(token, " ") &&
+		subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) == 1
 }
 
 func normalizeHost(host string) string {
@@ -148,6 +167,10 @@ func normalizeHost(host string) string {
 type proxyDataContextKey struct{}
 
 func applyProviderHeaders(request *http.Request, proxyData *store.Proxy) {
+	// This credential applies only to the proxy and must never reach the
+	// upstream application. Its Authorization header remains available.
+	request.Header.Del(proxyAuthorizationHeader)
+
 	switch proxyData.Provider {
 	case "daytona":
 		handleDaytonaHeaders(request)

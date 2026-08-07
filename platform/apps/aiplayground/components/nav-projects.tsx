@@ -1,0 +1,597 @@
+"use client";
+
+import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
+import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import {
+  ProjectSessionRuntimeDialog,
+  type ProjectSessionRuntime,
+} from "@/components/dialogs/project-session-runtime-dialog";
+import { useGetInstances, useTerminateInstance } from "@/hooks/use-instance";
+import { useOpencodeStatus } from "@/hooks/use-opencode-status";
+import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
+import {
+  useGetProjectDomainsById,
+  useGetProjectGithubReposById,
+} from "@/hooks/use-project";
+import {
+  useArchiveProjectSession,
+  useResumeProjectSession,
+} from "@/hooks/use-project-sessions";
+import { useSessionsStore } from "@/store/playground-store";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@repo/ui/components/collapsible";
+import {
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
+  useSidebar,
+} from "@repo/ui/components/sidebar-v2";
+import { Button } from "@repo/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
+import {
+  Archive,
+  Clock3,
+  ChevronRight,
+  Ellipsis,
+  Folder,
+  Loader2,
+  Play,
+  Plus,
+  SquareDashedMousePointer,
+  Trash2,
+  BotMessageSquare,
+} from "lucide-react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { instances, projects, projectSessions } from "@repo/db";
+import { toast } from "sonner";
+
+type ProjectSessionNavItem = Pick<
+  typeof projectSessions.$inferSelect,
+  "id" | "name"
+> & {
+  projectId: (typeof projectSessions.$inferSelect)["project_id"];
+};
+
+type Project = Pick<typeof projects.$inferSelect, "id" | "name"> & {
+  url: string;
+  sessions: ProjectSessionNavItem[];
+};
+
+type ProjectSessionNavItemProps = {
+  session: Project["sessions"][number];
+  isResumePending: boolean;
+  isArchivePending: boolean;
+  onResume: (sessionId: string) => void;
+  onArchive: (sessionId: string) => void;
+  onNavigate: () => void;
+};
+
+function formatTimeRemaining(terminatesAt: string, now: number) {
+  const expiresAt = new Date(terminatesAt).getTime();
+  if (Number.isNaN(expiresAt)) return "N/A";
+
+  const remainingMs = expiresAt - now;
+  if (remainingMs <= 0) return "Expired";
+
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
+function getRepoDirectory(fullName: string) {
+  const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
+  return `/home/ubuntu/code/${repoName}`;
+}
+
+function InstanceControls({
+  instance,
+  projectId,
+  sessionId,
+}: {
+  instance: typeof instances.$inferSelect;
+  projectId: string;
+  sessionId: string;
+}) {
+  const [now, setNow] = useState(() => Date.now());
+  const [isOpen, setIsOpen] = useState(false);
+  const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
+    useState(false);
+  const terminateInstance = useTerminateInstance(projectId, sessionId);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [isOpen]);
+
+  return (
+    <>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) setNow(Date.now());
+        }}
+      >
+        <DropdownMenuTrigger asChild>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-xs"
+            aria-label="Instance controls"
+            title="Instance controls"
+            disabled={terminateInstance.isPending}
+          >
+            {terminateInstance.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Ellipsis />
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
+          <div className="flex items-center gap-2 px-1.5 py-2">
+            <Clock3 className="text-muted-foreground size-4 shrink-0" />
+            <div className="min-w-0">
+              <p className="text-muted-foreground text-xs">Terminates in</p>
+              <p className="font-mono text-sm font-medium tabular-nums">
+                {/*  NOTE: fix this later by checking what is function i doing its ai generated */}
+                {formatTimeRemaining(String(instance.terminates_at), now)}
+              </p>
+            </div>
+          </div>
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            variant="destructive"
+            disabled={terminateInstance.isPending}
+            onSelect={() => setIsTerminationConfirmationOpen(true)}
+          >
+            <Trash2 />
+            Terminate now
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+      <ConfirmationDialog
+        open={isTerminationConfirmationOpen}
+        onOpenChange={setIsTerminationConfirmationOpen}
+        title="Terminate this instance?"
+        description="The running session instance will be terminated immediately. Any unsaved work on the instance may be lost."
+        confirmText="Terminate now"
+        isDestructive
+        onConfirm={() => {
+          setIsTerminationConfirmationOpen(false);
+          terminateInstance.mutate(instance.id);
+        }}
+      />
+    </>
+  );
+}
+
+function ProjectSessionNavItem({
+  session,
+  isResumePending,
+  isArchivePending,
+  onResume,
+  onArchive,
+  onNavigate,
+}: ProjectSessionNavItemProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false);
+  const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
+    useState(false);
+  const updateSession = useSessionsStore((store) => store.updateSession);
+  const {
+    data: instancesData,
+    isPending: isInstancePending,
+    isError: isInstanceError,
+  } = useGetInstances({
+    sessionId: session.id,
+    state: "running",
+    limit: 1,
+  });
+  const instance = instancesData?.data[0];
+  const { data: projectDomains } = useGetProjectDomainsById(
+    session.projectId,
+    !!instance,
+  );
+  const needsDomainAssignment =
+    !!instance && projectDomains?.target_instance_id !== instance.id;
+  const instanceConfig =
+    instance?.config &&
+    typeof instance.config === "object" &&
+    !Array.isArray(instance.config)
+      ? instance.config
+      : undefined;
+  const localToken =
+    instanceConfig && "vibeongoLocalToken" in instanceConfig
+      ? instanceConfig.vibeongoLocalToken
+      : undefined;
+  const runtimeDomain = instance
+    ? `3101-${instance.id}${instance.proxy_domain}`
+    : undefined;
+  const opencodeDomain = instance
+    ? `4096-${instance.id}${instance.proxy_domain}`
+    : undefined;
+
+  const { data: opencodeStatus } = useOpencodeStatus(
+    instance?.id ?? "",
+    runtimeDomain ? `https://${runtimeDomain}` : "",
+    typeof localToken === "string" ? localToken : "",
+    instance?.access_token ?? "",
+    !!instance,
+  );
+  const isOpencodeRunning = opencodeStatus?.running === true;
+  const serverUrl =
+    isOpencodeRunning && opencodeDomain ? `https://${opencodeDomain}` : "";
+  const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
+  const { data: opencodeSessions } = useOpencodeSessions(
+    session.id,
+    serverUrl,
+    instance?.access_token ?? "",
+    !!serverUrl,
+  );
+
+  useEffect(() => {
+    if (isInstancePending) return;
+
+    if (!instance) {
+      updateSession(session.id, { instance: null, state: "stopped" });
+      return;
+    }
+
+    updateSession(session.id, {
+      instance,
+      state: isOpencodeRunning ? "running" : "processing",
+    });
+  }, [
+    instance,
+    isInstancePending,
+    isOpencodeRunning,
+    session.id,
+    updateSession,
+  ]);
+
+  const {
+    data: githubRepos,
+    isPending: isReposPending,
+    isError: isReposError,
+    refetch: refetchGithubRepos,
+  } = useGetProjectGithubReposById(
+    session.projectId,
+    isRepoDialogOpen && !!serverUrl,
+  );
+
+  const handleRepoSelect = (directory: string) => {
+    setIsRepoDialogOpen(false);
+    const params = new URLSearchParams({ serverUrl, directory });
+    router.push(`${chatUrl}?${params.toString()}`);
+    onNavigate();
+  };
+
+  const handleNewChat = async () => {
+    setIsStartingNewChat(true);
+
+    const result = await refetchGithubRepos();
+    const repos = result.data ?? [];
+    const [onlyRepo] = repos;
+
+    if (result.isSuccess && repos.length === 1 && onlyRepo) {
+      handleRepoSelect(getRepoDirectory(onlyRepo.full_name));
+    } else {
+      setIsRepoDialogOpen(true);
+    }
+
+    setIsStartingNewChat(false);
+  };
+
+  if (serverUrl && instance) {
+    return (
+      <>
+        <Collapsible asChild defaultOpen className="group/session">
+          <SidebarMenuSubItem>
+            <div className="flex items-center gap-1">
+              <CollapsibleTrigger asChild>
+                <SidebarMenuSubButton asChild className="min-w-0 flex-1">
+                  <button type="button">
+                    <SquareDashedMousePointer />
+                    <span className="min-w-0 truncate" title={session.name}>
+                      {session.name}
+                    </span>
+                    <span
+                      className={`ml-1 size-2 shrink-0 rounded-full ${
+                        needsDomainAssignment ? "bg-blue-500" : "bg-emerald-500"
+                      }`}
+                      title={
+                        needsDomainAssignment
+                          ? "Running — domains need assignment"
+                          : "Running"
+                      }
+                    >
+                      <span className="sr-only">
+                        {needsDomainAssignment
+                          ? "Running — domains need assignment"
+                          : "Running"}
+                      </span>
+                    </span>
+                    <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
+                  </button>
+                </SidebarMenuSubButton>
+              </CollapsibleTrigger>
+              <InstanceControls
+                instance={instance}
+                projectId={session.projectId}
+                sessionId={session.id}
+              />
+            </div>
+
+            <CollapsibleContent>
+              <SidebarMenuSub className="mr-0 ml-4">
+                {(opencodeSessions ?? []).map((opencodeSession) => {
+                  const params = new URLSearchParams({ serverUrl });
+                  const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+
+                  return (
+                    <SidebarMenuSubItem key={opencodeSession.id}>
+                      <SidebarMenuSubButton
+                        asChild
+                        size="sm"
+                        isActive={pathname === url.split("?")[0]}
+                      >
+                        <Link href={url} onClick={onNavigate}>
+                          <BotMessageSquare />
+                          <span
+                            className="min-w-0 flex-1 truncate"
+                            title={opencodeSession.title}
+                          >
+                            {opencodeSession.title}
+                          </span>
+                        </Link>
+                      </SidebarMenuSubButton>
+                    </SidebarMenuSubItem>
+                  );
+                })}
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton asChild size="sm">
+                    <button
+                      type="button"
+                      disabled={isStartingNewChat}
+                      onClick={handleNewChat}
+                    >
+                      {isStartingNewChat ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Plus />
+                      )}
+                      <span>New chat</span>
+                    </button>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
+              </SidebarMenuSub>
+            </CollapsibleContent>
+          </SidebarMenuSubItem>
+        </Collapsible>
+        <GithubRepoDirectoryDialog
+          open={isRepoDialogOpen}
+          onOpenChange={setIsRepoDialogOpen}
+          repos={githubRepos ?? []}
+          isLoading={isReposPending}
+          isError={isReposError}
+          onSelect={handleRepoSelect}
+        />
+      </>
+    );
+  }
+
+  return (
+    <>
+      <SidebarMenuSubItem>
+        <div className="flex items-center gap-1">
+          <SidebarMenuSubButton className="min-w-0 flex-1">
+            <SquareDashedMousePointer />
+            <span className="min-w-0 flex-1 truncate" title={session.name}>
+              {session.name}
+            </span>
+            {instance ? (
+              <span
+                className="ml-auto size-2 shrink-0 animate-pulse rounded-full bg-amber-500"
+                title="OpenCode is starting"
+              >
+                <span className="sr-only">OpenCode is starting</span>
+              </span>
+            ) : null}
+          </SidebarMenuSubButton>
+          {instance ? (
+            <InstanceControls
+              instance={instance}
+              projectId={session.projectId}
+              sessionId={session.id}
+            />
+          ) : null}
+          {!isInstancePending && !isInstanceError && !instance ? (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-xs"
+                aria-label={`Resume ${session.name}`}
+                title="Resume session"
+                disabled={isResumePending || isArchivePending}
+                onClick={() => onResume(session.id)}
+              >
+                <Play />
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-xs"
+                    aria-label={`More options for ${session.name}`}
+                    title="Session options"
+                    disabled={isArchivePending}
+                  >
+                    {isArchivePending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Ellipsis />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => setIsArchiveConfirmationOpen(true)}
+                  >
+                    <Archive />
+                    Archive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : null}
+        </div>
+      </SidebarMenuSubItem>
+      <ConfirmationDialog
+        open={isArchiveConfirmationOpen}
+        onOpenChange={setIsArchiveConfirmationOpen}
+        title="Archive session?"
+        description={`Archive "${session.name}"? It will be hidden from your active sessions list.`}
+        confirmText="Archive"
+        onConfirm={() => {
+          setIsArchiveConfirmationOpen(false);
+          onArchive(session.id);
+        }}
+      />
+    </>
+  );
+}
+
+export function NavProjects({ projects }: { projects: Project[] }) {
+  const resumeSession = useResumeProjectSession();
+  const archiveSession = useArchiveProjectSession();
+  const { isMobile, setOpenMobile } = useSidebar();
+  const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
+    string | null
+  >(null);
+  const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
+    null,
+  );
+
+  const closeMobileSidebar = () => {
+    if (isMobile) setOpenMobile(false);
+  };
+
+  const handleRuntimeSelect = (runtime: ProjectSessionRuntime) => {
+    if (!runtimeDialogSessionId) return;
+
+    const sessionId = runtimeDialogSessionId;
+    setRuntimeDialogSessionId(null);
+    resumeSession.mutate({ id: sessionId, runtime });
+  };
+
+  const handleArchive = (sessionId: string) => {
+    setArchivingSessionId(sessionId);
+    archiveSession.mutate(
+      { id: sessionId, action: true },
+      {
+        onSuccess: () => toast.success("Session archived"),
+        onError: () => toast.error("Failed to archive session"),
+        onSettled: () => setArchivingSessionId(null),
+      },
+    );
+  };
+
+  return (
+    <>
+      <SidebarGroup className="px-2 py-3">
+        <SidebarGroupLabel className="text-sidebar-foreground px-3 text-sm font-semibold">
+          Projects
+        </SidebarGroupLabel>
+        <SidebarGroupContent>
+          <SidebarMenu className="gap-1">
+            {projects.map((project) => (
+              <Collapsible
+                key={project.id}
+                defaultOpen
+                className="group/project"
+              >
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton className="h-9 rounded-xl px-3 font-normal">
+                      <Folder />
+                      <span>{project.name}</span>
+                      <ChevronRight className="ml-auto transition-transform group-data-[state=open]/project:rotate-90" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {project.sessions.map((session) => (
+                        <ProjectSessionNavItem
+                          key={session.id}
+                          session={session}
+                          isResumePending={resumeSession.isPending}
+                          isArchivePending={archivingSessionId === session.id}
+                          onResume={setRuntimeDialogSessionId}
+                          onArchive={handleArchive}
+                          onNavigate={closeMobileSidebar}
+                        />
+                      ))}
+                      <SidebarMenuSubItem>
+                        <CreateProjectSessionDialog
+                          projectId={project.id}
+                          projectName={project.name}
+                        >
+                          <SidebarMenuSubButton size="sm">
+                            <Plus />
+                            <span>New session</span>
+                          </SidebarMenuSubButton>
+                        </CreateProjectSessionDialog>
+                      </SidebarMenuSubItem>
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+            ))}
+          </SidebarMenu>
+        </SidebarGroupContent>
+      </SidebarGroup>
+      <ProjectSessionRuntimeDialog
+        open={runtimeDialogSessionId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRuntimeDialogSessionId(null);
+        }}
+        onSelect={handleRuntimeSelect}
+      />
+    </>
+  );
+}

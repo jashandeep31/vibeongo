@@ -30,6 +30,49 @@ import {
 } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 
+export const createProjectSession = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 401);
+
+    const { projectId, sessionName, sessionDescription } = z
+      .object({
+        projectId: z.uuid("Project id must be valid"),
+        sessionName: z
+          .string()
+          .trim()
+          .min(4, "Session name must be at least 4 characters long"),
+        sessionDescription: z.string().trim().optional(),
+      })
+      .parse(req.body);
+
+    const [project] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.user_id, user.id)));
+
+    if (!project) throw new AppError("Project not found", 404);
+
+    const [session] = await db
+      .insert(projectSessions)
+      .values({
+        name: sessionName,
+        description: sessionDescription || "",
+        user_id: user.id,
+        project_id: project.id,
+        category: "manual",
+      })
+      .returning();
+
+    if (!session) throw new AppError("Failed to create project session", 500);
+
+    res.status(201).json({
+      message: "Successfully created the project session",
+      data: session,
+    });
+  },
+);
+
 export const deleteProjectSessionTask = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;

@@ -355,7 +355,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
 
     try {
       await axios.post(
-        `https://${vibeongoDomain}/restart-final-script`,
+        `https://${vibeongoDomain}/restart-dev-script`,
         {},
         {
           headers: {

@@ -13,13 +13,17 @@ import (
 )
 
 type Proxy struct {
-	ID           string    `json:"id"`
-	Domain       string    `json:"domain"`
-	AllowedIPs   []string  `json:"allowed_ips"`
-	AllowAllIPs  bool      `json:"allowed_all_ips"`
-	ExpiresAt    time.Time `json:"expires_at"`
-	Provider     string    `json:"provider"`
-	PreviewToken string    `json:"previewToken"`
+	ID          string    `json:"id"`
+	Domain      string    `json:"domain"`
+	AllowedIPs  []string  `json:"allowed_ips"`
+	AllowAllIPs bool      `json:"allowed_all_ips"`
+	ExpiresAt   time.Time `json:"expires_at"`
+	Provider    string    `json:"provider"`
+	// token used for auth by Providers like e2b, daytona and vercel sandboxes
+	PreviewToken string `json:"previewToken"`
+
+	AccessToken string `json:"access_token"`
+	Protected   bool   `json:"protected"`
 
 	// Target stays parsed for use by the reverse proxy. ProxyInfo provides its
 	// string representation to proxy metadata endpoints.
@@ -96,6 +100,8 @@ type Response struct {
 		ID          string `json:"id"`
 		Domain      string `json:"domain"`
 		AllowAllIPs bool   `json:"allowed_all_ips"`
+		Protected   bool   `json:"protected"`
+		AccessToken string `json:"access_token"`
 		Target      struct {
 			TargetURL string `json:"targetUrl"`
 			Token     string `json:"token"`
@@ -153,6 +159,8 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		AllowAllIPs:  parsedResponse.Data.AllowAllIPs,
 		Provider:     parsedResponse.Data.Target.Provider,
 		PreviewToken: parsedResponse.Data.Target.Token,
+		Protected:    parsedResponse.Data.Protected,
+		AccessToken:  parsedResponse.Data.AccessToken,
 		ExpiresAt:    time.Now().Add(5 * time.Minute),
 	}, nil
 }

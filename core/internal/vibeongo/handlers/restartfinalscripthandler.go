@@ -7,7 +7,7 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
-func RestartFinalScriptHandler(c *echo.Context) error {
+func RestartDevScriptHandler(c *echo.Context) error {
 	err := actions.ReExecuteDevScript()
 	if err != nil {
 		return c.JSON(http.StatusExpectationFailed, struct {

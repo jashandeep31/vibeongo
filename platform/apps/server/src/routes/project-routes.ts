@@ -5,8 +5,10 @@ import {
   deleteProjectById,
   getProjectConfigForEdit,
   getProjectDomainsById,
+  getProjectGithubReposById,
   getProjectById,
   getProjects,
+  getProjectsWithSessions,
   updateProjectById,
 } from "../controllers/project/projects.js";
 import {
@@ -30,6 +32,9 @@ routes
   .post(checkAuthorization(["all"]), createProject)
   .get(checkAuthorization(["all"]), getProjects);
 routes
+  .route("/with-sessions")
+  .get(checkAuthorization(["all"]), getProjectsWithSessions);
+routes
   .route("/:id")
   .get(checkAuthorization(["all"]), getProjectById)
   .patch(checkAuthorization(["all"]), updateProjectById)
@@ -41,6 +46,9 @@ routes
 routes
   .route("/:id/domains")
   .get(checkAuthorization(["all"]), getProjectDomainsById);
+routes
+  .route("/:id/github-repos")
+  .get(checkAuthorization(["all"]), getProjectGithubReposById);
 routes
   .route("/:id/domains/:domainId")
   .patch(checkAuthorization(["all"]), updateProxyDomain);
