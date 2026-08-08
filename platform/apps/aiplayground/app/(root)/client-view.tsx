@@ -4,19 +4,48 @@ import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
+import { useTerminateInstance } from "@/hooks/use-instance";
 import { useGetProjectGithubReposById } from "@/hooks/use-project";
-import { useResumeProjectSession } from "@/hooks/use-project-sessions";
-import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
+import {
+  useArchiveProjectSession,
+  useResumeProjectSession,
+} from "@/hooks/use-project-sessions";
+import {
+  useProjectsStore,
+  useSessionChatsStore,
+  useSessionsStore,
+} from "@/store/playground-store";
 import { Button } from "@repo/ui/components/button";
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
-import { ChevronDown, Loader2, Play } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
+import {
+  Archive,
+  BotMessageSquare,
+  ChevronDown,
+  Clock3,
+  Ellipsis,
+  Loader2,
+  Play,
+  Plus,
+  Trash2,
+} from "lucide-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 type SessionEntry = ReturnType<
@@ -36,18 +65,60 @@ function getRunningSessionUrl(entry: SessionEntry, directory: string) {
   return `/projects/${entry.session.project_id}/chats/${entry.session.id}?${params.toString()}`;
 }
 
+function getServerUrl(entry: SessionEntry) {
+  if (!entry.instance || entry.state !== "running") return "";
+  return `https://4096-${entry.instance.id}${entry.instance.proxy_domain}`;
+}
+
+function formatTimeRemaining(terminatesAt: string, now: number) {
+  const remainingMs = new Date(terminatesAt).getTime() - now;
+  if (!Number.isFinite(remainingMs)) return "N/A";
+  if (remainingMs <= 0) return "Expired";
+
+  const totalSeconds = Math.ceil(remainingMs / 1000);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
+}
+
 function SessionRow({
   entry,
   isResumePending,
+  isArchivePending,
   onResume,
+  onArchive,
 }: {
   entry: SessionEntry;
   isResumePending: boolean;
+  isArchivePending: boolean;
   onResume: (sessionId: string) => void;
+  onArchive: (sessionId: string) => void;
 }) {
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
-  const [isOpening, setIsOpening] = useState(false);
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false);
+  const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
+    useState(false);
+  const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
+    useState(false);
+  const [isInstanceMenuOpen, setIsInstanceMenuOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
+  const serverUrl = getServerUrl(entry);
+  const chatUrl = `/projects/${entry.session.project_id}/chats/${entry.session.id}`;
+  const storedOpencodeSessions = useSessionChatsStore(
+    (store) => store.chatsBySessionId[entry.session.id],
+  );
+  const opencodeSessions = storedOpencodeSessions ?? [];
+  const terminateInstance = useTerminateInstance(
+    entry.session.project_id,
+    entry.session.id,
+  );
   const {
     data: githubRepos,
     isPending: isReposPending,
@@ -58,6 +129,13 @@ function SessionRow({
     isRepoDialogOpen,
   );
 
+  useEffect(() => {
+    if (!isInstanceMenuOpen) return;
+
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [isInstanceMenuOpen]);
+
   const openDirectory = (directory: string) => {
     const runningUrl = getRunningSessionUrl(entry, directory);
     if (!runningUrl) return;
@@ -66,8 +144,8 @@ function SessionRow({
     router.push(runningUrl);
   };
 
-  const handleOpen = async () => {
-    setIsOpening(true);
+  const handleNewChat = async () => {
+    setIsStartingNewChat(true);
 
     const result = await refetchGithubRepos();
     const repos = result.data ?? [];
@@ -79,74 +157,219 @@ function SessionRow({
       setIsRepoDialogOpen(true);
     }
 
-    setIsOpening(false);
+    setIsStartingNewChat(false);
   };
 
   return (
     <>
-      <div className="bg-muted/40 flex flex-col gap-3 rounded-lg px-4 py-3 sm:flex-row sm:items-center">
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3
-              className="truncate text-sm font-medium"
-              title={entry.session.name}
+      <Collapsible
+        defaultOpen={entry.state === "running"}
+        className="group/session bg-muted/40 overflow-hidden rounded-lg"
+      >
+        <div className="flex items-center gap-2 px-2 py-2">
+          <CollapsibleTrigger asChild disabled={!serverUrl}>
+            <button
+              type="button"
+              className="hover:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors disabled:cursor-default disabled:hover:bg-transparent"
             >
-              {entry.session.name}
-            </h3>
-            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <span
-                className={`size-1.5 rounded-full ${
-                  entry.state === "running"
-                    ? "bg-emerald-500"
-                    : entry.state === "processing"
-                      ? "animate-pulse bg-amber-500"
-                      : "bg-muted-foreground/50"
-                }`}
-              />
-              {entry.state === "running"
-                ? "Running"
-                : entry.state === "processing"
-                  ? "Starting"
-                  : "Paused"}
-            </span>
-          </div>
+              <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=closed]/session:-rotate-90" />
+              <span className="min-w-0 flex-1">
+                <span
+                  className="block truncate text-sm font-medium"
+                  title={entry.session.name}
+                >
+                  {entry.session.name}
+                </span>
+              </span>
+              <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
+                <span
+                  className={`size-1.5 rounded-full ${
+                    entry.state === "running"
+                      ? "bg-emerald-500"
+                      : entry.state === "processing"
+                        ? "animate-pulse bg-amber-500"
+                        : "bg-muted-foreground/50"
+                  }`}
+                />
+                {entry.state === "running"
+                  ? "Running"
+                  : entry.state === "processing"
+                    ? "Starting"
+                    : "Paused"}
+              </span>
+            </button>
+          </CollapsibleTrigger>
+
+          {entry.instance ? (
+            <DropdownMenu
+              open={isInstanceMenuOpen}
+              onOpenChange={(open) => {
+                setIsInstanceMenuOpen(open);
+                if (open) setNow(Date.now());
+              }}
+            >
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label={`Instance controls for ${entry.session.name}`}
+                  disabled={terminateInstance.isPending}
+                >
+                  {terminateInstance.isPending ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Ellipsis />
+                  )}
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
+                <div className="flex items-center gap-2 px-1.5 py-2">
+                  <Clock3 className="text-muted-foreground size-4" />
+                  <div>
+                    <p className="text-muted-foreground text-xs">
+                      Terminates in
+                    </p>
+                    <p className="font-mono text-sm font-medium tabular-nums">
+                      {formatTimeRemaining(
+                        String(entry.instance.terminates_at),
+                        now,
+                      )}
+                    </p>
+                  </div>
+                </div>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setIsTerminationConfirmationOpen(true)}
+                >
+                  <Trash2 />
+                  Terminate now
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          ) : entry.state === "stopped" ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isResumePending || isArchivePending}
+                onClick={() => onResume(entry.session.id)}
+              >
+                {isResumePending ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Play />
+                )}
+                Resume
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`More options for ${entry.session.name}`}
+                    disabled={isArchivePending}
+                  >
+                    {isArchivePending ? (
+                      <Loader2 className="animate-spin" />
+                    ) : (
+                      <Ellipsis />
+                    )}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    onSelect={() => setIsArchiveConfirmationOpen(true)}
+                  >
+                    <Archive />
+                    Archive
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </>
+          ) : (
+            <Button disabled variant="ghost" size="sm">
+              <Loader2 className="animate-spin" />
+              Starting
+            </Button>
+          )}
         </div>
 
-        {entry.state === "running" && entry.instance ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="shrink-0"
-            disabled={isOpening}
-            onClick={handleOpen}
-          >
-            {isOpening ? <Loader2 className="animate-spin" /> : null}
-            Open
-          </Button>
-        ) : entry.state === "processing" ? (
-          <Button disabled variant="ghost" size="sm" className="shrink-0">
-            <Loader2 className="animate-spin" />
-            Starting
-          </Button>
-        ) : (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="shrink-0"
-            disabled={isResumePending}
-            onClick={() => onResume(entry.session.id)}
-          >
-            {isResumePending ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Play />
-            )}
-            Resume
-          </Button>
-        )}
-      </div>
+        {serverUrl ? (
+          <CollapsibleContent>
+            <div className="border-border/60 space-y-1 border-t px-3 py-3">
+              {opencodeSessions.map((opencodeSession) => {
+                const params = new URLSearchParams({ serverUrl });
+                const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+
+                return (
+                  <Button
+                    key={opencodeSession.id}
+                    asChild
+                    variant="ghost"
+                    size="sm"
+                    className="w-full justify-start"
+                  >
+                    <Link href={url}>
+                      <BotMessageSquare />
+                      <span
+                        className="min-w-0 truncate"
+                        title={opencodeSession.title}
+                      >
+                        {opencodeSession.title}
+                      </span>
+                    </Link>
+                  </Button>
+                );
+              })}
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+                disabled={isStartingNewChat}
+                onClick={handleNewChat}
+              >
+                {isStartingNewChat ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Plus />
+                )}
+                New chat
+              </Button>
+            </div>
+          </CollapsibleContent>
+        ) : null}
+      </Collapsible>
+
+      <ConfirmationDialog
+        open={isArchiveConfirmationOpen}
+        onOpenChange={setIsArchiveConfirmationOpen}
+        title="Archive session?"
+        description={`Archive "${entry.session.name}"? It will be hidden from your active sessions list.`}
+        confirmText="Archive"
+        onConfirm={() => {
+          setIsArchiveConfirmationOpen(false);
+          onArchive(entry.session.id);
+        }}
+      />
+      <ConfirmationDialog
+        open={isTerminationConfirmationOpen}
+        onOpenChange={setIsTerminationConfirmationOpen}
+        title="Terminate this instance?"
+        description="The running session instance will be terminated immediately. Any unsaved work on the instance may be lost."
+        confirmText="Terminate now"
+        isDestructive
+        onConfirm={() => {
+          if (!entry.instance) return;
+          setIsTerminationConfirmationOpen(false);
+          terminateInstance.mutate(entry.instance.id);
+        }}
+      />
       <GithubRepoDirectoryDialog
         open={isRepoDialogOpen}
         onOpenChange={setIsRepoDialogOpen}
@@ -163,10 +386,14 @@ export default function ClientView() {
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const resumeSession = useResumeProjectSession();
+  const archiveSession = useArchiveProjectSession();
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
     string | null
   >(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
+    null,
+  );
+  const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
 
@@ -182,6 +409,18 @@ export default function ClientView() {
         onSuccess: () => toast.success("Session is starting"),
         onError: () => toast.error("Failed to resume session"),
         onSettled: () => setResumingSessionId(null),
+      },
+    );
+  };
+
+  const handleArchive = (sessionId: string) => {
+    setArchivingSessionId(sessionId);
+    archiveSession.mutate(
+      { id: sessionId, action: true },
+      {
+        onSuccess: () => toast.success("Session archived"),
+        onError: () => toast.error("Failed to archive session"),
+        onSettled: () => setArchivingSessionId(null),
       },
     );
   };
@@ -244,31 +483,60 @@ export default function ClientView() {
               return (
                 <Collapsible key={project.id} defaultOpen={projects.length === 1}>
                   <div className="bg-muted/25 overflow-hidden rounded-lg">
-                    <CollapsibleTrigger asChild>
-                      <button
-                        type="button"
-                        className="hover:bg-muted/50 group flex w-full items-center gap-3 px-4 py-3 text-left transition-colors"
-                      >
-                        <span className="min-w-0 flex-1">
-                          <span className="flex items-center gap-2">
-                            <span className="truncate text-sm font-medium">
-                              {project.name}
-                            </span>
-                            {runningCount > 0 ? (
-                              <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                                <span className="size-1.5 rounded-full bg-emerald-500" />
-                                {runningCount} running
+                    <div className="flex items-center pr-2">
+                      <CollapsibleTrigger asChild>
+                        <button
+                          type="button"
+                          className="hover:bg-muted/50 group flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors"
+                        >
+                          <span className="min-w-0 flex-1">
+                            <span className="flex items-center gap-2">
+                              <span className="truncate text-sm font-medium">
+                                {project.name}
                               </span>
-                            ) : null}
+                              {runningCount > 0 ? (
+                                <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                                  <span className="size-1.5 rounded-full bg-emerald-500" />
+                                  {runningCount} running
+                                </span>
+                              ) : null}
+                            </span>
                           </span>
-                        </span>
-                        <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">
-                          {projectSessions.length}{" "}
-                          {projectSessions.length === 1 ? "session" : "sessions"}
-                        </span>
-                        <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-                      </button>
-                    </CollapsibleTrigger>
+                          <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">
+                            {projectSessions.length}{" "}
+                            {projectSessions.length === 1
+                              ? "session"
+                              : "sessions"}
+                          </span>
+                          <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                        </button>
+                      </CollapsibleTrigger>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            aria-label={`Actions for ${project.name}`}
+                          >
+                            <Ellipsis />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <CreateProjectSessionDialog
+                            projectId={project.id}
+                            projectName={project.name}
+                          >
+                            <DropdownMenuItem
+                              onSelect={(event) => event.preventDefault()}
+                            >
+                              <Plus />
+                              New session
+                            </DropdownMenuItem>
+                          </CreateProjectSessionDialog>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
 
                     <CollapsibleContent>
                       <div className="space-y-2 px-3 pb-3">
@@ -284,7 +552,11 @@ export default function ClientView() {
                               isResumePending={
                                 resumingSessionId === entry.session.id
                               }
+                              isArchivePending={
+                                archivingSessionId === entry.session.id
+                              }
                               onResume={setRuntimeDialogSessionId}
+                              onArchive={handleArchive}
                             />
                           ))
                         )}
