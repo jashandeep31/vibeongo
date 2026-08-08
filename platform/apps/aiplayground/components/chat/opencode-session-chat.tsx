@@ -5,6 +5,7 @@ import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prom
 import { PromptInput } from "@/components/chat/prompt-input";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import {
+  useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useOpencodeInventory,
   useRejectOpencodeQuestion,
@@ -201,6 +202,12 @@ export function OpencodeSessionChat({
     serverUrl,
     accessToken,
   });
+  const abortSession = useAbortOpencodeSession({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  });
   const rejectQuestion = useRejectOpencodeQuestion({
     chatId,
     sessionId,
@@ -371,6 +378,14 @@ export function OpencodeSessionChat({
           ) : (
             <PromptInput
               disabled={sendPrompt.isPending || isStreaming}
+              isStreaming={isStreaming}
+              isStopping={abortSession.isPending}
+              onStop={() =>
+                abortSession.mutate(undefined, {
+                  onError: (error) =>
+                    toast.error(error.message || "Could not stop OpenCode"),
+                })
+              }
               inventory={inventory}
               selection={effectiveSelection}
               onSelectionChange={updateSelection}

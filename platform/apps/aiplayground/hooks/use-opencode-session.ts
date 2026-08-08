@@ -1,6 +1,7 @@
 "use client";
 
 import {
+  abortOpencodeSession,
   answerOpencodeQuestion,
   getOpencodeInventory,
   getOpencodeSessionRaw,
@@ -325,6 +326,29 @@ export const useSendOpencodePrompt = ({
         accessToken,
       );
     },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+export const useAbortOpencodeSession = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+
+  return useMutation({
+    mutationFn: () =>
+      abortOpencodeSession(chatId, sessionId, serverUrl, accessToken),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
     },

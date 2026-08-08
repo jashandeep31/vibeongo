@@ -349,6 +349,36 @@ export async function sendOpencodePrompt(
   if (result.error) throw new Error("Could not send OpenCode prompt");
 }
 
+export async function abortOpencodeSession(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+) {
+  const session = await findOpencodeSession(
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  );
+  if (!session) throw new Error("OpenCode session not found");
+
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    session.directory,
+  );
+  const result = await client.session.abort({
+    sessionID: sessionId,
+    directory: session.directory,
+  });
+
+  if (result.error || result.data !== true) {
+    throw new Error("Could not stop the OpenCode session");
+  }
+}
+
 export async function answerOpencodeQuestion(
   chatId: string,
   sessionId: string,

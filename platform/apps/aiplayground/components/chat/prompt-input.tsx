@@ -25,6 +25,7 @@ import {
   ChevronsUpDown,
   Plus,
   SlidersHorizontal,
+  Square,
   X,
 } from "lucide-react";
 import {
@@ -45,6 +46,9 @@ type LocalAttachment = {
 type PromptInputProps = {
   onSubmit: (question: string, attachments: File[]) => void;
   disabled?: boolean;
+  isStreaming?: boolean;
+  isStopping?: boolean;
+  onStop?: () => void;
   onSubmitSuccess?: () => void;
   inventory?: OpencodeInventory;
   selection: OpencodePromptSelection;
@@ -54,6 +58,9 @@ type PromptInputProps = {
 export function PromptInput({
   onSubmit,
   disabled = false,
+  isStreaming = false,
+  isStopping = false,
+  onStop,
   onSubmitSuccess,
   inventory,
   selection,
@@ -396,15 +403,29 @@ export function PromptInput({
             ) : null}
           </div>
 
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isSubmitDisabled}
-            className="size-12 rounded-full"
-            aria-label="Submit message"
-          >
-            <ArrowUp className="size-6" strokeWidth={2.5} />
-          </Button>
+          {isStreaming ? (
+            <Button
+              type="button"
+              size="icon"
+              disabled={isStopping}
+              className="size-12 rounded-full"
+              aria-label={isStopping ? "Stopping response" : "Stop response"}
+              title={isStopping ? "Stopping…" : "Stop response"}
+              onClick={onStop}
+            >
+              <Square className="size-4 fill-current" />
+            </Button>
+          ) : (
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isSubmitDisabled}
+              className="size-12 rounded-full"
+              aria-label="Submit message"
+            >
+              <ArrowUp className="size-6" strokeWidth={2.5} />
+            </Button>
+          )}
         </div>
       </div>
     </form>
