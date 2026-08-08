@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     id: "/",
     name: "VibeOnGo AI Playground",
-    short_name: "AI Playground",
+    short_name: "VibeOnGo 2",
     description: "Build and iterate with AI-powered coding sessions.",
     start_url: "/",
     scope: "/",
