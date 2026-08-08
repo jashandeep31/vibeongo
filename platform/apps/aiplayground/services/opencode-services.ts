@@ -5,6 +5,8 @@ import {
   type Message,
   type OpencodeClient,
   type Part,
+  type QuestionAnswer,
+  type QuestionRequest,
   type Session,
   type SnapshotFileDiff,
   type TextPartInput,
@@ -19,6 +21,7 @@ const clients = new Map<string, OpencodeClient>();
 export type OpencodeSessionData = {
   session: Session;
   messages: Array<{ info: Message; parts: Part[] }>;
+  questions: QuestionRequest[];
   changes: SnapshotFileDiff[];
   optimistic?: boolean;
 };
@@ -189,12 +192,13 @@ export async function getOpencodeSessionRaw(
     accessToken,
     session.directory,
   );
-  const [messagesResult, changesResult] = await Promise.all([
+  const [messagesResult, questionsResult, changesResult] = await Promise.all([
     client.session.messages({
       sessionID: sessionId,
       directory: session.directory,
       limit: 100,
     }),
+    client.question.list({ directory: session.directory }),
     client.session.diff({
       sessionID: sessionId,
       directory: session.directory,
@@ -204,6 +208,9 @@ export async function getOpencodeSessionRaw(
   if (messagesResult.error) {
     throw new Error("Could not load OpenCode messages");
   }
+  if (questionsResult.error) {
+    throw new Error("Could not load OpenCode questions");
+  }
   if (changesResult.error) {
     throw new Error("Could not load OpenCode changes");
   }
@@ -211,6 +218,9 @@ export async function getOpencodeSessionRaw(
   return {
     session,
     messages: messagesResult.data ?? [],
+    questions: (questionsResult.data ?? []).filter(
+      (question) => question.sessionID === sessionId,
+    ),
     changes: changesResult.data ?? [],
   };
 }
@@ -339,6 +349,70 @@ export async function sendOpencodePrompt(
   if (result.error) throw new Error("Could not send OpenCode prompt");
 }
 
+export async function answerOpencodeQuestion(
+  chatId: string,
+  sessionId: string,
+  requestId: string,
+  answers: QuestionAnswer[],
+  serverUrl: string,
+  accessToken: string,
+) {
+  const session = await findOpencodeSession(
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  );
+  if (!session) throw new Error("OpenCode session not found");
+
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    session.directory,
+  );
+  const result = await client.question.reply({
+    requestID: requestId,
+    directory: session.directory,
+    answers,
+  });
+
+  if (result.error || result.data !== true) {
+    throw new Error("Could not submit the OpenCode question response");
+  }
+}
+
+export async function rejectOpencodeQuestion(
+  chatId: string,
+  sessionId: string,
+  requestId: string,
+  serverUrl: string,
+  accessToken: string,
+) {
+  const session = await findOpencodeSession(
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  );
+  if (!session) throw new Error("OpenCode session not found");
+
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    session.directory,
+  );
+  const result = await client.question.reject({
+    requestID: requestId,
+    directory: session.directory,
+  });
+
+  if (result.error || result.data !== true) {
+    throw new Error("Could not dismiss the OpenCode question");
+  }
+}
+
 export async function streamOpencodeEvents(
   chatId: string,
   serverUrl: string,
@@ -439,4 +513,4 @@ function parseModelSelection(modelSlug?: string) {
   };
 }
 
-export type { Event };
+export type { Event, QuestionAnswer, QuestionRequest };

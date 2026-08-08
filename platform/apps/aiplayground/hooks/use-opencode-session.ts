@@ -1,13 +1,16 @@
 "use client";
 
 import {
+  answerOpencodeQuestion,
   getOpencodeInventory,
   getOpencodeSessionRaw,
+  rejectOpencodeQuestion,
   sendOpencodePrompt,
   streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
   type OpencodePromptSelection,
+  type QuestionAnswer,
   type UploadAttachment,
 } from "@/services/opencode-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -49,6 +52,33 @@ export const useOpencodeSession = ({
     const updateCachedSession = (event: Event) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) => {
         if (!current) return current;
+
+        if (
+          event.type === "question.asked" &&
+          event.properties.sessionID === sessionId
+        ) {
+          const question = event.properties;
+          return {
+            ...current,
+            questions: [
+              ...current.questions.filter((item) => item.id !== question.id),
+              question,
+            ],
+          };
+        }
+
+        if (
+          (event.type === "question.replied" ||
+            event.type === "question.rejected") &&
+          event.properties.sessionID === sessionId
+        ) {
+          return {
+            ...current,
+            questions: current.questions.filter(
+              (question) => question.id !== event.properties.requestID,
+            ),
+          };
+        }
 
         if (
           event.type === "message.updated" &&
@@ -296,6 +326,91 @@ export const useSendOpencodePrompt = ({
       );
     },
     onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+export const useAnswerOpencodeQuestion = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      answers,
+    }: {
+      requestId: string;
+      answers: QuestionAnswer[];
+    }) =>
+      answerOpencodeQuestion(
+        chatId,
+        sessionId,
+        requestId,
+        answers,
+        serverUrl,
+        accessToken,
+      ),
+    onSuccess: (_, { requestId }) => {
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              questions: current.questions.filter(
+                (question) => question.id !== requestId,
+              ),
+            }
+          : current,
+      );
+      void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+export const useRejectOpencodeQuestion = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+
+  return useMutation({
+    mutationFn: (requestId: string) =>
+      rejectOpencodeQuestion(
+        chatId,
+        sessionId,
+        requestId,
+        serverUrl,
+        accessToken,
+      ),
+    onSuccess: (_, requestId) => {
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              questions: current.questions.filter(
+                (question) => question.id !== requestId,
+              ),
+            }
+          : current,
+      );
       void queryClient.invalidateQueries({ queryKey });
     },
   });

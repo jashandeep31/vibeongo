@@ -1,11 +1,40 @@
 "use client";
 
 import type { ToolPart } from "@opencode-ai/sdk/v2/client";
-import { ChevronRight, ExternalLink } from "lucide-react";
+import { ChevronRight, CircleX, ExternalLink } from "lucide-react";
 
 export function OpencodeToolCall({ tools }: { tools: ToolPart[] }) {
   const firstTool = tools[0];
   if (!firstTool) return null;
+
+  if (
+    firstTool.tool === "question" &&
+    firstTool.state.status === "error" &&
+    firstTool.state.error.toLowerCase().includes("dismiss")
+  ) {
+    const questionCount = getQuestionCount(firstTool);
+    return (
+      <div
+        role="status"
+        className="border-border bg-muted/40 my-2 flex items-start gap-3 rounded-lg border p-3 text-sm"
+      >
+        <CircleX className="text-muted-foreground mt-0.5 size-4 shrink-0" />
+        <div className="space-y-0.5">
+          <p className="font-medium">Question dismissed</p>
+          <p className="text-muted-foreground leading-relaxed">
+            {questionCount > 1
+              ? `You dismissed ${questionCount} questions, so OpenCode stopped this turn.`
+              : "You dismissed the question, so OpenCode stopped this turn."}{" "}
+            Send a new message to continue.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  if (firstTool.tool === "question" && firstTool.state.status === "completed") {
+    return <CompletedQuestions tool={firstTool} />;
+  }
 
   const isWebfetchGroup = tools.every((tool) => tool.tool === "webfetch");
   if (isWebfetchGroup) {
@@ -115,6 +144,34 @@ function ExplorationResult({ tool }: { tool: ToolPart }) {
   );
 }
 
+function CompletedQuestions({ tool }: { tool: ToolPart }) {
+  const questions = getQuestions(tool);
+  const answers = getQuestionAnswers(tool);
+  const answeredCount = answers.filter((answer) => answer.length > 0).length;
+
+  return (
+    <details open className="group/tool py-1 text-sm">
+      <summary className="text-foreground flex cursor-pointer list-none items-center gap-2 py-2 font-medium [&::-webkit-details-marker]:hidden">
+        <span>Questions</span>
+        <span className="text-muted-foreground font-normal">
+          {answeredCount} answered
+        </span>
+        <ChevronRight className="text-muted-foreground size-3 transition-transform group-open/tool:rotate-90" />
+      </summary>
+      <div className="space-y-4 pt-2 pb-3">
+        {questions.map((question, index) => (
+          <div key={`${tool.id}-answer-${index}`} className="space-y-1">
+            <p className="text-muted-foreground">{question}</p>
+            <p className="text-foreground">
+              {answers[index]?.join(", ") || "No answer"}
+            </p>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
 function ToolResult({ tool }: { tool: ToolPart }) {
   const state = tool.state;
 
@@ -167,6 +224,41 @@ function getToolName(tool: ToolPart) {
 function getStringInput(tool: ToolPart, key: string) {
   const value = tool.state.input[key];
   return typeof value === "string" ? value : "";
+}
+
+function getQuestionCount(tool: ToolPart) {
+  const questions = getQuestions(tool);
+  return questions.length || 1;
+}
+
+function getQuestions(tool: ToolPart) {
+  const questions = tool.state.input.questions;
+  if (!Array.isArray(questions)) return [];
+
+  return questions.flatMap((question) => {
+    if (
+      typeof question === "object" &&
+      question !== null &&
+      "question" in question &&
+      typeof question.question === "string"
+    ) {
+      return [question.question];
+    }
+    return [];
+  });
+}
+
+function getQuestionAnswers(tool: ToolPart) {
+  if (tool.state.status !== "completed") return [];
+
+  const answers = tool.state.metadata.answers;
+  if (!Array.isArray(answers)) return [];
+
+  return answers.map((answer) =>
+    Array.isArray(answer)
+      ? answer.filter((value): value is string => typeof value === "string")
+      : [],
+  );
 }
 
 function getSafeWebUrl(value: string) {

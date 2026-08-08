@@ -1,19 +1,24 @@
 "use client";
 
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
+import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { PromptInput } from "@/components/chat/prompt-input";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import {
+  useAnswerOpencodeQuestion,
   useOpencodeInventory,
+  useRejectOpencodeQuestion,
   useSendOpencodePrompt,
 } from "@/hooks/use-opencode-session";
 import type {
   OpencodePromptSelection,
   OpencodeSessionData,
+  QuestionAnswer,
 } from "@/services/opencode-services";
 import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { ArrowDown, Braces, MessagesSquare } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { toast } from "sonner";
 
 type SessionMessages = OpencodeSessionData["messages"];
 type ChatError = NonNullable<AssistantMessage["error"]>;
@@ -87,6 +92,13 @@ function createChatTurns(messages: SessionMessages) {
       }
 
       if (part.type === "tool") {
+        if (
+          part.tool === "question" &&
+          (part.state.status === "pending" || part.state.status === "running")
+        ) {
+          continue;
+        }
+
         const previousContent = turn.content.at(-1);
         if (
           (part.tool === "glob" || part.tool === "read") &&
@@ -176,7 +188,20 @@ export function OpencodeSessionChat({
   isStreaming: boolean;
 }) {
   const turns = useMemo(() => createChatTurns(messages), [messages]);
+  const activeQuestion = rawResponse.questions[0];
   const sendPrompt = useSendOpencodePrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  });
+  const answerQuestion = useAnswerOpencodeQuestion({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  });
+  const rejectQuestion = useRejectOpencodeQuestion({
     chatId,
     sessionId,
     serverUrl,
@@ -202,18 +227,15 @@ export function OpencodeSessionChat({
     }),
     [sessionAgent, sessionModelId, sessionModelProviderId, sessionModelVariant],
   );
-  const [selection, setSelection] = useState<OpencodePromptSelection>(
-    sessionSelection,
-  );
+  const [selection, setSelection] =
+    useState<OpencodePromptSelection>(sessionSelection);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const effectiveSelection: OpencodePromptSelection = {
     model:
-      selection.model ??
-      sessionSelection.model ??
-      inventory?.models[0]?.id,
+      selection.model ?? sessionSelection.model ?? inventory?.models[0]?.id,
     variant: selection.variant ?? sessionSelection.variant,
     agent:
       selection.agent ??
@@ -247,7 +269,28 @@ export function OpencodeSessionChat({
 
   useEffect(() => {
     scrollToBottom();
-  }, [scrollToBottom, turns.length]);
+  }, [rawResponse.questions.length, scrollToBottom, turns.length]);
+
+  const submitQuestionAnswer = (
+    requestId: string,
+    answers: QuestionAnswer[],
+  ) => {
+    answerQuestion.mutate(
+      { requestId, answers },
+      {
+        onError: (error) =>
+          toast.error(error.message || "Could not submit your answer"),
+        onSuccess: () => scrollToBottom("smooth"),
+      },
+    );
+  };
+
+  const dismissQuestion = (requestId: string) => {
+    rejectQuestion.mutate(requestId, {
+      onError: (error) =>
+        toast.error(error.message || "Could not dismiss the question"),
+    });
+  };
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
@@ -266,7 +309,7 @@ export function OpencodeSessionChat({
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
             ) : null}
-            {!showRawResponse && turns.length === 0 ? (
+            {!showRawResponse && turns.length === 0 && !activeQuestion ? (
               <div className="text-muted-foreground flex min-h-[45vh] items-center justify-center text-sm">
                 Start the chat by describing what you want to build.
               </div>
@@ -277,7 +320,9 @@ export function OpencodeSessionChat({
                   key={turn.id}
                   item={turn}
                   isStreaming={isStreaming && index === turns.length - 1}
-                  reserveBottomSpace={index === turns.length - 1}
+                  reserveBottomSpace={
+                    index === turns.length - 1 && !activeQuestion
+                  }
                 />
               ))}
             <div ref={bottomRef} aria-hidden="true" />
@@ -314,20 +359,31 @@ export function OpencodeSessionChat({
               {showRawResponse ? "Rendered chat" : "Raw response"}
             </button>
           </div>
-          <PromptInput
-            disabled={sendPrompt.isPending || isStreaming}
-            inventory={inventory}
-            selection={effectiveSelection}
-            onSelectionChange={updateSelection}
-            onSubmit={(question, files) =>
-              sendPrompt.mutate({
-                text: question,
-                files,
-                selection: effectiveSelection,
-              })
-            }
-            onSubmitSuccess={() => scrollToBottom("smooth")}
-          />
+          {activeQuestion ? (
+            <OpencodeQuestionPrompt
+              key={activeQuestion.id}
+              request={activeQuestion}
+              isSubmitting={answerQuestion.isPending}
+              isDismissing={rejectQuestion.isPending}
+              onSubmit={submitQuestionAnswer}
+              onDismiss={dismissQuestion}
+            />
+          ) : (
+            <PromptInput
+              disabled={sendPrompt.isPending || isStreaming}
+              inventory={inventory}
+              selection={effectiveSelection}
+              onSelectionChange={updateSelection}
+              onSubmit={(question, files) =>
+                sendPrompt.mutate({
+                  text: question,
+                  files,
+                  selection: effectiveSelection,
+                })
+              }
+              onSubmitSuccess={() => scrollToBottom("smooth")}
+            />
+          )}
         </div>
       </div>
     </div>

@@ -91,6 +91,7 @@ export const useStartOpencodeSession = () => {
       const optimisticSession: OpencodeSessionData = {
         session,
         changes: [],
+        questions: [],
         optimistic: true,
         messages: [
           {
