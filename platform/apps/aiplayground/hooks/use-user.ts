@@ -12,22 +12,44 @@ import {
 import type { userConfigs } from "@repo/db";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import axios from "axios";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+
+const isUnauthorizedError = (error: unknown) =>
+  axios.isAxiosError(error) && error.response?.status === 401;
+
+const retryUserMetadata = (failureCount: number, error: Error) => {
+  if (isUnauthorizedError(error)) {
+    // TanStack passes 0 for the first failure, so this permits one retry and
+    // exposes the error after the second 401 response.
+    return failureCount < 1;
+  }
+
+  return failureCount < 3;
+};
 
 export const useUserMetadata = () =>
   useQuery({
     queryKey: ["user-metadata"],
     queryFn: getUserMetadata,
-    retry: (failureCount, error) => {
-      if (axios.isAxiosError(error) && error.response?.status === 401) {
-        return false;
-      }
-
-      return failureCount < 3;
-    },
+    retry: retryUserMetadata,
   });
 
+export const useAuthenticatedUser = () => {
+  const router = useRouter();
+  const query = useUserMetadata();
+
+  useEffect(() => {
+    if (isUnauthorizedError(query.error)) {
+      router.replace("/login");
+    }
+  }, [query.error, router]);
+
+  return query;
+};
+
 const retryUnlessUnauthorized = (failureCount: number, error: Error) => {
-  if (axios.isAxiosError(error) && error.response?.status === 401) return false;
+  if (isUnauthorizedError(error)) return false;
   return failureCount < 3;
 };
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useUserMetadata } from "@/hooks/use-user";
+import { useAuthenticatedUser } from "@/hooks/use-user";
 import { formatInternalMoney } from "@repo/shared";
 import {
   Avatar,
@@ -26,7 +26,7 @@ import { MoreHorizontal, Settings, UserRound, WalletCards } from "lucide-react";
 import Link from "next/link";
 
 export function PlaygroundUserMenu() {
-  const { data: user, isLoading, isError } = useUserMetadata();
+  const { data: user, isLoading, isError } = useAuthenticatedUser();
   const { isMobile, setOpenMobile } = useSidebar();
 
   if (isLoading) {

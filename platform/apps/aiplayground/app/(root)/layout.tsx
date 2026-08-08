@@ -2,13 +2,21 @@ import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 import { PlaygroundCommandBox } from "@/components/playground-command-box";
 import { PlaygroundSidebar } from "@/components/playground-sidebar";
 import { PlaygroundStoreSync } from "@/components/playground-store-sync";
+import { isAuthenticated } from "@/lib/get-session";
 import { SidebarProvider } from "@repo/ui/components/sidebar-v2";
+import { redirect } from "next/navigation";
 
-export default function PlaygroundLayout({
+export default async function PlaygroundLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const authenticated = await isAuthenticated();
+
+  if (!authenticated) {
+    redirect("/login");
+  }
+
   return (
     <SidebarProvider
       style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
