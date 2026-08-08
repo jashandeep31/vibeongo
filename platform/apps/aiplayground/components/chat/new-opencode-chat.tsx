@@ -63,18 +63,18 @@ export function NewOpencodeChat({
   return (
     <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden px-4 py-6 sm:p-6">
       <section
-        className="w-full min-w-0 max-w-4xl"
+        className="w-full max-w-4xl min-w-0"
         aria-labelledby="new-chat-heading"
       >
         <h1
           id="new-chat-heading"
-          className="mb-8 flex w-full min-w-0 max-w-full items-center justify-center gap-1.5 overflow-hidden text-center text-xl font-medium tracking-tight sm:gap-2 sm:text-3xl"
+          className="mb-8 flex w-full max-w-full min-w-0 items-center justify-center gap-1.5 overflow-hidden text-center text-xl font-medium tracking-tight sm:gap-2 sm:text-3xl"
         >
-          <span className="min-w-0 flex-1 truncate" title={projectName}>
+          <span className="min-w-0 truncate" title={projectName}>
             {projectName}
           </span>
           <ChevronRight className="text-muted-foreground size-5 shrink-0" />
-          <span className="min-w-0 flex-1 truncate" title={sessionName}>
+          <span className="min-w-0 truncate" title={sessionName}>
             {sessionName}
           </span>
           <ChevronRight className="text-muted-foreground size-5 shrink-0" />

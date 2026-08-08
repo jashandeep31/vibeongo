@@ -37,7 +37,10 @@ import {
   MessageSquarePlus,
   Play,
   Plus,
+  Settings,
   SquareDashedMousePointer,
+  SquarePen,
+  WalletCards,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
@@ -52,6 +55,12 @@ type CommandView =
       projectSessionId: string;
     }
   | { kind: "domains"; projectId: string };
+
+const staticNavigation = [
+  { title: "Home", url: "/", icon: SquarePen },
+  { title: "Wallet", url: "/wallet", icon: WalletCards },
+  { title: "Settings", url: "/settings", icon: Settings },
+] as const;
 
 function getServerUrl(
   entry: ReturnType<typeof useSessionsStore.getState>["sessions"][number],
@@ -283,7 +292,7 @@ export function PlaygroundCommandBox() {
         open={open}
         onOpenChange={handleOpenChange}
         title="AI Playground command box"
-        description="Search projects, sessions, chats, and domains"
+        description="Navigate pages or search projects, sessions, chats, and domains"
         className="min-w-0 sm:max-w-2xl"
       >
         <Command>
@@ -588,6 +597,22 @@ export function PlaygroundCommandBox() {
                 {projectOptions}
               </>
             ) : null}
+
+            <CommandGroup heading="Navigation">
+              {staticNavigation.map((item) => (
+                <CommandItem
+                  key={item.url}
+                  value={`navigate ${item.title} ${item.url}`}
+                  onSelect={() => {
+                    router.push(item.url);
+                    setOpen(false);
+                  }}
+                >
+                  <item.icon />
+                  {item.title}
+                </CommandItem>
+              ))}
+            </CommandGroup>
           </CommandList>
         </Command>
       </CommandDialog>

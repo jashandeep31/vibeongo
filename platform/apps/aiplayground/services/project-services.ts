@@ -40,10 +40,16 @@ type DeleteMultipleAllowedIpsInput = {
   ids: string[];
 };
 
-type UpdateProjectDomainInput = {
+type UpdateProjectDomainAccessInput = {
   id: string;
   domainId: string;
   allow_all_ips: boolean;
+};
+
+type UpdateProjectDomainPortInput = {
+  id: string;
+  domainId: string;
+  target_port: number;
 };
 
 export const getProjects = async (): Promise<Project[]> => {
@@ -118,10 +124,24 @@ export const updateProjectDomainAccess = async ({
   id,
   domainId,
   allow_all_ips,
-}: UpdateProjectDomainInput): Promise<{ message: string }> => {
+}: UpdateProjectDomainAccessInput): Promise<{ message: string }> => {
   const response = await axios.patch(
     `${BACKEND_URL}/api/v1/projects/${id}/domains/${domainId}`,
     { allow_all_ips },
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const updateProjectDomainPort = async ({
+  id,
+  domainId,
+  target_port,
+}: UpdateProjectDomainPortInput): Promise<{ message: string }> => {
+  const response = await axios.patch(
+    `${BACKEND_URL}/api/v1/projects/${id}/domains/${domainId}`,
+    { target_port },
     { withCredentials: true },
   );
 

@@ -124,10 +124,7 @@ function SessionRow({
     isPending: isReposPending,
     isError: isReposError,
     refetch: refetchGithubRepos,
-  } = useGetProjectGithubReposById(
-    entry.session.project_id,
-    isRepoDialogOpen,
-  );
+  } = useGetProjectGithubReposById(entry.session.project_id, isRepoDialogOpen);
 
   useEffect(() => {
     if (!isInstanceMenuOpen) return;
@@ -441,7 +438,7 @@ export default function ClientView() {
         >
           <span className="min-w-0 flex-1">
             <span id="agent-heading" className="block text-sm font-medium">
-              Talk to VibeOnGo agent
+              VibeOnGo agent
             </span>
           </span>
           <span className="text-muted-foreground shrink-0 text-xs">
@@ -481,7 +478,10 @@ export default function ClientView() {
                 (entry) => entry.state === "running",
               ).length;
               return (
-                <Collapsible key={project.id} defaultOpen={projects.length === 1}>
+                <Collapsible
+                  key={project.id}
+                  defaultOpen={projects.length === 1}
+                >
                   <div className="bg-muted/25 overflow-hidden rounded-lg">
                     <div className="flex items-center pr-2">
                       <CollapsibleTrigger asChild>

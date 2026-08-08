@@ -5,6 +5,7 @@ import {
   useDeleteMultipleAllowedIpsFromProject,
   useGetProjectDomainsById,
   useUpdateProjectDomainAccess,
+  useUpdateProjectDomainPort,
   useUpdateProjectRoutingTargetInstance,
 } from "@/hooks/use-project";
 import { useCurrentUserIp } from "@/hooks/use-ip";
@@ -24,10 +25,13 @@ import { Switch } from "@repo/ui/components/switch";
 import {
   ExternalLink,
   Globe,
+  Lock,
   LoaderCircle,
   Network,
+  Pencil,
   Plus,
   TriangleAlert,
+  X,
 } from "lucide-react";
 import { type FormEvent, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -43,6 +47,8 @@ export function ProjectDomainsDialog({
   const [open, setOpen] = useState(false);
   const [newIp, setNewIp] = useState("");
   const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
+  const [editingDomainId, setEditingDomainId] = useState<string | null>(null);
+  const [portInput, setPortInput] = useState("");
   const instanceId = useSessionsStore((state) =>
     projectSessionId
       ? state.sessions.find((entry) => entry.session.id === projectSessionId)
@@ -57,6 +63,7 @@ export function ProjectDomainsDialog({
   const addAllowedIp = useAddAllowedIpToProject();
   const deleteOtherAllowedIps = useDeleteMultipleAllowedIpsFromProject();
   const updateDomainAccess = useUpdateProjectDomainAccess();
+  const updateDomainPort = useUpdateProjectDomainPort();
   const needsAssignment =
     !!instanceId &&
     !isPending &&
@@ -186,6 +193,55 @@ export function ProjectDomainsDialog({
     }
   };
 
+  const startEditingPort = (domainId: string, targetPort: number) => {
+    setEditingDomainId(domainId);
+    setPortInput(String(targetPort));
+  };
+
+  const stopEditingPort = () => {
+    setEditingDomainId(null);
+    setPortInput("");
+  };
+
+  const handleUpdatePort = async (
+    domainId: string,
+    currentPort: number,
+    isEditable: boolean,
+  ) => {
+    if (!isEditable) {
+      toast.error("This domain port is managed by the platform");
+      return;
+    }
+
+    const parsedPort = Number(portInput.trim());
+    if (!Number.isInteger(parsedPort) || parsedPort < 1 || parsedPort > 65535) {
+      toast.error("Please enter a valid port between 1 and 65535");
+      return;
+    }
+
+    if (parsedPort === currentPort) {
+      stopEditingPort();
+      return;
+    }
+
+    const toastId = toast.loading("Updating domain port...");
+    setUpdatingDomainId(domainId);
+
+    try {
+      await updateDomainPort.mutateAsync({
+        id: projectId,
+        domainId,
+        target_port: parsedPort,
+      });
+      stopEditingPort();
+      toast.success(`Domain now routes to port ${parsedPort}`, { id: toastId });
+    } catch {
+      toast.error("Failed to update domain port", { id: toastId });
+    } finally {
+      setUpdatingDomainId(null);
+    }
+  };
+
   return (
     <>
       <Button
@@ -216,12 +272,18 @@ export function ProjectDomainsDialog({
             : "Domains"}
       </Button>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog
+        open={open}
+        onOpenChange={(nextOpen) => {
+          setOpen(nextOpen);
+          if (!nextOpen) stopEditingPort();
+        }}
+      >
         <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>Project domains</DialogTitle>
             <DialogDescription>
-              Open a routed service in a new tab or review the IPs currently
+              Open routed services, edit custom target ports, or manage the IPs
               allowed to access this project.
             </DialogDescription>
           </DialogHeader>
@@ -281,7 +343,7 @@ export function ProjectDomainsDialog({
                     {domains.map((domain) => (
                       <div
                         key={domain.id}
-                        className="hover:border-primary hover:bg-muted/50 flex min-w-0 items-center gap-3 rounded-lg border p-3 transition-colors"
+                        className="hover:border-primary hover:bg-muted/50 flex min-w-0 flex-col items-stretch gap-3 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center"
                       >
                         <a
                           href={`https://${domain.domain}`}
@@ -297,23 +359,107 @@ export function ProjectDomainsDialog({
                               {domain.domain}
                             </span>
                             <span className="text-muted-foreground text-xs">
-                              Port {domain.target_port}
+                              {domain.is_editable
+                                ? "Custom service route"
+                                : "Platform-managed route"}
                             </span>
                           </span>
                           <ExternalLink className="text-muted-foreground size-4 shrink-0" />
                         </a>
-                        <span className="flex shrink-0 items-center gap-2 text-xs">
-                          All IPs
-                          <Switch
-                            size="sm"
-                            aria-label={`Allow all IPs for ${domain.domain}`}
-                            checked={domain.allow_all_ips}
-                            disabled={updatingDomainId === domain.id}
-                            onCheckedChange={(checked) =>
-                              void handleAllowAllIps(domain.id, checked)
-                            }
-                          />
-                        </span>
+                        <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
+                          {editingDomainId === domain.id ? (
+                            <form
+                              className="flex items-center gap-1"
+                              onSubmit={(event) => {
+                                event.preventDefault();
+                                void handleUpdatePort(
+                                  domain.id,
+                                  domain.target_port,
+                                  domain.is_editable,
+                                );
+                              }}
+                            >
+                              <Input
+                                type="number"
+                                min={1}
+                                max={65535}
+                                inputMode="numeric"
+                                aria-label={`Target port for ${domain.domain}`}
+                                className="h-8 w-24 font-mono text-xs"
+                                value={portInput}
+                                autoFocus
+                                disabled={updatingDomainId === domain.id}
+                                onChange={(event) =>
+                                  setPortInput(event.target.value)
+                                }
+                                onKeyDown={(event) => {
+                                  if (event.key === "Escape") {
+                                    event.preventDefault();
+                                    stopEditingPort();
+                                  }
+                                }}
+                              />
+                              <Button
+                                type="submit"
+                                size="sm"
+                                disabled={updatingDomainId === domain.id}
+                              >
+                                {updatingDomainId === domain.id ? (
+                                  <LoaderCircle className="animate-spin" />
+                                ) : (
+                                  "Save"
+                                )}
+                              </Button>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label="Cancel port editing"
+                                disabled={updatingDomainId === domain.id}
+                                onClick={stopEditingPort}
+                              >
+                                <X />
+                              </Button>
+                            </form>
+                          ) : (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              className="font-mono"
+                              title={
+                                domain.is_editable
+                                  ? "Edit target port"
+                                  : "This port is managed by the platform"
+                              }
+                              disabled={
+                                !domain.is_editable ||
+                                updatingDomainId === domain.id
+                              }
+                              onClick={() =>
+                                startEditingPort(
+                                  domain.id,
+                                  domain.target_port,
+                                )
+                              }
+                            >
+                              {domain.is_editable ? <Pencil /> : <Lock />}
+                              Port {domain.target_port}
+                            </Button>
+                          )}
+                          <span className="flex items-center gap-2 text-xs">
+                            All IPs
+                            <Switch
+                              size="sm"
+                              aria-label={`Allow all IPs for ${domain.domain}`}
+                              checked={domain.allow_all_ips}
+                              disabled={updatingDomainId === domain.id}
+                              onCheckedChange={(checked) =>
+                                void handleAllowAllIps(domain.id, checked)
+                              }
+                            />
+                          </span>
+                        </div>
                       </div>
                     ))}
                   </div>

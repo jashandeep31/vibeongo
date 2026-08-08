@@ -7,6 +7,7 @@ import {
   getProjectsWithSessions,
   updateProjectRoutingTargetInstance,
   updateProjectDomainAccess,
+  updateProjectDomainPort,
 } from "@/services/project-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -74,6 +75,18 @@ export const useUpdateProjectDomainAccess = () => {
 
   return useMutation({
     mutationFn: updateProjectDomainAccess,
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "domains"],
+      }),
+  });
+};
+
+export const useUpdateProjectDomainPort = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProjectDomainPort,
     onSuccess: (_, variables) =>
       queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "domains"],
