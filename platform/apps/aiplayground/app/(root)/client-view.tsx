@@ -4,6 +4,8 @@ import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
+import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
+import { useGetProjectGithubReposById } from "@/hooks/use-project";
 import { useResumeProjectSession } from "@/hooks/use-project-sessions";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
 import { Button } from "@repo/ui/components/button";
@@ -13,7 +15,7 @@ import {
   CollapsibleTrigger,
 } from "@repo/ui/components/collapsible";
 import { ChevronDown, Loader2, Play } from "lucide-react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -21,11 +23,16 @@ type SessionEntry = ReturnType<
   typeof useSessionsStore.getState
 >["sessions"][number];
 
-function getRunningSessionUrl(entry: SessionEntry) {
+function getRepoDirectory(fullName: string) {
+  const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
+  return `/home/ubuntu/code/${repoName}`;
+}
+
+function getRunningSessionUrl(entry: SessionEntry, directory: string) {
   if (!entry.instance) return null;
 
   const serverUrl = `https://4096-${entry.instance.id}${entry.instance.proxy_domain}`;
-  const params = new URLSearchParams({ serverUrl });
+  const params = new URLSearchParams({ serverUrl, directory });
   return `/projects/${entry.session.project_id}/chats/${entry.session.id}?${params.toString()}`;
 }
 
@@ -38,61 +45,117 @@ function SessionRow({
   isResumePending: boolean;
   onResume: (sessionId: string) => void;
 }) {
-  const runningUrl = getRunningSessionUrl(entry);
+  const router = useRouter();
+  const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
+  const [isOpening, setIsOpening] = useState(false);
+  const {
+    data: githubRepos,
+    isPending: isReposPending,
+    isError: isReposError,
+    refetch: refetchGithubRepos,
+  } = useGetProjectGithubReposById(
+    entry.session.project_id,
+    isRepoDialogOpen,
+  );
+
+  const openDirectory = (directory: string) => {
+    const runningUrl = getRunningSessionUrl(entry, directory);
+    if (!runningUrl) return;
+
+    setIsRepoDialogOpen(false);
+    router.push(runningUrl);
+  };
+
+  const handleOpen = async () => {
+    setIsOpening(true);
+
+    const result = await refetchGithubRepos();
+    const repos = result.data ?? [];
+    const [onlyRepo] = repos;
+
+    if (result.isSuccess && repos.length === 1 && onlyRepo) {
+      openDirectory(getRepoDirectory(onlyRepo.full_name));
+    } else {
+      setIsRepoDialogOpen(true);
+    }
+
+    setIsOpening(false);
+  };
 
   return (
-    <div className="bg-muted/40 flex flex-col gap-3 rounded-lg px-4 py-3 sm:flex-row sm:items-center">
-      <div className="min-w-0 flex-1">
-        <div className="flex flex-wrap items-center gap-2">
-          <h3 className="truncate text-sm font-medium" title={entry.session.name}>
-            {entry.session.name}
-          </h3>
-          <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <span
-              className={`size-1.5 rounded-full ${
-                entry.state === "running"
-                  ? "bg-emerald-500"
-                  : entry.state === "processing"
-                    ? "animate-pulse bg-amber-500"
-                    : "bg-muted-foreground/50"
-              }`}
-            />
-            {entry.state === "running"
-              ? "Running"
-              : entry.state === "processing"
-                ? "Starting"
-                : "Paused"}
-          </span>
+    <>
+      <div className="bg-muted/40 flex flex-col gap-3 rounded-lg px-4 py-3 sm:flex-row sm:items-center">
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <h3
+              className="truncate text-sm font-medium"
+              title={entry.session.name}
+            >
+              {entry.session.name}
+            </h3>
+            <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <span
+                className={`size-1.5 rounded-full ${
+                  entry.state === "running"
+                    ? "bg-emerald-500"
+                    : entry.state === "processing"
+                      ? "animate-pulse bg-amber-500"
+                      : "bg-muted-foreground/50"
+                }`}
+              />
+              {entry.state === "running"
+                ? "Running"
+                : entry.state === "processing"
+                  ? "Starting"
+                  : "Paused"}
+            </span>
+          </div>
         </div>
-      </div>
 
-      {entry.state === "running" && runningUrl ? (
-        <Button asChild variant="ghost" size="sm" className="shrink-0">
-          <Link href={runningUrl}>Open</Link>
-        </Button>
-      ) : entry.state === "processing" ? (
-        <Button disabled variant="ghost" size="sm" className="shrink-0">
-          <Loader2 className="animate-spin" />
-          Starting
-        </Button>
-      ) : (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="shrink-0"
-          disabled={isResumePending}
-          onClick={() => onResume(entry.session.id)}
-        >
-          {isResumePending ? (
+        {entry.state === "running" && entry.instance ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0"
+            disabled={isOpening}
+            onClick={handleOpen}
+          >
+            {isOpening ? <Loader2 className="animate-spin" /> : null}
+            Open
+          </Button>
+        ) : entry.state === "processing" ? (
+          <Button disabled variant="ghost" size="sm" className="shrink-0">
             <Loader2 className="animate-spin" />
-          ) : (
-            <Play />
-          )}
-          Resume
-        </Button>
-      )}
-    </div>
+            Starting
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="shrink-0"
+            disabled={isResumePending}
+            onClick={() => onResume(entry.session.id)}
+          >
+            {isResumePending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Play />
+            )}
+            Resume
+          </Button>
+        )}
+      </div>
+      <GithubRepoDirectoryDialog
+        open={isRepoDialogOpen}
+        onOpenChange={setIsRepoDialogOpen}
+        repos={githubRepos ?? []}
+        isLoading={isReposPending}
+        isError={isReposError}
+        onSelect={openDirectory}
+      />
+    </>
   );
 }
 
