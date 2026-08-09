@@ -602,7 +602,7 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                           onSelect={() => setProjectToDelete(project)}
                         >
                           <Trash2 />
-                          Delete project
+                          Delete
                         </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>

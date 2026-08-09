@@ -455,12 +455,6 @@ export default function ClientView() {
             </h2>
           </div>
           <div className="flex items-center gap-3">
-            {projects.length > 0 ? (
-              <span className="text-muted-foreground hidden text-sm tabular-nums sm:inline">
-                {projects.length}{" "}
-                {projects.length === 1 ? "project" : "projects"}
-              </span>
-            ) : null}
             <Button asChild size="sm">
               <Link href="/projects/create">
                 <Plus />
