@@ -460,18 +460,18 @@ export default function ClientView() {
         <div className="flex items-center justify-between gap-3">
           <TabsList
             aria-label="Browse workspace"
-            className="bg-muted/60 h-9 rounded-full border p-1 shadow-sm"
+            className="bg-muted/60 h-9 rounded-full border p-1 shadow-sm dark:border-white/10 dark:bg-white/5"
           >
             <TabsTrigger
               value="chats"
-              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground"
             >
               <BotMessageSquare className="size-3.5" />
               Chats
             </TabsTrigger>
             <TabsTrigger
               value="projects"
-              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground"
             >
               <FolderKanban className="size-3.5" />
               Projects

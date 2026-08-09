@@ -13,6 +13,7 @@ import { users } from "./user.js";
 export const chatAgentEnum = pgEnum("chat_agent_enum", [
   "project-handler",
   "tasks-maker",
+  "vibeongo-agent",
 ]);
 
 export const chats = pgTable("chats", {
