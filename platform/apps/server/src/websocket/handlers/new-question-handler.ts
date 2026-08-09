@@ -9,6 +9,7 @@ import {
   clearActiveStream,
   setActiveStream,
 } from "../chats-store.js";
+import { chatQuestionPayloadSchema } from "./chat-question-payload-schema.js";
 
 export const newQuestionHandler = async (
   socket: WebSocket,
@@ -19,6 +20,7 @@ export const newQuestionHandler = async (
     .object({
       chatId: z.uuid(),
       question: z.string().min(2).max(3000),
+      payload: chatQuestionPayloadSchema,
     })
     .safeParse(rawData);
 
@@ -87,7 +89,7 @@ export const newQuestionHandler = async (
     id: crypto.randomUUID(),
     question: parsedResponse.question,
     order_number: lastQuestionAndAnswer.question.order_number + 1,
-    payload: { mentions: [] },
+    payload: parsedResponse.payload,
     chat_id: parsedResponse.chatId,
     created_at: new Date(),
     updated_at: new Date(),
@@ -206,6 +208,7 @@ export const newQuestionHandler = async (
 
     for await (const res of projectAIAgent({
       query: parsedResponse.question,
+      payload: parsedResponse.payload,
       userId,
       prevConfig: lastQuestionAndAnswer.answer?.memory || "",
       QAs: refinedQA,

@@ -2,7 +2,10 @@ import { chatAnswer, chatQuestions, chats, db, eq } from "@repo/db";
 import { z } from "zod";
 import WebSocket from "ws";
 import { AppError } from "../../lib/app-error.js";
-import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
+import {
+  projectAIAgent,
+  resolveChatQuestionMentions,
+} from "../../ai/ai-agents/project-agent.js";
 import {
   addSubscriber,
   broadcastToChat,
@@ -11,6 +14,7 @@ import {
 } from "../chats-store.js";
 import { sendWSError } from "../socket-handler.js";
 import { getChatName } from "../../ai/ai-agents/common-agents.js";
+import { chatQuestionPayloadSchema } from "./chat-question-payload-schema.js";
 
 export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const userId = socket.userId;
@@ -18,6 +22,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const parsingResponse = z
     .object({
       question: z.string().min(2).max(3000),
+      payload: chatQuestionPayloadSchema,
     })
     .safeParse(eventData);
 
@@ -34,9 +39,9 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
       .insert(chats)
       .values({
         id: chatId,
-        name: "unknown",
+        name: "New Chat",
         user_id: userId,
-        chat_agent: "project-handler",
+        chat_agent: "vibeongo-agent",
       })
       .returning();
 
@@ -57,7 +62,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const newQuestion: typeof chatQuestions.$inferSelect = {
     id: crypto.randomUUID(),
     question: parsedData.question,
-    payload: { mentions: [] },
+    payload: parsedData.payload,
     order_number: 0,
     chat_id: chatId,
     created_at: new Date(),
@@ -177,6 +182,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
 
     for await (const res of projectAIAgent({
       query: parsedData.question,
+      payload: parsedData.payload,
       userId,
       prevConfig: "",
       QAs: [],
@@ -233,7 +239,9 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
       data: getFinalQuestion(),
     });
     clearActiveStream(chatId);
-    const chatname = await getChatName(parsedData.question);
+    const chatname = await getChatName(
+      resolveChatQuestionMentions(parsedData.question, parsedData.payload),
+    );
     await db
       .update(chats)
       .set({

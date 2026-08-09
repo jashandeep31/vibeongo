@@ -1,4 +1,4 @@
-import { chatAnswer, chatQuestions } from "@repo/db";
+import { chatAnswer, chatQuestions, type ChatQuestionPayload } from "@repo/db";
 import { ModelMessage, stepCountIs, streamText } from "ai";
 import { prompts } from "../prompts/index.js";
 import {
@@ -24,12 +24,27 @@ type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
 };
 interface projectAIAgent {
   query: string;
+  payload: ChatQuestionPayload;
   userId: string;
   prevConfig: string;
   QAs: QuesitonWithAnswer[];
 }
+
+export function resolveChatQuestionMentions(
+  question: string,
+  payload: ChatQuestionPayload,
+) {
+  return question.replace(/@\{\{(\d+)\}\}/g, (token, rawIndex: string) => {
+    const mention = payload.mentions[Number(rawIndex) - 1];
+    if (!mention) return token;
+
+    return `@${mention.name} (project ID: ${mention.id})`;
+  });
+}
+
 export async function* projectAIAgent({
   query,
+  payload,
   userId,
   prevConfig,
   QAs,
@@ -45,7 +60,10 @@ export async function* projectAIAgent({
 
   QAs.map((qa) => {
     if (qa.question && qa.chatAnswer?.answer) {
-      history.push({ role: "user", content: qa.question });
+      history.push({
+        role: "user",
+        content: resolveChatQuestionMentions(qa.question, qa.payload),
+      });
       if (qa.chatAnswer?.answer) {
         history.push({ role: "assistant", content: qa.chatAnswer?.answer });
       }
@@ -75,7 +93,13 @@ export async function* projectAIAgent({
       createProjectFileWithDataAITool: createProjectFileWithDataAITool(userId),
     },
     stopWhen: stepCountIs(40),
-    messages: [...history, { role: "user", content: query }],
+    messages: [
+      ...history,
+      {
+        role: "user",
+        content: resolveChatQuestionMentions(query, payload),
+      },
+    ],
     // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
 

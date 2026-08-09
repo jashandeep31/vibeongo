@@ -2,7 +2,8 @@
 
 import { useProjectsStore } from "@/store/playground-store";
 import { Button } from "@repo/ui/components/button";
-import { ArrowUp, FolderKanban, Plus } from "lucide-react";
+import { cn } from "@repo/ui/lib/utils";
+import { ArrowUp, FolderKanban, Loader2 } from "lucide-react";
 import {
   useId,
   useMemo,
@@ -36,11 +37,15 @@ export type WorkComposerTag = {
 export type WorkComposerSubmitPayload = {
   message: string;
   tagged: WorkComposerTag[];
-  attachments: File[];
 };
 
 type WorkComposerProps = {
-  onSubmit?: (payload: WorkComposerSubmitPayload) => void;
+  onSubmit?: (payload: WorkComposerSubmitPayload) => boolean | void;
+  disabled?: boolean;
+  isSubmitting?: boolean;
+  placeholder?: string;
+  showHeading?: boolean;
+  variant?: "default" | "compact";
 };
 
 function getProjectMention(message: string, cursor: number) {
@@ -156,10 +161,16 @@ function hasProjectMention(message: string, projectName: string) {
   return false;
 }
 
-export function WorkComposer({ onSubmit }: WorkComposerProps) {
+export function WorkComposer({
+  onSubmit,
+  disabled = false,
+  isSubmitting = false,
+  placeholder = "type @ to tag a project",
+  showHeading = true,
+  variant = "default",
+}: WorkComposerProps) {
   const projects = useProjectsStore((store) => store.projects);
   const formRef = useRef<HTMLFormElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const highlightedMessageRef = useRef<HTMLDivElement>(null);
   const projectListId = useId();
@@ -188,12 +199,22 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+    if (disabled || isSubmitting || !message.trim() || !onSubmit) return;
 
-    onSubmit?.({
+    const submitted = onSubmit({
       message: serializeTaggedMessage(message.trim(), tagged),
       tagged,
-      attachments: Array.from(fileInputRef.current?.files ?? []),
     });
+
+    if (submitted === false) return;
+
+    setMessage("");
+    setTagged([]);
+    setProjectMention(null);
+    setActiveProjectIndex(0);
+    if (highlightedMessageRef.current) {
+      highlightedMessageRef.current.style.transform = "";
+    }
   };
 
   const updateProjectMention = (value: string, cursor: number) => {
@@ -286,7 +307,9 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
       if (
         activeProject &&
         (event.key === "Tab" ||
-          (event.key === "Enter" && !event.metaKey && !event.ctrlKey))
+          (event.key === "Enter" &&
+            !event.shiftKey &&
+            !event.nativeEvent.isComposing))
       ) {
         event.preventDefault();
         insertProjectMention(activeProject);
@@ -294,20 +317,32 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
       }
     }
 
-    if (event.key !== "Enter" || (!event.metaKey && !event.ctrlKey)) return;
+    if (
+      event.key !== "Enter" ||
+      event.shiftKey ||
+      event.nativeEvent.isComposing
+    ) {
+      return;
+    }
 
     event.preventDefault();
     formRef.current?.requestSubmit();
   };
 
   return (
-    <section className="w-full" aria-labelledby="work-heading">
-      <h1
-        id="work-heading"
-        className="mb-8 text-center text-3xl font-medium tracking-tight sm:text-4xl"
-      >
-        What&apos;s in your mind?
-      </h1>
+    <section
+      className="w-full"
+      aria-labelledby={showHeading ? "work-heading" : undefined}
+      aria-label={showHeading ? undefined : "Chat composer"}
+    >
+      {showHeading ? (
+        <h1
+          id="work-heading"
+          className="mb-8 text-center text-3xl font-medium tracking-tight sm:text-4xl"
+        >
+          What&apos;s in your mind?
+        </h1>
+      ) : null}
 
       <form ref={formRef} onSubmit={handleSubmit} className="relative">
         <div className="bg-card focus-within:border-foreground/20 relative z-10 overflow-hidden rounded-[28px] border shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-colors">
@@ -318,7 +353,12 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
             >
               <div
                 ref={highlightedMessageRef}
-                className="text-foreground min-h-32 w-full px-6 pt-6 pb-3 text-base leading-normal break-words whitespace-pre-wrap sm:min-h-36 sm:text-lg"
+                className={cn(
+                  "text-foreground w-full break-words whitespace-pre-wrap",
+                  variant === "compact"
+                    ? "min-h-16 px-4 pt-3 pb-2 text-sm leading-6"
+                    : "min-h-32 px-6 pt-6 pb-3 text-base leading-normal sm:min-h-36 sm:text-lg",
+                )}
               >
                 {highlightedMessageParts.map((part, index) => (
                   <span
@@ -347,8 +387,9 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
                   ? `${projectListId}-${activeProject.id}`
                   : undefined
               }
-              placeholder="type @ to tag a project"
+              placeholder={placeholder}
               value={message}
+              disabled={disabled}
               onChange={handleMessageChange}
               onSelect={handleTextSelection}
               onScroll={(event) => {
@@ -358,37 +399,31 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
               }}
               onBlur={() => setProjectMention(null)}
               onKeyDown={handleKeyDown}
-              className="placeholder:text-muted-foreground caret-foreground selection:bg-primary/25 relative min-h-32 w-full resize-none border-0 bg-transparent px-6 pt-6 pb-3 text-base leading-normal text-transparent outline-none sm:min-h-36 sm:text-lg"
+              className={cn(
+                "placeholder:text-muted-foreground caret-foreground selection:bg-primary/25 relative w-full resize-none border-0 bg-transparent text-transparent outline-none disabled:cursor-not-allowed disabled:opacity-60",
+                variant === "compact"
+                  ? "max-h-40 min-h-16 px-4 pt-3 pb-2 text-sm leading-6"
+                  : "min-h-32 px-6 pt-6 pb-3 text-base leading-normal sm:min-h-36 sm:text-lg",
+              )}
             />
           </div>
 
-          <div className="flex items-center justify-between px-4 pb-3">
-            <input
-              ref={fileInputRef}
-              type="file"
-              className="hidden"
-              multiple
-              tabIndex={-1}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              className="size-11 rounded-full"
-              aria-label="Add an attachment"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              <Plus className="size-6" />
-            </Button>
-
+          <div className="flex items-center justify-end px-4 pb-3">
             <Button
               type="submit"
               size="icon"
-              disabled={!message.trim()}
-              className="size-12 rounded-full"
+              disabled={!message.trim() || disabled || isSubmitting}
+              className={cn(
+                "rounded-full",
+                variant === "compact" ? "size-10" : "size-12",
+              )}
               aria-label="Submit message"
             >
-              <ArrowUp className="size-6" strokeWidth={2.5} />
+              {isSubmitting ? (
+                <Loader2 className="size-5 animate-spin" />
+              ) : (
+                <ArrowUp className="size-6" strokeWidth={2.5} />
+              )}
             </Button>
           </div>
         </div>
@@ -398,7 +433,10 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
             id={projectListId}
             role="listbox"
             aria-label="Projects"
-            className="bg-popover text-popover-foreground absolute top-full right-3 left-3 z-20 mt-2 max-h-64 overflow-y-auto rounded-xl border p-1.5 shadow-lg"
+            className={cn(
+              "bg-popover text-popover-foreground absolute right-3 left-3 z-20 max-h-64 overflow-y-auto rounded-xl border p-1.5 shadow-lg",
+              variant === "compact" ? "bottom-full mb-2" : "top-full mt-2",
+            )}
           >
             {matchingProjects.length > 0 ? (
               matchingProjects.map((project, index) => (
@@ -431,6 +469,11 @@ export function WorkComposer({ onSubmit }: WorkComposerProps) {
           </div>
         ) : null}
       </form>
+      {variant === "compact" ? (
+        <p className="text-muted-foreground mt-1.5 text-center text-[11px]">
+          Enter to send · Shift+Enter for a new line · Type @ to tag a project
+        </p>
+      ) : null}
     </section>
   );
 }

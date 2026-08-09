@@ -14,6 +14,7 @@ import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-dire
 import { useTerminateInstance } from "@/hooks/use-instance";
 import { useGetVibeongoChats } from "@/hooks/use-chats";
 import { useGetProjectGithubReposById } from "@/hooks/use-project";
+import { useWebSocket } from "@/hooks/use-websocket";
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
@@ -393,6 +394,7 @@ function SessionRow({
 
 export default function ClientView() {
   const router = useRouter();
+  const { isConnected, sendJsonMessage, subscribeJsonMessage } = useWebSocket();
   const {
     data: recentChats = [],
     isPending: areChatsPending,
@@ -411,7 +413,30 @@ export default function ClientView() {
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
+  const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [activeTab, setActiveTab] = useState("chats");
+
+  useEffect(
+    () =>
+      subscribeJsonMessage((message) => {
+        if (
+          message.type === "new-chat" &&
+          typeof message.data === "object" &&
+          message.data !== null &&
+          "chatId" in message.data &&
+          typeof message.data.chatId === "string"
+        ) {
+          router.push(`/chat/${message.data.chatId}`);
+          return;
+        }
+
+        if (message.type === "error") {
+          setIsCreatingChat(false);
+          toast.error("Could not create the chat");
+        }
+      }),
+    [router, subscribeJsonMessage],
+  );
 
   const handleRuntimeSelect = (runtime: ProjectSessionRuntime) => {
     if (!runtimeDialogSessionId) return;
@@ -442,15 +467,38 @@ export default function ClientView() {
   };
 
   const handleCreateChat = (payload: WorkComposerSubmitPayload) => {
-    if (!payload.message.trim()) return;
+    if (!payload.message.trim() || isCreatingChat) return;
 
-    router.push(`/chat/${crypto.randomUUID()}`);
+    const sent = sendJsonMessage({
+      type: "new-chat",
+      data: {
+        question: payload.message,
+        payload: {
+          mentions: payload.tagged.map((tag) => ({
+            type: tag.type,
+            id: tag.data.id,
+            name: tag.data.name,
+          })),
+        },
+      },
+    });
+
+    if (!sent) {
+      toast.error("Chat service is still connecting. Please try again.");
+      return;
+    }
+
+    setIsCreatingChat(true);
   };
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-16 lg:pt-32">
       <div>
-        <WorkComposer onSubmit={handleCreateChat} />
+        <WorkComposer
+          onSubmit={handleCreateChat}
+          disabled={!isConnected}
+          isSubmitting={isCreatingChat}
+        />
       </div>
 
       <Tabs
