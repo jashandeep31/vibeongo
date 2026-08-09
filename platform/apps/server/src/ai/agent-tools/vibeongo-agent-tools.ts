@@ -3,10 +3,12 @@ import {
   githubRepos,
   eq,
   and,
+  instanceRuntimeKind,
   instanceRegions,
   instanceTypes,
   projectFileData,
   projectFiles,
+  projectGithubRepos,
   projects,
   sandboxRegions,
   sandboxTypes,
@@ -17,12 +19,13 @@ import {
 } from "@repo/db";
 import { z } from "zod";
 import { Tool, tool } from "ai";
-import { projectConfigValidator } from "@repo/shared";
+import { createInstanceSchema, projectConfigValidator } from "@repo/shared";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { AppError } from "../../lib/app-error.js";
 import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
 import { env } from "../../lib/env.js";
 import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
+import { createProjectSessionInstance } from "../../services/instances/create-project-session-instance.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
@@ -575,6 +578,105 @@ export const createProjectFileAgentTool = (userId: string): Tool =>
         return JSON.stringify({ ok: true, file: newFile });
       } catch (error) {
         return JSON.stringify({ ok: false, error: String(error) });
+      }
+    },
+  });
+
+const getProjectRepositoriesSchema = z.object({
+  projectId: z
+    .uuid("Project ID must be valid")
+    .describe("ID of the project whose attached repositories to list"),
+});
+
+export const getProjectRepositoriesAgentTool = (userId: string): Tool =>
+  tool({
+    description:
+      "Lists the GitHub repositories attached to a project, including each repository's ID, full name, setup script, and overview. Use this before planning project-session tasks so repository IDs and workspace paths are not invented.",
+    inputSchema: getProjectRepositoriesSchema,
+    execute: async ({
+      projectId,
+    }: z.infer<typeof getProjectRepositoriesSchema>) => {
+      const rows = await db
+        .select({ repo: githubRepos })
+        .from(projects)
+        .leftJoin(
+          projectGithubRepos,
+          eq(projectGithubRepos.project_id, projects.id),
+        )
+        .leftJoin(
+          githubRepos,
+          eq(githubRepos.id, projectGithubRepos.github_repo_id),
+        )
+        .where(
+          and(
+            eq(projects.user_id, userId),
+            eq(projects.id, projectId),
+            eq(projects.deleted, false),
+          ),
+        );
+
+      if (rows.length === 0) {
+        return { error: "Project not found or doesn't belong to you" };
+      }
+
+      return rows.flatMap(({ repo }) =>
+        repo
+          ? [
+              {
+                id: repo.id,
+                full_name: repo.full_name,
+                setup_script: repo.setup_script,
+                overview: repo.overview,
+              },
+            ]
+          : [],
+      );
+    },
+  });
+
+const createProjectSessionSchema = createInstanceSchema.extend({
+  projectId: z
+    .uuid("Project ID must be valid")
+    .describe("ID of the project for which to create the session"),
+  runtime: z
+    .enum(instanceRuntimeKind.enumValues)
+    .default("sandbox")
+    .describe("Runtime to start for the session: sandbox or vm"),
+});
+
+export const createProjectSessionAgentTool = (userId: string): Tool =>
+  tool({
+    description:
+      "Creates a project session with ordered repository tasks and starts its paid runtime. Call this exactly once, only after listing the project's repositories, presenting the complete task plan and runtime, and receiving explicit user confirmation.",
+    inputSchema: createProjectSessionSchema,
+    execute: async (rawData: z.infer<typeof createProjectSessionSchema>) => {
+      try {
+        const input = createProjectSessionSchema.parse(rawData);
+        const { projectSession, instance } = await createProjectSessionInstance(
+          {
+            userId,
+            input,
+            runtime: input.runtime,
+            terminate: true,
+          },
+        );
+
+        return {
+          success: true,
+          sessionId: projectSession.id,
+          instanceId: instance.id,
+          message: "Project session created and instance started successfully.",
+        };
+      } catch (error) {
+        if (error instanceof AppError) {
+          return { success: false, error: error.message };
+        }
+
+        console.error("Failed to create project session from AI tool", error);
+        return {
+          success: false,
+          error: "Could not create the project session. Please try again.",
+        };
       }
     },
   });

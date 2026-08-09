@@ -5,7 +5,9 @@ import {
   addGithubRepositoryAgentTool,
   createProjectAgentTool,
   createProjectFileAgentTool,
+  createProjectSessionAgentTool,
   getProjectConfigAgentTool,
+  getProjectRepositoriesAgentTool,
   getInstanceCatalogAgentTool,
   getUserReposListAgentTool,
   getUserSshKeysAgentTool,
@@ -85,6 +87,8 @@ export async function* vibeongoAIAgent({
       readProjectFile: readProjectFileAgentTool(userId),
       updateProjectFile: updateProjectFileAgentTool(userId),
       createProjectFile: createProjectFileAgentTool(userId),
+      getProjectRepositories: getProjectRepositoriesAgentTool(userId),
+      createProjectSession: createProjectSessionAgentTool(userId),
     },
     stopWhen: stepCountIs(40),
     messages: [
