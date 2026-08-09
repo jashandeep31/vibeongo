@@ -10,6 +10,13 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 
+export type ChatQuestionPayload = {
+  mentions: Array<{
+    type: "project";
+    id: string;
+    name: string;
+  }>;
+};
 export const chatAgentEnum = pgEnum("chat_agent_enum", [
   "project-handler",
   "tasks-maker",
@@ -32,6 +39,10 @@ export const chats = pgTable("chats", {
 export const chatQuestions = pgTable("chat_questions", {
   id: uuid().defaultRandom().primaryKey(),
   question: text().notNull(),
+  payload: jsonb("payload")
+    .$type<ChatQuestionPayload>()
+    .notNull()
+    .default({ mentions: [] }),
   chat_id: uuid()
     .references(() => chats.id, { onDelete: "cascade" })
     .notNull(),
