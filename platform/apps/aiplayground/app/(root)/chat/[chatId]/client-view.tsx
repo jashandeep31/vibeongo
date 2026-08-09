@@ -339,6 +339,8 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
             placeholder={composerPlaceholder}
             showHeading={false}
             variant="compact"
+            autoFocus
+            focusOnTyping
           />
         </div>
       </div>

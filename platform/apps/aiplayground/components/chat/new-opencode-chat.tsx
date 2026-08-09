@@ -86,6 +86,8 @@ export function NewOpencodeChat({
           inventory={inventory}
           selection={effectiveSelection}
           onSelectionChange={setSelection}
+          autoFocus
+          focusOnTyping
         />
         {startSession.error ? (
           <p className="text-destructive mt-3 text-center text-sm">

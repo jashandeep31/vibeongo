@@ -499,6 +499,8 @@ export default function ClientView() {
           onSubmit={handleCreateChat}
           disabled={!isConnected}
           isSubmitting={isCreatingChat}
+          autoFocus
+          focusOnTyping
         />
       </div>
 

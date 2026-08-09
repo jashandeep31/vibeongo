@@ -53,6 +53,8 @@ type PromptInputProps = {
   inventory?: OpencodeInventory;
   selection: OpencodePromptSelection;
   onSelectionChange: (selection: OpencodePromptSelection) => void;
+  autoFocus?: boolean;
+  focusOnTyping?: boolean;
 };
 
 export function PromptInput({
@@ -65,6 +67,8 @@ export function PromptInput({
   inventory,
   selection,
   onSelectionChange,
+  autoFocus = false,
+  focusOnTyping = false,
 }: PromptInputProps) {
   const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
@@ -96,6 +100,37 @@ export function PromptInput({
     },
     [],
   );
+
+  useEffect(() => {
+    if (!focusOnTyping || disabled) return;
+
+    const focusPromptOnTyping = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.isComposing ||
+        event.key.length !== 1
+      ) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        activeElement !== document.body &&
+        activeElement !== document.documentElement
+      ) {
+        return;
+      }
+
+      textareaRef.current?.focus();
+    };
+
+    window.addEventListener("keydown", focusPromptOnTyping);
+    return () => window.removeEventListener("keydown", focusPromptOnTyping);
+  }, [disabled, focusOnTyping]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -189,6 +224,7 @@ export function PromptInput({
 
         <textarea
           ref={textareaRef}
+          autoFocus={autoFocus}
           aria-label="Write an AI message"
           placeholder="Work on anything"
           disabled={disabled}

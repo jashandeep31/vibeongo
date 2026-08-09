@@ -411,6 +411,8 @@ export function OpencodeSessionChat({
                 })
               }
               onSubmitSuccess={() => scrollToBottom("smooth")}
+              autoFocus
+              focusOnTyping
             />
           )}
         </div>

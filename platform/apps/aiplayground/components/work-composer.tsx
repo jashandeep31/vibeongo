@@ -6,6 +6,7 @@ import { cn } from "@repo/ui/lib/utils";
 import { ArrowUp, FolderKanban, Loader2 } from "lucide-react";
 import {
   useId,
+  useEffect,
   useMemo,
   useRef,
   useState,
@@ -46,6 +47,8 @@ type WorkComposerProps = {
   placeholder?: string;
   showHeading?: boolean;
   variant?: "default" | "compact";
+  autoFocus?: boolean;
+  focusOnTyping?: boolean;
 };
 
 function getProjectMention(message: string, cursor: number) {
@@ -168,6 +171,8 @@ export function WorkComposer({
   placeholder = "type @ to tag a project",
   showHeading = true,
   variant = "default",
+  autoFocus = false,
+  focusOnTyping = false,
 }: WorkComposerProps) {
   const projects = useProjectsStore((store) => store.projects);
   const formRef = useRef<HTMLFormElement>(null);
@@ -196,6 +201,37 @@ export function WorkComposer({
     () => getHighlightedMessageParts(message, tagged),
     [message, tagged],
   );
+
+  useEffect(() => {
+    if (!focusOnTyping || disabled) return;
+
+    const focusComposerOnTyping = (event: globalThis.KeyboardEvent) => {
+      if (
+        event.defaultPrevented ||
+        event.metaKey ||
+        event.ctrlKey ||
+        event.altKey ||
+        event.isComposing ||
+        event.key.length !== 1
+      ) {
+        return;
+      }
+
+      const activeElement = document.activeElement;
+      if (
+        activeElement &&
+        activeElement !== document.body &&
+        activeElement !== document.documentElement
+      ) {
+        return;
+      }
+
+      textareaRef.current?.focus();
+    };
+
+    window.addEventListener("keydown", focusComposerOnTyping);
+    return () => window.removeEventListener("keydown", focusComposerOnTyping);
+  }, [disabled, focusOnTyping]);
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -378,6 +414,7 @@ export function WorkComposer({
 
             <textarea
               ref={textareaRef}
+              autoFocus={autoFocus}
               aria-label="Write an AI message"
               aria-autocomplete="list"
               aria-controls={projectMention ? projectListId : undefined}
