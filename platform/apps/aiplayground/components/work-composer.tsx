@@ -203,6 +203,18 @@ export function WorkComposer({
   );
 
   useEffect(() => {
+    if (
+      !autoFocus ||
+      disabled ||
+      window.matchMedia("(max-width: 767px)").matches
+    ) {
+      return;
+    }
+
+    textareaRef.current?.focus();
+  }, [autoFocus, disabled]);
+
+  useEffect(() => {
     if (!focusOnTyping || disabled) return;
 
     const focusComposerOnTyping = (event: globalThis.KeyboardEvent) => {
@@ -414,7 +426,6 @@ export function WorkComposer({
 
             <textarea
               ref={textareaRef}
-              autoFocus={autoFocus}
               aria-label="Write an AI message"
               aria-autocomplete="list"
               aria-controls={projectMention ? projectListId : undefined}

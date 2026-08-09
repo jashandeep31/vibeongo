@@ -58,6 +58,7 @@ import {
   Play,
   Plus,
   SquareDashedMousePointer,
+  Timer,
   Trash2,
   BotMessageSquare,
 } from "lucide-react";
@@ -209,6 +210,7 @@ function ProjectSessionNavItem({
 }: ProjectSessionNavItemProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const [now, setNow] = useState(() => Date.now());
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
@@ -220,6 +222,13 @@ function ProjectSessionNavItem({
     (store) => store.chatsBySessionId[session.id],
   );
   const instance = sessionEntry?.instance ?? null;
+  const terminatesAt = instance
+    ? new Date(instance.terminates_at).getTime()
+    : Number.NaN;
+  const isTerminationSoon =
+    sessionEntry?.state === "running" &&
+    !Number.isNaN(terminatesAt) &&
+    terminatesAt - now <= 10 * 60 * 1000;
   const isInstancePending = sessionEntry?.instanceSyncState === "pending";
   const isInstanceError = sessionEntry?.instanceSyncState === "error";
   const { data: projectDomains } = useGetProjectDomainsById(
@@ -236,6 +245,14 @@ function ProjectSessionNavItem({
       ? `https://${opencodeDomain}`
       : "";
   const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
+
+  useEffect(() => {
+    if (sessionEntry?.state !== "running" || !instance) return;
+
+    setNow(Date.now());
+    const interval = window.setInterval(() => setNow(Date.now()), 1000);
+    return () => window.clearInterval(interval);
+  }, [instance, sessionEntry?.state]);
 
   const {
     data: githubRepos,
@@ -279,12 +296,27 @@ function ProjectSessionNavItem({
               <CollapsibleTrigger asChild>
                 <SidebarMenuSubButton asChild className="min-w-0 flex-1">
                   <button type="button">
-                    <SquareDashedMousePointer />
+                    {isTerminationSoon ? (
+                      <Timer className="text-orange-500" />
+                    ) : (
+                      <SquareDashedMousePointer />
+                    )}
                     <span className="min-w-0 truncate" title={session.name}>
                       {session.name}
                     </span>
+                    {isTerminationSoon ? (
+                      <span
+                        className="ml-auto shrink-0 font-mono text-xs font-medium text-orange-500 tabular-nums"
+                        title="Time until instance termination"
+                      >
+                        {formatTimeRemaining(
+                          String(instance.terminates_at),
+                          now,
+                        )}
+                      </span>
+                    ) : null}
                     <span
-                      className={`ml-1 size-2 shrink-0 rounded-full ${
+                      className={`${isTerminationSoon ? "ml-0" : "ml-1"} size-2 shrink-0 rounded-full ${
                         needsDomainAssignment ? "bg-blue-500" : "bg-emerald-500"
                       }`}
                       title={

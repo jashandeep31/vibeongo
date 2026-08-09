@@ -91,6 +91,18 @@ export function PromptInput({
   );
 
   useEffect(() => {
+    if (
+      !autoFocus ||
+      disabled ||
+      window.matchMedia("(max-width: 767px)").matches
+    ) {
+      return;
+    }
+
+    textareaRef.current?.focus();
+  }, [autoFocus, disabled]);
+
+  useEffect(() => {
     attachmentsRef.current = attachments;
   }, [attachments]);
 
@@ -226,7 +238,6 @@ export function PromptInput({
 
         <textarea
           ref={textareaRef}
-          autoFocus={autoFocus}
           aria-label="Write an AI message"
           placeholder="Work on anything"
           disabled={disabled}
