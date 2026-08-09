@@ -169,6 +169,13 @@
       "when": 1786113281763,
       "tag": "0023_lonely_silver_sable",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786273152615,
+      "tag": "0024_flashy_living_lightning",
+      "breakpoints": true
     }
   ]
 }
