@@ -1,6 +1,9 @@
 import {
   addAllowedIpToProject,
+  createGithubRepo,
+  createProject,
   deleteMultipleAllowedIpsFromProject,
+  getGithubRepos,
   getProjectDomainsById,
   getProjectGithubReposById,
   getProjects,
@@ -9,7 +12,38 @@ import {
   updateProjectDomainAccess,
   updateProjectDomainPort,
 } from "@/services/project-services";
+import { useProjectsStore } from "@/store/playground-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+export const useCreateGithubRepo = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createGithubRepo,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["github-repos"] }),
+  });
+};
+
+export const useCreateProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProject,
+    onSuccess: ({ data: project }) => {
+      useProjectsStore.getState().addProject(project);
+      return queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+  });
+};
+
+export const useGetGithubRepos = () =>
+  useQuery({
+    queryKey: ["github-repos"],
+    queryFn: getGithubRepos,
+  });
 
 export const useGetProjects = (enabled = true) =>
   useQuery({

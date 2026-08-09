@@ -454,11 +454,20 @@ export default function ClientView() {
               Your projects
             </h2>
           </div>
-          {projects.length > 0 ? (
-            <span className="text-muted-foreground text-sm tabular-nums">
-              {projects.length} {projects.length === 1 ? "project" : "projects"}
-            </span>
-          ) : null}
+          <div className="flex items-center gap-3">
+            {projects.length > 0 ? (
+              <span className="text-muted-foreground hidden text-sm tabular-nums sm:inline">
+                {projects.length}{" "}
+                {projects.length === 1 ? "project" : "projects"}
+              </span>
+            ) : null}
+            <Button asChild size="sm">
+              <Link href="/projects/create">
+                <Plus />
+                Create project
+              </Link>
+            </Button>
+          </div>
         </div>
 
         {projects.length === 0 ? (

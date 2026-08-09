@@ -25,6 +25,11 @@ export type ProjectGithubRepo = Pick<
   "id" | "full_name"
 >;
 
+export type CreateProjectResponse = {
+  message: string;
+  data: Project;
+};
+
 export type UpdateProjectRoutingTargetInstanceInput = {
   id: (typeof projects.$inferSelect)["id"];
   instanceId: (typeof instances.$inferSelect)["id"];
@@ -54,6 +59,39 @@ type UpdateProjectDomainPortInput = {
 
 export const getProjects = async (): Promise<Project[]> => {
   const response = await axios.get(`${BACKEND_URL}/api/v1/projects`, {
+    withCredentials: true,
+  });
+
+  return response.data.data;
+};
+
+export const createProject = async (
+  projectData: unknown,
+): Promise<CreateProjectResponse> => {
+  const response = await axios.post(
+    `${BACKEND_URL}/api/v1/projects`,
+    projectData,
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const createGithubRepo = async (input: {
+  url: string;
+  setup_script: string;
+}): Promise<{ message: string }> => {
+  const response = await axios.post(
+    `${BACKEND_URL}/api/v1/github-repos/`,
+    input,
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const getGithubRepos = async (): Promise<ProjectGithubRepo[]> => {
+  const response = await axios.get(`${BACKEND_URL}/api/v1/github-repos/`, {
     withCredentials: true,
   });
 
