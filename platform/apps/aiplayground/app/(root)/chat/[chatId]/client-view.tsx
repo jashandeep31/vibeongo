@@ -297,7 +297,7 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
   const composerPlaceholder = !isConnected
     ? "Reconnecting…"
     : isStreaming
-      ? "Wait for the current response to finish"
+      ? "Write your next prompt…"
       : "Ask a follow-up question";
 
   return (
@@ -334,8 +334,8 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
         <div className="mx-auto w-full max-w-4xl">
           <WorkComposer
             onSubmit={submitQuestion}
-            disabled={!isConnected || isStreaming}
-            isSubmitting={isSending}
+            disabled={!isConnected}
+            isSubmitting={isSending || isStreaming}
             placeholder={composerPlaceholder}
             showHeading={false}
             variant="compact"

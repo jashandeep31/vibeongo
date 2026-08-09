@@ -46,6 +46,7 @@ type LocalAttachment = {
 type PromptInputProps = {
   onSubmit: (question: string, attachments: File[]) => void;
   disabled?: boolean;
+  submitDisabled?: boolean;
   isStreaming?: boolean;
   isStopping?: boolean;
   onStop?: () => void;
@@ -60,6 +61,7 @@ type PromptInputProps = {
 export function PromptInput({
   onSubmit,
   disabled = false,
+  submitDisabled = false,
   isStreaming = false,
   isStopping = false,
   onStop,
@@ -80,7 +82,7 @@ export function PromptInput({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isSubmitDisabled =
-    disabled || (!hasQuestion && attachments.length === 0);
+    disabled || submitDisabled || (!hasQuestion && attachments.length === 0);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
   );

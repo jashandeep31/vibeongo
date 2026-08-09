@@ -391,7 +391,7 @@ export function OpencodeSessionChat({
             />
           ) : (
             <PromptInput
-              disabled={sendPrompt.isPending || isStreaming}
+              submitDisabled={sendPrompt.isPending || isStreaming}
               isStreaming={isStreaming}
               isStopping={abortSession.isPending}
               onStop={() =>
