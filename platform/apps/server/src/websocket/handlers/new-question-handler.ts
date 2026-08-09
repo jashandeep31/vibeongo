@@ -2,7 +2,7 @@ import WebSocket from "ws";
 import { z } from "zod";
 import { sendWSError } from "../socket-handler.js";
 import { and, chatAnswer, chatQuestions, chats, db, desc, eq } from "@repo/db";
-import { projectAIAgent } from "../../ai/ai-agents/project-agent.js";
+import { vibeongoAIAgent } from "../../ai/ai-agents/vibeongo-agent.js";
 import {
   addSubscriber,
   broadcastToChat,
@@ -206,7 +206,7 @@ export const newQuestionHandler = async (
   try {
     sendQuestionStarted();
 
-    for await (const res of projectAIAgent({
+    for await (const res of vibeongoAIAgent({
       query: parsedResponse.question,
       payload: parsedResponse.payload,
       userId,
