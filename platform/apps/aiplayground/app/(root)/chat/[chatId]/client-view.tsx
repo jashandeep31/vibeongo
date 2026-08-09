@@ -16,50 +16,24 @@ import {
   type PersistedChatTurn,
 } from "@/store/chat-store";
 import { Button } from "@repo/ui/components/button";
-import {
-  ArrowDown,
-  FolderKanban,
-  Loader2,
-  MessageSquareOff,
-} from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { ArrowDown, Loader2, MessageSquareOff } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function TaggedQuestion({ question }: { question: ChatQuestion }) {
-  const content: ReactNode[] = [];
+function resolveQuestionMentions(question: ChatQuestion) {
+  const mentions = question.payload?.mentions ?? [];
 
-  question.question.split(/(@\{\{\d+\}\})/g).forEach((part, index) => {
-    const token = part.match(/^@\{\{(\d+)\}\}$/);
-    const mention = token
-      ? question.payload.mentions[Number(token[1]) - 1]
-      : undefined;
-
-    if (!mention) {
-      content.push(part);
-      return;
-    }
-
-    content.push(
-      <span
-        key={`${mention.id}-${index}`}
-        className="mx-0.5 inline-flex items-center gap-1 rounded-md bg-blue-500/10 px-1.5 py-0.5 font-medium text-blue-600 dark:text-blue-400"
-      >
-        <FolderKanban className="size-3.5" />@{mention.name}
-      </span>,
-    );
-  });
-
-  return content;
+  return question.question.replace(
+    /[@$]?\{\{(\d+)\}\}/g,
+    (placeholder, rawIndex: string) => {
+      const mention = mentions[Number(rawIndex) - 1];
+      return mention ? `@${mention.name}` : placeholder;
+    },
+  );
 }
 
 function ChatResponse({
@@ -104,7 +78,7 @@ function ChatTurnView({
     <article className="flex flex-col gap-8">
       <div className="flex justify-end">
         <div className="bg-muted text-foreground max-w-[90%] rounded-2xl border px-4 py-3 text-base leading-relaxed break-words shadow-sm md:max-w-[65%]">
-          <TaggedQuestion question={turn} />
+          {resolveQuestionMentions(turn)}
         </div>
       </div>
       <ChatResponse answer={turn.answer} isStreaming={isStreaming} />
