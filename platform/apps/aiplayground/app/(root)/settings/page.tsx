@@ -231,12 +231,7 @@ export default function SettingsPage() {
   return (
     <div className="mx-auto w-full max-w-6xl space-y-12 px-5 py-8 md:space-y-16 md:px-10 md:py-12">
       <header>
-        <p className="text-muted-foreground text-sm">Workspace preferences</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="text-muted-foreground mt-2 max-w-2xl text-sm">
-          Personalize the playground, configure agents, and manage runtime
-          access from one place.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
       </header>
 
       <SettingsSection

@@ -100,11 +100,7 @@ export default function WalletPage() {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 md:px-10 md:py-12">
       <header>
-        <p className="text-muted-foreground text-sm">Usage and credits</p>
-        <h1 className="mt-1 text-3xl font-semibold tracking-tight">Wallet</h1>
-        <p className="text-muted-foreground mt-2 text-sm">
-          Review your balance, purchases, usage, and promotional credits.
-        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Wallet</h1>
       </header>
 
       <section className="mt-12 flex flex-col gap-6 border-y py-8 sm:flex-row sm:items-end sm:justify-between">
