@@ -53,6 +53,7 @@ import {
   Ellipsis,
   Folder,
   Loader2,
+  Pencil,
   Play,
   Plus,
   SquareDashedMousePointer,
@@ -525,9 +526,7 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                               : undefined
                           }
                         />
-                        <span className="min-w-0 truncate">
-                          {project.name}
-                        </span>
+                        <span className="min-w-0 truncate">{project.name}</span>
                         <ChevronRight className="ml-auto transition-transform group-data-[state=open]/project:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
@@ -545,6 +544,15 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/projects/${project.id}/edit`}
+                            onClick={closeMobileSidebar}
+                          >
+                            <Pencil />
+                            Edit project
+                          </Link>
+                        </DropdownMenuItem>
                         <CreateProjectSessionDialog
                           projectId={project.id}
                           projectName={project.name}

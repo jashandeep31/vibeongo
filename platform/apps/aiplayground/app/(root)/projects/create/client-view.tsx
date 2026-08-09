@@ -8,7 +8,12 @@ import {
   useSandboxRegions,
   useSandboxTypes,
 } from "@/hooks/use-project-metadata";
-import { useCreateProject, useGetGithubRepos } from "@/hooks/use-project";
+import {
+  useCreateProject,
+  useGetGithubRepos,
+  useGetProjectConfigForEdit,
+  useUpdateProject,
+} from "@/hooks/use-project";
 import { useSshKeys } from "@/hooks/use-ssh-keys";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
@@ -19,7 +24,11 @@ import {
   NativeSelectOption,
 } from "@repo/ui/components/native-select";
 import { Textarea } from "@repo/ui/components/textarea";
-import { projectConfigValidator } from "@repo/shared";
+import {
+  projectConfigValidator,
+  type ProjectProvider,
+  type z,
+} from "@repo/shared";
 import axios from "axios";
 import {
   AlertCircle,
@@ -40,6 +49,35 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
+
+type ProjectPackages = z.infer<
+  typeof projectConfigValidator
+>["config"]["packages"];
+type ProjectPorts = z.infer<typeof projectConfigValidator>["config"]["ports"];
+
+const DEFAULT_PROJECT_PACKAGES: ProjectPackages = [
+  {
+    name: "docker",
+    config: { containers: [] },
+  },
+  {
+    name: "opencode",
+    config: {
+      auth_json: {},
+      use_user_config: true,
+      model: "",
+      requirePassword: false,
+    },
+  },
+  {
+    name: "codex",
+    config: { auth_json: {}, use_user_config: true },
+  },
+  {
+    name: "pi",
+    config: { auth_json: {}, use_user_config: true },
+  },
+];
 
 function FormSection({
   title,
@@ -94,25 +132,31 @@ function SelectField({
   );
 }
 
-function getErrorMessage(error: unknown) {
+function getErrorMessage(error: unknown, fallback: string) {
   if (axios.isAxiosError<{ message?: unknown }>(error)) {
     const message = error.response?.data?.message;
     if (typeof message === "string" && message.trim()) return message;
   }
 
   if (error instanceof Error && error.message.trim()) return error.message;
-  return "Project could not be created.";
+  return fallback;
 }
 
-export default function ClientView() {
+export default function ClientView({ projectId }: { projectId?: string }) {
   const router = useRouter();
   const createProject = useCreateProject();
+  const updateProject = useUpdateProject();
+  const projectConfigQuery = useGetProjectConfigForEdit(projectId ?? null);
   const instanceRegionsQuery = useInstanceRegions();
   const sandboxRegionsQuery = useSandboxRegions();
   const reposQuery = useGetGithubRepos();
   const sshKeysQuery = useSshKeys();
+  const isEditing = Boolean(projectId);
+  const isSaving = createProject.isPending || updateProject.isPending;
 
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [provider, setProvider] = useState<ProjectProvider>("aws");
   const [instanceRegionId, setInstanceRegionId] = useState("");
   const [instanceTypeId, setInstanceTypeId] = useState("");
   const [sandboxRegionId, setSandboxRegionId] = useState("");
@@ -122,14 +166,21 @@ export default function ClientView() {
   const [initialScript, setInitialScript] = useState("");
   const [finalScript, setFinalScript] = useState("");
   const [devScript, setDevScript] = useState("");
+  const [packages, setPackages] = useState<ProjectPackages>(
+    DEFAULT_PROJECT_PACKAGES,
+  );
+  const [ports, setPorts] = useState<ProjectPorts>([]);
+  const [hydratedProjectId, setHydratedProjectId] = useState<string | null>(
+    null,
+  );
   const [errors, setErrors] = useState<string[]>([]);
 
   const instanceRegions = useMemo(
     () =>
       (instanceRegionsQuery.data ?? []).filter(
-        (region) => region.provider === "aws",
+        (region) => region.provider === provider,
       ),
-    [instanceRegionsQuery.data],
+    [instanceRegionsQuery.data, provider],
   );
   const sandboxRegions = useMemo(
     () =>
@@ -150,32 +201,71 @@ export default function ClientView() {
   );
 
   useEffect(() => {
+    const projectConfig = projectConfigQuery.data;
+    if (!projectConfig || hydratedProjectId === projectConfig.project.id) {
+      return;
+    }
+
+    setName(projectConfig.project.name);
+    setDescription(projectConfig.project.description ?? "");
+    setProvider(projectConfig.provider);
+    setInstanceRegionId(projectConfig.instanceRegionId ?? "");
+    setInstanceTypeId(projectConfig.instanceTypeId);
+    setSandboxRegionId(projectConfig.sandboxRegionId ?? "");
+    setSandboxTypeId(projectConfig.sandboxTypeId);
+    setGithubRepoIds(projectConfig.githubRepoIds);
+    setSshKeyIds(projectConfig.sshKeyIds);
+    setInitialScript(projectConfig.project.initial_script);
+    setFinalScript(projectConfig.project.final_script);
+    setDevScript(projectConfig.project.dev_script);
+    setPackages(projectConfig.config.packages);
+    setPorts(projectConfig.config.ports);
+    setHydratedProjectId(projectConfig.project.id);
+  }, [hydratedProjectId, projectConfigQuery.data]);
+
+  useEffect(() => {
+    if (isEditing && hydratedProjectId !== projectId) return;
     if (!instanceRegions.length) return;
     if (instanceRegions.some((region) => region.id === instanceRegionId)) {
       return;
     }
     setInstanceRegionId(instanceRegions[0]?.id ?? "");
     setInstanceTypeId("");
-  }, [instanceRegionId, instanceRegions]);
+  }, [
+    hydratedProjectId,
+    instanceRegionId,
+    instanceRegions,
+    isEditing,
+    projectId,
+  ]);
 
   useEffect(() => {
+    if (isEditing && hydratedProjectId !== projectId) return;
     if (!instanceTypes.length) return;
     if (instanceTypes.some((type) => type.id === instanceTypeId)) return;
     setInstanceTypeId(instanceTypes[0]?.id ?? "");
-  }, [instanceTypeId, instanceTypes]);
+  }, [hydratedProjectId, instanceTypeId, instanceTypes, isEditing, projectId]);
 
   useEffect(() => {
+    if (isEditing && hydratedProjectId !== projectId) return;
     if (!sandboxRegions.length) return;
     if (sandboxRegions.some((region) => region.id === sandboxRegionId)) return;
     setSandboxRegionId(sandboxRegions[0]?.id ?? "");
     setSandboxTypeId("");
-  }, [sandboxRegionId, sandboxRegions]);
+  }, [
+    hydratedProjectId,
+    isEditing,
+    projectId,
+    sandboxRegionId,
+    sandboxRegions,
+  ]);
 
   useEffect(() => {
+    if (isEditing && hydratedProjectId !== projectId) return;
     if (!sandboxTypes.length) return;
     if (sandboxTypes.some((type) => type.id === sandboxTypeId)) return;
     setSandboxTypeId(sandboxTypes[0]?.id ?? "");
-  }, [sandboxTypeId, sandboxTypes]);
+  }, [hydratedProjectId, isEditing, projectId, sandboxTypeId, sandboxTypes]);
 
   const toggleValue = (
     value: string,
@@ -194,8 +284,8 @@ export default function ClientView() {
 
     const payload = {
       name,
-      description: "",
-      provider: "aws" as const,
+      description,
+      provider,
       regionId: instanceRegionId,
       instanceTypeId,
       sandboxTypeId,
@@ -205,30 +295,8 @@ export default function ClientView() {
       finalScript,
       devScript,
       config: {
-        ports: [],
-        packages: [
-          {
-            name: "docker" as const,
-            config: { containers: [] },
-          },
-          {
-            name: "opencode" as const,
-            config: {
-              auth_json: {},
-              use_user_config: true,
-              model: "",
-              requirePassword: false,
-            },
-          },
-          {
-            name: "codex" as const,
-            config: { auth_json: {}, use_user_config: true },
-          },
-          {
-            name: "pi" as const,
-            config: { auth_json: {}, use_user_config: true },
-          },
-        ],
+        ports,
+        packages,
       },
     };
 
@@ -243,17 +311,63 @@ export default function ClientView() {
     }
 
     setErrors([]);
-    const toastId = toast.loading("Creating project");
+    const toastId = toast.loading(
+      isEditing ? "Saving project" : "Creating project",
+    );
     try {
-      await createProject.mutateAsync(validation.data);
-      toast.success("Project created", { id: toastId });
+      if (projectId) {
+        await updateProject.mutateAsync({
+          id: projectId,
+          projectData: validation.data,
+        });
+      } else {
+        await createProject.mutateAsync(validation.data);
+      }
+      toast.success(isEditing ? "Project saved" : "Project created", {
+        id: toastId,
+      });
       router.push("/");
     } catch (error) {
-      const message = getErrorMessage(error);
+      const message = getErrorMessage(
+        error,
+        isEditing
+          ? "Project changes could not be saved."
+          : "Project could not be created.",
+      );
       setErrors([message]);
-      toast.error("Project could not be created", { id: toastId });
+      toast.error(
+        isEditing
+          ? "Project changes could not be saved"
+          : "Project could not be created",
+        { id: toastId },
+      );
     }
   };
+
+  if (
+    isEditing &&
+    (projectConfigQuery.isLoading ||
+      (projectConfigQuery.data && hydratedProjectId !== projectId))
+  ) {
+    return (
+      <div className="text-muted-foreground mx-auto w-full max-w-4xl px-5 py-12 text-sm sm:px-8">
+        <Loader2 className="mr-2 inline size-4 animate-spin" />
+        Loading project...
+      </div>
+    );
+  }
+
+  if (isEditing && (projectConfigQuery.isError || !projectConfigQuery.data)) {
+    return (
+      <div className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8">
+        <Alert variant="destructive">
+          <AlertCircle />
+          <AlertTitle>Project could not be loaded</AlertTitle>
+          <AlertDescription>Try refreshing the page.</AlertDescription>
+        </Alert>
+      </div>
+    );
+  }
 
   return (
     <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
@@ -266,7 +380,7 @@ export default function ClientView() {
 
       <header className="mt-6">
         <h1 className="text-3xl font-semibold tracking-tight">
-          Create project
+          {isEditing ? "Edit project" : "Create project"}
         </h1>
       </header>
 
@@ -285,7 +399,7 @@ export default function ClientView() {
               minLength={3}
               maxLength={20}
               autoFocus
-              disabled={createProject.isPending}
+              disabled={isSaving}
             />
           </div>
         </FormSection>
@@ -303,9 +417,7 @@ export default function ClientView() {
                     ? "Loading regions..."
                     : "Select a region"
                 }
-                disabled={
-                  instanceRegionsQuery.isLoading || createProject.isPending
-                }
+                disabled={instanceRegionsQuery.isLoading || isSaving}
                 options={instanceRegions.map((region) => ({
                   id: region.id,
                   label: `${region.name} (${region.slug})`,
@@ -325,9 +437,7 @@ export default function ClientView() {
                     : "Select a machine type"
                 }
                 disabled={
-                  !instanceRegionId ||
-                  instanceTypesQuery.isLoading ||
-                  createProject.isPending
+                  !instanceRegionId || instanceTypesQuery.isLoading || isSaving
                 }
                 options={instanceTypes.map((type) => ({
                   id: type.id,
@@ -350,9 +460,7 @@ export default function ClientView() {
                     ? "Loading regions..."
                     : "Select a region"
                 }
-                disabled={
-                  sandboxRegionsQuery.isLoading || createProject.isPending
-                }
+                disabled={sandboxRegionsQuery.isLoading || isSaving}
                 options={sandboxRegions.map((region) => ({
                   id: region.id,
                   label: `${region.name} (${region.slug})`,
@@ -372,9 +480,7 @@ export default function ClientView() {
                     : "Select a machine type"
                 }
                 disabled={
-                  !sandboxRegionId ||
-                  sandboxTypesQuery.isLoading ||
-                  createProject.isPending
+                  !sandboxRegionId || sandboxTypesQuery.isLoading || isSaving
                 }
                 options={sandboxTypes.map((type) => ({
                   id: type.id,
@@ -419,7 +525,7 @@ export default function ClientView() {
                       variant="outline"
                       size="sm"
                       aria-pressed={selected}
-                      disabled={createProject.isPending}
+                      disabled={isSaving}
                       onClick={() =>
                         toggleValue(repo.id, githubRepoIds, setGithubRepoIds)
                       }
@@ -474,7 +580,7 @@ export default function ClientView() {
                       variant="outline"
                       size="sm"
                       aria-pressed={selected}
-                      disabled={createProject.isPending}
+                      disabled={isSaving}
                       onClick={() =>
                         toggleValue(sshKey.id, sshKeyIds, setSshKeyIds)
                       }
@@ -509,7 +615,7 @@ export default function ClientView() {
                 placeholder="Runs before repositories are set up"
                 maxLength={500}
                 className="min-h-24 font-mono text-xs"
-                disabled={createProject.isPending}
+                disabled={isSaving}
               />
             </div>
             <div className="space-y-2">
@@ -521,7 +627,7 @@ export default function ClientView() {
                 placeholder="Runs after repositories are set up"
                 maxLength={500}
                 className="min-h-24 font-mono text-xs"
-                disabled={createProject.isPending}
+                disabled={isSaving}
               />
             </div>
             <div className="space-y-2">
@@ -533,7 +639,7 @@ export default function ClientView() {
                 placeholder="Starts the development environment"
                 maxLength={500}
                 className="min-h-24 font-mono text-xs"
-                disabled={createProject.isPending}
+                disabled={isSaving}
               />
             </div>
           </div>
@@ -542,7 +648,9 @@ export default function ClientView() {
         {errors.length ? (
           <Alert variant="destructive" className="mt-6">
             <AlertCircle />
-            <AlertTitle>Fix the following before creating</AlertTitle>
+            <AlertTitle>
+              Fix the following before {isEditing ? "saving" : "creating"}
+            </AlertTitle>
             <AlertDescription>
               <ul className="list-disc space-y-1 pl-5">
                 {errors.map((error) => (
@@ -554,21 +662,24 @@ export default function ClientView() {
         ) : null}
 
         <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
-          <Button
-            asChild
-            type="button"
-            variant="outline"
-            disabled={createProject.isPending}
-          >
+          <Button asChild type="button" variant="outline" disabled={isSaving}>
             <Link href="/">Cancel</Link>
           </Button>
-          <Button type="submit" disabled={createProject.isPending}>
-            {createProject.isPending ? (
+          <Button type="submit" disabled={isSaving}>
+            {isSaving ? (
               <Loader2 className="animate-spin" />
+            ) : isEditing ? (
+              <Check />
             ) : (
               <Plus />
             )}
-            {createProject.isPending ? "Creating..." : "Create project"}
+            {isSaving
+              ? isEditing
+                ? "Saving..."
+                : "Creating..."
+              : isEditing
+                ? "Save changes"
+                : "Create project"}
           </Button>
         </div>
       </form>

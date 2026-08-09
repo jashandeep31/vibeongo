@@ -5,10 +5,12 @@ import {
   deleteMultipleAllowedIpsFromProject,
   getGithubRepos,
   getProjectDomainsById,
+  getProjectConfigForEdit,
   getProjectGithubReposById,
   getProjects,
   getProjectsWithSessions,
   updateProjectRoutingTargetInstance,
+  updateProject,
   updateProjectDomainAccess,
   updateProjectDomainPort,
 } from "@/services/project-services";
@@ -39,6 +41,23 @@ export const useCreateProject = () => {
   });
 };
 
+export const useUpdateProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProject,
+    onSuccess: ({ data: project }, variables) => {
+      useProjectsStore.getState().updateProject(variables.id, project);
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "edit-config"],
+      });
+      return queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+  });
+};
+
 export const useGetGithubRepos = () =>
   useQuery({
     queryKey: ["github-repos"],
@@ -57,6 +76,13 @@ export const useGetProjectsWithSessions = (enabled = true) =>
     queryKey: ["projects", "with-sessions"],
     queryFn: getProjectsWithSessions,
     enabled,
+  });
+
+export const useGetProjectConfigForEdit = (id: string | null) =>
+  useQuery({
+    queryKey: ["project", id!, "edit-config"],
+    queryFn: () => getProjectConfigForEdit(id!),
+    enabled: Boolean(id),
   });
 
 export const useGetProjectDomainsById = (id: string | null, enabled = true) =>

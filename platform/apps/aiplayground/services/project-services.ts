@@ -2,12 +2,14 @@ import { BACKEND_URL } from "@/lib/constants";
 import {
   githubRepos,
   instances,
+  instanceRegions,
   projectDomainRouting,
   projects,
   projectSessions,
   proxyDomains,
   routingAllowedIps,
 } from "@repo/db";
+import { projectConfigValidator, type z } from "@repo/shared";
 import axios from "axios";
 
 export type Project = typeof projects.$inferSelect;
@@ -28,6 +30,23 @@ export type ProjectGithubRepo = Pick<
 export type CreateProjectResponse = {
   message: string;
   data: Project;
+};
+
+export type ProjectConfigForEdit = {
+  project: Project;
+  provider: (typeof instanceRegions.$inferSelect)["provider"];
+  instanceRegionId: (typeof instanceRegions.$inferSelect)["id"] | null;
+  instanceTypeId: Project["instance_type_id"];
+  sandboxTypeId: Project["sandbox_type_id"];
+  sandboxRegionId: string | null;
+  sshKeyIds: string[];
+  githubRepoIds: string[];
+  config: z.infer<typeof projectConfigValidator>["config"];
+};
+
+export type UpdateProjectInput = {
+  id: Project["id"];
+  projectData: unknown;
 };
 
 export type UpdateProjectRoutingTargetInstanceInput = {
@@ -77,6 +96,19 @@ export const createProject = async (
   return response.data;
 };
 
+export const updateProject = async ({
+  id,
+  projectData,
+}: UpdateProjectInput): Promise<CreateProjectResponse> => {
+  const response = await axios.patch(
+    `${BACKEND_URL}/api/v1/projects/${id}`,
+    projectData,
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
 export const createGithubRepo = async (input: {
   url: string;
   setup_script: string;
@@ -103,6 +135,17 @@ export const getProjectsWithSessions = async (): Promise<
 > => {
   const response = await axios.get(
     `${BACKEND_URL}/api/v1/projects/with-sessions`,
+    { withCredentials: true },
+  );
+
+  return response.data.data;
+};
+
+export const getProjectConfigForEdit = async (
+  id: string,
+): Promise<ProjectConfigForEdit> => {
+  const response = await axios.get(
+    `${BACKEND_URL}/api/v1/projects/${id}/get-project-config`,
     { withCredentials: true },
   );
 
