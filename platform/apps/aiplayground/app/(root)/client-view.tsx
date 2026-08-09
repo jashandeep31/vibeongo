@@ -1,6 +1,9 @@
 "use client";
 
-import { WorkComposer } from "@/components/work-composer";
+import {
+  WorkComposer,
+  type WorkComposerSubmitPayload,
+} from "@/components/work-composer";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
@@ -403,6 +406,7 @@ function SessionRow({
 }
 
 export default function ClientView() {
+  const router = useRouter();
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const resumeSession = useResumeProjectSession();
@@ -446,10 +450,16 @@ export default function ClientView() {
     );
   };
 
+  const handleCreateChat = (payload: WorkComposerSubmitPayload) => {
+    if (!payload.message.trim()) return;
+
+    router.push(`/chat/${crypto.randomUUID()}`);
+  };
+
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-16 lg:pt-32">
       <div>
-        <WorkComposer />
+        <WorkComposer onSubmit={handleCreateChat} />
       </div>
 
       <Tabs
@@ -464,14 +474,14 @@ export default function ClientView() {
           >
             <TabsTrigger
               value="chats"
-              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
             >
               <BotMessageSquare className="size-3.5" />
               Chats
             </TabsTrigger>
             <TabsTrigger
               value="projects"
-              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
             >
               <FolderKanban className="size-3.5" />
               Projects
@@ -492,8 +502,8 @@ export default function ClientView() {
           <section aria-label="Recent chats">
             <div className="space-y-1">
               {previewChats.map((chat) => (
-                <button
-                  type="button"
+                <Link
+                  href={`/chat/${chat.id}`}
                   key={chat.id}
                   className="group flex w-full cursor-pointer items-center gap-4 px-1 py-3 text-left"
                 >
@@ -501,7 +511,7 @@ export default function ClientView() {
                   <span className="text-muted-foreground group-hover:text-foreground min-w-0 truncate text-base transition-colors">
                     {chat.title}
                   </span>
-                </button>
+                </Link>
               ))}
             </div>
           </section>
