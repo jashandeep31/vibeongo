@@ -29,7 +29,6 @@ import {
 import {
   SidebarGroup,
   SidebarGroupContent,
-  SidebarGroupLabel,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
@@ -529,9 +528,6 @@ export function NavProjects({ projects }: { projects: Project[] }) {
   return (
     <>
       <SidebarGroup className="px-2 py-3">
-        <SidebarGroupLabel className="text-sidebar-foreground px-3 text-sm font-semibold">
-          Projects
-        </SidebarGroupLabel>
         <SidebarGroupContent>
           <SidebarMenu className="gap-1">
             {projects.map((project) => (
