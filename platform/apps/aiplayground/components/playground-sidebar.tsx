@@ -1,11 +1,19 @@
 "use client";
 
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
-import { useGetVibeongoChats } from "@/hooks/use-chats";
+import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
 import type { Chat } from "@/services/chat-services";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
+import { Button } from "@repo/ui/components/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@repo/ui/components/dropdown-menu";
 import {
   Sidebar,
   SidebarContent,
@@ -19,16 +27,20 @@ import {
 } from "@repo/ui/components/sidebar-v2";
 import {
   BotMessageSquare,
+  Ellipsis,
   Gauge,
   House,
   Loader2,
   Settings,
   SquarePen,
+  Trash2,
   WalletCards,
 } from "lucide-react";
+import axios from "axios";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { toast } from "sonner";
 
 const navigation = [
   {
@@ -71,54 +83,134 @@ function NavChats({
   isError: boolean;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const { isMobile, setOpenMobile } = useSidebar();
+  const deleteChat = useDeleteChat();
+  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
   };
 
-  return (
-    <SidebarGroup className="px-2 py-3">
-      <SidebarGroupContent>
-        {isPending ? (
-          <div className="text-muted-foreground flex items-center gap-2 px-3 py-4 text-sm">
-            <Loader2 className="size-4 animate-spin" />
-            Loading chats…
-          </div>
-        ) : isError ? (
-          <p className="text-muted-foreground px-3 py-4 text-sm">
-            Could not load chats.
-          </p>
-        ) : chats.length === 0 ? (
-          <p className="text-muted-foreground px-3 py-4 text-sm">
-            No chats yet.
-          </p>
-        ) : (
-          <SidebarMenu className="gap-1">
-            {chats.map((chat) => {
-              const url = `/chat/${chat.id}`;
+  const handleDeleteChat = () => {
+    if (!chatToDelete) return;
 
-              return (
-                <SidebarMenuItem key={chat.id}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={pathname === url}
-                    className="h-9 rounded-xl px-3 text-sm font-normal"
-                  >
-                    <Link href={url} onClick={closeMobileSidebar}>
-                      <BotMessageSquare />
-                      <span className="truncate" title={chat.name}>
-                        {chat.name}
-                      </span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              );
-            })}
-          </SidebarMenu>
-        )}
-      </SidebarGroupContent>
-    </SidebarGroup>
+    const chat = chatToDelete;
+    setChatToDelete(null);
+    deleteChat.mutate(chat.id, {
+      onSuccess: () => {
+        if (pathname === `/chat/${chat.id}`) {
+          router.push("/");
+        }
+        toast.success("Chat deleted");
+      },
+      onError: (error) => {
+        const responseMessage = axios.isAxiosError<{ message?: unknown }>(error)
+          ? error.response?.data?.message
+          : undefined;
+        toast.error(
+          typeof responseMessage === "string"
+            ? responseMessage
+            : "Failed to delete chat",
+        );
+      },
+    });
+  };
+
+  return (
+    <>
+      <SidebarGroup className="px-2 py-3">
+        <SidebarGroupContent>
+          {isPending ? (
+            <div className="text-muted-foreground flex items-center gap-2 px-3 py-4 text-sm">
+              <Loader2 className="size-4 animate-spin" />
+              Loading chats…
+            </div>
+          ) : isError ? (
+            <p className="text-muted-foreground px-3 py-4 text-sm">
+              Could not load chats.
+            </p>
+          ) : chats.length === 0 ? (
+            <p className="text-muted-foreground px-3 py-4 text-sm">
+              No chats yet.
+            </p>
+          ) : (
+            <SidebarMenu className="gap-1">
+              {chats.map((chat) => {
+                const url = `/chat/${chat.id}`;
+
+                return (
+                  <SidebarMenuItem key={chat.id}>
+                    <div className="flex items-center gap-1">
+                      <SidebarMenuButton
+                        asChild
+                        isActive={pathname === url}
+                        className="h-9 min-w-0 flex-1 rounded-xl px-3 text-sm font-normal"
+                      >
+                        <Link href={url} onClick={closeMobileSidebar}>
+                          <BotMessageSquare />
+                          <span className="truncate" title={chat.name}>
+                            {chat.name}
+                          </span>
+                        </Link>
+                      </SidebarMenuButton>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            className="shrink-0"
+                            aria-label={`Actions for ${chat.name}`}
+                            title={`Actions for ${chat.name}`}
+                            disabled={
+                              deleteChat.isPending &&
+                              deleteChat.variables === chat.id
+                            }
+                          >
+                            {deleteChat.isPending &&
+                            deleteChat.variables === chat.id ? (
+                              <Loader2 className="animate-spin" />
+                            ) : (
+                              <Ellipsis />
+                            )}
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            variant="destructive"
+                            disabled={deleteChat.isPending}
+                            onSelect={() => setChatToDelete(chat)}
+                          >
+                            <Trash2 />
+                            Delete
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          )}
+        </SidebarGroupContent>
+      </SidebarGroup>
+      <ConfirmationDialog
+        open={chatToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setChatToDelete(null);
+        }}
+        title="Delete chat?"
+        description={
+          chatToDelete
+            ? `Delete "${chatToDelete.name}"? This cannot be undone.`
+            : "This cannot be undone."
+        }
+        confirmText="Delete chat"
+        isDestructive
+        onConfirm={handleDeleteChat}
+      />
+    </>
   );
 }
 

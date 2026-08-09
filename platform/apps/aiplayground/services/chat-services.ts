@@ -29,3 +29,9 @@ export const getChats = async ({
 
   return response.data.data.chats;
 };
+
+export const deleteChat = async (id: Chat["id"]): Promise<void> => {
+  await axios.delete(`${BACKEND_URL}/api/v1/chats/${id}`, {
+    withCredentials: true,
+  });
+};
