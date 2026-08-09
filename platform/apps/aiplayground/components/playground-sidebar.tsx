@@ -5,9 +5,11 @@ import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
 import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
+import { useWebSocket } from "@/hooks/use-websocket";
 import type { Chat } from "@/services/chat-services";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
 import { Button } from "@repo/ui/components/button";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -216,6 +218,8 @@ function NavChats({
 
 export function PlaygroundSidebar() {
   const pathname = usePathname();
+  const queryClient = useQueryClient();
+  const { subscribeJsonMessage } = useWebSocket();
   const projectData = useProjectsStore((store) => store.projects);
   const sessionData = useSessionsStore((store) => store.sessions);
   const {
@@ -231,6 +235,16 @@ export function PlaygroundSidebar() {
   useEffect(() => {
     setActiveView(routeView);
   }, [pathname, routeView]);
+
+  useEffect(
+    () =>
+      subscribeJsonMessage((message) => {
+        if (message.type === "new-chat") {
+          void queryClient.invalidateQueries({ queryKey: ["chats"] });
+        }
+      }),
+    [queryClient, subscribeJsonMessage],
+  );
 
   const projects = projectData.map((project) => ({
     id: project.id,
