@@ -1,3 +1,8 @@
+/**
+ * @deprecated These legacy in-memory configuration tools are used only by the
+ * deprecated `projectAIAgent`. VibeOnGo does not register them. Keep this file
+ * only in case the legacy configuration workflow needs to be restored.
+ */
 import { projectValidatorForAIInput } from "@repo/shared";
 import { tool, Tool } from "ai";
 import { z } from "zod";

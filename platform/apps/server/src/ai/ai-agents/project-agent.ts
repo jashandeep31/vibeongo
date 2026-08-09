@@ -1,3 +1,8 @@
+/**
+ * @deprecated This legacy project agent is no longer used. Project chat now
+ * runs through `vibeongoAIAgent`. Keep this file only as a reference until the
+ * legacy agent is permanently removed.
+ */
 import { chatAnswer, chatQuestions, type ChatQuestionPayload } from "@repo/db";
 import { ModelMessage, stepCountIs, streamText } from "ai";
 import { prompts } from "../prompts/index.js";
