@@ -9,6 +9,7 @@ import {
 } from "@/components/dialogs/project-session-runtime-dialog";
 import { useTerminateInstance } from "@/hooks/use-instance";
 import {
+  useDeleteProject,
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
 } from "@/hooks/use-project";
@@ -64,6 +65,7 @@ import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { instances, projects, projectSessions } from "@repo/db";
+import axios from "axios";
 import { toast } from "sonner";
 
 type ProjectSessionNavItem = Pick<
@@ -452,6 +454,8 @@ function ProjectSessionNavItem({
 export function NavProjects({ projects }: { projects: Project[] }) {
   const params = useParams<{ projectId?: string }>();
   const activeProjectId = params.projectId;
+  const router = useRouter();
+  const deleteProject = useDeleteProject();
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
   const sessions = useSessionsStore((store) => store.sessions);
@@ -465,6 +469,7 @@ export function NavProjects({ projects }: { projects: Project[] }) {
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   useEffect(() => {
     setOpenProjectId(activeProjectId ?? null);
@@ -492,6 +497,32 @@ export function NavProjects({ projects }: { projects: Project[] }) {
         onSettled: () => setArchivingSessionId(null),
       },
     );
+  };
+
+  const handleDeleteProject = () => {
+    if (!projectToDelete) return;
+
+    const project = projectToDelete;
+    setProjectToDelete(null);
+    deleteProject.mutate(project.id, {
+      onSuccess: () => {
+        setOpenProjectId((current) =>
+          current === project.id ? null : current,
+        );
+        if (activeProjectId === project.id) router.push("/");
+        toast.success("Project deleted");
+      },
+      onError: (error) => {
+        const responseMessage = axios.isAxiosError<{ message?: unknown }>(error)
+          ? error.response?.data?.message
+          : undefined;
+        toast.error(
+          typeof responseMessage === "string"
+            ? responseMessage
+            : "Failed to delete project",
+        );
+      },
+    });
   };
 
   return (
@@ -564,6 +595,15 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                             New session
                           </DropdownMenuItem>
                         </CreateProjectSessionDialog>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem
+                          variant="destructive"
+                          disabled={deleteProject.isPending}
+                          onSelect={() => setProjectToDelete(project)}
+                        >
+                          <Trash2 />
+                          Delete project
+                        </DropdownMenuItem>
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </div>
@@ -595,6 +635,21 @@ export function NavProjects({ projects }: { projects: Project[] }) {
           if (!open) setRuntimeDialogSessionId(null);
         }}
         onSelect={handleRuntimeSelect}
+      />
+      <ConfirmationDialog
+        open={projectToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setProjectToDelete(null);
+        }}
+        title="Delete project?"
+        description={
+          projectToDelete
+            ? `Delete "${projectToDelete.name}"? This cannot be undone.`
+            : "This cannot be undone."
+        }
+        confirmText="Delete project"
+        isDestructive
+        onConfirm={handleDeleteProject}
       />
     </>
   );

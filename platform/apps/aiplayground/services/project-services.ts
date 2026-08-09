@@ -109,6 +109,16 @@ export const updateProject = async ({
   return response.data;
 };
 
+export const deleteProject = async (
+  id: Project["id"],
+): Promise<{ message: string }> => {
+  const response = await axios.delete(`${BACKEND_URL}/api/v1/projects/${id}`, {
+    withCredentials: true,
+  });
+
+  return response.data;
+};
+
 export const createGithubRepo = async (input: {
   url: string;
   setup_script: string;

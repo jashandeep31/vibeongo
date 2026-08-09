@@ -3,6 +3,7 @@ import {
   createGithubRepo,
   createProject,
   deleteMultipleAllowedIpsFromProject,
+  deleteProject,
   getGithubRepos,
   getProjectDomainsById,
   getProjectConfigForEdit,
@@ -51,6 +52,21 @@ export const useUpdateProject = () => {
       queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "edit-config"],
       });
+      return queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+  });
+};
+
+export const useDeleteProject = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProject,
+    onSuccess: (_, projectId) => {
+      useProjectsStore.getState().deleteProject(projectId);
+      queryClient.removeQueries({ queryKey: ["project", projectId] });
       return queryClient.invalidateQueries({
         queryKey: ["projects", "with-sessions"],
       });
