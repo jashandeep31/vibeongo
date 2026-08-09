@@ -1,6 +1,7 @@
 "use client";
 
 import { useAuthenticatedUser } from "@/hooks/use-user";
+import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
 import { formatInternalMoney } from "@repo/shared";
 import {
   Avatar,
@@ -22,7 +23,13 @@ import {
   SidebarMenuSkeleton,
   useSidebar,
 } from "@repo/ui/components/sidebar-v2";
-import { MoreHorizontal, Settings, UserRound, WalletCards } from "lucide-react";
+import {
+  MoreHorizontal,
+  Settings,
+  TriangleAlert,
+  UserRound,
+  WalletCards,
+} from "lucide-react";
 import Link from "next/link";
 
 export function PlaygroundUserMenu() {
@@ -69,6 +76,7 @@ export function PlaygroundUserMenu() {
       .slice(0, 2)
       .toUpperCase() || "U";
   const balance = formatInternalMoney(user.balance, 2);
+  const isBalanceLow = user.balance < LOW_BALANCE_THRESHOLD;
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
@@ -98,7 +106,19 @@ export function PlaygroundUserMenu() {
                   @{user.username}
                 </span>
               </span>
-              <MoreHorizontal className="text-muted-foreground ml-auto" />
+              {isBalanceLow ? (
+                <TriangleAlert
+                  className="ml-auto size-4 text-amber-500"
+                  aria-label="Low wallet balance"
+                />
+              ) : null}
+              <MoreHorizontal
+                className={
+                  isBalanceLow
+                    ? "text-muted-foreground"
+                    : "text-muted-foreground ml-auto"
+                }
+              />
             </SidebarMenuButton>
           </DropdownMenuTrigger>
 
@@ -128,9 +148,23 @@ export function PlaygroundUserMenu() {
               </div>
             </DropdownMenuLabel>
 
-            <div className="bg-muted mx-1 mb-1 rounded-lg px-3 py-2.5">
+            <div
+              className={`mx-1 mb-1 rounded-lg px-3 py-2.5 ${
+                isBalanceLow
+                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                  : "bg-muted"
+              }`}
+            >
               <p className="text-muted-foreground text-xs">Available balance</p>
               <p className="mt-0.5 text-sm font-semibold">${balance} credits</p>
+              {isBalanceLow ? (
+                <p className="mt-1 flex items-center gap-1.5 text-xs font-medium">
+                  <TriangleAlert className="size-3.5" />
+                  {user.balance <= 0
+                    ? "No credits remaining"
+                    : "Wallet balance is low"}
+                </p>
+              ) : null}
             </div>
 
             <DropdownMenuSeparator />

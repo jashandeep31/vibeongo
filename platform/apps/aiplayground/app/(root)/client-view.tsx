@@ -14,7 +14,9 @@ import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-dire
 import { useTerminateInstance } from "@/hooks/use-instance";
 import { useGetVibeongoChats } from "@/hooks/use-chats";
 import { useGetProjectGithubReposById } from "@/hooks/use-project";
+import { useAuthenticatedUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
@@ -54,6 +56,7 @@ import {
   Loader2,
   Play,
   Plus,
+  TriangleAlert,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
@@ -394,6 +397,7 @@ function SessionRow({
 
 export default function ClientView() {
   const router = useRouter();
+  const { data: user } = useAuthenticatedUser();
   const { isConnected, sendJsonMessage, subscribeJsonMessage } = useWebSocket();
   const {
     data: recentChats = [],
@@ -415,6 +419,8 @@ export default function ClientView() {
   );
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [activeTab, setActiveTab] = useState("chats");
+  const isBalanceLow = user && user.balance < LOW_BALANCE_THRESHOLD;
+  const hasNoBalance = user && user.balance <= 0;
 
   useEffect(
     () =>
@@ -502,6 +508,31 @@ export default function ClientView() {
           autoFocus
           focusOnTyping
         />
+        {isBalanceLow ? (
+          <div
+            role="alert"
+            className={`relative z-0 mx-7 -mt-3 flex min-h-12 items-center justify-between gap-3 rounded-b-2xl px-4 pt-5 pb-3 text-sm ${
+              hasNoBalance
+                ? "bg-destructive/10 text-destructive"
+                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+            }`}
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <TriangleAlert className="size-4 shrink-0" />
+              <span>
+                {hasNoBalance
+                  ? "No credits remaining. Add credits to continue using AI."
+                  : "Your wallet balance is low."}
+              </span>
+            </span>
+            <Link
+              href="/wallet"
+              className="shrink-0 font-medium underline underline-offset-4"
+            >
+              Add credits
+            </Link>
+          </div>
+        ) : null}
       </div>
 
       <Tabs
