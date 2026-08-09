@@ -655,6 +655,8 @@ export function NavProjects({ projects }: { projects: Project[] }) {
         }
         confirmText="Delete project"
         isDestructive
+        lockSeconds={3}
+        requiredConfirmationText="delete"
         onConfirm={handleDeleteProject}
       />
     </>

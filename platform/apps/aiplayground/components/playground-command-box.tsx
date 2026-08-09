@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Folder,
   Globe,
+  House,
   Loader2,
   MessageSquarePlus,
   Play,
@@ -57,7 +58,8 @@ type CommandView =
   | { kind: "domains"; projectId: string };
 
 const staticNavigation = [
-  { title: "Home", url: "/", icon: SquarePen },
+  { title: "Home", url: "/", icon: House },
+  { title: "New Chat", url: "/", icon: SquarePen },
   { title: "Wallet", url: "/wallet", icon: WalletCards },
   { title: "Settings", url: "/settings", icon: Settings },
 ] as const;
@@ -601,7 +603,7 @@ export function PlaygroundCommandBox() {
             <CommandGroup heading="Navigation">
               {staticNavigation.map((item) => (
                 <CommandItem
-                  key={item.url}
+                  key={item.title}
                   value={`navigate ${item.title} ${item.url}`}
                   onSelect={() => {
                     router.push(item.url);
