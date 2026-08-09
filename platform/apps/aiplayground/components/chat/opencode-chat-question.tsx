@@ -1,8 +1,9 @@
 "use client";
 
 import MarkdownRenderer from "@/components/markdown-renderer";
+import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
-import type { ToolPart } from "@opencode-ai/sdk/v2/client";
+import type { SnapshotFileDiff, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { cn } from "@repo/ui/lib/utils";
 import { Check, CircleAlert, Copy } from "lucide-react";
@@ -12,6 +13,7 @@ export type OpencodeChatTurn = {
   id: string;
   question: string;
   images: Array<{ id: string; url: string; name: string }>;
+  summaryDiffs: SnapshotFileDiff[];
   content: Array<
     | { id: string; type: "text"; text: string }
     | { id: string; type: "tools"; tools: ToolPart[] }
@@ -43,6 +45,11 @@ export function OpencodeChatQuestion({
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
     .trim();
+  const firstEditGroupId = item.content.find(
+    (content) =>
+      content.type === "tools" &&
+      content.tools.every((tool) => isEditTool(tool)),
+  )?.id;
 
   return (
     <div
@@ -80,7 +87,15 @@ export function OpencodeChatQuestion({
                 content.type === "text" ? (
                   <MarkdownRenderer key={content.id} content={content.text} />
                 ) : content.type === "tools" ? (
-                  <OpencodeToolCall key={content.id} tools={content.tools} />
+                  <OpencodeToolCall
+                    key={content.id}
+                    tools={content.tools}
+                    summaryDiffs={
+                      content.id === firstEditGroupId
+                        ? item.summaryDiffs
+                        : undefined
+                    }
+                  />
                 ) : content.type === "error" ? (
                   <Alert
                     key={content.id}
@@ -105,6 +120,15 @@ export function OpencodeChatQuestion({
                   </div>
                 ) : null,
               )}
+              {!firstEditGroupId
+                ? item.summaryDiffs.map((diff, index) => (
+                    <OpencodeFileDiff
+                      key={`${diff.file ?? "summary-diff"}-${index}`}
+                      diff={diff}
+                      defaultOpen={index === 0}
+                    />
+                  ))
+                : null}
             </div>
             {answer ? (
               <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs opacity-0 transition-opacity group-hover/response:opacity-100 focus-within:opacity-100">
@@ -142,6 +166,10 @@ export function OpencodeChatQuestion({
       </div>
     </div>
   );
+}
+
+function isEditTool(tool: ToolPart) {
+  return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }
 
 function formatDuration(durationMs?: number) {

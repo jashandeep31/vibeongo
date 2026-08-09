@@ -53,6 +53,10 @@ function createChatTurns(messages: SessionMessages) {
             ]
           : [],
       ),
+      summaryDiffs:
+        typeof message.info.summary === "object" && message.info.summary
+          ? message.info.summary.diffs
+          : [],
       content: [] as Array<
         | { id: string; type: "text"; text: string }
         | { id: string; type: "tools"; tools: ToolPart[] }
@@ -109,6 +113,12 @@ function createChatTurns(messages: SessionMessages) {
           )
         ) {
           previousContent.tools.push(part);
+        } else if (
+          isEditTool(part) &&
+          previousContent?.type === "tools" &&
+          previousContent.tools.every((tool) => isEditTool(tool))
+        ) {
+          previousContent.tools.push(part);
         } else {
           turn.content.push({ id: part.id, type: "tools", tools: [part] });
         }
@@ -131,6 +141,10 @@ function createChatTurns(messages: SessionMessages) {
   }
 
   return turns;
+}
+
+function isEditTool(tool: ToolPart) {
+  return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }
 
 function getChatError(error: ChatError) {
