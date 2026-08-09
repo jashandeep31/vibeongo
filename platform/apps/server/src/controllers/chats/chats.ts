@@ -1,4 +1,4 @@
-import { and, desc, chats, db, eq } from "@repo/db";
+import { and, chatAgentEnum, chats, db, desc, eq } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
@@ -13,15 +13,24 @@ const renameChatSchema = z.object({
   name: z.string().trim().min(1).max(30),
 });
 
+const getUserChatsQuerySchema = z.object({
+  agentName: z.enum(chatAgentEnum.enumValues).default("project-handler"),
+  limit: z.coerce.number().int().min(1).max(100).optional(),
+});
+
 export const getUserChats = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
   if (!user) throw new AppError("Authentication is required", 401);
 
-  const chatRows = await db
+  const { agentName, limit } = getUserChatsQuerySchema.parse(req.query);
+
+  const chatQuery = db
     .select()
     .from(chats)
-    .where(eq(chats.user_id, user.id))
-    .orderBy(desc(chats.updated_at));
+    .where(and(eq(chats.user_id, user.id), eq(chats.chat_agent, agentName)))
+    .orderBy(desc(chats.updated_at))
+    .$dynamic();
+  const chatRows = await (limit ? chatQuery.limit(limit) : chatQuery);
 
   res.status(200).json({
     data: {

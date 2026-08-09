@@ -12,6 +12,7 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import { useTerminateInstance } from "@/hooks/use-instance";
+import { useGetVibeongoChats } from "@/hooks/use-chats";
 import { useGetProjectGithubReposById } from "@/hooks/use-project";
 import {
   useArchiveProjectSession,
@@ -62,21 +63,6 @@ import { toast } from "sonner";
 type SessionEntry = ReturnType<
   typeof useSessionsStore.getState
 >["sessions"][number];
-
-const previewChats = [
-  {
-    id: "chat-1",
-    title: "Plan the next product release",
-  },
-  {
-    id: "chat-2",
-    title: "Improve the onboarding flow",
-  },
-  {
-    id: "chat-3",
-    title: "Investigate deployment failures",
-  },
-];
 
 function getRepoDirectory(fullName: string) {
   const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
@@ -407,6 +393,11 @@ function SessionRow({
 
 export default function ClientView() {
   const router = useRouter();
+  const {
+    data: recentChats = [],
+    isPending: areChatsPending,
+    isError: areChatsError,
+  } = useGetVibeongoChats(5);
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const resumeSession = useResumeProjectSession();
@@ -500,20 +491,35 @@ export default function ClientView() {
 
         <TabsContent value="chats">
           <section aria-label="Recent chats">
-            <div className="space-y-1">
-              {previewChats.map((chat) => (
-                <Link
-                  href={`/chat/${chat.id}`}
-                  key={chat.id}
-                  className="group flex w-full cursor-pointer items-center gap-4 px-1 py-3 text-left"
-                >
-                  <BotMessageSquare className="text-muted-foreground group-hover:text-foreground size-5 shrink-0 transition-colors" />
-                  <span className="text-muted-foreground group-hover:text-foreground min-w-0 truncate text-base transition-colors">
-                    {chat.title}
-                  </span>
-                </Link>
-              ))}
-            </div>
+            {areChatsPending ? (
+              <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-sm">
+                <Loader2 className="size-4 animate-spin" />
+                Loading chats…
+              </div>
+            ) : areChatsError ? (
+              <p className="text-muted-foreground py-10 text-center text-sm">
+                Could not load recent chats.
+              </p>
+            ) : recentChats.length === 0 ? (
+              <p className="text-muted-foreground py-10 text-center text-sm">
+                No recent chats.
+              </p>
+            ) : (
+              <div className="space-y-1">
+                {recentChats.map((chat) => (
+                  <Link
+                    href={`/chat/${chat.id}`}
+                    key={chat.id}
+                    className="group flex w-full cursor-pointer items-center gap-4 px-1 py-3 text-left"
+                  >
+                    <BotMessageSquare className="text-muted-foreground group-hover:text-foreground size-5 shrink-0 transition-colors" />
+                    <span className="text-muted-foreground group-hover:text-foreground min-w-0 truncate text-base transition-colors">
+                      {chat.name}
+                    </span>
+                  </Link>
+                ))}
+              </div>
+            )}
           </section>
         </TabsContent>
 

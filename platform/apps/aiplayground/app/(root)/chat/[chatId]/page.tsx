@@ -43,7 +43,7 @@ function createSampleChat(chatId: string): {
       id: chatId,
       name: "Plan the next product release",
       user_id: "00000000-0000-0000-0000-000000000000",
-      chat_agent: "vibeongo-agent",
+      chat_agent: "project-handler",
       created_at: createdAt,
       updated_at: createdAt,
     },
