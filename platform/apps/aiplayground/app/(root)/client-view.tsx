@@ -467,7 +467,7 @@ export default function ClientView() {
   };
 
   const handleCreateChat = (payload: WorkComposerSubmitPayload) => {
-    if (!payload.message.trim() || isCreatingChat) return;
+    if (!payload.message.trim() || isCreatingChat) return false;
 
     const sent = sendJsonMessage({
       type: "new-chat",
@@ -485,10 +485,11 @@ export default function ClientView() {
 
     if (!sent) {
       toast.error("Chat service is still connecting. Please try again.");
-      return;
+      return false;
     }
 
     setIsCreatingChat(true);
+    return true;
   };
 
   return (

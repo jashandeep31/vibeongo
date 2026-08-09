@@ -258,6 +258,12 @@ export const newQuestionHandler = async (
         usage,
         finish_reason: finishReason,
       });
+      await tx
+        .update(chats)
+        .set({ updated_at: new Date() })
+        .where(
+          and(eq(chats.id, parsedResponse.chatId), eq(chats.user_id, userId)),
+        );
     });
 
     broadcastToChat(parsedResponse.chatId, {

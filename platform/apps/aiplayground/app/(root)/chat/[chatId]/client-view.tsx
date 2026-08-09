@@ -6,7 +6,15 @@ import {
   type WorkComposerSubmitPayload,
 } from "@/components/work-composer";
 import { useWebSocket } from "@/hooks/use-websocket";
-import type { chatAnswer, chatQuestions, chats } from "@repo/db";
+import {
+  useChatStore,
+  type Chat,
+  type ChatAnswer,
+  type ChatAnswerDelta,
+  type ChatQuestion,
+  type ChatTurn,
+  type PersistedChatTurn,
+} from "@/store/chat-store";
 import { Button } from "@repo/ui/components/button";
 import {
   ArrowDown,
@@ -22,24 +30,6 @@ import {
   type ReactNode,
 } from "react";
 import { toast } from "sonner";
-
-type Chat = typeof chats.$inferSelect;
-type ChatQuestion = typeof chatQuestions.$inferSelect;
-type ChatAnswer = typeof chatAnswer.$inferSelect;
-type ChatTurn = ChatQuestion & { answer: ChatAnswer | null };
-type PersistedChatTurn = ChatQuestion & { chatAnswer: ChatAnswer | null };
-
-type AnswerDelta = {
-  chatId: string;
-  questionId: string;
-  answerId: string;
-  answerDelta: string;
-  reasoningDelta: string;
-  memory?: string;
-  steps?: ChatAnswer["steps"];
-  usage?: ChatAnswer["usage"];
-  finishReason?: string | null;
-};
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
@@ -122,33 +112,29 @@ function ChatTurnView({
   );
 }
 
-function upsertTurn(turns: ChatTurn[], nextTurn: ChatTurn) {
-  const existingIndex = turns.findIndex((turn) => turn.id === nextTurn.id);
-  const nextTurns =
-    existingIndex === -1
-      ? [...turns, nextTurn]
-      : turns.map((turn, index) => (index === existingIndex ? nextTurn : turn));
-
-  return nextTurns.sort(
-    (left, right) => left.order_number - right.order_number,
-  );
-}
-
 export default function ChatClientView({ chatId }: { chatId: string }) {
   const { status, isConnected, sendJsonMessage, subscribeJsonMessage } =
     useWebSocket();
-  const [chat, setChat] = useState<Chat | null>(null);
-  const [turns, setTurns] = useState<ChatTurn[]>([]);
-  const [streamingTurn, setStreamingTurn] = useState<ChatTurn | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isNotFound, setIsNotFound] = useState(false);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [isSending, setIsSending] = useState(false);
+  const chat = useChatStore((state) => state.chat);
+  const turns = useChatStore((state) => state.turns);
+  const streamingTurn = useChatStore((state) => state.streamingTurn);
+  const isLoading = useChatStore((state) => state.isLoading);
+  const isNotFound = useChatStore((state) => state.isNotFound);
+  const loadError = useChatStore((state) => state.loadError);
+  const isSending = useChatStore((state) => state.isSending);
+  const resetChat = useChatStore((state) => state.reset);
+  const loadChat = useChatStore((state) => state.load);
+  const markNotFound = useChatStore((state) => state.markNotFound);
+  const markLoadError = useChatStore((state) => state.markLoadError);
+  const setSending = useChatStore((state) => state.setSending);
+  const startStreaming = useChatStore((state) => state.startStreaming);
+  const appendAnswerDelta = useChatStore((state) => state.appendAnswerDelta);
+  const finishTurn = useChatStore((state) => state.finishTurn);
+  const clearStreaming = useChatStore((state) => state.clearStreaming);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const scrollAreaRef = useRef<HTMLElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const shouldStickToBottomRef = useRef(true);
-  const hasLoadedChatRef = useRef(false);
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     requestAnimationFrame(() => {
@@ -159,22 +145,17 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
   }, []);
 
   useEffect(() => {
-    setChat(null);
-    setTurns([]);
-    setStreamingTurn(null);
-    setIsLoading(true);
-    setIsNotFound(false);
-    setLoadError(null);
-    setIsSending(false);
-    hasLoadedChatRef.current = false;
-  }, [chatId]);
+    resetChat(chatId);
+    shouldStickToBottomRef.current = true;
+    setShowScrollButton(false);
+    return () => resetChat("");
+  }, [chatId, resetChat]);
 
   useEffect(() => {
     const unsubscribe = subscribeJsonMessage((message) => {
       if (message.type === "chat-data") {
         if (!isRecord(message.data)) {
-          setLoadError("The server returned an invalid chat response.");
-          setIsLoading(false);
+          markLoadError("The server returned an invalid chat response.");
           return;
         }
 
@@ -184,24 +165,14 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
         };
 
         if (!data.chat || data.chat.id !== chatId) {
-          setIsNotFound(true);
-          setIsLoading(false);
+          markNotFound();
           return;
         }
 
-        hasLoadedChatRef.current = true;
-        setChat(data.chat);
-        setStreamingTurn(null);
-        setIsSending(false);
-        setTurns(
-          (Array.isArray(data.chatQuestions) ? data.chatQuestions : []).map(
-            ({ chatAnswer, ...question }) => ({
-              ...question,
-              answer: chatAnswer,
-            }),
-          ),
+        loadChat(
+          data.chat,
+          Array.isArray(data.chatQuestions) ? data.chatQuestions : [],
         );
-        setIsLoading(false);
         window.setTimeout(() => scrollToBottom(), 0);
         return;
       }
@@ -211,40 +182,17 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
         const turn = message.data as ChatTurn;
         if (turn.chat_id !== chatId) return;
 
-        setStreamingTurn(turn);
-        setIsSending(false);
+        startStreaming(turn);
         scrollToBottom("smooth");
         return;
       }
 
       if (message.type === "answer-delta") {
         if (!isRecord(message.data)) return;
-        const delta = message.data as AnswerDelta;
+        const delta = message.data as ChatAnswerDelta;
         if (delta.chatId !== chatId) return;
 
-        setStreamingTurn((current) => {
-          if (
-            !current?.answer ||
-            current.id !== delta.questionId ||
-            current.answer.id !== delta.answerId
-          ) {
-            return current;
-          }
-
-          return {
-            ...current,
-            answer: {
-              ...current.answer,
-              answer: current.answer.answer + delta.answerDelta,
-              reasoning:
-                (current.answer.reasoning ?? "") + delta.reasoningDelta,
-              memory: delta.memory ?? current.answer.memory,
-              steps: delta.steps ?? current.answer.steps,
-              usage: delta.usage ?? current.answer.usage,
-              finish_reason: delta.finishReason ?? current.answer.finish_reason,
-            },
-          };
-        });
+        appendAnswerDelta(delta);
 
         if (shouldStickToBottomRef.current) scrollToBottom();
         return;
@@ -255,11 +203,7 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
         const turn = message.data as ChatTurn;
         if (turn.chat_id !== chatId) return;
 
-        setTurns((current) => upsertTurn(current, turn));
-        setStreamingTurn((current) =>
-          current?.id === turn.id ? null : current,
-        );
-        setIsSending(false);
+        finishTurn(turn);
         scrollToBottom("smooth");
         return;
       }
@@ -269,15 +213,12 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
           isRecord(message.data) && typeof message.data.error === "string"
             ? message.data.error
             : "The chat request failed";
-        setIsSending(false);
-        setStreamingTurn(null);
-
-        if (!hasLoadedChatRef.current) {
-          setLoadError(errorMessage);
-          setIsLoading(false);
+        if (!useChatStore.getState().chat) {
+          markLoadError(errorMessage);
           return;
         }
 
+        clearStreaming();
         toast.error(errorMessage);
       }
     });
@@ -288,15 +229,22 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
         data: { id: chatId },
       });
 
-      if (!joined) setIsLoading(true);
+      if (!joined) markLoadError("Could not connect to the chat server.");
     }
 
     return unsubscribe;
   }, [
+    appendAnswerDelta,
     chatId,
+    clearStreaming,
+    finishTurn,
     isConnected,
+    loadChat,
+    markLoadError,
+    markNotFound,
     scrollToBottom,
     sendJsonMessage,
+    startStreaming,
     subscribeJsonMessage,
   ]);
 
@@ -338,7 +286,7 @@ export default function ChatClientView({ chatId }: { chatId: string }) {
       return false;
     }
 
-    setIsSending(true);
+    setSending(true);
     scrollToBottom("smooth");
     return true;
   };
