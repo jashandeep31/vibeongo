@@ -1,7 +1,16 @@
 "use client";
 
 import { BACKEND_URL } from "@/lib/constants";
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  createElement,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 export type WebSocketMessage = {
   type?: unknown;
@@ -15,6 +24,17 @@ export type WebSocketStatus =
   | "error";
 
 type MessageListener<TMessage> = (message: TMessage) => void;
+
+type WebSocketContextValue<TMessage extends WebSocketMessage> = {
+  websocket: WebSocket | null;
+  status: WebSocketStatus;
+  isConnected: boolean;
+  sendJsonMessage: (message: unknown) => boolean;
+  subscribeJsonMessage: (listener: MessageListener<TMessage>) => () => void;
+};
+
+const WebSocketContext =
+  createContext<WebSocketContextValue<WebSocketMessage> | null>(null);
 
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -37,15 +57,11 @@ const getWebSocketUrl = () => {
   return url.toString();
 };
 
-export function useWebSocket<
-  TMessage extends WebSocketMessage = WebSocketMessage,
->(enabled = true) {
+export function WebSocketProvider({ children }: { children: ReactNode }) {
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
-  const [status, setStatus] = useState<WebSocketStatus>(
-    enabled ? "connecting" : "disconnected",
-  );
+  const [status, setStatus] = useState<WebSocketStatus>("connecting");
   const socketRef = useRef<WebSocket | null>(null);
-  const listenersRef = useRef(new Set<MessageListener<TMessage>>());
+  const listenersRef = useRef(new Set<MessageListener<WebSocketMessage>>());
   const reconnectAttemptRef = useRef(0);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(
     null,
@@ -61,7 +77,7 @@ export function useWebSocket<
   }, []);
 
   const subscribeJsonMessage = useCallback(
-    (listener: MessageListener<TMessage>) => {
+    (listener: MessageListener<WebSocketMessage>) => {
       listenersRef.current.add(listener);
 
       return () => {
@@ -72,13 +88,6 @@ export function useWebSocket<
   );
 
   useEffect(() => {
-    if (!enabled) {
-      socketRef.current = null;
-      setWebsocket(null);
-      setStatus("disconnected");
-      return;
-    }
-
     let active = true;
     let currentSocket: WebSocket | null = null;
 
@@ -132,9 +141,9 @@ export function useWebSocket<
       socket.onmessage = (event) => {
         if (!active || typeof event.data !== "string") return;
 
-        let message: TMessage;
+        let message: WebSocketMessage;
         try {
-          message = JSON.parse(event.data) as TMessage;
+          message = JSON.parse(event.data) as WebSocketMessage;
         } catch {
           return;
         }
@@ -171,13 +180,31 @@ export function useWebSocket<
       socketRef.current = null;
       currentSocket?.close(1000, "WebSocket hook unmounted");
     };
-  }, [enabled]);
+  }, []);
 
-  return {
-    websocket,
-    status,
-    isConnected: status === "connected",
-    sendJsonMessage,
-    subscribeJsonMessage,
-  };
+  return createElement(
+    WebSocketContext.Provider,
+    {
+      value: {
+        websocket,
+        status,
+        isConnected: status === "connected",
+        sendJsonMessage,
+        subscribeJsonMessage,
+      },
+    },
+    children,
+  );
+}
+
+export function useWebSocket<
+  TMessage extends WebSocketMessage = WebSocketMessage,
+>() {
+  const context = useContext(WebSocketContext);
+
+  if (!context) {
+    throw new Error("useWebSocket must be used inside WebSocketProvider");
+  }
+
+  return context as WebSocketContextValue<TMessage>;
 }
