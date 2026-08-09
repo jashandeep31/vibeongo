@@ -10,6 +10,7 @@ import {
   projectSshKeys,
   projectGithubRepos,
   projectConfig,
+  projectSessions,
 } from "@repo/db";
 import { projectConfigValidator } from "@repo/shared";
 import { createDomainsForProject } from "../../lib/create-domain-for-project.js";
@@ -59,6 +60,14 @@ export const createProjectWithConfigAndUserIdService = async (
       })
       .returning();
     if (!projectRow) throw new AppError("project not created", 400);
+
+    await tx.insert(projectSessions).values({
+      name: "default",
+      description: "",
+      user_id: userId,
+      project_id: projectRow.id,
+      category: "manual",
+    });
 
     const configForStorage = normalizeProjectConfigForStorage(
       parsedData.config,
