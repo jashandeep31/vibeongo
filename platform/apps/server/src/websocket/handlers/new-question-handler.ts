@@ -87,6 +87,7 @@ export const newQuestionHandler = async (
     id: crypto.randomUUID(),
     question: parsedResponse.question,
     order_number: lastQuestionAndAnswer.question.order_number + 1,
+    payload: { mentions: [] },
     chat_id: parsedResponse.chatId,
     created_at: new Date(),
     updated_at: new Date(),

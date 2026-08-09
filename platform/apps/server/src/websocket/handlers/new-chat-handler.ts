@@ -57,6 +57,7 @@ export const newChatHandler = async (socket: WebSocket, eventData: unknown) => {
   const newQuestion: typeof chatQuestions.$inferSelect = {
     id: crypto.randomUUID(),
     question: parsedData.question,
+    payload: { mentions: [] },
     order_number: 0,
     chat_id: chatId,
     created_at: new Date(),
