@@ -4,6 +4,8 @@ import {
   instances,
   instanceRegions,
   projectDomainRouting,
+  projectFileData,
+  projectFiles,
   projects,
   projectSessions,
   proxyDomains,
@@ -26,6 +28,13 @@ export type ProjectGithubRepo = Pick<
   typeof githubRepos.$inferSelect,
   "id" | "full_name"
 >;
+
+export type ProjectFile = typeof projectFiles.$inferSelect & {
+  projectFileData?: Pick<
+    typeof projectFileData.$inferSelect,
+    "id" | "version" | "created_at" | "updated_at"
+  > & { content: string };
+};
 
 export type CreateProjectResponse = {
   message: string;
@@ -160,6 +169,73 @@ export const getProjectConfigForEdit = async (
   );
 
   return response.data.data;
+};
+
+export const getProjectFilesById = async (
+  id: string,
+): Promise<ProjectFile[]> => {
+  const response = await axios.get(
+    `${BACKEND_URL}/api/v1/projects/${id}/project-files`,
+    { withCredentials: true },
+  );
+
+  return response.data.data;
+};
+
+export type CreateProjectFileInput = {
+  id: string;
+  name: string;
+  path: string;
+  content: string;
+};
+
+export const createProjectFile = async ({
+  id,
+  name,
+  path,
+  content,
+}: CreateProjectFileInput): Promise<{ message: string }> => {
+  const response = await axios.post(
+    `${BACKEND_URL}/api/v1/projects/${id}/project-files`,
+    { name, path, content },
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export type UpdateProjectFileInput = CreateProjectFileInput & {
+  fileId: string;
+};
+
+export const updateProjectFile = async ({
+  id,
+  fileId,
+  name,
+  path,
+  content,
+}: UpdateProjectFileInput): Promise<{ message: string }> => {
+  const response = await axios.patch(
+    `${BACKEND_URL}/api/v1/projects/${id}/project-files/${fileId}`,
+    { name, path, content },
+    { withCredentials: true },
+  );
+
+  return response.data;
+};
+
+export const deleteProjectFile = async ({
+  id,
+  fileId,
+}: Pick<UpdateProjectFileInput, "id" | "fileId">): Promise<{
+  message: string;
+}> => {
+  const response = await axios.delete(
+    `${BACKEND_URL}/api/v1/projects/${id}/project-files/${fileId}`,
+    { withCredentials: true },
+  );
+
+  return response.data;
 };
 
 export const getProjectDomainsById = async (

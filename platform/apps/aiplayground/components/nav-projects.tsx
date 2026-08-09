@@ -52,6 +52,7 @@ import {
   Clock3,
   ChevronRight,
   Ellipsis,
+  FileCode2,
   Folder,
   Loader2,
   Pencil,
@@ -582,6 +583,15 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                           >
                             <Pencil />
                             Edit project
+                          </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem asChild>
+                          <Link
+                            href={`/projects/${project.id}/env`}
+                            onClick={closeMobileSidebar}
+                          >
+                            <FileCode2 />
+                            Edit environment
                           </Link>
                         </DropdownMenuItem>
                         <CreateProjectSessionDialog

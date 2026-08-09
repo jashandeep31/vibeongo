@@ -1,17 +1,21 @@
 import {
   addAllowedIpToProject,
+  createProjectFile,
   createGithubRepo,
   createProject,
   deleteMultipleAllowedIpsFromProject,
   deleteProject,
+  deleteProjectFile,
   getGithubRepos,
   getProjectDomainsById,
   getProjectConfigForEdit,
   getProjectGithubReposById,
+  getProjectFilesById,
   getProjects,
   getProjectsWithSessions,
   updateProjectRoutingTargetInstance,
   updateProject,
+  updateProjectFile,
   updateProjectDomainAccess,
   updateProjectDomainPort,
 } from "@/services/project-services";
@@ -100,6 +104,49 @@ export const useGetProjectConfigForEdit = (id: string | null) =>
     queryFn: () => getProjectConfigForEdit(id!),
     enabled: Boolean(id),
   });
+
+export const useGetProjectFilesById = (id: string | null) =>
+  useQuery({
+    queryKey: ["project", id!, "files"],
+    queryFn: () => getProjectFilesById(id!),
+    enabled: Boolean(id),
+  });
+
+export const useCreateProjectFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: createProjectFile,
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "files"],
+      }),
+  });
+};
+
+export const useUpdateProjectFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateProjectFile,
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "files"],
+      }),
+  });
+};
+
+export const useDeleteProjectFile = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: deleteProjectFile,
+    onSuccess: (_, variables) =>
+      queryClient.invalidateQueries({
+        queryKey: ["project", variables.id, "files"],
+      }),
+  });
+};
 
 export const useGetProjectDomainsById = (id: string | null, enabled = true) =>
   useQuery({
