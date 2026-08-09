@@ -4,7 +4,7 @@ import { prompts } from "../prompts/index.js";
 import {
   createProjectSessionInstanceAITool,
   getProjectGithubRepos,
-} from "../ai-tools/session-agent-tools.js";
+} from "../agent-tools/session-agent-tools.js";
 
 export async function* createProjectSessionAgent({
   message,

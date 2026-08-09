@@ -2,22 +2,20 @@ import { chatAnswer, chatQuestions, type ChatQuestionPayload } from "@repo/db";
 import { ModelMessage, stepCountIs, streamText } from "ai";
 import { prompts } from "../prompts/index.js";
 import {
-  getOtherProjectConfigById,
-  createNewGithubRepo,
-  getAllProjectNameAndIds,
-  getInstanceCatalogAITool,
-  getUserReposAITool,
-  getUserSshKeysAITool,
-  getUserConfigsAITool,
-  createAndSaveProjectTool,
-  updateProjectByIdTool,
-  getCurrentConfigAITool,
-  updateConfigInMemAITool,
-  getProjectFilesAITool,
-  getProjectFilesDataAITool,
-  updateProjectFileDataAITool,
-  createProjectFileWithDataAITool,
-} from "../../ai/ai-tools/project-ai-tools.js";
+  addGithubRepositoryAgentTool,
+  createProjectAgentTool,
+  createProjectFileAgentTool,
+  getProjectConfigAgentTool,
+  getInstanceCatalogAgentTool,
+  getUserReposListAgentTool,
+  getUserSshKeysAgentTool,
+  getUserConfigsAgentTool,
+  listProjectFilesAgentTool,
+  listProjectsAgentTool,
+  readProjectFileAgentTool,
+  updateProjectAgentTool,
+  updateProjectFileAgentTool,
+} from "../agent-tools/vibeongo-agent-tools.js";
 
 type QuesitonWithAnswer = typeof chatQuestions.$inferSelect & {
   chatAnswer: typeof chatAnswer.$inferSelect | null;
@@ -46,7 +44,6 @@ export async function* vibeongoAIAgent({
   query,
   payload,
   userId,
-  prevConfig,
   QAs,
 }: vibeongoAIAgent): AsyncGenerator<{
   text: string;
@@ -75,22 +72,19 @@ export async function* vibeongoAIAgent({
     system: prompts.vibeongo.systemPrompt(),
     reasoning: "high",
     tools: {
-      // weatherTool,
-      getUserReposAITool: getUserReposAITool(userId),
-      getUserSshKeysAITool: getUserSshKeysAITool(userId),
-      getUserConfigsAITool: getUserConfigsAITool(userId),
-      getInstanceCatalogAITool: getInstanceCatalogAITool(),
-      getCurrentConfig: getCurrentConfigAITool(prevConfig),
-      updateConfig: updateConfigInMemAITool,
-      getAllProjectNameAndIds: getAllProjectNameAndIds(userId),
-      getOtherProjectConfigById: getOtherProjectConfigById(userId),
-      createNewGithubRepo: createNewGithubRepo(userId),
-      createAndSaveProjectAITool: createAndSaveProjectTool(userId),
-      updateProjectById: updateProjectByIdTool(userId),
-      getProjectFilesAITool: getProjectFilesAITool(userId),
-      getProjectFilesDataAITool: getProjectFilesDataAITool(userId),
-      updateProjectFileDataAITool: updateProjectFileDataAITool(userId),
-      createProjectFileWithDataAITool: createProjectFileWithDataAITool(userId),
+      getUserRepositories: getUserReposListAgentTool(userId),
+      getUserSshKeys: getUserSshKeysAgentTool(userId),
+      getUserConfigurations: getUserConfigsAgentTool(userId),
+      getInstanceCatalog: getInstanceCatalogAgentTool(),
+      listProjects: listProjectsAgentTool(userId),
+      getProjectConfig: getProjectConfigAgentTool(userId),
+      addGithubRepository: addGithubRepositoryAgentTool(userId),
+      createProject: createProjectAgentTool(userId),
+      updateProject: updateProjectAgentTool(userId),
+      listProjectFiles: listProjectFilesAgentTool(userId),
+      readProjectFile: readProjectFileAgentTool(userId),
+      updateProjectFile: updateProjectFileAgentTool(userId),
+      createProjectFile: createProjectFileAgentTool(userId),
     },
     stopWhen: stepCountIs(40),
     messages: [
@@ -100,7 +94,6 @@ export async function* vibeongoAIAgent({
         content: resolveChatQuestionMentions(query, payload),
       },
     ],
-    // toolChoice: { type: "tool", toolName: "updateConfig" },
   });
 
   let updatedConfig = null;
