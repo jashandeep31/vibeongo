@@ -1,5 +1,6 @@
 "use client";
 
+import { WorkComposer } from "@/components/work-composer";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
@@ -33,11 +34,18 @@ import {
   DropdownMenuTrigger,
 } from "@repo/ui/components/dropdown-menu";
 import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@repo/ui/components/tabs";
+import {
   Archive,
   BotMessageSquare,
   ChevronDown,
   Clock3,
   Ellipsis,
+  FolderKanban,
   Loader2,
   Play,
   Plus,
@@ -51,6 +59,21 @@ import { toast } from "sonner";
 type SessionEntry = ReturnType<
   typeof useSessionsStore.getState
 >["sessions"][number];
+
+const previewChats = [
+  {
+    id: "chat-1",
+    title: "Plan the next product release",
+  },
+  {
+    id: "chat-2",
+    title: "Improve the onboarding flow",
+  },
+  {
+    id: "chat-3",
+    title: "Investigate deployment failures",
+  },
+];
 
 function getRepoDirectory(fullName: string) {
   const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
@@ -393,6 +416,7 @@ export default function ClientView() {
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
+  const [activeTab, setActiveTab] = useState("chats");
 
   const handleRuntimeSelect = (runtime: ProjectSessionRuntime) => {
     if (!runtimeDialogSessionId) return;
@@ -423,155 +447,178 @@ export default function ClientView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-16 sm:px-8 sm:py-20">
-      <header className="max-w-2xl">
-        <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">
-          Playground
-        </h1>
-      </header>
+    <div className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+      <div>
+        <WorkComposer />
+      </div>
 
-      <section className="mt-8" aria-labelledby="agent-heading">
-        <button
-          type="button"
-          disabled
-          className="bg-muted/50 flex w-full cursor-not-allowed items-center justify-between gap-4 rounded-lg px-4 py-3 text-left"
-        >
-          <span className="min-w-0 flex-1">
-            <span id="agent-heading" className="block text-sm font-medium">
-              VibeOnGo agent
-            </span>
-          </span>
-          <span className="text-muted-foreground shrink-0 text-xs">
-            Coming soon
-          </span>
-        </button>
-      </section>
+      <Tabs
+        value={activeTab}
+        onValueChange={setActiveTab}
+        className="mt-10 flex-col gap-4"
+      >
+        <div className="flex items-center justify-between gap-3">
+          <TabsList
+            aria-label="Browse workspace"
+            className="bg-muted/60 h-9 rounded-full border p-1 shadow-sm"
+          >
+            <TabsTrigger
+              value="chats"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
+            >
+              <BotMessageSquare className="size-3.5" />
+              Chats
+            </TabsTrigger>
+            <TabsTrigger
+              value="projects"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
+            >
+              <FolderKanban className="size-3.5" />
+              Projects
+            </TabsTrigger>
+          </TabsList>
 
-      <section className="mt-12" aria-labelledby="projects-heading">
-        <div className="mb-4 flex items-end justify-between gap-4">
-          <div>
-            <h2 id="projects-heading" className="text-base font-semibold">
-              Your projects
-            </h2>
-          </div>
-          <div className="flex items-center gap-3">
+          {activeTab === "projects" && (
             <Button asChild size="sm">
               <Link href="/projects/create">
                 <Plus />
                 Create project
               </Link>
             </Button>
-          </div>
+          )}
         </div>
 
-        {projects.length === 0 ? (
-          <div className="bg-muted/40 rounded-lg px-4 py-10 text-center">
-            <p className="text-sm font-medium">No projects yet</p>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Your projects and sessions will appear here.
-            </p>
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {projects.map((project) => {
-              const projectSessions = sessions.filter(
-                (entry) => entry.session.project_id === project.id,
-              );
-              const runningCount = projectSessions.filter(
-                (entry) => entry.state === "running",
-              ).length;
-              return (
-                <Collapsible
-                  key={project.id}
-                  defaultOpen={projects.length === 1}
+        <TabsContent value="chats">
+          <section aria-label="Recent chats">
+            <div className="space-y-1">
+              {previewChats.map((chat) => (
+                <button
+                  type="button"
+                  key={chat.id}
+                  className="group flex w-full cursor-pointer items-center gap-4 px-1 py-3 text-left"
                 >
-                  <div className="bg-muted/25 overflow-hidden rounded-lg">
-                    <div className="flex items-center pr-2">
-                      <CollapsibleTrigger asChild>
-                        <button
-                          type="button"
-                          className="hover:bg-muted/50 group flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors"
-                        >
-                          <span className="min-w-0 flex-1">
-                            <span className="flex items-center gap-2">
-                              <span className="truncate text-sm font-medium">
-                                {project.name}
-                              </span>
-                              {runningCount > 0 ? (
-                                <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                                  <span className="size-1.5 rounded-full bg-emerald-500" />
-                                  {runningCount} running
-                                </span>
-                              ) : null}
-                            </span>
-                          </span>
-                          <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">
-                            {projectSessions.length}{" "}
-                            {projectSessions.length === 1
-                              ? "session"
-                              : "sessions"}
-                          </span>
-                          <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-                        </button>
-                      </CollapsibleTrigger>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Actions for ${project.name}`}
-                          >
-                            <Ellipsis />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <CreateProjectSessionDialog
-                            projectId={project.id}
-                            projectName={project.name}
-                          >
-                            <DropdownMenuItem
-                              onSelect={(event) => event.preventDefault()}
-                            >
-                              <Plus />
-                              New session
-                            </DropdownMenuItem>
-                          </CreateProjectSessionDialog>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                  <BotMessageSquare className="text-muted-foreground group-hover:text-foreground size-5 shrink-0 transition-colors" />
+                  <span className="text-muted-foreground group-hover:text-foreground min-w-0 truncate text-base transition-colors">
+                    {chat.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </section>
+        </TabsContent>
 
-                    <CollapsibleContent>
-                      <div className="space-y-2 px-3 pb-3">
-                        {projectSessions.length === 0 ? (
-                          <div className="text-muted-foreground px-3 py-6 text-center text-sm">
-                            This project does not have any sessions yet.
+        <TabsContent value="projects">
+          <section aria-label="Projects">
+            {projects.length === 0 ? (
+              <div className="bg-muted/40 rounded-lg px-4 py-10 text-center">
+                <p className="text-sm font-medium">No projects yet</p>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  Your projects and sessions will appear here.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {projects.map((project) => {
+                  const projectSessions = sessions.filter(
+                    (entry) => entry.session.project_id === project.id,
+                  );
+                  const runningCount = projectSessions.filter(
+                    (entry) => entry.state === "running",
+                  ).length;
+                  return (
+                    <Collapsible
+                      key={project.id}
+                      defaultOpen={projects.length === 1}
+                    >
+                      <div className="bg-muted/25 overflow-hidden rounded-lg">
+                        <div className="flex items-center pr-2">
+                          <CollapsibleTrigger asChild>
+                            <button
+                              type="button"
+                              className="hover:bg-muted/50 group flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors"
+                            >
+                              <span className="min-w-0 flex-1">
+                                <span className="flex items-center gap-2">
+                                  <span className="truncate text-sm font-medium">
+                                    {project.name}
+                                  </span>
+                                  {runningCount > 0 ? (
+                                    <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
+                                      <span className="size-1.5 rounded-full bg-emerald-500" />
+                                      {runningCount} running
+                                    </span>
+                                  ) : null}
+                                </span>
+                              </span>
+                              <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">
+                                {projectSessions.length}{" "}
+                                {projectSessions.length === 1
+                                  ? "session"
+                                  : "sessions"}
+                              </span>
+                              <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
+                            </button>
+                          </CollapsibleTrigger>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-sm"
+                                aria-label={`Actions for ${project.name}`}
+                              >
+                                <Ellipsis />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <CreateProjectSessionDialog
+                                projectId={project.id}
+                                projectName={project.name}
+                              >
+                                <DropdownMenuItem
+                                  onSelect={(event) => event.preventDefault()}
+                                >
+                                  <Plus />
+                                  New session
+                                </DropdownMenuItem>
+                              </CreateProjectSessionDialog>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+
+                        <CollapsibleContent>
+                          <div className="space-y-2 px-3 pb-3">
+                            {projectSessions.length === 0 ? (
+                              <div className="text-muted-foreground px-3 py-6 text-center text-sm">
+                                This project does not have any sessions yet.
+                              </div>
+                            ) : (
+                              projectSessions.map((entry) => (
+                                <SessionRow
+                                  key={entry.session.id}
+                                  entry={entry}
+                                  isResumePending={
+                                    resumingSessionId === entry.session.id
+                                  }
+                                  isArchivePending={
+                                    archivingSessionId === entry.session.id
+                                  }
+                                  onResume={setRuntimeDialogSessionId}
+                                  onArchive={handleArchive}
+                                />
+                              ))
+                            )}
                           </div>
-                        ) : (
-                          projectSessions.map((entry) => (
-                            <SessionRow
-                              key={entry.session.id}
-                              entry={entry}
-                              isResumePending={
-                                resumingSessionId === entry.session.id
-                              }
-                              isArchivePending={
-                                archivingSessionId === entry.session.id
-                              }
-                              onResume={setRuntimeDialogSessionId}
-                              onArchive={handleArchive}
-                            />
-                          ))
-                        )}
+                        </CollapsibleContent>
                       </div>
-                    </CollapsibleContent>
-                  </div>
-                </Collapsible>
-              );
-            })}
-          </div>
-        )}
-      </section>
+                    </Collapsible>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        </TabsContent>
+      </Tabs>
 
       <ProjectSessionRuntimeDialog
         open={runtimeDialogSessionId !== null}
