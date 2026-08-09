@@ -153,3 +153,51 @@ func LoadAndValidate() (Config, error) {
 	}
 	return validateConfig(file)
 }
+
+// DisableTerminateAfterDone permanently disables automatic termination in the
+// local config. It intentionally has no boolean argument so callers cannot use
+// it to enable termination.
+func DisableTerminateAfterDone() error {
+	path, err := ResolveConfigPath()
+	if err != nil {
+		return err
+	}
+
+	file, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("failed to read config: %w", err)
+	}
+
+	var configJSON map[string]json.RawMessage
+	if err := json.Unmarshal(file, &configJSON); err != nil {
+		return fmt.Errorf("failed to parse config: %w", err)
+	}
+
+	instanceConfigJSON, ok := configJSON["instanceConfig"]
+	if !ok {
+		return fmt.Errorf("instanceConfig is missing from config")
+	}
+
+	var instanceConfig map[string]json.RawMessage
+	if err := json.Unmarshal(instanceConfigJSON, &instanceConfig); err != nil {
+		return fmt.Errorf("failed to parse instanceConfig: %w", err)
+	}
+
+	instanceConfig["terminate"] = json.RawMessage("false")
+	updatedInstanceConfig, err := json.Marshal(instanceConfig)
+	if err != nil {
+		return fmt.Errorf("failed to encode instanceConfig: %w", err)
+	}
+	configJSON["instanceConfig"] = updatedInstanceConfig
+
+	updatedConfig, err := json.MarshalIndent(configJSON, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to encode updated config: %w", err)
+	}
+
+	if err := os.WriteFile(path, append(updatedConfig, '\n'), 0o600); err != nil {
+		return fmt.Errorf("failed to write config: %w", err)
+	}
+
+	return nil
+}

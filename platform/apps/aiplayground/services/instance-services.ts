@@ -48,3 +48,25 @@ export const terminateInstance = async (
 
   return response.data;
 };
+
+export type UpdateInstanceTimeInput = {
+  id: string;
+  action: "increase" | "decrease";
+  timeInMinutes: number;
+};
+
+export const updateInstanceTime = async ({
+  id,
+  action,
+  timeInMinutes,
+}: UpdateInstanceTimeInput): Promise<typeof instances.$inferSelect> => {
+  const response = await axios.patch(
+    `${BACKEND_URL}/api/v1/instances/${id}`,
+    {
+      terminatesTimeUpdate: { action, timeInMinutes },
+    },
+    { withCredentials: true },
+  );
+
+  return response.data.data;
+};

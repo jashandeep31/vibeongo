@@ -2,6 +2,7 @@
 
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
+import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import { Button } from "@repo/ui/components/button";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 import Link from "next/link";
@@ -55,7 +56,8 @@ export default function NewOpencodeChatPage() {
 
   return (
     <div className="relative flex min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
-      <div className="absolute top-3 right-3 z-50">
+      <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <RuntimePulseMenu projectSessionId={chatId} />
         <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
       </div>
       <NewOpencodeChat

@@ -42,12 +42,13 @@ func Start() error {
 
 	// TODO: please use the proper cors way
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000", "https://vibeongo.com", "https://www.vibeongo.com"},
+		AllowOrigins: []string{"http://localhost:3000", "http://localhost:3003", "https://vibeongo.com", "https://www.vibeongo.com"},
 		AllowHeaders: []string{
 			echo.HeaderOrigin,
 			echo.HeaderContentType,
 			echo.HeaderAccept,
 			echo.HeaderAuthorization,
+			"X-Vibeongo-Proxy-Authorization",
 		},
 	}))
 

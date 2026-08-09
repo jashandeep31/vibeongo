@@ -4,6 +4,7 @@ import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { PromptInput } from "@/components/chat/prompt-input";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
+import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
@@ -315,7 +316,8 @@ export function OpencodeSessionChat({
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
-      <div className="absolute top-3 right-3 z-50">
+      <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <RuntimePulseMenu projectSessionId={chatId} />
         <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
       </div>
       <div

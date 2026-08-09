@@ -1,6 +1,7 @@
 import {
   getInstances,
   terminateInstance,
+  updateInstanceTime,
   type GetInstancesFilters,
 } from "@/services/instance-services";
 import {
@@ -43,6 +44,19 @@ export const useTerminateInstance = (projectId: string, sessionId: string) => {
         queryKey: ["project-session", sessionId],
       });
       queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+};
+
+export const useUpdateInstanceTime = (sessionId: string) => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: updateInstanceTime,
+    onSuccess: (instance) => {
+      useSessionsStore.getState().updateSession(sessionId, { instance });
+      queryClient.setQueryData(["instance", instance.id], instance);
+      return queryClient.invalidateQueries({ queryKey: ["instances"] });
     },
   });
 };
