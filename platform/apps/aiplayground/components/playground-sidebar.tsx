@@ -20,6 +20,7 @@ import {
 import {
   BotMessageSquare,
   Gauge,
+  House,
   Loader2,
   Settings,
   SquarePen,
@@ -33,7 +34,13 @@ const navigation = [
   {
     title: "Home",
     url: "/",
+    icon: House,
+  },
+  {
+    title: "New Chat",
+    url: "/",
     icon: SquarePen,
+    isActive: false,
   },
   {
     title: "Limits",
