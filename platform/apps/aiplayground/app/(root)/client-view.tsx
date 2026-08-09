@@ -12,11 +12,12 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import { useTerminateInstance } from "@/hooks/use-instance";
-import { useGetVibeongoChats } from "@/hooks/use-chats";
+import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
 import { useGetProjectGithubReposById } from "@/hooks/use-project";
 import { useAuthenticatedUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
+import type { Chat } from "@/services/chat-services";
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
@@ -58,6 +59,7 @@ import {
   Plus,
   TriangleAlert,
   Trash2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -408,6 +410,8 @@ export default function ClientView() {
   const sessions = useSessionsStore((store) => store.sessions);
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
+  const deleteChat = useDeleteChat();
+  const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
     string | null
   >(null);
@@ -470,6 +474,17 @@ export default function ClientView() {
         onSettled: () => setArchivingSessionId(null),
       },
     );
+  };
+
+  const handleDeleteChat = () => {
+    if (!chatToDelete) return;
+
+    const chatId = chatToDelete.id;
+    setChatToDelete(null);
+    deleteChat.mutate(chatId, {
+      onSuccess: () => toast.success("Chat deleted"),
+      onError: () => toast.error("Failed to delete chat"),
+    });
   };
 
   const handleCreateChat = (payload: WorkComposerSubmitPayload) => {
@@ -588,18 +603,43 @@ export default function ClientView() {
               </p>
             ) : (
               <div className="space-y-1">
-                {recentChats.map((chat) => (
-                  <Link
-                    href={`/chat/${chat.id}`}
-                    key={chat.id}
-                    className="group flex w-full cursor-pointer items-center gap-4 px-1 py-3 text-left"
-                  >
-                    <BotMessageSquare className="text-muted-foreground group-hover:text-foreground size-5 shrink-0 transition-colors" />
-                    <span className="text-muted-foreground group-hover:text-foreground min-w-0 truncate text-base transition-colors">
-                      {chat.name}
-                    </span>
-                  </Link>
-                ))}
+                {recentChats.map((chat) => {
+                  const isDeleting =
+                    deleteChat.isPending && deleteChat.variables === chat.id;
+
+                  return (
+                    <div
+                      key={chat.id}
+                      className="group flex w-full items-center gap-1"
+                    >
+                      <Link
+                        href={`/chat/${chat.id}`}
+                        className="flex min-w-0 flex-1 cursor-pointer items-center gap-4 px-1 py-3 text-left"
+                      >
+                        <BotMessageSquare className="text-muted-foreground group-hover:text-foreground size-5 shrink-0 transition-colors" />
+                        <span className="text-muted-foreground group-hover:text-foreground min-w-0 truncate text-base transition-colors">
+                          {chat.name}
+                        </span>
+                      </Link>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        className="text-muted-foreground hover:bg-destructive/10 hover:text-destructive shrink-0 transition-opacity md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
+                        aria-label={`Delete ${chat.name}`}
+                        title={`Delete ${chat.name}`}
+                        disabled={deleteChat.isPending}
+                        onClick={() => setChatToDelete(chat)}
+                      >
+                        {isDeleting ? (
+                          <Loader2 className="animate-spin" />
+                        ) : (
+                          <X />
+                        )}
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </section>
@@ -724,6 +764,21 @@ export default function ClientView() {
           if (!open) setRuntimeDialogSessionId(null);
         }}
         onSelect={handleRuntimeSelect}
+      />
+      <ConfirmationDialog
+        open={chatToDelete !== null}
+        onOpenChange={(open) => {
+          if (!open) setChatToDelete(null);
+        }}
+        title="Delete chat?"
+        description={
+          chatToDelete
+            ? `Delete "${chatToDelete.name}"? This cannot be undone.`
+            : "This cannot be undone."
+        }
+        confirmText="Delete chat"
+        isDestructive
+        onConfirm={handleDeleteChat}
       />
     </div>
   );

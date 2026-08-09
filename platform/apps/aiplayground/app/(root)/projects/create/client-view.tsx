@@ -3,6 +3,12 @@
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { GithubRepoDialog } from "@/components/dialogs/github-repo-dialog";
 import {
+  buildProjectPackages,
+  createDefaultProjectServicesConfig,
+  hydrateProjectServicesConfig,
+  ProjectServicesConfig,
+} from "@/components/project-services-config";
+import {
   useInstanceRegions,
   useInstanceTypes,
   useSandboxRegions,
@@ -50,34 +56,7 @@ import {
 } from "react";
 import { toast } from "sonner";
 
-type ProjectPackages = z.infer<
-  typeof projectConfigValidator
->["config"]["packages"];
 type ProjectPorts = z.infer<typeof projectConfigValidator>["config"]["ports"];
-
-const DEFAULT_PROJECT_PACKAGES: ProjectPackages = [
-  {
-    name: "docker",
-    config: { containers: [] },
-  },
-  {
-    name: "opencode",
-    config: {
-      auth_json: {},
-      use_user_config: true,
-      model: "",
-      requirePassword: false,
-    },
-  },
-  {
-    name: "codex",
-    config: { auth_json: {}, use_user_config: true },
-  },
-  {
-    name: "pi",
-    config: { auth_json: {}, use_user_config: true },
-  },
-];
 
 function FormSection({
   title,
@@ -166,8 +145,8 @@ export default function ClientView({ projectId }: { projectId?: string }) {
   const [initialScript, setInitialScript] = useState("");
   const [finalScript, setFinalScript] = useState("");
   const [devScript, setDevScript] = useState("");
-  const [packages, setPackages] = useState<ProjectPackages>(
-    DEFAULT_PROJECT_PACKAGES,
+  const [servicesConfig, setServicesConfig] = useState(
+    createDefaultProjectServicesConfig,
   );
   const [ports, setPorts] = useState<ProjectPorts>([]);
   const [hydratedProjectId, setHydratedProjectId] = useState<string | null>(
@@ -218,7 +197,9 @@ export default function ClientView({ projectId }: { projectId?: string }) {
     setInitialScript(projectConfig.project.initial_script);
     setFinalScript(projectConfig.project.final_script);
     setDevScript(projectConfig.project.dev_script);
-    setPackages(projectConfig.config.packages);
+    setServicesConfig(
+      hydrateProjectServicesConfig(projectConfig.config.packages),
+    );
     setPorts(projectConfig.config.ports);
     setHydratedProjectId(projectConfig.project.id);
   }, [hydratedProjectId, projectConfigQuery.data]);
@@ -281,6 +262,19 @@ export default function ClientView({ projectId }: { projectId?: string }) {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
+
+    let packages;
+    try {
+      packages = buildProjectPackages(servicesConfig);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Invalid service configuration";
+      setErrors([message]);
+      toast.error(message);
+      return;
+    }
 
     const payload = {
       name,
@@ -643,6 +637,14 @@ export default function ClientView({ projectId }: { projectId?: string }) {
               />
             </div>
           </div>
+        </FormSection>
+
+        <FormSection title="Additional services">
+          <ProjectServicesConfig
+            value={servicesConfig}
+            disabled={isSaving}
+            onChange={setServicesConfig}
+          />
         </FormSection>
 
         {errors.length ? (
