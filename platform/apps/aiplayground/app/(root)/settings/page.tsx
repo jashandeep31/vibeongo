@@ -229,7 +229,7 @@ export default function SettingsPage() {
   ] as const;
 
   return (
-    <div className="mx-auto w-full max-w-4xl space-y-12 px-5 py-8 md:space-y-16 md:px-10 md:py-12">
+    <div className="mx-auto w-full max-w-6xl space-y-12 px-5 py-8 md:space-y-16 md:px-10 md:py-12">
       <header>
         <p className="text-muted-foreground text-sm">Workspace preferences</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Settings</h1>

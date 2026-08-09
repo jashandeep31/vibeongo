@@ -98,7 +98,7 @@ export default function WalletPage() {
     creditGrantsQuery.data?.page ?? creditGrantsPage;
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-5 py-8 md:px-10 md:py-12">
+    <div className="mx-auto w-full max-w-6xl px-5 py-8 md:px-10 md:py-12">
       <header>
         <p className="text-muted-foreground text-sm">Usage and credits</p>
         <h1 className="mt-1 text-3xl font-semibold tracking-tight">Wallet</h1>

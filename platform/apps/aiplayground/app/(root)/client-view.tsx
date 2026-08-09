@@ -447,7 +447,7 @@ export default function ClientView() {
   };
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8 sm:py-16">
+    <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-16 lg:pt-32">
       <div>
         <WorkComposer />
       </div>

@@ -350,7 +350,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
       (projectConfigQuery.data && hydratedProjectId !== projectId))
   ) {
     return (
-      <div className="text-muted-foreground mx-auto w-full max-w-4xl px-5 py-12 text-sm sm:px-8">
+      <div className="text-muted-foreground mx-auto w-full max-w-6xl px-5 py-12 text-sm sm:px-8">
         <Loader2 className="mr-2 inline size-4 animate-spin" />
         Loading project...
       </div>
@@ -359,7 +359,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
 
   if (isEditing && (projectConfigQuery.isError || !projectConfigQuery.data)) {
     return (
-      <div className="mx-auto w-full max-w-4xl px-5 py-12 sm:px-8">
+      <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8">
         <Alert variant="destructive">
           <AlertCircle />
           <AlertTitle>Project could not be loaded</AlertTitle>
@@ -370,7 +370,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-4xl px-5 py-8 sm:px-8 sm:py-12">
+    <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
         <Link href="/">
           <ArrowLeft />

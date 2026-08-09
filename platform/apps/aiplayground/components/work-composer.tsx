@@ -21,12 +21,12 @@ export function WorkComposer() {
   };
 
   return (
-    <section className="w-full max-w-4xl" aria-labelledby="work-heading">
+    <section className="w-full" aria-labelledby="work-heading">
       <h1
         id="work-heading"
         className="mb-8 text-center text-3xl font-medium tracking-tight sm:text-4xl"
       >
-        What should we work on?
+        What&apos;s in your mind?
       </h1>
 
       <form ref={formRef} onSubmit={handleSubmit}>
