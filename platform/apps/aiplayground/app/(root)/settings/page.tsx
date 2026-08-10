@@ -109,31 +109,44 @@ export default function SettingsPage() {
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
   const sshKeysQuery = useSshKeys();
-  const updateSettings = useUpdateUserSettings();
+  const updateTelegramSettings = useUpdateUserSettings();
+  const updateModelSettings = useUpdateUserSettings();
+  const updateTerminationSettings = useUpdateUserSettings();
   const deleteSshKey = useDeleteSshKey();
   const userSettings = settingsQuery.data;
   const [telegramChatId, setTelegramChatId] = useState("");
+  const [isTelegramDirty, setIsTelegramDirty] = useState(false);
   const [modelForm, setModelForm] = useState({
     defaultPrModel: "",
     defaultIssueFixerModel: "",
     defaultCommentModel: "",
     defaultModel: "",
   });
+  const [isModelFormDirty, setIsModelFormDirty] = useState(false);
   const [terminationForm, setTerminationForm] = useState({
     defaultIssueInstanceAutoTerminateAfterMinutes: "",
     defaultPrInstanceAutoTerminateAfterMinutes: "",
     defaultManualInstanceAutoTerminateAfterMinutes: "",
   });
+  const [isTerminationFormDirty, setIsTerminationFormDirty] = useState(false);
 
   useEffect(() => {
-    if (!userSettings) return;
+    if (!userSettings || isTelegramDirty) return;
     setTelegramChatId(userSettings.telegram_chat_id?.toString() ?? "");
+  }, [isTelegramDirty, userSettings]);
+
+  useEffect(() => {
+    if (!userSettings || isModelFormDirty) return;
     setModelForm({
       defaultPrModel: userSettings.default_pr_model ?? "",
       defaultIssueFixerModel: userSettings.default_issue_fixer_model ?? "",
       defaultCommentModel: userSettings.default_comment_model ?? "",
       defaultModel: userSettings.default_model ?? "",
     });
+  }, [isModelFormDirty, userSettings]);
+
+  useEffect(() => {
+    if (!userSettings || isTerminationFormDirty) return;
     setTerminationForm({
       defaultIssueInstanceAutoTerminateAfterMinutes:
         userSettings.default_issue_instance_auto_terminate_after_minutes.toString(),
@@ -142,7 +155,7 @@ export default function SettingsPage() {
       defaultManualInstanceAutoTerminateAfterMinutes:
         userSettings.default_manual_instance_auto_terminate_after_minutes.toString(),
     });
-  }, [userSettings]);
+  }, [isTerminationFormDirty, userSettings]);
 
   const saveTelegram = async () => {
     const parsedChatId = telegramChatId.trim() ? Number(telegramChatId) : null;
@@ -151,7 +164,10 @@ export default function SettingsPage() {
       return;
     }
     try {
-      await updateSettings.mutateAsync({ telegramChatId: parsedChatId });
+      await updateTelegramSettings.mutateAsync({
+        telegramChatId: parsedChatId,
+      });
+      setIsTelegramDirty(false);
       toast.success("Telegram chat ID saved");
     } catch {
       toast.error("Failed to save Telegram chat ID");
@@ -160,7 +176,8 @@ export default function SettingsPage() {
 
   const saveModels = async () => {
     try {
-      await updateSettings.mutateAsync(modelForm);
+      await updateModelSettings.mutateAsync(modelForm);
+      setIsModelFormDirty(false);
       toast.success("Default models saved");
     } catch {
       toast.error("Failed to save default models");
@@ -191,7 +208,8 @@ export default function SettingsPage() {
       return;
     }
     try {
-      await updateSettings.mutateAsync(values);
+      await updateTerminationSettings.mutateAsync(values);
+      setIsTerminationFormDirty(false);
       toast.success("Auto-termination settings saved");
     } catch {
       toast.error("Failed to save auto-termination settings");
@@ -312,15 +330,6 @@ export default function SettingsPage() {
           title="Telegram"
           description="Chat ID used for bot notifications."
           icon={Bot}
-          action={
-            <Button
-              size="sm"
-              onClick={saveTelegram}
-              disabled={!userSettings || updateSettings.isPending}
-            >
-              <Save /> Save
-            </Button>
-          }
         >
           {settingsQuery.isLoading ? (
             <Skeleton className="h-9 max-w-xl" />
@@ -330,28 +339,39 @@ export default function SettingsPage() {
             <Input
               inputMode="numeric"
               value={telegramChatId}
-              onChange={(event) => setTelegramChatId(event.target.value)}
+              onChange={(event) => {
+                setTelegramChatId(event.target.value);
+                setIsTelegramDirty(true);
+              }}
               placeholder="e.g. -1001234567890"
-              disabled={!userSettings || updateSettings.isPending}
+              disabled={!userSettings || updateTelegramSettings.isPending}
               aria-label="Telegram chat ID"
               className="max-w-xl"
             />
           )}
+          <div className="mt-4 flex max-w-xl justify-end">
+            <Button
+              type="button"
+              size="sm"
+              onClick={saveTelegram}
+              disabled={
+                !userSettings ||
+                !isTelegramDirty ||
+                updateTelegramSettings.isPending
+              }
+            >
+              <Save />
+              {updateTelegramSettings.isPending
+                ? "Saving..."
+                : "Save Telegram"}
+            </Button>
+          </div>
         </SettingsSection>
 
         <SettingsSection
           title="Default models"
           description="Models used when a workflow does not specify one."
           icon={Settings2}
-          action={
-            <Button
-              size="sm"
-              onClick={saveModels}
-              disabled={!userSettings || updateSettings.isPending}
-            >
-              <Save /> Save
-            </Button>
-          }
         >
           <div className="grid max-w-2xl gap-5">
             {modelRows.map((row) => (
@@ -361,16 +381,32 @@ export default function SettingsPage() {
                 </span>
                 <Input
                   value={modelForm[row.name]}
-                  onChange={(event) =>
+                  onChange={(event) => {
                     setModelForm((current) => ({
                       ...current,
                       [row.name]: event.target.value,
-                    }))
-                  }
-                  disabled={!userSettings || updateSettings.isPending}
+                    }));
+                    setIsModelFormDirty(true);
+                  }}
+                  disabled={!userSettings || updateModelSettings.isPending}
                 />
               </label>
             ))}
+            <div className="flex justify-end">
+              <Button
+                type="button"
+                size="sm"
+                onClick={saveModels}
+                disabled={
+                  !userSettings ||
+                  !isModelFormDirty ||
+                  updateModelSettings.isPending
+                }
+              >
+                <Save />
+                {updateModelSettings.isPending ? "Saving..." : "Save models"}
+              </Button>
+            </div>
           </div>
         </SettingsSection>
       </div>
@@ -379,36 +415,51 @@ export default function SettingsPage() {
         title="Instance auto-termination"
         description="Stop idle runtimes automatically. Values are in minutes (15–1200)."
         icon={TimerReset}
-        action={
-          <Button
-            size="sm"
-            onClick={saveTermination}
-            disabled={!userSettings || updateSettings.isPending}
-          >
-            <Save /> Save
-          </Button>
-        }
       >
-        <div className="grid gap-3 md:grid-cols-3">
-          {terminationRows.map((row) => (
-            <label key={row.name} className="grid gap-1.5">
-              <span className="text-muted-foreground text-xs">{row.label}</span>
-              <Input
-                type="number"
-                min={AUTO_TERMINATE_MIN_MINUTES}
-                max={AUTO_TERMINATE_MAX_MINUTES}
-                step={1}
-                value={terminationForm[row.name]}
-                onChange={(event) =>
-                  setTerminationForm((current) => ({
-                    ...current,
-                    [row.name]: event.target.value,
-                  }))
-                }
-                disabled={!userSettings || updateSettings.isPending}
-              />
-            </label>
-          ))}
+        <div className="space-y-5">
+          <div className="grid gap-3 md:grid-cols-3">
+            {terminationRows.map((row) => (
+              <label key={row.name} className="grid gap-1.5">
+                <span className="text-muted-foreground text-xs">
+                  {row.label}
+                </span>
+                <Input
+                  type="number"
+                  min={AUTO_TERMINATE_MIN_MINUTES}
+                  max={AUTO_TERMINATE_MAX_MINUTES}
+                  step={1}
+                  value={terminationForm[row.name]}
+                  onChange={(event) => {
+                    setTerminationForm((current) => ({
+                      ...current,
+                      [row.name]: event.target.value,
+                    }));
+                    setIsTerminationFormDirty(true);
+                  }}
+                  disabled={
+                    !userSettings || updateTerminationSettings.isPending
+                  }
+                />
+              </label>
+            ))}
+          </div>
+          <div className="flex justify-end">
+            <Button
+              type="button"
+              size="sm"
+              onClick={saveTermination}
+              disabled={
+                !userSettings ||
+                !isTerminationFormDirty ||
+                updateTerminationSettings.isPending
+              }
+            >
+              <Save />
+              {updateTerminationSettings.isPending
+                ? "Saving..."
+                : "Save auto-termination"}
+            </Button>
+          </div>
         </div>
       </SettingsSection>
 
