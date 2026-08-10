@@ -10,6 +10,8 @@ import {
   useAnswerOpencodeQuestion,
   useOpencodeInventory,
   useRejectOpencodeQuestion,
+  useRevertOpencodeSession,
+  useRestoreRevertedOpencodeMessage,
   useSendOpencodePrompt,
 } from "@/hooks/use-opencode-session";
 import type {
@@ -19,7 +21,15 @@ import type {
 } from "@/services/opencode-services";
 import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Button } from "@repo/ui/components/button";
-import { ArrowDown, Braces, MessagesSquare, RefreshCw } from "lucide-react";
+import {
+  ArrowDown,
+  Braces,
+  ChevronRight,
+  Loader2,
+  MessagesSquare,
+  RefreshCw,
+  Undo2,
+} from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -36,6 +46,16 @@ function getPartText(parts: SessionMessages[number]["parts"], type: "text") {
       return [];
     })
     .join("\n\n");
+}
+
+function getRevertedMessageLabel(parts: SessionMessages[number]["parts"]) {
+  const text = getPartText(parts, "text").trim();
+  if (text) return text;
+
+  const attachmentCount = parts.filter((part) => part.type === "file").length;
+  if (attachmentCount === 1) return "[attachment]";
+  if (attachmentCount > 1) return `[${attachmentCount} attachments]`;
+  return "Empty message";
 }
 
 function createChatTurns(messages: SessionMessages) {
@@ -225,7 +245,38 @@ export function OpencodeSessionChat({
   isRefreshing: boolean;
   onRefresh: () => void;
 }) {
-  const turns = useMemo(() => createChatTurns(messages), [messages]);
+  const revertMessageId = rawResponse.session.revert?.messageID;
+  const { visibleMessages, revertedMessages } = useMemo(() => {
+    if (!revertMessageId) {
+      return { visibleMessages: messages, revertedMessages: [] };
+    }
+
+    const revertIndex = messages.findIndex(
+      (message) => message.info.id === revertMessageId,
+    );
+    if (revertIndex === -1) {
+      return { visibleMessages: messages, revertedMessages: [] };
+    }
+
+    return {
+      visibleMessages: messages.slice(0, revertIndex),
+      revertedMessages: messages.slice(revertIndex),
+    };
+  }, [messages, revertMessageId]);
+  const turns = useMemo(
+    () => createChatTurns(visibleMessages),
+    [visibleMessages],
+  );
+  const revertedQuestions = useMemo(
+    () =>
+      revertedMessages
+        .filter((message) => message.info.role === "user")
+        .map((message) => ({
+          id: message.info.id,
+          label: getRevertedMessageLabel(message.parts),
+        })),
+    [revertedMessages],
+  );
   const activeQuestion = rawResponse.questions[0];
   const sendPrompt = useSendOpencodePrompt({
     chatId,
@@ -246,6 +297,18 @@ export function OpencodeSessionChat({
     accessToken,
   });
   const rejectQuestion = useRejectOpencodeQuestion({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  });
+  const revertSession = useRevertOpencodeSession({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+  });
+  const restoreMessage = useRestoreRevertedOpencodeMessage({
     chatId,
     sessionId,
     serverUrl,
@@ -366,7 +429,10 @@ export function OpencodeSessionChat({
                 {JSON.stringify(rawResponse, null, 2)}
               </pre>
             ) : null}
-            {!showRawResponse && turns.length === 0 && !activeQuestion ? (
+            {!showRawResponse &&
+            turns.length === 0 &&
+            revertedQuestions.length === 0 &&
+            !activeQuestion ? (
               <div className="text-muted-foreground flex min-h-[45vh] items-center justify-center text-sm">
                 Start the chat by describing what you want to build.
               </div>
@@ -377,6 +443,24 @@ export function OpencodeSessionChat({
                   key={turn.id}
                   item={turn}
                   isStreaming={isStreaming && index === turns.length - 1}
+                  isReverting={
+                    revertSession.isPending &&
+                    revertSession.variables === turn.id
+                  }
+                  revertDisabled={
+                    isStreaming ||
+                    revertSession.isPending ||
+                    restoreMessage.isPending
+                  }
+                  onRevert={() =>
+                    revertSession.mutate(turn.id, {
+                      onSuccess: () => toast.success("Messages rolled back"),
+                      onError: (error) =>
+                        toast.error(
+                          error.message || "Could not revert messages",
+                        ),
+                    })
+                  }
                   reserveBottomSpace={
                     index === turns.length - 1 && !activeQuestion
                   }
@@ -402,6 +486,27 @@ export function OpencodeSessionChat({
 
       <div className="shrink-0 px-4 pb-4 md:px-0">
         <div className="mx-auto w-full max-w-4xl">
+          {!showRawResponse && revertedQuestions.length > 0 ? (
+            <div className="mb-2">
+              <RevertedMessagesPanel
+                messages={revertedQuestions}
+                restoringMessageId={restoreMessage.variables?.messageId}
+                restoreDisabled={isStreaming || revertSession.isPending}
+                onRestore={(messageId, nextMessageId) =>
+                  restoreMessage.mutate(
+                    { messageId, nextMessageId },
+                    {
+                      onSuccess: () => toast.success("Message restored"),
+                      onError: (error) =>
+                        toast.error(
+                          error.message || "Could not restore message",
+                        ),
+                    },
+                  )
+                }
+              />
+            </div>
+          ) : null}
           <div className="mb-2 flex justify-end">
             <button
               type="button"
@@ -454,5 +559,59 @@ export function OpencodeSessionChat({
         </div>
       </div>
     </div>
+  );
+}
+
+function RevertedMessagesPanel({
+  messages,
+  restoringMessageId,
+  restoreDisabled,
+  onRestore,
+}: {
+  messages: Array<{ id: string; label: string }>;
+  restoringMessageId?: string;
+  restoreDisabled: boolean;
+  onRestore: (messageId: string, nextMessageId?: string) => void;
+}) {
+  return (
+    <details
+      open
+      className="group/reverted border-border bg-muted/20 overflow-hidden rounded-xl border"
+    >
+      <summary className="flex cursor-pointer list-none items-center gap-2 px-4 py-3 text-sm font-medium [&::-webkit-details-marker]:hidden">
+        <Undo2 className="text-muted-foreground size-4" />
+        <span>
+          {messages.length} rolled back{" "}
+          {messages.length === 1 ? "message" : "messages"}
+        </span>
+        <ChevronRight className="text-muted-foreground ml-auto size-3.5 transition-transform group-open/reverted:rotate-90" />
+      </summary>
+      <div className="border-border max-h-52 overflow-y-auto border-t px-4 py-3">
+        <div className="space-y-2">
+          {messages.map((message, index) => (
+            <div key={message.id} className="flex min-w-0 items-center gap-3">
+              <p
+                className="text-muted-foreground min-w-0 flex-1 truncate text-sm"
+                title={message.label}
+              >
+                {message.label}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={restoreDisabled || restoringMessageId !== undefined}
+                onClick={() => onRestore(message.id, messages[index + 1]?.id)}
+              >
+                {restoringMessageId === message.id ? (
+                  <Loader2 className="animate-spin" />
+                ) : null}
+                Restore message
+              </Button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </details>
   );
 }

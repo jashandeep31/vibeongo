@@ -6,8 +6,10 @@ import {
   getOpencodeInventory,
   getOpencodeSessionRaw,
   rejectOpencodeQuestion,
+  revertOpencodeSession,
   sendOpencodePrompt,
   streamOpencodeEvents,
+  unrevertOpencodeSession,
   type Event,
   type OpencodeSessionData,
   type OpencodePromptSelection,
@@ -388,6 +390,77 @@ export const useAbortOpencodeSession = ({
       abortOpencodeSession(chatId, sessionId, serverUrl, accessToken),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+export const useRevertOpencodeSession = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      revertOpencodeSession(
+        chatId,
+        sessionId,
+        messageId,
+        serverUrl,
+        accessToken,
+      ),
+    onSuccess: (session) => {
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
+        current ? { ...current, session } : current,
+      );
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    },
+  });
+};
+
+export const useRestoreRevertedOpencodeMessage = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+
+  return useMutation({
+    mutationFn: ({
+      nextMessageId,
+    }: {
+      messageId: string;
+      nextMessageId?: string;
+    }) =>
+      nextMessageId
+        ? revertOpencodeSession(
+            chatId,
+            sessionId,
+            nextMessageId,
+            serverUrl,
+            accessToken,
+          )
+        : unrevertOpencodeSession(chatId, sessionId, serverUrl, accessToken),
+    onSuccess: (session) => {
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
+        current ? { ...current, session } : current,
+      );
+      void queryClient.invalidateQueries({ queryKey, exact: true });
     },
   });
 };

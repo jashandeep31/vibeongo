@@ -6,7 +6,14 @@ import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
 import type { SnapshotFileDiff, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { cn } from "@repo/ui/lib/utils";
-import { Check, CircleAlert, Copy } from "lucide-react";
+import {
+  Check,
+  CircleAlert,
+  Copy,
+  Loader2,
+  Sparkles,
+  Undo2,
+} from "lucide-react";
 import { useState } from "react";
 
 export type OpencodeChatTurn = {
@@ -35,10 +42,16 @@ export function OpencodeChatQuestion({
   item,
   isStreaming = false,
   reserveBottomSpace = false,
+  isReverting = false,
+  revertDisabled = false,
+  onRevert,
 }: {
   item: OpencodeChatTurn;
   isStreaming?: boolean;
   reserveBottomSpace?: boolean;
+  isReverting?: boolean;
+  revertDisabled?: boolean;
+  onRevert: () => void;
 }) {
   const [isCopied, setIsCopied] = useState(false);
   const [isQuestionCopied, setIsQuestionCopied] = useState(false);
@@ -77,25 +90,41 @@ export function OpencodeChatQuestion({
             ) : null}
             {item.question ? <div className="px-1">{item.question}</div> : null}
           </div>
-          {item.question ? (
+          <div className="flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover/question:opacity-100 md:focus-within:opacity-100">
+            {item.question ? (
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+                aria-label="Copy question"
+                title="Copy question"
+                onClick={() => {
+                  void navigator.clipboard.writeText(item.question);
+                  setIsQuestionCopied(true);
+                  window.setTimeout(() => setIsQuestionCopied(false), 1500);
+                }}
+              >
+                {isQuestionCopied ? (
+                  <Check className="size-3.5" />
+                ) : (
+                  <Copy className="size-3.5" />
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
-              className="text-muted-foreground hover:text-foreground rounded-md p-1 opacity-100 transition md:opacity-0 md:group-hover/question:opacity-100 md:focus-visible:opacity-100"
-              aria-label="Copy question"
-              title="Copy question"
-              onClick={() => {
-                void navigator.clipboard.writeText(item.question);
-                setIsQuestionCopied(true);
-                window.setTimeout(() => setIsQuestionCopied(false), 1500);
-              }}
+              className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors disabled:pointer-events-none disabled:opacity-40"
+              aria-label="Revert from this question"
+              title="Revert this question and everything after it"
+              disabled={revertDisabled || isReverting}
+              onClick={onRevert}
             >
-              {isQuestionCopied ? (
-                <Check className="size-3.5" />
+              {isReverting ? (
+                <Loader2 className="size-3.5 animate-spin" />
               ) : (
-                <Copy className="size-3.5" />
+                <Undo2 className="size-3.5" />
               )}
             </button>
-          ) : null}
+          </div>
         </div>
       ) : null}
 
@@ -177,13 +206,28 @@ export function OpencodeChatQuestion({
                   ))}
               </div>
             ) : null}
+            {isStreaming ? <StreamingIndicator /> : null}
           </>
         ) : isStreaming ? (
-          <div className="text-muted-foreground animate-pulse py-1 text-sm">
-            Thinking…
-          </div>
+          <StreamingIndicator />
         ) : null}
       </div>
+    </div>
+  );
+}
+
+function StreamingIndicator() {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      className="text-muted-foreground mt-4 flex items-center gap-2 text-sm"
+    >
+      <span className="relative flex size-5 items-center justify-center">
+        <span className="bg-primary/20 absolute inset-0 animate-ping rounded-full" />
+        <Sparkles className="text-primary relative size-4 animate-pulse" />
+      </span>
+      <span>Vibeongo is working…</span>
     </div>
   );
 }
