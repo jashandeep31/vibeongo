@@ -5,6 +5,7 @@ import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
 import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
+import { useGithubRepos } from "@/hooks/use-github-repos";
 import { useWebSocket } from "@/hooks/use-websocket";
 import type { Chat } from "@/services/chat-services";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
@@ -31,6 +32,7 @@ import {
   BotMessageSquare,
   Ellipsis,
   Gauge,
+  Github,
   House,
   Loader2,
   Settings,
@@ -60,6 +62,11 @@ const navigation = [
     title: "Limits",
     url: "/limits",
     icon: Gauge,
+  },
+  {
+    title: "GitHub Repos",
+    url: "/github-repos",
+    icon: Github,
   },
   {
     title: "Wallet",
@@ -227,6 +234,15 @@ export function PlaygroundSidebar() {
     isPending: areChatsPending,
     isError: areChatsError,
   } = useGetVibeongoChats(20);
+  const { data: githubRepos = [] } = useGithubRepos();
+  const unconfiguredRepoCount = githubRepos.filter(
+    (repo) => !repo.default_project_id,
+  ).length;
+  const navigationItems = navigation.map((item) =>
+    item.url === "/github-repos"
+      ? { ...item, warningCount: unconfiguredRepoCount }
+      : item,
+  );
   const routeView: SidebarView = pathname.startsWith("/chat/")
     ? "chats"
     : "projects";
@@ -264,7 +280,7 @@ export function PlaygroundSidebar() {
       <SidebarContent className="bg-background">
         <SidebarGroup className="px-2 pt-4 pb-1">
           <SidebarGroupContent>
-            <NavMain items={navigation} />
+            <NavMain items={navigationItems} />
           </SidebarGroupContent>
         </SidebarGroup>
         <div
