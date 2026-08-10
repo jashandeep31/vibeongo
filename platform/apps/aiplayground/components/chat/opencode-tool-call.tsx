@@ -2,7 +2,20 @@
 
 import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import type { SnapshotFileDiff, ToolPart } from "@opencode-ai/sdk/v2/client";
-import { ChevronRight, CircleX, ExternalLink, Loader2 } from "lucide-react";
+import {
+  Check,
+  ChevronRight,
+  CircleX,
+  ExternalLink,
+  Loader2,
+  X,
+} from "lucide-react";
+
+type TodoItem = {
+  content: string;
+  status: "pending" | "in_progress" | "completed" | "cancelled";
+  priority?: string;
+};
 
 export function OpencodeToolCall({
   tools,
@@ -41,6 +54,11 @@ export function OpencodeToolCall({
 
   if (firstTool.tool === "question" && firstTool.state.status === "completed") {
     return <CompletedQuestions tool={firstTool} />;
+  }
+
+  if (firstTool.tool === "todowrite") {
+    const todos = getTodos(firstTool);
+    if (todos.length > 0) return <TodoList tool={firstTool} todos={todos} />;
   }
 
   const isEditGroup = tools.every((tool) => isEditTool(tool));
@@ -146,6 +164,59 @@ export function OpencodeToolCall({
 
       <ToolResult tool={firstTool} />
     </details>
+  );
+}
+
+function TodoList({ tool, todos }: { tool: ToolPart; todos: TodoItem[] }) {
+  const completedCount = todos.filter(
+    (todo) => todo.status === "completed",
+  ).length;
+
+  return (
+    <details
+      open
+      className="group/todos border-border bg-muted/20 my-2 overflow-hidden rounded-xl border text-sm"
+    >
+      <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 px-3 py-3 text-xs [&::-webkit-details-marker]:hidden">
+        <span>
+          {completedCount} of {todos.length} todos completed
+        </span>
+        <ChevronRight className="ml-auto size-3.5 transition-transform group-open/todos:rotate-90" />
+      </summary>
+      <div className="space-y-2 px-3 pb-3">
+        {todos.map((todo, index) => (
+          <div
+            key={`${tool.id}-todo-${index}`}
+            className="flex min-w-0 items-start gap-3"
+          >
+            <TodoStatus status={todo.status} />
+            <span
+              className={
+                todo.status === "cancelled"
+                  ? "text-muted-foreground min-w-0 line-through"
+                  : "text-foreground min-w-0"
+              }
+            >
+              {todo.content}
+            </span>
+          </div>
+        ))}
+      </div>
+    </details>
+  );
+}
+
+function TodoStatus({ status }: { status: TodoItem["status"] }) {
+  return (
+    <span className="border-border text-muted-foreground mt-0.5 flex size-4 shrink-0 items-center justify-center rounded border">
+      {status === "completed" ? (
+        <Check className="size-3" />
+      ) : status === "in_progress" ? (
+        <span className="bg-foreground size-1.5 rounded-full" />
+      ) : status === "cancelled" ? (
+        <X className="size-3" />
+      ) : null}
+    </span>
   );
 }
 
@@ -378,6 +449,47 @@ function getQuestionAnswers(tool: ToolPart) {
       ? answer.filter((value): value is string => typeof value === "string")
       : [],
   );
+}
+
+function getTodos(tool: ToolPart): TodoItem[] {
+  const metadata =
+    "metadata" in tool.state && tool.state.metadata
+      ? tool.state.metadata
+      : undefined;
+  const value = Array.isArray(metadata?.todos)
+    ? metadata.todos
+    : tool.state.input.todos;
+  if (!Array.isArray(value)) return [];
+
+  return value.flatMap((todo) => {
+    if (!todo || typeof todo !== "object") return [];
+
+    const candidate = todo as Record<string, unknown>;
+    if (typeof candidate.content !== "string" || !candidate.content.trim()) {
+      return [];
+    }
+
+    const status = candidate.status;
+    if (
+      status !== "pending" &&
+      status !== "in_progress" &&
+      status !== "completed" &&
+      status !== "cancelled"
+    ) {
+      return [];
+    }
+
+    return [
+      {
+        content: candidate.content,
+        status,
+        priority:
+          typeof candidate.priority === "string"
+            ? candidate.priority
+            : undefined,
+      },
+    ];
+  });
 }
 
 function getSafeWebUrl(value: string) {

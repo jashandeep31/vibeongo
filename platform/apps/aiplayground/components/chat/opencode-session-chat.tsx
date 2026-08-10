@@ -76,6 +76,7 @@ function createChatTurns(messages: SessionMessages) {
       durationMs: undefined as number | undefined,
     }));
   const turnsByMessageId = new Map(turns.map((turn) => [turn.id, turn]));
+  const latestTodoByTurnId = new Map<string, ToolPart>();
 
   for (const message of messages) {
     if (message.info.role !== "assistant") continue;
@@ -99,6 +100,11 @@ function createChatTurns(messages: SessionMessages) {
       }
 
       if (part.type === "tool") {
+        if (part.tool === "todowrite") {
+          latestTodoByTurnId.set(turn.id, part);
+          continue;
+        }
+
         if (
           part.tool === "question" &&
           (part.state.status === "pending" || part.state.status === "running")
@@ -140,6 +146,17 @@ function createChatTurns(messages: SessionMessages) {
     turn.durationMs = message.info.time.completed
       ? message.info.time.completed - message.info.time.created
       : undefined;
+  }
+
+  for (const turn of turns) {
+    const latestTodo = latestTodoByTurnId.get(turn.id);
+    if (!latestTodo) continue;
+
+    turn.content.push({
+      id: `${latestTodo.id}:todo-tracker`,
+      type: "tools",
+      tools: [latestTodo],
+    });
   }
 
   return turns;
