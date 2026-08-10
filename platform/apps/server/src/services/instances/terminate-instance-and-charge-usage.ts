@@ -336,15 +336,15 @@ export const terminateInstanceAndChargeUsageWithInstanceIdAndSessionId =
     instanceId,
     sessionId,
   }: TerminateInstanceAndChargeUsageWithSessionProps) => {
-    const where =
-      sessionId === "iawareofshit"
-        ? eq(instances.id, instanceId)
-        : and(
-            eq(instances.id, instanceId),
-            eq(instances.project_session_id, sessionId),
-          );
-
-    const [instance] = await db.select().from(instances).where(where);
+    const [instance] = await db
+      .select()
+      .from(instances)
+      .where(
+        and(
+          eq(instances.id, instanceId),
+          eq(instances.project_session_id, sessionId),
+        ),
+      );
     if (!instance) throw new AppError("Instance not found", 404);
 
     return await terminateInstanceAndChargeUsage({
