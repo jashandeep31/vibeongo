@@ -32,7 +32,7 @@ import {
   TimerOff,
   TimerReset,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
 function normalizePercent(value: unknown) {
@@ -40,13 +40,13 @@ function normalizePercent(value: unknown) {
   return Number.isFinite(percent) ? Math.min(100, Math.max(0, percent)) : null;
 }
 
-const runtimeDateFormatter = new Intl.DateTimeFormat("en", {
+const runtimeDateFormatter = new Intl.DateTimeFormat(undefined, {
   year: "numeric",
   month: "short",
   day: "numeric",
   hour: "2-digit",
   minute: "2-digit",
-  timeZone: "UTC",
+  second: "2-digit",
   timeZoneName: "short",
 });
 
@@ -57,12 +57,37 @@ function formatRuntimeDate(value: unknown) {
     : runtimeDateFormatter.format(date);
 }
 
+function formatTimeRemaining(value: unknown, now: number) {
+  const terminatesAt = new Date(value as string | number | Date).getTime();
+  if (!Number.isFinite(terminatesAt)) return "Unavailable";
+
+  const remainingMs = terminatesAt - now;
+  if (remainingMs <= 0) return "Expired";
+
+  const totalSeconds = Math.ceil(remainingMs / 1_000);
+  const days = Math.floor(totalSeconds / 86_400);
+  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
+  const paddedSeconds = String(seconds).padStart(2, "0");
+
+  if (days > 0) {
+    return `${days}d ${hours}h ${minutes}m ${paddedSeconds}s`;
+  }
+  if (hours > 0) {
+    return `${hours}h ${minutes}m ${paddedSeconds}s`;
+  }
+  if (minutes > 0) return `${minutes}m ${paddedSeconds}s`;
+  return `${seconds}s`;
+}
+
 export function RuntimePulseMenu({
   projectSessionId,
 }: {
   projectSessionId: string;
 }) {
   const [isOpen, setIsOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
   const [copiedValue, setCopiedValue] = useState<"ip" | "ssh" | null>(null);
   const instance = useSessionsStore(
@@ -92,6 +117,13 @@ export function RuntimePulseMenu({
   const disableTerminate = useDisableTerminateAfterDone(connection);
   const runtimeStats = useRuntimeStats(connection, isOpen);
 
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const interval = window.setInterval(() => setNow(Date.now()), 1_000);
+    return () => window.clearInterval(interval);
+  }, [isOpen]);
+
   if (!instance || !connection.localToken || !connection.accessToken) {
     return null;
   }
@@ -117,7 +149,13 @@ export function RuntimePulseMenu({
 
   return (
     <>
-      <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
+      <DropdownMenu
+        open={isOpen}
+        onOpenChange={(open) => {
+          setIsOpen(open);
+          if (open) setNow(Date.now());
+        }}
+      >
         <DropdownMenuTrigger asChild>
           <Button type="button" variant="outline" size="sm">
             <Activity />
@@ -181,6 +219,14 @@ export function RuntimePulseMenu({
               >
                 {formatRuntimeDate(instance.terminates_at)}
               </time>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <span className="flex items-center gap-1.5">
+                <TimerReset className="size-3.5" /> Terminates in
+              </span>
+              <span className="text-foreground font-mono font-medium tabular-nums">
+                {formatTimeRemaining(instance.terminates_at, now)}
+              </span>
             </div>
           </div>
 

@@ -131,7 +131,7 @@ export function OpencodeChatQuestion({
                 : null}
             </div>
             {answer ? (
-              <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs opacity-0 transition-opacity group-hover/response:opacity-100 focus-within:opacity-100">
+              <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs opacity-100 transition-opacity md:opacity-0 md:group-hover/response:opacity-100 md:focus-within:opacity-100">
                 <button
                   type="button"
                   aria-label="Copy response"
