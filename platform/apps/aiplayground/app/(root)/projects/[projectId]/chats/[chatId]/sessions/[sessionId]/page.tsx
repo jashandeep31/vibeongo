@@ -4,6 +4,7 @@ import { OpencodeSessionChat } from "@/components/chat/opencode-session-chat";
 import { useGetInstances } from "@/hooks/use-instance";
 import { useOpencodeSession } from "@/hooks/use-opencode-session";
 import { useSessionsStore } from "@/store/playground-store";
+import { getOpencodePassword } from "@/services/opencode-services";
 import { Button } from "@repo/ui/components/button";
 import { Loader2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
@@ -17,10 +18,9 @@ export default function OpencodeSessionPage() {
   }>();
   const searchParams = useSearchParams();
   const requestedServerUrl = searchParams.get("serverUrl") ?? "";
-  const storedAccessToken = useSessionsStore(
+  const storedInstance = useSessionsStore(
     (store) =>
-      store.sessions.find((entry) => entry.session.id === chatId)?.instance
-        ?.access_token ?? "",
+      store.sessions.find((entry) => entry.session.id === chatId)?.instance,
   );
   const {
     data: instancesData,
@@ -31,13 +31,18 @@ export default function OpencodeSessionPage() {
   const serverUrl =
     requestedServerUrl ||
     (instance ? `https://4096-${instance.id}${instance.proxy_domain}` : "");
-  const accessToken = storedAccessToken || instance?.access_token || "";
+  const accessToken =
+    storedInstance?.access_token || instance?.access_token || "";
+  const opencodePassword = getOpencodePassword(
+    instance?.config ?? storedInstance?.config,
+  );
   const { data, error, isFetching, isPending, isStreaming, resync } =
     useOpencodeSession({
       chatId,
       sessionId,
       serverUrl,
       accessToken,
+      password: opencodePassword,
     });
 
   if (isInstancePending) {
@@ -88,6 +93,7 @@ export default function OpencodeSessionPage() {
       sessionId={sessionId}
       serverUrl={serverUrl}
       accessToken={accessToken}
+      password={opencodePassword}
       messages={data.messages}
       rawResponse={data}
       isStreaming={isStreaming}

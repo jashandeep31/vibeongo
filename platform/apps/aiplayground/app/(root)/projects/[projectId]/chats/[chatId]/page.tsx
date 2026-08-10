@@ -8,6 +8,7 @@ import { ArrowLeft, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
+import { getOpencodePassword } from "@/services/opencode-services";
 
 export default function NewOpencodeChatPage() {
   const { projectId, chatId } = useParams<{
@@ -25,6 +26,7 @@ export default function NewOpencodeChatPage() {
     store.sessions.find((entry) => entry.session.id === chatId),
   );
   const accessToken = sessionEntry?.instance?.access_token ?? "";
+  const opencodePassword = getOpencodePassword(sessionEntry?.instance?.config);
   const sessionName = sessionEntry?.session.name ?? "Session";
 
   if (!serverUrl || !accessToken) {
@@ -65,6 +67,7 @@ export default function NewOpencodeChatPage() {
         chatUrl={chatUrl}
         serverUrl={serverUrl}
         accessToken={accessToken}
+        password={opencodePassword}
         directory={searchParams.get("directory") ?? undefined}
         projectName={projectName}
         sessionName={sessionName}

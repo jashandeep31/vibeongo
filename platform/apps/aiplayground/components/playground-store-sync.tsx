@@ -4,12 +4,17 @@ import { useGetInstances } from "@/hooks/use-instance";
 import { useOpencodeStatus } from "@/hooks/use-opencode-status";
 import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
 import { useGetProjectsWithSessions } from "@/hooks/use-project";
+import { getOpencodePassword } from "@/services/opencode-services";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
 import { useEffect } from "react";
 
 function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   const updateSession = useSessionsStore((store) => store.updateSession);
-  const { data: instancesData, isPending, isError } = useGetInstances({
+  const {
+    data: instancesData,
+    isPending,
+    isError,
+  } = useGetInstances({
     sessionId,
     state: "running",
     limit: 1,
@@ -32,6 +37,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
     ? `https://4096-${instance.id}${instance.proxy_domain}`
     : "";
   const accessToken = instance?.access_token ?? "";
+  const opencodePassword = getOpencodePassword(instance?.config);
   const { data: opencodeStatus } = useOpencodeStatus(
     instance?.id ?? "",
     runtimeUrl,
@@ -45,6 +51,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
     sessionId,
     isOpencodeRunning ? serverUrl : "",
     accessToken,
+    opencodePassword,
     isOpencodeRunning,
   );
 

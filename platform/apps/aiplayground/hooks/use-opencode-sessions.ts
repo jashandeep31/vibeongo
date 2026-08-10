@@ -17,6 +17,7 @@ export const useOpencodeSessions = (
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
   enabled = true,
 ) => {
   const setSessionChats = useSessionChatsStore(
@@ -24,7 +25,8 @@ export const useOpencodeSessions = (
   );
   const query = useQuery({
     queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
-    queryFn: () => getOpencodeSessions(chatId, serverUrl, accessToken),
+    queryFn: () =>
+      getOpencodeSessions(chatId, serverUrl, accessToken, password),
     enabled: enabled && !!chatId && !!serverUrl && !!accessToken,
   });
 
@@ -40,12 +42,13 @@ export const useOpencodeProjectDirectories = (
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
   enabled = true,
 ) =>
   useQuery({
     queryKey: ["opencode", "project-directories", chatId, serverUrl],
     queryFn: () =>
-      getOpencodeProjectDirectories(chatId, serverUrl, accessToken),
+      getOpencodeProjectDirectories(chatId, serverUrl, accessToken, password),
     enabled: enabled && !!chatId && !!serverUrl && !!accessToken,
   });
 
@@ -60,6 +63,7 @@ export const useStartOpencodeSession = () => {
       chatId,
       serverUrl,
       accessToken,
+      password,
       directory,
       text,
       files,
@@ -69,6 +73,7 @@ export const useStartOpencodeSession = () => {
       chatId: string;
       serverUrl: string;
       accessToken: string;
+      password?: string;
       directory?: string;
       text: string;
       files: File[];
@@ -80,6 +85,7 @@ export const useStartOpencodeSession = () => {
         serverUrl,
         accessToken,
         directory,
+        password,
       );
       upsertSessionChat(chatId, session);
 
@@ -151,6 +157,7 @@ export const useStartOpencodeSession = () => {
         selection,
         serverUrl,
         accessToken,
+        password,
       );
       return session;
     },

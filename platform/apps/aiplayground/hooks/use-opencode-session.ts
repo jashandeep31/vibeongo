@@ -24,11 +24,13 @@ export const useOpencodeSession = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -41,7 +43,13 @@ export const useOpencodeSession = ({
   const query = useQuery({
     queryKey,
     queryFn: () =>
-      getOpencodeSessionRaw(chatId, sessionId, serverUrl, accessToken),
+      getOpencodeSessionRaw(
+        chatId,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
     enabled: !!serverUrl && !!accessToken,
     staleTime: hasOptimisticSession ? Infinity : 0,
   });
@@ -265,6 +273,7 @@ export const useOpencodeSession = ({
             chatId,
             serverUrl,
             accessToken,
+            password,
             signal,
             handleEvent,
           );
@@ -309,6 +318,7 @@ export const useOpencodeSession = ({
     chatId,
     queryClient,
     queryKey,
+    password,
     resync,
     serverUrl,
     sessionId,
@@ -326,11 +336,13 @@ export const useSendOpencodePrompt = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
@@ -363,6 +375,7 @@ export const useSendOpencodePrompt = ({
         selection,
         serverUrl,
         accessToken,
+        password,
       );
     },
     onSuccess: () => {
@@ -376,18 +389,20 @@ export const useAbortOpencodeSession = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
 
   return useMutation({
     mutationFn: () =>
-      abortOpencodeSession(chatId, sessionId, serverUrl, accessToken),
+      abortOpencodeSession(chatId, sessionId, serverUrl, accessToken, password),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
     },
@@ -399,11 +414,13 @@ export const useRevertOpencodeSession = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
@@ -416,6 +433,7 @@ export const useRevertOpencodeSession = ({
         messageId,
         serverUrl,
         accessToken,
+        password,
       ),
     onSuccess: (session) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
@@ -431,11 +449,13 @@ export const useRestoreRevertedOpencodeMessage = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
@@ -454,8 +474,15 @@ export const useRestoreRevertedOpencodeMessage = ({
             nextMessageId,
             serverUrl,
             accessToken,
+            password,
           )
-        : unrevertOpencodeSession(chatId, sessionId, serverUrl, accessToken),
+        : unrevertOpencodeSession(
+            chatId,
+            sessionId,
+            serverUrl,
+            accessToken,
+            password,
+          ),
     onSuccess: (session) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
         current ? { ...current, session } : current,
@@ -470,11 +497,13 @@ export const useAnswerOpencodeQuestion = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
@@ -494,6 +523,7 @@ export const useAnswerOpencodeQuestion = ({
         answers,
         serverUrl,
         accessToken,
+        password,
       ),
     onSuccess: (_, { requestId }) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
@@ -516,11 +546,13 @@ export const useRejectOpencodeQuestion = ({
   sessionId,
   serverUrl,
   accessToken,
+  password,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
@@ -533,6 +565,7 @@ export const useRejectOpencodeQuestion = ({
         requestId,
         serverUrl,
         accessToken,
+        password,
       ),
     onSuccess: (_, requestId) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
@@ -554,10 +587,12 @@ export const useOpencodeInventory = (
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) =>
   useQuery({
     queryKey: ["opencode", "inventory", chatId, serverUrl],
-    queryFn: () => getOpencodeInventory(chatId, serverUrl, accessToken),
+    queryFn: () =>
+      getOpencodeInventory(chatId, serverUrl, accessToken, password),
     enabled: !!serverUrl && !!accessToken,
     staleTime: 60_000,
   });

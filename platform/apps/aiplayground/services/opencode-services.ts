@@ -110,12 +110,14 @@ export async function getOpencodeSessions(
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken);
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const directories = await getOpencodeProjectDirectories(
     chatId,
     serverUrl,
     accessToken,
+    password,
   );
   const projectDirectories = [
     ...new Set(
@@ -153,8 +155,9 @@ export async function getOpencodeProjectDirectories(
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken);
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const result = await client.project.list();
 
   if (result.error || !result.data) {
@@ -179,12 +182,14 @@ export async function getOpencodeSessionRaw(
   sessionId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -192,6 +197,7 @@ export async function getOpencodeSessionRaw(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const [messagesResult, questionsResult, changesResult, statusesResult] =
@@ -238,6 +244,7 @@ export async function createOpencodeSession(
   serverUrl: string,
   accessToken: string,
   directory?: string,
+  password?: string,
 ) {
   if (directory && !/^\/home\/ubuntu\/code\/[A-Za-z0-9._-]+$/.test(directory)) {
     throw new Error("Invalid repository directory");
@@ -245,8 +252,14 @@ export async function createOpencodeSession(
 
   const selectedDirectory =
     directory ??
-    (await getOpencodeProjectDirectories(chatId, serverUrl, accessToken))[0]
-      ?.worktree;
+    (
+      await getOpencodeProjectDirectories(
+        chatId,
+        serverUrl,
+        accessToken,
+        password,
+      )
+    )[0]?.worktree;
   if (!selectedDirectory) {
     throw new Error("OpenCode project directory not found");
   }
@@ -255,6 +268,7 @@ export async function createOpencodeSession(
     chatId,
     serverUrl,
     accessToken,
+    password,
     selectedDirectory,
   );
   const result = await client.session.create({ directory: selectedDirectory });
@@ -270,8 +284,9 @@ export async function getOpencodeInventory(
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken);
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const [providerResponse, agentsResponse] = await Promise.all([
     client.provider.list(),
     client.app.agents(),
@@ -320,12 +335,14 @@ export async function sendOpencodePrompt(
   selection: OpencodePromptSelection,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -333,6 +350,7 @@ export async function sendOpencodePrompt(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const parts: Array<TextPartInput | FilePartInput> = [
@@ -362,12 +380,14 @@ export async function abortOpencodeSession(
   sessionId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -375,6 +395,7 @@ export async function abortOpencodeSession(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const result = await client.session.abort({
@@ -393,12 +414,14 @@ export async function revertOpencodeSession(
   messageId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -406,6 +429,7 @@ export async function revertOpencodeSession(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const result = await client.session.revert({
@@ -426,12 +450,14 @@ export async function unrevertOpencodeSession(
   sessionId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -439,6 +465,7 @@ export async function unrevertOpencodeSession(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const result = await client.session.unrevert({
@@ -460,12 +487,14 @@ export async function answerOpencodeQuestion(
   answers: QuestionAnswer[],
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -473,6 +502,7 @@ export async function answerOpencodeQuestion(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const result = await client.question.reply({
@@ -492,12 +522,14 @@ export async function rejectOpencodeQuestion(
   requestId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   );
   if (!session) throw new Error("OpenCode session not found");
 
@@ -505,6 +537,7 @@ export async function rejectOpencodeQuestion(
     chatId,
     serverUrl,
     accessToken,
+    password,
     session.directory,
   );
   const result = await client.question.reject({
@@ -521,10 +554,11 @@ export async function streamOpencodeEvents(
   chatId: string,
   serverUrl: string,
   accessToken: string,
+  password: string | undefined,
   signal: AbortSignal,
   onEvent: (event: Event) => void,
 ) {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken);
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const subscription = await client.global.event({ signal });
 
   for await (const event of subscription.stream) {
@@ -538,12 +572,14 @@ async function findOpencodeSession(
   sessionId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
 ) {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken);
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const projects = await getOpencodeProjectDirectories(
     chatId,
     serverUrl,
     accessToken,
+    password,
   );
   const directories = projects.flatMap((project) => [
     project.worktree,
@@ -562,17 +598,18 @@ function getOpencodeClient(
   connectionId: string,
   serverUrl: string,
   accessToken: string,
+  password?: string,
   directory?: string,
 ) {
   const normalizedServerUrl = normalizeOpencodeServerUrl(serverUrl);
-  const cacheKey = `${connectionId}:${normalizedServerUrl}:${directory ?? ""}:${accessToken}`;
+  const cacheKey = `${connectionId}:${normalizedServerUrl}:${directory ?? ""}:${accessToken}:${password ?? ""}`;
   const existingClient = clients.get(cacheKey);
   if (existingClient) return existingClient;
 
   const client = createOpencodeClient({
     baseUrl: normalizedServerUrl,
     directory,
-    headers: getProxyHeaders(accessToken),
+    headers: getOpencodeHeaders(accessToken, password),
     throwOnError: true,
   });
   clients.set(cacheKey, client);
@@ -599,6 +636,27 @@ function getProxyHeaders(accessToken: string): HeadersInit {
   return {
     [PROXY_AUTHORIZATION_HEADER]: getProxyAuthorizationValue(accessToken),
   };
+}
+
+function getOpencodeHeaders(
+  accessToken: string,
+  password?: string,
+): HeadersInit {
+  return {
+    ...getProxyHeaders(accessToken),
+    ...(password
+      ? { authorization: `Basic ${btoa(`opencode:${password}`)}` }
+      : {}),
+  };
+}
+
+export function getOpencodePassword(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) {
+    return undefined;
+  }
+
+  const password = (config as { opencodePassword?: unknown }).opencodePassword;
+  return typeof password === "string" && password.trim() ? password : undefined;
 }
 
 function parseModelSelection(modelSlug?: string) {

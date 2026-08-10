@@ -228,6 +228,7 @@ export function OpencodeSessionChat({
   sessionId,
   serverUrl,
   accessToken,
+  password,
   messages,
   rawResponse,
   isStreaming,
@@ -239,6 +240,7 @@ export function OpencodeSessionChat({
   sessionId: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
   messages: SessionMessages;
   rawResponse: OpencodeSessionData;
   isStreaming: boolean;
@@ -283,41 +285,48 @@ export function OpencodeSessionChat({
     sessionId,
     serverUrl,
     accessToken,
+    password,
   });
   const answerQuestion = useAnswerOpencodeQuestion({
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   });
   const abortSession = useAbortOpencodeSession({
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   });
   const rejectQuestion = useRejectOpencodeQuestion({
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   });
   const revertSession = useRevertOpencodeSession({
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   });
   const restoreMessage = useRestoreRevertedOpencodeMessage({
     chatId,
     sessionId,
     serverUrl,
     accessToken,
+    password,
   });
   const { data: inventory } = useOpencodeInventory(
     chatId,
     serverUrl,
     accessToken,
+    password,
   );
   const sessionModelProviderId = rawResponse.session.model?.providerID;
   const sessionModelId = rawResponse.session.model?.id;

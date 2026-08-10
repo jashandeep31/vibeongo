@@ -13,6 +13,7 @@ export function NewOpencodeChat({
   chatUrl,
   serverUrl,
   accessToken,
+  password,
   directory,
   projectName,
   sessionName,
@@ -21,6 +22,7 @@ export function NewOpencodeChat({
   chatUrl: string;
   serverUrl: string;
   accessToken: string;
+  password?: string;
   directory?: string;
   projectName: string;
   sessionName: string;
@@ -31,6 +33,7 @@ export function NewOpencodeChat({
     chatId,
     serverUrl,
     accessToken,
+    password,
   );
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const effectiveSelection: OpencodePromptSelection = {
@@ -47,6 +50,7 @@ export function NewOpencodeChat({
       chatId,
       serverUrl,
       accessToken,
+      password,
       directory,
       text,
       files,
