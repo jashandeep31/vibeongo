@@ -41,6 +41,7 @@ export function OpencodeChatQuestion({
   reserveBottomSpace?: boolean;
 }) {
   const [isCopied, setIsCopied] = useState(false);
+  const [isQuestionCopied, setIsQuestionCopied] = useState(false);
   const answer = item.content
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
@@ -59,7 +60,7 @@ export function OpencodeChatQuestion({
       )}
     >
       {item.question || item.images.length > 0 ? (
-        <div className="flex justify-end">
+        <div className="group/question flex flex-col items-end gap-2">
           <div className="bg-muted text-foreground border-border max-w-[90%] space-y-2 rounded-2xl border p-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
             {item.images.length > 0 ? (
               <div className="flex flex-wrap justify-end gap-2">
@@ -76,6 +77,25 @@ export function OpencodeChatQuestion({
             ) : null}
             {item.question ? <div className="px-1">{item.question}</div> : null}
           </div>
+          {item.question ? (
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground rounded-md p-1 opacity-100 transition md:opacity-0 md:group-hover/question:opacity-100 md:focus-visible:opacity-100"
+              aria-label="Copy question"
+              title="Copy question"
+              onClick={() => {
+                void navigator.clipboard.writeText(item.question);
+                setIsQuestionCopied(true);
+                window.setTimeout(() => setIsQuestionCopied(false), 1500);
+              }}
+            >
+              {isQuestionCopied ? (
+                <Check className="size-3.5" />
+              ) : (
+                <Copy className="size-3.5" />
+              )}
+            </button>
+          ) : null}
         </div>
       ) : null}
 
