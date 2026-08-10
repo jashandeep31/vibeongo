@@ -32,12 +32,13 @@ export default function OpencodeSessionPage() {
     requestedServerUrl ||
     (instance ? `https://4096-${instance.id}${instance.proxy_domain}` : "");
   const accessToken = storedAccessToken || instance?.access_token || "";
-  const { data, error, isPending, isStreaming } = useOpencodeSession({
-    chatId,
-    sessionId,
-    serverUrl,
-    accessToken,
-  });
+  const { data, error, isFetching, isPending, isStreaming, resync } =
+    useOpencodeSession({
+      chatId,
+      sessionId,
+      serverUrl,
+      accessToken,
+    });
 
   if (isInstancePending) {
     return (
@@ -61,7 +62,12 @@ export default function OpencodeSessionPage() {
   }
 
   if (isPending) {
-    return <StatusScreen title="Loading session" description="Fetching your OpenCode conversation." />;
+    return (
+      <StatusScreen
+        title="Loading session"
+        description="Fetching your OpenCode conversation."
+      />
+    );
   }
 
   if (error || !data) {
@@ -85,6 +91,8 @@ export default function OpencodeSessionPage() {
       messages={data.messages}
       rawResponse={data}
       isStreaming={isStreaming}
+      isRefreshing={isFetching}
+      onRefresh={() => void resync()}
     />
   );
 }

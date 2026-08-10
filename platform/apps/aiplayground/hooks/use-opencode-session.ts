@@ -15,7 +15,7 @@ import {
   type UploadAttachment,
 } from "@/services/opencode-services";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 
 export const useOpencodeSession = ({
   chatId,
@@ -36,7 +36,6 @@ export const useOpencodeSession = ({
   const hasOptimisticSession =
     queryClient.getQueryData<OpencodeSessionData>(queryKey)?.optimistic ===
     true;
-  const [isStreaming, setIsStreaming] = useState(hasOptimisticSession);
   const query = useQuery({
     queryKey,
     queryFn: () =>
@@ -44,11 +43,14 @@ export const useOpencodeSession = ({
     enabled: !!serverUrl && !!accessToken,
     staleTime: hasOptimisticSession ? Infinity : 0,
   });
+  const restartStreamRef = useRef<(() => void) | null>(null);
+  const resync = useCallback(() => {
+    restartStreamRef.current?.();
+    return queryClient.invalidateQueries({ queryKey, exact: true });
+  }, [queryClient, queryKey]);
 
   useEffect(() => {
     if (!serverUrl || !accessToken) return;
-
-    const controller = new AbortController();
 
     const updateCachedSession = (event: Event) => {
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) => {
@@ -200,6 +202,20 @@ export const useOpencodeSession = ({
         }
 
         if (
+          event.type === "session.status" &&
+          event.properties.sessionID === sessionId
+        ) {
+          return { ...current, status: event.properties.status };
+        }
+
+        if (
+          (event.type === "session.idle" || event.type === "session.error") &&
+          event.properties.sessionID === sessionId
+        ) {
+          return { ...current, status: { type: "idle" } };
+        }
+
+        if (
           event.type === "session.updated" &&
           event.properties.sessionID === sessionId
         ) {
@@ -219,25 +235,10 @@ export const useOpencodeSession = ({
 
     const handleEvent = (event: Event) => {
       if (
-        event.type === "session.status" &&
-        event.properties.sessionID === sessionId
-      ) {
-        setIsStreaming(event.properties.status.type !== "idle");
-      }
-
-      if (
         event.type === "session.idle" &&
         event.properties.sessionID === sessionId
       ) {
-        setIsStreaming(false);
         void queryClient.invalidateQueries({ queryKey });
-      }
-
-      if (
-        event.type === "session.error" &&
-        event.properties.sessionID === sessionId
-      ) {
-        setIsStreaming(false);
       }
 
       if (
@@ -252,34 +253,70 @@ export const useOpencodeSession = ({
       updateCachedSession(event);
     };
 
-    const connect = async () => {
-      while (!controller.signal.aborted) {
+    let disposed = false;
+    let streamController: AbortController | null = null;
+
+    const connect = async (signal: AbortSignal) => {
+      while (!disposed && !signal.aborted) {
         try {
           await streamOpencodeEvents(
             chatId,
             serverUrl,
             accessToken,
-            controller.signal,
+            signal,
             handleEvent,
           );
         } catch (error) {
-          if (!controller.signal.aborted) {
+          if (!disposed && !signal.aborted) {
             console.error("OpenCode event stream failed", error);
           }
         }
 
-        if (!controller.signal.aborted) {
+        if (!disposed && !signal.aborted) {
           await new Promise((resolve) => window.setTimeout(resolve, 1_000));
         }
       }
     };
 
-    void connect();
+    const startStream = () => {
+      streamController?.abort();
+      streamController = new AbortController();
+      void connect(streamController.signal);
+    };
 
-    return () => controller.abort();
-  }, [accessToken, chatId, queryClient, queryKey, serverUrl, sessionId]);
+    const resyncWhenVisible = () => {
+      if (document.visibilityState !== "visible") return;
 
-  return { ...query, isStreaming };
+      void resync();
+    };
+
+    restartStreamRef.current = startStream;
+    startStream();
+    document.addEventListener("visibilitychange", resyncWhenVisible);
+
+    return () => {
+      disposed = true;
+      document.removeEventListener("visibilitychange", resyncWhenVisible);
+      if (restartStreamRef.current === startStream) {
+        restartStreamRef.current = null;
+      }
+      streamController?.abort();
+    };
+  }, [
+    accessToken,
+    chatId,
+    queryClient,
+    queryKey,
+    resync,
+    serverUrl,
+    sessionId,
+  ]);
+
+  return {
+    ...query,
+    isStreaming: query.data ? query.data.status.type !== "idle" : false,
+    resync,
+  };
 };
 
 export const useSendOpencodePrompt = ({

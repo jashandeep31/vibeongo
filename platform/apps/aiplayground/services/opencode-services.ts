@@ -8,6 +8,7 @@ import {
   type QuestionAnswer,
   type QuestionRequest,
   type Session,
+  type SessionStatus,
   type SnapshotFileDiff,
   type TextPartInput,
 } from "@opencode-ai/sdk/v2/client";
@@ -20,6 +21,7 @@ const clients = new Map<string, OpencodeClient>();
 
 export type OpencodeSessionData = {
   session: Session;
+  status: SessionStatus;
   messages: Array<{ info: Message; parts: Part[] }>;
   questions: QuestionRequest[];
   changes: SnapshotFileDiff[];
@@ -192,18 +194,20 @@ export async function getOpencodeSessionRaw(
     accessToken,
     session.directory,
   );
-  const [messagesResult, questionsResult, changesResult] = await Promise.all([
-    client.session.messages({
-      sessionID: sessionId,
-      directory: session.directory,
-      limit: 100,
-    }),
-    client.question.list({ directory: session.directory }),
-    client.session.diff({
-      sessionID: sessionId,
-      directory: session.directory,
-    }),
-  ]);
+  const [messagesResult, questionsResult, changesResult, statusesResult] =
+    await Promise.all([
+      client.session.messages({
+        sessionID: sessionId,
+        directory: session.directory,
+        limit: 100,
+      }),
+      client.question.list({ directory: session.directory }),
+      client.session.diff({
+        sessionID: sessionId,
+        directory: session.directory,
+      }),
+      client.session.status({ directory: session.directory }),
+    ]);
 
   if (messagesResult.error) {
     throw new Error("Could not load OpenCode messages");
@@ -214,9 +218,13 @@ export async function getOpencodeSessionRaw(
   if (changesResult.error) {
     throw new Error("Could not load OpenCode changes");
   }
+  if (statusesResult.error) {
+    throw new Error("Could not load OpenCode session status");
+  }
 
   return {
     session,
+    status: statusesResult.data?.[sessionId] ?? { type: "idle" },
     messages: messagesResult.data ?? [],
     questions: (questionsResult.data ?? []).filter(
       (question) => question.sessionID === sessionId,

@@ -90,6 +90,7 @@ export const useStartOpencodeSession = () => {
       const now = Date.now();
       const optimisticSession: OpencodeSessionData = {
         session,
+        status: { type: "busy" },
         changes: [],
         questions: [],
         optimistic: true,

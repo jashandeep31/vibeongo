@@ -18,7 +18,8 @@ import type {
   QuestionAnswer,
 } from "@/services/opencode-services";
 import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
-import { ArrowDown, Braces, MessagesSquare } from "lucide-react";
+import { Button } from "@repo/ui/components/button";
+import { ArrowDown, Braces, MessagesSquare, RefreshCw } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -193,6 +194,8 @@ export function OpencodeSessionChat({
   messages,
   rawResponse,
   isStreaming,
+  isRefreshing,
+  onRefresh,
 }: {
   projectId: string;
   chatId: string;
@@ -202,6 +205,8 @@ export function OpencodeSessionChat({
   messages: SessionMessages;
   rawResponse: OpencodeSessionData;
   isStreaming: boolean;
+  isRefreshing: boolean;
+  onRefresh: () => void;
 }) {
   const turns = useMemo(() => createChatTurns(messages), [messages]);
   const activeQuestion = rawResponse.questions[0];
@@ -317,6 +322,18 @@ export function OpencodeSessionChat({
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
       <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="bg-background/90 shadow-sm backdrop-blur"
+          aria-label="Refresh chat events"
+          title="Refresh chat events"
+          disabled={isRefreshing}
+          onClick={onRefresh}
+        >
+          <RefreshCw className={isRefreshing ? "animate-spin" : undefined} />
+        </Button>
         <RuntimePulseMenu projectSessionId={chatId} />
         <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
       </div>
