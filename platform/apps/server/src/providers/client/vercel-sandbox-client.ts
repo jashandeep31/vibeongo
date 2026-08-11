@@ -14,13 +14,15 @@ export class VercelSandboxClient {
     instanceName,
     userData,
     terminatedAfterInMinutes,
+    instanceType,
   }: CreateInstanceProps) {
+    console.log(instanceType);
     const sandbox = await Sandbox.create({
       ...credentials,
-      name: instanceName,
+      name: instanceName.split(" ").join("-").toLowerCase(),
       source: {
         type: "snapshot",
-        snapshotId: "snap_Qms0lr3H0xEakarfGxsmULnoPT3O",
+        snapshotId: instanceType,
       },
       ports: [3101],
       timeout: terminatedAfterInMinutes * 60 * 1000,
