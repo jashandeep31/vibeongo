@@ -57,16 +57,18 @@ import {
 import { toast } from "sonner";
 
 type ProjectPorts = z.infer<typeof projectConfigValidator>["config"]["ports"];
-type SandboxProvider = "e2b" | "vercel";
+type SandboxProvider = "e2b" | "vercel" | "daytona";
 
 const sandboxProviderOptions: { id: SandboxProvider; label: string }[] = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
+  { id: "daytona", label: "Daytona" },
 ];
 
 const isAvailableSandboxProvider = (
   provider: string,
-): provider is SandboxProvider => provider === "e2b" || provider === "vercel";
+): provider is SandboxProvider =>
+  provider === "e2b" || provider === "vercel" || provider === "daytona";
 
 function FormSection({
   title,
