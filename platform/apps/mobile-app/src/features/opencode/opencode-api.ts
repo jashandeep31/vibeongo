@@ -7,6 +7,38 @@ export type OpencodeMessage = {
   parts: Array<{ id?: string; type: string; text?: string }>;
 };
 
+export type OpencodeModelOption = {
+  id: string;
+  providerID: string;
+  modelID: string;
+  name: string;
+  providerName: string;
+  variants: string[];
+};
+
+export type OpencodeAgentOption = {
+  id: string;
+  name: string;
+  description?: string;
+};
+
+export type OpencodeInventory = {
+  models: OpencodeModelOption[];
+  agents: OpencodeAgentOption[];
+};
+
+export type OpencodePromptSelection = {
+  model?: string;
+  variant?: string;
+  agent?: string;
+};
+
+export type OpencodeSession = {
+  id: string;
+  agent?: string;
+  model?: { providerID: string; id: string; variant?: string };
+};
+
 function origin(instance: RuntimeInstance) {
   const url = new URL(`https://4096-${instance.id}${instance.proxy_domain}`);
   if (
@@ -20,15 +52,22 @@ function origin(instance: RuntimeInstance) {
 
 function headers(instance: RuntimeInstance) {
   const config =
-    instance.config && typeof instance.config === "object" && !Array.isArray(instance.config)
+    instance.config &&
+    typeof instance.config === "object" &&
+    !Array.isArray(instance.config)
       ? (instance.config as Record<string, unknown>)
       : {};
-  const password = typeof config.opencodePassword === "string" ? config.opencodePassword.trim() : "";
+  const password =
+    typeof config.opencodePassword === "string"
+      ? config.opencodePassword.trim()
+      : "";
   return {
     Accept: "application/json",
     "Content-Type": "application/json",
     "X-Vibeongo-Proxy-Authorization": `Bearer ${instance.access_token}`,
-    ...(password ? { Authorization: `Basic ${globalThis.btoa(`opencode:${password}`)}` } : {}),
+    ...(password
+      ? { Authorization: `Basic ${globalThis.btoa(`opencode:${password}`)}` }
+      : {}),
   };
 }
 
@@ -43,7 +82,10 @@ async function request<T>(
     headers: { ...headers(instance), ...init.headers },
   });
   if (!response.ok) {
-    throw new Error((await response.text().catch(() => "")) || `OpenCode request failed (${response.status})`);
+    throw new Error(
+      (await response.text().catch(() => "")) ||
+        `OpenCode request failed (${response.status})`,
+    );
   }
   if (allowEmpty || response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
@@ -58,12 +100,19 @@ export async function getRunningSessionInstance(projectSessionId: string) {
   return instance;
 }
 
-export function createOpencodeChat(instance: RuntimeInstance, directory: string) {
+export function createOpencodeChat(
+  instance: RuntimeInstance,
+  directory: string,
+) {
   const query = new URLSearchParams({ directory });
-  return request<{ id: string; title?: string }>(instance, `/session?${query}`, {
-    method: "POST",
-    body: "{}",
-  });
+  return request<{ id: string; title?: string }>(
+    instance,
+    `/session?${query}`,
+    {
+      method: "POST",
+      body: "{}",
+    },
+  );
 }
 
 export function getOpencodeMessages(
@@ -78,19 +127,100 @@ export function getOpencodeMessages(
   );
 }
 
+export function getOpencodeSession(
+  instance: RuntimeInstance,
+  sessionId: string,
+  directory: string,
+) {
+  const query = new URLSearchParams({ directory });
+  return request<OpencodeSession>(
+    instance,
+    `/session/${encodeURIComponent(sessionId)}?${query}`,
+  );
+}
+
+export async function getOpencodeInventory(
+  instance: RuntimeInstance,
+  directory: string,
+): Promise<OpencodeInventory> {
+  const query = new URLSearchParams({ directory });
+  const [providerResponse, agentResponse] = await Promise.all([
+    request<{
+      all: Array<{
+        id: string;
+        name: string;
+        models: Record<
+          string,
+          { id: string; name: string; variants?: Record<string, unknown> }
+        >;
+      }>;
+      connected: string[];
+    }>(instance, `/provider?${query}`),
+    request<
+      Array<{
+        name: string;
+        description?: string;
+        mode: "subagent" | "primary" | "all";
+      }>
+    >(instance, `/agent?${query}`),
+  ]);
+  const connected = new Set(providerResponse.connected);
+  const models = providerResponse.all
+    .flatMap((provider) =>
+      connected.has(provider.id)
+        ? Object.values(provider.models).map((model) => ({
+            id: `${provider.id}/${model.id}`,
+            providerID: provider.id,
+            modelID: model.id,
+            name: model.name,
+            providerName: provider.name,
+            variants: Object.keys(model.variants ?? {}),
+          }))
+        : [],
+    )
+    .sort((left, right) => left.name.localeCompare(right.name));
+  const hiddenAgents = new Set(["compaction", "title", "summary"]);
+  const agents = agentResponse
+    .filter(
+      (agent) => agent.mode === "primary" && !hiddenAgents.has(agent.name),
+    )
+    .map((agent) => ({
+      id: agent.name,
+      name: agent.name,
+      description: agent.description,
+    }))
+    .sort((left, right) => left.name.localeCompare(right.name));
+
+  return { models, agents };
+}
+
 export function sendOpencodeMessage(
   instance: RuntimeInstance,
   sessionId: string,
   directory: string,
   text: string,
+  selection: OpencodePromptSelection = {},
 ) {
   const query = new URLSearchParams({ directory });
+  const separator = selection.model?.indexOf("/") ?? -1;
+  const model =
+    selection.model && separator > 0
+      ? {
+          providerID: selection.model.slice(0, separator),
+          modelID: selection.model.slice(separator + 1),
+        }
+      : undefined;
   return request<void>(
     instance,
     `/session/${encodeURIComponent(sessionId)}/prompt_async?${query}`,
     {
       method: "POST",
-      body: JSON.stringify({ parts: [{ type: "text", text }] }),
+      body: JSON.stringify({
+        ...(model ? { model } : {}),
+        ...(selection.variant ? { variant: selection.variant } : {}),
+        ...(selection.agent ? { agent: selection.agent } : {}),
+        parts: [{ type: "text", text }],
+      }),
     },
     true,
   );

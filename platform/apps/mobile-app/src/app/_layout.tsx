@@ -5,6 +5,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { LoginScreen } from "@/components/login-screen";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { ToastProvider } from "@/contexts/toast-context";
 import { WebSocketProvider } from "@/contexts/websocket-context";
 
 function AppContent() {
@@ -28,9 +29,11 @@ export default function RootLayout() {
         <ThemeProvider
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
+          <ToastProvider>
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ToastProvider>
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

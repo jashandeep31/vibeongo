@@ -1,3 +1,4 @@
+import { useRouter } from "expo-router";
 import { Alert, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -42,7 +43,11 @@ const navigation = [
   },
   {
     label: "GitHub Repos",
-    icon: { ios: "chevron.left.forwardslash.chevron.right", android: "code", web: "code" } as const,
+    icon: {
+      ios: "chevron.left.forwardslash.chevron.right",
+      android: "code",
+      web: "code",
+    } as const,
   },
   {
     label: "Wallet",
@@ -65,6 +70,7 @@ export function MobileSidebar({
   visible,
 }: MobileSidebarProps) {
   const { signOut } = useAuth();
+  const router = useRouter();
 
   const selectNavigation = (label: string) => {
     if (label === "Home" || label === "New Chat") {
@@ -73,7 +79,22 @@ export function MobileSidebar({
       return;
     }
 
-    Alert.alert(label, `${label} is included in the next mobile implementation phase.`);
+    if (label === "Settings") {
+      onClose();
+      router.push("/settings");
+      return;
+    }
+
+    if (label === "GitHub Repos") {
+      onClose();
+      router.push("/github-repos");
+      return;
+    }
+
+    Alert.alert(
+      label,
+      `${label} is included in the next mobile implementation phase.`,
+    );
   };
 
   return (
@@ -94,16 +115,24 @@ export function MobileSidebar({
           edges={["top", "bottom"]}
           style={[
             styles.sidebar,
-            { backgroundColor: colors.surface, borderRightColor: colors.border },
+            {
+              backgroundColor: colors.surface,
+              borderRightColor: colors.border,
+            },
           ]}
         >
           <View style={styles.sidebarHeader}>
-            <Text style={[styles.sidebarTitle, { color: colors.text }]}>AI Playground</Text>
+            <Text style={[styles.sidebarTitle, { color: colors.text }]}>
+              AI Playground
+            </Text>
             <Pressable
               accessibilityLabel="Close navigation"
               accessibilityRole="button"
               onPress={onClose}
-              style={({ pressed }) => [styles.iconButton, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.iconButton,
+                pressed && styles.pressed,
+              ]}
             >
               <AppIcon
                 name={{ ios: "xmark", android: "close", web: "close" }}
@@ -148,7 +177,9 @@ export function MobileSidebar({
           </View>
 
           <View style={[styles.divider, { backgroundColor: colors.border }]} />
-          <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>WORKSPACE</Text>
+          <Text style={[styles.groupLabel, { color: colors.textSecondary }]}>
+            WORKSPACE
+          </Text>
           <View style={styles.workspaceNavigation}>
             <Pressable
               accessibilityRole="button"
@@ -156,14 +187,25 @@ export function MobileSidebar({
                 onSelectWorkspace("chats");
                 onClose();
               }}
-              style={({ pressed }) => [styles.navigationRow, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.navigationRow,
+                pressed && styles.pressed,
+              ]}
             >
               <AppIcon
-                name={{ ios: "bubble.left.and.bubble.right", android: "chat", web: "chat" }}
+                name={{
+                  ios: "bubble.left.and.bubble.right",
+                  android: "chat",
+                  web: "chat",
+                }}
                 size={19}
                 tintColor={colors.textSecondary}
               />
-              <Text style={[styles.navigationText, { color: colors.textSecondary }]}>Chats</Text>
+              <Text
+                style={[styles.navigationText, { color: colors.textSecondary }]}
+              >
+                Chats
+              </Text>
             </Pressable>
             <Pressable
               accessibilityRole="button"
@@ -171,33 +213,53 @@ export function MobileSidebar({
                 onSelectWorkspace("projects");
                 onClose();
               }}
-              style={({ pressed }) => [styles.navigationRow, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.navigationRow,
+                pressed && styles.pressed,
+              ]}
             >
               <AppIcon
                 name={{ ios: "folder", android: "folder", web: "folder" }}
                 size={19}
                 tintColor={colors.textSecondary}
               />
-              <Text style={[styles.navigationText, { color: colors.textSecondary }]}>Projects</Text>
+              <Text
+                style={[styles.navigationText, { color: colors.textSecondary }]}
+              >
+                Projects
+              </Text>
             </Pressable>
           </View>
 
           <View style={styles.sidebarFooter}>
-            <View style={[styles.divider, { backgroundColor: colors.border }]} />
+            <View
+              style={[styles.divider, { backgroundColor: colors.border }]}
+            />
             <Pressable
               accessibilityRole="button"
               onPress={() => {
                 onClose();
                 void signOut();
               }}
-              style={({ pressed }) => [styles.navigationRow, pressed && styles.pressed]}
+              style={({ pressed }) => [
+                styles.navigationRow,
+                pressed && styles.pressed,
+              ]}
             >
               <AppIcon
-                name={{ ios: "rectangle.portrait.and.arrow.right", android: "logout", web: "logout" }}
+                name={{
+                  ios: "rectangle.portrait.and.arrow.right",
+                  android: "logout",
+                  web: "logout",
+                }}
                 size={19}
                 tintColor={colors.destructive}
               />
-              <Text style={[styles.navigationText, { color: colors.destructive }]}>Sign out</Text>
+              <Text
+                style={[styles.navigationText, { color: colors.destructive }]}
+              >
+                Sign out
+              </Text>
             </Pressable>
           </View>
         </SafeAreaView>
@@ -233,7 +295,11 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: TouchTarget,
   },
-  navigation: { gap: 3, paddingHorizontal: Spacing.three, paddingTop: Spacing.two },
+  navigation: {
+    gap: 3,
+    paddingHorizontal: Spacing.three,
+    paddingTop: Spacing.two,
+  },
   navigationRow: {
     alignItems: "center",
     borderRadius: Radius.medium,
@@ -245,8 +311,19 @@ const styles = StyleSheet.create({
   navigationText: { fontSize: 14, fontWeight: "500" },
   navigationTextActive: { fontWeight: "700" },
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: Spacing.four },
-  groupLabel: { fontSize: 10, fontWeight: "700", letterSpacing: 1.2, marginBottom: Spacing.two, marginHorizontal: Spacing.six, marginTop: Spacing.five },
+  groupLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    letterSpacing: 1.2,
+    marginBottom: Spacing.two,
+    marginHorizontal: Spacing.six,
+    marginTop: Spacing.five,
+  },
   workspaceNavigation: { gap: 3, paddingHorizontal: Spacing.three },
-  sidebarFooter: { marginTop: "auto", paddingBottom: Spacing.two, paddingTop: Spacing.four },
+  sidebarFooter: {
+    marginTop: "auto",
+    paddingBottom: Spacing.two,
+    paddingTop: Spacing.four,
+  },
   pressed: { opacity: 0.55 },
 });

@@ -10,7 +10,12 @@ import {
 } from "react-native";
 
 import { AppIcon } from "@/components/app-icon";
-import { Radius, Spacing, TouchTarget, type AppColors } from "@/constants/theme";
+import {
+  Radius,
+  Spacing,
+  TouchTarget,
+  type AppColors,
+} from "@/constants/theme";
 
 import type {
   OpencodeChat,
@@ -42,23 +47,37 @@ type WorkspaceSectionProps = {
   ) => void;
 };
 
-function EmptyState({ colors, kind }: { colors: AppColors; kind: WorkspaceTab }) {
+function EmptyState({
+  colors,
+  kind,
+}: {
+  colors: AppColors;
+  kind: WorkspaceTab;
+}) {
   const chats = kind === "chats";
   return (
-    <View style={[styles.empty, { backgroundColor: colors.backgroundElement }]}> 
+    <View style={[styles.empty, { backgroundColor: colors.backgroundElement }]}>
       <AppIcon
         name={
           chats
-            ? { ios: "bubble.left.and.bubble.right", android: "chat", web: "chat" }
-            : { ios: "folder.badge.plus", android: "create_new_folder", web: "create_new_folder" }
+            ? {
+                ios: "bubble.left.and.bubble.right",
+                android: "chat",
+                web: "chat",
+              }
+            : {
+                ios: "folder.badge.plus",
+                android: "create_new_folder",
+                web: "create_new_folder",
+              }
         }
         size={25}
         tintColor={colors.textSecondary}
       />
-      <Text style={[styles.emptyTitle, { color: colors.text }]}> 
+      <Text style={[styles.emptyTitle, { color: colors.text }]}>
         {chats ? "No recent chats" : "No projects yet"}
       </Text>
-      <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}> 
+      <Text style={[styles.emptyCopy, { color: colors.textSecondary }]}>
         {chats
           ? "Start with the composer above. Your conversations will appear here."
           : "Create a project to connect repositories and launch coding sessions."}
@@ -67,9 +86,15 @@ function EmptyState({ colors, kind }: { colors: AppColors; kind: WorkspaceTab })
   );
 }
 
-function ChatList(props: Pick<WorkspaceSectionProps, "chats" | "colors" | "deletingChatId" | "onDeleteChat">) {
+function ChatList(
+  props: Pick<
+    WorkspaceSectionProps,
+    "chats" | "colors" | "deletingChatId" | "onDeleteChat"
+  >,
+) {
   const router = useRouter();
-  if (props.chats.length === 0) return <EmptyState colors={props.colors} kind="chats" />;
+  if (props.chats.length === 0)
+    return <EmptyState colors={props.colors} kind="chats" />;
 
   return (
     <View>
@@ -88,20 +113,39 @@ function ChatList(props: Pick<WorkspaceSectionProps, "chats" | "colors" | "delet
             accessibilityLabel={`Open ${chat.name}`}
             accessibilityRole="button"
             onPress={() => router.push(`/chat/${chat.id}`)}
-            style={({ pressed }) => [styles.chatMain, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.chatMain,
+              pressed && styles.pressed,
+            ]}
           >
-            <View style={[styles.rowIcon, { backgroundColor: props.colors.backgroundElement }]}> 
+            <View
+              style={[
+                styles.rowIcon,
+                { backgroundColor: props.colors.backgroundElement },
+              ]}
+            >
               <AppIcon
-                name={{ ios: "bubble.left", android: "chat_bubble", web: "chat_bubble" }}
+                name={{
+                  ios: "bubble.left",
+                  android: "chat_bubble",
+                  web: "chat_bubble",
+                }}
                 size={18}
                 tintColor={props.colors.textSecondary}
               />
             </View>
             <View style={styles.flex}>
-              <Text numberOfLines={1} style={[styles.chatName, { color: props.colors.text }]}> 
+              <Text
+                numberOfLines={1}
+                style={[styles.chatName, { color: props.colors.text }]}
+              >
                 {chat.name}
               </Text>
-              <Text style={[styles.meta, { color: props.colors.textSecondary }]}>Recent conversation</Text>
+              <Text
+                style={[styles.meta, { color: props.colors.textSecondary }]}
+              >
+                Recent conversation
+              </Text>
             </View>
           </Pressable>
           <Pressable
@@ -112,10 +156,17 @@ function ChatList(props: Pick<WorkspaceSectionProps, "chats" | "colors" | "delet
             style={styles.iconAction}
           >
             {props.deletingChatId === chat.id ? (
-              <ActivityIndicator color={props.colors.destructive} size="small" />
+              <ActivityIndicator
+                color={props.colors.destructive}
+                size="small"
+              />
             ) : (
               <AppIcon
-                name={{ ios: "ellipsis", android: "more_horiz", web: "more_horiz" }}
+                name={{
+                  ios: "ellipsis",
+                  android: "more_horiz",
+                  web: "more_horiz",
+                }}
                 size={21}
                 tintColor={props.colors.textSecondary}
               />
@@ -163,19 +214,28 @@ function SessionCard({
 
   useEffect(() => {
     if (state !== "running") return;
+    setExpanded(true);
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [state]);
 
   return (
-    <View style={[styles.sessionCard, { backgroundColor: colors.backgroundElement }]}> 
+    <View
+      style={[
+        styles.sessionCard,
+        { backgroundColor: colors.backgroundElement },
+      ]}
+    >
       <View style={styles.sessionRow}>
         <Pressable
           accessibilityRole="button"
           accessibilityState={{ expanded: state === "running" && expanded }}
           disabled={state !== "running"}
           onPress={() => setExpanded((value) => !value)}
-          style={({ pressed }) => [styles.sessionMain, pressed && styles.pressed]}
+          style={({ pressed }) => [
+            styles.sessionMain,
+            pressed && styles.pressed,
+          ]}
         >
           <View
             style={[
@@ -191,10 +251,13 @@ function SessionCard({
             ]}
           />
           <View style={styles.flex}>
-            <Text numberOfLines={1} style={[styles.sessionName, { color: colors.text }]}> 
+            <Text
+              numberOfLines={1}
+              style={[styles.sessionName, { color: colors.text }]}
+            >
               {session.name}
             </Text>
-            <Text style={[styles.meta, { color: colors.textSecondary }]}> 
+            <Text style={[styles.meta, { color: colors.textSecondary }]}>
               {state === "running"
                 ? `Running${session.runtime?.instance ? ` · ${remainingTime(session.runtime.instance.terminates_at, now)}` : ""}`
                 : state === "processing"
@@ -206,8 +269,16 @@ function SessionCard({
             <AppIcon
               name={
                 expanded
-                  ? { ios: "chevron.up", android: "expand_less", web: "expand_less" }
-                  : { ios: "chevron.down", android: "expand_more", web: "expand_more" }
+                  ? {
+                      ios: "chevron.up",
+                      android: "expand_less",
+                      web: "expand_less",
+                    }
+                  : {
+                      ios: "chevron.down",
+                      android: "expand_more",
+                      web: "expand_more",
+                    }
               }
               size={17}
               tintColor={colors.textSecondary}
@@ -216,7 +287,9 @@ function SessionCard({
         </Pressable>
 
         {pending || state === "processing" ? (
-          <View style={styles.iconAction}><ActivityIndicator color={colors.brand} size="small" /></View>
+          <View style={styles.iconAction}>
+            <ActivityIndicator color={colors.brand} size="small" />
+          </View>
         ) : state === "stopped" ? (
           <View style={styles.inlineActions}>
             <Pressable
@@ -225,32 +298,103 @@ function SessionCard({
               onPress={onResume}
               style={[styles.resumeButton, { borderColor: colors.border }]}
             >
-              <AppIcon name={{ ios: "play.fill", android: "play_arrow", web: "play_arrow" }} size={14} tintColor={colors.text} />
-              <Text style={[styles.resumeText, { color: colors.text }]}>Resume</Text>
+              <AppIcon
+                name={{
+                  ios: "play.fill",
+                  android: "play_arrow",
+                  web: "play_arrow",
+                }}
+                size={14}
+                tintColor={colors.text}
+              />
+              <Text style={[styles.resumeText, { color: colors.text }]}>
+                Resume
+              </Text>
             </Pressable>
-            <Pressable accessibilityLabel={`Archive ${session.name}`} accessibilityRole="button" onPress={onArchive} style={styles.iconAction}>
-              <AppIcon name={{ ios: "archivebox", android: "archive", web: "archive" }} size={18} tintColor={colors.textSecondary} />
+            <Pressable
+              accessibilityLabel={`Archive ${session.name}`}
+              accessibilityRole="button"
+              onPress={onArchive}
+              style={styles.iconAction}
+            >
+              <AppIcon
+                name={{ ios: "archivebox", android: "archive", web: "archive" }}
+                size={18}
+                tintColor={colors.textSecondary}
+              />
             </Pressable>
           </View>
         ) : (
-          <Pressable accessibilityLabel={`Terminate ${session.name}`} accessibilityRole="button" onPress={onTerminate} style={styles.iconAction}>
-            <AppIcon name={{ ios: "stop.fill", android: "stop", web: "stop" }} size={18} tintColor={colors.destructive} />
+          <Pressable
+            accessibilityLabel={`Terminate ${session.name}`}
+            accessibilityRole="button"
+            onPress={onTerminate}
+            style={styles.iconAction}
+          >
+            <AppIcon
+              name={{ ios: "stop.fill", android: "stop", web: "stop" }}
+              size={18}
+              tintColor={colors.destructive}
+            />
           </Pressable>
         )}
       </View>
 
       {state === "running" && expanded ? (
-        <View style={[styles.opencodeList, { borderTopColor: colors.border }]}> 
+        <View style={[styles.opencodeList, { borderTopColor: colors.border }]}>
+          {session.runtime?.error ? (
+            <Text style={[styles.chatLoadError, { color: colors.destructive }]}>
+              Could not refresh chats. Pull down on Home to retry.
+            </Text>
+          ) : null}
           {(session.runtime?.chats ?? []).map((chat) => (
-            <Pressable key={chat.id} accessibilityRole="button" onPress={() => onOpenChat(chat)} style={({ pressed }) => [styles.opencodeRow, pressed && styles.pressed]}>
-              <AppIcon name={{ ios: "bubble.left", android: "chat", web: "chat" }} size={16} tintColor={colors.textSecondary} />
-              <Text numberOfLines={1} style={[styles.opencodeTitle, { color: colors.text }]}>{chat.title || "Untitled chat"}</Text>
-              <AppIcon name={{ ios: "chevron.right", android: "chevron_right", web: "chevron_right" }} size={15} tintColor={colors.textSecondary} />
+            <Pressable
+              key={chat.id}
+              accessibilityRole="button"
+              onPress={() => onOpenChat(chat)}
+              style={({ pressed }) => [
+                styles.opencodeRow,
+                pressed && styles.pressed,
+              ]}
+            >
+              <AppIcon
+                name={{ ios: "bubble.left", android: "chat", web: "chat" }}
+                size={16}
+                tintColor={colors.textSecondary}
+              />
+              <Text
+                numberOfLines={1}
+                style={[styles.opencodeTitle, { color: colors.text }]}
+              >
+                {chat.title || "Untitled chat"}
+              </Text>
+              <AppIcon
+                name={{
+                  ios: "chevron.right",
+                  android: "chevron_right",
+                  web: "chevron_right",
+                }}
+                size={15}
+                tintColor={colors.textSecondary}
+              />
             </Pressable>
           ))}
-          <Pressable accessibilityRole="button" onPress={onNewChat} style={({ pressed }) => [styles.opencodeRow, pressed && styles.pressed]}>
-            <AppIcon name={{ ios: "plus", android: "add", web: "add" }} size={17} tintColor={colors.brand} />
-            <Text style={[styles.newChatText, { color: colors.brand }]}>New chat</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={onNewChat}
+            style={({ pressed }) => [
+              styles.opencodeRow,
+              pressed && styles.pressed,
+            ]}
+          >
+            <AppIcon
+              name={{ ios: "plus", android: "add", web: "add" }}
+              size={17}
+              tintColor={colors.brand}
+            />
+            <Text style={[styles.newChatText, { color: colors.brand }]}>
+              New chat
+            </Text>
           </Pressable>
         </View>
       ) : null}
@@ -258,52 +402,148 @@ function SessionCard({
   );
 }
 
-function ProjectCard(props: Pick<WorkspaceSectionProps, "colors" | "actionPendingId" | "onArchiveSession" | "onCreateSession" | "onNewOpencodeChat" | "onOpenOpencodeChat" | "onResumeSession" | "onTerminateSession"> & { project: Project }) {
+function ProjectCard(
+  props: Pick<
+    WorkspaceSectionProps,
+    | "colors"
+    | "actionPendingId"
+    | "onArchiveSession"
+    | "onCreateSession"
+    | "onNewOpencodeChat"
+    | "onOpenOpencodeChat"
+    | "onResumeSession"
+    | "onTerminateSession"
+  > & { project: Project },
+) {
   const [expanded, setExpanded] = useState(false);
-  const running = props.project.sessions.filter((session) => session.runtime?.state === "running").length;
+  const running = props.project.sessions.filter(
+    (session) => session.runtime?.state === "running",
+  ).length;
 
   return (
-    <View style={[styles.projectCard, { backgroundColor: props.colors.surface, borderColor: props.colors.border }]}> 
+    <View
+      style={[
+        styles.projectCard,
+        {
+          backgroundColor: props.colors.surface,
+          borderColor: props.colors.border,
+        },
+      ]}
+    >
       <View style={styles.projectHeader}>
-        <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={({ pressed }) => [styles.projectMain, pressed && styles.pressed]}>
-          <View style={[styles.rowIcon, { backgroundColor: props.colors.backgroundElement }]}> 
-            <AppIcon name={{ ios: "folder.fill", android: "folder", web: "folder" }} size={20} tintColor={props.colors.brand} />
+        <Pressable
+          accessibilityRole="button"
+          accessibilityState={{ expanded }}
+          onPress={() => setExpanded((value) => !value)}
+          style={({ pressed }) => [
+            styles.projectMain,
+            pressed && styles.pressed,
+          ]}
+        >
+          <View
+            style={[
+              styles.rowIcon,
+              { backgroundColor: props.colors.backgroundElement },
+            ]}
+          >
+            <AppIcon
+              name={{ ios: "folder.fill", android: "folder", web: "folder" }}
+              size={20}
+              tintColor={props.colors.brand}
+            />
           </View>
           <View style={styles.flex}>
-            <Text numberOfLines={1} style={[styles.projectName, { color: props.colors.text }]}>{props.project.name}</Text>
+            <Text
+              numberOfLines={1}
+              style={[styles.projectName, { color: props.colors.text }]}
+            >
+              {props.project.name}
+            </Text>
             <Text style={[styles.meta, { color: props.colors.textSecondary }]}>
-              {props.project.sessions.length} {props.project.sessions.length === 1 ? "session" : "sessions"}{running ? ` · ${running} running` : ""}
+              {props.project.sessions.length}{" "}
+              {props.project.sessions.length === 1 ? "session" : "sessions"}
+              {running ? ` · ${running} running` : ""}
             </Text>
           </View>
-          <AppIcon name={expanded ? { ios: "chevron.up", android: "expand_less", web: "expand_less" } : { ios: "chevron.down", android: "expand_more", web: "expand_more" }} size={18} tintColor={props.colors.textSecondary} />
+          <AppIcon
+            name={
+              expanded
+                ? {
+                    ios: "chevron.up",
+                    android: "expand_less",
+                    web: "expand_less",
+                  }
+                : {
+                    ios: "chevron.down",
+                    android: "expand_more",
+                    web: "expand_more",
+                  }
+            }
+            size={18}
+            tintColor={props.colors.textSecondary}
+          />
         </Pressable>
-        <Pressable accessibilityLabel={`Create a session in ${props.project.name}`} accessibilityRole="button" onPress={() => props.onCreateSession(props.project)} style={styles.iconAction}>
-          <AppIcon name={{ ios: "plus", android: "add", web: "add" }} size={20} tintColor={props.colors.text} />
+        <Pressable
+          accessibilityLabel={`Create a session in ${props.project.name}`}
+          accessibilityRole="button"
+          onPress={() => props.onCreateSession(props.project)}
+          style={styles.iconAction}
+        >
+          <AppIcon
+            name={{ ios: "plus", android: "add", web: "add" }}
+            size={20}
+            tintColor={props.colors.text}
+          />
         </Pressable>
       </View>
       {expanded ? (
-        <View style={[styles.sessions, { borderTopColor: props.colors.border }]}> 
+        <View
+          style={[styles.sessions, { borderTopColor: props.colors.border }]}
+        >
           {props.project.sessions.length === 0 ? (
             <View style={styles.noSessions}>
-              <Text style={[styles.meta, { color: props.colors.textSecondary }]}>No sessions in this project yet.</Text>
-              <Pressable accessibilityRole="button" onPress={() => props.onCreateSession(props.project)} style={[styles.outlineButton, { borderColor: props.colors.border }]}> 
-                <AppIcon name={{ ios: "plus", android: "add", web: "add" }} size={16} tintColor={props.colors.text} />
-                <Text style={[styles.resumeText, { color: props.colors.text }]}>New session</Text>
+              <Text
+                style={[styles.meta, { color: props.colors.textSecondary }]}
+              >
+                No sessions in this project yet.
+              </Text>
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => props.onCreateSession(props.project)}
+                style={[
+                  styles.outlineButton,
+                  { borderColor: props.colors.border },
+                ]}
+              >
+                <AppIcon
+                  name={{ ios: "plus", android: "add", web: "add" }}
+                  size={16}
+                  tintColor={props.colors.text}
+                />
+                <Text style={[styles.resumeText, { color: props.colors.text }]}>
+                  New session
+                </Text>
               </Pressable>
             </View>
-          ) : props.project.sessions.map((session) => (
-            <SessionCard
-              actionPendingId={props.actionPendingId}
-              colors={props.colors}
-              key={session.id}
-              onArchive={() => props.onArchiveSession(session)}
-              onNewChat={() => props.onNewOpencodeChat(props.project, session)}
-              onOpenChat={(chat) => props.onOpenOpencodeChat(props.project, session, chat)}
-              onResume={() => props.onResumeSession(session)}
-              onTerminate={() => props.onTerminateSession(session)}
-              session={session}
-            />
-          ))}
+          ) : (
+            props.project.sessions.map((session) => (
+              <SessionCard
+                actionPendingId={props.actionPendingId}
+                colors={props.colors}
+                key={session.id}
+                onArchive={() => props.onArchiveSession(session)}
+                onNewChat={() =>
+                  props.onNewOpencodeChat(props.project, session)
+                }
+                onOpenChat={(chat) =>
+                  props.onOpenOpencodeChat(props.project, session, chat)
+                }
+                onResume={() => props.onResumeSession(session)}
+                onTerminate={() => props.onTerminateSession(session)}
+                session={session}
+              />
+            ))
+          )}
         </View>
       ) : null}
     </View>
@@ -314,21 +554,89 @@ export function WorkspaceSection(props: WorkspaceSectionProps) {
   return (
     <View style={styles.container}>
       <View style={styles.workspaceHeader}>
-        <View accessibilityRole="tablist" style={[styles.segmented, { backgroundColor: props.colors.backgroundElement, borderColor: props.colors.border }]}> 
+        <View
+          accessibilityRole="tablist"
+          style={[
+            styles.segmented,
+            {
+              backgroundColor: props.colors.backgroundElement,
+              borderColor: props.colors.border,
+            },
+          ]}
+        >
           {(["chats", "projects"] as const).map((tab) => {
             const selected = props.activeTab === tab;
             return (
-              <Pressable key={tab} accessibilityRole="tab" accessibilityState={{ selected }} onPress={() => props.onChangeTab(tab)} style={[styles.segment, selected && { backgroundColor: props.colors.primary }]}> 
-                <AppIcon name={tab === "chats" ? { ios: "bubble.left.and.bubble.right", android: "chat", web: "chat" } : { ios: "folder", android: "folder", web: "folder" }} size={15} tintColor={selected ? props.colors.primaryForeground : props.colors.textSecondary} />
-                <Text style={[styles.segmentText, { color: selected ? props.colors.primaryForeground : props.colors.textSecondary }]}>{tab === "chats" ? "Chats" : "Projects"}</Text>
+              <Pressable
+                key={tab}
+                accessibilityRole="tab"
+                accessibilityState={{ selected }}
+                onPress={() => props.onChangeTab(tab)}
+                style={[
+                  styles.segment,
+                  selected && { backgroundColor: props.colors.primary },
+                ]}
+              >
+                <AppIcon
+                  name={
+                    tab === "chats"
+                      ? {
+                          ios: "bubble.left.and.bubble.right",
+                          android: "chat",
+                          web: "chat",
+                        }
+                      : { ios: "folder", android: "folder", web: "folder" }
+                  }
+                  size={15}
+                  tintColor={
+                    selected
+                      ? props.colors.primaryForeground
+                      : props.colors.textSecondary
+                  }
+                />
+                <Text
+                  style={[
+                    styles.segmentText,
+                    {
+                      color: selected
+                        ? props.colors.primaryForeground
+                        : props.colors.textSecondary,
+                    },
+                  ]}
+                >
+                  {tab === "chats" ? "Chats" : "Projects"}
+                </Text>
               </Pressable>
             );
           })}
         </View>
         {props.activeTab === "projects" ? (
-          <Pressable accessibilityRole="button" onPress={() => Alert.alert("Create project", "Project creation is not available on mobile yet.")} style={[styles.createButton, { backgroundColor: props.colors.primary }]}> 
-            <AppIcon name={{ ios: "plus", android: "add", web: "add" }} size={16} tintColor={props.colors.primaryForeground} />
-            <Text style={[styles.createText, { color: props.colors.primaryForeground }]}>Create</Text>
+          <Pressable
+            accessibilityRole="button"
+            onPress={() =>
+              Alert.alert(
+                "Create project",
+                "Project creation is not available on mobile yet.",
+              )
+            }
+            style={[
+              styles.createButton,
+              { backgroundColor: props.colors.primary },
+            ]}
+          >
+            <AppIcon
+              name={{ ios: "plus", android: "add", web: "add" }}
+              size={16}
+              tintColor={props.colors.primaryForeground}
+            />
+            <Text
+              style={[
+                styles.createText,
+                { color: props.colors.primaryForeground },
+              ]}
+            >
+              Create
+            </Text>
           </Pressable>
         ) : null}
       </View>
@@ -338,7 +646,9 @@ export function WorkspaceSection(props: WorkspaceSectionProps) {
         <EmptyState colors={props.colors} kind="projects" />
       ) : (
         <View style={styles.projectList}>
-          {props.projects.map((project) => <ProjectCard {...props} key={project.id} project={project} />)}
+          {props.projects.map((project) => (
+            <ProjectCard {...props} key={project.id} project={project} />
+          ))}
         </View>
       )}
     </View>
@@ -347,41 +657,148 @@ export function WorkspaceSection(props: WorkspaceSectionProps) {
 
 const styles = StyleSheet.create({
   container: { marginTop: Spacing.seven },
-  workspaceHeader: { alignItems: "center", flexDirection: "row", justifyContent: "space-between", marginBottom: Spacing.five },
-  segmented: { borderRadius: Radius.pill, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", padding: 4 },
-  segment: { alignItems: "center", borderRadius: Radius.pill, flexDirection: "row", gap: 6, height: 34, paddingHorizontal: 13 },
+  workspaceHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: Spacing.five,
+  },
+  segmented: {
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    padding: 4,
+  },
+  segment: {
+    alignItems: "center",
+    borderRadius: Radius.pill,
+    flexDirection: "row",
+    gap: 6,
+    height: 34,
+    paddingHorizontal: 13,
+  },
   segmentText: { fontSize: 13, fontWeight: "600" },
-  createButton: { alignItems: "center", borderRadius: Radius.pill, flexDirection: "row", gap: 5, height: 42, paddingHorizontal: 14 },
+  createButton: {
+    alignItems: "center",
+    borderRadius: Radius.pill,
+    flexDirection: "row",
+    gap: 5,
+    height: 42,
+    paddingHorizontal: 14,
+  },
   createText: { fontSize: 13, fontWeight: "700" },
-  empty: { alignItems: "center", borderRadius: Radius.large, gap: Spacing.three, padding: Spacing.seven },
+  empty: {
+    alignItems: "center",
+    borderRadius: Radius.large,
+    gap: Spacing.three,
+    padding: Spacing.seven,
+  },
   emptyTitle: { fontSize: 15, fontWeight: "700" },
-  emptyCopy: { fontSize: 13, lineHeight: 19, maxWidth: 300, textAlign: "center" },
+  emptyCopy: {
+    fontSize: 13,
+    lineHeight: 19,
+    maxWidth: 300,
+    textAlign: "center",
+  },
   chatRow: { alignItems: "center", flexDirection: "row", minHeight: 72 },
-  chatMain: { alignItems: "center", flex: 1, flexDirection: "row", gap: Spacing.three, minHeight: 72 },
-  rowIcon: { alignItems: "center", borderRadius: Radius.medium, height: 42, justifyContent: "center", width: 42 },
+  chatMain: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: Spacing.three,
+    minHeight: 72,
+  },
+  rowIcon: {
+    alignItems: "center",
+    borderRadius: Radius.medium,
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
   chatName: { fontSize: 15, fontWeight: "600" },
   flex: { flex: 1, minWidth: 0 },
   meta: { fontSize: 12, marginTop: 2 },
-  iconAction: { alignItems: "center", height: TouchTarget, justifyContent: "center", width: TouchTarget },
+  iconAction: {
+    alignItems: "center",
+    height: TouchTarget,
+    justifyContent: "center",
+    width: TouchTarget,
+  },
   projectList: { gap: Spacing.three },
-  projectCard: { borderRadius: Radius.large, borderWidth: StyleSheet.hairlineWidth, overflow: "hidden" },
+  projectCard: {
+    borderRadius: Radius.large,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
   projectHeader: { alignItems: "center", flexDirection: "row", minHeight: 74 },
-  projectMain: { alignItems: "center", flex: 1, flexDirection: "row", gap: Spacing.three, minHeight: 74, paddingLeft: Spacing.four },
+  projectMain: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: Spacing.three,
+    minHeight: 74,
+    paddingLeft: Spacing.four,
+  },
   projectName: { fontSize: 15, fontWeight: "700" },
-  sessions: { borderTopWidth: StyleSheet.hairlineWidth, gap: Spacing.two, padding: Spacing.three },
-  noSessions: { alignItems: "center", gap: Spacing.three, padding: Spacing.five },
-  outlineButton: { alignItems: "center", borderRadius: Radius.pill, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 5, height: 40, paddingHorizontal: 14 },
+  sessions: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: Spacing.two,
+    padding: Spacing.three,
+  },
+  noSessions: {
+    alignItems: "center",
+    gap: Spacing.three,
+    padding: Spacing.five,
+  },
+  outlineButton: {
+    alignItems: "center",
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 5,
+    height: 40,
+    paddingHorizontal: 14,
+  },
   sessionCard: { borderRadius: Radius.medium, overflow: "hidden" },
   sessionRow: { alignItems: "center", flexDirection: "row", minHeight: 58 },
-  sessionMain: { alignItems: "center", flex: 1, flexDirection: "row", gap: Spacing.three, minHeight: 58, paddingLeft: Spacing.three },
+  sessionMain: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: Spacing.three,
+    minHeight: 58,
+    paddingLeft: Spacing.three,
+  },
   statusDot: { borderRadius: 4, height: 8, width: 8 },
   sessionName: { fontSize: 13, fontWeight: "600" },
   inlineActions: { alignItems: "center", flexDirection: "row" },
-  resumeButton: { alignItems: "center", borderRadius: Radius.pill, borderWidth: StyleSheet.hairlineWidth, flexDirection: "row", gap: 4, height: 36, paddingHorizontal: 10 },
+  resumeButton: {
+    alignItems: "center",
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 4,
+    height: 36,
+    paddingHorizontal: 10,
+  },
   resumeText: { fontSize: 12, fontWeight: "600" },
-  opencodeList: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: Spacing.three, paddingVertical: Spacing.two },
-  opencodeRow: { alignItems: "center", flexDirection: "row", gap: Spacing.three, minHeight: TouchTarget },
+  opencodeList: {
+    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+  },
+  opencodeRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: Spacing.three,
+    minHeight: TouchTarget,
+  },
   opencodeTitle: { flex: 1, fontSize: 13, fontWeight: "500" },
   newChatText: { flex: 1, fontSize: 13, fontWeight: "700" },
+  chatLoadError: {
+    fontSize: 12,
+    lineHeight: 17,
+    paddingVertical: Spacing.two,
+  },
   pressed: { opacity: 0.55 },
 });

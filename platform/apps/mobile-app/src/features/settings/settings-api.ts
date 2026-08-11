@@ -1,4 +1,4 @@
-import { apiRequest } from "@/lib/api";
+import { ApiError, apiFetch, apiRequest } from "@/lib/api";
 
 export type ThemePreference = "light" | "dark" | "system";
 export type ConfigType = "opencode" | "codex" | "pi";
@@ -51,11 +51,23 @@ export const updateSettings = (payload: UpdateSettingsPayload) =>
     method: "PUT",
   });
 
+async function requestWithoutData(path: string, init: RequestInit) {
+  const response = await apiFetch(path, init);
+  if (response.ok) return;
+  const body = (await response.json().catch(() => null)) as
+    | { error?: string; message?: string }
+    | null;
+  throw new ApiError(
+    body?.message ?? body?.error ?? `Request failed (${response.status})`,
+    response.status,
+  );
+}
+
 export const createSshKey = (payload: { name: string; value: string }) =>
-  apiRequest<unknown>("/api/v1/users/ssh-keys", {
+  requestWithoutData("/api/v1/users/ssh-keys", {
     body: JSON.stringify(payload),
     method: "POST",
   });
 
 export const deleteSshKey = (id: string) =>
-  apiRequest<unknown>(`/api/v1/users/ssh-keys/${id}`, { method: "DELETE" });
+  requestWithoutData(`/api/v1/users/ssh-keys/${id}`, { method: "DELETE" });

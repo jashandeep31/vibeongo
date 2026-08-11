@@ -16,8 +16,8 @@ This checklist defines the native Expo/React Native version of every user-facing
 - [ ] Implement Home / New Chat from `/` and `app/(root)/client-view.tsx`.
 - [ ] Implement VibeOngo Chat from `/chat/[chatId]`.
 - [ ] Implement Limits from `/limits`.
-- [ ] Implement GitHub Repositories from `/github-repos`.
-- [ ] Implement GitHub Repository Detail from `/github-repos/[repoId]`.
+- [x] Implement GitHub Repositories from `/github-repos`.
+- [x] Implement GitHub Repository Detail from `/github-repos/[repoId]`.
 - [ ] Implement Create Project from `/projects/create`.
 - [ ] Implement Edit Project from `/projects/[projectId]/edit` using the same form as Create Project.
 - [ ] Implement Environment Files from `/projects/[projectId]/env`.
@@ -147,46 +147,46 @@ This checklist defines the native Expo/React Native version of every user-facing
 
 ### 5. GitHub Repositories
 
-- [ ] Build a repository list header with title, explanatory copy, search field, and Connect repository action.
-- [ ] Filter repositories locally by normalized query while retaining the unfiltered cached collection.
-- [ ] Render repository cards with GitHub icon, full name, description, public/private badge, automation indicators, and open-detail affordance.
-- [ ] Show skeleton cards while loading.
-- [ ] Show distinct load-error, no-connected-repositories, and no-search-results states.
-- [ ] Make the empty connected state offer Connect repository directly.
-- [ ] Implement pull-to-refresh and preserve the search query during refresh.
+- [x] Build a repository list header with title, explanatory copy, search field, and Connect repository action.
+- [x] Filter repositories locally by normalized query while retaining the unfiltered cached collection.
+- [x] Render repository cards with GitHub icon, full name, description, public/private badge, automation indicators, and open-detail affordance.
+- [x] Show skeleton cards while loading.
+- [x] Show distinct load-error, no-connected-repositories, and no-search-results states.
+- [x] Make the empty connected state offer Connect repository directly.
+- [x] Implement pull-to-refresh and preserve the search query during refresh.
 
 ### 6. Connect GitHub Repository
 
-- [ ] Present this flow as a modal stack screen or bottom sheet titled “Add GitHub repository.”
-- [ ] Add Repository URL with the `https://github.com/owner/repository` example and Setup script with the `npm install` example.
-- [ ] Normalize whitespace and validate a supported GitHub repository URL before submission.
-- [ ] Keep values and show the backend message when creation fails.
-- [ ] Disable dismissal during the final mutation, show progress, refresh repository caches, and close with success feedback.
+- [x] Present this flow as a modal stack screen or bottom sheet titled “Add GitHub repository.”
+- [x] Add Repository URL with the `https://github.com/owner/repository` example and Setup script with the `npm install` example.
+- [x] Normalize whitespace and validate a supported GitHub repository URL before submission.
+- [x] Keep values and show the backend message when creation fails.
+- [x] Disable dismissal during the final mutation, show progress, refresh repository caches, and close with success feedback.
 
 ### 7. GitHub Repository Detail
 
-- [ ] Build a header with owner, repository name, GitHub icon, public/private status, and a back action to Repositories.
-- [ ] Add actions for Show/Hide overview, Create/Refresh overview, Automation settings, and View repository on GitHub.
-- [ ] Render the generated overview in a readable expandable section with a bounded initial height.
-- [ ] Confirm before refreshing an existing overview because the current content will be replaced.
-- [ ] Show overview generation progress and refresh repository data when scheduling succeeds.
-- [ ] Warn when no default project is selected and link directly to Automation settings.
-- [ ] Add Pull requests and Issues tabs with counts when available.
-- [ ] Render pull-request cards with number, title, author/date metadata, draft/open/closed/merged status, external GitHub link, and Review pull request action.
-- [ ] Render issue cards with number, title, author/date metadata, open/closed status, external GitHub link, and Generate issue fix action.
-- [ ] Require a default project before review/fix actions and communicate the missing configuration instead of failing silently.
-- [ ] Show progress feedback while AI review, issue fix, and overview tasks are scheduled.
-- [ ] Add loading skeletons plus distinct repository-load, activity-load, pull-request-load, issue-load, and empty-list states.
-- [ ] Support pull-to-refresh without resetting the selected tab or overview visibility.
+- [x] Build a header with owner, repository name, GitHub icon, public/private status, and a back action to Repositories.
+- [x] Add actions for Show/Hide overview, Create/Refresh overview, Automation settings, and View repository on GitHub.
+- [x] Render the generated overview in a readable expandable section with a bounded initial height.
+- [x] Confirm before refreshing an existing overview because the current content will be replaced.
+- [x] Show overview generation progress and refresh repository data when scheduling succeeds.
+- [x] Warn when no default project is selected and link directly to Automation settings.
+- [x] Add Pull requests and Issues tabs with counts when available.
+- [x] Render pull-request cards with number, title, author/date metadata, draft/open/closed/merged status, external GitHub link, and Review pull request action.
+- [x] Render issue cards with number, title, author/date metadata, open/closed status, external GitHub link, and Generate issue fix action.
+- [x] Require a default project before review/fix actions and communicate the missing configuration instead of failing silently.
+- [x] Show progress feedback while AI review, issue fix, and overview tasks are scheduled.
+- [x] Add loading skeletons plus distinct repository-load, activity-load, pull-request-load, issue-load, and empty-list states.
+- [x] Support pull-to-refresh without resetting the selected tab or overview visibility.
 
 ### 8. Repository Automation Settings
 
-- [ ] Present “Repository automation” as a form sheet or pushed settings screen.
-- [ ] Add a Default project selector with “No default project” and all available projects.
-- [ ] Add Auto-review pull requests with its explanatory text.
-- [ ] Add Auto-fix issues with its explanatory text.
-- [ ] Disable Save until something changes and prevent double submission.
-- [ ] Persist all three settings together, refresh repository state, and show backend errors without losing edits.
+- [x] Present “Repository automation” as a form sheet or pushed settings screen.
+- [x] Add a Default project selector with “No default project” and all available projects.
+- [x] Add Auto-review pull requests with its explanatory text.
+- [x] Add Auto-fix issues with its explanatory text.
+- [x] Disable Save until something changes and prevent double submission.
+- [x] Persist all three settings together, refresh repository state, and show backend errors without losing edits.
 
 ### 9. Create Project
 

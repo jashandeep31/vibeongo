@@ -60,13 +60,8 @@ export async function getHomeData(signal?: AbortSignal): Promise<HomeData> {
                 },
               };
             }
-
-            const chats = await getOpencodeChats(instance, signal);
-            return {
-              ...session,
-              runtime: { state: "running" as const, instance, chats },
-            };
           } catch (runtimeError) {
+            if (signal?.aborted) throw runtimeError;
             return {
               ...session,
               runtime: {
@@ -80,6 +75,28 @@ export async function getHomeData(signal?: AbortSignal): Promise<HomeData> {
               },
             };
           }
+
+          try {
+            const chats = await getOpencodeChats(instance, signal);
+            return {
+              ...session,
+              runtime: { state: "running" as const, instance, chats },
+            };
+          } catch (chatError) {
+            if (signal?.aborted) throw chatError;
+            return {
+              ...session,
+              runtime: {
+                state: "running" as const,
+                instance,
+                chats: [],
+                error:
+                  chatError instanceof Error
+                    ? chatError.message
+                    : "Could not load OpenCode chats.",
+              },
+            };
+          }
         }),
       ),
     })),
@@ -89,11 +106,10 @@ export async function getHomeData(signal?: AbortSignal): Promise<HomeData> {
 }
 
 export function deleteChat(id: string, signal?: AbortSignal) {
-  return apiRequest<RecentChat>(
-    `/api/v1/chats/${encodeURIComponent(id)}`,
-    { method: "DELETE" },
+  return apiAction(`/api/v1/chats/${encodeURIComponent(id)}`, {
+    method: "DELETE",
     signal,
-  );
+  });
 }
 
 export function createProjectSession(
@@ -111,10 +127,13 @@ export function resumeProjectSession(
   sessionId: string,
   runtime: ProjectSessionRuntimeKind,
 ) {
-  return apiAction(`/api/v1/project-sessions/${encodeURIComponent(sessionId)}`, {
-    method: "POST",
-    body: JSON.stringify({ runtime }),
-  });
+  return apiAction(
+    `/api/v1/project-sessions/${encodeURIComponent(sessionId)}`,
+    {
+      method: "POST",
+      body: JSON.stringify({ runtime }),
+    },
+  );
 }
 
 export function archiveProjectSession(sessionId: string) {
@@ -138,9 +157,10 @@ export function getProjectGithubRepos(projectId: string) {
 
 async function apiAction(path: string, init: RequestInit) {
   const response = await apiFetch(path, init);
-  const body = (await response.json().catch(() => null)) as
-    | { message?: string; error?: string }
-    | null;
+  const body = (await response.json().catch(() => null)) as {
+    message?: string;
+    error?: string;
+  } | null;
 
   if (!response.ok) {
     throw new ApiError(
@@ -152,13 +172,10 @@ async function apiAction(path: string, init: RequestInit) {
 }
 
 function runtimeOrigin(instance: RuntimeInstance, port: 3101 | 4096) {
-  const url = new URL(
-    `https://${port}-${instance.id}${instance.proxy_domain}`,
-  );
+  const url = new URL(`https://${port}-${instance.id}${instance.proxy_domain}`);
   if (
     url.protocol !== "https:" ||
-    (!url.hostname.endsWith(".vibeongo.one") &&
-      url.hostname !== "vibeongo.one")
+    (!url.hostname.endsWith(".vibeongo.one") && url.hostname !== "vibeongo.one")
   ) {
     throw new Error("Invalid runtime URL");
   }
@@ -176,7 +193,8 @@ function getInstanceConfig(instance: RuntimeInstance) {
 function getRuntimeHeaders(instance: RuntimeInstance) {
   const config = getInstanceConfig(instance);
   const password =
-    typeof config.opencodePassword === "string" && config.opencodePassword.trim()
+    typeof config.opencodePassword === "string" &&
+    config.opencodePassword.trim()
       ? config.opencodePassword
       : null;
 
@@ -214,7 +232,10 @@ async function getOpencodeChats(
 ): Promise<OpencodeChat[]> {
   const origin = runtimeOrigin(instance, 4096);
   const headers = getRuntimeHeaders(instance);
-  const projectsResponse = await fetch(`${origin}/project`, { headers, signal });
+  const projectsResponse = await fetch(`${origin}/project`, {
+    headers,
+    signal,
+  });
   if (!projectsResponse.ok) throw new Error("Could not load OpenCode projects");
   const directories = (await projectsResponse.json()) as Array<{
     worktree?: string;

@@ -1,4 +1,4 @@
-import { BlurTargetView, BlurView } from "expo-blur";
+import { BlurTargetView } from "expo-blur";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -18,6 +18,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/app-icon";
+import { FloatingScreenHeader } from "@/components/floating-screen-header";
 import { NativeMarkdown } from "@/components/native-markdown";
 import { Radius, Spacing, TouchTarget, type AppColors } from "@/constants/theme";
 import { useWebSocket } from "@/contexts/websocket-context";
@@ -461,41 +462,13 @@ export function ChatScreen() {
             </View>
           </BlurTargetView>
 
-          <View pointerEvents="box-none" style={styles.floatingHeader}>
-            <BlurView
-              blurMethod="dimezisBlurViewSdk31Plus"
-              blurTarget={blurTargetRef}
-              intensity={72}
-              style={[styles.floatingBack, { borderColor: colors.border }]}
-              tint={colorScheme === "dark" ? "systemThinMaterialDark" : "systemThinMaterialLight"}
-            >
-              <Pressable
-                accessibilityLabel="Back to home"
-                accessibilityRole="button"
-                hitSlop={8}
-                onPress={() => router.back()}
-                style={styles.floatingBackPressable}
-              >
-                <AppIcon
-                  name={{ ios: "chevron.left", android: "arrow_back", web: "arrow_back" }}
-                  size={20}
-                  tintColor={colors.text}
-                />
-              </Pressable>
-            </BlurView>
-
-            <BlurView
-              blurMethod="dimezisBlurViewSdk31Plus"
-              blurTarget={blurTargetRef}
-              intensity={72}
-              style={[styles.titlePill, { borderColor: colors.border }]}
-              tint={colorScheme === "dark" ? "systemThinMaterialDark" : "systemThinMaterialLight"}
-            >
-              <Text numberOfLines={1} style={[styles.floatingTitle, { color: colors.text }]}>
-                {chat.name}
-              </Text>
-            </BlurView>
-          </View>
+          <FloatingScreenHeader
+            blurTarget={blurTargetRef}
+            colors={colors}
+            colorScheme={colorScheme}
+            onBack={() => router.back()}
+            title={chat.name}
+          />
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -567,48 +540,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1 },
   keyboardView: { flex: 1 },
   blurTarget: { flex: 1 },
-  floatingHeader: {
-    alignItems: "center",
-    left: Spacing.four,
-    position: "absolute",
-    right: Spacing.four,
-    top: Spacing.two,
-  },
-  floatingBack: {
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    elevation: 5,
-    height: TouchTarget,
-    left: 0,
-    overflow: "hidden",
-    position: "absolute",
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.12,
-    shadowRadius: 10,
-    width: TouchTarget,
-  },
-  floatingBackPressable: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  titlePill: {
-    alignItems: "center",
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    elevation: 4,
-    height: 40,
-    justifyContent: "center",
-    maxWidth: "68%",
-    overflow: "hidden",
-    paddingHorizontal: Spacing.four,
-    shadowColor: "#000000",
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-  },
-  floatingTitle: { fontSize: 14, fontWeight: "700", maxWidth: "100%" },
   conversationArea: { flex: 1 },
   messages: {
     alignSelf: "center",

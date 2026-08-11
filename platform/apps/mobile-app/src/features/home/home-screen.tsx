@@ -63,39 +63,50 @@ export function HomeScreen() {
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("chats");
-  const [newSessionProject, setNewSessionProject] = useState<Project | null>(null);
-  const [runtimeSession, setRuntimeSession] = useState<ProjectSession | null>(null);
-  const [repositorySession, setRepositorySession] = useState<ProjectSession | null>(null);
-  const [repositoryProject, setRepositoryProject] = useState<Project | null>(null);
+  const [newSessionProject, setNewSessionProject] = useState<Project | null>(
+    null,
+  );
+  const [runtimeSession, setRuntimeSession] = useState<ProjectSession | null>(
+    null,
+  );
+  const [repositorySession, setRepositorySession] =
+    useState<ProjectSession | null>(null);
+  const [repositoryProject, setRepositoryProject] = useState<Project | null>(
+    null,
+  );
   const [repositories, setRepositories] = useState<ProjectGithubRepo[]>([]);
   const [repositoryError, setRepositoryError] = useState<string | null>(null);
   const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [actionPendingId, setActionPendingId] = useState<string | null>(null);
 
-  const load = useCallback(async (signal?: AbortSignal, refreshing = false, quiet = false) => {
-    if (refreshing) setIsRefreshing(true);
-    else if (!quiet) setIsLoading(true);
-    if (!quiet) setError(null);
+  const load = useCallback(
+    async (signal?: AbortSignal, refreshing = false, quiet = false) => {
+      if (refreshing) setIsRefreshing(true);
+      else if (!quiet) setIsLoading(true);
+      if (!quiet) setError(null);
 
-    try {
-      const homeData = await getHomeData(signal);
-      setData(homeData);
-    } catch (loadError) {
-      if (loadError instanceof Error && loadError.name === "AbortError") return;
-      if (!quiet) {
-        setError(
-          loadError instanceof Error
-            ? loadError.message
-            : "Could not load your workspace.",
-        );
+      try {
+        const homeData = await getHomeData(signal);
+        setData(homeData);
+      } catch (loadError) {
+        if (loadError instanceof Error && loadError.name === "AbortError")
+          return;
+        if (!quiet) {
+          setError(
+            loadError instanceof Error
+              ? loadError.message
+              : "Could not load your workspace.",
+          );
+        }
+      } finally {
+        if (!signal?.aborted && !quiet) {
+          setIsLoading(false);
+          setIsRefreshing(false);
+        }
       }
-    } finally {
-      if (!signal?.aborted && !quiet) {
-        setIsLoading(false);
-        setIsRefreshing(false);
-      }
-    }
-  }, []);
+    },
+    [],
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -214,7 +225,9 @@ export function HomeScreen() {
     } catch (actionError) {
       Alert.alert(
         failureTitle,
-        actionError instanceof Error ? actionError.message : "Please try again.",
+        actionError instanceof Error
+          ? actionError.message
+          : "Please try again.",
       );
     } finally {
       setActionPendingId(null);
@@ -232,7 +245,9 @@ export function HomeScreen() {
     } catch (createError) {
       Alert.alert(
         "Could not create session",
-        createError instanceof Error ? createError.message : "Please try again.",
+        createError instanceof Error
+          ? createError.message
+          : "Please try again.",
       );
     } finally {
       setActionPendingId(null);
@@ -309,7 +324,10 @@ export function HomeScreen() {
     });
   };
 
-  const loadRepositories = async (project: Project, session: ProjectSession) => {
+  const loadRepositories = async (
+    project: Project,
+    session: ProjectSession,
+  ) => {
     setRepositoryProject(project);
     setRepositorySession(session);
     setRepositories([]);
@@ -318,7 +336,9 @@ export function HomeScreen() {
     try {
       const repos = await getProjectGithubRepos(project.id);
       if (repos.length === 1 && repos[0]) {
-        const name = repos[0].full_name.split("/").filter(Boolean).at(-1) ?? repos[0].full_name;
+        const name =
+          repos[0].full_name.split("/").filter(Boolean).at(-1) ??
+          repos[0].full_name;
         setRepositorySession(null);
         setRepositoryProject(null);
         openOpencode(project, session, `/home/ubuntu/code/${name}`);
@@ -327,7 +347,9 @@ export function HomeScreen() {
       setRepositories(repos);
     } catch (repoError) {
       setRepositoryError(
-        repoError instanceof Error ? repoError.message : "Could not load repositories.",
+        repoError instanceof Error
+          ? repoError.message
+          : "Could not load repositories.",
       );
     } finally {
       setIsLoadingRepositories(false);
@@ -362,7 +384,11 @@ export function HomeScreen() {
               ]}
             >
               <AppIcon
-                name={{ ios: "line.3.horizontal", android: "menu", web: "menu" }}
+                name={{
+                  ios: "line.3.horizontal",
+                  android: "menu",
+                  web: "menu",
+                }}
                 size={21}
                 tintColor={colors.text}
               />
@@ -494,16 +520,23 @@ export function HomeScreen() {
       />
       <NewSessionSheet
         colors={colors}
-        isPending={Boolean(newSessionProject && actionPendingId === `create:${newSessionProject.id}`)}
+        isPending={Boolean(
+          newSessionProject &&
+          actionPendingId === `create:${newSessionProject.id}`,
+        )}
         onClose={() => {
           if (!actionPendingId) setNewSessionProject(null);
         }}
-        onSubmit={(name, description) => void submitNewSession(name, description)}
+        onSubmit={(name, description) =>
+          void submitNewSession(name, description)
+        }
         project={newSessionProject}
       />
       <RuntimeSheet
         colors={colors}
-        isPending={Boolean(runtimeSession && actionPendingId === runtimeSession.id)}
+        isPending={Boolean(
+          runtimeSession && actionPendingId === runtimeSession.id,
+        )}
         onClose={() => {
           if (!actionPendingId) setRuntimeSession(null);
         }}
@@ -525,7 +558,8 @@ export function HomeScreen() {
         }}
         onSelect={(repo) => {
           if (!repositoryProject || !repositorySession) return;
-          const name = repo.full_name.split("/").filter(Boolean).at(-1) ?? repo.full_name;
+          const name =
+            repo.full_name.split("/").filter(Boolean).at(-1) ?? repo.full_name;
           openOpencode(
             repositoryProject,
             repositorySession,
