@@ -44,7 +44,7 @@ const sandboxProviderOptions: {
     name: "Vercel",
     description: "Use Vercel as the sandbox runtime.",
     recommended: false,
-    available: false,
+    available: true,
     Icon: Triangle,
   },
   {
@@ -58,7 +58,7 @@ const sandboxProviderOptions: {
 ];
 
 const isSandboxProviderAvailable = (provider: SandboxProvider | ""): boolean =>
-  provider === "e2b";
+  provider === "e2b" || provider === "vercel";
 
 function SandboxConfigCard() {
   const {

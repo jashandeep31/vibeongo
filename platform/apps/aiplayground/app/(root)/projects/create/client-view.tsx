@@ -57,6 +57,16 @@ import {
 import { toast } from "sonner";
 
 type ProjectPorts = z.infer<typeof projectConfigValidator>["config"]["ports"];
+type SandboxProvider = "e2b" | "vercel";
+
+const sandboxProviderOptions: { id: SandboxProvider; label: string }[] = [
+  { id: "e2b", label: "E2B" },
+  { id: "vercel", label: "Vercel" },
+];
+
+const isAvailableSandboxProvider = (
+  provider: string,
+): provider is SandboxProvider => provider === "e2b" || provider === "vercel";
 
 function FormSection({
   title,
@@ -138,6 +148,8 @@ export default function ClientView({ projectId }: { projectId?: string }) {
   const [provider, setProvider] = useState<ProjectProvider>("aws");
   const [instanceRegionId, setInstanceRegionId] = useState("");
   const [instanceTypeId, setInstanceTypeId] = useState("");
+  const [sandboxProvider, setSandboxProvider] =
+    useState<SandboxProvider>("e2b");
   const [sandboxRegionId, setSandboxRegionId] = useState("");
   const [sandboxTypeId, setSandboxTypeId] = useState("");
   const [githubRepoIds, setGithubRepoIds] = useState<string[]>([]);
@@ -164,9 +176,9 @@ export default function ClientView({ projectId }: { projectId?: string }) {
   const sandboxRegions = useMemo(
     () =>
       (sandboxRegionsQuery.data ?? []).filter(
-        (region) => region.provider === "e2b",
+        (region) => region.provider === sandboxProvider,
       ),
-    [sandboxRegionsQuery.data],
+    [sandboxProvider, sandboxRegionsQuery.data],
   );
   const instanceTypesQuery = useInstanceTypes(instanceRegionId);
   const sandboxTypesQuery = useSandboxTypes(sandboxRegionId);
@@ -229,8 +241,41 @@ export default function ClientView({ projectId }: { projectId?: string }) {
 
   useEffect(() => {
     if (isEditing && hydratedProjectId !== projectId) return;
+    const selectedRegion = sandboxRegionsQuery.data?.find(
+      (region) => region.id === sandboxRegionId,
+    );
+    if (
+      selectedRegion &&
+      isAvailableSandboxProvider(selectedRegion.provider) &&
+      selectedRegion.provider !== sandboxProvider
+    ) {
+      setSandboxProvider(selectedRegion.provider);
+      return;
+    }
+  }, [
+    hydratedProjectId,
+    isEditing,
+    projectId,
+    sandboxProvider,
+    sandboxRegionId,
+    sandboxRegionsQuery.data,
+  ]);
+
+  useEffect(() => {
+    if (isEditing && hydratedProjectId !== projectId) return;
     if (!sandboxRegions.length) return;
     if (sandboxRegions.some((region) => region.id === sandboxRegionId)) return;
+
+    const selectedRegion = sandboxRegionsQuery.data?.find(
+      (region) => region.id === sandboxRegionId,
+    );
+    if (
+      selectedRegion &&
+      isAvailableSandboxProvider(selectedRegion.provider)
+    ) {
+      return;
+    }
+
     setSandboxRegionId(sandboxRegions[0]?.id ?? "");
     setSandboxTypeId("");
   }, [
@@ -239,6 +284,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
     projectId,
     sandboxRegionId,
     sandboxRegions,
+    sandboxRegionsQuery.data,
   ]);
 
   useEffect(() => {
@@ -444,7 +490,21 @@ export default function ClientView({ projectId }: { projectId?: string }) {
 
           <div className="pt-2">
             <p className="text-sm font-medium">Sandbox</p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <SelectField
+                id="sandbox-provider"
+                label="Provider"
+                value={sandboxProvider}
+                placeholder="Select a provider"
+                disabled={sandboxRegionsQuery.isLoading || isSaving}
+                options={sandboxProviderOptions}
+                onChange={(value) => {
+                  if (!isAvailableSandboxProvider(value)) return;
+                  setSandboxProvider(value);
+                  setSandboxRegionId("");
+                  setSandboxTypeId("");
+                }}
+              />
               <SelectField
                 id="sandbox-region"
                 label="Region"
