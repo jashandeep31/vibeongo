@@ -115,6 +115,8 @@ const ws = new WebSocketServer({
   },
 });
 
+const DEVELOPMENT_USER_ID = "634c805d-c70a-4333-9214-65d3fafc9481";
+
 function parseCookies(header: string) {
   const out: Record<string, string> = {};
   header.split(";").forEach((pair) => {
@@ -128,9 +130,22 @@ function parseCookies(header: string) {
 
 ws.on("connection", async (socket, req) => {
   try {
+    const requestUrl = new URL(req.url ?? "/ws", "http://localhost");
+    const requestedDevelopmentUserId =
+      requestUrl.searchParams.get("developmentUserId");
+    const isDevelopmentIdentity =
+      env.NODE_ENV === "development" &&
+      requestedDevelopmentUserId === DEVELOPMENT_USER_ID;
+
+    if (isDevelopmentIdentity) {
+      socket.userId = DEVELOPMENT_USER_ID;
+      await SocketHandler(socket);
+      return;
+    }
+
     const cookies = req.headers.cookie;
     if (!cookies) {
-      console.log(`not authenticated `);
+      socket.close(1008, "Authentication required");
       return;
     }
 
@@ -141,6 +156,7 @@ ws.on("connection", async (socket, req) => {
     await SocketHandler(socket);
   } catch (e) {
     console.log(`Error: ${e}`);
+    socket.close(1008, "Authentication failed");
   }
 });
 

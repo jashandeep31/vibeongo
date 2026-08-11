@@ -21,6 +21,8 @@ var allowedCORSOrigins = []string{
 	"https://ai.vibeongo.com",
 	"https://app.vibeongo.com",
 	"http://localhost:3000",
+	"http://localhost:8081",
+	"http://fedora:8081",
 	"http://localhost:3003",
 	"https://app.t3.codes",
 	"t3code://app",

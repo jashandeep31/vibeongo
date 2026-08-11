@@ -1,8 +1,11 @@
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider } from "expo-router";
 import { useColorScheme } from "react-native";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { LoginScreen } from "@/components/login-screen";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
+import { WebSocketProvider } from "@/contexts/websocket-context";
 
 function AppContent() {
   const { isLoading, token } = useAuth();
@@ -10,16 +13,26 @@ function AppContent() {
   if (isLoading) return null;
   if (!token) return <LoginScreen />;
 
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <WebSocketProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </WebSocketProvider>
+  );
 }
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
   return (
-    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-      <AuthProvider>
-        <AppContent />
-      </AuthProvider>
-    </ThemeProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <ThemeProvider
+          value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
+        >
+          <AuthProvider>
+            <AppContent />
+          </AuthProvider>
+        </ThemeProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
   );
 }
