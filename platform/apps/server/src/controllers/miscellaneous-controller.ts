@@ -50,6 +50,7 @@ EOF
   sudo systemctl enable vibeongo
   sudo systemctl start vibeongo
 else
+  nohup sudo dockerd 2>&1 &
   nohup /usr/local/bin/vibeongo serve 2>&1 &
 fi
 
