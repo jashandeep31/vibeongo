@@ -16,7 +16,9 @@ const failedToAuthenticate = (res: Response) => {
 
 export const checkAuthorization = (allowedRoles: userRole[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
-    const { session } = req.cookies;
+    const authorization = req.get("authorization");
+    const bearerMatch = authorization?.match(/^Bearer\s+(.+)$/i);
+    const session = bearerMatch?.[1]?.trim() || req.cookies?.session;
 
     if (!session) {
       return failedToAuthenticate(res);

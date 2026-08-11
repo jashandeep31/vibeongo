@@ -1,19 +1,26 @@
-# Welcome to your Expo app 👋
+# VibeOngo mobile app
 
 This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
 
 ## Get started
 
-1. Install dependencies
+1. Install dependencies from `platform/`:
 
    ```bash
-   npm install
+   pnpm install
    ```
 
-2. Start the app
+2. Point the app at the API when developing locally. The URL must be reachable
+   from the device (use your LAN IP instead of `localhost` on a physical device):
 
    ```bash
-   npx expo start
+   EXPO_PUBLIC_API_URL=http://192.168.1.10:4000
+   ```
+
+3. Start the app:
+
+   ```bash
+   pnpm --filter mobile-app start
    ```
 
 In the output, you'll find options to open the app in a
@@ -24,6 +31,28 @@ In the output, you'll find options to open the app in a
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
 You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+
+## GitHub authentication
+
+The app opens the server's existing GitHub OAuth flow and returns through the
+`mobileapp://auth/callback` scheme. Production and development builds use that
+scheme; Expo Go uses its generated `exp://` URL and is accepted only when the
+server runs with `NODE_ENV=development`.
+
+The GitHub OAuth application's callback URL remains the server callback:
+
+```text
+<BACKEND_URL>/api/v1/auth/github/callback
+```
+
+Add the web origin to the server's `ALLOWED_ORIGINS` if you run the mobile app
+as a web build. Native sessions are stored with Expo SecureStore and API calls
+should send the value in `Authorization: Bearer <token>`.
+
+During development, the app skips GitHub and automatically requests a one-day
+session for the local development user (`jashandeep31`). The server endpoint is
+available only when `NODE_ENV=development`; production builds continue to show
+the GitHub login screen.
 
 ## Get a fresh project
 
