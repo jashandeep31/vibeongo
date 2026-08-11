@@ -14,11 +14,11 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    from the device (use your LAN IP instead of `localhost` on a physical device):
 
    ```bash
-   EXPO_PUBLIC_API_URL=http://192.168.1.10:8000
+   EXPO_PUBLIC_BACKEND_URL=http://192.168.1.10:8000
    ```
 
-   Without this variable, development defaults to `localhost:8000` on iOS/web
-   and `10.0.2.2:8000` on the Android emulator.
+   The checked-in `.env.example` uses `localhost:8000`. If the variable is not
+   set, the app falls back to `https://server.vibeongo.com`.
 
 3. Start the app:
 

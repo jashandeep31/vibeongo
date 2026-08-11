@@ -10,7 +10,7 @@ import {
   useState,
 } from "react";
 
-import { API_URL, apiFetch } from "@/lib/api";
+import { BACKEND_URL, apiFetch } from "@/lib/api";
 import {
   getStoredToken,
   removeStoredToken,
@@ -79,7 +79,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
     try {
       const redirectUri = Linking.createURL("auth/callback");
-      const authUrl = new URL(`${API_URL}/api/v1/auth/github`);
+      const authUrl = new URL(`${BACKEND_URL}/api/v1/auth/github`);
       authUrl.searchParams.set("client", "mobile");
       authUrl.searchParams.set("redirect_uri", redirectUri);
 
