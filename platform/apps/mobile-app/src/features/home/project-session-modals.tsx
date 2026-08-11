@@ -20,6 +20,18 @@ import {
   TouchTarget,
   type AppColors,
 } from "@/constants/theme";
+import { useToast } from "@/contexts/toast-context";
+
+import {
+  createProject,
+  getInstanceRegions,
+  getInstanceTypes,
+  getSandboxRegions,
+  getSandboxTypes,
+  type RuntimeRegion,
+  type RuntimeType,
+  type SandboxRegion,
+} from "./home-api";
 
 import type {
   Project,
@@ -81,6 +93,195 @@ function Sheet({
         </SafeAreaView>
       </KeyboardAvoidingView>
     </Modal>
+  );
+}
+
+export function CreateProjectSheet({
+  colors,
+  onClose,
+  onCreated,
+  visible,
+}: {
+  colors: AppColors;
+  onClose: () => void;
+  onCreated: () => void;
+  visible: boolean;
+}) {
+  const { showToast } = useToast();
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [region, setRegion] = useState<RuntimeRegion | null>(null);
+  const [instanceType, setInstanceType] = useState<RuntimeType | null>(null);
+  const [sandboxRegion, setSandboxRegion] = useState<SandboxRegion | null>(null);
+  const [sandboxType, setSandboxType] = useState<RuntimeType | null>(null);
+  const [isLoadingDefaults, setIsLoadingDefaults] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!visible) return;
+    const controller = new AbortController();
+    setIsLoadingDefaults(true);
+    setLoadError(null);
+    void Promise.all([
+      getInstanceRegions(controller.signal),
+      getSandboxRegions(controller.signal),
+    ])
+      .then(async ([regions, sandboxRegions]) => {
+        const nextRegion = regions[0];
+        const nextSandboxRegion = sandboxRegions[0];
+        if (!nextRegion || !nextSandboxRegion) {
+          throw new Error("No project runtimes are available.");
+        }
+        const [instanceTypes, sandboxTypes] = await Promise.all([
+          getInstanceTypes(nextRegion.id, controller.signal),
+          getSandboxTypes(nextSandboxRegion.id, controller.signal),
+        ]);
+        if (!instanceTypes[0] || !sandboxTypes[0]) {
+          throw new Error("No compatible runtime size is available.");
+        }
+        setRegion(nextRegion);
+        setInstanceType(instanceTypes[0]);
+        setSandboxRegion(nextSandboxRegion);
+        setSandboxType(sandboxTypes[0]);
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        setLoadError(error instanceof Error ? error.message : "Could not load runtimes.");
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setIsLoadingDefaults(false);
+      });
+    return () => controller.abort();
+  }, [visible]);
+
+  const submit = async () => {
+    const projectName = name.trim();
+    if (projectName.length < 3 || projectName.length > 20) {
+      showToast({
+        message: "Use between 3 and 20 characters.",
+        title: "Invalid project name",
+        variant: "error",
+      });
+      return;
+    }
+    if (!region || !instanceType || !sandboxType) {
+      showToast({
+        message: loadError ?? "Wait for the runtime defaults to load.",
+        title: "Runtime unavailable",
+        variant: "error",
+      });
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      await createProject({
+        description: description.trim(),
+        instanceTypeId: instanceType.id,
+        name: projectName,
+        provider: region.provider,
+        regionId: region.id,
+        sandboxTypeId: sandboxType.id,
+      });
+      setName("");
+      setDescription("");
+      showToast({
+        message: `${projectName} is ready with a default session.`,
+        title: "Project created",
+        variant: "success",
+      });
+      onCreated();
+    } catch (error) {
+      showToast({
+        message: error instanceof Error ? error.message : "Please try again.",
+        title: "Could not create project",
+        variant: "error",
+      });
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
+  const canSubmit =
+    name.trim().length >= 3 &&
+    name.trim().length <= 20 &&
+    Boolean(region && instanceType && sandboxType) &&
+    !isCreating;
+
+  return (
+    <Sheet colors={colors} onClose={onClose} title="Create project" visible={visible}>
+      <ScrollView contentContainerStyle={styles.form} keyboardShouldPersistTaps="handled">
+        <Text style={[styles.description, { color: colors.textSecondary }]}>A default session and recommended runtimes are configured automatically.</Text>
+        <Text style={[styles.label, { color: colors.text }]}>Project name</Text>
+        <TextInput
+          autoFocus
+          editable={!isCreating}
+          maxLength={20}
+          onChangeText={setName}
+          placeholder="My project"
+          placeholderTextColor={colors.textSecondary}
+          style={[
+            styles.input,
+            { backgroundColor: colors.input, borderColor: colors.border, color: colors.text },
+          ]}
+          value={name}
+        />
+        {name.length > 0 && name.trim().length < 3 ? (
+          <Text style={[styles.validation, { color: colors.destructive }]}>At least 3 characters.</Text>
+        ) : null}
+
+        <Text style={[styles.label, { color: colors.text }]}>Description (optional)</Text>
+        <TextInput
+          editable={!isCreating}
+          multiline
+          onChangeText={setDescription}
+          placeholder="What is this project for?"
+          placeholderTextColor={colors.textSecondary}
+          style={[
+            styles.input,
+            styles.projectDescription,
+            { backgroundColor: colors.input, borderColor: colors.border, color: colors.text },
+          ]}
+          textAlignVertical="top"
+          value={description}
+        />
+
+        <View style={[styles.runtimeSummary, { backgroundColor: colors.backgroundElement }]}> 
+          {isLoadingDefaults ? (
+            <View style={styles.runtimeLoading}>
+              <ActivityIndicator color={colors.brand} size="small" />
+              <Text style={[styles.runtimeSummaryText, { color: colors.textSecondary }]}>Choosing recommended runtimes…</Text>
+            </View>
+          ) : loadError ? (
+            <Text style={[styles.runtimeSummaryText, { color: colors.destructive }]}>{loadError}</Text>
+          ) : (
+            <>
+              <Text style={[styles.runtimeSummaryLabel, { color: colors.textSecondary }]}>RUNTIME DEFAULTS</Text>
+              <Text style={[styles.runtimeSummaryText, { color: colors.text }]}>VM · {region?.name} · {instanceType?.name}</Text>
+              <Text style={[styles.runtimeSummaryText, { color: colors.text }]}>Sandbox · {sandboxRegion?.provider.toUpperCase()} · {sandboxType?.name}</Text>
+            </>
+          )}
+        </View>
+
+        <Pressable
+          accessibilityRole="button"
+          disabled={!canSubmit}
+          onPress={() => void submit()}
+          style={[
+            styles.primaryButton,
+            { backgroundColor: colors.primary },
+            !canSubmit && styles.disabled,
+          ]}
+        >
+          {isCreating ? (
+            <ActivityIndicator color={colors.primaryForeground} />
+          ) : (
+            <Text style={[styles.primaryText, { color: colors.primaryForeground }]}>Create project</Text>
+          )}
+        </Pressable>
+      </ScrollView>
+    </Sheet>
   );
 }
 
@@ -415,7 +616,12 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.three,
   },
   textarea: { minHeight: 94 },
+  projectDescription: { minHeight: 82 },
   validation: { fontSize: 12 },
+  runtimeSummary: { borderRadius: Radius.medium, gap: 5, marginTop: Spacing.two, padding: Spacing.four },
+  runtimeLoading: { alignItems: "center", flexDirection: "row", gap: Spacing.three },
+  runtimeSummaryLabel: { fontSize: 9, fontWeight: "700", letterSpacing: 1 },
+  runtimeSummaryText: { fontSize: 12, lineHeight: 18 },
   primaryButton: {
     alignItems: "center",
     borderRadius: Radius.pill,

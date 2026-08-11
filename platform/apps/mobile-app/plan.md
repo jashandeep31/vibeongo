@@ -23,7 +23,7 @@ This checklist defines the native Expo/React Native version of every user-facing
 - [ ] Implement Environment Files from `/projects/[projectId]/env`.
 - [ ] Implement New OpenCode Chat from `/projects/[projectId]/chats/[chatId]`.
 - [ ] Implement Existing OpenCode Session from `/projects/[projectId]/chats/[chatId]/sessions/[sessionId]`.
-- [ ] Implement Wallet from `/wallet`.
+- [x] Implement Wallet from `/wallet`.
 - [ ] Implement Settings from `/settings`.
 - [ ] Convert all supporting web dialogs and menus into native screens, bottom sheets, action sheets, popovers, or alerts as specified below.
 
@@ -289,25 +289,25 @@ This checklist defines the native Expo/React Native version of every user-facing
 
 ### 16. Wallet
 
-- [ ] Build a Wallet header and available-balance card showing formatted dollar credits.
-- [ ] Show a balance skeleton and dedicated error copy when the wallet fails to load.
-- [ ] Add a prominent Buy credits action.
-- [ ] Add Transactions and Credit grants tabs.
-- [ ] Render transactions as mobile cards showing type badge, description, signed amount, and formatted date.
-- [ ] Render credit grants as mobile cards showing description, remaining balance, total balance, Active/Used/Expired status, issued date, and expiry date.
-- [ ] Match deposit `+` and withdrawal/charge `−` signs and money precision used by the shared formatter.
-- [ ] Paginate both tabs independently with Previous, current Page number, and Next controls.
-- [ ] Preserve each tab's current page when switching tabs.
-- [ ] Add skeleton, error, and empty states independently for transactions and credit grants.
-- [ ] Add pull-to-refresh that refreshes the balance and active ledger without changing the page unexpectedly.
+- [x] Build a Wallet header and available-balance card showing formatted dollar credits.
+- [x] Show a balance skeleton and dedicated error copy when the wallet fails to load.
+- [x] Add a prominent Buy credits action.
+- [x] Add Transactions and Credit grants tabs.
+- [x] Render transactions in a horizontally scrollable native table showing type badge, description, signed amount, and formatted date.
+- [x] Render credit grants as mobile cards showing description, remaining balance, total balance, Active/Used/Expired status, issued date, and expiry date.
+- [x] Match deposit `+` and withdrawal/charge `−` signs and money precision used by the shared formatter.
+- [x] Paginate both tabs independently with Previous, current Page number, and Next controls.
+- [x] Preserve each tab's current page when switching tabs.
+- [x] Add skeleton, error, and empty states independently for transactions and credit grants.
+- [x] Add pull-to-refresh that refreshes the balance and active ledger without changing the page unexpectedly.
 
 ### 17. Buy Credits
 
-- [ ] Present Buy credits as a sheet with explanatory copy and an Amount field.
-- [ ] Apply the same minimum, maximum, numeric, and currency precision rules as the backend/web flow.
-- [ ] Create the checkout session once, show progress, and prevent repeated taps.
+- [x] Present Buy credits as a sheet with explanatory copy and an Amount field.
+- [x] Apply the same minimum, maximum, numeric, and currency precision rules as the backend/web flow.
+- [x] Create the checkout session once, show progress, and prevent repeated taps.
 - [ ] Open checkout in a secure browser and handle success, cancellation, and failure return paths.
-- [ ] Refresh wallet balance and transactions after a successful checkout return.
+- [x] Refresh wallet balance and transactions after a successful checkout return.
 
 ### 18. Settings
 

@@ -1,3 +1,4 @@
+import { BlurTargetView } from "expo-blur";
 import { StatusBar } from "expo-status-bar";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -16,6 +17,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/app-icon";
+import { FloatingScreenHeader } from "@/components/floating-screen-header";
 import { NativeMarkdown } from "@/components/native-markdown";
 import {
   Radius,
@@ -28,17 +30,38 @@ import { useTheme } from "@/hooks/use-theme";
 import type { RuntimeInstance } from "@/features/home/types";
 
 import {
+  answerOpencodeQuestion,
   createOpencodeChat,
-  getOpencodeMessages,
+  getOpencodeChats,
+  getOpencodeChatState,
+  getOpencodeInventory,
+  getOpencodeSession,
   getRunningSessionInstance,
+  rejectOpencodeQuestion,
+  replyOpencodePermission,
   sendOpencodeMessage,
+  type OpencodeChatOption,
+  type OpencodeInventory,
   type OpencodeMessage,
+  type OpencodePermission,
+  type OpencodePromptSelection,
+  type OpencodeQuestion,
 } from "./opencode-api";
+import { OpencodeChatSwitcher } from "./opencode-chat-switcher";
+import {
+  OpencodePermissionPrompt,
+  OpencodeQuestionPrompt,
+} from "./opencode-question-prompt";
 import { ProjectDomainsButton } from "./project-domains-sheet";
+import { PromptSelectors } from "./prompt-selectors";
+import { OpencodeToolCard } from "./opencode-tool-card";
 
 function messageText(message: OpencodeMessage) {
   return message.parts
-    .filter((part) => part.type === "text" && typeof part.text === "string")
+    .filter(
+      (part) =>
+        part.type === "text" && !part.ignored && typeof part.text === "string",
+    )
     .map((part) => part.text)
     .join("\n\n")
     .trim();
@@ -55,21 +78,77 @@ export function OpencodeScreen() {
     sessionName?: string;
     directory?: string;
     opencodeSessionId?: string;
+    opencodeSessionTitle?: string;
   }>();
   const scrollRef = useRef<ScrollView>(null);
+  const blurTargetRef = useRef<View>(null);
   const [instance, setInstance] = useState<RuntimeInstance | null>(null);
   const [sessionId, setSessionId] = useState(params.opencodeSessionId ?? "");
   const [messages, setMessages] = useState<OpencodeMessage[]>([]);
+  const [chats, setChats] = useState<OpencodeChatOption[]>([]);
+  const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
+  const [questions, setQuestions] = useState<OpencodeQuestion[]>([]);
+  const [permissions, setPermissions] = useState<OpencodePermission[]>([]);
+  const [inventory, setInventory] = useState<OpencodeInventory | null>(null);
+  const [inventoryError, setInventoryError] = useState<string | null>(null);
+  const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const [draft, setDraft] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSending, setIsSending] = useState(false);
+  const [isResponding, setIsResponding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const directory = params.directory ?? "";
 
+  const loadInventory = useCallback(
+    async (activeInstance: RuntimeInstance) => {
+      if (!directory) return;
+      setInventoryError(null);
+      try {
+        const nextInventory = await getOpencodeInventory(
+          activeInstance,
+          directory,
+        );
+        setInventory(nextInventory);
+        setSelection((current) => ({
+          model: current.model ?? nextInventory.models[0]?.id,
+          variant: current.variant,
+          agent: current.agent ?? nextInventory.agents[0]?.id,
+        }));
+      } catch (inventoryLoadError) {
+        setInventory({ models: [], agents: [] });
+        setInventoryError(
+          inventoryLoadError instanceof Error
+            ? inventoryLoadError.message
+            : "Could not load models and agents.",
+        );
+      }
+    },
+    [directory],
+  );
+
+  const loadChats = useCallback(
+    async (activeInstance: RuntimeInstance) => {
+      if (!directory) return;
+      try {
+        setChats(await getOpencodeChats(activeInstance, directory));
+      } catch {
+        // The active chat remains usable if the surrounding chat list fails.
+      }
+    },
+    [directory],
+  );
+
   const refresh = useCallback(async () => {
     if (!instance || !sessionId || !directory) return;
-    const next = await getOpencodeMessages(instance, sessionId, directory);
-    setMessages(next);
+    const next = await getOpencodeChatState(instance, sessionId, directory);
+    setMessages(next.messages);
+    setQuestions(next.questions);
+    setPermissions(next.permissions);
+    setIsSending(
+      next.status.type === "busy" &&
+        next.questions.length === 0 &&
+        next.permissions.length === 0,
+    );
     requestAnimationFrame(() =>
       scrollRef.current?.scrollToEnd({ animated: false }),
     );
@@ -78,17 +157,46 @@ export function OpencodeScreen() {
   useEffect(() => {
     let cancelled = false;
     setIsLoading(true);
+    setSessionId(params.opencodeSessionId ?? "");
+    setMessages([]);
+    setQuestions([]);
+    setPermissions([]);
     getRunningSessionInstance(params.projectSessionId)
       .then(async (nextInstance) => {
         if (cancelled) return;
         setInstance(nextInstance);
+        void loadInventory(nextInstance);
+        void loadChats(nextInstance);
         if (params.opencodeSessionId && directory) {
-          const nextMessages = await getOpencodeMessages(
-            nextInstance,
-            params.opencodeSessionId,
-            directory,
-          );
-          if (!cancelled) setMessages(nextMessages);
+          const [nextChatState, activeSession] = await Promise.all([
+            getOpencodeChatState(
+              nextInstance,
+              params.opencodeSessionId,
+              directory,
+            ),
+            getOpencodeSession(
+              nextInstance,
+              params.opencodeSessionId,
+              directory,
+            ),
+          ]);
+          if (!cancelled) {
+            setMessages(nextChatState.messages);
+            setQuestions(nextChatState.questions);
+            setPermissions(nextChatState.permissions);
+            setIsSending(
+              nextChatState.status.type === "busy" &&
+                nextChatState.questions.length === 0 &&
+                nextChatState.permissions.length === 0,
+            );
+            setSelection((current) => ({
+              model: activeSession.model
+                ? `${activeSession.model.providerID}/${activeSession.model.id}`
+                : current.model,
+              variant: activeSession.model?.variant ?? current.variant,
+              agent: activeSession.agent ?? current.agent,
+            }));
+          }
         }
       })
       .catch((loadError) => {
@@ -105,7 +213,13 @@ export function OpencodeScreen() {
     return () => {
       cancelled = true;
     };
-  }, [directory, params.opencodeSessionId, params.projectSessionId]);
+  }, [
+    directory,
+    loadChats,
+    loadInventory,
+    params.opencodeSessionId,
+    params.projectSessionId,
+  ]);
 
   useEffect(() => {
     if (!instance || !sessionId || !directory || !isSending) return;
@@ -127,17 +241,41 @@ export function OpencodeScreen() {
         const created = await createOpencodeChat(instance, directory);
         activeSessionId = created.id;
         setSessionId(created.id);
-        router.setParams({ opencodeSessionId: created.id });
+        setChats((current) => [
+          {
+            id: created.id,
+            title: created.title ?? "New chat",
+            directory,
+            time: { updated: Date.now() },
+          },
+          ...current.filter((chat) => chat.id !== created.id),
+        ]);
+        router.setParams({
+          opencodeSessionId: created.id,
+          opencodeSessionTitle: created.title ?? "New chat",
+        });
       }
-      await sendOpencodeMessage(instance, activeSessionId, directory, text);
-      await getOpencodeMessages(instance, activeSessionId, directory).then(
-        setMessages,
+      await sendOpencodeMessage(
+        instance,
+        activeSessionId,
+        directory,
+        text,
+        selection,
       );
       setTimeout(() => {
-        void getOpencodeMessages(instance, activeSessionId, directory)
-          .then(setMessages)
-          .finally(() => setIsSending(false));
-      }, 2500);
+        void getOpencodeChatState(instance, activeSessionId, directory).then(
+          (next) => {
+            setMessages(next.messages);
+            setQuestions(next.questions);
+            setPermissions(next.permissions);
+            setIsSending(
+              next.status.type === "busy" &&
+                next.questions.length === 0 &&
+                next.permissions.length === 0,
+            );
+          },
+        );
+      }, 600);
     } catch (sendError) {
       setDraft(text);
       setIsSending(false);
@@ -148,6 +286,106 @@ export function OpencodeScreen() {
     }
   };
 
+  const submitQuestionAnswers = async (answers: string[][]) => {
+    const question = questions[0];
+    if (!question || !instance || !directory || isResponding) return;
+    setIsResponding(true);
+    try {
+      await answerOpencodeQuestion(instance, question.id, directory, answers);
+      setQuestions((current) =>
+        current.filter((item) => item.id !== question.id),
+      );
+      setIsSending(true);
+      setTimeout(() => void refresh(), 400);
+    } catch (questionError) {
+      Alert.alert(
+        "Could not submit answer",
+        questionError instanceof Error
+          ? questionError.message
+          : "Please try again.",
+      );
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
+  const dismissQuestion = async () => {
+    const question = questions[0];
+    if (!question || !instance || !directory || isResponding) return;
+    setIsResponding(true);
+    try {
+      await rejectOpencodeQuestion(instance, question.id, directory);
+      setQuestions((current) =>
+        current.filter((item) => item.id !== question.id),
+      );
+      setTimeout(() => void refresh(), 400);
+    } catch (questionError) {
+      Alert.alert(
+        "Could not dismiss question",
+        questionError instanceof Error
+          ? questionError.message
+          : "Please try again.",
+      );
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
+  const respondToPermission = async (reply: "once" | "always" | "reject") => {
+    const permission = permissions[0];
+    if (!permission || !instance || !directory || isResponding) return;
+    setIsResponding(true);
+    try {
+      await replyOpencodePermission(instance, permission.id, directory, reply);
+      setPermissions((current) =>
+        current.filter((item) => item.id !== permission.id),
+      );
+      if (reply !== "reject") setIsSending(true);
+      setTimeout(() => void refresh(), 400);
+    } catch (permissionError) {
+      Alert.alert(
+        "Could not update permission",
+        permissionError instanceof Error
+          ? permissionError.message
+          : "Please try again.",
+      );
+    } finally {
+      setIsResponding(false);
+    }
+  };
+
+  const switchChat = (chat: OpencodeChatOption) => {
+    if (chat.id === sessionId) {
+      setIsChatSwitcherOpen(false);
+      return;
+    }
+    setIsChatSwitcherOpen(false);
+    setSessionId(chat.id);
+    setIsSending(false);
+    setMessages([]);
+    setQuestions([]);
+    setPermissions([]);
+    router.setParams({
+      directory: chat.directory ?? directory,
+      opencodeSessionId: chat.id,
+      opencodeSessionTitle: chat.title?.trim() || "Untitled chat",
+    });
+  };
+
+  const switchRelativeChat = (offset: -1 | 1) => {
+    if (chats.length < 2) return;
+    const currentIndex = chats.findIndex((chat) => chat.id === sessionId);
+    const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+    const nextChat = chats[(baseIndex + offset + chats.length) % chats.length];
+    if (nextChat) switchChat(nextChat);
+  };
+
+  const currentChat = chats.find((chat) => chat.id === sessionId);
+  const currentChatTitle =
+    currentChat?.title?.trim() ||
+    params.opencodeSessionTitle?.trim() ||
+    (sessionId ? "Untitled chat" : "New chat");
+
   return (
     <View style={[styles.screen, { backgroundColor: colors.background }]}>
       <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
@@ -156,190 +394,269 @@ export function OpencodeScreen() {
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.flex}
         >
-          <View style={[styles.header, { borderBottomColor: colors.border }]}>
-            <Pressable
-              accessibilityLabel="Back"
-              accessibilityRole="button"
-              onPress={() => router.back()}
-              style={styles.iconButton}
-            >
-              <AppIcon
-                name={{
-                  ios: "chevron.left",
-                  android: "arrow_back",
-                  web: "arrow_back",
-                }}
-                size={20}
-                tintColor={colors.text}
+          <BlurTargetView ref={blurTargetRef} style={styles.flex}>
+            {isLoading ? (
+              <Status colors={colors} copy="Connecting to OpenCode…" />
+            ) : error || !instance || !directory ? (
+              <Status
+                colors={colors}
+                copy={error ?? "No repository directory was selected."}
               />
-            </Pressable>
-            <View style={styles.headerText}>
-              <Text
-                numberOfLines={1}
-                style={[styles.title, { color: colors.text }]}
+            ) : !sessionId ? (
+              <View style={styles.newChat}>
+                <Text style={[styles.newChatTitle, { color: colors.text }]}>
+                  New chat
+                </Text>
+                <Text
+                  style={[styles.newChatCopy, { color: colors.textSecondary }]}
+                >
+                  Send a message to start an OpenCode conversation in{" "}
+                  {directory.split("/").at(-1)}.
+                </Text>
+              </View>
+            ) : (
+              <ScrollView
+                contentContainerStyle={styles.messages}
+                keyboardDismissMode="interactive"
+                keyboardShouldPersistTaps="handled"
+                ref={scrollRef}
+                showsVerticalScrollIndicator={false}
+                style={styles.messageScroller}
               >
-                {params.sessionName ?? "Project session"}
-              </Text>
-              <Text
-                numberOfLines={1}
-                style={[styles.subtitle, { color: colors.textSecondary }]}
-              >
-                {params.projectName ?? "OpenCode"}
-              </Text>
-            </View>
-            <View style={styles.headerActions}>
-              {instance && params.projectId ? (
-                <ProjectDomainsButton
-                  colors={colors}
-                  instanceId={instance.id}
-                  projectId={params.projectId}
-                />
-              ) : null}
-              <Pressable
-                accessibilityLabel="Refresh"
-                accessibilityRole="button"
-                disabled={!sessionId}
-                onPress={() => void refresh()}
-                style={styles.iconButton}
-              >
-                <AppIcon
-                  name={{
-                    ios: "arrow.clockwise",
-                    android: "refresh",
-                    web: "refresh",
-                  }}
-                  size={19}
-                  tintColor={colors.textSecondary}
-                />
-              </Pressable>
-            </View>
-          </View>
-
-          {isLoading ? (
-            <Status colors={colors} copy="Connecting to OpenCode…" />
-          ) : error || !instance || !directory ? (
-            <Status
-              colors={colors}
-              copy={error ?? "No repository directory was selected."}
-            />
-          ) : !sessionId ? (
-            <View style={styles.newChat}>
-              <Text style={[styles.newChatTitle, { color: colors.text }]}>
-                New chat
-              </Text>
-              <Text
-                style={[styles.newChatCopy, { color: colors.textSecondary }]}
-              >
-                Send a message to start an OpenCode conversation in{" "}
-                {directory.split("/").at(-1)}.
-              </Text>
-            </View>
-          ) : (
-            <ScrollView
-              contentContainerStyle={styles.messages}
-              ref={scrollRef}
-              showsVerticalScrollIndicator={false}
-            >
-              {messages.map((message) => {
-                const text = messageText(message);
-                if (!text) return null;
-                const user = message.info.role === "user";
-                return (
-                  <View
-                    key={message.info.id}
-                    style={[styles.message, user && styles.userMessage]}
-                  >
-                    {user ? (
-                      <View
-                        style={[
-                          styles.userBubble,
-                          {
-                            backgroundColor: colors.backgroundElement,
-                            borderColor: colors.border,
-                          },
-                        ]}
-                      >
-                        <Text
-                          selectable
-                          style={[styles.userText, { color: colors.text }]}
+                {messages.map((message) => {
+                  const text = messageText(message);
+                  const user = message.info.role === "user";
+                  const assistantParts = message.parts.filter(
+                    (part) =>
+                      (part.type === "text" &&
+                        !part.ignored &&
+                        Boolean(part.text?.trim())) ||
+                      (part.type === "tool" &&
+                        !(
+                          part.tool === "question" &&
+                          (part.state?.status === "pending" ||
+                            part.state?.status === "running")
+                        )),
+                  );
+                  if (user && !text) return null;
+                  if (!user && assistantParts.length === 0) return null;
+                  return (
+                    <View
+                      key={message.info.id}
+                      style={[styles.message, user && styles.userMessage]}
+                    >
+                      {user ? (
+                        <View
+                          style={[
+                            styles.userBubble,
+                            {
+                              backgroundColor: colors.backgroundElement,
+                              borderColor: colors.border,
+                            },
+                          ]}
                         >
-                          {text}
-                        </Text>
-                      </View>
-                    ) : (
-                      <NativeMarkdown colors={colors} content={text} />
-                    )}
-                  </View>
-                );
-              })}
-              {isSending ? (
-                <View style={styles.thinking}>
-                  <ActivityIndicator
-                    color={colors.textSecondary}
-                    size="small"
-                  />
-                  <Text
-                    style={[styles.subtitle, { color: colors.textSecondary }]}
-                  >
-                    OpenCode is working…
-                  </Text>
-                </View>
-              ) : null}
-            </ScrollView>
-          )}
-
-          {!isLoading && !error && instance && directory ? (
-            <View
-              style={[
-                styles.composer,
-                { backgroundColor: colors.surface, borderColor: colors.border },
-              ]}
-            >
-              <TextInput
-                editable={!isSending}
-                multiline
-                onChangeText={setDraft}
-                placeholder={
-                  sessionId
-                    ? "Ask a follow-up"
-                    : "What should OpenCode work on?"
-                }
-                placeholderTextColor={colors.textSecondary}
-                style={[styles.input, { color: colors.text }]}
-                value={draft}
-              />
-              <Pressable
-                accessibilityLabel="Send"
-                accessibilityRole="button"
-                disabled={!draft.trim() || isSending}
-                onPress={() => void submit()}
-                style={[
-                  styles.send,
-                  { backgroundColor: colors.primary },
-                  (!draft.trim() || isSending) && styles.disabled,
-                ]}
-              >
+                          <Text
+                            selectable
+                            style={[styles.userText, { color: colors.text }]}
+                          >
+                            {text}
+                          </Text>
+                        </View>
+                      ) : (
+                        <View style={styles.assistantContent}>
+                          {assistantParts.map((part, index) =>
+                            part.type === "text" && part.text ? (
+                              <NativeMarkdown
+                                colors={colors}
+                                content={part.text}
+                                key={
+                                  part.id ?? `${message.info.id}-text-${index}`
+                                }
+                              />
+                            ) : part.type === "tool" ? (
+                              <OpencodeToolCard
+                                colors={colors}
+                                key={
+                                  part.id ?? `${message.info.id}-tool-${index}`
+                                }
+                                part={part}
+                              />
+                            ) : null,
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })}
                 {isSending ? (
-                  <ActivityIndicator
-                    color={colors.primaryForeground}
-                    size="small"
+                  <View style={styles.thinking}>
+                    <ActivityIndicator
+                      color={colors.textSecondary}
+                      size="small"
+                    />
+                    <Text
+                      style={[styles.subtitle, { color: colors.textSecondary }]}
+                    >
+                      OpenCode is working…
+                    </Text>
+                  </View>
+                ) : null}
+              </ScrollView>
+            )}
+
+            {!isLoading && !error && instance && directory ? (
+              <View style={styles.composerArea}>
+                {questions[0] ? (
+                  <OpencodeQuestionPrompt
+                    busy={isResponding}
+                    colors={colors}
+                    onDismiss={() => void dismissQuestion()}
+                    onSubmit={(answers) => void submitQuestionAnswers(answers)}
+                    request={questions[0]}
+                  />
+                ) : permissions[0] ? (
+                  <OpencodePermissionPrompt
+                    busy={isResponding}
+                    colors={colors}
+                    onReply={(reply) => void respondToPermission(reply)}
+                    request={permissions[0]}
                   />
                 ) : (
+                  <>
+                    <PromptSelectors
+                      colors={colors}
+                      disabled={isSending}
+                      inventory={inventory}
+                      onChange={setSelection}
+                      selection={selection}
+                    />
+                    {inventoryError ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        onPress={() => void loadInventory(instance)}
+                      >
+                        <Text
+                          style={[
+                            styles.inventoryError,
+                            { color: colors.destructive },
+                          ]}
+                        >
+                          Could not load selectors. Tap to retry.
+                        </Text>
+                      </Pressable>
+                    ) : null}
+                    <View
+                      style={[
+                        styles.composer,
+                        {
+                          backgroundColor: colors.surface,
+                          borderColor: colors.border,
+                        },
+                      ]}
+                    >
+                      <TextInput
+                        editable={!isSending}
+                        multiline
+                        onChangeText={setDraft}
+                        placeholder={
+                          sessionId
+                            ? "Ask a follow-up"
+                            : "What should OpenCode work on?"
+                        }
+                        placeholderTextColor={colors.textSecondary}
+                        style={[styles.input, { color: colors.text }]}
+                        value={draft}
+                      />
+                      <Pressable
+                        accessibilityLabel="Send"
+                        accessibilityRole="button"
+                        disabled={!draft.trim() || isSending}
+                        onPress={() => void submit()}
+                        style={[
+                          styles.send,
+                          { backgroundColor: colors.primary },
+                          (!draft.trim() || isSending) && styles.disabled,
+                        ]}
+                      >
+                        {isSending ? (
+                          <ActivityIndicator
+                            color={colors.primaryForeground}
+                            size="small"
+                          />
+                        ) : (
+                          <AppIcon
+                            name={{
+                              ios: "arrow.up",
+                              android: "arrow_upward",
+                              web: "arrow_upward",
+                            }}
+                            size={20}
+                            tintColor={colors.primaryForeground}
+                          />
+                        )}
+                      </Pressable>
+                    </View>
+                  </>
+                )}
+              </View>
+            ) : null}
+          </BlurTargetView>
+
+          <FloatingScreenHeader
+            actions={
+              <>
+                {instance && params.projectId ? (
+                  <ProjectDomainsButton
+                    colors={colors}
+                    instanceId={instance.id}
+                    projectId={params.projectId}
+                  />
+                ) : null}
+                <Pressable
+                  accessibilityLabel="Refresh"
+                  accessibilityRole="button"
+                  disabled={!sessionId}
+                  onPress={() => void refresh()}
+                  style={styles.iconButton}
+                >
                   <AppIcon
                     name={{
-                      ios: "arrow.up",
-                      android: "arrow_upward",
-                      web: "arrow_upward",
+                      ios: "arrow.clockwise",
+                      android: "refresh",
+                      web: "refresh",
                     }}
-                    size={20}
-                    tintColor={colors.primaryForeground}
+                    size={19}
+                    tintColor={colors.textSecondary}
                   />
-                )}
-              </Pressable>
-            </View>
-          ) : null}
+                </Pressable>
+              </>
+            }
+            blurTarget={blurTargetRef}
+            colors={colors}
+            colorScheme={colorScheme}
+            onBack={() => router.back()}
+            onSwipeLeft={
+              chats.length > 1 ? () => switchRelativeChat(1) : undefined
+            }
+            onSwipeRight={
+              chats.length > 1 ? () => switchRelativeChat(-1) : undefined
+            }
+            onTitlePress={
+              chats.length ? () => setIsChatSwitcherOpen(true) : undefined
+            }
+            title={currentChatTitle}
+            wideTitle
+          />
         </KeyboardAvoidingView>
       </SafeAreaView>
+      <OpencodeChatSwitcher
+        chats={chats}
+        colors={colors}
+        currentId={sessionId}
+        onClose={() => setIsChatSwitcherOpen(false)}
+        onSelect={switchChat}
+        visible={isChatSwitcherOpen}
+      />
     </View>
   );
 }
@@ -358,22 +675,12 @@ function Status({ colors, copy }: { colors: AppColors; copy: string }) {
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   flex: { flex: 1 },
-  header: {
-    alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    minHeight: 62,
-    paddingHorizontal: Spacing.two,
-  },
   iconButton: {
     alignItems: "center",
     height: TouchTarget,
     justifyContent: "center",
     width: TouchTarget,
   },
-  headerText: { alignItems: "center", flex: 1, minWidth: 0 },
-  headerActions: { alignItems: "center", flexDirection: "row" },
-  title: { fontSize: 15, fontWeight: "700" },
   subtitle: { fontSize: 11, marginTop: 2 },
   status: {
     alignItems: "center",
@@ -396,8 +703,16 @@ const styles = StyleSheet.create({
     marginTop: Spacing.three,
     textAlign: "center",
   },
-  messages: { flexGrow: 1, gap: Spacing.six, padding: Spacing.five },
+  messages: {
+    flexGrow: 1,
+    gap: Spacing.six,
+    paddingBottom: Spacing.five,
+    paddingHorizontal: Spacing.five,
+    paddingTop: Spacing.ten,
+  },
+  messageScroller: { flex: 1 },
   message: { maxWidth: "100%" },
+  assistantContent: { gap: Spacing.three, width: "100%" },
   userMessage: { alignItems: "flex-end" },
   userBubble: {
     borderRadius: Radius.large,
@@ -408,13 +723,20 @@ const styles = StyleSheet.create({
   },
   userText: { fontSize: 15, lineHeight: 21 },
   thinking: { alignItems: "center", flexDirection: "row", gap: Spacing.two },
+  composerArea: { gap: Spacing.two, paddingTop: Spacing.two },
+  inventoryError: {
+    fontSize: 11,
+    paddingHorizontal: Spacing.four,
+    textAlign: "center",
+  },
   composer: {
     alignItems: "flex-end",
     borderRadius: Radius.large,
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     gap: Spacing.two,
-    margin: Spacing.three,
+    marginBottom: Spacing.three,
+    marginHorizontal: Spacing.three,
     padding: Spacing.two,
   },
   input: {

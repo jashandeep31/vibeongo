@@ -4,7 +4,56 @@ import type { RuntimeInstance } from "@/features/home/types";
 
 export type OpencodeMessage = {
   info: { id: string; role: "user" | "assistant" | string };
-  parts: Array<{ id?: string; type: string; text?: string }>;
+  parts: OpencodePart[];
+};
+
+export type OpencodeToolState = {
+  status: "pending" | "running" | "completed" | "error";
+  input: Record<string, unknown>;
+  title?: string;
+  output?: string;
+  error?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type OpencodePart = {
+  id?: string;
+  type: string;
+  text?: string;
+  ignored?: boolean;
+  tool?: string;
+  state?: OpencodeToolState;
+};
+
+export type OpencodeQuestion = {
+  id: string;
+  sessionID: string;
+  questions: Array<{
+    question: string;
+    header: string;
+    options: Array<{ label: string; description: string }>;
+    multiple?: boolean;
+    custom?: boolean;
+  }>;
+};
+
+export type OpencodePermission = {
+  id: string;
+  sessionID: string;
+  permission: string;
+  patterns: string[];
+  always: string[];
+};
+
+export type OpencodeSessionStatus = {
+  type: "idle" | "busy" | "retry";
+};
+
+export type OpencodeChatState = {
+  messages: OpencodeMessage[];
+  questions: OpencodeQuestion[];
+  permissions: OpencodePermission[];
+  status: OpencodeSessionStatus;
 };
 
 export type OpencodeModelOption = {
@@ -35,9 +84,17 @@ export type OpencodePromptSelection = {
 
 export type OpencodeSession = {
   id: string;
+  title?: string;
+  directory?: string;
+  time?: { created?: number; updated?: number };
   agent?: string;
   model?: { providerID: string; id: string; variant?: string };
 };
+
+export type OpencodeChatOption = Pick<
+  OpencodeSession,
+  "id" | "title" | "directory" | "time"
+>;
 
 function origin(instance: RuntimeInstance) {
   const url = new URL(`https://4096-${instance.id}${instance.proxy_domain}`);
@@ -127,6 +184,77 @@ export function getOpencodeMessages(
   );
 }
 
+export async function getOpencodeChatState(
+  instance: RuntimeInstance,
+  sessionId: string,
+  directory: string,
+): Promise<OpencodeChatState> {
+  const query = new URLSearchParams({ directory });
+  const messageQuery = new URLSearchParams({ directory, limit: "100" });
+  const [messages, questions, permissions, statuses] = await Promise.all([
+    request<OpencodeMessage[]>(
+      instance,
+      `/session/${encodeURIComponent(sessionId)}/message?${messageQuery}`,
+    ),
+    request<OpencodeQuestion[]>(instance, `/question?${query}`),
+    request<OpencodePermission[]>(instance, `/permission?${query}`),
+    request<Record<string, OpencodeSessionStatus>>(
+      instance,
+      `/session/status?${query}`,
+    ),
+  ]);
+
+  return {
+    messages,
+    questions: questions.filter((question) => question.sessionID === sessionId),
+    permissions: permissions.filter(
+      (permission) => permission.sessionID === sessionId,
+    ),
+    status: statuses[sessionId] ?? { type: "idle" },
+  };
+}
+
+export function answerOpencodeQuestion(
+  instance: RuntimeInstance,
+  requestId: string,
+  directory: string,
+  answers: string[][],
+) {
+  const query = new URLSearchParams({ directory });
+  return request<boolean>(
+    instance,
+    `/question/${encodeURIComponent(requestId)}/reply?${query}`,
+    { method: "POST", body: JSON.stringify({ answers }) },
+  );
+}
+
+export function rejectOpencodeQuestion(
+  instance: RuntimeInstance,
+  requestId: string,
+  directory: string,
+) {
+  const query = new URLSearchParams({ directory });
+  return request<boolean>(
+    instance,
+    `/question/${encodeURIComponent(requestId)}/reject?${query}`,
+    { method: "POST" },
+  );
+}
+
+export function replyOpencodePermission(
+  instance: RuntimeInstance,
+  requestId: string,
+  directory: string,
+  reply: "once" | "always" | "reject",
+) {
+  const query = new URLSearchParams({ directory });
+  return request<boolean>(
+    instance,
+    `/permission/${encodeURIComponent(requestId)}/reply?${query}`,
+    { method: "POST", body: JSON.stringify({ reply }) },
+  );
+}
+
 export function getOpencodeSession(
   instance: RuntimeInstance,
   sessionId: string,
@@ -136,6 +264,48 @@ export function getOpencodeSession(
   return request<OpencodeSession>(
     instance,
     `/session/${encodeURIComponent(sessionId)}?${query}`,
+  );
+}
+
+export async function getOpencodeChats(
+  instance: RuntimeInstance,
+  fallbackDirectory: string,
+): Promise<OpencodeChatOption[]> {
+  const projects = await request<
+    Array<{ worktree?: string; sandboxes?: string[] }>
+  >(instance, "/project");
+  const directories = [
+    ...new Set(
+      projects.flatMap((project) => [
+        project.worktree,
+        ...(project.sandboxes ?? []),
+      ]),
+    ),
+  ].filter((directory): directory is string => Boolean(directory));
+  if (directories.length === 0 && fallbackDirectory) {
+    directories.push(fallbackDirectory);
+  }
+
+  const responses = await Promise.all(
+    directories.map((directory) => {
+      const query = new URLSearchParams({
+        directory,
+        roots: "true",
+        limit: "100",
+      });
+      return request<OpencodeChatOption[]>(instance, `/session?${query}`).then(
+        (sessions) =>
+          sessions.map((session) => ({
+            ...session,
+            directory: session.directory ?? directory,
+          })),
+      );
+    }),
+  );
+  const chats = new Map<string, OpencodeChatOption>();
+  responses.flat().forEach((chat) => chats.set(chat.id, chat));
+  return [...chats.values()].sort(
+    (left, right) => (right.time?.updated ?? 0) - (left.time?.updated ?? 0),
   );
 }
 

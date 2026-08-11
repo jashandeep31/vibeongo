@@ -14,11 +14,90 @@ import type {
 
 type ChatsResponse = { chats: RecentChat[] };
 
+export type RuntimeRegion = {
+  id: string;
+  name: string;
+  provider: "aws" | "digitalocean";
+  slug: string;
+};
+
+export type SandboxRegion = {
+  id: string;
+  name: string;
+  provider: "e2b" | "vercel" | "daytona";
+  slug: string;
+};
+
+export type RuntimeType = {
+  cpu: string | null;
+  id: string;
+  name: string;
+  ram: string | null;
+  slug: string;
+};
+
+export const getInstanceRegions = (signal?: AbortSignal) =>
+  apiRequest<RuntimeRegion[]>("/api/v1/metadata/instances/regions", {}, signal);
+
+export const getInstanceTypes = (regionId: string, signal?: AbortSignal) =>
+  apiRequest<RuntimeType[]>(
+    `/api/v1/metadata/instances/regions/${encodeURIComponent(regionId)}/types`,
+    {},
+    signal,
+  );
+
+export const getSandboxRegions = (signal?: AbortSignal) =>
+  apiRequest<SandboxRegion[]>("/api/v1/metadata/sandboxes/regions", {}, signal);
+
+export const getSandboxTypes = (regionId: string, signal?: AbortSignal) =>
+  apiRequest<RuntimeType[]>(
+    `/api/v1/metadata/sandboxes/regions/${encodeURIComponent(regionId)}/types`,
+    {},
+    signal,
+  );
+
+export const createProject = (input: {
+  description: string;
+  instanceTypeId: string;
+  name: string;
+  provider: RuntimeRegion["provider"];
+  regionId: string;
+  sandboxTypeId: string;
+}) =>
+  apiRequest<Project>("/api/v1/projects", {
+    body: JSON.stringify({
+      ...input,
+      config: {
+        packages: [
+          { name: "docker", config: { containers: [] } },
+          {
+            name: "opencode",
+            config: {
+              auth_json: {},
+              model: "",
+              requirePassword: false,
+              use_user_config: true,
+            },
+          },
+          { name: "codex", config: { auth_json: {}, use_user_config: true } },
+          { name: "pi", config: { auth_json: {}, use_user_config: true } },
+        ],
+        ports: [],
+      },
+      devScript: "",
+      finalScript: "",
+      githubRepoIds: [],
+      initialScript: "",
+      sshKeyIds: [],
+    }),
+    method: "POST",
+  });
+
 export async function getHomeData(signal?: AbortSignal): Promise<HomeData> {
   const [user, chatsResponse, rawProjects, instances] = await Promise.all([
     apiRequest<UserMetadata>("/api/v1/users/metadata", {}, signal),
     apiRequest<ChatsResponse>(
-      "/api/v1/chats?agentName=vibeongo-agent&limit=20",
+      "/api/v1/chats?agentName=vibeongo-agent",
       {},
       signal,
     ),

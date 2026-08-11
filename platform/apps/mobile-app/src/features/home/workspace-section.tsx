@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { useRouter } from "expo-router";
 import {
   ActivityIndicator,
-  Alert,
   Pressable,
   StyleSheet,
   Text,
@@ -33,8 +32,8 @@ type WorkspaceSectionProps = {
   deletingChatId: string | null;
   projects: Project[];
   actionPendingId: string | null;
-  onChangeTab: (tab: WorkspaceTab) => void;
   onDeleteChat: (chat: RecentChat) => void;
+  onCreateProject: () => void;
   onCreateSession: (project: Project) => void;
   onResumeSession: (session: ProjectSession) => void;
   onArchiveSession: (session: ProjectSession) => void;
@@ -56,24 +55,20 @@ function EmptyState({
 }) {
   const chats = kind === "chats";
   return (
-    <View style={[styles.empty, { backgroundColor: colors.backgroundElement }]}>
-      <AppIcon
-        name={
-          chats
-            ? {
-                ios: "bubble.left.and.bubble.right",
-                android: "chat",
-                web: "chat",
-              }
-            : {
-                ios: "folder.badge.plus",
-                android: "create_new_folder",
-                web: "create_new_folder",
-              }
-        }
-        size={25}
-        tintColor={colors.textSecondary}
-      />
+    <View
+      style={[
+        styles.empty,
+        chats && { backgroundColor: colors.backgroundElement },
+        !chats && styles.emptyProject,
+      ]}
+    >
+      {chats ? (
+        <AppIcon
+          name={{ ios: "bubble.left.and.bubble.right", android: "chat", web: "chat" }}
+          size={25}
+          tintColor={colors.textSecondary}
+        />
+      ) : null}
       <Text style={[styles.emptyTitle, { color: colors.text }]}>
         {chats ? "No recent chats" : "No projects yet"}
       </Text>
@@ -208,35 +203,19 @@ function SessionCard({
   session: ProjectSession;
 }) {
   const state = session.runtime?.state ?? "stopped";
-  const [expanded, setExpanded] = useState(state === "running");
   const [now, setNow] = useState(Date.now());
   const pending = actionPendingId === session.id;
 
   useEffect(() => {
     if (state !== "running") return;
-    setExpanded(true);
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, [state]);
 
   return (
-    <View
-      style={[
-        styles.sessionCard,
-        { backgroundColor: colors.backgroundElement },
-      ]}
-    >
+    <View style={styles.sessionCard}>
       <View style={styles.sessionRow}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded: state === "running" && expanded }}
-          disabled={state !== "running"}
-          onPress={() => setExpanded((value) => !value)}
-          style={({ pressed }) => [
-            styles.sessionMain,
-            pressed && styles.pressed,
-          ]}
-        >
+        <View style={styles.sessionMain}>
           <View
             style={[
               styles.statusDot,
@@ -265,26 +244,7 @@ function SessionCard({
                   : "Paused"}
             </Text>
           </View>
-          {state === "running" ? (
-            <AppIcon
-              name={
-                expanded
-                  ? {
-                      ios: "chevron.up",
-                      android: "expand_less",
-                      web: "expand_less",
-                    }
-                  : {
-                      ios: "chevron.down",
-                      android: "expand_more",
-                      web: "expand_more",
-                    }
-              }
-              size={17}
-              tintColor={colors.textSecondary}
-            />
-          ) : null}
-        </Pressable>
+        </View>
 
         {pending || state === "processing" ? (
           <View style={styles.iconAction}>
@@ -296,32 +256,17 @@ function SessionCard({
               accessibilityLabel={`Resume ${session.name}`}
               accessibilityRole="button"
               onPress={onResume}
-              style={[styles.resumeButton, { borderColor: colors.border }]}
+              style={styles.resumeButton}
             >
-              <AppIcon
-                name={{
-                  ios: "play.fill",
-                  android: "play_arrow",
-                  web: "play_arrow",
-                }}
-                size={14}
-                tintColor={colors.text}
-              />
-              <Text style={[styles.resumeText, { color: colors.text }]}>
-                Resume
-              </Text>
+              <Text style={[styles.resumeText, { color: colors.text }]}>Resume</Text>
             </Pressable>
             <Pressable
               accessibilityLabel={`Archive ${session.name}`}
               accessibilityRole="button"
               onPress={onArchive}
-              style={styles.iconAction}
+              style={styles.quietAction}
             >
-              <AppIcon
-                name={{ ios: "archivebox", android: "archive", web: "archive" }}
-                size={18}
-                tintColor={colors.textSecondary}
-              />
+              <Text style={[styles.quietActionText, { color: colors.textSecondary }]}>Archive</Text>
             </Pressable>
           </View>
         ) : (
@@ -329,19 +274,15 @@ function SessionCard({
             accessibilityLabel={`Terminate ${session.name}`}
             accessibilityRole="button"
             onPress={onTerminate}
-            style={styles.iconAction}
+            style={styles.quietAction}
           >
-            <AppIcon
-              name={{ ios: "stop.fill", android: "stop", web: "stop" }}
-              size={18}
-              tintColor={colors.destructive}
-            />
+            <Text style={[styles.quietActionText, { color: colors.destructive }]}>Stop</Text>
           </Pressable>
         )}
       </View>
 
-      {state === "running" && expanded ? (
-        <View style={[styles.opencodeList, { borderTopColor: colors.border }]}>
+      {state === "running" ? (
+        <View style={styles.opencodeList}>
           {session.runtime?.error ? (
             <Text style={[styles.chatLoadError, { color: colors.destructive }]}>
               Could not refresh chats. Pull down on Home to retry.
@@ -357,26 +298,13 @@ function SessionCard({
                 pressed && styles.pressed,
               ]}
             >
-              <AppIcon
-                name={{ ios: "bubble.left", android: "chat", web: "chat" }}
-                size={16}
-                tintColor={colors.textSecondary}
-              />
+              <Text style={[styles.promptMarker, { color: colors.textSecondary }]}>›</Text>
               <Text
                 numberOfLines={1}
                 style={[styles.opencodeTitle, { color: colors.text }]}
               >
                 {chat.title || "Untitled chat"}
               </Text>
-              <AppIcon
-                name={{
-                  ios: "chevron.right",
-                  android: "chevron_right",
-                  web: "chevron_right",
-                }}
-                size={15}
-                tintColor={colors.textSecondary}
-              />
             </Pressable>
           ))}
           <Pressable
@@ -387,11 +315,7 @@ function SessionCard({
               pressed && styles.pressed,
             ]}
           >
-            <AppIcon
-              name={{ ios: "plus", android: "add", web: "add" }}
-              size={17}
-              tintColor={colors.brand}
-            />
+            <Text style={[styles.promptMarker, { color: colors.brand }]}>+</Text>
             <Text style={[styles.newChatText, { color: colors.brand }]}>
               New chat
             </Text>
@@ -415,43 +339,14 @@ function ProjectCard(
     | "onTerminateSession"
   > & { project: Project },
 ) {
-  const [expanded, setExpanded] = useState(false);
   const running = props.project.sessions.filter(
     (session) => session.runtime?.state === "running",
   ).length;
 
   return (
-    <View
-      style={[
-        styles.projectCard,
-        {
-          backgroundColor: props.colors.surface,
-          borderColor: props.colors.border,
-        },
-      ]}
-    >
+    <View style={styles.projectCard}>
       <View style={styles.projectHeader}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ expanded }}
-          onPress={() => setExpanded((value) => !value)}
-          style={({ pressed }) => [
-            styles.projectMain,
-            pressed && styles.pressed,
-          ]}
-        >
-          <View
-            style={[
-              styles.rowIcon,
-              { backgroundColor: props.colors.backgroundElement },
-            ]}
-          >
-            <AppIcon
-              name={{ ios: "folder.fill", android: "folder", web: "folder" }}
-              size={20}
-              tintColor={props.colors.brand}
-            />
-          </View>
+        <View style={styles.projectMain}>
           <View style={styles.flex}>
             <Text
               numberOfLines={1}
@@ -465,41 +360,17 @@ function ProjectCard(
               {running ? ` · ${running} running` : ""}
             </Text>
           </View>
-          <AppIcon
-            name={
-              expanded
-                ? {
-                    ios: "chevron.up",
-                    android: "expand_less",
-                    web: "expand_less",
-                  }
-                : {
-                    ios: "chevron.down",
-                    android: "expand_more",
-                    web: "expand_more",
-                  }
-            }
-            size={18}
-            tintColor={props.colors.textSecondary}
-          />
-        </Pressable>
+        </View>
         <Pressable
           accessibilityLabel={`Create a session in ${props.project.name}`}
           accessibilityRole="button"
           onPress={() => props.onCreateSession(props.project)}
-          style={styles.iconAction}
+          style={styles.projectSessionAction}
         >
-          <AppIcon
-            name={{ ios: "plus", android: "add", web: "add" }}
-            size={20}
-            tintColor={props.colors.text}
-          />
+          <Text style={[styles.newSessionText, { color: props.colors.textSecondary }]}>+ Session</Text>
         </Pressable>
       </View>
-      {expanded ? (
-        <View
-          style={[styles.sessions, { borderTopColor: props.colors.border }]}
-        >
+      <View style={styles.sessions}>
           {props.project.sessions.length === 0 ? (
             <View style={styles.noSessions}>
               <Text
@@ -510,19 +381,9 @@ function ProjectCard(
               <Pressable
                 accessibilityRole="button"
                 onPress={() => props.onCreateSession(props.project)}
-                style={[
-                  styles.outlineButton,
-                  { borderColor: props.colors.border },
-                ]}
+                style={styles.emptySessionAction}
               >
-                <AppIcon
-                  name={{ ios: "plus", android: "add", web: "add" }}
-                  size={16}
-                  tintColor={props.colors.text}
-                />
-                <Text style={[styles.resumeText, { color: props.colors.text }]}>
-                  New session
-                </Text>
+                <Text style={[styles.resumeText, { color: props.colors.text }]}>+ New session</Text>
               </Pressable>
             </View>
           ) : (
@@ -544,99 +405,31 @@ function ProjectCard(
               />
             ))
           )}
-        </View>
-      ) : null}
+      </View>
     </View>
   );
 }
 
 export function WorkspaceSection(props: WorkspaceSectionProps) {
   return (
-    <View style={styles.container}>
+    <View
+      style={[
+        styles.container,
+        props.activeTab === "projects" && styles.projectsContainer,
+      ]}
+    >
       <View style={styles.workspaceHeader}>
-        <View
-          accessibilityRole="tablist"
-          style={[
-            styles.segmented,
-            {
-              backgroundColor: props.colors.backgroundElement,
-              borderColor: props.colors.border,
-            },
-          ]}
-        >
-          {(["chats", "projects"] as const).map((tab) => {
-            const selected = props.activeTab === tab;
-            return (
-              <Pressable
-                key={tab}
-                accessibilityRole="tab"
-                accessibilityState={{ selected }}
-                onPress={() => props.onChangeTab(tab)}
-                style={[
-                  styles.segment,
-                  selected && { backgroundColor: props.colors.primary },
-                ]}
-              >
-                <AppIcon
-                  name={
-                    tab === "chats"
-                      ? {
-                          ios: "bubble.left.and.bubble.right",
-                          android: "chat",
-                          web: "chat",
-                        }
-                      : { ios: "folder", android: "folder", web: "folder" }
-                  }
-                  size={15}
-                  tintColor={
-                    selected
-                      ? props.colors.primaryForeground
-                      : props.colors.textSecondary
-                  }
-                />
-                <Text
-                  style={[
-                    styles.segmentText,
-                    {
-                      color: selected
-                        ? props.colors.primaryForeground
-                        : props.colors.textSecondary,
-                    },
-                  ]}
-                >
-                  {tab === "chats" ? "Chats" : "Projects"}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
+        <Text style={[styles.workspaceTitle, { color: props.colors.textSecondary }]}>
+          {props.activeTab === "chats" ? "All chats" : "Your projects"}
+        </Text>
         {props.activeTab === "projects" ? (
           <Pressable
+            accessibilityLabel="Create project"
             accessibilityRole="button"
-            onPress={() =>
-              Alert.alert(
-                "Create project",
-                "Project creation is not available on mobile yet.",
-              )
-            }
-            style={[
-              styles.createButton,
-              { backgroundColor: props.colors.primary },
-            ]}
+            onPress={props.onCreateProject}
+            style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
           >
-            <AppIcon
-              name={{ ios: "plus", android: "add", web: "add" }}
-              size={16}
-              tintColor={props.colors.primaryForeground}
-            />
-            <Text
-              style={[
-                styles.createText,
-                { color: props.colors.primaryForeground },
-              ]}
-            >
-              Create
-            </Text>
+            <Text style={[styles.createProjectText, { color: props.colors.text }]}>+ Project</Text>
           </Pressable>
         ) : null}
       </View>
@@ -656,37 +449,22 @@ export function WorkspaceSection(props: WorkspaceSectionProps) {
 }
 
 const styles = StyleSheet.create({
-  container: { marginTop: Spacing.seven },
+  container: { marginTop: Spacing.six },
+  projectsContainer: { marginTop: Spacing.two },
   workspaceHeader: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: Spacing.five,
+    minHeight: TouchTarget,
   },
-  segmented: {
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    padding: 4,
-  },
-  segment: {
-    alignItems: "center",
-    borderRadius: Radius.pill,
-    flexDirection: "row",
-    gap: 6,
-    height: 34,
-    paddingHorizontal: 13,
-  },
-  segmentText: { fontSize: 13, fontWeight: "600" },
+  workspaceTitle: { fontSize: 12, fontWeight: "700", letterSpacing: 0.2 },
   createButton: {
     alignItems: "center",
-    borderRadius: Radius.pill,
-    flexDirection: "row",
-    gap: 5,
-    height: 42,
-    paddingHorizontal: 14,
+    height: 36,
+    justifyContent: "center",
+    paddingLeft: Spacing.three,
   },
-  createText: { fontSize: 13, fontWeight: "700" },
+  createProjectText: { fontSize: 11, fontWeight: "600" },
   empty: {
     alignItems: "center",
     borderRadius: Radius.large,
@@ -694,6 +472,7 @@ const styles = StyleSheet.create({
     padding: Spacing.seven,
   },
   emptyTitle: { fontSize: 15, fontWeight: "700" },
+  emptyProject: { alignItems: "flex-start", paddingHorizontal: 0 },
   emptyCopy: {
     fontSize: 13,
     lineHeight: 19,
@@ -724,75 +503,66 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: TouchTarget,
   },
-  projectList: { gap: Spacing.three },
-  projectCard: {
-    borderRadius: Radius.large,
-    borderWidth: StyleSheet.hairlineWidth,
-    overflow: "hidden",
-  },
-  projectHeader: { alignItems: "center", flexDirection: "row", minHeight: 74 },
+  projectList: { gap: Spacing.seven },
+  projectCard: { overflow: "hidden" },
+  projectHeader: { alignItems: "center", flexDirection: "row", minHeight: 52 },
   projectMain: {
     alignItems: "center",
     flex: 1,
     flexDirection: "row",
-    gap: Spacing.three,
-    minHeight: 74,
-    paddingLeft: Spacing.four,
+    minHeight: 52,
   },
-  projectName: { fontSize: 15, fontWeight: "700" },
+  projectName: { fontSize: 14, fontWeight: "700" },
+  projectSessionAction: {
+    alignItems: "center",
+    minHeight: TouchTarget,
+    justifyContent: "center",
+    paddingLeft: Spacing.three,
+  },
+  newSessionText: { fontSize: 11, fontWeight: "600" },
   sessions: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    gap: Spacing.two,
-    padding: Spacing.three,
+    gap: Spacing.one,
+    marginLeft: Spacing.four,
+    paddingTop: Spacing.one,
   },
   noSessions: {
-    alignItems: "center",
-    gap: Spacing.three,
-    padding: Spacing.five,
+    alignItems: "flex-start",
+    gap: Spacing.two,
+    paddingVertical: Spacing.two,
   },
-  outlineButton: {
-    alignItems: "center",
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 5,
-    height: 40,
-    paddingHorizontal: 14,
-  },
-  sessionCard: { borderRadius: Radius.medium, overflow: "hidden" },
-  sessionRow: { alignItems: "center", flexDirection: "row", minHeight: 58 },
+  emptySessionAction: { justifyContent: "center", minHeight: 36 },
+  sessionCard: { overflow: "hidden" },
+  sessionRow: { alignItems: "center", flexDirection: "row", minHeight: 48 },
   sessionMain: {
     alignItems: "center",
     flex: 1,
     flexDirection: "row",
-    gap: Spacing.three,
-    minHeight: 58,
-    paddingLeft: Spacing.three,
+    gap: Spacing.two,
+    minHeight: 48,
   },
   statusDot: { borderRadius: 4, height: 8, width: 8 },
   sessionName: { fontSize: 13, fontWeight: "600" },
   inlineActions: { alignItems: "center", flexDirection: "row" },
   resumeButton: {
     alignItems: "center",
-    borderRadius: Radius.pill,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 4,
     height: 36,
-    paddingHorizontal: 10,
+    justifyContent: "center",
+    paddingHorizontal: Spacing.two,
   },
   resumeText: { fontSize: 12, fontWeight: "600" },
+  quietAction: { alignItems: "center", minHeight: 36, justifyContent: "center", paddingHorizontal: Spacing.two },
+  quietActionText: { fontSize: 10, fontWeight: "600" },
   opencodeList: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
+    paddingBottom: Spacing.two,
+    paddingLeft: Spacing.four,
   },
   opencodeRow: {
     alignItems: "center",
     flexDirection: "row",
-    gap: Spacing.three,
-    minHeight: TouchTarget,
+    gap: Spacing.two,
+    minHeight: 36,
   },
+  promptMarker: { fontSize: 14, fontWeight: "700", width: 10 },
   opencodeTitle: { flex: 1, fontSize: 13, fontWeight: "500" },
   newChatText: { flex: 1, fontSize: 13, fontWeight: "700" },
   chatLoadError: {

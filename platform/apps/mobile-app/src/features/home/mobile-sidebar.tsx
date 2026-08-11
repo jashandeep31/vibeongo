@@ -91,6 +91,12 @@ export function MobileSidebar({
       return;
     }
 
+    if (label === "Wallet") {
+      onClose();
+      router.push("/wallet");
+      return;
+    }
+
     Alert.alert(
       label,
       `${label} is included in the next mobile implementation phase.`,

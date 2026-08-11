@@ -7,16 +7,27 @@ import { LoginScreen } from "@/components/login-screen";
 import { AuthProvider, useAuth } from "@/contexts/auth-context";
 import { ToastProvider } from "@/contexts/toast-context";
 import { WebSocketProvider } from "@/contexts/websocket-context";
+import { useTheme } from "@/hooks/use-theme";
 
 function AppContent() {
   const { isLoading, token } = useAuth();
+  const colors = useTheme();
 
   if (isLoading) return null;
   if (!token) return <LoginScreen />;
 
   return (
     <WebSocketProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+      <Stack
+        screenOptions={{
+          animation: "ios_from_right",
+          animationDuration: 280,
+          animationMatchesGesture: true,
+          contentStyle: { backgroundColor: colors.background },
+          gestureEnabled: true,
+          headerShown: false,
+        }}
+      />
     </WebSocketProvider>
   );
 }

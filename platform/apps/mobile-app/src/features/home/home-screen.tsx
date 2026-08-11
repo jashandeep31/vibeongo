@@ -1,9 +1,11 @@
 import { StatusBar } from "expo-status-bar";
 import { useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -32,6 +34,7 @@ import {
 } from "./home-api";
 import { MobileSidebar } from "./mobile-sidebar";
 import {
+  CreateProjectSheet,
   NewSessionSheet,
   RepositorySheet,
   RuntimeSheet,
@@ -62,6 +65,7 @@ export function HomeScreen() {
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkspaceTab>("chats");
   const [newSessionProject, setNewSessionProject] = useState<Project | null>(
     null,
@@ -78,6 +82,22 @@ export function HomeScreen() {
   const [repositoryError, setRepositoryError] = useState<string | null>(null);
   const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [actionPendingId, setActionPendingId] = useState<string | null>(null);
+  const workspaceAnimation = useRef(new Animated.Value(1)).current;
+
+  const selectWorkspaceTab = (tab: WorkspaceTab) => {
+    if (tab === activeTab) return;
+    workspaceAnimation.stopAnimation();
+    workspaceAnimation.setValue(0);
+    setActiveTab(tab);
+    requestAnimationFrame(() => {
+      Animated.timing(workspaceAnimation, {
+        duration: 190,
+        easing: Easing.out(Easing.cubic),
+        toValue: 1,
+        useNativeDriver: true,
+      }).start();
+    });
+  };
 
   const load = useCallback(
     async (signal?: AbortSignal, refreshing = false, quiet = false) => {
@@ -319,7 +339,12 @@ export function HomeScreen() {
         projectSessionId: session.id,
         sessionName: session.name,
         ...(directory ? { directory } : {}),
-        ...(chat ? { opencodeSessionId: chat.id } : {}),
+        ...(chat
+          ? {
+              opencodeSessionId: chat.id,
+              opencodeSessionTitle: chat.title,
+            }
+          : {}),
       },
     });
   };
@@ -393,6 +418,50 @@ export function HomeScreen() {
                 tintColor={colors.text}
               />
             </Pressable>
+
+            <View
+              accessibilityRole="tablist"
+              style={[
+                styles.topSegmented,
+                {
+                  backgroundColor: colors.backgroundElement,
+                  borderColor: colors.border,
+                },
+              ]}
+            >
+              {(["chats", "projects"] as const).map((tab) => {
+                const selected = activeTab === tab;
+                return (
+                  <Pressable
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected }}
+                    key={tab}
+                    onPress={() => selectWorkspaceTab(tab)}
+                    style={({ pressed }) => [
+                      styles.topSegment,
+                      selected && {
+                        backgroundColor: colors.surface,
+                        borderColor: colors.border,
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.topSegmentText,
+                        {
+                          color: selected ? colors.text : colors.textSecondary,
+                        },
+                        selected && styles.topSegmentTextSelected,
+                      ]}
+                    >
+                      {tab === "chats" ? "Chats" : "Projects"}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+            <View style={styles.topBarSpacer} />
           </View>
 
           {isLoading && !data ? (
@@ -418,15 +487,30 @@ export function HomeScreen() {
               }
               showsVerticalScrollIndicator={false}
             >
-              <WorkComposer
-                colors={colors}
-                isConnected={isConnected}
-                isSubmitting={isCreatingChat}
-                onSubmit={createChat}
-                projects={data?.projects ?? []}
-              />
+              <Animated.View
+                style={{
+                  opacity: workspaceAnimation,
+                  transform: [
+                    {
+                      translateY: workspaceAnimation.interpolate({
+                        inputRange: [0, 1],
+                        outputRange: [10, 0],
+                      }),
+                    },
+                  ],
+                }}
+              >
+                {activeTab === "chats" ? (
+                  <WorkComposer
+                    colors={colors}
+                    isConnected={isConnected}
+                    isSubmitting={isCreatingChat}
+                    onSubmit={createChat}
+                    projects={data?.projects ?? []}
+                  />
+                ) : null}
 
-              {isBalanceLow ? (
+                {activeTab === "chats" && isBalanceLow ? (
                 <View
                   accessibilityRole="alert"
                   style={[
@@ -488,26 +572,27 @@ export function HomeScreen() {
                 </View>
               ) : null}
 
-              <WorkspaceSection
-                actionPendingId={actionPendingId}
-                activeTab={activeTab}
-                chats={data?.chats ?? []}
-                colors={colors}
-                deletingChatId={deletingChatId}
-                onChangeTab={setActiveTab}
-                onDeleteChat={confirmDeleteChat}
-                onArchiveSession={confirmArchive}
-                onCreateSession={setNewSessionProject}
-                onNewOpencodeChat={(project, session) =>
-                  void loadRepositories(project, session)
-                }
-                onOpenOpencodeChat={(project, session, chat) =>
-                  openOpencode(project, session, chat.directory, chat)
-                }
-                onResumeSession={setRuntimeSession}
-                onTerminateSession={confirmTerminate}
-                projects={data?.projects ?? []}
-              />
+                <WorkspaceSection
+                  actionPendingId={actionPendingId}
+                  activeTab={activeTab}
+                  chats={data?.chats ?? []}
+                  colors={colors}
+                  deletingChatId={deletingChatId}
+                  onDeleteChat={confirmDeleteChat}
+                  onCreateProject={() => setIsCreateProjectOpen(true)}
+                  onArchiveSession={confirmArchive}
+                  onCreateSession={setNewSessionProject}
+                  onNewOpencodeChat={(project, session) =>
+                    void loadRepositories(project, session)
+                  }
+                  onOpenOpencodeChat={(project, session, chat) =>
+                    openOpencode(project, session, chat.directory, chat)
+                  }
+                  onResumeSession={setRuntimeSession}
+                  onTerminateSession={confirmTerminate}
+                  projects={data?.projects ?? []}
+                />
+              </Animated.View>
             </ScrollView>
           )}
         </KeyboardAvoidingView>
@@ -515,8 +600,17 @@ export function HomeScreen() {
       <MobileSidebar
         colors={colors}
         onClose={() => setIsSidebarOpen(false)}
-        onSelectWorkspace={setActiveTab}
+        onSelectWorkspace={selectWorkspaceTab}
         visible={isSidebarOpen}
+      />
+      <CreateProjectSheet
+        colors={colors}
+        onClose={() => setIsCreateProjectOpen(false)}
+        onCreated={() => {
+          setIsCreateProjectOpen(false);
+          void load(undefined, false, true);
+        }}
+        visible={isCreateProjectOpen}
       />
       <NewSessionSheet
         colors={colors}
@@ -646,17 +740,39 @@ const styles = StyleSheet.create({
   topBar: {
     alignItems: "center",
     flexDirection: "row",
-    height: 60,
+    gap: Spacing.three,
+    height: 64,
+    justifyContent: "center",
     paddingHorizontal: Spacing.five,
   },
   menuButton: {
     alignItems: "center",
-    borderRadius: Radius.medium,
+    borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
     height: TouchTarget,
     justifyContent: "center",
     width: TouchTarget,
   },
+  topSegmented: {
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    flexDirection: "row",
+    maxWidth: 250,
+    padding: 4,
+  },
+  topSegment: {
+    alignItems: "center",
+    borderColor: "transparent",
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    height: 40,
+    justifyContent: "center",
+  },
+  topSegmentText: { fontSize: 14, fontWeight: "500" },
+  topSegmentTextSelected: { fontWeight: "700" },
+  topBarSpacer: { height: TouchTarget, width: TouchTarget },
   pressed: { opacity: 0.7, transform: [{ scale: 0.97 }] },
   scrollContent: {
     alignSelf: "center",
