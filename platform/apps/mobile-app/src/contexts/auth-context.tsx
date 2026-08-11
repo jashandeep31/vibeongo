@@ -36,16 +36,6 @@ const getAuthError = (error: string | string[] | undefined) => {
   return "GitHub sign-in could not be completed. Please try again.";
 };
 
-const getDevelopmentToken = async () => {
-  const response = await fetch(`${API_URL}/api/v1/auth/development`, {
-    method: "POST",
-  });
-  if (!response.ok) return null;
-
-  const body = (await response.json()) as { data?: { token?: unknown } };
-  return typeof body.data?.token === "string" ? body.data.token : null;
-};
-
 export function AuthProvider({ children }: PropsWithChildren) {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,20 +43,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const restoreSession = async () => {
-      if (__DEV__) {
-        try {
-          const developmentToken = await getDevelopmentToken();
-          if (developmentToken) {
-            await storeToken(developmentToken);
-            setToken(developmentToken);
-            return;
-          }
-        } catch {
-          // Fall back to a stored session or login when the local API is offline.
-        }
-      }
+    if (__DEV__) {
+      setToken("development-session");
+      setIsLoading(false);
+      return;
+    }
 
+    const restoreSession = async () => {
       const storedToken = await getStoredToken();
       if (!storedToken) return;
 

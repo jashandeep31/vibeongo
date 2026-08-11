@@ -14,8 +14,11 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    from the device (use your LAN IP instead of `localhost` on a physical device):
 
    ```bash
-   EXPO_PUBLIC_API_URL=http://192.168.1.10:4000
+   EXPO_PUBLIC_API_URL=http://192.168.1.10:8000
    ```
+
+   Without this variable, development defaults to `localhost:8000` on iOS/web
+   and `10.0.2.2:8000` on the Android emulator.
 
 3. Start the app:
 
@@ -49,10 +52,10 @@ Add the web origin to the server's `ALLOWED_ORIGINS` if you run the mobile app
 as a web build. Native sessions are stored with Expo SecureStore and API calls
 should send the value in `Authorization: Bearer <token>`.
 
-During development, the app skips GitHub and automatically requests a one-day
-session for the local development user (`jashandeep31`). The server endpoint is
-available only when `NODE_ENV=development`; production builds continue to show
-the GitHub login screen.
+During development, the app skips GitHub and immediately uses the local
+development user (`jashandeep31`). API calls include a development identity
+header that the server accepts only when `NODE_ENV=development`; production
+builds continue to show the GitHub login screen.
 
 ## Get a fresh project
 

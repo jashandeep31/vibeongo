@@ -6,6 +6,7 @@ import { clearSessionCookie } from "../lib/session-cookie.js";
 
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type userRole = (typeof userRolesArray)[number];
+const developmentUserId = "634c805d-c70a-4333-9214-65d3fafc9481";
 
 const failedToAuthenticate = (res: Response) => {
   clearSessionCookie(res);
@@ -19,31 +20,48 @@ export const checkAuthorization = (allowedRoles: userRole[]) => {
     const authorization = req.get("authorization");
     const bearerMatch = authorization?.match(/^Bearer\s+(.+)$/i);
     const session = bearerMatch?.[1]?.trim() || req.cookies?.session;
-
-    if (!session) {
-      return failedToAuthenticate(res);
-    }
-
-    if (typeof session !== "string") {
-      return failedToAuthenticate(res);
-    }
+    const requestedDevelopmentUserId = req.get("x-development-user-id");
+    const isDevelopmentIdentity =
+      env.NODE_ENV === "development" &&
+      requestedDevelopmentUserId === developmentUserId;
 
     let id: string;
 
-    try {
-      const decoded = jwt.verify(session, env.JWT_SECRET);
-
-      if (
-        typeof decoded !== "object" ||
-        decoded === null ||
-        typeof decoded.id !== "string"
-      ) {
+    if (isDevelopmentIdentity) {
+      id = developmentUserId;
+    } else {
+      if (!session || typeof session !== "string") {
         return failedToAuthenticate(res);
       }
 
-      id = decoded.id;
-    } catch {
-      return failedToAuthenticate(res);
+      try {
+        const decoded = jwt.verify(session, env.JWT_SECRET);
+
+        if (
+          typeof decoded !== "object" ||
+          decoded === null ||
+          typeof decoded.id !== "string"
+        ) {
+          return failedToAuthenticate(res);
+        }
+
+        id = decoded.id;
+      } catch {
+        return failedToAuthenticate(res);
+      }
+    }
+
+    if (isDevelopmentIdentity) {
+      const [user] = await db.select().from(users).where(eq(users.id, id));
+      if (!user) return failedToAuthenticate(res);
+
+      if (!allowedRoles.includes("all") && !allowedRoles.includes(user.role)) {
+        return res.status(403).json({ error: "not authorized" });
+      }
+
+      req.user = user;
+      next();
+      return;
     }
 
     const [userAndAccountRow] = await db
