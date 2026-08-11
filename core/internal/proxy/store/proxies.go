@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"os"
@@ -84,6 +85,7 @@ func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 
 	proxy, err := getProxyFromServerCall(host)
 	if err != nil {
+		slog.Warn("failed to resolve proxy host", "host", host, "error", err)
 		return nil, false
 	}
 	pm.mu.Lock()

@@ -6,9 +6,8 @@ import { env } from "../lib/env.js";
 
 const RootPath = process.cwd();
 
-export const installScript = catchAsync(
-  async (_req: Request, res: Response) => {
-    res.status(200).type("text/plain").send(`
+export const installScript = catchAsync(async (req: Request, res: Response) => {
+  res.status(200).type("text/plain").send(`
 #!/usr/bin/env bash
 set -euo pipefail
 
@@ -25,7 +24,8 @@ sudo curl -# -L  ${env.NODE_ENV === "production" ? "https://download.vibeongo.co
 sudo chown $USER "$BINARY_PATH"   # user can overwrite it
 sudo chmod +x "$BINARY_PATH"
 
-sudo tee /etc/systemd/system/vibeongo.service > /dev/null <<EOF
+if [[ "$(cat /proc/1/comm)" == "systemd" ]]; then
+  sudo tee /etc/systemd/system/vibeongo.service > /dev/null <<EOF
 [Unit]
 Description=Vibeongo Service
 After=network.target
@@ -46,12 +46,15 @@ Environment=PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/bin
 WantedBy=multi-user.target
 EOF
 
-sudo systemctl daemon-reload
-sudo systemctl enable vibeongo
-sudo systemctl start vibeongo
+  sudo systemctl daemon-reload
+  sudo systemctl enable vibeongo
+  sudo systemctl start vibeongo
+else
+  nohup /usr/local/bin/vibeongo serve 2>&1 &
+fi
+
 `);
-  },
-);
+});
 
 export const serveServer = catchAsync(async (_req: Request, res: Response) => {
   const binaryPath = path.join(RootPath, "../../../core/api");
