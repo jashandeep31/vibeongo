@@ -12,6 +12,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ChatList } from "@/components/chats/chat-list";
 import { HomeSidebar } from "@/components/home-sidebar";
+import { ProjectList } from "@/components/projects/project-list";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
@@ -123,9 +124,7 @@ export function WorkspacePage() {
           <ChatList limit={5} />
         </View>
         <View style={[styles.page, { width }]}>
-          <ThemedText style={styles.pageLabel} themeColor="textSecondary">
-            Project page
-          </ThemedText>
+          <ProjectList />
         </View>
       </ScrollView>
 
