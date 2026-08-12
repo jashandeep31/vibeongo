@@ -1,11 +1,10 @@
-import { BACKEND_URL } from "../index.js";
 import {
   instances,
   instanceRuntimeKind,
   projects,
   projectSessions,
 } from "@repo/db";
-import axios from "axios";
+import type { AxiosInstance } from "axios";
 
 export type ProjectSession = typeof projectSessions.$inferSelect & {
   project_name: (typeof projects.$inferSelect)["name"];
@@ -46,54 +45,54 @@ export type CreateProjectSessionResponse = {
   data: typeof projectSessions.$inferSelect;
 };
 
-export const getProjectSessions = async ({
-  projectId,
-  page,
-  limit,
-  archived = false,
-}: GetProjectSessionsParams = {}): Promise<ProjectSessionsResponse> => {
-  const response = await axios.get(`${BACKEND_URL}/api/v1/project-sessions/`, {
-    params: { projectId, page, limit, archived },
-    withCredentials: true,
-  });
+export const getProjectSessions =
+  (apiClient: AxiosInstance) =>
+  async ({
+    projectId,
+    page,
+    limit,
+    archived = false,
+  }: GetProjectSessionsParams = {}): Promise<ProjectSessionsResponse> => {
+    const response = await apiClient.get(`/api/v1/project-sessions/`, {
+      params: { projectId, page, limit, archived },
+      withCredentials: true,
+    });
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const resumeProjectSession = async ({
-  id,
-  runtime,
-}: ResumeProjectSessionInput) => {
-  const response = await axios.post(
-    `${BACKEND_URL}/api/v1/project-sessions/${id}`,
-    { runtime },
-    { withCredentials: true },
-  );
+export const resumeProjectSession =
+  (apiClient: AxiosInstance) =>
+  async ({ id, runtime }: ResumeProjectSessionInput) => {
+    const response = await apiClient.post(
+      `/api/v1/project-sessions/${id}`,
+      { runtime },
+      { withCredentials: true },
+    );
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const archiveProjectSession = async ({
-  id,
-  action,
-}: ArchiveProjectSessionInput) => {
-  const response = await axios.post(
-    `${BACKEND_URL}/api/v1/project-sessions/${id}/archive`,
-    { action },
-    { withCredentials: true },
-  );
+export const archiveProjectSession =
+  (apiClient: AxiosInstance) =>
+  async ({ id, action }: ArchiveProjectSessionInput) => {
+    const response = await apiClient.post(
+      `/api/v1/project-sessions/${id}/archive`,
+      { action },
+      { withCredentials: true },
+    );
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const createProjectSession = async (
-  input: CreateProjectSessionInput,
-): Promise<CreateProjectSessionResponse> => {
-  const response = await axios.post(
-    `${BACKEND_URL}/api/v1/project-sessions/`,
-    input,
-    { withCredentials: true },
-  );
+export const createProjectSession =
+  (apiClient: AxiosInstance) =>
+  async (
+    input: CreateProjectSessionInput,
+  ): Promise<CreateProjectSessionResponse> => {
+    const response = await apiClient.post(`/api/v1/project-sessions/`, input, {
+      withCredentials: true,
+    });
 
-  return response.data;
-};
+    return response.data;
+  };

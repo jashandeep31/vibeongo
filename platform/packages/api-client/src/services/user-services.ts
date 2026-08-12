@@ -1,4 +1,3 @@
-import { BACKEND_URL } from "../index.js";
 import {
   userConfigs,
   userCreditGrants,
@@ -6,7 +5,7 @@ import {
   userSettings,
   userWallet,
 } from "@repo/db";
-import axios from "axios";
+import type { AxiosInstance } from "axios";
 
 type UserRow = typeof users.$inferSelect;
 
@@ -43,85 +42,88 @@ export type UpdateUserSettingsPayload = {
   defaultManualInstanceAutoTerminateAfterMinutes?: (typeof userSettings.$inferSelect)["default_manual_instance_auto_terminate_after_minutes"];
 };
 
-export const getUserMetadata = async (): Promise<UserMetadata> => {
-  const response = await axios.get(`${BACKEND_URL}/api/v1/users/metadata`, {
-    withCredentials: true,
-  });
+export const getUserMetadata =
+  (apiClient: AxiosInstance) => async (): Promise<UserMetadata> => {
+    const response = await apiClient.get(`/api/v1/users/metadata`, {
+      withCredentials: true,
+    });
 
-  return response.data.data;
-};
+    return response.data.data;
+  };
 
-export const getUserSettings = async (): Promise<
-  typeof userSettings.$inferSelect | null
-> => {
-  const response = await axios.get(`${BACKEND_URL}/api/v1/users/settings`, {
-    withCredentials: true,
-  });
-  return response.data.data;
-};
+export const getUserSettings =
+  (apiClient: AxiosInstance) =>
+  async (): Promise<typeof userSettings.$inferSelect | null> => {
+    const response = await apiClient.get(`/api/v1/users/settings`, {
+      withCredentials: true,
+    });
+    return response.data.data;
+  };
 
-export const updateUserSettings = async (
-  payload: UpdateUserSettingsPayload,
-): Promise<typeof userSettings.$inferSelect> => {
-  const response = await axios.put(
-    `${BACKEND_URL}/api/v1/users/settings`,
-    payload,
-    { withCredentials: true },
-  );
-  return response.data.data;
-};
+export const updateUserSettings =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: UpdateUserSettingsPayload,
+  ): Promise<typeof userSettings.$inferSelect> => {
+    const response = await apiClient.put(`/api/v1/users/settings`, payload, {
+      withCredentials: true,
+    });
+    return response.data.data;
+  };
 
-export const getUserConfigs = async (): Promise<UserConfigSummary[]> => {
-  const response = await axios.get(`${BACKEND_URL}/api/v1/users/configs`, {
-    withCredentials: true,
-  });
-  return response.data.data;
-};
+export const getUserConfigs =
+  (apiClient: AxiosInstance) => async (): Promise<UserConfigSummary[]> => {
+    const response = await apiClient.get(`/api/v1/users/configs`, {
+      withCredentials: true,
+    });
+    return response.data.data;
+  };
 
-export const getUserConfig = async (
-  configType: (typeof userConfigs.$inferSelect)["config_type"],
-): Promise<(UserConfigSummary & { config: UserConfigValue }) | null> => {
-  const response = await axios.get(
-    `${BACKEND_URL}/api/v1/users/configs/${configType}`,
-    { withCredentials: true },
-  );
-  return response.data.data;
-};
+export const getUserConfig =
+  (apiClient: AxiosInstance) =>
+  async (
+    configType: (typeof userConfigs.$inferSelect)["config_type"],
+  ): Promise<(UserConfigSummary & { config: UserConfigValue }) | null> => {
+    const response = await apiClient.get(
+      `/api/v1/users/configs/${configType}`,
+      { withCredentials: true },
+    );
+    return response.data.data;
+  };
 
-export const createUserConfig = async (
-  payload: UserConfigPayload,
-): Promise<UserConfigSummary> => {
-  const response = await axios.post(
-    `${BACKEND_URL}/api/v1/users/configs`,
-    payload,
-    { withCredentials: true },
-  );
-  return response.data.data;
-};
+export const createUserConfig =
+  (apiClient: AxiosInstance) =>
+  async (payload: UserConfigPayload): Promise<UserConfigSummary> => {
+    const response = await apiClient.post(`/api/v1/users/configs`, payload, {
+      withCredentials: true,
+    });
+    return response.data.data;
+  };
 
-export const updateUserConfig = async ({
-  configType,
-  config,
-}: UserConfigPayload): Promise<UserConfigSummary> => {
-  const response = await axios.put(
-    `${BACKEND_URL}/api/v1/users/configs/${configType}`,
-    { config },
-    { withCredentials: true },
-  );
-  return response.data.data;
-};
+export const updateUserConfig =
+  (apiClient: AxiosInstance) =>
+  async ({
+    configType,
+    config,
+  }: UserConfigPayload): Promise<UserConfigSummary> => {
+    const response = await apiClient.put(
+      `/api/v1/users/configs/${configType}`,
+      { config },
+      { withCredentials: true },
+    );
+    return response.data.data;
+  };
 
-export const getUserCreditGrants = async ({
-  page,
-  limit,
-}: GetUserCreditGrantsParams = {}): Promise<{
-  grants: (typeof userCreditGrants.$inferSelect)[];
-  page: number;
-  hasNext: boolean;
-}> => {
-  const response = await axios.get(
-    `${BACKEND_URL}/api/v1/users/credit-grants`,
-    { params: { page, limit }, withCredentials: true },
-  );
-  return response.data.data;
-};
+export const getUserCreditGrants =
+  (apiClient: AxiosInstance) =>
+  async ({ page, limit }: GetUserCreditGrantsParams = {}): Promise<{
+    grants: (typeof userCreditGrants.$inferSelect)[];
+    page: number;
+    hasNext: boolean;
+  }> => {
+    const response = await apiClient.get(`/api/v1/users/credit-grants`, {
+      params: { page, limit },
+      withCredentials: true,
+    });
+    return response.data.data;
+  };

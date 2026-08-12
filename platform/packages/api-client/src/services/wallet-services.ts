@@ -1,6 +1,5 @@
-import { BACKEND_URL } from "../index.js";
 import type { userWallet, userWalletTransactions } from "@repo/db";
-import axios from "axios";
+import type { AxiosInstance } from "axios";
 
 export type GetWalletParams = {
   page?: number;
@@ -8,32 +7,30 @@ export type GetWalletParams = {
   transactions?: boolean;
 };
 
-export const getWallet = async ({
-  page,
-  limit,
-  transactions,
-}: GetWalletParams = {}): Promise<{
-  data: {
-    wallet?: typeof userWallet.$inferSelect;
-    transactions: (typeof userWalletTransactions.$inferSelect)[];
+export const getWallet =
+  (apiClient: AxiosInstance) =>
+  async ({ page, limit, transactions }: GetWalletParams = {}): Promise<{
+    data: {
+      wallet?: typeof userWallet.$inferSelect;
+      transactions: (typeof userWalletTransactions.$inferSelect)[];
+    };
+    page?: number;
+    hasNext?: boolean;
+  }> => {
+    const response = await apiClient.get(`/api/v1/users/wallet`, {
+      params: { page, limit, transactions },
+      withCredentials: true,
+    });
+    return response.data;
   };
-  page?: number;
-  hasNext?: boolean;
-}> => {
-  const response = await axios.get(`${BACKEND_URL}/api/v1/users/wallet`, {
-    params: { page, limit, transactions },
-    withCredentials: true,
-  });
-  return response.data;
-};
 
-export const addCredits = async (
-  amount: number,
-): Promise<{ checkoutUrl: string }> => {
-  const response = await axios.post(
-    `${BACKEND_URL}/api/v1/payments/add-credits`,
-    { amount },
-    { withCredentials: true },
-  );
-  return response.data;
-};
+export const addCredits =
+  (apiClient: AxiosInstance) =>
+  async (amount: number): Promise<{ checkoutUrl: string }> => {
+    const response = await apiClient.post(
+      `/api/v1/payments/add-credits`,
+      { amount },
+      { withCredentials: true },
+    );
+    return response.data;
+  };

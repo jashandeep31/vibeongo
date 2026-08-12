@@ -1,5 +1,4 @@
-import { BACKEND_URL } from "../index.js";
-import axios from "axios";
+import type { AxiosInstance } from "axios";
 import { instances, instanceState } from "@repo/db";
 
 export type GetInstancesFilters = {
@@ -16,38 +15,40 @@ export type GetInstancesResponse = {
   hasNext: boolean;
 };
 
-export const getInstances = async ({
-  projectId,
-  sessionId,
-  state = "all",
-  page = 1,
-  limit = 10,
-}: GetInstancesFilters = {}): Promise<GetInstancesResponse> => {
-  const response = await axios.get(`${BACKEND_URL}/api/v1/instances`, {
-    withCredentials: true,
-    params: {
-      project_id: projectId,
-      session_id: sessionId,
-      state,
-      page,
-      limit,
-    },
-  });
+export const getInstances =
+  (apiClient: AxiosInstance) =>
+  async ({
+    projectId,
+    sessionId,
+    state = "all",
+    page = 1,
+    limit = 10,
+  }: GetInstancesFilters = {}): Promise<GetInstancesResponse> => {
+    const response = await apiClient.get(`/api/v1/instances`, {
+      withCredentials: true,
+      params: {
+        project_id: projectId,
+        session_id: sessionId,
+        state,
+        page,
+        limit,
+      },
+    });
 
-  return response.data;
-};
+    return response.data;
+  };
 
-export const terminateInstance = async (
-  id: string,
-): Promise<{ message: string }> => {
-  const response = await axios.post(
-    `${BACKEND_URL}/api/v1/instances/${id}`,
-    undefined,
-    { withCredentials: true },
-  );
+export const terminateInstance =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.post(
+      `/api/v1/instances/${id}`,
+      undefined,
+      { withCredentials: true },
+    );
 
-  return response.data;
-};
+    return response.data;
+  };
 
 export type UpdateInstanceTimeInput = {
   id: string;
@@ -55,18 +56,20 @@ export type UpdateInstanceTimeInput = {
   timeInMinutes: number;
 };
 
-export const updateInstanceTime = async ({
-  id,
-  action,
-  timeInMinutes,
-}: UpdateInstanceTimeInput): Promise<typeof instances.$inferSelect> => {
-  const response = await axios.patch(
-    `${BACKEND_URL}/api/v1/instances/${id}`,
-    {
-      terminatesTimeUpdate: { action, timeInMinutes },
-    },
-    { withCredentials: true },
-  );
+export const updateInstanceTime =
+  (apiClient: AxiosInstance) =>
+  async ({
+    id,
+    action,
+    timeInMinutes,
+  }: UpdateInstanceTimeInput): Promise<typeof instances.$inferSelect> => {
+    const response = await apiClient.patch(
+      `/api/v1/instances/${id}`,
+      {
+        terminatesTimeUpdate: { action, timeInMinutes },
+      },
+      { withCredentials: true },
+    );
 
-  return response.data.data;
-};
+    return response.data.data;
+  };
