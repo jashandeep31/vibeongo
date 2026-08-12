@@ -1,6 +1,7 @@
 import type { ApiClient } from "@repo/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { useApiClient } from "../api-client-context.js";
 
 type GetUserCreditGrantsParams = NonNullable<
   Parameters<ApiClient["users"]["getUserCreditGrants"]>[0]
@@ -23,18 +24,17 @@ const retryUnlessUnauthorized = (failureCount: number, error: Error) => {
   return failureCount < 3;
 };
 
-export const useUserMetadata = (client: ApiClient) =>
-  useQuery({
+export const useUserMetadata = () => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["user-metadata"],
     queryFn: client.users.getUserMetadata,
     retry: retryUserMetadata,
   });
+};
 
-export const useAuthenticatedUser = (
-  client: ApiClient,
-  onUnauthorized?: () => void,
-) => {
-  const query = useUserMetadata(client);
+export const useAuthenticatedUser = (onUnauthorized?: () => void) => {
+  const query = useUserMetadata();
 
   useEffect(() => {
     if (isUnauthorizedError(query.error)) onUnauthorized?.();
@@ -44,24 +44,28 @@ export const useAuthenticatedUser = (
 };
 
 export const useUserCreditGrants = (
-  client: ApiClient,
   params: GetUserCreditGrantsParams = {},
   enabled = true,
-) =>
-  useQuery({
+) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["user-credit-grants", params],
     queryFn: () => client.users.getUserCreditGrants(params),
     enabled,
   });
+};
 
-export const useUserSettings = (client: ApiClient) =>
-  useQuery({
+export const useUserSettings = () => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["user-settings"],
     queryFn: client.users.getUserSettings,
     retry: retryUnlessUnauthorized,
   });
+};
 
-export const useUpdateUserSettings = (client: ApiClient) => {
+export const useUpdateUserSettings = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.users.updateUserSettings,
@@ -71,27 +75,28 @@ export const useUpdateUserSettings = (client: ApiClient) => {
   });
 };
 
-export const useUserConfigs = (client: ApiClient) =>
-  useQuery({
+export const useUserConfigs = () => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["user-configs"],
     queryFn: client.users.getUserConfigs,
     retry: retryUnlessUnauthorized,
   });
+};
 
-export const useUserConfig = (
-  client: ApiClient,
-  configType: UserConfigType,
-  enabled: boolean,
-) =>
-  useQuery({
+export const useUserConfig = (configType: UserConfigType, enabled: boolean) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["user-config", configType],
     queryFn: () => client.users.getUserConfig(configType),
     enabled,
     staleTime: Infinity,
     retry: retryUnlessUnauthorized,
   });
+};
 
-export const useCreateUserConfig = (client: ApiClient) => {
+export const useCreateUserConfig = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.users.createUserConfig,
@@ -100,7 +105,8 @@ export const useCreateUserConfig = (client: ApiClient) => {
   });
 };
 
-export const useUpdateUserConfig = (client: ApiClient) => {
+export const useUpdateUserConfig = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.users.updateUserConfig,

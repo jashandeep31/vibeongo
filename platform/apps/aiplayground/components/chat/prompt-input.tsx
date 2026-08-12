@@ -3,7 +3,7 @@
 import type {
   OpencodeInventory,
   OpencodePromptSelection,
-} from "@/services/opencode-services";
+} from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
   Command,
@@ -18,13 +18,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@repo/ui/components/popover";
-import {
-  ArrowUp,
-  ChevronsUpDown,
-  Plus,
-  Square,
-  X,
-} from "lucide-react";
+import { ArrowUp, ChevronsUpDown, Plus, Square, X } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -229,12 +223,9 @@ export function PromptInput({
       onSubmit={handleSubmit}
       className="relative flex w-full flex-col gap-3"
     >
-      <div className="flex min-w-0 items-center gap-2 overflow-x-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {inventory?.models.length ? (
-          <Popover
-            open={isModelPickerOpen}
-            onOpenChange={setIsModelPickerOpen}
-          >
+          <Popover open={isModelPickerOpen} onOpenChange={setIsModelPickerOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"
@@ -348,10 +339,7 @@ export function PromptInput({
         ) : null}
 
         {inventory?.agents.length ? (
-          <Popover
-            open={isAgentPickerOpen}
-            onOpenChange={setIsAgentPickerOpen}
-          >
+          <Popover open={isAgentPickerOpen} onOpenChange={setIsAgentPickerOpen}>
             <PopoverTrigger asChild>
               <Button
                 type="button"

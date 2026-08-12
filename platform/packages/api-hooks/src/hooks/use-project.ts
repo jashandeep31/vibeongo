@@ -1,8 +1,9 @@
-import type { ApiClient } from "@repo/api-client";
 import { useProjectsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiClient } from "../api-client-context.js";
 
-export const useCreateGithubRepo = (client: ApiClient) => {
+export const useCreateGithubRepo = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.createGithubRepo,
@@ -11,7 +12,8 @@ export const useCreateGithubRepo = (client: ApiClient) => {
   });
 };
 
-export const useCreateProject = (client: ApiClient) => {
+export const useCreateProject = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.createProject,
@@ -24,7 +26,8 @@ export const useCreateProject = (client: ApiClient) => {
   });
 };
 
-export const useUpdateProject = (client: ApiClient) => {
+export const useUpdateProject = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.updateProject,
@@ -40,7 +43,8 @@ export const useUpdateProject = (client: ApiClient) => {
   });
 };
 
-export const useDeleteProject = (client: ApiClient) => {
+export const useDeleteProject = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.deleteProject,
@@ -54,44 +58,52 @@ export const useDeleteProject = (client: ApiClient) => {
   });
 };
 
-export const useGetGithubRepos = (client: ApiClient) =>
-  useQuery({
+export const useGetGithubRepos = () => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["github-repos"],
     queryFn: client.projects.getGithubRepos,
   });
+};
 
-export const useGetProjects = (client: ApiClient, enabled = true) =>
-  useQuery({
+export const useGetProjects = (enabled = true) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["projects"],
     queryFn: client.projects.getProjects,
     enabled,
   });
+};
 
-export const useGetProjectsWithSessions = (client: ApiClient, enabled = true) =>
-  useQuery({
+export const useGetProjectsWithSessions = (enabled = true) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["projects", "with-sessions"],
     queryFn: client.projects.getProjectsWithSessions,
     enabled,
   });
+};
 
-export const useGetProjectConfigForEdit = (
-  client: ApiClient,
-  id: string | null,
-) =>
-  useQuery({
+export const useGetProjectConfigForEdit = (id: string | null) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["project", id!, "edit-config"],
     queryFn: () => client.projects.getProjectConfigForEdit(id!),
     enabled: Boolean(id),
   });
+};
 
-export const useGetProjectFilesById = (client: ApiClient, id: string | null) =>
-  useQuery({
+export const useGetProjectFilesById = (id: string | null) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["project", id!, "files"],
     queryFn: () => client.projects.getProjectFilesById(id!),
     enabled: Boolean(id),
   });
+};
 
-export const useCreateProjectFile = (client: ApiClient) => {
+export const useCreateProjectFile = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.createProjectFile,
@@ -102,7 +114,8 @@ export const useCreateProjectFile = (client: ApiClient) => {
   });
 };
 
-export const useUpdateProjectFile = (client: ApiClient) => {
+export const useUpdateProjectFile = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.updateProjectFile,
@@ -113,7 +126,8 @@ export const useUpdateProjectFile = (client: ApiClient) => {
   });
 };
 
-export const useDeleteProjectFile = (client: ApiClient) => {
+export const useDeleteProjectFile = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.deleteProjectFile,
@@ -124,18 +138,17 @@ export const useDeleteProjectFile = (client: ApiClient) => {
   });
 };
 
-export const useGetProjectDomainsById = (
-  client: ApiClient,
-  id: string | null,
-  enabled = true,
-) =>
-  useQuery({
+export const useGetProjectDomainsById = (id: string | null, enabled = true) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["project", id!, "domains"],
     queryFn: () => client.projects.getProjectDomainsById(id!),
     enabled: enabled && !!id,
   });
+};
 
-export const useUpdateProjectRoutingTargetInstance = (client: ApiClient) => {
+export const useUpdateProjectRoutingTargetInstance = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.updateProjectRoutingTargetInstance,
@@ -148,7 +161,8 @@ export const useUpdateProjectRoutingTargetInstance = (client: ApiClient) => {
   });
 };
 
-export const useAddAllowedIpToProject = (client: ApiClient) => {
+export const useAddAllowedIpToProject = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.addAllowedIpToProject,
@@ -159,7 +173,8 @@ export const useAddAllowedIpToProject = (client: ApiClient) => {
   });
 };
 
-export const useDeleteMultipleAllowedIpsFromProject = (client: ApiClient) => {
+export const useDeleteMultipleAllowedIpsFromProject = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.deleteMultipleAllowedIpsFromProject,
@@ -170,7 +185,8 @@ export const useDeleteMultipleAllowedIpsFromProject = (client: ApiClient) => {
   });
 };
 
-export const useUpdateProjectDomainAccess = (client: ApiClient) => {
+export const useUpdateProjectDomainAccess = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.updateProjectDomainAccess,
@@ -181,7 +197,8 @@ export const useUpdateProjectDomainAccess = (client: ApiClient) => {
   });
 };
 
-export const useUpdateProjectDomainPort = (client: ApiClient) => {
+export const useUpdateProjectDomainPort = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.updateProjectDomainPort,
@@ -193,12 +210,13 @@ export const useUpdateProjectDomainPort = (client: ApiClient) => {
 };
 
 export const useGetProjectGithubReposById = (
-  client: ApiClient,
   id: string | null,
   enabled = true,
-) =>
-  useQuery({
+) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["project", id!, "github-repos"],
     queryFn: () => client.projects.getProjectGithubReposById(id!),
     enabled: enabled && !!id,
   });
+};

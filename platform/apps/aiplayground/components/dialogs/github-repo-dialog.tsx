@@ -1,6 +1,6 @@
 "use client";
 
-import { useCreateGithubRepo } from "@/hooks/use-project";
+import { useCreateGithubRepo } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

@@ -9,13 +9,13 @@ import {
 import {
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
-} from "@/hooks/use-project";
-import { useResumeProjectSession } from "@/hooks/use-project-sessions";
+} from "@repo/api-hooks";
+import { useResumeProjectSession } from "@repo/api-hooks";
 import {
   useProjectsStore,
   useSessionChatsStore,
   useSessionsStore,
-} from "@/store/playground-store";
+} from "@repo/app-store";
 import {
   Command,
   CommandDialog,

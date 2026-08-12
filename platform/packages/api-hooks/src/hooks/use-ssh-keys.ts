@@ -1,8 +1,13 @@
-import type { ApiClient } from "@repo/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiClient } from "../api-client-context.js";
 
-export const useSshKeys = (client: ApiClient) =>
-  useQuery({ queryKey: ["ssh-keys"], queryFn: client.sshKeys.getSshKeys });
+export const useSshKeys = () => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["ssh-keys"],
+    queryFn: client.sshKeys.getSshKeys,
+  });
+};
 
 const useRefreshingMutation = <T>(mutationFn: (input: T) => Promise<void>) => {
   const queryClient = useQueryClient();
@@ -12,9 +17,15 @@ const useRefreshingMutation = <T>(mutationFn: (input: T) => Promise<void>) => {
   });
 };
 
-export const useCreateSshKey = (client: ApiClient) =>
-  useRefreshingMutation(client.sshKeys.createSshKey);
-export const useUpdateSshKey = (client: ApiClient) =>
-  useRefreshingMutation(client.sshKeys.updateSshKey);
-export const useDeleteSshKey = (client: ApiClient) =>
-  useRefreshingMutation(client.sshKeys.deleteSshKey);
+export const useCreateSshKey = () => {
+  const client = useApiClient();
+  return useRefreshingMutation(client.sshKeys.createSshKey);
+};
+export const useUpdateSshKey = () => {
+  const client = useApiClient();
+  return useRefreshingMutation(client.sshKeys.updateSshKey);
+};
+export const useDeleteSshKey = () => {
+  const client = useApiClient();
+  return useRefreshingMutation(client.sshKeys.deleteSshKey);
+};

@@ -13,12 +13,12 @@ import {
   useRevertOpencodeSession,
   useRestoreRevertedOpencodeMessage,
   useSendOpencodePrompt,
-} from "@/hooks/use-opencode-session";
+} from "@repo/api-hooks";
 import type {
   OpencodePromptSelection,
   OpencodeSessionData,
   QuestionAnswer,
-} from "@/services/opencode-services";
+} from "@repo/api-client";
 import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -535,7 +535,7 @@ export function OpencodeSessionChat({
       >
         <div
           aria-hidden="true"
-          className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent backdrop-blur-xl [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)]"
+          className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)] backdrop-blur-xl"
         />
         <div className="relative mx-auto w-full max-w-4xl">
           {!showRawResponse && revertedQuestions.length > 0 ? (
@@ -561,9 +561,7 @@ export function OpencodeSessionChat({
           ) : null}
           {activeQuestion ? (
             <>
-              <div className="mb-3 flex justify-end">
-                {rawResponseControl}
-              </div>
+              <div className="mb-3 flex justify-end">{rawResponseControl}</div>
               <OpencodeQuestionPrompt
                 key={activeQuestion.id}
                 request={activeQuestion}

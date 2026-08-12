@@ -11,27 +11,27 @@ import {
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
-import { useTerminateInstance } from "@/hooks/use-instance";
-import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
-import { useGetProjectGithubReposById } from "@/hooks/use-project";
-import { useAuthenticatedUser } from "@/hooks/use-user";
-import { useWebSocket } from "@/hooks/use-websocket";
+import { useTerminateInstance } from "@repo/api-hooks";
+import { useGetProjectGithubReposById } from "@repo/api-hooks";
+import { useAuthenticatedUser } from "@repo/api-hooks";
+import { useWebSocket } from "@repo/api-hooks";
 import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
 import {
   isWorkspaceView,
   WORKSPACE_VIEW_CHANGE_EVENT,
   type WorkspaceView,
 } from "@/lib/workspace-view";
-import type { Chat } from "@/services/chat-services";
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
-} from "@/hooks/use-project-sessions";
+} from "@repo/api-hooks";
+import type { Chat } from "@repo/api-client";
+import { useDeleteChat, useGetVibeongoChats } from "@repo/api-hooks";
 import {
   useProjectsStore,
   useSessionChatsStore,
   useSessionsStore,
-} from "@/store/playground-store";
+} from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import {
   DropdownMenu,

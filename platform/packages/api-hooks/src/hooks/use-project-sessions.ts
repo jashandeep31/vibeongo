@@ -1,6 +1,7 @@
 import type { ApiClient } from "@repo/api-client";
 import { useSessionsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiClient } from "../api-client-context.js";
 
 type GetProjectSessionsParams = NonNullable<
   Parameters<ApiClient["projectSessions"]["getProjectSessions"]>[0]
@@ -10,17 +11,19 @@ type ProjectSessionsResponse = Awaited<
 >;
 
 export const useGetProjectSessions = (
-  client: ApiClient,
   params: GetProjectSessionsParams = {},
   enabled = true,
-) =>
-  useQuery<ProjectSessionsResponse>({
+) => {
+  const client = useApiClient();
+  return useQuery<ProjectSessionsResponse>({
     queryKey: ["project-sessions", params],
     queryFn: () => client.projectSessions.getProjectSessions(params),
     enabled,
   });
+};
 
-export const useCreateProjectSession = (client: ApiClient) => {
+export const useCreateProjectSession = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -39,7 +42,8 @@ export const useCreateProjectSession = (client: ApiClient) => {
   });
 };
 
-export const useResumeProjectSession = (client: ApiClient) => {
+export const useResumeProjectSession = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -65,7 +69,8 @@ export const useResumeProjectSession = (client: ApiClient) => {
   });
 };
 
-export const useArchiveProjectSession = (client: ApiClient) => {
+export const useArchiveProjectSession = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({

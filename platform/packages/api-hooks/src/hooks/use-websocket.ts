@@ -11,6 +11,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useApiClient } from "../api-client-context.js";
 
 export type WebSocketMessage = {
   type?: unknown;
@@ -60,13 +61,8 @@ const getWebSocketUrl = (client: ApiClient) => {
   return url.toString();
 };
 
-export function WebSocketProvider({
-  client,
-  children,
-}: {
-  client: ApiClient;
-  children: ReactNode;
-}) {
+export function WebSocketProvider({ children }: { children: ReactNode }) {
+  const client = useApiClient();
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
   const [status, setStatus] = useState<WebSocketStatus>("connecting");
   const socketRef = useRef<WebSocket | null>(null);

@@ -1,25 +1,32 @@
-import type { ApiClient } from "@repo/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiClient } from "../api-client-context.js";
 
-export const useGithubRepos = (client: ApiClient) =>
-  useQuery({
+export const useGithubRepos = () => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["github-repos"],
     queryFn: client.githubRepos.getGithubRepos,
   });
+};
 
-export const useGithubRepoIssues = (client: ApiClient, id: string) =>
-  useQuery({
+export const useGithubRepoIssues = (id: string) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["github-repo", id, "issues"],
     queryFn: () => client.githubRepos.getGithubRepoIssues(id),
   });
+};
 
-export const useGithubRepoPullRequests = (client: ApiClient, id: string) =>
-  useQuery({
+export const useGithubRepoPullRequests = (id: string) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["github-repo", id, "pull-requests"],
     queryFn: () => client.githubRepos.getGithubRepoPullRequests(id),
   });
+};
 
-export const useUpdateGithubRepoAutomation = (client: ApiClient) => {
+export const useUpdateGithubRepoAutomation = () => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -34,24 +41,27 @@ export const useUpdateGithubRepoAutomation = (client: ApiClient) => {
   });
 };
 
-export const useScheduleGithubRepoOverview = (client: ApiClient) =>
-  useMutation({ mutationFn: client.githubRepos.scheduleGithubRepoOverview });
+export const useScheduleGithubRepoOverview = () => {
+  const client = useApiClient();
+  return useMutation({
+    mutationFn: client.githubRepos.scheduleGithubRepoOverview,
+  });
+};
 
-export const useGenerateFixForIssue = (
-  client: ApiClient,
-  id: string,
-  issueNumber: number,
-) =>
-  useMutation({
+export const useGenerateFixForIssue = (id: string, issueNumber: number) => {
+  const client = useApiClient();
+  return useMutation({
     mutationFn: () => client.githubRepos.generateFixForIssue(id, issueNumber),
   });
+};
 
 export const useGenerateReviewForPullRequest = (
-  client: ApiClient,
   id: string,
   pullRequestNumber: number,
-) =>
-  useMutation({
+) => {
+  const client = useApiClient();
+  return useMutation({
     mutationFn: () =>
       client.githubRepos.generateReviewForPullRequest(id, pullRequestNumber),
   });
+};

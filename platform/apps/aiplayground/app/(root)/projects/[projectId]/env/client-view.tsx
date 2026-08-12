@@ -6,8 +6,8 @@ import {
   useDeleteProjectFile,
   useGetProjectFilesById,
   useUpdateProjectFile,
-} from "@/hooks/use-project";
-import type { ProjectFile } from "@/services/project-services";
+} from "@repo/api-hooks";
+import type { ProjectFile } from "@repo/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -18,7 +18,6 @@ import { cn } from "@repo/ui/lib/utils";
 import axios from "axios";
 import {
   AlertCircle,
-  ArrowLeft,
   FileCode2,
   Loader2,
   Plus,
@@ -26,7 +25,6 @@ import {
   Save,
   Trash2,
 } from "lucide-react";
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 

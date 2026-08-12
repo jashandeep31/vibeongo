@@ -1,27 +1,26 @@
 import type { ApiClient } from "@repo/api-client";
 import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useApiClient } from "../api-client-context.js";
 
 type GetInstancesFilters = NonNullable<
   Parameters<ApiClient["instances"]["getInstances"]>[0]
 >;
 
 export const useGetInstances = (
-  client: ApiClient,
   filters: GetInstancesFilters = {},
   enabled = true,
-) =>
-  useQuery({
+) => {
+  const client = useApiClient();
+  return useQuery({
     queryKey: ["instances", filters],
     queryFn: () => client.instances.getInstances(filters),
     enabled,
   });
+};
 
-export const useTerminateInstance = (
-  client: ApiClient,
-  projectId: string,
-  sessionId: string,
-) => {
+export const useTerminateInstance = (projectId: string, sessionId: string) => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -51,7 +50,8 @@ export const useTerminateInstance = (
   });
 };
 
-export const useUpdateInstanceTime = (client: ApiClient, sessionId: string) => {
+export const useUpdateInstanceTime = (sessionId: string) => {
+  const client = useApiClient();
   const queryClient = useQueryClient();
 
   return useMutation({

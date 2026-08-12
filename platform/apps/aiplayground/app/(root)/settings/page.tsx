@@ -3,12 +3,12 @@
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
-import { useDeleteSshKey, useSshKeys } from "@/hooks/use-ssh-keys";
+import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
 import {
   useUpdateUserSettings,
   useUserConfigs,
   useUserSettings,
-} from "@/hooks/use-user";
+} from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
@@ -361,9 +361,7 @@ export default function SettingsPage() {
               }
             >
               <Save />
-              {updateTelegramSettings.isPending
-                ? "Saving..."
-                : "Save Telegram"}
+              {updateTelegramSettings.isPending ? "Saving..." : "Save Telegram"}
             </Button>
           </div>
         </SettingsSection>

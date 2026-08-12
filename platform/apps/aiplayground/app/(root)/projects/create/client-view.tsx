@@ -13,14 +13,14 @@ import {
   useInstanceTypes,
   useSandboxRegions,
   useSandboxTypes,
-} from "@/hooks/use-project-metadata";
+} from "@repo/api-hooks";
 import {
   useCreateProject,
   useGetGithubRepos,
   useGetProjectConfigForEdit,
   useUpdateProject,
-} from "@/hooks/use-project";
-import { useSshKeys } from "@/hooks/use-ssh-keys";
+} from "@repo/api-hooks";
+import { useSshKeys } from "@repo/api-hooks";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -271,10 +271,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
     const selectedRegion = sandboxRegionsQuery.data?.find(
       (region) => region.id === sandboxRegionId,
     );
-    if (
-      selectedRegion &&
-      isAvailableSandboxProvider(selectedRegion.provider)
-    ) {
+    if (selectedRegion && isAvailableSandboxProvider(selectedRegion.provider)) {
       return;
     }
 

@@ -7,9 +7,9 @@ import {
   useUpdateProjectDomainAccess,
   useUpdateProjectDomainPort,
   useUpdateProjectRoutingTargetInstance,
-} from "@/hooks/use-project";
-import { useCurrentUserIp } from "@/hooks/use-ip";
-import { useSessionsStore } from "@/store/playground-store";
+} from "@repo/api-hooks";
+import { useCurrentUserIp } from "@repo/api-hooks";
+import { useSessionsStore } from "@repo/app-store";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -437,10 +437,7 @@ export function ProjectDomainsDialog({
                                 updatingDomainId === domain.id
                               }
                               onClick={() =>
-                                startEditingPort(
-                                  domain.id,
-                                  domain.target_port,
-                                )
+                                startEditingPort(domain.id, domain.target_port)
                               }
                             >
                               {domain.is_editable ? <Pencil /> : <Lock />}

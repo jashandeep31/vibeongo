@@ -26,6 +26,15 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.11
         version: 1.18.11
+      '@repo/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
+      '@repo/api-hooks':
+        specifier: workspace:*
+        version: link:../../packages/api-hooks
+      '@repo/app-store':
+        specifier: workspace:*
+        version: link:../../packages/app-store
       '@repo/db':
         specifier: workspace:*
         version: link:../../packages/database

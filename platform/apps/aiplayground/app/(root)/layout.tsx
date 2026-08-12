@@ -2,7 +2,7 @@ import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
 import { PlaygroundCommandBox } from "@/components/playground-command-box";
 import { PlaygroundSidebar } from "@/components/playground-sidebar";
 import { PlaygroundStoreSync } from "@/components/playground-store-sync";
-import { WebSocketProvider } from "@/hooks/use-websocket";
+import { WebSocketProvider } from "@repo/api-hooks";
 import { isAuthenticated } from "@/lib/get-session";
 import { SidebarProvider } from "@repo/ui/components/sidebar-v2";
 import { redirect } from "next/navigation";

@@ -1,9 +1,6 @@
 "use client";
 
-import type {
-  QuestionAnswer,
-  QuestionRequest,
-} from "@/services/opencode-services";
+import type { QuestionAnswer, QuestionRequest } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { Checkbox } from "@repo/ui/components/checkbox";
 import { Input } from "@repo/ui/components/input";

@@ -1,9 +1,9 @@
 "use client";
 
-import { useGetInstances } from "@/hooks/use-instance";
-import { useOpencodeStatus } from "@/hooks/use-opencode-status";
-import { useOpencodeSessions } from "@/hooks/use-opencode-sessions";
-import { useGetProjectsWithSessions } from "@/hooks/use-project";
+import { useGetInstances } from "@repo/api-hooks";
+import { useOpencodeStatus } from "@repo/api-hooks";
+import { useOpencodeSessions } from "@repo/api-hooks";
+import { useGetProjectsWithSessions } from "@repo/api-hooks";
 import {
   getOpencodePassword,
   getOpencodeSessionMessages,
@@ -13,12 +13,12 @@ import {
   streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
-} from "@/services/opencode-services";
+} from "@repo/api-client";
 import {
   useProjectsStore,
   useSessionChatsStore,
   useSessionsStore,
-} from "@/store/playground-store";
+} from "@repo/app-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
 import { useEffect, useRef } from "react";

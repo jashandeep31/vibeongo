@@ -7,20 +7,17 @@ import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
-import { useTerminateInstance } from "@/hooks/use-instance";
+import { useTerminateInstance } from "@repo/api-hooks";
 import {
   useDeleteProject,
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
-} from "@/hooks/use-project";
+} from "@repo/api-hooks";
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
-} from "@/hooks/use-project-sessions";
-import {
-  useSessionChatsStore,
-  useSessionsStore,
-} from "@/store/playground-store";
+} from "@repo/api-hooks";
+import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
 import {
   Collapsible,
   CollapsibleContent,

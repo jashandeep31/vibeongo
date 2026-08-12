@@ -12,6 +12,23 @@ import * as walletApi from "./services/wallet-services.js";
 export * from "./services/opencode-services.js";
 export * from "./services/proxy-auth.js";
 export * from "./services/runtime-settings-services.js";
+export type { Chat } from "./services/chat-services.js";
+export type {
+  GithubRepo,
+  GithubRepoIssue,
+  GithubRepoPullRequest,
+  GithubRepoWithIssues,
+  GithubRepoWithPullRequests,
+} from "./services/github-repo-services.js";
+export type {
+  Project,
+  ProjectConfigForEdit,
+  ProjectDomains,
+  ProjectFile,
+  ProjectGithubRepo,
+  ProjectWithSessions,
+} from "./services/project-services.js";
+export type { UserConfigValue } from "./services/user-services.js";
 
 function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
   module: T,
