@@ -1,9 +1,11 @@
 import {
+  useAddAllowedIpToProject,
+  useDeleteMultipleAllowedIpsFromProject,
   useGetProjectDomainsById,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -12,6 +14,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -29,12 +32,99 @@ export function ProjectDomainsButton({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [visible, setVisible] = useState(false);
+  const [currentIp, setCurrentIp] = useState("");
+  const [manualIp, setManualIp] = useState("");
+  const [isCurrentIpLoading, setIsCurrentIpLoading] = useState(false);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(projectId));
   const assignDomains = useUpdateProjectRoutingTargetInstance();
+  const addAllowedIp = useAddAllowedIpToProject();
+  const deleteAllowedIps = useDeleteMultipleAllowedIpsFromProject();
   const domains = domainsQuery.data;
   const needsAssignment = Boolean(
     domains && domains.target_instance_id !== instanceId,
   );
+  const allowedIps = [...(domains?.allowed_ips ?? [])].sort((left, right) =>
+    left.ip.localeCompare(right.ip, undefined, { numeric: true }),
+  );
+  const currentIpAllowed = Boolean(
+    currentIp && allowedIps.some((item) => item.ip.trim() === currentIp),
+  );
+  const otherIps = currentIp
+    ? allowedIps.filter((item) => item.ip.trim() !== currentIp)
+    : [];
+  const ipMutationPending =
+    addAllowedIp.isPending || deleteAllowedIps.isPending;
+
+  useEffect(() => {
+    if (!visible) return;
+    const ipDomain = domains?.proxy_domains.find(
+      (domain) => domain.target_port === 3101,
+    )?.domain;
+    if (!ipDomain) {
+      setCurrentIp("");
+      return;
+    }
+
+    let cancelled = false;
+    setIsCurrentIpLoading(true);
+    void fetch(`https://${ipDomain}/proxy/my-ip`)
+      .then(async (response) => {
+        if (!response.ok) throw new Error("Could not detect IP");
+        const body = (await response.json()) as { ip?: string };
+        if (!cancelled) setCurrentIp(body.ip?.trim() ?? "");
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentIp("");
+      })
+      .finally(() => {
+        if (!cancelled) setIsCurrentIpLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [domains?.proxy_domains, visible]);
+
+  const addIp = (value: string) => {
+    const ip = value.trim();
+    if (!/^(?:(?:25[0-5]|2[0-4]\d|1?\d{1,2})(?:\.(?!$)|$)){4}$/.test(ip)) {
+      Alert.alert(
+        "Invalid IP address",
+        "Enter an IPv4 address such as 203.0.113.10.",
+      );
+      return;
+    }
+    if (allowedIps.some((item) => item.ip.trim() === ip)) {
+      Alert.alert("IP already allowed", `${ip} is already in the allowlist.`);
+      return;
+    }
+
+    addAllowedIp.mutate(
+      { id: projectId, ip },
+      {
+        onError: (error) => Alert.alert("Could not add IP", error.message),
+        onSuccess: () => setManualIp(""),
+      },
+    );
+  };
+
+  const removeIps = (ids: string[], description: string) => {
+    if (!ids.length) return;
+    Alert.alert("Remove allowed IP?", description, [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Remove",
+        style: "destructive",
+        onPress: () =>
+          deleteAllowedIps.mutate(
+            { id: projectId, ids },
+            {
+              onError: (error) =>
+                Alert.alert("Could not remove IP", error.message),
+            },
+          ),
+      },
+    ]);
+  };
 
   const assign = () => {
     if (!instanceId || assignDomains.isPending) return;
@@ -157,7 +247,10 @@ export function ProjectDomainsButton({
               </Pressable>
             ) : null}
 
-            <ScrollView contentContainerStyle={styles.domainList}>
+            <ScrollView
+              contentContainerStyle={styles.domainList}
+              keyboardShouldPersistTaps="handled"
+            >
               {domainsQuery.isPending ? (
                 <ActivityIndicator style={styles.loading} />
               ) : domainsQuery.error ? (
@@ -206,6 +299,224 @@ export function ProjectDomainsButton({
                   No project domains configured.
                 </ThemedText>
               )}
+
+              {domains ? (
+                <View style={styles.ipSection}>
+                  <View style={styles.sectionHeader}>
+                    <View
+                      style={[
+                        styles.sectionIcon,
+                        { backgroundColor: theme.backgroundElement },
+                      ]}
+                    >
+                      <SymbolView
+                        name={{ ios: "network", android: "lan" }}
+                        size={17}
+                        tintColor={theme.textSecondary}
+                      />
+                    </View>
+                    <View style={styles.sectionCopy}>
+                      <ThemedText style={styles.sectionTitle}>
+                        Allowed IPs
+                      </ThemedText>
+                      <ThemedText
+                        style={styles.sectionSubtitle}
+                        themeColor="textSecondary"
+                      >
+                        Control who can access project domains
+                      </ThemedText>
+                    </View>
+                    <View
+                      style={[
+                        styles.countBadge,
+                        { backgroundColor: theme.backgroundElement },
+                      ]}
+                    >
+                      <ThemedText style={styles.countText}>
+                        {allowedIps.length}
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  <View
+                    style={[
+                      styles.currentIpCard,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
+                  >
+                    <View style={styles.currentIpCopy}>
+                      <ThemedText
+                        style={styles.currentIpLabel}
+                        themeColor="textSecondary"
+                      >
+                        This device
+                      </ThemedText>
+                      <ThemedText style={styles.currentIpValue}>
+                        {isCurrentIpLoading
+                          ? "Detecting…"
+                          : currentIp || "IP unavailable"}
+                      </ThemedText>
+                    </View>
+                    {currentIp && !currentIpAllowed ? (
+                      <Pressable
+                        accessibilityRole="button"
+                        disabled={ipMutationPending}
+                        onPress={() => addIp(currentIp)}
+                        style={({ pressed }) => [
+                          styles.allowButton,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        {addAllowedIp.isPending ? (
+                          <ActivityIndicator color="#ffffff" size="small" />
+                        ) : (
+                          <ThemedText style={styles.allowText}>
+                            Allow
+                          </ThemedText>
+                        )}
+                      </Pressable>
+                    ) : currentIpAllowed ? (
+                      <View style={styles.allowedState}>
+                        <SymbolView
+                          name={{
+                            ios: "checkmark.circle.fill",
+                            android: "check_circle",
+                          }}
+                          size={18}
+                          tintColor="#10b981"
+                        />
+                        <ThemedText style={styles.allowedText}>
+                          Allowed
+                        </ThemedText>
+                      </View>
+                    ) : null}
+                  </View>
+
+                  <View style={styles.addIpRow}>
+                    <TextInput
+                      editable={!ipMutationPending}
+                      keyboardType="numbers-and-punctuation"
+                      onChangeText={setManualIp}
+                      onSubmitEditing={() => addIp(manualIp)}
+                      placeholder="203.0.113.10"
+                      placeholderTextColor={theme.textSecondary}
+                      style={[
+                        styles.ipInput,
+                        {
+                          backgroundColor: theme.backgroundElement,
+                          borderColor: theme.backgroundSelected,
+                          color: theme.text,
+                        },
+                      ]}
+                      value={manualIp}
+                    />
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={!manualIp.trim() || ipMutationPending}
+                      onPress={() => addIp(manualIp)}
+                      style={({ pressed }) => [
+                        styles.addIpButton,
+                        (!manualIp.trim() || ipMutationPending) &&
+                          styles.disabled,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      {addAllowedIp.isPending ? (
+                        <ActivityIndicator color="#ffffff" size="small" />
+                      ) : (
+                        <ThemedText style={styles.addIpText}>Add IP</ThemedText>
+                      )}
+                    </Pressable>
+                  </View>
+
+                  {allowedIps.length ? (
+                    <View
+                      style={[
+                        styles.ipList,
+                        { borderColor: theme.backgroundSelected },
+                      ]}
+                    >
+                      {allowedIps.map((item, index) => (
+                        <View
+                          key={item.id}
+                          style={[
+                            styles.ipRow,
+                            index < allowedIps.length - 1 && {
+                              borderBottomColor: theme.backgroundSelected,
+                              borderBottomWidth: StyleSheet.hairlineWidth,
+                            },
+                          ]}
+                        >
+                          <ThemedText style={styles.ipValue}>
+                            {item.ip}
+                          </ThemedText>
+                          {item.ip.trim() === currentIp ? (
+                            <ThemedText
+                              style={styles.thisDevice}
+                              themeColor="textSecondary"
+                            >
+                              This device
+                            </ThemedText>
+                          ) : null}
+                          <Pressable
+                            accessibilityLabel={`Remove ${item.ip}`}
+                            accessibilityRole="button"
+                            disabled={ipMutationPending}
+                            onPress={() =>
+                              removeIps(
+                                [item.id],
+                                `Remove ${item.ip} from the allowlist?`,
+                              )
+                            }
+                            style={styles.removeIpButton}
+                          >
+                            <SymbolView
+                              name={{ ios: "trash", android: "delete" }}
+                              size={17}
+                              tintColor="#ef4444"
+                            />
+                          </Pressable>
+                        </View>
+                      ))}
+                    </View>
+                  ) : (
+                    <ThemedText style={styles.noIps} themeColor="textSecondary">
+                      No IP addresses have been added.
+                    </ThemedText>
+                  )}
+
+                  {currentIpAllowed && otherIps.length ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      disabled={ipMutationPending}
+                      onPress={() =>
+                        removeIps(
+                          otherIps.map((item) => item.id),
+                          `Remove ${otherIps.length} other IP${otherIps.length === 1 ? "" : "s"} and keep ${currentIp}?`,
+                        )
+                      }
+                      style={({ pressed }) => [
+                        styles.removeOthers,
+                        { borderColor: theme.backgroundSelected },
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <ThemedText style={styles.removeOthersText}>
+                        {deleteAllowedIps.isPending
+                          ? "Removing…"
+                          : "Remove other IPs"}
+                      </ThemedText>
+                    </Pressable>
+                  ) : null}
+
+                  <ThemedText
+                    style={styles.footnote}
+                    themeColor="textSecondary"
+                  >
+                    Access changes can take up to 30 seconds.
+                  </ThemedText>
+                </View>
+              ) : null}
             </ScrollView>
           </View>
         </View>
@@ -215,6 +526,29 @@ export function ProjectDomainsButton({
 }
 
 const styles = StyleSheet.create({
+  addIpButton: {
+    alignItems: "center",
+    backgroundColor: "#3c87f7",
+    borderRadius: 12,
+    height: 44,
+    justifyContent: "center",
+    minWidth: 78,
+    paddingHorizontal: 12,
+  },
+  addIpRow: { flexDirection: "row", gap: 8 },
+  addIpText: { color: "#ffffff", fontSize: 13, fontWeight: "700" },
+  allowedState: { alignItems: "center", flexDirection: "row", gap: 5 },
+  allowedText: { color: "#10b981", fontSize: 12, fontWeight: "700" },
+  allowButton: {
+    alignItems: "center",
+    backgroundColor: "#3c87f7",
+    borderRadius: 10,
+    height: 34,
+    justifyContent: "center",
+    minWidth: 64,
+    paddingHorizontal: 12,
+  },
+  allowText: { color: "#ffffff", fontSize: 12, fontWeight: "700" },
   assignButton: {
     alignItems: "center",
     backgroundColor: "#3c87f7",
@@ -234,6 +568,26 @@ const styles = StyleSheet.create({
     top: 0,
   },
   centerCopy: { paddingVertical: 32, textAlign: "center" },
+  countBadge: {
+    alignItems: "center",
+    borderRadius: 12,
+    height: 24,
+    justifyContent: "center",
+    minWidth: 24,
+    paddingHorizontal: 7,
+  },
+  countText: { fontSize: 11, fontWeight: "700" },
+  currentIpCard: {
+    alignItems: "center",
+    borderRadius: 12,
+    flexDirection: "row",
+    gap: 12,
+    padding: 12,
+  },
+  currentIpCopy: { flex: 1, minWidth: 0 },
+  currentIpLabel: { fontSize: 11 },
+  currentIpValue: { fontFamily: "monospace", fontSize: 13, marginTop: 2 },
+  disabled: { opacity: 0.4 },
   domain: {
     alignItems: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -280,8 +634,55 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 42,
   },
+  footnote: { fontSize: 11, lineHeight: 16, textAlign: "center" },
+  ipInput: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    fontFamily: "monospace",
+    height: 44,
+    minWidth: 0,
+    paddingHorizontal: 12,
+  },
+  ipList: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
+  ipRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    minHeight: 48,
+    paddingLeft: 12,
+    paddingRight: 4,
+  },
+  ipSection: { gap: 12, marginTop: 28 },
+  ipValue: { flex: 1, fontFamily: "monospace", fontSize: 13 },
   loading: { marginVertical: 32 },
+  noIps: { fontSize: 12, paddingVertical: 12, textAlign: "center" },
   port: { fontSize: 12, marginTop: 2 },
   pressed: { opacity: 0.6 },
+  removeIpButton: {
+    alignItems: "center",
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+  removeOthers: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    minHeight: 42,
+    justifyContent: "center",
+  },
+  removeOthersText: { color: "#ef4444", fontSize: 12, fontWeight: "700" },
   root: { flex: 1, justifyContent: "flex-end" },
+  sectionCopy: { flex: 1 },
+  sectionHeader: { alignItems: "center", flexDirection: "row", gap: 10 },
+  sectionIcon: {
+    alignItems: "center",
+    borderRadius: 18,
+    height: 36,
+    justifyContent: "center",
+    width: 36,
+  },
+  sectionSubtitle: { fontSize: 11, lineHeight: 16 },
+  sectionTitle: { fontSize: 15, fontWeight: "700" },
+  thisDevice: { fontSize: 10, marginRight: 3 },
 });

@@ -30,6 +30,10 @@ import {
   type ComposerImageAttachment,
 } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
+import {
+  ProjectChatSwitcherDrawer,
+  type ProjectChatTarget,
+} from "@/components/projects/project-chat-switcher-drawer";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
@@ -95,6 +99,7 @@ export function ProjectChatScreen() {
   );
   const [prompt, setPrompt] = useState("");
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const data = sessionQuery.data;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
@@ -136,6 +141,26 @@ export function ProjectChatScreen() {
         projectId,
         projectSessionId,
       },
+    });
+  };
+
+  const selectChat = (target: ProjectChatTarget) => {
+    setIsChatSwitcherOpen(false);
+    if (
+      target.projectId === projectId &&
+      target.projectSessionId === projectSessionId
+    ) {
+      if (target.opencodeSessionId !== opencodeSessionId) {
+        setAttachments([]);
+        router.setParams({ opencodeSessionId: target.opencodeSessionId });
+      }
+      return;
+    }
+
+    router.replace({
+      pathname:
+        "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
+      params: target,
     });
   };
 
@@ -418,7 +443,10 @@ export function ProjectChatScreen() {
                 tintColor={theme.text}
               />
             </Pressable>
-            <View
+            <Pressable
+              accessibilityLabel="Switch chat"
+              accessibilityRole="button"
+              onPress={() => setIsChatSwitcherOpen(true)}
               style={[
                 styles.headerTitlePill,
                 { backgroundColor: theme.backgroundElement },
@@ -427,7 +455,12 @@ export function ProjectChatScreen() {
               <ThemedText numberOfLines={1} style={styles.headerTitle}>
                 {data.session.title || "Untitled chat"}
               </ThemedText>
-            </View>
+              <SymbolView
+                name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
+                size={13}
+                tintColor={theme.textSecondary}
+              />
+            </Pressable>
             <View
               style={[
                 styles.headerActions,
@@ -552,6 +585,12 @@ export function ProjectChatScreen() {
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
+      <ProjectChatSwitcherDrawer
+        current={{ opencodeSessionId, projectId, projectSessionId }}
+        onClose={() => setIsChatSwitcherOpen(false)}
+        onSelect={selectChat}
+        visible={isChatSwitcherOpen}
+      />
     </SafeAreaView>
   );
 }
@@ -602,6 +641,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 22,
     flex: 1,
+    flexDirection: "row",
+    gap: 7,
     height: 42,
     justifyContent: "center",
     minWidth: 0,
