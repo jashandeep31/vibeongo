@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { OpencodeComposer } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
+import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -271,7 +272,13 @@ export function ProjectChatScreen() {
                   : styles.assistantMessage
               }
             >
-              <ThemedText style={styles.messageText}>{message.text}</ThemedText>
+              {message.role === "user" ? (
+                <ThemedText style={styles.messageText}>
+                  {message.text}
+                </ThemedText>
+              ) : (
+                <NativeMarkdown content={message.text} />
+              )}
             </View>
           ))}
           {sessionQuery.isStreaming ? (
