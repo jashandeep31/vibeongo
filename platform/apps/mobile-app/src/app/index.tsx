@@ -1,9 +1,11 @@
 import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
+import { SymbolView } from 'expo-symbols';
 import { useState } from 'react';
 import { Pressable, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { HomeSidebar } from '@/components/home-sidebar';
 import { useTheme } from '@/hooks/use-theme';
 
 type HomeView = 'chats' | 'projects';
@@ -12,6 +14,7 @@ const supportsNativeGlass = isGlassEffectAPIAvailable();
 export default function HomeScreen() {
   const theme = useTheme();
   const [activeView, setActiveView] = useState<HomeView>('chats');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   return (
     <SafeAreaView style={[styles.screen, { backgroundColor: theme.background }]}>
@@ -20,6 +23,7 @@ export default function HomeScreen() {
           accessibilityLabel="Open sidebar"
           accessibilityRole="button"
           hitSlop={8}
+          onPress={() => setIsSidebarOpen(true)}
           style={({ pressed }) => [styles.roundedControl, pressed && styles.pressed]}>
           <GlassView
             glassEffectStyle="regular"
@@ -32,11 +36,11 @@ export default function HomeScreen() {
                 borderWidth: 1,
               },
             ]}>
-            <View style={styles.menuIcon}>
-              <View style={[styles.menuLine, { backgroundColor: theme.text }]} />
-              <View style={[styles.menuLine, { backgroundColor: theme.text }]} />
-              <View style={[styles.menuLine, { backgroundColor: theme.text }]} />
-            </View>
+            <SymbolView
+              name={{ ios: 'line.3.horizontal', android: 'menu' }}
+              size={20}
+              tintColor={theme.text}
+            />
           </GlassView>
         </Pressable>
 
@@ -66,6 +70,8 @@ export default function HomeScreen() {
 
         <View style={styles.headerSpacer} />
       </View>
+
+      <HomeSidebar onClose={() => setIsSidebarOpen(false)} visible={isSidebarOpen} />
     </SafeAreaView>
   );
 }
@@ -119,15 +125,6 @@ const styles = StyleSheet.create({
   },
   roundedControl: {
     borderRadius: 22,
-  },
-  menuIcon: {
-    gap: 4,
-    width: 18,
-  },
-  menuLine: {
-    borderRadius: 2,
-    height: 2,
-    width: 18,
   },
   tabPill: {
     borderRadius: 22,
