@@ -8,16 +8,15 @@ import {
   rejectOpencodeQuestion,
   revertOpencodeSession,
   sendOpencodePrompt,
-  streamOpencodeEvents,
   unrevertOpencodeSession,
-  type Event,
   type OpencodeSessionData,
   type OpencodePromptSelection,
   type QuestionAnswer,
   type UploadAttachment,
 } from "@/services/opencode-services";
+import { useSessionChatsStore } from "@/store/playground-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 
 export const useOpencodeSession = ({
   chatId,
@@ -53,276 +52,9 @@ export const useOpencodeSession = ({
     enabled: !!serverUrl && !!accessToken,
     staleTime: hasOptimisticSession ? Infinity : 0,
   });
-  const restartStreamRef = useRef<(() => void) | null>(null);
   const resync = useCallback(() => {
-    restartStreamRef.current?.();
     return queryClient.invalidateQueries({ queryKey, exact: true });
   }, [queryClient, queryKey]);
-
-  useEffect(() => {
-    if (!serverUrl || !accessToken) return;
-
-    const updateCachedSession = (event: Event) => {
-      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) => {
-        if (!current) return current;
-
-        if (
-          event.type === "question.asked" &&
-          event.properties.sessionID === sessionId
-        ) {
-          const question = event.properties;
-          return {
-            ...current,
-            questions: [
-              ...current.questions.filter((item) => item.id !== question.id),
-              question,
-            ],
-          };
-        }
-
-        if (
-          (event.type === "question.replied" ||
-            event.type === "question.rejected") &&
-          event.properties.sessionID === sessionId
-        ) {
-          return {
-            ...current,
-            questions: current.questions.filter(
-              (question) => question.id !== event.properties.requestID,
-            ),
-          };
-        }
-
-        if (
-          event.type === "message.updated" &&
-          event.properties.sessionID === sessionId
-        ) {
-          const currentMessages =
-            event.properties.info.role === "user"
-              ? current.messages.filter(
-                  (message) => !message.info.id.startsWith("optimistic:"),
-                )
-              : current.messages;
-          const messageIndex = currentMessages.findIndex(
-            (message) => message.info.id === event.properties.info.id,
-          );
-          const messages = [...currentMessages];
-
-          if (messageIndex === -1) {
-            messages.push({ info: event.properties.info, parts: [] });
-          } else {
-            messages[messageIndex] = {
-              info: event.properties.info,
-              parts: messages[messageIndex]?.parts ?? [],
-            };
-          }
-
-          return {
-            ...current,
-            messages,
-            optimistic:
-              event.properties.info.role === "user"
-                ? false
-                : current.optimistic,
-          };
-        }
-
-        if (
-          event.type === "message.part.updated" &&
-          event.properties.sessionID === sessionId
-        ) {
-          const updatedPart = event.properties.part;
-          return {
-            ...current,
-            messages: current.messages.map((message) => {
-              if (message.info.id !== updatedPart.messageID) return message;
-
-              const partIndex = message.parts.findIndex(
-                (part) => part.id === updatedPart.id,
-              );
-              const parts = [...message.parts];
-
-              if (partIndex === -1) {
-                parts.push(updatedPart);
-              } else {
-                parts[partIndex] = updatedPart;
-              }
-
-              return { ...message, parts };
-            }),
-          };
-        }
-
-        if (
-          event.type === "message.part.delta" &&
-          event.properties.sessionID === sessionId
-        ) {
-          const { messageID, partID, field, delta } = event.properties;
-          return {
-            ...current,
-            messages: current.messages.map((message) => {
-              if (message.info.id !== messageID) return message;
-
-              return {
-                ...message,
-                parts: message.parts.map((part) => {
-                  if (part.id !== partID) return part;
-
-                  const partRecord = part as unknown as Record<string, unknown>;
-                  const existingValue = partRecord[field];
-                  return {
-                    ...part,
-                    [field]: `${typeof existingValue === "string" ? existingValue : ""}${delta}`,
-                  };
-                }),
-              };
-            }),
-          };
-        }
-
-        if (
-          event.type === "message.removed" &&
-          event.properties.sessionID === sessionId
-        ) {
-          return {
-            ...current,
-            messages: current.messages.filter(
-              (message) => message.info.id !== event.properties.messageID,
-            ),
-          };
-        }
-
-        if (
-          event.type === "message.part.removed" &&
-          event.properties.sessionID === sessionId
-        ) {
-          return {
-            ...current,
-            messages: current.messages.map((message) =>
-              message.info.id === event.properties.messageID
-                ? {
-                    ...message,
-                    parts: message.parts.filter(
-                      (part) => part.id !== event.properties.partID,
-                    ),
-                  }
-                : message,
-            ),
-          };
-        }
-
-        if (
-          event.type === "session.status" &&
-          event.properties.sessionID === sessionId
-        ) {
-          return { ...current, status: event.properties.status };
-        }
-
-        if (
-          (event.type === "session.idle" || event.type === "session.error") &&
-          event.properties.sessionID === sessionId
-        ) {
-          return { ...current, status: { type: "idle" } };
-        }
-
-        if (
-          event.type === "session.updated" &&
-          event.properties.sessionID === sessionId
-        ) {
-          return { ...current, session: event.properties.info };
-        }
-
-        if (
-          event.type === "session.diff" &&
-          event.properties.sessionID === sessionId
-        ) {
-          return { ...current, changes: event.properties.diff };
-        }
-
-        return current;
-      });
-    };
-
-    const handleEvent = (event: Event) => {
-      if (
-        event.type === "session.idle" &&
-        event.properties.sessionID === sessionId
-      ) {
-        void queryClient.invalidateQueries({ queryKey });
-      }
-
-      if (
-        event.type === "session.updated" &&
-        event.properties.sessionID === sessionId
-      ) {
-        void queryClient.invalidateQueries({
-          queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
-        });
-      }
-
-      updateCachedSession(event);
-    };
-
-    let disposed = false;
-    let streamController: AbortController | null = null;
-
-    const connect = async (signal: AbortSignal) => {
-      while (!disposed && !signal.aborted) {
-        try {
-          await streamOpencodeEvents(
-            chatId,
-            serverUrl,
-            accessToken,
-            password,
-            signal,
-            handleEvent,
-          );
-        } catch (error) {
-          if (!disposed && !signal.aborted) {
-            console.error("OpenCode event stream failed", error);
-          }
-        }
-
-        if (!disposed && !signal.aborted) {
-          await new Promise((resolve) => window.setTimeout(resolve, 1_000));
-        }
-      }
-    };
-
-    const startStream = () => {
-      streamController?.abort();
-      streamController = new AbortController();
-      void connect(streamController.signal);
-    };
-
-    const resyncWhenVisible = () => {
-      if (document.visibilityState !== "visible") return;
-
-      void resync();
-    };
-
-    restartStreamRef.current = startStream;
-    startStream();
-    document.addEventListener("visibilitychange", resyncWhenVisible);
-
-    return () => {
-      disposed = true;
-      document.removeEventListener("visibilitychange", resyncWhenVisible);
-      if (restartStreamRef.current === startStream) {
-        restartStreamRef.current = null;
-      }
-      streamController?.abort();
-    };
-  }, [
-    accessToken,
-    chatId,
-    queryClient,
-    queryKey,
-    password,
-    resync,
-    serverUrl,
-    sessionId,
-  ]);
 
   return {
     ...query,
@@ -348,6 +80,11 @@ export const useSendOpencodePrompt = ({
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
 
   return useMutation({
+    onMutate: () => {
+      const chatsStore = useSessionChatsStore.getState();
+      chatsStore.setChatStatus(chatId, sessionId, { type: "busy" });
+      chatsStore.setChatUnread(chatId, sessionId, false);
+    },
     mutationFn: async ({
       text,
       files,
@@ -380,6 +117,11 @@ export const useSendOpencodePrompt = ({
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
+    },
+    onError: () => {
+      useSessionChatsStore
+        .getState()
+        .setChatStatus(chatId, sessionId, { type: "idle" });
     },
   });
 };

@@ -3,6 +3,7 @@ import type {
   Message as OpencodeMessage,
   Part as OpencodePart,
   Session as OpencodeSession,
+  SessionStatus as OpencodeSessionStatus,
 } from "@opencode-ai/sdk/v2/client";
 import { create } from "zustand";
 
@@ -104,11 +105,18 @@ export type OpencodeChatMessage = {
 interface SessionChatsStore {
   chatsBySessionId: Record<string, OpencodeSession[]>;
   messagesBySessionId: Record<string, Record<string, OpencodeChatMessage[]>>;
+  statusesBySessionId: Record<string, Record<string, OpencodeSessionStatus>>;
+  unreadBySessionId: Record<string, Record<string, boolean>>;
   getSessionChats: (projectSessionId: string) => OpencodeSession[];
   getChatMessages: (
     projectSessionId: string,
     chatId: string,
   ) => OpencodeChatMessage[];
+  getChatStatus: (
+    projectSessionId: string,
+    chatId: string,
+  ) => OpencodeSessionStatus;
+  getChatUnread: (projectSessionId: string, chatId: string) => boolean;
   setSessionChats: (projectSessionId: string, chats: OpencodeSession[]) => void;
   upsertSessionChat: (projectSessionId: string, chat: OpencodeSession) => void;
   setChatMessages: (
@@ -127,6 +135,16 @@ interface SessionChatsStore {
     messageId: string,
   ) => void;
   clearChatMessages: (projectSessionId: string, chatId: string) => void;
+  setChatStatus: (
+    projectSessionId: string,
+    chatId: string,
+    status: OpencodeSessionStatus,
+  ) => void;
+  setChatUnread: (
+    projectSessionId: string,
+    chatId: string,
+    unread: boolean,
+  ) => void;
   deleteSessionChat: (projectSessionId: string, chatId: string) => void;
   clearSessionChats: (projectSessionId: string) => void;
 }
@@ -134,20 +152,39 @@ interface SessionChatsStore {
 export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
   chatsBySessionId: {},
   messagesBySessionId: {},
+  statusesBySessionId: {},
+  unreadBySessionId: {},
   getSessionChats: (projectSessionId) =>
     get().chatsBySessionId[projectSessionId] ?? [],
   getChatMessages: (projectSessionId, chatId) =>
     get().messagesBySessionId[projectSessionId]?.[chatId] ?? [],
+  getChatStatus: (projectSessionId, chatId) =>
+    get().statusesBySessionId[projectSessionId]?.[chatId] ?? { type: "idle" },
+  getChatUnread: (projectSessionId, chatId) =>
+    get().unreadBySessionId[projectSessionId]?.[chatId] ?? false,
   setSessionChats: (projectSessionId, chats) =>
     set((state) => ({
       chatsBySessionId: {
         ...state.chatsBySessionId,
-        [projectSessionId]: chats,
+        [projectSessionId]: chats
+          .filter((chat) => !chat.parentID)
+          .sort((left, right) => right.time.created - left.time.created),
       },
     })),
   upsertSessionChat: (projectSessionId, chat) =>
     set((state) => {
       const sessionChats = state.chatsBySessionId[projectSessionId] ?? [];
+      if (chat.parentID) {
+        return {
+          chatsBySessionId: {
+            ...state.chatsBySessionId,
+            [projectSessionId]: sessionChats.filter(
+              (existingChat) => existingChat.id !== chat.id,
+            ),
+          },
+        };
+      }
+
       const existingChatIndex = sessionChats.findIndex(
         (existingChat) => existingChat.id === chat.id,
       );
@@ -158,6 +195,10 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
       } else {
         nextSessionChats[existingChatIndex] = chat;
       }
+
+      nextSessionChats.sort(
+        (left, right) => right.time.created - left.time.created,
+      );
 
       return {
         chatsBySessionId: {
@@ -227,12 +268,40 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
         },
       };
     }),
+  setChatStatus: (projectSessionId, chatId, status) =>
+    set((state) => ({
+      statusesBySessionId: {
+        ...state.statusesBySessionId,
+        [projectSessionId]: {
+          ...state.statusesBySessionId[projectSessionId],
+          [chatId]: status,
+        },
+      },
+    })),
+  setChatUnread: (projectSessionId, chatId, unread) =>
+    set((state) => ({
+      unreadBySessionId: {
+        ...state.unreadBySessionId,
+        [projectSessionId]: {
+          ...state.unreadBySessionId[projectSessionId],
+          [chatId]: unread,
+        },
+      },
+    })),
   deleteSessionChat: (projectSessionId, chatId) =>
     set((state) => {
       const projectSessionMessages = {
         ...state.messagesBySessionId[projectSessionId],
       };
+      const projectSessionStatuses = {
+        ...state.statusesBySessionId[projectSessionId],
+      };
+      const projectSessionUnread = {
+        ...state.unreadBySessionId[projectSessionId],
+      };
       Reflect.deleteProperty(projectSessionMessages, chatId);
+      Reflect.deleteProperty(projectSessionStatuses, chatId);
+      Reflect.deleteProperty(projectSessionUnread, chatId);
 
       return {
         chatsBySessionId: {
@@ -245,17 +314,31 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
           ...state.messagesBySessionId,
           [projectSessionId]: projectSessionMessages,
         },
+        statusesBySessionId: {
+          ...state.statusesBySessionId,
+          [projectSessionId]: projectSessionStatuses,
+        },
+        unreadBySessionId: {
+          ...state.unreadBySessionId,
+          [projectSessionId]: projectSessionUnread,
+        },
       };
     }),
   clearSessionChats: (projectSessionId) =>
     set((state) => {
       const remainingChats = { ...state.chatsBySessionId };
       const remainingMessages = { ...state.messagesBySessionId };
+      const remainingStatuses = { ...state.statusesBySessionId };
+      const remainingUnread = { ...state.unreadBySessionId };
       Reflect.deleteProperty(remainingChats, projectSessionId);
       Reflect.deleteProperty(remainingMessages, projectSessionId);
+      Reflect.deleteProperty(remainingStatuses, projectSessionId);
+      Reflect.deleteProperty(remainingUnread, projectSessionId);
       return {
         chatsBySessionId: remainingChats,
         messagesBySessionId: remainingMessages,
+        statusesBySessionId: remainingStatuses,
+        unreadBySessionId: remainingUnread,
       };
     }),
 }));

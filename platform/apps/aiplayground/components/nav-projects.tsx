@@ -109,6 +109,103 @@ function formatTimeRemaining(terminatesAt: string, now: number) {
   return `${seconds}s`;
 }
 
+function RunningSessionButtonContent({
+  sessionName,
+  terminatesAt,
+  needsDomainAssignment,
+}: {
+  sessionName: string;
+  terminatesAt: string;
+  needsDomainAssignment: boolean;
+}) {
+  const expiresAt = new Date(terminatesAt).getTime();
+  const [now, setNow] = useState(() => Date.now());
+  const isTerminationSoon =
+    !Number.isNaN(expiresAt) && expiresAt - now <= 10 * 60 * 1000;
+
+  useEffect(() => {
+    if (Number.isNaN(expiresAt)) return;
+
+    let timeoutId: number | undefined;
+    let intervalId: number | undefined;
+
+    const startCountdown = () => {
+      const currentTime = Date.now();
+      setNow(currentTime);
+
+      if (currentTime >= expiresAt) return;
+
+      intervalId = window.setInterval(() => {
+        const nextTime = Date.now();
+        setNow(nextTime);
+
+        if (nextTime >= expiresAt && intervalId !== undefined) {
+          window.clearInterval(intervalId);
+          intervalId = undefined;
+        }
+      }, 1000);
+    };
+
+    const scheduleCountdown = () => {
+      const delay = expiresAt - 10 * 60 * 1000 - Date.now();
+      if (delay <= 0) {
+        startCountdown();
+        return;
+      }
+
+      timeoutId = window.setTimeout(
+        scheduleCountdown,
+        Math.min(delay, 2_147_483_647),
+      );
+    };
+
+    scheduleCountdown();
+
+    return () => {
+      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
+      if (intervalId !== undefined) window.clearInterval(intervalId);
+    };
+  }, [expiresAt]);
+
+  return (
+    <>
+      {isTerminationSoon ? (
+        <Timer className="text-orange-500" />
+      ) : (
+        <SquareDashedMousePointer />
+      )}
+      <span className="min-w-0 truncate" title={sessionName}>
+        {sessionName}
+      </span>
+      {isTerminationSoon ? (
+        <span
+          className="ml-auto shrink-0 font-mono text-xs font-medium text-orange-500 tabular-nums"
+          title="Time until instance termination"
+        >
+          {formatTimeRemaining(terminatesAt, now)}
+        </span>
+      ) : null}
+      <span
+        className={`${isTerminationSoon ? "ml-0" : "ml-1"} size-2 shrink-0 rounded-full ${
+          needsDomainAssignment ? "bg-blue-500" : "bg-emerald-500"
+        }`}
+        title={
+          needsDomainAssignment
+            ? "Running — domains need assignment"
+            : "Running"
+        }
+      >
+        <span className="sr-only">
+          {needsDomainAssignment
+            ? "Running — domains need assignment"
+            : "Running"}
+        </span>
+      </span>
+      <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
+    </>
+  );
+}
+
 function getRepoDirectory(fullName: string) {
   const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
   return `/home/ubuntu/code/${repoName}`;
@@ -210,7 +307,6 @@ function ProjectSessionNavItem({
 }: ProjectSessionNavItemProps) {
   const pathname = usePathname();
   const router = useRouter();
-  const [now, setNow] = useState(() => Date.now());
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
@@ -221,14 +317,13 @@ function ProjectSessionNavItem({
   const opencodeSessions = useSessionChatsStore(
     (store) => store.chatsBySessionId[session.id],
   );
+  const opencodeStatuses = useSessionChatsStore(
+    (store) => store.statusesBySessionId[session.id],
+  );
+  const opencodeUnread = useSessionChatsStore(
+    (store) => store.unreadBySessionId[session.id],
+  );
   const instance = sessionEntry?.instance ?? null;
-  const terminatesAt = instance
-    ? new Date(instance.terminates_at).getTime()
-    : Number.NaN;
-  const isTerminationSoon =
-    sessionEntry?.state === "running" &&
-    !Number.isNaN(terminatesAt) &&
-    terminatesAt - now <= 10 * 60 * 1000;
   const isInstancePending = sessionEntry?.instanceSyncState === "pending";
   const isInstanceError = sessionEntry?.instanceSyncState === "error";
   const { data: projectDomains } = useGetProjectDomainsById(
@@ -245,14 +340,6 @@ function ProjectSessionNavItem({
       ? `https://${opencodeDomain}`
       : "";
   const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
-
-  useEffect(() => {
-    if (sessionEntry?.state !== "running" || !instance) return;
-
-    setNow(Date.now());
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(interval);
-  }, [instance, sessionEntry?.state]);
 
   const {
     data: githubRepos,
@@ -296,42 +383,11 @@ function ProjectSessionNavItem({
               <CollapsibleTrigger asChild>
                 <SidebarMenuSubButton asChild className="min-w-0 flex-1">
                   <button type="button">
-                    {isTerminationSoon ? (
-                      <Timer className="text-orange-500" />
-                    ) : (
-                      <SquareDashedMousePointer />
-                    )}
-                    <span className="min-w-0 truncate" title={session.name}>
-                      {session.name}
-                    </span>
-                    {isTerminationSoon ? (
-                      <span
-                        className="ml-auto shrink-0 font-mono text-xs font-medium text-orange-500 tabular-nums"
-                        title="Time until instance termination"
-                      >
-                        {formatTimeRemaining(
-                          String(instance.terminates_at),
-                          now,
-                        )}
-                      </span>
-                    ) : null}
-                    <span
-                      className={`${isTerminationSoon ? "ml-0" : "ml-1"} size-2 shrink-0 rounded-full ${
-                        needsDomainAssignment ? "bg-blue-500" : "bg-emerald-500"
-                      }`}
-                      title={
-                        needsDomainAssignment
-                          ? "Running — domains need assignment"
-                          : "Running"
-                      }
-                    >
-                      <span className="sr-only">
-                        {needsDomainAssignment
-                          ? "Running — domains need assignment"
-                          : "Running"}
-                      </span>
-                    </span>
-                    <ChevronRight className="ml-1 transition-transform group-data-[state=open]/session:rotate-90" />
+                    <RunningSessionButtonContent
+                      sessionName={session.name}
+                      terminatesAt={String(instance.terminates_at)}
+                      needsDomainAssignment={needsDomainAssignment}
+                    />
                   </button>
                 </SidebarMenuSubButton>
               </CollapsibleTrigger>
@@ -347,6 +403,12 @@ function ProjectSessionNavItem({
                 {(opencodeSessions ?? []).map((opencodeSession) => {
                   const params = new URLSearchParams({ serverUrl });
                   const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+                  const isProcessing =
+                    opencodeStatuses?.[opencodeSession.id]?.type !== "idle" &&
+                    opencodeStatuses?.[opencodeSession.id] !== undefined;
+                  const hasUnreadAnswer =
+                    !isProcessing &&
+                    opencodeUnread?.[opencodeSession.id] === true;
 
                   return (
                     <SidebarMenuSubItem key={opencodeSession.id}>
@@ -355,14 +417,41 @@ function ProjectSessionNavItem({
                         size="sm"
                         isActive={pathname === url.split("?")[0]}
                       >
-                        <Link href={url} onClick={onNavigate}>
-                          <BotMessageSquare />
+                        <Link
+                          href={url}
+                          onClick={() => {
+                            useSessionChatsStore
+                              .getState()
+                              .setChatUnread(
+                                session.id,
+                                opencodeSession.id,
+                                false,
+                              );
+                            onNavigate();
+                          }}
+                        >
+                          {isProcessing ? (
+                            <Loader2
+                              className="animate-spin"
+                              aria-label="Chat is processing"
+                            />
+                          ) : (
+                            <BotMessageSquare />
+                          )}
                           <span
                             className="min-w-0 flex-1 truncate"
                             title={opencodeSession.title}
                           >
                             {opencodeSession.title}
                           </span>
+                          {hasUnreadAnswer ? (
+                            <span
+                              className="ml-auto size-2.5 shrink-0 rounded-full bg-blue-500 ring-2 ring-blue-500/20"
+                              title="New answer"
+                            >
+                              <span className="sr-only">New answer</span>
+                            </span>
+                          ) : null}
                         </Link>
                       </SidebarMenuSubButton>
                     </SidebarMenuSubItem>
@@ -492,8 +581,8 @@ export function NavProjects({ projects }: { projects: Project[] }) {
   const archiveSession = useArchiveProjectSession();
   const sessions = useSessionsStore((store) => store.sessions);
   const { isMobile, setOpenMobile } = useSidebar();
-  const [openProjectId, setOpenProjectId] = useState<string | null>(
-    activeProjectId ?? null,
+  const [openProjectIds, setOpenProjectIds] = useState<Set<string>>(
+    () => new Set(activeProjectId ? [activeProjectId] : []),
   );
   const [runtimeDialogSessionId, setRuntimeDialogSessionId] = useState<
     string | null
@@ -504,8 +593,26 @@ export function NavProjects({ projects }: { projects: Project[] }) {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   useEffect(() => {
-    setOpenProjectId(activeProjectId ?? null);
-  }, [activeProjectId]);
+    const projectIdsToOpen = sessions
+      .filter((entry) => entry.state === "running")
+      .map((entry) => entry.session.project_id);
+
+    if (activeProjectId) projectIdsToOpen.push(activeProjectId);
+    if (projectIdsToOpen.length === 0) return;
+
+    setOpenProjectIds((current) => {
+      const next = new Set(current);
+      let didChange = false;
+
+      for (const projectId of projectIdsToOpen) {
+        if (next.has(projectId)) continue;
+        next.add(projectId);
+        didChange = true;
+      }
+
+      return didChange ? next : current;
+    });
+  }, [activeProjectId, sessions]);
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
@@ -538,9 +645,11 @@ export function NavProjects({ projects }: { projects: Project[] }) {
     setProjectToDelete(null);
     deleteProject.mutate(project.id, {
       onSuccess: () => {
-        setOpenProjectId((current) =>
-          current === project.id ? null : current,
-        );
+        setOpenProjectIds((current) => {
+          const next = new Set(current);
+          next.delete(project.id);
+          return next;
+        });
         if (activeProjectId === project.id) router.push("/");
         toast.success("Project deleted");
       },
@@ -565,10 +674,15 @@ export function NavProjects({ projects }: { projects: Project[] }) {
             {projects.map((project) => (
               <Collapsible
                 key={project.id}
-                open={openProjectId === project.id}
-                onOpenChange={(open) =>
-                  setOpenProjectId(open ? project.id : null)
-                }
+                open={openProjectIds.has(project.id)}
+                onOpenChange={(open) => {
+                  setOpenProjectIds((current) => {
+                    const next = new Set(current);
+                    if (open) next.add(project.id);
+                    else next.delete(project.id);
+                    return next;
+                  });
+                }}
                 className="group/project"
               >
                 <SidebarMenuItem>

@@ -179,7 +179,7 @@ export function OpencodeChatQuestion({
                   ))
                 : null}
             </div>
-            {answer ? (
+            {answer && !isStreaming ? (
               <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs opacity-100 transition-opacity md:opacity-0 md:group-hover/response:opacity-100 md:focus-within:opacity-100">
                 <button
                   type="button"
@@ -221,13 +221,22 @@ function StreamingIndicator() {
     <div
       role="status"
       aria-live="polite"
-      className="text-muted-foreground mt-4 flex items-center gap-2 text-sm"
+      aria-label="Vibeongo is working"
+      className="group/working text-muted-foreground mt-4 flex w-fit cursor-help items-center gap-2 text-sm"
+      title="Credit eater. It's me, OpenCode."
     >
       <span className="relative flex size-5 items-center justify-center">
         <span className="bg-primary/20 absolute inset-0 animate-ping rounded-full" />
         <Sparkles className="text-primary relative size-4 animate-pulse" />
       </span>
-      <span>Vibeongo is working…</span>
+      <span className="grid overflow-hidden">
+        <span className="col-start-1 row-start-1 transition-all duration-200 group-hover/working:translate-y-1 group-hover/working:opacity-0">
+          Vibeongo is working…
+        </span>
+        <span className="text-primary col-start-1 row-start-1 -translate-y-1 font-mono text-xs opacity-0 transition-all duration-200 group-hover/working:translate-y-0 group-hover/working:opacity-100">
+          Credit eater. It&apos;s me, OpenCode.
+        </span>
+      </span>
     </div>
   );
 }

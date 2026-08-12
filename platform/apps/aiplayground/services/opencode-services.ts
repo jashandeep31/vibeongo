@@ -28,6 +28,188 @@ export type OpencodeSessionData = {
   optimistic?: boolean;
 };
 
+export function reduceOpencodeMessages(
+  messages: OpencodeSessionData["messages"],
+  event: Event,
+  sessionId: string,
+) {
+  if (
+    event.type === "message.updated" &&
+    event.properties.sessionID === sessionId
+  ) {
+    const currentMessages =
+      event.properties.info.role === "user"
+        ? messages.filter(
+            (message) => !message.info.id.startsWith("optimistic:"),
+          )
+        : messages;
+    const messageIndex = currentMessages.findIndex(
+      (message) => message.info.id === event.properties.info.id,
+    );
+    const nextMessages = [...currentMessages];
+
+    if (messageIndex === -1) {
+      nextMessages.push({ info: event.properties.info, parts: [] });
+    } else {
+      nextMessages[messageIndex] = {
+        info: event.properties.info,
+        parts: nextMessages[messageIndex]?.parts ?? [],
+      };
+    }
+
+    return nextMessages;
+  }
+
+  if (
+    event.type === "message.part.updated" &&
+    event.properties.sessionID === sessionId
+  ) {
+    const updatedPart = event.properties.part;
+    return messages.map((message) => {
+      if (message.info.id !== updatedPart.messageID) return message;
+
+      const partIndex = message.parts.findIndex(
+        (part) => part.id === updatedPart.id,
+      );
+      const parts = [...message.parts];
+
+      if (partIndex === -1) {
+        parts.push(updatedPart);
+      } else {
+        parts[partIndex] = updatedPart;
+      }
+
+      return { ...message, parts };
+    });
+  }
+
+  if (
+    event.type === "message.part.delta" &&
+    event.properties.sessionID === sessionId
+  ) {
+    const { messageID, partID, field, delta } = event.properties;
+    return messages.map((message) => {
+      if (message.info.id !== messageID) return message;
+
+      return {
+        ...message,
+        parts: message.parts.map((part) => {
+          if (part.id !== partID) return part;
+
+          const partRecord = part as unknown as Record<string, unknown>;
+          const existingValue = partRecord[field];
+          return {
+            ...part,
+            [field]: `${typeof existingValue === "string" ? existingValue : ""}${delta}`,
+          };
+        }),
+      };
+    });
+  }
+
+  if (
+    event.type === "message.removed" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return messages.filter(
+      (message) => message.info.id !== event.properties.messageID,
+    );
+  }
+
+  if (
+    event.type === "message.part.removed" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return messages.map((message) =>
+      message.info.id === event.properties.messageID
+        ? {
+            ...message,
+            parts: message.parts.filter(
+              (part) => part.id !== event.properties.partID,
+            ),
+          }
+        : message,
+    );
+  }
+
+  return messages;
+}
+
+export function reduceOpencodeSessionData(
+  current: OpencodeSessionData,
+  event: Event,
+  sessionId: string,
+): OpencodeSessionData {
+  if (
+    event.type === "question.asked" &&
+    event.properties.sessionID === sessionId
+  ) {
+    const question = event.properties;
+    return {
+      ...current,
+      questions: [
+        ...current.questions.filter((item) => item.id !== question.id),
+        question,
+      ],
+    };
+  }
+
+  if (
+    (event.type === "question.replied" || event.type === "question.rejected") &&
+    event.properties.sessionID === sessionId
+  ) {
+    return {
+      ...current,
+      questions: current.questions.filter(
+        (question) => question.id !== event.properties.requestID,
+      ),
+    };
+  }
+
+  const messages = reduceOpencodeMessages(current.messages, event, sessionId);
+  if (messages !== current.messages) {
+    return {
+      ...current,
+      messages,
+      optimistic:
+        event.type === "message.updated" &&
+        event.properties.info.role === "user"
+          ? false
+          : current.optimistic,
+    };
+  }
+
+  if (
+    event.type === "session.status" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return { ...current, status: event.properties.status };
+  }
+
+  if (
+    (event.type === "session.idle" || event.type === "session.error") &&
+    event.properties.sessionID === sessionId
+  ) {
+    return { ...current, status: { type: "idle" } };
+  }
+
+  if (
+    event.type === "session.updated" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return { ...current, session: event.properties.info };
+  }
+
+  if (
+    event.type === "session.diff" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return { ...current, changes: event.properties.diff };
+  }
+
+  return current;
+}
+
 export type UploadAttachment = {
   type: "image";
   name: string;
@@ -146,9 +328,9 @@ export async function getOpencodeSessions(
     sessionsById.set(session.id, session);
   }
 
-  return [...sessionsById.values()].sort(
-    (left, right) => right.time.updated - left.time.updated,
-  );
+  return [...sessionsById.values()]
+    .filter((session) => !session.parentID)
+    .sort((left, right) => right.time.created - left.time.created);
 }
 
 export async function getOpencodeProjectDirectories(
@@ -237,6 +419,68 @@ export async function getOpencodeSessionRaw(
     ),
     changes: changesResult.data ?? [],
   };
+}
+
+export async function getOpencodeSessionMessages(
+  chatId: string,
+  session: Session,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    session.directory,
+  );
+  const result = await client.session.messages({
+    sessionID: session.id,
+    directory: session.directory,
+    limit: 100,
+  });
+
+  if (result.error) {
+    throw new Error(
+      `Could not load messages for OpenCode session ${session.id}`,
+    );
+  }
+
+  return result.data ?? [];
+}
+
+export async function getOpencodeSessionStatuses(
+  chatId: string,
+  sessions: Session[],
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const directories = [
+    ...new Set(sessions.map((session) => session.directory).filter(Boolean)),
+  ];
+  const results = await Promise.all(
+    directories.map(async (directory) => {
+      const client = getOpencodeClient(
+        chatId,
+        serverUrl,
+        accessToken,
+        password,
+        directory,
+      );
+      return client.session.status({ directory });
+    }),
+  );
+
+  if (results.some((result) => result.error)) {
+    throw new Error("Could not load OpenCode session statuses");
+  }
+
+  return Object.assign(
+    {},
+    ...results.map((result) => result.data ?? {}),
+  ) as Record<string, SessionStatus>;
 }
 
 export async function createOpencodeSession(
@@ -557,14 +801,37 @@ export async function streamOpencodeEvents(
   password: string | undefined,
   signal: AbortSignal,
   onEvent: (event: Event) => void,
+  onConnected?: () => void,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const subscription = await client.global.event({ signal });
+  onConnected?.();
 
-  for await (const event of subscription.stream) {
+  for await (const streamedEvent of subscription.stream) {
     if (signal.aborted) break;
-    onEvent(event.payload as unknown as Event);
+
+    const event = getStreamEventPayload(streamedEvent);
+    if (event) onEvent(event);
   }
+}
+
+function getStreamEventPayload(streamedEvent: unknown): Event | undefined {
+  if (!streamedEvent || typeof streamedEvent !== "object") return undefined;
+
+  const envelope = streamedEvent as Record<string, unknown>;
+  const candidate = envelope.payload ?? streamedEvent;
+  if (!candidate || typeof candidate !== "object") return undefined;
+
+  const event = candidate as Record<string, unknown>;
+  if (
+    typeof event.type !== "string" ||
+    !event.properties ||
+    typeof event.properties !== "object"
+  ) {
+    return undefined;
+  }
+
+  return candidate as Event;
 }
 
 async function findOpencodeSession(

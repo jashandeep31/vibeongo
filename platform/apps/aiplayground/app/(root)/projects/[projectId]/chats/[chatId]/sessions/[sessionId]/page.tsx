@@ -6,7 +6,8 @@ import { useOpencodeSession } from "@/hooks/use-opencode-session";
 import { useSessionsStore } from "@/store/playground-store";
 import { getOpencodePassword } from "@/services/opencode-services";
 import { Button } from "@repo/ui/components/button";
-import { Loader2, TriangleAlert } from "lucide-react";
+import { Skeleton } from "@repo/ui/components/skeleton";
+import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 
@@ -46,13 +47,7 @@ export default function OpencodeSessionPage() {
     });
 
   if (isInstancePending) {
-    return (
-      <StatusScreen
-        icon={<Loader2 className="text-muted-foreground size-5 animate-spin" />}
-        title="Connecting to OpenCode"
-        description="Checking the running sandbox for this session."
-      />
-    );
+    return <ChatSessionSkeleton />;
   }
 
   if (instanceError || !serverUrl || !accessToken) {
@@ -67,12 +62,7 @@ export default function OpencodeSessionPage() {
   }
 
   if (isPending) {
-    return (
-      <StatusScreen
-        title="Loading session"
-        description="Fetching your OpenCode conversation."
-      />
-    );
+    return <ChatSessionSkeleton />;
   }
 
   if (error || !data) {
@@ -104,12 +94,12 @@ export default function OpencodeSessionPage() {
 }
 
 function StatusScreen({
-  icon = <Loader2 className="text-muted-foreground size-5" />,
+  icon,
   title,
   description,
   action = false,
 }: {
-  icon?: React.ReactNode;
+  icon: React.ReactNode;
   title: string;
   description: string;
   action?: boolean;
@@ -129,6 +119,48 @@ function StatusScreen({
             <Link href="/">Back to home</Link>
           </Button>
         ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ChatSessionSkeleton() {
+  return (
+    <div
+      className="flex min-h-0 flex-1 flex-col"
+      aria-label="Loading conversation"
+      aria-busy="true"
+    >
+      <div className="flex h-14 shrink-0 items-center gap-3 border-b px-5">
+        <Skeleton className="size-8 rounded-lg" />
+        <div className="space-y-1.5">
+          <Skeleton className="h-4 w-36" />
+          <Skeleton className="h-3 w-20" />
+        </div>
+      </div>
+
+      <div className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-8 overflow-hidden px-5 py-8">
+        <div className="ml-auto flex w-3/4 flex-col items-end gap-2">
+          <Skeleton className="h-4 w-4/5" />
+          <Skeleton className="h-4 w-3/5" />
+        </div>
+        <div className="flex w-full gap-3">
+          <Skeleton className="size-7 shrink-0 rounded-full" />
+          <div className="flex flex-1 flex-col gap-2">
+            <Skeleton className="h-4 w-full" />
+            <Skeleton className="h-4 w-11/12" />
+            <Skeleton className="h-4 w-4/5" />
+            <Skeleton className="h-4 w-2/3" />
+          </div>
+        </div>
+        <div className="ml-auto flex w-2/3 flex-col items-end gap-2">
+          <Skeleton className="h-4 w-full" />
+          <Skeleton className="h-4 w-1/2" />
+        </div>
+      </div>
+
+      <div className="mx-auto w-full max-w-3xl shrink-0 px-5 pb-5">
+        <Skeleton className="h-24 w-full rounded-2xl" />
       </div>
     </div>
   );

@@ -88,6 +88,10 @@ export const useStartOpencodeSession = () => {
         password,
       );
       upsertSessionChat(chatId, session);
+      useSessionChatsStore
+        .getState()
+        .setChatStatus(chatId, session.id, { type: "busy" });
+      useSessionChatsStore.getState().setChatUnread(chatId, session.id, false);
 
       const [providerID = session.model?.providerID ?? "", ...modelParts] =
         selection.model?.split("/") ?? [];
