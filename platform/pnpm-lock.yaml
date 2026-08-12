@@ -482,9 +482,37 @@ importers:
       '@repo/api-client':
         specifier: workspace:*
         version: link:../api-client
+      '@repo/app-store':
+        specifier: workspace:*
+        version: link:../app-store
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.90.21(react@19.2.4)
+    devDependencies:
+      '@types/react':
+        specifier: 19.2.2
+        version: 19.2.2
+      react:
+        specifier: 19.2.4
+        version: 19.2.4
+      tsc-watch:
+        specifier: ^7.2.0
+        version: 7.2.0(typescript@5.9.2)
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
+  packages/app-store:
+    dependencies:
+      '@opencode-ai/sdk':
+        specifier: ^1.18.11
+        version: 1.18.11
+      '@repo/db':
+        specifier: workspace:*
+        version: link:../database
+      zustand:
+        specifier: ^5.0.11
+        version: 5.0.11(@types/react@19.2.2)(immer@11.1.4)(react@19.2.4)(use-sync-external-store@1.6.0(react@19.2.4))
     devDependencies:
       '@types/react':
         specifier: 19.2.2
