@@ -129,6 +129,8 @@ export const githubAuthCallbackController = catchAsync(
       maxAge: sessionMaxAgeMs,
     });
 
-    res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
+    // Temporary web redirect while mobile authentication is being wired up:
+    // res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
+    res.redirect("exp://fedora:8081/--/auth/callback?token=testtoken");
   },
 );
