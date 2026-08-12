@@ -15,6 +15,10 @@ import {
   TouchTarget,
   type AppColors,
 } from "@/constants/theme";
+import {
+  EMPTY_PROJECT_CHAT_STATUSES,
+  useProjectChatsStore,
+} from "@/stores/project-chats-store";
 
 import type {
   OpencodeChat,
@@ -34,6 +38,7 @@ type WorkspaceSectionProps = {
   actionPendingId: string | null;
   onDeleteChat: (chat: RecentChat) => void;
   onCreateProject: () => void;
+  onEditProject: (project: Project) => void;
   onCreateSession: (project: Project) => void;
   onResumeSession: (session: ProjectSession) => void;
   onArchiveSession: (session: ProjectSession) => void;
@@ -64,7 +69,11 @@ function EmptyState({
     >
       {chats ? (
         <AppIcon
-          name={{ ios: "bubble.left.and.bubble.right", android: "chat", web: "chat" }}
+          name={{
+            ios: "bubble.left.and.bubble.right",
+            android: "chat",
+            web: "chat",
+          }}
           size={25}
           tintColor={colors.textSecondary}
         />
@@ -205,6 +214,10 @@ function SessionCard({
   const state = session.runtime?.state ?? "stopped";
   const [now, setNow] = useState(Date.now());
   const pending = actionPendingId === session.id;
+  const chatStatuses = useProjectChatsStore(
+    (store) =>
+      store.statusByProjectSessionId[session.id] ?? EMPTY_PROJECT_CHAT_STATUSES,
+  );
 
   useEffect(() => {
     if (state !== "running") return;
@@ -256,17 +269,25 @@ function SessionCard({
               accessibilityLabel={`Resume ${session.name}`}
               accessibilityRole="button"
               onPress={onResume}
-              style={styles.resumeButton}
+              style={styles.iconAction}
             >
-              <Text style={[styles.resumeText, { color: colors.text }]}>Resume</Text>
+              <AppIcon
+                name={{ ios: "play.fill", android: "play_arrow", web: "play_arrow" }}
+                size={18}
+                tintColor={colors.text}
+              />
             </Pressable>
             <Pressable
               accessibilityLabel={`Archive ${session.name}`}
               accessibilityRole="button"
               onPress={onArchive}
-              style={styles.quietAction}
+              style={styles.iconAction}
             >
-              <Text style={[styles.quietActionText, { color: colors.textSecondary }]}>Archive</Text>
+              <AppIcon
+                name={{ ios: "archivebox", android: "archive", web: "archive" }}
+                size={18}
+                tintColor={colors.textSecondary}
+              />
             </Pressable>
           </View>
         ) : (
@@ -274,9 +295,13 @@ function SessionCard({
             accessibilityLabel={`Terminate ${session.name}`}
             accessibilityRole="button"
             onPress={onTerminate}
-            style={styles.quietAction}
+            style={styles.iconAction}
           >
-            <Text style={[styles.quietActionText, { color: colors.destructive }]}>Stop</Text>
+            <AppIcon
+              name={{ ios: "stop.fill", android: "stop", web: "stop" }}
+              size={18}
+              tintColor={colors.destructive}
+            />
           </Pressable>
         )}
       </View>
@@ -298,16 +323,28 @@ function SessionCard({
                 pressed && styles.pressed,
               ]}
             >
-              <Text style={[styles.promptMarker, { color: colors.textSecondary }]}>›</Text>
+              <Text
+                style={[styles.promptMarker, { color: colors.textSecondary }]}
+              >
+                ›
+              </Text>
               <Text
                 numberOfLines={1}
                 style={[styles.opencodeTitle, { color: colors.text }]}
               >
                 {chat.title || "Untitled chat"}
               </Text>
+              {chatStatuses[chat.id]?.type === "busy" ? (
+                <ActivityIndicator color={colors.brand} size="small" />
+              ) : chatStatuses[chat.id]?.type === "retry" ? (
+                <Text style={[styles.chatStatus, { color: colors.warning }]}>
+                  Retrying
+                </Text>
+              ) : null}
             </Pressable>
           ))}
           <Pressable
+            accessibilityLabel="New chat"
             accessibilityRole="button"
             onPress={onNewChat}
             style={({ pressed }) => [
@@ -315,10 +352,11 @@ function SessionCard({
               pressed && styles.pressed,
             ]}
           >
-            <Text style={[styles.promptMarker, { color: colors.brand }]}>+</Text>
-            <Text style={[styles.newChatText, { color: colors.brand }]}>
-              New chat
-            </Text>
+            <AppIcon
+              name={{ ios: "plus", android: "add", web: "add" }}
+              size={17}
+              tintColor={colors.brand}
+            />
           </Pressable>
         </View>
       ) : null}
@@ -333,6 +371,7 @@ function ProjectCard(
     | "actionPendingId"
     | "onArchiveSession"
     | "onCreateSession"
+    | "onEditProject"
     | "onNewOpencodeChat"
     | "onOpenOpencodeChat"
     | "onResumeSession"
@@ -361,50 +400,69 @@ function ProjectCard(
             </Text>
           </View>
         </View>
-        <Pressable
-          accessibilityLabel={`Create a session in ${props.project.name}`}
-          accessibilityRole="button"
-          onPress={() => props.onCreateSession(props.project)}
-          style={styles.projectSessionAction}
-        >
-          <Text style={[styles.newSessionText, { color: props.colors.textSecondary }]}>+ Session</Text>
-        </Pressable>
+        <View style={styles.projectActions}>
+          <Pressable
+            accessibilityLabel={`Edit ${props.project.name}`}
+            accessibilityRole="button"
+            onPress={() => props.onEditProject(props.project)}
+            style={styles.iconAction}
+          >
+            <AppIcon
+              name={{ ios: "pencil", android: "edit", web: "edit" }}
+              size={17}
+              tintColor={props.colors.textSecondary}
+            />
+          </Pressable>
+          <Pressable
+            accessibilityLabel={`Create a session in ${props.project.name}`}
+            accessibilityRole="button"
+            onPress={() => props.onCreateSession(props.project)}
+            style={styles.iconAction}
+          >
+            <AppIcon
+              name={{ ios: "plus", android: "add", web: "add" }}
+              size={19}
+              tintColor={props.colors.textSecondary}
+            />
+          </Pressable>
+        </View>
       </View>
       <View style={styles.sessions}>
-          {props.project.sessions.length === 0 ? (
-            <View style={styles.noSessions}>
-              <Text
-                style={[styles.meta, { color: props.colors.textSecondary }]}
-              >
-                No sessions in this project yet.
-              </Text>
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => props.onCreateSession(props.project)}
-                style={styles.emptySessionAction}
-              >
-                <Text style={[styles.resumeText, { color: props.colors.text }]}>+ New session</Text>
-              </Pressable>
-            </View>
-          ) : (
-            props.project.sessions.map((session) => (
-              <SessionCard
-                actionPendingId={props.actionPendingId}
-                colors={props.colors}
-                key={session.id}
-                onArchive={() => props.onArchiveSession(session)}
-                onNewChat={() =>
-                  props.onNewOpencodeChat(props.project, session)
-                }
-                onOpenChat={(chat) =>
-                  props.onOpenOpencodeChat(props.project, session, chat)
-                }
-                onResume={() => props.onResumeSession(session)}
-                onTerminate={() => props.onTerminateSession(session)}
-                session={session}
+        {props.project.sessions.length === 0 ? (
+          <View style={styles.noSessions}>
+            <Text style={[styles.meta, { color: props.colors.textSecondary }]}>
+              No sessions in this project yet.
+            </Text>
+            <Pressable
+              accessibilityLabel={`Create a session in ${props.project.name}`}
+              accessibilityRole="button"
+              onPress={() => props.onCreateSession(props.project)}
+              style={styles.emptySessionAction}
+            >
+              <AppIcon
+                name={{ ios: "plus", android: "add", web: "add" }}
+                size={19}
+                tintColor={props.colors.text}
               />
-            ))
-          )}
+            </Pressable>
+          </View>
+        ) : (
+          props.project.sessions.map((session) => (
+            <SessionCard
+              actionPendingId={props.actionPendingId}
+              colors={props.colors}
+              key={session.id}
+              onArchive={() => props.onArchiveSession(session)}
+              onNewChat={() => props.onNewOpencodeChat(props.project, session)}
+              onOpenChat={(chat) =>
+                props.onOpenOpencodeChat(props.project, session, chat)
+              }
+              onResume={() => props.onResumeSession(session)}
+              onTerminate={() => props.onTerminateSession(session)}
+              session={session}
+            />
+          ))
+        )}
       </View>
     </View>
   );
@@ -419,7 +477,9 @@ export function WorkspaceSection(props: WorkspaceSectionProps) {
       ]}
     >
       <View style={styles.workspaceHeader}>
-        <Text style={[styles.workspaceTitle, { color: props.colors.textSecondary }]}>
+        <Text
+          style={[styles.workspaceTitle, { color: props.colors.textSecondary }]}
+        >
           {props.activeTab === "chats" ? "All chats" : "Your projects"}
         </Text>
         {props.activeTab === "projects" ? (
@@ -427,9 +487,16 @@ export function WorkspaceSection(props: WorkspaceSectionProps) {
             accessibilityLabel="Create project"
             accessibilityRole="button"
             onPress={props.onCreateProject}
-            style={({ pressed }) => [styles.createButton, pressed && styles.pressed]}
+            style={({ pressed }) => [
+              styles.createButton,
+              pressed && styles.pressed,
+            ]}
           >
-            <Text style={[styles.createProjectText, { color: props.colors.text }]}>+ Project</Text>
+            <AppIcon
+              name={{ ios: "plus", android: "add", web: "add" }}
+              size={20}
+              tintColor={props.colors.text}
+            />
           </Pressable>
         ) : null}
       </View>
@@ -464,7 +531,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingLeft: Spacing.three,
   },
-  createProjectText: { fontSize: 11, fontWeight: "600" },
   empty: {
     alignItems: "center",
     borderRadius: Radius.large,
@@ -513,13 +579,7 @@ const styles = StyleSheet.create({
     minHeight: 52,
   },
   projectName: { fontSize: 14, fontWeight: "700" },
-  projectSessionAction: {
-    alignItems: "center",
-    minHeight: TouchTarget,
-    justifyContent: "center",
-    paddingLeft: Spacing.three,
-  },
-  newSessionText: { fontSize: 11, fontWeight: "600" },
+  projectActions: { alignItems: "center", flexDirection: "row" },
   sessions: {
     gap: Spacing.one,
     marginLeft: Spacing.four,
@@ -543,15 +603,6 @@ const styles = StyleSheet.create({
   statusDot: { borderRadius: 4, height: 8, width: 8 },
   sessionName: { fontSize: 13, fontWeight: "600" },
   inlineActions: { alignItems: "center", flexDirection: "row" },
-  resumeButton: {
-    alignItems: "center",
-    height: 36,
-    justifyContent: "center",
-    paddingHorizontal: Spacing.two,
-  },
-  resumeText: { fontSize: 12, fontWeight: "600" },
-  quietAction: { alignItems: "center", minHeight: 36, justifyContent: "center", paddingHorizontal: Spacing.two },
-  quietActionText: { fontSize: 10, fontWeight: "600" },
   opencodeList: {
     paddingBottom: Spacing.two,
     paddingLeft: Spacing.four,
@@ -564,7 +615,7 @@ const styles = StyleSheet.create({
   },
   promptMarker: { fontSize: 14, fontWeight: "700", width: 10 },
   opencodeTitle: { flex: 1, fontSize: 13, fontWeight: "500" },
-  newChatText: { flex: 1, fontSize: 13, fontWeight: "700" },
+  chatStatus: { fontSize: 9, fontWeight: "700" },
   chatLoadError: {
     fontSize: 12,
     lineHeight: 17,

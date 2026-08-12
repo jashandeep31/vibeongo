@@ -16,10 +16,11 @@ import {
   type AppColors,
 } from "@/constants/theme";
 
-import type { OpencodeChatOption } from "./opencode-api";
+import type { OpencodeChatOption, OpencodeSessionStatus } from "./opencode-api";
 
 export function OpencodeChatSwitcher({
   chats,
+  chatStatuses,
   colors,
   currentId,
   onClose,
@@ -27,6 +28,7 @@ export function OpencodeChatSwitcher({
   visible,
 }: {
   chats: OpencodeChatOption[];
+  chatStatuses: Record<string, OpencodeSessionStatus>;
   colors: AppColors;
   currentId: string;
   onClose: () => void;
@@ -69,6 +71,7 @@ export function OpencodeChatSwitcher({
         <ScrollView contentContainerStyle={styles.list}>
           {chats.map((chat) => {
             const selected = chat.id === currentId;
+            const status = chatStatuses[chat.id]?.type ?? "idle";
             return (
               <Pressable
                 accessibilityRole="button"
@@ -99,8 +102,24 @@ export function OpencodeChatSwitcher({
                   >
                     {chat.directory?.split("/").filter(Boolean).at(-1) ??
                       "Repository"}
+                    {status === "busy"
+                      ? " · Working"
+                      : status === "retry"
+                        ? " · Retrying"
+                        : ""}
                   </Text>
                 </View>
+                {status !== "idle" ? (
+                  <View
+                    style={[
+                      styles.statusDot,
+                      {
+                        backgroundColor:
+                          status === "busy" ? colors.brand : colors.warning,
+                      },
+                    ]}
+                  />
+                ) : null}
                 {selected ? (
                   <AppIcon
                     name={{
@@ -162,6 +181,12 @@ const styles = StyleSheet.create({
   rowCopy: { flex: 1, minWidth: 0 },
   rowTitle: { fontSize: 13, fontWeight: "700" },
   directory: { fontSize: 10, marginTop: 3 },
+  statusDot: {
+    borderRadius: Radius.pill,
+    height: 7,
+    marginRight: Spacing.two,
+    width: 7,
+  },
   empty: { fontSize: 13, paddingVertical: Spacing.eight, textAlign: "center" },
   pressed: { opacity: 0.6 },
 });

@@ -28,6 +28,13 @@
       "expo-router",
       "expo-secure-store",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow VibeOngo to attach images to OpenCode chats."
+        }
+      ],
+      "expo-notifications",
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#208AEF",

@@ -1,12 +1,14 @@
 import { StatusBar } from "expo-status-bar";
-import { useRouter } from "expo-router";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   Animated,
   Easing,
+  Keyboard,
   KeyboardAvoidingView,
+  PanResponder,
   Platform,
   Pressable,
   RefreshControl,
@@ -22,6 +24,7 @@ import { Radius, Spacing, TouchTarget } from "@/constants/theme";
 import { useWebSocket } from "@/contexts/websocket-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
+import { useProjectChatsStore } from "@/stores/project-chats-store";
 
 import {
   archiveProjectSession,
@@ -34,7 +37,6 @@ import {
 } from "./home-api";
 import { MobileSidebar } from "./mobile-sidebar";
 import {
-  CreateProjectSheet,
   NewSessionSheet,
   RepositorySheet,
   RuntimeSheet,
@@ -55,6 +57,10 @@ const LOW_BALANCE_THRESHOLD = 5 * 10_000_000;
 
 export function HomeScreen() {
   const router = useRouter();
+  const { refresh, tab } = useLocalSearchParams<{
+    refresh?: string;
+    tab?: string;
+  }>();
   const colors = useTheme();
   const colorScheme = useColorScheme();
   const { isConnected, sendJsonMessage, subscribeJsonMessage } = useWebSocket();
@@ -65,8 +71,9 @@ export function HomeScreen() {
   const [deletingChatId, setDeletingChatId] = useState<string | null>(null);
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isCreateProjectOpen, setIsCreateProjectOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>("chats");
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>(
+    tab === "chats" ? "chats" : "projects",
+  );
   const [newSessionProject, setNewSessionProject] = useState<Project | null>(
     null,
   );
@@ -82,22 +89,112 @@ export function HomeScreen() {
   const [repositoryError, setRepositoryError] = useState<string | null>(null);
   const [isLoadingRepositories, setIsLoadingRepositories] = useState(false);
   const [actionPendingId, setActionPendingId] = useState<string | null>(null);
+  const setProjectChats = useProjectChatsStore((state) => state.setChats);
+  const setProjectChatsLoadState = useProjectChatsStore(
+    (state) => state.setLoadState,
+  );
+  const projectChatsBySessionId = useProjectChatsStore(
+    (state) => state.chatsByProjectSessionId,
+  );
+  const projects = useMemo(
+    () =>
+      (data?.projects ?? []).map((project) => ({
+        ...project,
+        sessions: project.sessions.map((session) => ({
+          ...session,
+          runtime: session.runtime
+            ? {
+                ...session.runtime,
+                chats:
+                  projectChatsBySessionId[session.id] ?? session.runtime.chats,
+              }
+            : session.runtime,
+        })),
+      })),
+    [data?.projects, projectChatsBySessionId],
+  );
   const workspaceAnimation = useRef(new Animated.Value(1)).current;
+  const workspaceSwipeX = useRef(new Animated.Value(0)).current;
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
 
-  const selectWorkspaceTab = (tab: WorkspaceTab) => {
-    if (tab === activeTab) return;
-    workspaceAnimation.stopAnimation();
-    workspaceAnimation.setValue(0);
-    setActiveTab(tab);
-    requestAnimationFrame(() => {
-      Animated.timing(workspaceAnimation, {
-        duration: 190,
-        easing: Easing.out(Easing.cubic),
-        toValue: 1,
-        useNativeDriver: true,
-      }).start();
-    });
-  };
+  const selectWorkspaceTab = useCallback(
+    (nextTab: WorkspaceTab) => {
+      if (nextTab === activeTab) return;
+      workspaceAnimation.stopAnimation();
+      workspaceAnimation.setValue(0);
+      setActiveTab(nextTab);
+      requestAnimationFrame(() => {
+        Animated.timing(workspaceAnimation, {
+          duration: 340,
+          easing: Easing.out(Easing.cubic),
+          toValue: 1,
+          useNativeDriver: true,
+        }).start();
+      });
+    },
+    [activeTab, workspaceAnimation],
+  );
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () =>
+      setIsKeyboardVisible(true),
+    );
+    const hide = Keyboard.addListener("keyboardDidHide", () =>
+      setIsKeyboardVisible(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const homeSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          !isKeyboardVisible &&
+          Math.abs(gesture.dx) > 8 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15 &&
+          (activeTab === "chats" ? gesture.dx < 0 : gesture.dx > 0),
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          !isKeyboardVisible &&
+          Math.abs(gesture.dx) > 8 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15 &&
+          (activeTab === "chats" ? gesture.dx < 0 : gesture.dx > 0),
+        onPanResponderGrant: () => workspaceSwipeX.stopAnimation(),
+        onPanResponderMove: (_, gesture) => {
+          const movingToProjects = activeTab === "chats" && gesture.dx < 0;
+          const movingToChats = activeTab === "projects" && gesture.dx > 0;
+          const resistance =
+            movingToProjects || movingToChats ? 0.45 : 0.12;
+          workspaceSwipeX.setValue(
+            Math.max(-64, Math.min(64, gesture.dx * resistance)),
+          );
+        },
+        onPanResponderRelease: (_, gesture) => {
+          if (gesture.dx < -42 && activeTab === "chats") {
+            selectWorkspaceTab("projects");
+          } else if (gesture.dx > 42 && activeTab === "projects") {
+            selectWorkspaceTab("chats");
+          }
+          Animated.spring(workspaceSwipeX, {
+            damping: 18,
+            stiffness: 220,
+            toValue: 0,
+            useNativeDriver: true,
+          }).start();
+        },
+        onPanResponderTerminate: () =>
+          Animated.spring(workspaceSwipeX, {
+            damping: 18,
+            stiffness: 220,
+            toValue: 0,
+            useNativeDriver: true,
+          }).start(),
+        onShouldBlockNativeResponder: () => true,
+      }),
+    [activeTab, isKeyboardVisible, selectWorkspaceTab, workspaceSwipeX],
+  );
 
   const load = useCallback(
     async (signal?: AbortSignal, refreshing = false, quiet = false) => {
@@ -108,6 +205,15 @@ export function HomeScreen() {
       try {
         const homeData = await getHomeData(signal);
         setData(homeData);
+        homeData.projects.forEach((project) =>
+          project.sessions.forEach((session) => {
+            if (session.runtime?.state === "processing") {
+              setProjectChatsLoadState(session.id, "loading");
+              return;
+            }
+            setProjectChats(session.id, session.runtime?.chats ?? []);
+          }),
+        );
       } catch (loadError) {
         if (loadError instanceof Error && loadError.name === "AbortError")
           return;
@@ -125,14 +231,18 @@ export function HomeScreen() {
         }
       }
     },
-    [],
+    [setProjectChats, setProjectChatsLoadState],
   );
 
   useEffect(() => {
     const controller = new AbortController();
     void load(controller.signal);
     return () => controller.abort();
-  }, [load]);
+  }, [load, refresh]);
+
+  useEffect(() => {
+    if (tab === "projects" || tab === "chats") setActiveTab(tab);
+  }, [tab]);
 
   const hasProcessingSession = data?.projects.some((project) =>
     project.sessions.some((session) => session.runtime?.state === "processing"),
@@ -393,6 +503,7 @@ export function HomeScreen() {
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : undefined}
           style={styles.keyboardView}
+          {...homeSwipeResponder.panHandlers}
         >
           <View style={styles.topBar}>
             <Pressable
@@ -497,6 +608,7 @@ export function HomeScreen() {
                         outputRange: [10, 0],
                       }),
                     },
+                    { translateX: workspaceSwipeX },
                   ],
                 }}
               >
@@ -506,59 +618,36 @@ export function HomeScreen() {
                     isConnected={isConnected}
                     isSubmitting={isCreatingChat}
                     onSubmit={createChat}
-                    projects={data?.projects ?? []}
+                    projects={projects}
                   />
                 ) : null}
 
                 {activeTab === "chats" && isBalanceLow ? (
-                <View
-                  accessibilityRole="alert"
-                  style={[
-                    styles.creditBanner,
-                    {
-                      backgroundColor: hasNoBalance
-                        ? colors.destructiveSurface
-                        : colors.warningSurface,
-                    },
-                  ]}
-                >
-                  <AppIcon
-                    name={{
-                      ios: "exclamationmark.triangle.fill",
-                      android: "warning",
-                      web: "warning",
-                    }}
-                    size={17}
-                    tintColor={
-                      hasNoBalance ? colors.destructive : colors.warning
-                    }
-                  />
-                  <Text
+                  <View
+                    accessibilityRole="alert"
                     style={[
-                      styles.creditText,
+                      styles.creditBanner,
                       {
-                        color: hasNoBalance
-                          ? colors.destructive
-                          : colors.warning,
+                        backgroundColor: hasNoBalance
+                          ? colors.destructiveSurface
+                          : colors.warningSurface,
                       },
                     ]}
                   >
-                    {hasNoBalance
-                      ? "No credits remaining."
-                      : "Your wallet balance is low."}
-                  </Text>
-                  <Pressable
-                    accessibilityRole="button"
-                    onPress={() =>
-                      Alert.alert(
-                        "Wallet",
-                        "The Wallet screen is planned after the Home flow.",
-                      )
-                    }
-                  >
+                    <AppIcon
+                      name={{
+                        ios: "exclamationmark.triangle.fill",
+                        android: "warning",
+                        web: "warning",
+                      }}
+                      size={17}
+                      tintColor={
+                        hasNoBalance ? colors.destructive : colors.warning
+                      }
+                    />
                     <Text
                       style={[
-                        styles.addCredits,
+                        styles.creditText,
                         {
                           color: hasNoBalance
                             ? colors.destructive
@@ -566,11 +655,34 @@ export function HomeScreen() {
                         },
                       ]}
                     >
-                      Add credits
+                      {hasNoBalance
+                        ? "No credits remaining."
+                        : "Your wallet balance is low."}
                     </Text>
-                  </Pressable>
-                </View>
-              ) : null}
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() =>
+                        Alert.alert(
+                          "Wallet",
+                          "The Wallet screen is planned after the Home flow.",
+                        )
+                      }
+                    >
+                      <Text
+                        style={[
+                          styles.addCredits,
+                          {
+                            color: hasNoBalance
+                              ? colors.destructive
+                              : colors.warning,
+                          },
+                        ]}
+                      >
+                        Add credits
+                      </Text>
+                    </Pressable>
+                  </View>
+                ) : null}
 
                 <WorkspaceSection
                   actionPendingId={actionPendingId}
@@ -579,7 +691,12 @@ export function HomeScreen() {
                   colors={colors}
                   deletingChatId={deletingChatId}
                   onDeleteChat={confirmDeleteChat}
-                  onCreateProject={() => setIsCreateProjectOpen(true)}
+                  onCreateProject={() =>
+                    router.push("/projects/create" as never)
+                  }
+                  onEditProject={(project) =>
+                    router.push(`/projects/${project.id}/edit` as never)
+                  }
                   onArchiveSession={confirmArchive}
                   onCreateSession={setNewSessionProject}
                   onNewOpencodeChat={(project, session) =>
@@ -590,7 +707,7 @@ export function HomeScreen() {
                   }
                   onResumeSession={setRuntimeSession}
                   onTerminateSession={confirmTerminate}
-                  projects={data?.projects ?? []}
+                  projects={projects}
                 />
               </Animated.View>
             </ScrollView>
@@ -602,15 +719,6 @@ export function HomeScreen() {
         onClose={() => setIsSidebarOpen(false)}
         onSelectWorkspace={selectWorkspaceTab}
         visible={isSidebarOpen}
-      />
-      <CreateProjectSheet
-        colors={colors}
-        onClose={() => setIsCreateProjectOpen(false)}
-        onCreated={() => {
-          setIsCreateProjectOpen(false);
-          void load(undefined, false, true);
-        }}
-        visible={isCreateProjectOpen}
       />
       <NewSessionSheet
         colors={colors}

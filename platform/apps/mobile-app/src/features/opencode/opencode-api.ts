@@ -20,9 +20,20 @@ export type OpencodePart = {
   id?: string;
   type: string;
   text?: string;
+  mime?: string;
+  filename?: string;
+  url?: string;
   ignored?: boolean;
   tool?: string;
   state?: OpencodeToolState;
+};
+
+export type OpencodeImageAttachment = {
+  id: string;
+  uri: string;
+  name: string;
+  mimeType: string;
+  dataUrl: string;
 };
 
 export type OpencodeQuestion = {
@@ -91,10 +102,12 @@ export type OpencodeSession = {
   model?: { providerID: string; id: string; variant?: string };
 };
 
-export type OpencodeChatOption = Pick<
-  OpencodeSession,
-  "id" | "title" | "directory" | "time"
->;
+export type OpencodeChatOption = {
+  id: string;
+  title: string;
+  directory?: string;
+  time?: { created?: number; updated?: number };
+};
 
 function origin(instance: RuntimeInstance) {
   const url = new URL(`https://4096-${instance.id}${instance.proxy_domain}`);
@@ -297,6 +310,7 @@ export async function getOpencodeChats(
         (sessions) =>
           sessions.map((session) => ({
             ...session,
+            title: session.title?.trim() || "Untitled chat",
             directory: session.directory ?? directory,
           })),
       );
@@ -370,6 +384,7 @@ export function sendOpencodeMessage(
   directory: string,
   text: string,
   selection: OpencodePromptSelection = {},
+  attachments: OpencodeImageAttachment[] = [],
 ) {
   const query = new URLSearchParams({ directory });
   const separator = selection.model?.indexOf("/") ?? -1;
@@ -389,7 +404,15 @@ export function sendOpencodeMessage(
         ...(model ? { model } : {}),
         ...(selection.variant ? { variant: selection.variant } : {}),
         ...(selection.agent ? { agent: selection.agent } : {}),
-        parts: [{ type: "text", text }],
+        parts: [
+          ...(text ? [{ type: "text", text }] : []),
+          ...attachments.map((attachment) => ({
+            type: "file",
+            mime: attachment.mimeType,
+            filename: attachment.name,
+            url: attachment.dataUrl,
+          })),
+        ],
       }),
     },
     true,

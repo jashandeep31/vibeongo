@@ -10,6 +10,8 @@ import {
   type AppColors,
 } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/contexts/toast-context";
+import { sendTestDeviceNotification } from "@/lib/device-notifications";
 
 import type { WorkspaceTab } from "./workspace-section";
 
@@ -61,6 +63,22 @@ const navigation = [
     label: "Settings",
     icon: { ios: "gearshape", android: "settings", web: "settings" } as const,
   },
+  {
+    label: "Test notification",
+    icon: {
+      ios: "bell.badge",
+      android: "notifications_active",
+      web: "notifications_active",
+    } as const,
+  },
+  {
+    label: "Test device notification",
+    icon: {
+      ios: "bell.and.waves.left.and.right",
+      android: "add_alert",
+      web: "add_alert",
+    } as const,
+  },
 ];
 
 export function MobileSidebar({
@@ -70,6 +88,7 @@ export function MobileSidebar({
   visible,
 }: MobileSidebarProps) {
   const { signOut } = useAuth();
+  const { showToast } = useToast();
   const router = useRouter();
 
   const selectNavigation = (label: string) => {
@@ -94,6 +113,39 @@ export function MobileSidebar({
     if (label === "Wallet") {
       onClose();
       router.push("/wallet");
+      return;
+    }
+
+    if (label === "Test notification") {
+      onClose();
+      showToast({
+        message: "Chat X needs an action.",
+        title: "Action required",
+        variant: "info",
+      });
+      return;
+    }
+
+    if (label === "Test device notification") {
+      onClose();
+      void sendTestDeviceNotification()
+        .then(() => {
+          showToast({
+            message: "A device notification was sent.",
+            title: "Notification scheduled",
+            variant: "success",
+          });
+        })
+        .catch((error: unknown) => {
+          showToast({
+            message:
+              error instanceof Error
+                ? error.message
+                : "Could not send the device notification.",
+            title: "Notification failed",
+            variant: "error",
+          });
+        });
       return;
     }
 
