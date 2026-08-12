@@ -4,6 +4,9 @@
   "version": "1.0.0",
   "dependencies": {
     "@expo/ui": "~57.0.10",
+    "@repo/api-client": "workspace:*",
+    "@repo/api-hooks": "workspace:*",
+    "@tanstack/react-query": "^5.90.21",
     "expo": "~57.0.12",
     "expo-auth-session": "~57.0.6",
     "expo-constants": "~57.0.10",

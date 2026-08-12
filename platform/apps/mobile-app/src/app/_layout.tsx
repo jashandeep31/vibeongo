@@ -1,13 +1,14 @@
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
 
-import { useTheme } from '@/hooks/use-theme';
+import { useTheme } from "@/hooks/use-theme";
+import { AppProviders } from "@/providers/app-providers";
 
 export default function RootLayout() {
   const theme = useTheme();
 
   return (
-    <>
+    <AppProviders>
       <Stack
         screenOptions={{
           contentStyle: { backgroundColor: theme.background },
@@ -15,6 +16,6 @@ export default function RootLayout() {
         }}
       />
       <StatusBar style="auto" />
-    </>
+    </AppProviders>
   );
 }
