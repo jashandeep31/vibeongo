@@ -15,6 +15,7 @@
     "@tanstack/react-query": "^5.90.21"
   },
   "devDependencies": {
+    "@types/react": "19.2.2",
     "react": "19.2.4",
     "typescript": "5.9.2",
     "tsc-watch": "^7.2.0"
