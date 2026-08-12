@@ -14,7 +14,7 @@ export const exchangeMobileToken = catchAsync(
       })
       .parse(req.body);
 
-    if (token !== "testoken") {
+    if (token !== "testtoken") {
       throw new AppError("token is not valid", 400);
     }
 
