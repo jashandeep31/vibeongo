@@ -34,11 +34,6 @@ import {
 } from "@/store/playground-store";
 import { Button } from "@repo/ui/components/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@repo/ui/components/collapsible";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -55,7 +50,7 @@ import {
 import {
   Archive,
   BotMessageSquare,
-  ChevronDown,
+  ChevronRight,
   Clock3,
   Ellipsis,
   FolderKanban,
@@ -182,43 +177,34 @@ function SessionRow({
 
   return (
     <>
-      <Collapsible
-        defaultOpen={entry.state === "running"}
-        className="group/session bg-muted/40 overflow-hidden rounded-lg"
-      >
-        <div className="flex items-center gap-2 px-2 py-2">
-          <CollapsibleTrigger asChild disabled={!serverUrl}>
-            <button
-              type="button"
-              className="hover:bg-muted/60 flex min-w-0 flex-1 items-center gap-3 rounded-md px-2 py-1.5 text-left transition-colors disabled:cursor-default disabled:hover:bg-transparent"
-            >
-              <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=closed]/session:-rotate-90" />
-              <span className="min-w-0 flex-1">
-                <span
-                  className="block truncate text-sm font-medium"
-                  title={entry.session.name}
-                >
-                  {entry.session.name}
-                </span>
+      <div>
+        <div className="flex items-center gap-2 py-1">
+          <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left">
+            <ChevronRight
+              className={`text-muted-foreground size-4 shrink-0 ${
+                serverUrl ? "rotate-90" : ""
+              }`}
+            />
+            <span className="min-w-0 flex-1">
+              <span
+                className="text-muted-foreground block truncate font-mono text-sm font-semibold capitalize"
+                title={entry.session.name}
+              >
+                {entry.session.name}
               </span>
-              <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
-                <span
-                  className={`size-1.5 rounded-full ${
-                    entry.state === "running"
-                      ? "bg-emerald-500"
-                      : entry.state === "processing"
-                        ? "animate-pulse bg-amber-500"
-                        : "bg-muted-foreground/50"
-                  }`}
-                />
-                {entry.state === "running"
-                  ? "Running"
-                  : entry.state === "processing"
-                    ? "Starting"
-                    : "Paused"}
-              </span>
-            </button>
-          </CollapsibleTrigger>
+            </span>
+            <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
+              <span
+                className={`size-1.5 rounded-full ${
+                  entry.state === "running"
+                    ? "bg-emerald-500"
+                    : entry.state === "processing"
+                      ? "animate-pulse bg-amber-500"
+                      : "bg-muted-foreground/50"
+                }`}
+              />
+            </span>
+          </div>
 
           {entry.instance ? (
             <DropdownMenu
@@ -283,7 +269,6 @@ function SessionRow({
                 ) : (
                   <Play />
                 )}
-                Resume
               </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -320,51 +305,49 @@ function SessionRow({
         </div>
 
         {serverUrl ? (
-          <CollapsibleContent>
-            <div className="border-border/60 space-y-1 border-t px-3 py-3">
-              {opencodeSessions.map((opencodeSession) => {
-                const params = new URLSearchParams({ serverUrl });
-                const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+          <div className="space-y-1 py-3 pl-7">
+            {opencodeSessions.map((opencodeSession) => {
+              const params = new URLSearchParams({ serverUrl });
+              const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
 
-                return (
-                  <Button
-                    key={opencodeSession.id}
-                    asChild
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start"
-                  >
-                    <Link href={url}>
-                      <BotMessageSquare />
-                      <span
-                        className="min-w-0 truncate"
-                        title={opencodeSession.title}
-                      >
-                        {opencodeSession.title}
-                      </span>
-                    </Link>
-                  </Button>
-                );
-              })}
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="w-full justify-start"
-                disabled={isStartingNewChat}
-                onClick={handleNewChat}
-              >
-                {isStartingNewChat ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Plus />
-                )}
-                New chat
-              </Button>
-            </div>
-          </CollapsibleContent>
+              return (
+                <Button
+                  key={opencodeSession.id}
+                  asChild
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start"
+                >
+                  <Link href={url}>
+                    <BotMessageSquare />
+                    <span
+                      className="min-w-0 truncate"
+                      title={opencodeSession.title}
+                    >
+                      {opencodeSession.title}
+                    </span>
+                  </Link>
+                </Button>
+              );
+            })}
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start"
+              disabled={isStartingNewChat}
+              onClick={handleNewChat}
+            >
+              {isStartingNewChat ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Plus />
+              )}
+              New chat
+            </Button>
+          </div>
         ) : null}
-      </Collapsible>
+      </div>
 
       <ConfirmationDialog
         open={isArchiveConfirmationOpen}
@@ -443,10 +426,7 @@ export default function ClientView() {
     syncViewFromUrl();
 
     const handleWorkspaceViewChange = (event: Event) => {
-      if (
-        event instanceof CustomEvent &&
-        isWorkspaceView(event.detail)
-      ) {
+      if (event instanceof CustomEvent && isWorkspaceView(event.detail)) {
         setActiveTab(event.detail);
       }
     };
@@ -695,55 +675,36 @@ export default function ClientView() {
 
           <section aria-label="Projects">
             {projects.length === 0 ? (
-              <div className="bg-muted/40 rounded-lg px-4 py-10 text-center">
-                <p className="text-sm font-medium">No projects yet</p>
-                <p className="text-muted-foreground mt-1 text-sm">
+              <div className="py-10 text-center">
+                <p className="text-lg font-semibold tracking-tight">
+                  No projects yet
+                </p>
+                <p className="text-muted-foreground mt-2 text-sm leading-7">
                   Your projects and sessions will appear here.
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-10">
                 {projects.map((project) => {
                   const projectSessions = sessions.filter(
                     (entry) => entry.session.project_id === project.id,
                   );
-                  const runningCount = projectSessions.filter(
-                    (entry) => entry.state === "running",
-                  ).length;
                   return (
-                    <Collapsible
+                    <div
                       key={project.id}
-                      defaultOpen={projects.length === 1}
+                      className="border-border border-b pb-8"
                     >
-                      <div className="bg-muted/25 overflow-hidden rounded-lg">
-                        <div className="flex items-center pr-2">
-                          <CollapsibleTrigger asChild>
-                            <button
-                              type="button"
-                              className="hover:bg-muted/50 group flex min-w-0 flex-1 items-center gap-3 px-4 py-3 text-left transition-colors"
-                            >
-                              <span className="min-w-0 flex-1">
-                                <span className="flex items-center gap-2">
-                                  <span className="truncate text-sm font-medium">
-                                    {project.name}
-                                  </span>
-                                  {runningCount > 0 ? (
-                                    <span className="text-muted-foreground flex items-center gap-1.5 text-xs">
-                                      <span className="size-1.5 rounded-full bg-emerald-500" />
-                                      {runningCount} running
-                                    </span>
-                                  ) : null}
+                      <div>
+                        <div className="flex items-center pb-2">
+                          <div className="flex min-w-0 flex-1 items-center gap-3 text-left">
+                            <span className="min-w-0 flex-1">
+                              <span className="flex items-center gap-2">
+                                <span className="truncate font-mono text-sm font-semibold tracking-tight uppercase">
+                                  {project.name}
                                 </span>
                               </span>
-                              <span className="text-muted-foreground hidden shrink-0 text-sm sm:block">
-                                {projectSessions.length}{" "}
-                                {projectSessions.length === 1
-                                  ? "session"
-                                  : "sessions"}
-                              </span>
-                              <ChevronDown className="text-muted-foreground size-4 shrink-0 transition-transform group-data-[state=open]:rotate-180" />
-                            </button>
-                          </CollapsibleTrigger>
+                            </span>
+                          </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button
@@ -771,32 +732,30 @@ export default function ClientView() {
                           </DropdownMenu>
                         </div>
 
-                        <CollapsibleContent>
-                          <div className="space-y-2 px-3 pb-3">
-                            {projectSessions.length === 0 ? (
-                              <div className="text-muted-foreground px-3 py-6 text-center text-sm">
-                                This project does not have any sessions yet.
-                              </div>
-                            ) : (
-                              projectSessions.map((entry) => (
-                                <SessionRow
-                                  key={entry.session.id}
-                                  entry={entry}
-                                  isResumePending={
-                                    resumingSessionId === entry.session.id
-                                  }
-                                  isArchivePending={
-                                    archivingSessionId === entry.session.id
-                                  }
-                                  onResume={setRuntimeDialogSessionId}
-                                  onArchive={handleArchive}
-                                />
-                              ))
-                            )}
-                          </div>
-                        </CollapsibleContent>
+                        <div>
+                          {projectSessions.length === 0 ? (
+                            <p className="text-muted-foreground py-6 text-sm leading-7">
+                              This project does not have any sessions yet.
+                            </p>
+                          ) : (
+                            projectSessions.map((entry) => (
+                              <SessionRow
+                                key={entry.session.id}
+                                entry={entry}
+                                isResumePending={
+                                  resumingSessionId === entry.session.id
+                                }
+                                isArchivePending={
+                                  archivingSessionId === entry.session.id
+                                }
+                                onResume={setRuntimeDialogSessionId}
+                                onArchive={handleArchive}
+                              />
+                            ))
+                          )}
+                        </div>
                       </div>
-                    </Collapsible>
+                    </div>
                   );
                 })}
               </div>
