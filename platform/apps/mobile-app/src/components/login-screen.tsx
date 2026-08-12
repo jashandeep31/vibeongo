@@ -1,27 +1,21 @@
-import {
-  ActivityIndicator,
-  Pressable,
-  StyleSheet,
-  useColorScheme,
-  View,
-} from "react-native";
+import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
-import { Colors, Spacing } from "@/constants/theme";
+import { Spacing } from "@/constants/theme";
 import { useAuth } from "@/contexts/auth-context";
+import { useTheme } from "@/hooks/use-theme";
 
 export function LoginScreen() {
-  const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme === "dark" ? "dark" : "light"];
+  const colors = useTheme();
   const { error, isSigningIn, signIn } = useAuth();
 
   return (
     <ThemedView style={styles.container}>
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.brandRow}>
-          <View style={styles.brandMark}>
+          <View style={[styles.brandMark, { backgroundColor: colors.brand }]}>
             <ThemedText style={styles.brandMarkText}>V</ThemedText>
           </View>
           <ThemedText style={styles.brandName}>vibeongo</ThemedText>
@@ -34,7 +28,10 @@ export function LoginScreen() {
               { backgroundColor: colors.backgroundElement },
             ]}
           >
-            <ThemedText type="smallBold" style={styles.eyebrowText}>
+            <ThemedText
+              type="smallBold"
+              style={[styles.eyebrowText, { color: colors.brand }]}
+            >
               BUILD FROM ANYWHERE
             </ThemedText>
           </View>
@@ -53,16 +50,29 @@ export function LoginScreen() {
             onPress={signIn}
             style={({ pressed }) => [
               styles.githubButton,
+              { backgroundColor: colors.primary },
               pressed && styles.buttonPressed,
               isSigningIn && styles.buttonDisabled,
             ]}
           >
             {isSigningIn ? (
-              <ActivityIndicator color="#ffffff" />
+              <ActivityIndicator color={colors.primaryForeground} />
             ) : (
               <>
-                <ThemedText style={styles.githubIcon}>GH</ThemedText>
-                <ThemedText style={styles.githubButtonText}>
+                <ThemedText
+                  style={[
+                    styles.githubIcon,
+                    { color: colors.primaryForeground },
+                  ]}
+                >
+                  GH
+                </ThemedText>
+                <ThemedText
+                  style={[
+                    styles.githubButtonText,
+                    { color: colors.primaryForeground },
+                  ]}
+                >
                   Continue with GitHub
                 </ThemedText>
               </>
@@ -70,7 +80,10 @@ export function LoginScreen() {
           </Pressable>
 
           {error ? (
-            <ThemedText accessibilityRole="alert" style={styles.error}>
+            <ThemedText
+              accessibilityRole="alert"
+              style={[styles.error, { color: colors.destructive }]}
+            >
               {error}
             </ThemedText>
           ) : null}
@@ -103,7 +116,6 @@ const styles = StyleSheet.create({
     borderRadius: 11,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: "#6d5dfc",
     transform: [{ rotate: "-7deg" }],
   },
   brandMarkText: { color: "#ffffff", fontSize: 18, fontWeight: "900" },
@@ -121,7 +133,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 7,
   },
-  eyebrowText: { color: "#6d5dfc", fontSize: 11, letterSpacing: 1.2 },
+  eyebrowText: { fontSize: 11, letterSpacing: 1.2 },
   title: {
     fontSize: 45,
     lineHeight: 49,
@@ -137,7 +149,6 @@ const styles = StyleSheet.create({
   githubButton: {
     minHeight: 56,
     borderRadius: 17,
-    backgroundColor: "#17171b",
     alignItems: "center",
     justifyContent: "center",
     flexDirection: "row",
@@ -145,16 +156,14 @@ const styles = StyleSheet.create({
     marginTop: Spacing.five,
   },
   githubIcon: {
-    color: "#ffffff",
     fontSize: 13,
     fontWeight: "900",
     letterSpacing: -0.5,
   },
-  githubButtonText: { color: "#ffffff", fontSize: 16, fontWeight: "700" },
+  githubButtonText: { fontSize: 16, fontWeight: "700" },
   buttonPressed: { transform: [{ scale: 0.985 }], opacity: 0.9 },
   buttonDisabled: { opacity: 0.7 },
   error: {
-    color: "#dc3d43",
     fontSize: 14,
     lineHeight: 20,
     textAlign: "center",

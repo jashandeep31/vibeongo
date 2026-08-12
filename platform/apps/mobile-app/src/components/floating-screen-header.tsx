@@ -51,7 +51,7 @@ export function FloatingScreenHeader({
 }: FloatingScreenHeaderProps) {
   const isDark = colorScheme === "dark";
   const glassFill = isDark
-    ? "rgba(24, 24, 27, 0.56)"
+    ? "rgba(8, 8, 8, 0.82)"
     : "rgba(255, 255, 255, 0.58)";
   const blurProps = {
     blurMethod: "dimezisBlurView" as const,
@@ -179,7 +179,7 @@ export function FloatingScreenHeader({
           <Pressable
             accessibilityHint={
               titleIsInteractive
-                ? "Tap for all chats or swipe to change chat"
+                ? "Tap for options or swipe to change chat"
                 : undefined
             }
             accessibilityLabel={title}

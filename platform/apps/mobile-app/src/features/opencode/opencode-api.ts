@@ -1,6 +1,10 @@
 import { apiRequest } from "@/lib/api";
 
-import type { RuntimeInstance } from "@/features/home/types";
+import type {
+  Project,
+  ProjectSession,
+  RuntimeInstance,
+} from "@/features/home/types";
 
 export type OpencodeMessage = {
   info: { id: string; role: "user" | "assistant" | string };
@@ -109,6 +113,13 @@ export type OpencodeChatOption = {
   time?: { created?: number; updated?: number };
 };
 
+export type OpencodeProjectSessionOption = Pick<
+  ProjectSession,
+  "id" | "name"
+> & {
+  running: boolean;
+};
+
 function origin(instance: RuntimeInstance) {
   const url = new URL(`https://4096-${instance.id}${instance.proxy_domain}`);
   if (
@@ -168,6 +179,27 @@ export async function getRunningSessionInstance(projectSessionId: string) {
   const instance = instances[0];
   if (!instance) throw new Error("This project session is no longer running.");
   return instance;
+}
+
+export async function getOpencodeProjectSessions(projectId: string) {
+  const [projects, instances] = await Promise.all([
+    apiRequest<Project[]>("/api/v1/projects/with-sessions"),
+    apiRequest<RuntimeInstance[]>(
+      "/api/v1/instances?state=running&page=1&limit=100",
+    ),
+  ]);
+  const runningSessionIds = new Set(
+    instances.flatMap((instance) =>
+      instance.project_session_id ? [instance.project_session_id] : [],
+    ),
+  );
+  return (projects.find((project) => project.id === projectId)?.sessions ?? [])
+    .filter((session) => !session.archived)
+    .map<OpencodeProjectSessionOption>((session) => ({
+      id: session.id,
+      name: session.name,
+      running: runningSessionIds.has(session.id),
+    }));
 }
 
 export function createOpencodeChat(

@@ -55,15 +55,14 @@ import {
   type OpencodeInventory,
   type OpencodeImageAttachment,
   type OpencodeMessage,
-  type OpencodePermission,
   type OpencodePromptSelection,
-  type OpencodeQuestion,
+  type OpencodeProjectSessionOption,
 } from "./opencode-api";
-import { OpencodeChatSwitcher } from "./opencode-chat-switcher";
 import {
   OpencodePermissionPrompt,
   OpencodeQuestionPrompt,
 } from "./opencode-question-prompt";
+import { OpencodeSessionSwitcher } from "./opencode-session-switcher";
 import { ProjectDomainsButton } from "./project-domains-sheet";
 import { PromptSelectors } from "./prompt-selectors";
 import { OpencodeToolCard } from "./opencode-tool-card";
@@ -98,10 +97,7 @@ export function OpencodeScreen() {
   const isChatTransitioningRef = useRef(false);
   const [instance, setInstance] = useState<RuntimeInstance | null>(null);
   const [sessionId, setSessionId] = useState(params.opencodeSessionId ?? "");
-  const [messages, setMessages] = useState<OpencodeMessage[]>([]);
-  const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
-  const [questions, setQuestions] = useState<OpencodeQuestion[]>([]);
-  const [permissions, setPermissions] = useState<OpencodePermission[]>([]);
+  const [isSessionSwitcherOpen, setIsSessionSwitcherOpen] = useState(false);
   const [inventory, setInventory] = useState<OpencodeInventory | null>(null);
   const [inventoryError, setInventoryError] = useState<string | null>(null);
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
@@ -123,6 +119,14 @@ export function OpencodeScreen() {
       state.statusByProjectSessionId[projectSessionId] ??
       EMPTY_PROJECT_CHAT_STATUSES,
   );
+  const cachedChatState = useProjectChatsStore((state) =>
+    sessionId
+      ? state.chatStateByProjectSessionId[projectSessionId]?.[sessionId]
+      : undefined,
+  );
+  const messages = cachedChatState?.messages ?? [];
+  const questions = cachedChatState?.questions ?? [];
+  const permissions = cachedChatState?.permissions ?? [];
   const setProjectChats = useProjectChatsStore((state) => state.setChats);
   const upsertProjectChat = useProjectChatsStore((state) => state.upsertChat);
   const setActiveProjectChat = useProjectChatsStore(
@@ -130,6 +134,15 @@ export function OpencodeScreen() {
   );
   const setProjectChatStatus = useProjectChatsStore(
     (state) => state.setChatStatus,
+  );
+  const setProjectChatState = useProjectChatsStore(
+    (state) => state.setChatState,
+  );
+  const patchProjectChatState = useProjectChatsStore(
+    (state) => state.patchChatState,
+  );
+  const setProjectChatSyncState = useProjectChatsStore(
+    (state) => state.setChatSyncState,
   );
   const setProjectChatsLoadState = useProjectChatsStore(
     (state) => state.setLoadState,
@@ -205,24 +218,46 @@ export function OpencodeScreen() {
 
   const refresh = useCallback(async () => {
     if (!instance || !sessionId || !directory) return;
-    const next = await getOpencodeChatState(instance, sessionId, directory);
-    setMessages(next.messages);
-    setQuestions(next.questions);
-    setPermissions(next.permissions);
-    setProjectChatStatus(projectSessionId, sessionId, next.status);
-    requestAnimationFrame(() =>
-      scrollRef.current?.scrollToEnd({ animated: false }),
-    );
-  }, [directory, instance, projectSessionId, sessionId, setProjectChatStatus]);
+    setProjectChatSyncState(projectSessionId, sessionId, "syncing");
+    try {
+      const next = await getOpencodeChatState(instance, sessionId, directory);
+      setProjectChatState(projectSessionId, sessionId, next);
+      requestAnimationFrame(() =>
+        scrollRef.current?.scrollToEnd({ animated: false }),
+      );
+    } catch (refreshError) {
+      setProjectChatSyncState(
+        projectSessionId,
+        sessionId,
+        "error",
+        refreshError instanceof Error
+          ? refreshError.message
+          : "Could not refresh this chat.",
+      );
+      throw refreshError;
+    }
+  }, [
+    directory,
+    instance,
+    projectSessionId,
+    sessionId,
+    setProjectChatState,
+    setProjectChatSyncState,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
-    setIsLoading(true);
-    setSessionId(params.opencodeSessionId ?? "");
-    setActiveProjectChat(projectSessionId, params.opencodeSessionId);
-    setMessages([]);
-    setQuestions([]);
-    setPermissions([]);
+    const nextSessionId = params.opencodeSessionId ?? "";
+    const hasCachedChat = Boolean(
+      nextSessionId &&
+      useProjectChatsStore.getState().chatStateByProjectSessionId[
+        projectSessionId
+      ]?.[nextSessionId],
+    );
+    setIsLoading(!hasCachedChat);
+    setError(null);
+    setSessionId(nextSessionId);
+    setActiveProjectChat(projectSessionId, nextSessionId || undefined);
     setAttachments([]);
     getRunningSessionInstance(params.projectSessionId)
       .then(async (nextInstance) => {
@@ -244,13 +279,10 @@ export function OpencodeScreen() {
             ),
           ]);
           if (!cancelled) {
-            setMessages(nextChatState.messages);
-            setQuestions(nextChatState.questions);
-            setPermissions(nextChatState.permissions);
-            setProjectChatStatus(
+            setProjectChatState(
               projectSessionId,
               params.opencodeSessionId,
-              nextChatState.status,
+              nextChatState,
             );
             setSelection((current) => ({
               model: activeSession.model
@@ -263,12 +295,23 @@ export function OpencodeScreen() {
         }
       })
       .catch((loadError) => {
-        if (!cancelled)
-          setError(
+        if (cancelled) return;
+        if (hasCachedChat && nextSessionId) {
+          setProjectChatSyncState(
+            projectSessionId,
+            nextSessionId,
+            "error",
             loadError instanceof Error
               ? loadError.message
               : "Could not connect to OpenCode.",
           );
+          return;
+        }
+        setError(
+          loadError instanceof Error
+            ? loadError.message
+            : "Could not connect to OpenCode.",
+        );
       })
       .finally(() => {
         if (!cancelled) setIsLoading(false);
@@ -284,7 +327,8 @@ export function OpencodeScreen() {
     params.projectSessionId,
     projectSessionId,
     setActiveProjectChat,
-    setProjectChatStatus,
+    setProjectChatState,
+    setProjectChatSyncState,
   ]);
 
   useEffect(() => {
@@ -313,6 +357,7 @@ export function OpencodeScreen() {
     const submittedAttachments = attachments;
     setAttachments([]);
     let activeSessionId = sessionId;
+    let optimisticMessageId = "";
     try {
       if (!activeSessionId) {
         const created = await createOpencodeChat(instance, directory);
@@ -325,12 +370,43 @@ export function OpencodeScreen() {
           directory,
           time: { updated: Date.now() },
         });
-        setProjectChatStatus(projectSessionId, created.id, { type: "busy" });
+        setProjectChatState(projectSessionId, created.id, {
+          messages: [],
+          questions: [],
+          permissions: [],
+          status: { type: "busy" },
+        });
         router.setParams({
           opencodeSessionId: created.id,
           opencodeSessionTitle: created.title ?? "New chat",
         });
       }
+      optimisticMessageId = `local-${Date.now()}`;
+      const cachedBeforeSend =
+        useProjectChatsStore.getState().chatStateByProjectSessionId[
+          projectSessionId
+        ]?.[activeSessionId];
+      patchProjectChatState(projectSessionId, activeSessionId, {
+        messages: [
+          ...(cachedBeforeSend?.messages ?? []),
+          {
+            info: { id: optimisticMessageId, role: "user" },
+            parts: [
+              ...(text
+                ? [{ id: `${optimisticMessageId}-text`, type: "text", text }]
+                : []),
+              ...submittedAttachments.map((attachment) => ({
+                id: `${optimisticMessageId}-${attachment.id}`,
+                type: "file",
+                mime: attachment.mimeType,
+                filename: attachment.name,
+                url: attachment.dataUrl,
+              })),
+            ],
+          },
+        ],
+        status: { type: "busy" },
+      });
       await sendOpencodeMessage(
         instance,
         activeSessionId,
@@ -342,14 +418,7 @@ export function OpencodeScreen() {
       setTimeout(() => {
         void getOpencodeChatState(instance, activeSessionId, directory).then(
           (next) => {
-            setMessages(next.messages);
-            setQuestions(next.questions);
-            setPermissions(next.permissions);
-            setProjectChatStatus(
-              projectSessionId,
-              activeSessionId,
-              next.status,
-            );
+            setProjectChatState(projectSessionId, activeSessionId, next);
           },
         );
       }, 600);
@@ -357,8 +426,15 @@ export function OpencodeScreen() {
       setDraft(text);
       setAttachments(submittedAttachments);
       if (activeSessionId) {
-        setProjectChatStatus(projectSessionId, activeSessionId, {
-          type: "idle",
+        const cachedAfterFailure =
+          useProjectChatsStore.getState().chatStateByProjectSessionId[
+            projectSessionId
+          ]?.[activeSessionId];
+        patchProjectChatState(projectSessionId, activeSessionId, {
+          messages: (cachedAfterFailure?.messages ?? []).filter(
+            (message) => message.info.id !== optimisticMessageId,
+          ),
+          status: { type: "idle" },
         });
       }
       Alert.alert(
@@ -430,11 +506,9 @@ export function OpencodeScreen() {
     setIsResponding(true);
     try {
       await answerOpencodeQuestion(instance, question.id, directory, answers);
-      setQuestions((current) =>
-        current.filter((item) => item.id !== question.id),
-      );
-      setProjectChatStatus(projectSessionId, question.sessionID, {
-        type: "busy",
+      patchProjectChatState(projectSessionId, question.sessionID, {
+        questions: questions.filter((item) => item.id !== question.id),
+        status: { type: "busy" },
       });
       setTimeout(() => void refresh(), 400);
     } catch (questionError) {
@@ -455,11 +529,9 @@ export function OpencodeScreen() {
     setIsResponding(true);
     try {
       await rejectOpencodeQuestion(instance, question.id, directory);
-      setQuestions((current) =>
-        current.filter((item) => item.id !== question.id),
-      );
-      setProjectChatStatus(projectSessionId, question.sessionID, {
-        type: "idle",
+      patchProjectChatState(projectSessionId, question.sessionID, {
+        questions: questions.filter((item) => item.id !== question.id),
+        status: { type: "idle" },
       });
       setTimeout(() => void refresh(), 400);
     } catch (questionError) {
@@ -480,11 +552,9 @@ export function OpencodeScreen() {
     setIsResponding(true);
     try {
       await replyOpencodePermission(instance, permission.id, directory, reply);
-      setPermissions((current) =>
-        current.filter((item) => item.id !== permission.id),
-      );
-      setProjectChatStatus(projectSessionId, permission.sessionID, {
-        type: reply === "reject" ? "idle" : "busy",
+      patchProjectChatState(projectSessionId, permission.sessionID, {
+        permissions: permissions.filter((item) => item.id !== permission.id),
+        status: { type: reply === "reject" ? "idle" : "busy" },
       });
       setTimeout(() => void refresh(), 400);
     } catch (permissionError) {
@@ -501,20 +571,43 @@ export function OpencodeScreen() {
 
   const switchChat = (chat: OpencodeChatOption) => {
     if (chat.id === sessionId) {
-      setIsChatSwitcherOpen(false);
       return;
     }
-    setIsChatSwitcherOpen(false);
     setSessionId(chat.id);
     setActiveProjectChat(projectSessionId, chat.id);
-    setMessages([]);
-    setQuestions([]);
-    setPermissions([]);
     setAttachments([]);
     router.setParams({
       directory: chat.directory ?? directory,
       opencodeSessionId: chat.id,
       opencodeSessionTitle: chat.title?.trim() || "Untitled chat",
+    });
+  };
+
+  const switchProjectSession = (next: OpencodeProjectSessionOption) => {
+    setIsSessionSwitcherOpen(false);
+    if (next.id === projectSessionId) return;
+
+    const store = useProjectChatsStore.getState();
+    const rememberedChatId = store.activeChatIdByProjectSessionId[next.id];
+    const rememberedChat = store.chatsByProjectSessionId[next.id]?.find(
+      (chat) => chat.id === rememberedChatId,
+    );
+    router.replace({
+      pathname: "/opencode/[projectSessionId]" as never,
+      params: {
+        projectId: params.projectId,
+        projectName: params.projectName,
+        projectSessionId: next.id,
+        sessionName: next.name,
+        directory: rememberedChat?.directory ?? directory,
+        ...(rememberedChat
+          ? {
+              opencodeSessionId: rememberedChat.id,
+              opencodeSessionTitle:
+                rememberedChat.title?.trim() || "Untitled chat",
+            }
+          : {}),
+      },
     });
   };
 
@@ -991,21 +1084,22 @@ export function OpencodeScreen() {
               chats.length > 1 ? () => switchRelativeChat(-1) : undefined
             }
             onTitlePress={
-              chats.length ? () => setIsChatSwitcherOpen(true) : undefined
+              params.projectId
+                ? () => setIsSessionSwitcherOpen(true)
+                : undefined
             }
             title={currentChatTitle}
             wideTitle
           />
         </KeyboardAvoidingView>
       </SafeAreaView>
-      <OpencodeChatSwitcher
-        chats={chats}
-        chatStatuses={chatStatuses}
+      <OpencodeSessionSwitcher
         colors={colors}
-        currentId={sessionId}
-        onClose={() => setIsChatSwitcherOpen(false)}
-        onSelect={switchChat}
-        visible={isChatSwitcherOpen}
+        currentId={projectSessionId}
+        onClose={() => setIsSessionSwitcherOpen(false)}
+        onSelect={switchProjectSession}
+        projectId={params.projectId}
+        visible={isSessionSwitcherOpen}
       />
     </View>
   );

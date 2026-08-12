@@ -20,6 +20,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { AppIcon } from "@/components/app-icon";
+import { ConfirmationDialog } from "@/components/confirmation-dialog";
 import { Radius, Spacing, TouchTarget } from "@/constants/theme";
 import { useWebSocket } from "@/contexts/websocket-context";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -80,6 +81,8 @@ export function HomeScreen() {
   const [runtimeSession, setRuntimeSession] = useState<ProjectSession | null>(
     null,
   );
+  const [terminationSession, setTerminationSession] =
+    useState<ProjectSession | null>(null);
   const [repositorySession, setRepositorySession] =
     useState<ProjectSession | null>(null);
   const [repositoryProject, setRepositoryProject] = useState<Project | null>(
@@ -414,25 +417,19 @@ export function HomeScreen() {
   };
 
   const confirmTerminate = (session: ProjectSession) => {
-    const instance = session.runtime?.instance;
-    if (!instance) return;
-    Alert.alert(
-      "Terminate this instance?",
-      "The running session will stop immediately. Any unsaved work may be lost.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Terminate now",
-          style: "destructive",
-          onPress: () =>
-            void runSessionAction(
-              session.id,
-              () => terminateInstance(instance.id),
-              "Could not terminate instance",
-            ),
-        },
-      ],
+    if (session.runtime?.instance) setTerminationSession(session);
+  };
+
+  const terminateSelectedSession = async () => {
+    const session = terminationSession;
+    const instance = session?.runtime?.instance;
+    if (!session || !instance) return;
+    await runSessionAction(
+      session.id,
+      () => terminateInstance(instance.id),
+      "Could not terminate instance",
     );
+    setTerminationSession(null);
   };
 
   const openOpencode = (
@@ -719,6 +716,22 @@ export function HomeScreen() {
         onClose={() => setIsSidebarOpen(false)}
         onSelectWorkspace={selectWorkspaceTab}
         visible={isSidebarOpen}
+      />
+      <ConfirmationDialog
+        colors={colors}
+        confirmLabel="Terminate"
+        description={
+          terminationSession
+            ? `“${terminationSession.name}” will stop immediately. Unsaved work inside the instance may be lost.`
+            : "The running session will stop immediately."
+        }
+        isPending={Boolean(
+          terminationSession && actionPendingId === terminationSession.id,
+        )}
+        onCancel={() => setTerminationSession(null)}
+        onConfirm={() => void terminateSelectedSession()}
+        title="Terminate session?"
+        visible={Boolean(terminationSession)}
       />
       <NewSessionSheet
         colors={colors}

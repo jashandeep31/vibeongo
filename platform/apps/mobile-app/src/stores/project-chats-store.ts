@@ -1,15 +1,26 @@
 import { create } from "zustand";
 
 import type {
+  OpencodeChatState,
   OpencodeChatOption,
   OpencodeSessionStatus,
 } from "@/features/opencode/opencode-api";
 
 export type ProjectChatsLoadState = "idle" | "loading" | "ready" | "error";
 
+export type CachedOpencodeChatState = OpencodeChatState & {
+  error?: string;
+  syncedAt: number;
+  syncState: "idle" | "syncing" | "error";
+};
+
 type ProjectChatsStore = {
   activeChatIdByProjectSessionId: Record<string, string | undefined>;
   chatsByProjectSessionId: Record<string, OpencodeChatOption[]>;
+  chatStateByProjectSessionId: Record<
+    string,
+    Record<string, CachedOpencodeChatState>
+  >;
   errorByProjectSessionId: Record<string, string | undefined>;
   loadStateByProjectSessionId: Record<string, ProjectChatsLoadState>;
   statusByProjectSessionId: Record<
@@ -21,6 +32,22 @@ type ProjectChatsStore = {
     projectSessionId: string,
     chatId: string,
     status: OpencodeSessionStatus,
+  ) => void;
+  setChatState: (
+    projectSessionId: string,
+    chatId: string,
+    chatState: OpencodeChatState,
+  ) => void;
+  patchChatState: (
+    projectSessionId: string,
+    chatId: string,
+    patch: Partial<OpencodeChatState>,
+  ) => void;
+  setChatSyncState: (
+    projectSessionId: string,
+    chatId: string,
+    syncState: CachedOpencodeChatState["syncState"],
+    error?: string,
   ) => void;
   setChats: (projectSessionId: string, chats: OpencodeChatOption[]) => void;
   setLoadState: (
@@ -42,6 +69,7 @@ export const EMPTY_PROJECT_CHAT_STATUSES: Record<
 export const useProjectChatsStore = create<ProjectChatsStore>((set) => ({
   activeChatIdByProjectSessionId: {},
   chatsByProjectSessionId: {},
+  chatStateByProjectSessionId: {},
   errorByProjectSessionId: {},
   loadStateByProjectSessionId: {},
   statusByProjectSessionId: {},
@@ -53,15 +81,90 @@ export const useProjectChatsStore = create<ProjectChatsStore>((set) => ({
       },
     })),
   setChatStatus: (projectSessionId, chatId, status) =>
+    set((state) => {
+      const cached =
+        state.chatStateByProjectSessionId[projectSessionId]?.[chatId];
+      return {
+        chatStateByProjectSessionId: cached
+          ? {
+              ...state.chatStateByProjectSessionId,
+              [projectSessionId]: {
+                ...state.chatStateByProjectSessionId[projectSessionId],
+                [chatId]: { ...cached, status },
+              },
+            }
+          : state.chatStateByProjectSessionId,
+        statusByProjectSessionId: {
+          ...state.statusByProjectSessionId,
+          [projectSessionId]: {
+            ...state.statusByProjectSessionId[projectSessionId],
+            [chatId]: status,
+          },
+        },
+      };
+    }),
+  setChatState: (projectSessionId, chatId, chatState) =>
     set((state) => ({
+      chatStateByProjectSessionId: {
+        ...state.chatStateByProjectSessionId,
+        [projectSessionId]: {
+          ...state.chatStateByProjectSessionId[projectSessionId],
+          [chatId]: {
+            ...chatState,
+            error: undefined,
+            syncedAt: Date.now(),
+            syncState: "idle",
+          },
+        },
+      },
       statusByProjectSessionId: {
         ...state.statusByProjectSessionId,
         [projectSessionId]: {
           ...state.statusByProjectSessionId[projectSessionId],
-          [chatId]: status,
+          [chatId]: chatState.status,
         },
       },
     })),
+  patchChatState: (projectSessionId, chatId, patch) =>
+    set((state) => {
+      const cached =
+        state.chatStateByProjectSessionId[projectSessionId]?.[chatId];
+      if (!cached) return state;
+      const next = { ...cached, ...patch };
+      return {
+        chatStateByProjectSessionId: {
+          ...state.chatStateByProjectSessionId,
+          [projectSessionId]: {
+            ...state.chatStateByProjectSessionId[projectSessionId],
+            [chatId]: next,
+          },
+        },
+        statusByProjectSessionId: patch.status
+          ? {
+              ...state.statusByProjectSessionId,
+              [projectSessionId]: {
+                ...state.statusByProjectSessionId[projectSessionId],
+                [chatId]: patch.status,
+              },
+            }
+          : state.statusByProjectSessionId,
+      };
+    }),
+  setChatSyncState: (projectSessionId, chatId, syncState, error) =>
+    set((state) => {
+      const cached =
+        state.chatStateByProjectSessionId[projectSessionId]?.[chatId];
+      if (!cached) return state;
+      return {
+        chatStateByProjectSessionId: {
+          ...state.chatStateByProjectSessionId,
+          [projectSessionId]: {
+            ...state.chatStateByProjectSessionId[projectSessionId],
+            [chatId]: { ...cached, error, syncState },
+          },
+        },
+      };
+    }),
   setChats: (projectSessionId, chats) =>
     set((state) => ({
       chatsByProjectSessionId: {
@@ -114,17 +217,20 @@ export const useProjectChatsStore = create<ProjectChatsStore>((set) => ({
     set((state) => {
       const active = { ...state.activeChatIdByProjectSessionId };
       const chats = { ...state.chatsByProjectSessionId };
+      const chatStates = { ...state.chatStateByProjectSessionId };
       const errors = { ...state.errorByProjectSessionId };
       const loadStates = { ...state.loadStateByProjectSessionId };
       const statuses = { ...state.statusByProjectSessionId };
       Reflect.deleteProperty(active, projectSessionId);
       Reflect.deleteProperty(chats, projectSessionId);
+      Reflect.deleteProperty(chatStates, projectSessionId);
       Reflect.deleteProperty(errors, projectSessionId);
       Reflect.deleteProperty(loadStates, projectSessionId);
       Reflect.deleteProperty(statuses, projectSessionId);
       return {
         activeChatIdByProjectSessionId: active,
         chatsByProjectSessionId: chats,
+        chatStateByProjectSessionId: chatStates,
         errorByProjectSessionId: errors,
         loadStateByProjectSessionId: loadStates,
         statusByProjectSessionId: statuses,

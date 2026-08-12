@@ -430,7 +430,7 @@ function ProjectDomainsSheet({
                         <View
                           style={[
                             styles.domainIcon,
-                            { backgroundColor: colors.backgroundElement },
+                            { borderColor: colors.border },
                           ]}
                         >
                           <AppIcon
@@ -440,7 +440,7 @@ function ProjectDomainsSheet({
                               web: "public",
                             }}
                             size={18}
-                            tintColor={colors.text}
+                            tintColor={colors.textSecondary}
                           />
                         </View>
                         <View style={styles.flex}>
@@ -467,7 +467,7 @@ function ProjectDomainsSheet({
                             android: "open_in_new",
                             web: "open_in_new",
                           }}
-                          size={17}
+                          size={16}
                           tintColor={colors.textSecondary}
                         />
                       </Pressable>
@@ -568,28 +568,37 @@ function ProjectDomainsSheet({
                             All IPs
                           </Text>
                           {pending ? (
-                            <ActivityIndicator
-                              color={colors.brand}
-                              size="small"
-                            />
+                            <View style={styles.switchWrap}>
+                              <ActivityIndicator
+                                color={colors.brand}
+                                size="small"
+                              />
+                            </View>
                           ) : (
-                            <Switch
-                              value={domain.allow_all_ips}
-                              onValueChange={(value) =>
-                                void mutate(
-                                  `domain:${domain.id}`,
-                                  () =>
-                                    updateProjectDomain(projectId, domain.id, {
-                                      allow_all_ips: value,
-                                    }),
-                                  "Could not update access",
-                                )
-                              }
-                              trackColor={{
-                                false: colors.border,
-                                true: colors.success,
-                              }}
-                            />
+                            <View style={styles.switchWrap}>
+                              <Switch
+                                style={styles.accessSwitch}
+                                value={domain.allow_all_ips}
+                                onValueChange={(value) =>
+                                  void mutate(
+                                    `domain:${domain.id}`,
+                                    () =>
+                                      updateProjectDomain(
+                                        projectId,
+                                        domain.id,
+                                        {
+                                          allow_all_ips: value,
+                                        },
+                                      ),
+                                    "Could not update access",
+                                  )
+                                }
+                                trackColor={{
+                                  false: colors.border,
+                                  true: colors.success,
+                                }}
+                              />
+                            </View>
                           )}
                         </View>
                       </View>
@@ -826,40 +835,43 @@ const styles = StyleSheet.create({
   },
   countText: { fontSize: 11, fontWeight: "700", textAlign: "center" },
   domainCard: {
-    borderRadius: Radius.medium,
+    borderRadius: Radius.small,
     borderWidth: StyleSheet.hairlineWidth,
-    padding: Spacing.three,
+    paddingHorizontal: Spacing.three,
+    paddingVertical: 9,
   },
   domainLink: {
     alignItems: "center",
     flexDirection: "row",
-    gap: Spacing.three,
+    gap: Spacing.two,
   },
   domainIcon: {
     alignItems: "center",
-    borderRadius: Radius.small,
-    height: 38,
+    borderRadius: Radius.pill,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 28,
     justifyContent: "center",
-    width: 38,
+    width: 28,
   },
-  domainName: { fontSize: 13, fontWeight: "700" },
-  domainKind: { fontSize: 11, marginTop: 3 },
+  domainName: { fontSize: 12, fontWeight: "700" },
+  domainKind: { fontSize: 10, marginTop: 1 },
   domainControls: {
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: Spacing.three,
+    marginLeft: 28 + Spacing.two,
+    marginTop: 6,
   },
   portButton: {
     alignItems: "center",
     borderRadius: Radius.pill,
     borderWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: 5,
-    height: 36,
-    paddingHorizontal: Spacing.three,
+    gap: 4,
+    height: 27,
+    paddingHorizontal: Spacing.two,
   },
-  portText: { fontFamily: "monospace", fontSize: 12, fontWeight: "600" },
+  portText: { fontFamily: "monospace", fontSize: 10, fontWeight: "600" },
   portEditor: {
     alignItems: "center",
     flex: 1,
@@ -870,26 +882,34 @@ const styles = StyleSheet.create({
     borderRadius: Radius.small,
     borderWidth: StyleSheet.hairlineWidth,
     fontFamily: "monospace",
-    height: 38,
-    paddingHorizontal: Spacing.three,
-    width: 82,
+    fontSize: 11,
+    height: 30,
+    paddingHorizontal: Spacing.two,
+    width: 72,
   },
   saveButton: {
     alignItems: "center",
     borderRadius: Radius.small,
-    height: 38,
+    height: 30,
     justifyContent: "center",
-    paddingHorizontal: Spacing.three,
+    paddingHorizontal: Spacing.two,
   },
   saveText: { fontSize: 12, fontWeight: "700" },
   compactIcon: {
     alignItems: "center",
-    height: 38,
+    height: 30,
     justifyContent: "center",
-    width: 34,
+    width: 30,
   },
-  switchRow: { alignItems: "center", flexDirection: "row", gap: Spacing.two },
-  switchLabel: { fontSize: 12, fontWeight: "600" },
+  switchRow: { alignItems: "center", flexDirection: "row", gap: 4 },
+  switchLabel: { fontSize: 10, fontWeight: "600" },
+  switchWrap: {
+    alignItems: "center",
+    height: 27,
+    justifyContent: "center",
+    width: 38,
+  },
+  accessSwitch: { transform: [{ scale: 0.72 }] },
   currentIp: { fontFamily: "monospace", fontSize: 12 },
   addIpRow: { flexDirection: "row", gap: Spacing.two },
   ipInput: {
