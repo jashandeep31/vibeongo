@@ -347,8 +347,9 @@ export function OpencodeSessionChat({
     useState<OpencodePromptSelection>(sessionSelection);
   const [showScrollButton, setShowScrollButton] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
+  const [composerHeight, setComposerHeight] = useState(200);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const bottomRef = useRef<HTMLDivElement>(null);
+  const composerRef = useRef<HTMLDivElement>(null);
   const effectiveSelection: OpencodePromptSelection = {
     model:
       selection.model ?? sessionSelection.model ?? inventory?.models[0]?.id,
@@ -364,6 +365,18 @@ export function OpencodeSessionChat({
     setSelection(sessionSelection);
   }, [sessionId, sessionSelection]);
 
+  useEffect(() => {
+    const composer = composerRef.current;
+    if (!composer) return;
+
+    const updateComposerHeight = () => setComposerHeight(composer.offsetHeight);
+    updateComposerHeight();
+
+    const observer = new ResizeObserver(updateComposerHeight);
+    observer.observe(composer);
+    return () => observer.disconnect();
+  }, []);
+
   const updateSelection = (nextSelection: OpencodePromptSelection) =>
     setSelection(nextSelection);
 
@@ -378,7 +391,8 @@ export function OpencodeSessionChat({
 
   const scrollToBottom = useCallback((behavior: ScrollBehavior = "auto") => {
     requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior, block: "end" });
+      const scrollArea = scrollAreaRef.current;
+      scrollArea?.scrollTo({ top: scrollArea.scrollHeight, behavior });
       setShowScrollButton(false);
     });
   }, []);
@@ -408,6 +422,23 @@ export function OpencodeSessionChat({
     });
   };
 
+  const rawResponseControl = (
+    <Button
+      type="button"
+      variant="secondary"
+      size="sm"
+      onClick={() => setShowRawResponse((visible) => !visible)}
+      className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
+    >
+      {showRawResponse ? (
+        <MessagesSquare className="size-3.5" />
+      ) : (
+        <Braces className="size-3.5" />
+      )}
+      {showRawResponse ? "Rendered chat" : "Raw response"}
+    </Button>
+  );
+
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
       <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
@@ -431,7 +462,10 @@ export function OpencodeSessionChat({
         onScroll={updateScrollButtonVisibility}
         className="grid min-h-0 flex-1 [scrollbar-width:none] overflow-y-auto [&::-webkit-scrollbar]:hidden"
       >
-        <div className="flex-1 px-4 pt-16 pb-8 md:px-8">
+        <div
+          className="flex-1 px-4 pt-16 md:px-8"
+          style={{ paddingBottom: composerHeight + 32 }}
+        >
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
             {showRawResponse ? (
               <pre className="w-full text-xs break-words whitespace-pre-wrap">
@@ -475,13 +509,15 @@ export function OpencodeSessionChat({
                   }
                 />
               ))}
-            <div ref={bottomRef} aria-hidden="true" />
           </div>
         </div>
       </div>
 
       {showScrollButton ? (
-        <div className="pointer-events-none absolute inset-x-0 bottom-55 z-50 flex justify-center">
+        <div
+          className="pointer-events-none absolute inset-x-0 z-50 flex justify-center"
+          style={{ bottom: composerHeight + 16 }}
+        >
           <button
             type="button"
             onClick={() => scrollToBottom("smooth")}
@@ -493,8 +529,15 @@ export function OpencodeSessionChat({
         </div>
       ) : null}
 
-      <div className="shrink-0 px-4 pb-4 md:px-0">
-        <div className="mx-auto w-full max-w-4xl">
+      <div
+        ref={composerRef}
+        className="absolute inset-x-0 bottom-0 z-40 px-4 py-3 md:px-0"
+      >
+        <div
+          aria-hidden="true"
+          className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent backdrop-blur-xl [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)]"
+        />
+        <div className="relative mx-auto w-full max-w-4xl">
           {!showRawResponse && revertedQuestions.length > 0 ? (
             <div className="mb-2">
               <RevertedMessagesPanel
@@ -516,29 +559,20 @@ export function OpencodeSessionChat({
               />
             </div>
           ) : null}
-          <div className="mb-2 flex justify-end">
-            <button
-              type="button"
-              onClick={() => setShowRawResponse((visible) => !visible)}
-              className="text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5 rounded-md px-2 py-1 text-xs"
-            >
-              {showRawResponse ? (
-                <MessagesSquare className="size-3.5" />
-              ) : (
-                <Braces className="size-3.5" />
-              )}
-              {showRawResponse ? "Rendered chat" : "Raw response"}
-            </button>
-          </div>
           {activeQuestion ? (
-            <OpencodeQuestionPrompt
-              key={activeQuestion.id}
-              request={activeQuestion}
-              isSubmitting={answerQuestion.isPending}
-              isDismissing={rejectQuestion.isPending}
-              onSubmit={submitQuestionAnswer}
-              onDismiss={dismissQuestion}
-            />
+            <>
+              <div className="mb-3 flex justify-end">
+                {rawResponseControl}
+              </div>
+              <OpencodeQuestionPrompt
+                key={activeQuestion.id}
+                request={activeQuestion}
+                isSubmitting={answerQuestion.isPending}
+                isDismissing={rejectQuestion.isPending}
+                onSubmit={submitQuestionAnswer}
+                onDismiss={dismissQuestion}
+              />
+            </>
           ) : (
             <PromptInput
               submitDisabled={sendPrompt.isPending || isStreaming}
@@ -563,6 +597,7 @@ export function OpencodeSessionChat({
               onSubmitSuccess={() => scrollToBottom("smooth")}
               autoFocus
               focusOnTyping
+              trailingControl={rawResponseControl}
             />
           )}
         </div>

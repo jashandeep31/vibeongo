@@ -65,7 +65,7 @@ export function NewOpencodeChat({
   };
 
   return (
-    <div className="flex min-w-0 flex-1 items-center justify-center overflow-hidden px-4 py-6 sm:p-6">
+    <div className="flex min-w-0 flex-1 items-end justify-center overflow-hidden px-4 pt-6 pb-4 md:px-0">
       <section
         className="w-full max-w-4xl min-w-0"
         aria-labelledby="new-chat-heading"
