@@ -1,4 +1,5 @@
 import type { ApiClient } from "@repo/api-client";
+import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type GetInstancesFilters = NonNullable<
@@ -26,6 +27,12 @@ export const useTerminateInstance = (
   return useMutation({
     mutationFn: client.instances.terminateInstance,
     onSuccess: (_, instanceId) => {
+      useSessionChatsStore.getState().clearSessionChats(sessionId);
+      useSessionsStore.getState().updateSession(sessionId, {
+        instance: null,
+        state: "stopped",
+        instanceSyncState: "success",
+      });
       queryClient.removeQueries({
         predicate: (query) =>
           query.queryKey[0] === "opencode" &&
@@ -44,12 +51,13 @@ export const useTerminateInstance = (
   });
 };
 
-export const useUpdateInstanceTime = (client: ApiClient) => {
+export const useUpdateInstanceTime = (client: ApiClient, sessionId: string) => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: client.instances.updateInstanceTime,
     onSuccess: (instance) => {
+      useSessionsStore.getState().updateSession(sessionId, { instance });
       queryClient.setQueryData(["instance", instance.id], instance);
       return queryClient.invalidateQueries({ queryKey: ["instances"] });
     },

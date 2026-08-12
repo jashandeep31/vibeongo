@@ -1,4 +1,5 @@
 import type { ApiClient } from "@repo/api-client";
+import { useSessionsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 type GetProjectSessionsParams = NonNullable<
@@ -24,10 +25,17 @@ export const useCreateProjectSession = (client: ApiClient) => {
 
   return useMutation({
     mutationFn: client.projectSessions.createProjectSession,
-    onSuccess: () =>
-      queryClient.invalidateQueries({
+    onSuccess: ({ data: session }) => {
+      useSessionsStore.getState().addSession({
+        session,
+        instance: null,
+        state: "stopped",
+        instanceSyncState: "pending",
+      });
+      return queryClient.invalidateQueries({
         queryKey: ["projects", "with-sessions"],
-      }),
+      });
+    },
   });
 };
 
@@ -36,6 +44,20 @@ export const useResumeProjectSession = (client: ApiClient) => {
 
   return useMutation({
     mutationFn: client.projectSessions.resumeProjectSession,
+    onMutate: ({ id }) => {
+      const previousState = useSessionsStore
+        .getState()
+        .sessions.find((entry) => entry.session.id === id)?.state;
+      useSessionsStore.getState().updateSessionState(id, "processing");
+      return { id, previousState };
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previousState) {
+        useSessionsStore
+          .getState()
+          .updateSessionState(context.id, context.previousState);
+      }
+    },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       void queryClient.invalidateQueries({ queryKey: ["instances"] });
@@ -48,7 +70,8 @@ export const useArchiveProjectSession = (client: ApiClient) => {
 
   return useMutation({
     mutationFn: client.projectSessions.archiveProjectSession,
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
+      useSessionsStore.getState().deleteSession(variables.id);
       void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       void queryClient.invalidateQueries({
         queryKey: ["projects", "with-sessions"],

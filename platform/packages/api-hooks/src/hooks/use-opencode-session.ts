@@ -14,6 +14,7 @@ import {
   type QuestionAnswer,
   type UploadAttachment,
 } from "@repo/api-client";
+import { useSessionChatsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useMemo } from "react";
 
@@ -79,6 +80,11 @@ export const useSendOpencodePrompt = ({
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
 
   return useMutation({
+    onMutate: () => {
+      const chatsStore = useSessionChatsStore.getState();
+      chatsStore.setChatStatus(chatId, sessionId, { type: "busy" });
+      chatsStore.setChatUnread(chatId, sessionId, false);
+    },
     mutationFn: async ({
       text,
       files,
@@ -111,6 +117,11 @@ export const useSendOpencodePrompt = ({
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey });
+    },
+    onError: () => {
+      useSessionChatsStore
+        .getState()
+        .setChatStatus(chatId, sessionId, { type: "idle" });
     },
   });
 };

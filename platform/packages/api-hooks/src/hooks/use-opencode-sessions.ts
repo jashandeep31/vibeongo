@@ -9,7 +9,9 @@ import {
   type OpencodePromptSelection,
   type UploadAttachment,
 } from "@repo/api-client";
+import { useSessionChatsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
 
 export const useOpencodeSessions = (
   chatId: string,
@@ -17,13 +19,24 @@ export const useOpencodeSessions = (
   accessToken: string,
   password?: string,
   enabled = true,
-) =>
-  useQuery({
+) => {
+  const setSessionChats = useSessionChatsStore(
+    (store) => store.setSessionChats,
+  );
+  const query = useQuery({
     queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
     queryFn: () =>
       getOpencodeSessions(chatId, serverUrl, accessToken, password),
     enabled: enabled && !!chatId && !!serverUrl && !!accessToken,
   });
+
+  useEffect(() => {
+    if (!query.data) return;
+    setSessionChats(chatId, query.data);
+  }, [chatId, query.data, setSessionChats]);
+
+  return query;
+};
 
 export const useOpencodeProjectDirectories = (
   chatId: string,
@@ -41,6 +54,9 @@ export const useOpencodeProjectDirectories = (
 
 export const useStartOpencodeSession = () => {
   const queryClient = useQueryClient();
+  const upsertSessionChat = useSessionChatsStore(
+    (store) => store.upsertSessionChat,
+  );
 
   return useMutation({
     mutationFn: async ({
@@ -71,6 +87,11 @@ export const useStartOpencodeSession = () => {
         directory,
         password,
       );
+      upsertSessionChat(chatId, session);
+      useSessionChatsStore
+        .getState()
+        .setChatStatus(chatId, session.id, { type: "busy" });
+      useSessionChatsStore.getState().setChatUnread(chatId, session.id, false);
 
       const [providerID = session.model?.providerID ?? "", ...modelParts] =
         selection.model?.split("/") ?? [];

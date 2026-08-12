@@ -1,4 +1,5 @@
 import type { ApiClient } from "@repo/api-client";
+import { useProjectsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 export const useCreateGithubRepo = (client: ApiClient) => {
@@ -14,10 +15,12 @@ export const useCreateProject = (client: ApiClient) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.createProject,
-    onSuccess: () =>
-      queryClient.invalidateQueries({
+    onSuccess: ({ data: project }) => {
+      useProjectsStore.getState().addProject(project);
+      return queryClient.invalidateQueries({
         queryKey: ["projects", "with-sessions"],
-      }),
+      });
+    },
   });
 };
 
@@ -25,7 +28,8 @@ export const useUpdateProject = (client: ApiClient) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: client.projects.updateProject,
-    onSuccess: (_, variables) => {
+    onSuccess: ({ data: project }, variables) => {
+      useProjectsStore.getState().updateProject(variables.id, project);
       void queryClient.invalidateQueries({
         queryKey: ["project", variables.id, "edit-config"],
       });
@@ -41,6 +45,7 @@ export const useDeleteProject = (client: ApiClient) => {
   return useMutation({
     mutationFn: client.projects.deleteProject,
     onSuccess: (_, projectId) => {
+      useProjectsStore.getState().deleteProject(projectId);
       queryClient.removeQueries({ queryKey: ["project", projectId] });
       return queryClient.invalidateQueries({
         queryKey: ["projects", "with-sessions"],
