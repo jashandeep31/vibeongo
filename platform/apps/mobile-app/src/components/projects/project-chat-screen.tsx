@@ -22,6 +22,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { OpencodeComposer } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
+import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -53,6 +54,7 @@ export function ProjectChatScreen() {
     projectSessionId?: string | string[];
   }>();
   const projectSessionId = firstParam(params.projectSessionId);
+  const projectId = firstParam(params.projectId);
   const opencodeSessionId = firstParam(params.opencodeSessionId);
   const runtime = useProjectRuntime(projectSessionId);
   const sessionQuery = useOpencodeSession({
@@ -213,9 +215,7 @@ export function ProjectChatScreen() {
         enabled
         style={styles.screen}
       >
-        <View
-          style={[styles.header, { borderColor: theme.backgroundSelected }]}
-        >
+        <View style={styles.header}>
           <Pressable
             accessibilityLabel="Go back"
             accessibilityRole="button"
@@ -232,20 +232,47 @@ export function ProjectChatScreen() {
               tintColor={theme.text}
             />
           </Pressable>
-          <View style={styles.headerCopy}>
+          <View
+            style={[
+              styles.headerTitlePill,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
             <ThemedText numberOfLines={1} style={styles.headerTitle}>
               {data.session.title || "Untitled chat"}
             </ThemedText>
-            <ThemedText
-              style={styles.headerSubtitle}
-              themeColor="textSecondary"
-            >
-              {sessionQuery.isStreaming ? "Vibeongo is working…" : "OpenCode"}
-            </ThemedText>
           </View>
-          {sessionQuery.isFetching && !sessionQuery.isStreaming ? (
-            <ActivityIndicator size="small" />
-          ) : null}
+          <View
+            style={[
+              styles.headerActions,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
+            <ProjectDomainsButton
+              instanceId={runtime.instance.id}
+              projectId={projectId}
+            />
+            <Pressable
+              accessibilityLabel="Reload chat"
+              accessibilityRole="button"
+              disabled={sessionQuery.isFetching}
+              onPress={() => void sessionQuery.resync()}
+              style={({ pressed }) => [
+                styles.headerAction,
+                pressed && styles.pressed,
+              ]}
+            >
+              {sessionQuery.isFetching ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <SymbolView
+                  name={{ ios: "arrow.clockwise", android: "refresh" }}
+                  size={19}
+                  tintColor={theme.textSecondary}
+                />
+              )}
+            </Pressable>
+          </View>
         </View>
 
         <ScrollView
@@ -338,11 +365,23 @@ const styles = StyleSheet.create({
   },
   header: {
     alignItems: "center",
-    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: 12,
+    gap: 8,
     paddingHorizontal: 14,
-    paddingVertical: 10,
+    paddingVertical: 8,
+  },
+  headerAction: {
+    alignItems: "center",
+    height: 42,
+    justifyContent: "center",
+    width: 42,
+  },
+  headerActions: {
+    alignItems: "center",
+    borderRadius: 24,
+    flexDirection: "row",
+    height: 44,
+    overflow: "hidden",
   },
   headerButton: {
     alignItems: "center",
@@ -351,17 +390,20 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 40,
   },
-  headerCopy: {
+  headerTitlePill: {
+    alignItems: "center",
+    borderRadius: 22,
     flex: 1,
-  },
-  headerSubtitle: {
-    fontSize: 12,
-    lineHeight: 16,
+    height: 42,
+    justifyContent: "center",
+    minWidth: 0,
+    paddingHorizontal: 16,
   },
   headerTitle: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "700",
     lineHeight: 20,
+    maxWidth: "100%",
   },
   loading: {
     alignItems: "center",
