@@ -76,13 +76,9 @@ export const useSendOpencodePrompt = ({
   accessToken: string;
   password?: string;
 }) => {
-  const queryClient = useQueryClient();
-  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
-
   return useMutation({
     onMutate: () => {
       const chatsStore = useSessionChatsStore.getState();
-      chatsStore.setChatStatus(chatId, sessionId, { type: "busy" });
       chatsStore.setChatUnread(chatId, sessionId, false);
     },
     mutationFn: async ({
@@ -114,14 +110,6 @@ export const useSendOpencodePrompt = ({
         accessToken,
         password,
       );
-    },
-    onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey });
-    },
-    onError: () => {
-      useSessionChatsStore
-        .getState()
-        .setChatStatus(chatId, sessionId, { type: "idle" });
     },
   });
 };

@@ -3,9 +3,10 @@ import type {
   OpencodePromptSelection,
 } from "@repo/api-client";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -25,6 +26,7 @@ type OpencodeComposerProps = {
   accessibilityLabel: string;
   autoFocus?: boolean;
   disabled?: boolean;
+  submitDisabled?: boolean;
   inventory?: OpencodeInventory;
   isSubmitting?: boolean;
   onChangeSelection: (selection: OpencodePromptSelection) => void;
@@ -46,15 +48,24 @@ export function OpencodeComposer({
   onSubmit,
   placeholder,
   selection,
+  submitDisabled: submitDisabledProp,
   value,
 }: OpencodeComposerProps) {
   const theme = useTheme();
-  const submitDisabled = disabled || isSubmitting || !value.trim();
+  const inputRef = useRef<TextInput>(null);
+  const submitDisabled =
+    disabled || submitDisabledProp || isSubmitting || !value.trim();
+  const submit = () => {
+    if (submitDisabled) return;
+    inputRef.current?.blur();
+    Keyboard.dismiss();
+    onSubmit();
+  };
 
   return (
     <View style={styles.composerArea}>
       <PromptSelectors
-        disabled={disabled || isSubmitting}
+        disabled={disabled}
         inventory={inventory}
         onChange={onChangeSelection}
         selection={selection}
@@ -71,12 +82,13 @@ export function OpencodeComposer({
         <TextInput
           accessibilityLabel={accessibilityLabel}
           autoFocus={autoFocus}
-          editable={!disabled && !isSubmitting}
+          editable={!disabled}
           multiline
           onChangeText={onChangeText}
-          onSubmitEditing={onSubmit}
+          onSubmitEditing={submit}
           placeholder={placeholder}
           placeholderTextColor={theme.textSecondary}
+          ref={inputRef}
           style={[styles.input, { color: theme.text }]}
           textAlignVertical="top"
           value={value}
@@ -85,7 +97,7 @@ export function OpencodeComposer({
           accessibilityLabel="Send prompt"
           accessibilityRole="button"
           disabled={submitDisabled}
-          onPress={onSubmit}
+          onPress={submit}
           style={({ pressed }) => [
             styles.sendButton,
             { backgroundColor: theme.text },

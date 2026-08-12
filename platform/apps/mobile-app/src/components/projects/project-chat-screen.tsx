@@ -239,7 +239,7 @@ export function ProjectChatScreen() {
               style={styles.headerSubtitle}
               themeColor="textSecondary"
             >
-              {sessionQuery.isStreaming ? "Working…" : "OpenCode"}
+              {sessionQuery.isStreaming ? "Vibeongo is working…" : "OpenCode"}
             </ThemedText>
           </View>
           {sessionQuery.isFetching && !sessionQuery.isStreaming ? (
@@ -251,6 +251,11 @@ export function ProjectChatScreen() {
           contentContainerStyle={styles.messages}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => {
+            if (sessionQuery.isStreaming) {
+              scrollRef.current?.scrollToEnd({ animated: true });
+            }
+          }}
           ref={scrollRef}
           showsVerticalScrollIndicator={false}
         >
@@ -272,15 +277,18 @@ export function ProjectChatScreen() {
           {sessionQuery.isStreaming ? (
             <View style={styles.thinking}>
               <ActivityIndicator size="small" />
-              <ThemedText themeColor="textSecondary">Working…</ThemedText>
+              <ThemedText themeColor="textSecondary">
+                Vibeongo is working…
+              </ThemedText>
             </View>
           ) : null}
         </ScrollView>
 
-        <View style={styles.composerOuter}>
+        <View
+          style={[styles.composerOuter, { backgroundColor: theme.background }]}
+        >
           <OpencodeComposer
             accessibilityLabel="Follow-up prompt"
-            disabled={sessionQuery.isStreaming}
             inventory={inventoryQuery.data}
             isSubmitting={sendPrompt.isPending}
             onChangeSelection={setSelection}
@@ -288,10 +296,11 @@ export function ProjectChatScreen() {
             onSubmit={submit}
             placeholder={
               sessionQuery.isStreaming
-                ? "OpenCode is working…"
+                ? "Write your next message…"
                 : "Ask a follow-up…"
             }
             selection={selection}
+            submitDisabled={sessionQuery.isStreaming}
             value={prompt}
           />
           {sendPrompt.error ? (

@@ -3,10 +3,16 @@ import {
   useGetProjectsWithSessions,
   useOpencodeSessions,
   useOpencodeStatus,
+  useQueryClient,
 } from "@repo/api-hooks";
 import {
   getOpencodePassword,
   getOpencodeSessionStatuses,
+  reduceOpencodeMessages,
+  reduceOpencodeSessionData,
+  streamOpencodeEvents,
+  type Event,
+  type OpencodeSessionData,
 } from "@repo/api-client";
 import {
   useProjectsStore,
@@ -14,7 +20,7 @@ import {
   useSessionsStore,
 } from "@repo/app-store";
 import { usePathname } from "expo-router";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 function getConfigValue(config: unknown, key: string) {
@@ -33,6 +39,9 @@ function ProjectSessionRuntimeSync({
   activeOpencodeSessionId: string;
   sessionId: string;
 }) {
+  const queryClient = useQueryClient();
+  const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
+  activeOpencodeSessionIdRef.current = activeOpencodeSessionId;
   const updateSession = useSessionsStore((store) => store.updateSession);
   const instancesQuery = useGetInstances({
     sessionId,
@@ -64,6 +73,134 @@ function ProjectSessionRuntimeSync({
     password,
     isOpencodeRunning,
   );
+
+  useEffect(() => {
+    if (!isOpencodeRunning || !serverUrl || !accessToken) return;
+
+    let disposed = false;
+    let streamController: AbortController | null = null;
+
+    const handleEvent = (event: Event) => {
+      const opencodeSessionId = getEventSessionId(event);
+      const store = useSessionChatsStore.getState();
+
+      if (
+        event.type === "session.created" ||
+        event.type === "session.updated"
+      ) {
+        if (event.properties.info.parentID) {
+          store.deleteSessionChat(sessionId, event.properties.info.id);
+        } else {
+          store.upsertSessionChat(sessionId, event.properties.info);
+        }
+      } else if (event.type === "session.deleted") {
+        store.deleteSessionChat(sessionId, event.properties.sessionID);
+      }
+
+      if (!opencodeSessionId) return;
+
+      const currentMessages = store.getChatMessages(
+        sessionId,
+        opencodeSessionId,
+      );
+      const nextMessages = reduceOpencodeMessages(
+        currentMessages,
+        event,
+        opencodeSessionId,
+      );
+      if (nextMessages !== currentMessages) {
+        store.setChatMessages(sessionId, opencodeSessionId, nextMessages);
+      }
+
+      queryClient.setQueriesData<OpencodeSessionData>(
+        {
+          queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+        },
+        (current) =>
+          current
+            ? reduceOpencodeSessionData(current, event, opencodeSessionId)
+            : current,
+      );
+
+      if (event.type === "session.status") {
+        store.setChatStatus(
+          sessionId,
+          opencodeSessionId,
+          event.properties.status,
+        );
+      } else if (
+        event.type === "session.idle" ||
+        event.type === "session.error"
+      ) {
+        store.setChatStatus(sessionId, opencodeSessionId, { type: "idle" });
+      }
+
+      if (event.type === "session.idle") {
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+        });
+      }
+    };
+
+    const connect = async (signal: AbortSignal) => {
+      while (!disposed && !signal.aborted) {
+        try {
+          await streamOpencodeEvents(
+            sessionId,
+            serverUrl,
+            accessToken,
+            password,
+            signal,
+            handleEvent,
+            () => void sessionsQuery.refetch(),
+          );
+        } catch (error) {
+          if (!disposed && !signal.aborted) {
+            console.error(
+              `OpenCode event stream failed for project session ${sessionId}`,
+              error,
+            );
+          }
+        }
+
+        if (!disposed && !signal.aborted) {
+          await new Promise((resolve) => setTimeout(resolve, 1_000));
+        }
+      }
+    };
+
+    const startStream = () => {
+      streamController?.abort();
+      streamController = new AbortController();
+      void connect(streamController.signal);
+    };
+
+    startStream();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state !== "active") return;
+      startStream();
+      const activeSessionId = activeOpencodeSessionIdRef.current;
+      if (activeSessionId) {
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "session", sessionId, activeSessionId],
+        });
+      }
+    });
+
+    return () => {
+      disposed = true;
+      subscription.remove();
+      streamController?.abort();
+    };
+  }, [
+    accessToken,
+    isOpencodeRunning,
+    password,
+    queryClient,
+    serverUrl,
+    sessionId,
+    sessionsQuery.refetch,
+  ]);
 
   useEffect(() => {
     const opencodeSessions = sessionsQuery.data;
@@ -170,6 +307,16 @@ function ProjectSessionRuntimeSync({
   ]);
 
   return null;
+}
+
+function getEventSessionId(event: Event) {
+  const properties = event.properties as
+    | { sessionID?: unknown }
+    | null
+    | undefined;
+  return typeof properties?.sessionID === "string"
+    ? properties.sessionID
+    : undefined;
 }
 
 export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
