@@ -12,6 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { ThemedText } from '@/components/themed-text';
+import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/hooks/use-theme';
 
 type HomeSidebarProps = {
@@ -52,6 +53,7 @@ const navigation: NavigationItem[] = [
 
 export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
   const theme = useTheme();
+  const isDark = useColorScheme() === 'dark';
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.94, 420);
   const translateX = useRef(new Animated.Value(-drawerWidth)).current;
@@ -130,15 +132,20 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                 accessibilityRole="button"
                 hitSlop={8}
                 onPress={closeSidebar}
-                style={({ pressed }) => [styles.closeControl, pressed && styles.pressed]}>
+                style={({ pressed }) => [
+                  styles.closeControl,
+                  pressed && styles.pressed,
+                ]}>
                 <GlassView
                   glassEffectStyle="regular"
                   isInteractive
                   style={[
                     styles.closeButton,
                     !supportsNativeGlass && {
-                      backgroundColor: theme.backgroundElement,
-                      borderColor: theme.backgroundSelected,
+                      backgroundColor: isDark ? '#242528' : '#FFFFFF',
+                      borderColor: isDark
+                        ? 'rgba(255,255,255,0.10)'
+                        : 'rgba(15,23,42,0.08)',
                       borderWidth: 1,
                     },
                   ]}>
