@@ -1,0 +1,25 @@
+{
+  "name": "@repo/api-hooks",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "dev": "tsc-watch -p ./tsconfig.json --onSuccess \"node dist/index.js\"",
+    "build": "tsc -p ./tsconfig.json",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@repo/api-client": "workspace:*",
+    "@tanstack/react-query": "^5.90.21"
+  },
+  "devDependencies": {
+    "react": "19.2.4",
+    "typescript": "5.9.2",
+    "tsc-watch": "^7.2.0"
+  },
+  "peerDependencies": {
+    "react": ">=19.2.0"
+  }
+}

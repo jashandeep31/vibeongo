@@ -85,3 +85,5 @@ export class WebClient {
     this.wallet = bindApiModule(walletApi, this.apiClient);
   }
 }
+
+export type ApiClient = MobileClient | WebClient;
