@@ -84,13 +84,15 @@ export const useSendOpencodePrompt = ({
     mutationFn: async ({
       text,
       files,
+      attachments: directAttachments = [],
       selection,
     }: {
       text: string;
       files: File[];
+      attachments?: UploadAttachment[];
       selection: OpencodePromptSelection;
     }) => {
-      const attachments: UploadAttachment[] = await Promise.all(
+      const fileAttachments: UploadAttachment[] = await Promise.all(
         files.map(async (file) => ({
           type: "image" as const,
           name: file.name,
@@ -104,7 +106,7 @@ export const useSendOpencodePrompt = ({
         chatId,
         sessionId,
         text,
-        attachments,
+        [...directAttachments, ...fileAttachments],
         selection,
         serverUrl,
         accessToken,

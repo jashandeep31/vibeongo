@@ -5,6 +5,7 @@ import {
   useSendOpencodePrompt,
 } from "@repo/api-hooks";
 import { useSessionChatsStore } from "@repo/app-store";
+import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useRef, useState } from "react";
@@ -20,7 +21,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { OpencodeComposer } from "@/components/projects/opencode-composer";
+import {
+  OpencodeComposer,
+  type ComposerImageAttachment,
+} from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { NativeMarkdown } from "@/components/native-markdown";
@@ -78,6 +82,7 @@ export function ProjectChatScreen() {
     runtime.password,
   );
   const [prompt, setPrompt] = useState("");
+  const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
   const data = sessionQuery.data;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
 
@@ -108,6 +113,17 @@ export function ProjectChatScreen() {
   const goBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace("/");
+  };
+
+  const openNewChat = () => {
+    router.push({
+      pathname: "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
+      params: {
+        directory: data?.session.directory ?? "",
+        projectId,
+        projectSessionId,
+      },
+    });
   };
 
   useEffect(() => {
@@ -144,12 +160,22 @@ export function ProjectChatScreen() {
 
   const submit = () => {
     const text = prompt.trim();
-    if (!text || sendPrompt.isPending || sessionQuery.isStreaming) return;
+    if (
+      (!text && attachments.length === 0) ||
+      sendPrompt.isPending ||
+      sessionQuery.isStreaming
+    )
+      return;
+    const submittedAttachments = attachments;
     setPrompt("");
+    setAttachments([]);
     sendPrompt.mutate(
-      { text, files: [], selection },
+      { text, files: [], attachments: submittedAttachments, selection },
       {
-        onError: () => setPrompt(text),
+        onError: () => {
+          setPrompt(text);
+          setAttachments(submittedAttachments);
+        },
         onSuccess: () => void sessionQuery.resync(),
       },
     );
@@ -203,7 +229,20 @@ export function ProjectChatScreen() {
 
   const visibleMessages = data.messages.flatMap((message) => {
     const text = messageText(message.parts);
-    return text ? [{ id: message.info.id, role: message.info.role, text }] : [];
+    const images = message.parts.flatMap((part) =>
+      part.type === "file" && part.mime?.startsWith("image/") && part.url
+        ? [
+            {
+              id: part.id,
+              name: part.filename ?? "Attached image",
+              url: part.url,
+            },
+          ]
+        : [],
+    );
+    return text || images.length
+      ? [{ id: message.info.id, role: message.info.role, text, images }]
+      : [];
   });
 
   return (
@@ -299,13 +338,28 @@ export function ProjectChatScreen() {
                   : styles.assistantMessage
               }
             >
+              {message.images.length ? (
+                <View style={styles.messageImages}>
+                  {message.images.map((image) => (
+                    <Image
+                      accessibilityLabel={image.name}
+                      contentFit="cover"
+                      key={image.id}
+                      source={{ uri: image.url }}
+                      style={styles.messageImage}
+                    />
+                  ))}
+                </View>
+              ) : null}
               {message.role === "user" ? (
-                <ThemedText style={styles.messageText}>
-                  {message.text}
-                </ThemedText>
-              ) : (
+                message.text ? (
+                  <ThemedText style={styles.messageText}>
+                    {message.text}
+                  </ThemedText>
+                ) : null
+              ) : message.text ? (
                 <NativeMarkdown content={message.text} />
-              )}
+              ) : null}
             </View>
           ))}
           {sessionQuery.isStreaming ? (
@@ -323,10 +377,13 @@ export function ProjectChatScreen() {
         >
           <OpencodeComposer
             accessibilityLabel="Follow-up prompt"
+            attachments={attachments}
             inventory={inventoryQuery.data}
             isSubmitting={sendPrompt.isPending}
             onChangeSelection={setSelection}
+            onChangeAttachments={setAttachments}
             onChangeText={setPrompt}
+            onNewChat={openNewChat}
             onSubmit={submit}
             placeholder={
               sessionQuery.isStreaming
@@ -419,6 +476,17 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 15,
     lineHeight: 23,
+  },
+  messageImage: {
+    borderRadius: 12,
+    height: 112,
+    width: 112,
+  },
+  messageImages: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 8,
+    marginBottom: 8,
   },
   pressed: {
     opacity: 0.72,

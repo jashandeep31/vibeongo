@@ -14,7 +14,10 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { OpencodeComposer } from "@/components/projects/opencode-composer";
+import {
+  OpencodeComposer,
+  type ComposerImageAttachment,
+} from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -54,6 +57,7 @@ export function NewProjectChatScreen() {
   );
   const startSession = useStartOpencodeSession();
   const [prompt, setPrompt] = useState("");
+  const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
 
   useEffect(() => {
@@ -82,7 +86,12 @@ export function NewProjectChatScreen() {
 
   const submit = () => {
     const text = prompt.trim();
-    if (!text || startSession.isPending || !runtime.instance) return;
+    if (
+      (!text && attachments.length === 0) ||
+      startSession.isPending ||
+      !runtime.instance
+    )
+      return;
 
     startSession.mutate({
       chatId: projectSessionId,
@@ -92,6 +101,7 @@ export function NewProjectChatScreen() {
       directory,
       text,
       files: [],
+      attachments,
       selection,
       onSessionCreated: (opencodeSessionId) => {
         router.replace({
@@ -176,10 +186,12 @@ export function NewProjectChatScreen() {
           </View>
           <OpencodeComposer
             accessibilityLabel="First prompt"
+            attachments={attachments}
             autoFocus
             inventory={inventoryQuery.data}
             isSubmitting={startSession.isPending}
             onChangeSelection={setSelection}
+            onChangeAttachments={setAttachments}
             onChangeText={setPrompt}
             onSubmit={submit}
             placeholder="Describe the task…"

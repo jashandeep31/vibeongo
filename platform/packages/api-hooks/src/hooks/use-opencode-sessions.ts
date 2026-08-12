@@ -67,6 +67,7 @@ export const useStartOpencodeSession = () => {
       directory,
       text,
       files,
+      attachments: directAttachments = [],
       selection,
       onSessionCreated,
     }: {
@@ -77,6 +78,7 @@ export const useStartOpencodeSession = () => {
       directory?: string;
       text: string;
       files: File[];
+      attachments?: UploadAttachment[];
       selection: OpencodePromptSelection;
       onSessionCreated?: (sessionId: string) => void;
     }) => {
@@ -98,6 +100,16 @@ export const useStartOpencodeSession = () => {
       const modelID = modelParts.join("/") || session.model?.id || "";
       const optimisticMessageId = `optimistic:${session.id}`;
       const now = Date.now();
+      const fileAttachments: UploadAttachment[] = await Promise.all(
+        files.map(async (file) => ({
+          type: "image" as const,
+          name: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          dataUrl: await fileToDataUrl(file),
+        })),
+      );
+      const attachments = [...directAttachments, ...fileAttachments];
       const optimisticSession: OpencodeSessionData = {
         session,
         status: { type: "busy" },
@@ -122,17 +134,28 @@ export const useStartOpencodeSession = () => {
                     : {}),
               },
             },
-            parts: text
-              ? [
-                  {
-                    id: `${optimisticMessageId}:text`,
-                    sessionID: session.id,
-                    messageID: optimisticMessageId,
-                    type: "text",
-                    text,
-                  },
-                ]
-              : [],
+            parts: [
+              ...(text
+                ? [
+                    {
+                      id: `${optimisticMessageId}:text`,
+                      sessionID: session.id,
+                      messageID: optimisticMessageId,
+                      type: "text" as const,
+                      text,
+                    },
+                  ]
+                : []),
+              ...attachments.map((attachment, index) => ({
+                id: `${optimisticMessageId}:image:${index}`,
+                sessionID: session.id,
+                messageID: optimisticMessageId,
+                type: "file" as const,
+                mime: attachment.mimeType,
+                filename: attachment.name,
+                url: attachment.dataUrl,
+              })),
+            ],
           },
         ],
       };
@@ -142,16 +165,6 @@ export const useStartOpencodeSession = () => {
         optimisticSession,
       );
       onSessionCreated?.(session.id);
-
-      const attachments: UploadAttachment[] = await Promise.all(
-        files.map(async (file) => ({
-          type: "image" as const,
-          name: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          dataUrl: await fileToDataUrl(file),
-        })),
-      );
 
       await sendOpencodePrompt(
         chatId,
