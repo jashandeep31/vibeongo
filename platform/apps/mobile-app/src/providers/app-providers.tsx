@@ -3,17 +3,16 @@ import {
   QueryClient,
   QueryClientProvider,
 } from "@repo/api-hooks";
-import { usePathname } from "expo-router";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
+import { ProjectStoreSync } from "@/components/projects/project-store-sync";
 import { useTheme } from "@/hooks/use-theme";
 import { createApiClient } from "@/lib/api-client";
-import { getAccessToken } from "@/lib/auth";
+import { getAccessToken, subscribeAccessToken } from "@/lib/auth";
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const theme = useTheme();
-  const pathname = usePathname();
   const [queryClient] = useState(() => new QueryClient());
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = useState(true);
@@ -24,7 +23,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let active = true;
-    setIsTokenLoading(true);
+    const unsubscribe = subscribeAccessToken((token) => {
+      queryClient.clear();
+      setAccessToken(token);
+    });
 
     void getAccessToken()
       .then((token) => {
@@ -39,8 +41,9 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
     return () => {
       active = false;
+      unsubscribe();
     };
-  }, [pathname]);
+  }, [queryClient]);
 
   if (!apiClient) {
     return (
@@ -52,7 +55,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   return (
     <ApiClientProvider client={apiClient}>
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <QueryClientProvider client={queryClient}>
+        <ProjectStoreSync enabled={Boolean(accessToken)} />
+        {children}
+      </QueryClientProvider>
     </ApiClientProvider>
   );
 }

@@ -6,6 +6,7 @@
     "@expo/ui": "~57.0.10",
     "@repo/api-client": "workspace:*",
     "@repo/api-hooks": "workspace:*",
+    "@repo/app-store": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
     "expo": "~57.0.12",
     "expo-auth-session": "~57.0.6",

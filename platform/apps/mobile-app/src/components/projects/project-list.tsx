@@ -1,11 +1,18 @@
 import {
   useGetInstances,
+  useGetProjectGithubReposById,
   useGetProjectsWithSessions,
   useResumeProjectSession,
   useTerminateInstance,
 } from "@repo/api-hooks";
+import {
+  useProjectsStore,
+  useSessionChatsStore,
+  useSessionsStore,
+} from "@repo/app-store";
+import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -18,6 +25,7 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
+import { RepositoryDrawer } from "@/components/projects/repository-drawer";
 import {
   SessionRuntimeDrawer,
   type SessionRuntime,
@@ -32,9 +40,26 @@ type TerminationTarget = {
   sessionName: string;
 };
 
+type NewChatTarget = {
+  projectId: string;
+  sessionId: string;
+};
+
 export function ProjectList() {
   const theme = useTheme();
+  const router = useRouter();
   const projectsQuery = useGetProjectsWithSessions();
+  const projects = useProjectsStore((store) => store.projects);
+  const sessions = useSessionsStore((store) => store.sessions);
+  const chatsBySessionId = useSessionChatsStore(
+    (store) => store.chatsBySessionId,
+  );
+  const statusesBySessionId = useSessionChatsStore(
+    (store) => store.statusesBySessionId,
+  );
+  const unreadBySessionId = useSessionChatsStore(
+    (store) => store.unreadBySessionId,
+  );
   const resumeSession = useResumeProjectSession();
   const [runtimeSessionId, setRuntimeSessionId] = useState<string | null>(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
@@ -47,6 +72,14 @@ export function ProjectList() {
   const [terminatingInstanceId, setTerminatingInstanceId] = useState<
     string | null
   >(null);
+  const [newChatTarget, setNewChatTarget] = useState<NewChatTarget | null>(
+    null,
+  );
+  const [isRepositoryDrawerOpen, setIsRepositoryDrawerOpen] = useState(false);
+  const repositoriesQuery = useGetProjectGithubReposById(
+    newChatTarget?.projectId ?? null,
+    Boolean(newChatTarget),
+  );
   const terminateInstance = useTerminateInstance(
     terminationTarget?.projectId ?? "",
     terminationTarget?.sessionId ?? "",
@@ -55,14 +88,56 @@ export function ProjectList() {
     { state: "running", limit: 100 },
     Boolean(projectsQuery.data),
   );
-  const projects = projectsQuery.data ?? [];
-  const runningInstancesBySessionId = new Map(
-    (instancesQuery.data?.data ?? []).flatMap((instance) =>
-      instance.project_session_id
-        ? ([[instance.project_session_id, instance]] as const)
-        : [],
-    ),
+
+  const openNewChat = useCallback(
+    (directory: string) => {
+      if (!newChatTarget) return;
+
+      const target = newChatTarget;
+      setIsRepositoryDrawerOpen(false);
+      setNewChatTarget(null);
+      requestAnimationFrame(() => {
+        router.push({
+          pathname:
+            "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
+          params: {
+            directory,
+            projectId: target.projectId,
+            projectSessionId: target.sessionId,
+          },
+        });
+      });
+    },
+    [newChatTarget, router],
   );
+
+  useEffect(() => {
+    if (!newChatTarget) return;
+    if (repositoriesQuery.isError) {
+      setIsRepositoryDrawerOpen(true);
+      return;
+    }
+    if (!repositoriesQuery.isSuccess) return;
+
+    const repositories = repositoriesQuery.data ?? [];
+    if (repositories.length === 1) {
+      const repository = repositories[0];
+      if (!repository) return;
+      const name =
+        repository.full_name.split("/").filter(Boolean).at(-1) ??
+        repository.full_name;
+      openNewChat(`/home/ubuntu/code/${name}`);
+      return;
+    }
+
+    setIsRepositoryDrawerOpen(true);
+  }, [
+    newChatTarget,
+    openNewChat,
+    repositoriesQuery.data,
+    repositoriesQuery.isError,
+    repositoriesQuery.isSuccess,
+  ]);
 
   const handleRuntimeSelect = (runtime: SessionRuntime) => {
     if (!runtimeSessionId) return;
@@ -107,7 +182,10 @@ export function ProjectList() {
     });
   };
 
-  if (projectsQuery.isPending) {
+  if (
+    projectsQuery.isPending ||
+    (Boolean(projectsQuery.data?.length) && projects.length === 0)
+  ) {
     return (
       <View style={styles.centeredState}>
         <ActivityIndicator />
@@ -188,111 +266,240 @@ export function ProjectList() {
               </ThemedText>
             </View>
 
-            {project.sessions.length === 0 ? (
+            {sessions.filter((entry) => entry.session.project_id === project.id)
+              .length === 0 ? (
               <ThemedText style={styles.noSessions} themeColor="textSecondary">
                 This project does not have any sessions yet.
               </ThemedText>
             ) : (
               <View style={styles.sessions}>
-                {project.sessions.map((session) => {
-                  const runningInstance = runningInstancesBySessionId.get(
-                    session.id,
-                  );
-                  const isRunning = Boolean(runningInstance);
-                  const isResuming = resumingSessionId === session.id;
-                  const isTerminating =
-                    terminatingInstanceId === runningInstance?.id;
+                {sessions
+                  .filter((entry) => entry.session.project_id === project.id)
+                  .map((entry) => {
+                    const session = entry.session;
+                    const runningInstance = entry.instance;
+                    const isRunning = entry.state === "running";
+                    const isResuming = resumingSessionId === entry.session.id;
+                    const isTerminating =
+                      terminatingInstanceId === runningInstance?.id;
+                    const opencodeChats = chatsBySessionId[session.id] ?? [];
+                    const isStartingNewChat =
+                      newChatTarget?.sessionId === session.id &&
+                      repositoriesQuery.isFetching;
 
-                  return (
-                    <View key={session.id} style={styles.sessionRow}>
-                      <SymbolView
-                        name={{
-                          ios: "chevron.right",
-                          android: "chevron_right",
-                        }}
-                        size={14}
-                        tintColor={theme.textSecondary}
-                      />
-                      <ThemedText
-                        numberOfLines={1}
-                        style={styles.sessionName}
-                        themeColor="textSecondary"
-                      >
-                        {session.name}
-                      </ThemedText>
-                      <View
-                        accessibilityLabel={isRunning ? "Running" : "Stopped"}
-                        style={[
-                          styles.statusDot,
-                          {
-                            backgroundColor: isRunning
-                              ? "#10b981"
-                              : theme.textSecondary,
-                            opacity: isRunning ? 1 : 0.5,
-                          },
-                        ]}
-                      />
-                      {runningInstance ? (
-                        <Pressable
-                          accessibilityLabel={`Terminate ${session.name}`}
-                          accessibilityRole="button"
-                          disabled={terminateInstance.isPending}
-                          onPress={() => {
-                            setTerminationTarget({
-                              instanceId: runningInstance.id,
-                              projectId: project.id,
-                              sessionId: session.id,
-                              sessionName: session.name,
-                            });
-                            setIsTerminationConfirmationOpen(true);
-                          }}
-                          style={({ pressed }) => [
-                            styles.sessionAction,
-                            styles.terminateButton,
-                            (pressed || terminateInstance.isPending) &&
-                              styles.pressed,
-                          ]}
-                        >
-                          {isTerminating ? (
-                            <ActivityIndicator color="#ef4444" size="small" />
-                          ) : (
-                            <SymbolView
-                              name={{
-                                ios: "stop.fill",
-                                android: "stop_circle",
+                    return (
+                      <View key={session.id}>
+                        <View style={styles.sessionRow}>
+                          <SymbolView
+                            name={{
+                              ios: isRunning ? "chevron.down" : "chevron.right",
+                              android: isRunning
+                                ? "keyboard_arrow_down"
+                                : "chevron_right",
+                            }}
+                            size={14}
+                            tintColor={theme.textSecondary}
+                          />
+                          <ThemedText
+                            numberOfLines={1}
+                            style={styles.sessionName}
+                            themeColor="textSecondary"
+                          >
+                            {session.name}
+                          </ThemedText>
+                          <View
+                            accessibilityLabel={
+                              isRunning
+                                ? "Running"
+                                : entry.state === "processing"
+                                  ? "Starting"
+                                  : "Stopped"
+                            }
+                            style={[
+                              styles.statusDot,
+                              {
+                                backgroundColor: isRunning
+                                  ? "#10b981"
+                                  : entry.state === "processing"
+                                    ? "#f59e0b"
+                                    : theme.textSecondary,
+                                opacity: entry.state === "stopped" ? 0.5 : 1,
+                              },
+                            ]}
+                          />
+                          {runningInstance ? (
+                            <Pressable
+                              accessibilityLabel={`Terminate ${session.name}`}
+                              accessibilityRole="button"
+                              disabled={terminateInstance.isPending}
+                              onPress={() => {
+                                setTerminationTarget({
+                                  instanceId: runningInstance.id,
+                                  projectId: project.id,
+                                  sessionId: session.id,
+                                  sessionName: session.name,
+                                });
+                                setIsTerminationConfirmationOpen(true);
                               }}
-                              size={14}
-                              tintColor="#ef4444"
-                            />
-                          )}
-                        </Pressable>
-                      ) : (
-                        <Pressable
-                          accessibilityLabel={`Resume ${session.name}`}
-                          accessibilityRole="button"
-                          disabled={resumeSession.isPending}
-                          onPress={() => setRuntimeSessionId(session.id)}
-                          style={({ pressed }) => [
-                            styles.sessionAction,
-                            { backgroundColor: theme.backgroundElement },
-                            (pressed || resumeSession.isPending) &&
-                              styles.pressed,
-                          ]}
-                        >
-                          {isResuming ? (
+                              style={({ pressed }) => [
+                                styles.sessionAction,
+                                styles.terminateButton,
+                                (pressed || terminateInstance.isPending) &&
+                                  styles.pressed,
+                              ]}
+                            >
+                              {isTerminating ? (
+                                <ActivityIndicator
+                                  color="#ef4444"
+                                  size="small"
+                                />
+                              ) : (
+                                <SymbolView
+                                  name={{
+                                    ios: "stop.fill",
+                                    android: "stop_circle",
+                                  }}
+                                  size={14}
+                                  tintColor="#ef4444"
+                                />
+                              )}
+                            </Pressable>
+                          ) : entry.state === "processing" ? (
                             <ActivityIndicator size="small" />
                           ) : (
-                            <SymbolView
-                              name={{ ios: "play.fill", android: "play_arrow" }}
-                              size={13}
-                              tintColor={theme.text}
-                            />
+                            <Pressable
+                              accessibilityLabel={`Resume ${session.name}`}
+                              accessibilityRole="button"
+                              disabled={resumeSession.isPending}
+                              onPress={() => setRuntimeSessionId(session.id)}
+                              style={({ pressed }) => [
+                                styles.sessionAction,
+                                { backgroundColor: theme.backgroundElement },
+                                (pressed || resumeSession.isPending) &&
+                                  styles.pressed,
+                              ]}
+                            >
+                              {isResuming ? (
+                                <ActivityIndicator size="small" />
+                              ) : (
+                                <SymbolView
+                                  name={{
+                                    ios: "play.fill",
+                                    android: "play_arrow",
+                                  }}
+                                  size={13}
+                                  tintColor={theme.text}
+                                />
+                              )}
+                            </Pressable>
                           )}
-                        </Pressable>
-                      )}
-                    </View>
-                  );
-                })}
+                        </View>
+
+                        {isRunning ? (
+                          <View style={styles.opencodeChats}>
+                            {opencodeChats.map((chat) => {
+                              const status =
+                                statusesBySessionId[session.id]?.[chat.id];
+                              const isBusy = status?.type !== "idle" && status;
+                              const isUnread =
+                                unreadBySessionId[session.id]?.[chat.id] ===
+                                true;
+                              return (
+                                <Pressable
+                                  accessibilityRole="button"
+                                  key={chat.id}
+                                  onPress={() =>
+                                    router.push({
+                                      pathname:
+                                        "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
+                                      params: {
+                                        opencodeSessionId: chat.id,
+                                        projectId: project.id,
+                                        projectSessionId: session.id,
+                                      },
+                                    })
+                                  }
+                                  style={({ pressed }) => [
+                                    styles.chatRow,
+                                    pressed && {
+                                      backgroundColor: theme.backgroundElement,
+                                    },
+                                  ]}
+                                >
+                                  <SymbolView
+                                    name={{
+                                      ios: "bubble.left",
+                                      android: "chat_bubble_outline",
+                                    }}
+                                    size={14}
+                                    tintColor={theme.textSecondary}
+                                  />
+                                  <ThemedText
+                                    numberOfLines={1}
+                                    style={[
+                                      styles.chatTitle,
+                                      isUnread && styles.unreadChatTitle,
+                                    ]}
+                                    themeColor={
+                                      isUnread ? "text" : "textSecondary"
+                                    }
+                                  >
+                                    {chat.title || "Untitled chat"}
+                                  </ThemedText>
+                                  {isBusy || isUnread ? (
+                                    <View
+                                      style={[
+                                        styles.chatIndicator,
+                                        {
+                                          backgroundColor: isBusy
+                                            ? "#f59e0b"
+                                            : "#3b82f6",
+                                        },
+                                      ]}
+                                    />
+                                  ) : null}
+                                </Pressable>
+                              );
+                            })}
+                            <Pressable
+                              accessibilityLabel={`New chat in ${session.name}`}
+                              accessibilityRole="button"
+                              disabled={Boolean(newChatTarget)}
+                              onPress={() => {
+                                setNewChatTarget({
+                                  projectId: project.id,
+                                  sessionId: session.id,
+                                });
+                                setIsRepositoryDrawerOpen(true);
+                              }}
+                              style={({ pressed }) => [
+                                styles.chatRow,
+                                pressed && {
+                                  backgroundColor: theme.backgroundElement,
+                                },
+                              ]}
+                            >
+                              {isStartingNewChat ? (
+                                <ActivityIndicator size="small" />
+                              ) : (
+                                <SymbolView
+                                  name={{ ios: "plus", android: "add" }}
+                                  size={15}
+                                  tintColor={theme.textSecondary}
+                                />
+                              )}
+                              <ThemedText
+                                style={styles.newChatLabel}
+                                themeColor="textSecondary"
+                              >
+                                New chat
+                              </ThemedText>
+                            </Pressable>
+                          </View>
+                        ) : null}
+                      </View>
+                    );
+                  })}
               </View>
             )}
           </View>
@@ -315,6 +522,17 @@ export function ProjectList() {
         title="Terminate this instance?"
         visible={isTerminationConfirmationOpen}
       />
+      <RepositoryDrawer
+        error={repositoriesQuery.isError}
+        loading={repositoriesQuery.isPending}
+        onClose={() => {
+          setIsRepositoryDrawerOpen(false);
+          setNewChatTarget(null);
+        }}
+        onSelect={openNewChat}
+        repositories={repositoriesQuery.data ?? []}
+        visible={isRepositoryDrawerOpen}
+      />
     </>
   );
 }
@@ -325,6 +543,23 @@ const styles = StyleSheet.create({
     gap: 8,
     paddingHorizontal: 24,
     paddingTop: 72,
+  },
+  chatIndicator: {
+    borderRadius: 4,
+    height: 7,
+    width: 7,
+  },
+  chatRow: {
+    alignItems: "center",
+    borderRadius: 8,
+    flexDirection: "row",
+    gap: 9,
+    minHeight: 36,
+    paddingHorizontal: 8,
+  },
+  chatTitle: {
+    flex: 1,
+    fontSize: 13,
   },
   content: {
     paddingBottom: 48,
@@ -343,6 +578,14 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     paddingLeft: 26,
     paddingTop: 14,
+  },
+  newChatLabel: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  opencodeChats: {
+    marginBottom: 6,
+    paddingLeft: 24,
   },
   pressed: {
     opacity: 0.7,
@@ -407,5 +650,8 @@ const styles = StyleSheet.create({
   },
   terminateButton: {
     backgroundColor: "rgba(239, 68, 68, 0.12)",
+  },
+  unreadChatTitle: {
+    fontWeight: "700",
   },
 });

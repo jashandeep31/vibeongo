@@ -175,6 +175,9 @@ importers:
       '@repo/api-hooks':
         specifier: workspace:*
         version: link:../../packages/api-hooks
+      '@repo/app-store':
+        specifier: workspace:*
+        version: link:../../packages/app-store
       '@tanstack/react-query':
         specifier: ^5.90.21
         version: 5.90.21(react@19.2.3)
