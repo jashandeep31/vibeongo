@@ -7,6 +7,7 @@ import { PlaygroundUserMenu } from "@/components/playground-user-menu";
 import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
 import { useGithubRepos } from "@/hooks/use-github-repos";
 import { useWebSocket } from "@/hooks/use-websocket";
+import { selectWorkspaceView } from "@/lib/workspace-view";
 import type { Chat } from "@/services/chat-services";
 import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
 import { Button } from "@repo/ui/components/button";
@@ -54,7 +55,7 @@ const navigation = [
   },
   {
     title: "New Chat",
-    url: "/",
+    url: "/?view=chats",
     icon: SquarePen,
     isActive: false,
   },
@@ -238,15 +239,24 @@ export function PlaygroundSidebar() {
   const unconfiguredRepoCount = githubRepos.filter(
     (repo) => !repo.default_project_id,
   ).length;
-  const navigationItems = navigation.map((item) =>
-    item.url === "/github-repos"
-      ? { ...item, warningCount: unconfiguredRepoCount }
-      : item,
-  );
   const routeView: SidebarView = pathname.startsWith("/chat/")
     ? "chats"
     : "projects";
   const [activeView, setActiveView] = useState<SidebarView>(routeView);
+  const navigationItems = navigation.map((item) => ({
+    ...item,
+    ...(item.url === "/github-repos"
+      ? { warningCount: unconfiguredRepoCount }
+      : {}),
+    ...(item.title === "New Chat"
+      ? {
+          onSelect: () => {
+            setActiveView("chats");
+            selectWorkspaceView("chats");
+          },
+        }
+      : {}),
+  }));
 
   useEffect(() => {
     setActiveView(routeView);

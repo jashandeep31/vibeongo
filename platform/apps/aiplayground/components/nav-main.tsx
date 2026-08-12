@@ -20,6 +20,7 @@ export function NavMain({
     icon: LucideIcon;
     isActive?: boolean;
     warningCount?: number;
+    onSelect?: () => void;
   }[];
 }) {
   const pathname = usePathname();
@@ -45,7 +46,13 @@ export function NavMain({
             }
             className="h-9 rounded-xl px-3 text-sm font-normal"
           >
-            <Link href={item.url} onClick={closeMobileSidebar}>
+            <Link
+              href={item.url}
+              onClick={() => {
+                item.onSelect?.();
+                closeMobileSidebar();
+              }}
+            >
               <item.icon />
               <span>{item.title}</span>
               {item.warningCount ? (

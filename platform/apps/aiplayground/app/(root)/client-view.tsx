@@ -17,6 +17,11 @@ import { useGetProjectGithubReposById } from "@/hooks/use-project";
 import { useAuthenticatedUser } from "@/hooks/use-user";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
+import {
+  isWorkspaceView,
+  WORKSPACE_VIEW_CHANGE_EVENT,
+  type WorkspaceView,
+} from "@/lib/workspace-view";
 import type { Chat } from "@/services/chat-services";
 import {
   useArchiveProjectSession,
@@ -422,9 +427,44 @@ export default function ClientView() {
     null,
   );
   const [isCreatingChat, setIsCreatingChat] = useState(false);
-  const [activeTab, setActiveTab] = useState("chats");
+  const [activeTab, setActiveTab] = useState<WorkspaceView>("projects");
   const isBalanceLow = user && user.balance < LOW_BALANCE_THRESHOLD;
   const hasNoBalance = user && user.balance <= 0;
+
+  useEffect(() => {
+    const syncViewFromUrl = () => {
+      const requestedView = new URLSearchParams(window.location.search).get(
+        "view",
+      );
+
+      setActiveTab(isWorkspaceView(requestedView) ? requestedView : "projects");
+    };
+
+    syncViewFromUrl();
+
+    const handleWorkspaceViewChange = (event: Event) => {
+      if (
+        event instanceof CustomEvent &&
+        isWorkspaceView(event.detail)
+      ) {
+        setActiveTab(event.detail);
+      }
+    };
+
+    window.addEventListener(
+      WORKSPACE_VIEW_CHANGE_EVENT,
+      handleWorkspaceViewChange,
+    );
+    window.addEventListener("popstate", syncViewFromUrl);
+
+    return () => {
+      window.removeEventListener(
+        WORKSPACE_VIEW_CHANGE_EVENT,
+        handleWorkspaceViewChange,
+      );
+      window.removeEventListener("popstate", syncViewFromUrl);
+    };
+  }, []);
 
   useEffect(
     () =>
@@ -513,81 +553,79 @@ export default function ClientView() {
     return true;
   };
 
-  return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-12 sm:px-8 sm:py-16 lg:pt-32">
-      <div>
-        <WorkComposer
-          onSubmit={handleCreateChat}
-          disabled={!isConnected}
-          isSubmitting={isCreatingChat}
-          autoFocus
-          focusOnTyping
-        />
-        {isBalanceLow ? (
-          <div
-            role="alert"
-            className={`relative z-0 mx-7 -mt-3 flex min-h-12 items-center justify-between gap-3 rounded-b-2xl px-4 pt-5 pb-3 text-sm ${
-              hasNoBalance
-                ? "bg-destructive/10 text-destructive"
-                : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-            }`}
-          >
-            <span className="flex min-w-0 items-center gap-2">
-              <TriangleAlert className="size-4 shrink-0" />
-              <span>
-                {hasNoBalance
-                  ? "No credits remaining. Add credits to continue using AI."
-                  : "Your wallet balance is low."}
-              </span>
-            </span>
-            <Link
-              href="/wallet"
-              className="shrink-0 font-medium underline underline-offset-4"
-            >
-              Add credits
-            </Link>
-          </div>
-        ) : null}
-      </div>
+  const handleViewChange = (view: string) => {
+    if (view !== "chats" && view !== "projects") return;
 
+    setActiveTab(view);
+    router.replace(`/?view=${view}`, { scroll: false });
+  };
+
+  return (
+    <div className="mx-auto w-full max-w-6xl px-5 pt-5 pb-12 sm:px-8 sm:pb-16">
       <Tabs
         value={activeTab}
-        onValueChange={setActiveTab}
-        className="mt-10 flex-col gap-4"
+        onValueChange={handleViewChange}
+        className="flex-col gap-[50px] sm:gap-16 lg:gap-[72px]"
       >
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-center">
           <TabsList
             aria-label="Browse workspace"
-            className="bg-muted/60 h-9 rounded-full border p-1 shadow-sm dark:border-white/10 dark:bg-white/5"
+            className="bg-muted/60 h-11 rounded-full border p-1 shadow-sm dark:border-white/10 dark:bg-white/5"
           >
             <TabsTrigger
               value="chats"
-              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground h-9 flex-none rounded-full px-4 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
             >
-              <BotMessageSquare className="size-3.5" />
+              <BotMessageSquare className="size-4" />
               Chats
             </TabsTrigger>
             <TabsTrigger
               value="projects"
-              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground h-7 flex-none rounded-full px-3 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
+              className="data-active:bg-primary data-active:text-primary-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-active:!bg-primary dark:data-active:!text-primary-foreground dark:data-[state=active]:!bg-primary dark:data-[state=active]:!text-primary-foreground h-9 flex-none rounded-full px-4 text-sm data-active:shadow-sm data-[state=active]:shadow-sm"
             >
-              <FolderKanban className="size-3.5" />
+              <FolderKanban className="size-4" />
               Projects
             </TabsTrigger>
           </TabsList>
-
-          {activeTab === "projects" && (
-            <Button asChild size="sm">
-              <Link href="/projects/create">
-                <Plus />
-                Create project
-              </Link>
-            </Button>
-          )}
         </div>
 
         <TabsContent value="chats">
-          <section aria-label="Recent chats">
+          <div>
+            <WorkComposer
+              onSubmit={handleCreateChat}
+              disabled={!isConnected}
+              isSubmitting={isCreatingChat}
+              autoFocus
+              focusOnTyping
+            />
+            {isBalanceLow ? (
+              <div
+                role="alert"
+                className={`relative z-0 mx-7 -mt-3 flex min-h-12 items-center justify-between gap-3 rounded-b-2xl px-4 pt-5 pb-3 text-sm ${
+                  hasNoBalance
+                    ? "bg-destructive/10 text-destructive"
+                    : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                }`}
+              >
+                <span className="flex min-w-0 items-center gap-2">
+                  <TriangleAlert className="size-4 shrink-0" />
+                  <span>
+                    {hasNoBalance
+                      ? "No credits remaining. Add credits to continue using AI."
+                      : "Your wallet balance is low."}
+                  </span>
+                </span>
+                <Link
+                  href="/wallet"
+                  className="shrink-0 font-medium underline underline-offset-4"
+                >
+                  Add credits
+                </Link>
+              </div>
+            ) : null}
+          </div>
+
+          <section aria-label="Recent chats" className="mt-6">
             {areChatsPending ? (
               <div className="text-muted-foreground flex items-center justify-center gap-2 py-10 text-sm">
                 <Loader2 className="size-4 animate-spin" />
@@ -646,6 +684,15 @@ export default function ClientView() {
         </TabsContent>
 
         <TabsContent value="projects">
+          <div className="mb-4 flex justify-end">
+            <Button asChild size="sm">
+              <Link href="/projects/create">
+                <Plus />
+                Create project
+              </Link>
+            </Button>
+          </div>
+
           <section aria-label="Projects">
             {projects.length === 0 ? (
               <div className="bg-muted/40 rounded-lg px-4 py-10 text-center">
