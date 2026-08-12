@@ -8,11 +8,15 @@ import { useSessionChatsStore } from "@repo/app-store";
 import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Animated,
   AppState,
+  Easing,
+  Keyboard,
   KeyboardAvoidingView,
+  PanResponder,
   Platform,
   Pressable,
   ScrollView,
@@ -31,6 +35,8 @@ import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
+
+const EMPTY_SESSION_CHATS: Array<{ id: string }> = [];
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -52,6 +58,8 @@ export function ProjectChatScreen() {
   const theme = useTheme();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  const chatTransitionX = useRef(new Animated.Value(0)).current;
+  const isChatTransitioningRef = useRef(false);
   const params = useLocalSearchParams<{
     opencodeSessionId?: string | string[];
     projectId?: string | string[];
@@ -60,6 +68,10 @@ export function ProjectChatScreen() {
   const projectSessionId = firstParam(params.projectSessionId);
   const projectId = firstParam(params.projectId);
   const opencodeSessionId = firstParam(params.opencodeSessionId);
+  const storedSessionChats = useSessionChatsStore(
+    (store) => store.chatsBySessionId[projectSessionId],
+  );
+  const sessionChats = storedSessionChats ?? EMPTY_SESSION_CHATS;
   const runtime = useProjectRuntime(projectSessionId);
   const sessionQuery = useOpencodeSession({
     chatId: projectSessionId,
@@ -83,6 +95,7 @@ export function ProjectChatScreen() {
   );
   const [prompt, setPrompt] = useState("");
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const data = sessionQuery.data;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
 
@@ -125,6 +138,127 @@ export function ProjectChatScreen() {
       },
     });
   };
+
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () =>
+      setIsKeyboardVisible(true),
+    );
+    const hide = Keyboard.addListener("keyboardDidHide", () =>
+      setIsKeyboardVisible(false),
+    );
+    return () => {
+      show.remove();
+      hide.remove();
+    };
+  }, []);
+
+  const switchRelativeChat = useCallback(
+    (offset: -1 | 1) => {
+      if (sessionChats.length < 2 || isChatTransitioningRef.current) return;
+      const currentIndex = sessionChats.findIndex(
+        (chat) => chat.id === opencodeSessionId,
+      );
+      const baseIndex = currentIndex >= 0 ? currentIndex : 0;
+      const nextChat =
+        sessionChats[
+          (baseIndex + offset + sessionChats.length) % sessionChats.length
+        ];
+      if (!nextChat) return;
+
+      isChatTransitioningRef.current = true;
+      const exitX = offset === 1 ? -88 : 88;
+      chatTransitionX.stopAnimation();
+      Animated.timing(chatTransitionX, {
+        duration: 125,
+        easing: Easing.in(Easing.cubic),
+        toValue: exitX,
+        useNativeDriver: true,
+      }).start(({ finished }) => {
+        if (!finished) {
+          isChatTransitioningRef.current = false;
+          return;
+        }
+
+        router.replace({
+          pathname:
+            "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
+          params: {
+            opencodeSessionId: nextChat.id,
+            projectId,
+            projectSessionId,
+          },
+        });
+        chatTransitionX.setValue(-exitX * 0.7);
+        requestAnimationFrame(() =>
+          Animated.spring(chatTransitionX, {
+            damping: 19,
+            mass: 0.75,
+            stiffness: 220,
+            toValue: 0,
+            useNativeDriver: true,
+          }).start(() => {
+            isChatTransitioningRef.current = false;
+          }),
+        );
+      });
+    },
+    [
+      chatTransitionX,
+      opencodeSessionId,
+      projectId,
+      projectSessionId,
+      router,
+      sessionChats,
+    ],
+  );
+
+  const pageSwipeResponder = useMemo(
+    () =>
+      PanResponder.create({
+        onMoveShouldSetPanResponderCapture: (_, gesture) =>
+          !isKeyboardVisible &&
+          sessionChats.length > 1 &&
+          !isChatTransitioningRef.current &&
+          Math.abs(gesture.dx) > 8 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+        onMoveShouldSetPanResponder: (_, gesture) =>
+          !isKeyboardVisible &&
+          sessionChats.length > 1 &&
+          !isChatTransitioningRef.current &&
+          Math.abs(gesture.dx) > 8 &&
+          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
+        onPanResponderGrant: () => chatTransitionX.stopAnimation(),
+        onPanResponderMove: (_, gesture) =>
+          chatTransitionX.setValue(
+            Math.max(-64, Math.min(64, gesture.dx * 0.5)),
+          ),
+        onPanResponderRelease: (_, gesture) => {
+          if (gesture.dx < -42) switchRelativeChat(1);
+          else if (gesture.dx > 42) switchRelativeChat(-1);
+          else
+            Animated.spring(chatTransitionX, {
+              damping: 18,
+              stiffness: 220,
+              toValue: 0,
+              useNativeDriver: true,
+            }).start();
+        },
+        onPanResponderTerminate: () =>
+          Animated.spring(chatTransitionX, {
+            damping: 18,
+            stiffness: 220,
+            toValue: 0,
+            useNativeDriver: true,
+          }).start(),
+        onShouldBlockNativeResponder: () => true,
+      }),
+    [
+      chatTransitionX,
+      isKeyboardVisible,
+      sessionChats.length,
+      switchRelativeChat,
+    ],
+  );
 
   useEffect(() => {
     useSessionChatsStore
@@ -254,152 +388,169 @@ export function ProjectChatScreen() {
         enabled
         style={styles.screen}
       >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            onPress={goBack}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { backgroundColor: theme.backgroundElement },
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "chevron.left", android: "arrow_back" }}
-              size={18}
-              tintColor={theme.text}
-            />
-          </Pressable>
-          <View
-            style={[
-              styles.headerTitlePill,
-              { backgroundColor: theme.backgroundElement },
-            ]}
-          >
-            <ThemedText numberOfLines={1} style={styles.headerTitle}>
-              {data.session.title || "Untitled chat"}
-            </ThemedText>
-          </View>
-          <View
-            style={[
-              styles.headerActions,
-              { backgroundColor: theme.backgroundElement },
-            ]}
-          >
-            <ProjectDomainsButton
-              instanceId={runtime.instance.id}
-              projectId={projectId}
-            />
+        <Animated.View
+          style={[
+            styles.screen,
+            {
+              opacity: chatTransitionX.interpolate({
+                inputRange: [-88, 0, 88],
+                outputRange: [0.35, 1, 0.35],
+              }),
+              transform: [{ translateX: chatTransitionX }],
+            },
+          ]}
+          {...pageSwipeResponder.panHandlers}
+        >
+          <View style={styles.header}>
             <Pressable
-              accessibilityLabel="Reload chat"
+              accessibilityLabel="Go back"
               accessibilityRole="button"
-              disabled={sessionQuery.isFetching}
-              onPress={() => void sessionQuery.resync()}
+              onPress={goBack}
               style={({ pressed }) => [
-                styles.headerAction,
+                styles.headerButton,
+                { backgroundColor: theme.backgroundElement },
                 pressed && styles.pressed,
               ]}
             >
-              {sessionQuery.isFetching ? (
-                <ActivityIndicator size="small" />
-              ) : (
-                <SymbolView
-                  name={{ ios: "arrow.clockwise", android: "refresh" }}
-                  size={19}
-                  tintColor={theme.textSecondary}
-                />
-              )}
+              <SymbolView
+                name={{ ios: "chevron.left", android: "arrow_back" }}
+                size={18}
+                tintColor={theme.text}
+              />
             </Pressable>
-          </View>
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.messages}
-          keyboardDismissMode="interactive"
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => {
-            if (sessionQuery.isStreaming) {
-              scrollRef.current?.scrollToEnd({ animated: true });
-            }
-          }}
-          ref={scrollRef}
-          showsVerticalScrollIndicator={false}
-        >
-          {visibleMessages.map((message) => (
             <View
-              key={message.id}
-              style={
-                message.role === "user"
-                  ? [
-                      styles.userMessage,
-                      { backgroundColor: theme.backgroundElement },
-                    ]
-                  : styles.assistantMessage
-              }
+              style={[
+                styles.headerTitlePill,
+                { backgroundColor: theme.backgroundElement },
+              ]}
             >
-              {message.images.length ? (
-                <View style={styles.messageImages}>
-                  {message.images.map((image) => (
-                    <Image
-                      accessibilityLabel={image.name}
-                      contentFit="cover"
-                      key={image.id}
-                      source={{ uri: image.url }}
-                      style={styles.messageImage}
-                    />
-                  ))}
-                </View>
-              ) : null}
-              {message.role === "user" ? (
-                message.text ? (
-                  <ThemedText style={styles.messageText}>
-                    {message.text}
-                  </ThemedText>
-                ) : null
-              ) : message.text ? (
-                <NativeMarkdown content={message.text} />
-              ) : null}
-            </View>
-          ))}
-          {sessionQuery.isStreaming ? (
-            <View style={styles.thinking}>
-              <ActivityIndicator size="small" />
-              <ThemedText themeColor="textSecondary">
-                Vibeongo is working…
+              <ThemedText numberOfLines={1} style={styles.headerTitle}>
+                {data.session.title || "Untitled chat"}
               </ThemedText>
             </View>
-          ) : null}
-        </ScrollView>
+            <View
+              style={[
+                styles.headerActions,
+                { backgroundColor: theme.backgroundElement },
+              ]}
+            >
+              <ProjectDomainsButton
+                instanceId={runtime.instance.id}
+                projectId={projectId}
+              />
+              <Pressable
+                accessibilityLabel="Reload chat"
+                accessibilityRole="button"
+                disabled={sessionQuery.isFetching}
+                onPress={() => void sessionQuery.resync()}
+                style={({ pressed }) => [
+                  styles.headerAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {sessionQuery.isFetching ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <SymbolView
+                    name={{ ios: "arrow.clockwise", android: "refresh" }}
+                    size={19}
+                    tintColor={theme.textSecondary}
+                  />
+                )}
+              </Pressable>
+            </View>
+          </View>
 
-        <View
-          style={[styles.composerOuter, { backgroundColor: theme.background }]}
-        >
-          <OpencodeComposer
-            accessibilityLabel="Follow-up prompt"
-            attachments={attachments}
-            inventory={inventoryQuery.data}
-            isSubmitting={sendPrompt.isPending}
-            onChangeSelection={setSelection}
-            onChangeAttachments={setAttachments}
-            onChangeText={setPrompt}
-            onNewChat={openNewChat}
-            onSubmit={submit}
-            placeholder={
-              sessionQuery.isStreaming
-                ? "Write your next message…"
-                : "Ask a follow-up…"
-            }
-            selection={selection}
-            submitDisabled={sessionQuery.isStreaming}
-            value={prompt}
-          />
-          {sendPrompt.error ? (
-            <ThemedText style={styles.error}>
-              {sendPrompt.error.message}
-            </ThemedText>
-          ) : null}
-        </View>
+          <ScrollView
+            contentContainerStyle={styles.messages}
+            keyboardDismissMode="interactive"
+            keyboardShouldPersistTaps="handled"
+            onContentSizeChange={() => {
+              if (sessionQuery.isStreaming) {
+                scrollRef.current?.scrollToEnd({ animated: true });
+              }
+            }}
+            ref={scrollRef}
+            showsVerticalScrollIndicator={false}
+          >
+            {visibleMessages.map((message) => (
+              <View
+                key={message.id}
+                style={
+                  message.role === "user"
+                    ? [
+                        styles.userMessage,
+                        { backgroundColor: theme.backgroundElement },
+                      ]
+                    : styles.assistantMessage
+                }
+              >
+                {message.images.length ? (
+                  <View style={styles.messageImages}>
+                    {message.images.map((image) => (
+                      <Image
+                        accessibilityLabel={image.name}
+                        contentFit="cover"
+                        key={image.id}
+                        source={{ uri: image.url }}
+                        style={styles.messageImage}
+                      />
+                    ))}
+                  </View>
+                ) : null}
+                {message.role === "user" ? (
+                  message.text ? (
+                    <ThemedText style={styles.messageText}>
+                      {message.text}
+                    </ThemedText>
+                  ) : null
+                ) : message.text ? (
+                  <NativeMarkdown content={message.text} />
+                ) : null}
+              </View>
+            ))}
+            {sessionQuery.isStreaming ? (
+              <View style={styles.thinking}>
+                <ActivityIndicator size="small" />
+                <ThemedText themeColor="textSecondary">
+                  Vibeongo is working…
+                </ThemedText>
+              </View>
+            ) : null}
+          </ScrollView>
+
+          <View
+            style={[
+              styles.composerOuter,
+              { backgroundColor: theme.background },
+            ]}
+          >
+            <OpencodeComposer
+              accessibilityLabel="Follow-up prompt"
+              attachments={attachments}
+              inventory={inventoryQuery.data}
+              isSubmitting={sendPrompt.isPending}
+              onChangeSelection={setSelection}
+              onChangeAttachments={setAttachments}
+              onChangeText={setPrompt}
+              onNewChat={openNewChat}
+              onSubmit={submit}
+              placeholder={
+                sessionQuery.isStreaming
+                  ? "Write your next message…"
+                  : "Ask a follow-up…"
+              }
+              selection={selection}
+              submitDisabled={sessionQuery.isStreaming}
+              value={prompt}
+            />
+            {sendPrompt.error ? (
+              <ThemedText style={styles.error}>
+                {sendPrompt.error.message}
+              </ThemedText>
+            ) : null}
+          </View>
+        </Animated.View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
