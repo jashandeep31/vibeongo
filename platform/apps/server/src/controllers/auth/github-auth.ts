@@ -24,22 +24,26 @@ const githubEmailsSchema = z.array(
   }),
 );
 
-export const githubAuthUrl = catchAsync(
-  async (_req: Request, res: Response) => {
-    const requestUrl = "https://github.com/login/oauth/authorize";
-    const params = {
-      client_id: env.GITHUB_CLIENT_ID,
-      redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
-      scope: "user:email",
-    };
+export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
+  const requestUrl = "https://github.com/login/oauth/authorize";
+  const mobileState =
+    req.query.client_id === "vibeongo-mobile" &&
+    typeof req.query.state === "string"
+      ? `mobile:${req.query.state}`
+      : undefined;
+  const params = {
+    client_id: env.GITHUB_CLIENT_ID,
+    redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
+    scope: "user:email",
+    ...(mobileState ? { state: mobileState } : {}),
+  };
 
-    res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
-  },
-);
+  res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
+});
 
 export const githubAuthCallbackController = catchAsync(
   async (req: Request, res: Response) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
 
     if (typeof code !== "string") {
       throw new Error("code is not string");
@@ -121,6 +125,14 @@ export const githubAuthCallbackController = catchAsync(
       return;
     }
 
+    if (typeof state === "string" && state.startsWith("mobile:")) {
+      const redirectUrl = new URL("exp://fedora:8081/--/auth/callback");
+      redirectUrl.searchParams.set("token", "testtoken");
+      redirectUrl.searchParams.set("state", state.slice("mobile:".length));
+      res.redirect(redirectUrl.toString());
+      return;
+    }
+
     const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
       expiresIn: "30d",
     });
@@ -128,9 +140,6 @@ export const githubAuthCallbackController = catchAsync(
       ...sessionCookieOptions,
       maxAge: sessionMaxAgeMs,
     });
-
-    // Temporary web redirect while mobile authentication is being wired up:
-    // res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
-    res.redirect("exp://fedora:8081/--/auth/callback?token=testtoken");
+    res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
   },
 );
