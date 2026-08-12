@@ -1,5 +1,9 @@
 import { instances, projects, projectSessions } from "@repo/db";
-import type { Session as OpencodeSession } from "@opencode-ai/sdk/v2/client";
+import type {
+  Message as OpencodeMessage,
+  Part as OpencodePart,
+  Session as OpencodeSession,
+} from "@opencode-ai/sdk/v2/client";
 import { create } from "zustand";
 
 interface ProjectsStore {
@@ -92,25 +96,48 @@ export const useSessionsStore = create<SessionsStore>((set, get) => ({
     })),
 }));
 
+export type OpencodeChatMessage = {
+  info: OpencodeMessage;
+  parts: OpencodePart[];
+};
+
 interface SessionChatsStore {
   chatsBySessionId: Record<string, OpencodeSession[]>;
+  messagesBySessionId: Record<string, Record<string, OpencodeChatMessage[]>>;
   getSessionChats: (projectSessionId: string) => OpencodeSession[];
-  setSessionChats: (
+  getChatMessages: (
     projectSessionId: string,
-    chats: OpencodeSession[],
-  ) => void;
-  upsertSessionChat: (
+    chatId: string,
+  ) => OpencodeChatMessage[];
+  setSessionChats: (projectSessionId: string, chats: OpencodeSession[]) => void;
+  upsertSessionChat: (projectSessionId: string, chat: OpencodeSession) => void;
+  setChatMessages: (
     projectSessionId: string,
-    chat: OpencodeSession,
+    chatId: string,
+    messages: OpencodeChatMessage[],
   ) => void;
+  upsertChatMessage: (
+    projectSessionId: string,
+    chatId: string,
+    message: OpencodeChatMessage,
+  ) => void;
+  deleteChatMessage: (
+    projectSessionId: string,
+    chatId: string,
+    messageId: string,
+  ) => void;
+  clearChatMessages: (projectSessionId: string, chatId: string) => void;
   deleteSessionChat: (projectSessionId: string, chatId: string) => void;
   clearSessionChats: (projectSessionId: string) => void;
 }
 
 export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
   chatsBySessionId: {},
+  messagesBySessionId: {},
   getSessionChats: (projectSessionId) =>
     get().chatsBySessionId[projectSessionId] ?? [],
+  getChatMessages: (projectSessionId, chatId) =>
+    get().messagesBySessionId[projectSessionId]?.[chatId] ?? [],
   setSessionChats: (projectSessionId, chats) =>
     set((state) => ({
       chatsBySessionId: {
@@ -139,19 +166,96 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
         },
       };
     }),
-  deleteSessionChat: (projectSessionId, chatId) =>
+  setChatMessages: (projectSessionId, chatId, messages) =>
     set((state) => ({
-      chatsBySessionId: {
-        ...state.chatsBySessionId,
-        [projectSessionId]: (
-          state.chatsBySessionId[projectSessionId] ?? []
-        ).filter((chat) => chat.id !== chatId),
+      messagesBySessionId: {
+        ...state.messagesBySessionId,
+        [projectSessionId]: {
+          ...state.messagesBySessionId[projectSessionId],
+          [chatId]: messages,
+        },
       },
     })),
+  upsertChatMessage: (projectSessionId, chatId, message) =>
+    set((state) => {
+      const chatMessages =
+        state.messagesBySessionId[projectSessionId]?.[chatId] ?? [];
+      const existingMessageIndex = chatMessages.findIndex(
+        (existingMessage) => existingMessage.info.id === message.info.id,
+      );
+      const nextChatMessages = [...chatMessages];
+
+      if (existingMessageIndex === -1) {
+        nextChatMessages.push(message);
+      } else {
+        nextChatMessages[existingMessageIndex] = message;
+      }
+
+      return {
+        messagesBySessionId: {
+          ...state.messagesBySessionId,
+          [projectSessionId]: {
+            ...state.messagesBySessionId[projectSessionId],
+            [chatId]: nextChatMessages,
+          },
+        },
+      };
+    }),
+  deleteChatMessage: (projectSessionId, chatId, messageId) =>
+    set((state) => ({
+      messagesBySessionId: {
+        ...state.messagesBySessionId,
+        [projectSessionId]: {
+          ...state.messagesBySessionId[projectSessionId],
+          [chatId]: (
+            state.messagesBySessionId[projectSessionId]?.[chatId] ?? []
+          ).filter((message) => message.info.id !== messageId),
+        },
+      },
+    })),
+  clearChatMessages: (projectSessionId, chatId) =>
+    set((state) => {
+      const projectSessionMessages = {
+        ...state.messagesBySessionId[projectSessionId],
+      };
+      Reflect.deleteProperty(projectSessionMessages, chatId);
+
+      return {
+        messagesBySessionId: {
+          ...state.messagesBySessionId,
+          [projectSessionId]: projectSessionMessages,
+        },
+      };
+    }),
+  deleteSessionChat: (projectSessionId, chatId) =>
+    set((state) => {
+      const projectSessionMessages = {
+        ...state.messagesBySessionId[projectSessionId],
+      };
+      Reflect.deleteProperty(projectSessionMessages, chatId);
+
+      return {
+        chatsBySessionId: {
+          ...state.chatsBySessionId,
+          [projectSessionId]: (
+            state.chatsBySessionId[projectSessionId] ?? []
+          ).filter((chat) => chat.id !== chatId),
+        },
+        messagesBySessionId: {
+          ...state.messagesBySessionId,
+          [projectSessionId]: projectSessionMessages,
+        },
+      };
+    }),
   clearSessionChats: (projectSessionId) =>
     set((state) => {
       const remainingChats = { ...state.chatsBySessionId };
+      const remainingMessages = { ...state.messagesBySessionId };
       Reflect.deleteProperty(remainingChats, projectSessionId);
-      return { chatsBySessionId: remainingChats };
+      Reflect.deleteProperty(remainingMessages, projectSessionId);
+      return {
+        chatsBySessionId: remainingChats,
+        messagesBySessionId: remainingMessages,
+      };
     }),
 }));
