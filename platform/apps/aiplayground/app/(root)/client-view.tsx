@@ -665,10 +665,15 @@ export default function ClientView() {
 
         <TabsContent value="projects">
           <div className="mb-4 flex justify-end">
-            <Button asChild size="sm">
+            <Button
+              asChild
+              size="sm"
+              variant="outline"
+              className="bg-background/40 text-muted-foreground hover:bg-muted/60 hover:text-foreground h-8 rounded-md px-3 font-mono text-xs tracking-wide uppercase shadow-none"
+            >
               <Link href="/projects/create">
-                <Plus />
-                Create project
+                <Plus className="size-3.5" />
+                New project
               </Link>
             </Button>
           </div>
