@@ -1,19 +1,22 @@
-import { GlassView, isGlassEffectAPIAvailable } from 'expo-glass-effect';
-import { SymbolView, type SymbolViewProps } from 'expo-symbols';
-import { useCallback, useEffect, useRef } from 'react';
+import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
+import { SymbolView, type SymbolViewProps } from "expo-symbols";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   Animated,
+  Alert,
   Modal,
   Pressable,
   StyleSheet,
   View,
   useWindowDimensions,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ThemedText } from '@/components/themed-text';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useTheme } from '@/hooks/use-theme';
+import { ThemedText } from "@/components/themed-text";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useTheme } from "@/hooks/use-theme";
+import { clearAccessToken } from "@/lib/auth";
 
 type HomeSidebarProps = {
   visible: boolean;
@@ -24,40 +27,41 @@ const supportsNativeGlass = isGlassEffectAPIAvailable();
 
 type NavigationItem = {
   title: string;
-  icon: SymbolViewProps['name'];
+  icon: SymbolViewProps["name"];
 };
 
 const navigation: NavigationItem[] = [
-  { title: 'Home', icon: { ios: 'house', android: 'home' } },
+  { title: "Home", icon: { ios: "house", android: "home" } },
   {
-    title: 'New Chat',
-    icon: { ios: 'square.and.pencil', android: 'edit_square' },
+    title: "New Chat",
+    icon: { ios: "square.and.pencil", android: "edit_square" },
   },
   {
-    title: 'Limits',
-    icon: { ios: 'gauge.with.dots.needle.50percent', android: 'speed' },
+    title: "Limits",
+    icon: { ios: "gauge.with.dots.needle.50percent", android: "speed" },
   },
   {
-    title: 'GitHub Repos',
-    icon: { ios: 'chevron.left.forwardslash.chevron.right', android: 'code' },
+    title: "GitHub Repos",
+    icon: { ios: "chevron.left.forwardslash.chevron.right", android: "code" },
   },
   {
-    title: 'Wallet',
-    icon: { ios: 'wallet.bifold', android: 'account_balance_wallet' },
+    title: "Wallet",
+    icon: { ios: "wallet.bifold", android: "account_balance_wallet" },
   },
   {
-    title: 'Settings',
-    icon: { ios: 'gearshape', android: 'settings' },
+    title: "Settings",
+    icon: { ios: "gearshape", android: "settings" },
   },
 ];
 
 export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
   const theme = useTheme();
-  const isDark = useColorScheme() === 'dark';
+  const isDark = useColorScheme() === "dark";
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.94, 420);
   const translateX = useRef(new Animated.Value(-drawerWidth)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
+  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -97,13 +101,27 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
     });
   }, [backdropOpacity, drawerWidth, onClose, translateX]);
 
+  const signOut = async () => {
+    if (isSigningOut) return;
+    setIsSigningOut(true);
+    try {
+      await clearAccessToken();
+      closeSidebar();
+    } catch {
+      Alert.alert("Could not sign out", "Please try again.");
+    } finally {
+      setIsSigningOut(false);
+    }
+  };
+
   return (
     <Modal
       animationType="none"
       onRequestClose={closeSidebar}
       statusBarTranslucent
       transparent
-      visible={visible}>
+      visible={visible}
+    >
       <View style={styles.modalRoot}>
         <Animated.View style={[styles.backdrop, { opacity: backdropOpacity }]}>
           <Pressable
@@ -123,7 +141,8 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
               transform: [{ translateX }],
               width: drawerWidth,
             },
-          ]}>
+          ]}
+        >
           <SafeAreaView style={styles.safeArea}>
             <View style={styles.header}>
               <ThemedText style={styles.brand}>VibeOnGo</ThemedText>
@@ -135,22 +154,24 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                 style={({ pressed }) => [
                   styles.closeControl,
                   pressed && styles.pressed,
-                ]}>
+                ]}
+              >
                 <GlassView
                   glassEffectStyle="regular"
                   isInteractive
                   style={[
                     styles.closeButton,
                     !supportsNativeGlass && {
-                      backgroundColor: isDark ? '#242528' : '#FFFFFF',
+                      backgroundColor: isDark ? "#242528" : "#FFFFFF",
                       borderColor: isDark
-                        ? 'rgba(255,255,255,0.10)'
-                        : 'rgba(15,23,42,0.08)',
+                        ? "rgba(255,255,255,0.10)"
+                        : "rgba(15,23,42,0.08)",
                       borderWidth: 1,
                     },
-                  ]}>
+                  ]}
+                >
                   <SymbolView
-                    name={{ ios: 'xmark', android: 'close' }}
+                    name={{ ios: "xmark", android: "close" }}
                     size={17}
                     tintColor={theme.text}
                     weight="medium"
@@ -168,7 +189,8 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                   style={({ pressed }) => [
                     styles.navigationItem,
                     pressed && styles.pressed,
-                  ]}>
+                  ]}
+                >
                   <SymbolView
                     name={item.icon}
                     size={20}
@@ -184,6 +206,31 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
             <View style={styles.spacer} />
 
             <Pressable
+              accessibilityRole="button"
+              disabled={isSigningOut}
+              onPress={() => void signOut()}
+              style={({ pressed }) => [
+                styles.signOut,
+                { borderColor: theme.backgroundSelected },
+                (pressed || isSigningOut) && styles.pressed,
+              ]}
+            >
+              {isSigningOut ? (
+                <ActivityIndicator color="#ef4444" size="small" />
+              ) : (
+                <SymbolView
+                  name={{
+                    ios: "rectangle.portrait.and.arrow.right",
+                    android: "logout",
+                  }}
+                  size={19}
+                  tintColor="#ef4444"
+                />
+              )}
+              <ThemedText style={styles.signOutLabel}>Sign out</ThemedText>
+            </Pressable>
+
+            <Pressable
               accessibilityLabel="Open user profile"
               accessibilityRole="button"
               onPress={closeSidebar}
@@ -191,22 +238,31 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                 styles.profile,
                 { borderColor: theme.backgroundSelected },
                 pressed && styles.pressed,
-              ]}>
-              <View style={[styles.avatar, { backgroundColor: theme.backgroundElement }]}>
+              ]}
+            >
+              <View
+                style={[
+                  styles.avatar,
+                  { backgroundColor: theme.backgroundElement },
+                ]}
+              >
                 <SymbolView
-                  name={{ ios: 'person.fill', android: 'person' }}
+                  name={{ ios: "person.fill", android: "person" }}
                   size={20}
                   tintColor={theme.textSecondary}
                 />
               </View>
               <View style={styles.profileText}>
                 <ThemedText style={styles.profileName}>Your profile</ThemedText>
-                <ThemedText style={styles.profileHandle} themeColor="textSecondary">
+                <ThemedText
+                  style={styles.profileHandle}
+                  themeColor="textSecondary"
+                >
                   Account
                 </ThemedText>
               </View>
               <SymbolView
-                name={{ ios: 'chevron.right', android: 'chevron_right' }}
+                name={{ ios: "chevron.right", android: "chevron_right" }}
                 size={16}
                 tintColor={theme.textSecondary}
               />
@@ -223,10 +279,10 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   backdrop: {
-    backgroundColor: 'rgba(0, 0, 0, 0.22)',
+    backgroundColor: "rgba(0, 0, 0, 0.22)",
     bottom: 0,
     left: 0,
-    position: 'absolute',
+    position: "absolute",
     right: 0,
     top: 0,
   },
@@ -234,69 +290,82 @@ const styles = StyleSheet.create({
     borderRightWidth: StyleSheet.hairlineWidth,
     bottom: 0,
     left: 0,
-    position: 'absolute',
+    position: "absolute",
     top: 0,
   },
   safeArea: {
     flex: 1,
   },
   header: {
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingHorizontal: 24,
     paddingTop: 10,
     paddingBottom: 18,
   },
   brand: {
     fontSize: 28,
-    fontWeight: '700',
+    fontWeight: "700",
     letterSpacing: -0.8,
   },
   closeControl: {
     borderRadius: 22,
   },
   closeButton: {
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 22,
     height: 44,
-    justifyContent: 'center',
-    overflow: 'hidden',
+    justifyContent: "center",
+    overflow: "hidden",
     width: 44,
   },
   navigation: {
     paddingHorizontal: 12,
   },
   navigationItem: {
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 12,
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: 14,
     minHeight: 46,
     paddingHorizontal: 10,
   },
   navigationLabel: {
     fontSize: 15,
-    fontWeight: '500',
+    fontWeight: "500",
     letterSpacing: -0.1,
   },
   spacer: {
     flex: 1,
   },
-  profile: {
-    alignItems: 'center',
+  signOut: {
+    alignItems: "center",
     borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: 'row',
+    flexDirection: "row",
+    gap: 12,
+    minHeight: 52,
+    paddingHorizontal: 22,
+  },
+  signOutLabel: {
+    color: "#ef4444",
+    fontSize: 15,
+    fontWeight: "600",
+  },
+  profile: {
+    alignItems: "center",
+    borderTopWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
     gap: 12,
     minHeight: 76,
     paddingHorizontal: 22,
   },
   avatar: {
-    alignItems: 'center',
+    alignItems: "center",
     borderRadius: 21,
     height: 42,
-    justifyContent: 'center',
-    overflow: 'hidden',
+    justifyContent: "center",
+    overflow: "hidden",
     width: 42,
   },
   profileText: {
@@ -304,7 +373,7 @@ const styles = StyleSheet.create({
   },
   profileName: {
     fontSize: 15,
-    fontWeight: '600',
+    fontWeight: "600",
     lineHeight: 19,
   },
   profileHandle: {

@@ -6,6 +6,7 @@ import {
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
+import { SignedOutScreen } from "@/components/auth/signed-out-screen";
 import { ProjectStoreSync } from "@/components/projects/project-store-sync";
 import { useTheme } from "@/hooks/use-theme";
 import { createApiClient } from "@/lib/api-client";
@@ -52,6 +53,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
       </View>
     );
   }
+
+  if (!accessToken) return <SignedOutScreen />;
 
   return (
     <ApiClientProvider client={apiClient}>
