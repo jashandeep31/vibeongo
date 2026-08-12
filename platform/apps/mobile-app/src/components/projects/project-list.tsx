@@ -2,6 +2,7 @@ import {
   useGetInstances,
   useGetProjectsWithSessions,
   useResumeProjectSession,
+  useTerminateInstance,
 } from "@repo/api-hooks";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
@@ -16,12 +17,20 @@ import {
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
+import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import {
   SessionRuntimeDrawer,
   type SessionRuntime,
 } from "@/components/projects/session-runtime-drawer";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+
+type TerminationTarget = {
+  instanceId: string;
+  projectId: string;
+  sessionId: string;
+  sessionName: string;
+};
 
 export function ProjectList() {
   const theme = useTheme();
@@ -31,14 +40,27 @@ export function ProjectList() {
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
     null,
   );
+  const [terminationTarget, setTerminationTarget] =
+    useState<TerminationTarget | null>(null);
+  const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
+    useState(false);
+  const [terminatingInstanceId, setTerminatingInstanceId] = useState<
+    string | null
+  >(null);
+  const terminateInstance = useTerminateInstance(
+    terminationTarget?.projectId ?? "",
+    terminationTarget?.sessionId ?? "",
+  );
   const instancesQuery = useGetInstances(
     { state: "running", limit: 100 },
     Boolean(projectsQuery.data),
   );
   const projects = projectsQuery.data ?? [];
-  const runningSessionIds = new Set(
+  const runningInstancesBySessionId = new Map(
     (instancesQuery.data?.data ?? []).flatMap((instance) =>
-      instance.project_session_id ? [instance.project_session_id] : [],
+      instance.project_session_id
+        ? ([[instance.project_session_id, instance]] as const)
+        : [],
     ),
   );
 
@@ -63,6 +85,26 @@ export function ProjectList() {
         },
       },
     );
+  };
+
+  const handleTerminate = () => {
+    if (!terminationTarget) return;
+
+    const instanceId = terminationTarget.instanceId;
+    setIsTerminationConfirmationOpen(false);
+    setTerminatingInstanceId(instanceId);
+    terminateInstance.mutate(instanceId, {
+      onError: () => {
+        Alert.alert(
+          "Could not terminate instance",
+          "Please check your connection and try again.",
+        );
+      },
+      onSettled: () => {
+        setTerminatingInstanceId(null);
+        setTerminationTarget(null);
+      },
+    });
   };
 
   if (projectsQuery.isPending) {
@@ -153,8 +195,13 @@ export function ProjectList() {
             ) : (
               <View style={styles.sessions}>
                 {project.sessions.map((session) => {
-                  const isRunning = runningSessionIds.has(session.id);
+                  const runningInstance = runningInstancesBySessionId.get(
+                    session.id,
+                  );
+                  const isRunning = Boolean(runningInstance);
                   const isResuming = resumingSessionId === session.id;
+                  const isTerminating =
+                    terminatingInstanceId === runningInstance?.id;
 
                   return (
                     <View key={session.id} style={styles.sessionRow}>
@@ -185,14 +232,48 @@ export function ProjectList() {
                           },
                         ]}
                       />
-                      {!isRunning ? (
+                      {runningInstance ? (
+                        <Pressable
+                          accessibilityLabel={`Terminate ${session.name}`}
+                          accessibilityRole="button"
+                          disabled={terminateInstance.isPending}
+                          onPress={() => {
+                            setTerminationTarget({
+                              instanceId: runningInstance.id,
+                              projectId: project.id,
+                              sessionId: session.id,
+                              sessionName: session.name,
+                            });
+                            setIsTerminationConfirmationOpen(true);
+                          }}
+                          style={({ pressed }) => [
+                            styles.sessionAction,
+                            styles.terminateButton,
+                            (pressed || terminateInstance.isPending) &&
+                              styles.pressed,
+                          ]}
+                        >
+                          {isTerminating ? (
+                            <ActivityIndicator color="#ef4444" size="small" />
+                          ) : (
+                            <SymbolView
+                              name={{
+                                ios: "stop.fill",
+                                android: "stop_circle",
+                              }}
+                              size={14}
+                              tintColor="#ef4444"
+                            />
+                          )}
+                        </Pressable>
+                      ) : (
                         <Pressable
                           accessibilityLabel={`Resume ${session.name}`}
                           accessibilityRole="button"
                           disabled={resumeSession.isPending}
                           onPress={() => setRuntimeSessionId(session.id)}
                           style={({ pressed }) => [
-                            styles.resumeButton,
+                            styles.sessionAction,
                             { backgroundColor: theme.backgroundElement },
                             (pressed || resumeSession.isPending) &&
                               styles.pressed,
@@ -208,7 +289,7 @@ export function ProjectList() {
                             />
                           )}
                         </Pressable>
-                      ) : null}
+                      )}
                     </View>
                   );
                 })}
@@ -221,6 +302,18 @@ export function ProjectList() {
         onClose={() => setRuntimeSessionId(null)}
         onSelect={handleRuntimeSelect}
         visible={runtimeSessionId !== null}
+      />
+      <ConfirmationDrawer
+        confirmDelaySeconds={3}
+        confirmLabel="Terminate"
+        description={`The running instance for "${terminationTarget?.sessionName ?? "this session"}" will stop immediately. Any unsaved work may be lost.`}
+        onCancel={() => {
+          setIsTerminationConfirmationOpen(false);
+          setTerminationTarget(null);
+        }}
+        onConfirm={handleTerminate}
+        title="Terminate this instance?"
+        visible={isTerminationConfirmationOpen}
       />
     </>
   );
@@ -283,7 +376,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: "700",
   },
-  resumeButton: {
+  sessionAction: {
     alignItems: "center",
     borderRadius: 8,
     height: 30,
@@ -311,5 +404,8 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     height: 7,
     width: 7,
+  },
+  terminateButton: {
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
   },
 });
