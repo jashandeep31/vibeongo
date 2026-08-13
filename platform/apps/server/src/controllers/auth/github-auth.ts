@@ -126,7 +126,8 @@ export const githubAuthCallbackController = catchAsync(
     }
 
     if (typeof state === "string" && state.startsWith("mobile:")) {
-      const redirectUrl = new URL("exp://fedora:8081/--/auth/callback");
+      const redirectUrl = new URL("vibeongo://auth/callback");
+      // const redirectUrl = new URL("exp://fedora:8081/--/auth/callback");
       redirectUrl.searchParams.set("token", "testtoken");
       redirectUrl.searchParams.set("state", state.slice("mobile:".length));
       res.redirect(redirectUrl.toString());

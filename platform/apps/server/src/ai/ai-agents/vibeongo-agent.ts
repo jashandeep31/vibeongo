@@ -70,7 +70,7 @@ export async function* vibeongoAIAgent({
   });
 
   const result = streamText({
-    model: "zai/glm-5.2",
+    model: "openai/gpt-5.6-luna",
     system: prompts.vibeongo.systemPrompt(),
     reasoning: "high",
     tools: {
