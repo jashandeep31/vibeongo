@@ -38,11 +38,13 @@ type OpencodeComposerProps = {
   disabled?: boolean;
   submitDisabled?: boolean;
   inventory?: OpencodeInventory;
+  isStopping?: boolean;
   isSubmitting?: boolean;
   onChangeSelection: (selection: OpencodePromptSelection) => void;
   onChangeAttachments?: (attachments: ComposerImageAttachment[]) => void;
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
+  onStop?: () => void;
   onSubmit: () => void;
   placeholder: string;
   selection: OpencodePromptSelection;
@@ -55,11 +57,13 @@ export function OpencodeComposer({
   autoFocus,
   disabled,
   inventory,
+  isStopping,
   isSubmitting,
   onChangeSelection,
   onChangeAttachments,
   onChangeText,
   onNewChat,
+  onStop,
   onSubmit,
   placeholder,
   selection,
@@ -73,6 +77,7 @@ export function OpencodeComposer({
     submitDisabledProp ||
     isSubmitting ||
     (!value.trim() && attachments.length === 0);
+  const actionDisabled = onStop ? isStopping : submitDisabled;
   const submit = () => {
     if (submitDisabled) return;
     inputRef.current?.blur();
@@ -228,22 +233,26 @@ export function OpencodeComposer({
             value={value}
           />
           <Pressable
-            accessibilityLabel="Send prompt"
+            accessibilityLabel={onStop ? "Stop response" : "Send prompt"}
             accessibilityRole="button"
-            disabled={submitDisabled}
-            onPress={submit}
+            disabled={actionDisabled}
+            onPress={onStop ?? submit}
             style={({ pressed }) => [
               styles.sendButton,
               { backgroundColor: theme.text },
-              submitDisabled && styles.disabled,
+              actionDisabled && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
-            {isSubmitting ? (
+            {isSubmitting || isStopping ? (
               <ActivityIndicator color={theme.background} size="small" />
             ) : (
               <SymbolView
-                name={{ ios: "arrow.up", android: "arrow_upward" }}
+                name={
+                  onStop
+                    ? { ios: "stop.fill", android: "stop" }
+                    : { ios: "arrow.up", android: "arrow_upward" }
+                }
                 size={17}
                 tintColor={theme.background}
               />

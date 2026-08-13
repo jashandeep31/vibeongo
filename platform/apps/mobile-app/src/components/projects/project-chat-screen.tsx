@@ -1,17 +1,22 @@
-import type { OpencodePromptSelection } from "@repo/api-client";
+import type { OpencodePromptSelection, QuestionAnswer } from "@repo/api-client";
 import {
+  useAbortOpencodeSession,
+  useAnswerOpencodeQuestion,
   useOpencodeInventory,
   useOpencodeSession,
+  useRejectOpencodeQuestion,
+  useRestoreRevertedOpencodeMessage,
+  useRevertOpencodeSession,
   useSendOpencodePrompt,
 } from "@repo/api-hooks";
 import { useSessionChatsStore } from "@repo/app-store";
-import { Image } from "expo-image";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
+  Alert,
   AppState,
   Easing,
   Keyboard,
@@ -26,16 +31,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
+  createChatTurns,
+  getRevertedMessageLabel,
+} from "@/components/projects/opencode-chat-turns";
+import { OpencodeChatTurn } from "@/components/projects/opencode-chat-turn";
+import {
   OpencodeComposer,
   type ComposerImageAttachment,
 } from "@/components/projects/opencode-composer";
+import { OpencodeQuestionPrompt } from "@/components/projects/opencode-question-prompt";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import {
   ProjectChatSwitcherDrawer,
   type ProjectChatTarget,
 } from "@/components/projects/project-chat-switcher-drawer";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
-import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -44,18 +54,6 @@ const EMPTY_SESSION_CHATS: Array<{ id: string }> = [];
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
-}
-
-function messageText(
-  parts: Array<{ type: string; text?: string; ignored?: boolean }>,
-) {
-  return parts
-    .flatMap((part) =>
-      part.type === "text" && !part.ignored && part.text?.trim()
-        ? [part.text]
-        : [],
-    )
-    .join("\n\n");
 }
 
 export function ProjectChatScreen() {
@@ -91,6 +89,41 @@ export function ProjectChatScreen() {
     accessToken: runtime.accessToken,
     password: runtime.password,
   });
+  const abortSession = useAbortOpencodeSession({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const answerQuestion = useAnswerOpencodeQuestion({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const rejectQuestion = useRejectOpencodeQuestion({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const revertSession = useRevertOpencodeSession({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const restoreMessage = useRestoreRevertedOpencodeMessage({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
   const inventoryQuery = useOpencodeInventory(
     projectSessionId,
     runtime.serverUrl,
@@ -101,8 +134,40 @@ export function ProjectChatScreen() {
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [showRawResponse, setShowRawResponse] = useState(false);
   const data = sessionQuery.data;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
+  const { visibleMessages, revertedMessages } = useMemo(() => {
+    const messages = data?.messages ?? [];
+    const revertMessageId = data?.session.revert?.messageID;
+    if (!revertMessageId) {
+      return { visibleMessages: messages, revertedMessages: [] };
+    }
+    const revertIndex = messages.findIndex(
+      (message) => message.info.id === revertMessageId,
+    );
+    return revertIndex === -1
+      ? { visibleMessages: messages, revertedMessages: [] }
+      : {
+          visibleMessages: messages.slice(0, revertIndex),
+          revertedMessages: messages.slice(revertIndex),
+        };
+  }, [data?.messages, data?.session.revert?.messageID]);
+  const turns = useMemo(
+    () => createChatTurns(visibleMessages),
+    [visibleMessages],
+  );
+  const revertedQuestions = useMemo(
+    () =>
+      revertedMessages
+        .filter((message) => message.info.role === "user")
+        .map((message) => ({
+          id: message.info.id,
+          label: getRevertedMessageLabel(message.parts),
+        })),
+    [revertedMessages],
+  );
+  const activeQuestion = data?.questions[0];
 
   useEffect(() => {
     const provider = data?.session.model?.providerID;
@@ -315,7 +380,7 @@ export function ProjectChatScreen() {
   useEffect(() => {
     if (!data) return;
     requestAnimationFrame(() => scrollRef.current?.scrollToEnd());
-  }, [data?.messages.length, sessionQuery.isStreaming]);
+  }, [data?.messages.length, data?.questions.length, sessionQuery.isStreaming]);
 
   const submit = () => {
     const text = prompt.trim();
@@ -338,6 +403,30 @@ export function ProjectChatScreen() {
         onSuccess: () => void sessionQuery.resync(),
       },
     );
+  };
+
+  const submitQuestionAnswer = (
+    requestId: string,
+    answers: QuestionAnswer[],
+  ) => {
+    answerQuestion.mutate(
+      { requestId, answers },
+      {
+        onError: (error) =>
+          Alert.alert("Could not submit your answer", error.message),
+        onSuccess: () =>
+          requestAnimationFrame(() =>
+            scrollRef.current?.scrollToEnd({ animated: true }),
+          ),
+      },
+    );
+  };
+
+  const dismissQuestion = (requestId: string) => {
+    rejectQuestion.mutate(requestId, {
+      onError: (error) =>
+        Alert.alert("Could not dismiss the question", error.message),
+    });
   };
 
   if (runtime.isPending) {
@@ -385,24 +474,6 @@ export function ProjectChatScreen() {
       </SafeAreaView>
     );
   }
-
-  const visibleMessages = data.messages.flatMap((message) => {
-    const text = messageText(message.parts);
-    const images = message.parts.flatMap((part) =>
-      part.type === "file" && part.mime?.startsWith("image/") && part.url
-        ? [
-            {
-              id: part.id,
-              name: part.filename ?? "Attached image",
-              url: part.url,
-            },
-          ]
-        : [],
-    );
-    return text || images.length
-      ? [{ id: message.info.id, role: message.info.role, text, images }]
-      : [];
-  });
 
   return (
     <SafeAreaView
@@ -467,6 +538,28 @@ export function ProjectChatScreen() {
                 { backgroundColor: theme.backgroundElement },
               ]}
             >
+              <Pressable
+                accessibilityLabel={
+                  showRawResponse ? "Show rendered chat" : "Show raw response"
+                }
+                accessibilityRole="button"
+                onPress={() => setShowRawResponse((visible) => !visible)}
+                style={({ pressed }) => [
+                  styles.headerAction,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{
+                    ios: showRawResponse
+                      ? "bubble.left.and.bubble.right"
+                      : "curlybraces",
+                    android: showRawResponse ? "forum" : "code",
+                  }}
+                  size={18}
+                  tintColor={theme.textSecondary}
+                />
+              </Pressable>
               <ProjectDomainsButton
                 instanceId={runtime.instance.id}
                 projectId={projectId}
@@ -506,43 +599,51 @@ export function ProjectChatScreen() {
             ref={scrollRef}
             showsVerticalScrollIndicator={false}
           >
-            {visibleMessages.map((message) => (
-              <View
-                key={message.id}
-                style={
-                  message.role === "user"
-                    ? [
-                        styles.userMessage,
-                        { backgroundColor: theme.backgroundElement },
-                      ]
-                    : styles.assistantMessage
-                }
+            {showRawResponse ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator>
+                <ThemedText selectable style={styles.rawResponse}>
+                  {JSON.stringify(data, null, 2)}
+                </ThemedText>
+              </ScrollView>
+            ) : null}
+            {!showRawResponse &&
+              turns.map((turn, index) => (
+                <OpencodeChatTurn
+                  isReverting={
+                    revertSession.isPending &&
+                    revertSession.variables === turn.id
+                  }
+                  isStreaming={
+                    sessionQuery.isStreaming && index === turns.length - 1
+                  }
+                  item={turn}
+                  key={turn.id}
+                  onRevert={() =>
+                    revertSession.mutate(turn.id, {
+                      onError: (error) =>
+                        Alert.alert("Could not revert messages", error.message),
+                    })
+                  }
+                  revertDisabled={
+                    sessionQuery.isStreaming ||
+                    revertSession.isPending ||
+                    restoreMessage.isPending
+                  }
+                />
+              ))}
+            {!showRawResponse &&
+            turns.length === 0 &&
+            !activeQuestion &&
+            !sessionQuery.isStreaming ? (
+              <ThemedText
+                style={[styles.emptyText, { color: theme.textSecondary }]}
               >
-                {message.images.length ? (
-                  <View style={styles.messageImages}>
-                    {message.images.map((image) => (
-                      <Image
-                        accessibilityLabel={image.name}
-                        contentFit="cover"
-                        key={image.id}
-                        source={{ uri: image.url }}
-                        style={styles.messageImage}
-                      />
-                    ))}
-                  </View>
-                ) : null}
-                {message.role === "user" ? (
-                  message.text ? (
-                    <ThemedText style={styles.messageText}>
-                      {message.text}
-                    </ThemedText>
-                  ) : null
-                ) : message.text ? (
-                  <NativeMarkdown content={message.text} />
-                ) : null}
-              </View>
-            ))}
-            {sessionQuery.isStreaming ? (
+                Start the chat by describing what you want to build.
+              </ThemedText>
+            ) : null}
+            {!showRawResponse &&
+            sessionQuery.isStreaming &&
+            turns.length === 0 ? (
               <View style={styles.thinking}>
                 <ActivityIndicator size="small" />
                 <ThemedText themeColor="textSecondary">
@@ -558,25 +659,67 @@ export function ProjectChatScreen() {
               { backgroundColor: theme.background },
             ]}
           >
-            <OpencodeComposer
-              accessibilityLabel="Follow-up prompt"
-              attachments={attachments}
-              inventory={inventoryQuery.data}
-              isSubmitting={sendPrompt.isPending}
-              onChangeSelection={setSelection}
-              onChangeAttachments={setAttachments}
-              onChangeText={setPrompt}
-              onNewChat={openNewChat}
-              onSubmit={submit}
-              placeholder={
-                sessionQuery.isStreaming
-                  ? "Write your next message…"
-                  : "Ask a follow-up…"
-              }
-              selection={selection}
-              submitDisabled={sessionQuery.isStreaming}
-              value={prompt}
-            />
+            {!showRawResponse && revertedQuestions.length > 0 ? (
+              <RevertedMessagesPanel
+                messages={revertedQuestions}
+                onRestore={(messageId, nextMessageId) =>
+                  restoreMessage.mutate(
+                    { messageId, nextMessageId },
+                    {
+                      onError: (error) =>
+                        Alert.alert("Could not restore message", error.message),
+                    },
+                  )
+                }
+                restoreDisabled={
+                  sessionQuery.isStreaming || revertSession.isPending
+                }
+                restoringMessageId={restoreMessage.variables?.messageId}
+              />
+            ) : null}
+            {activeQuestion ? (
+              <OpencodeQuestionPrompt
+                isDismissing={rejectQuestion.isPending}
+                isSubmitting={answerQuestion.isPending}
+                key={activeQuestion.id}
+                onDismiss={dismissQuestion}
+                onSubmit={submitQuestionAnswer}
+                request={activeQuestion}
+              />
+            ) : (
+              <OpencodeComposer
+                accessibilityLabel="Follow-up prompt"
+                attachments={attachments}
+                inventory={inventoryQuery.data}
+                isStopping={abortSession.isPending}
+                isSubmitting={sendPrompt.isPending}
+                onChangeSelection={setSelection}
+                onChangeAttachments={setAttachments}
+                onChangeText={setPrompt}
+                onNewChat={openNewChat}
+                onStop={
+                  sessionQuery.isStreaming
+                    ? () =>
+                        abortSession.mutate(undefined, {
+                          onError: (error) =>
+                            Alert.alert(
+                              "Could not stop OpenCode",
+                              error.message,
+                            ),
+                        })
+                    : undefined
+                }
+                onSubmit={submit}
+                placeholder={
+                  sessionQuery.isStreaming
+                    ? "Write your next message…"
+                    : "Ask a follow-up…"
+                }
+                selection={selection}
+                submitDisabled={sessionQuery.isStreaming}
+                value={prompt}
+              />
+            )}
             {sendPrompt.error ? (
               <ThemedText style={styles.error}>
                 {sendPrompt.error.message}
@@ -595,10 +738,92 @@ export function ProjectChatScreen() {
   );
 }
 
+function RevertedMessagesPanel({
+  messages,
+  restoringMessageId,
+  restoreDisabled,
+  onRestore,
+}: {
+  messages: Array<{ id: string; label: string }>;
+  restoringMessageId?: string;
+  restoreDisabled: boolean;
+  onRestore: (messageId: string, nextMessageId?: string) => void;
+}) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(true);
+  return (
+    <View
+      style={[
+        styles.revertedPanel,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.backgroundSelected,
+        },
+      ]}
+    >
+      <Pressable
+        accessibilityRole="button"
+        onPress={() => setOpen((value) => !value)}
+        style={({ pressed }) => [
+          styles.revertedHeader,
+          pressed && styles.pressed,
+        ]}
+      >
+        <SymbolView
+          name={{ ios: "arrow.uturn.backward", android: "undo" }}
+          size={15}
+          tintColor={theme.textSecondary}
+        />
+        <ThemedText style={styles.revertedTitle}>
+          {messages.length} rolled back message
+          {messages.length === 1 ? "" : "s"}
+        </ThemedText>
+        <SymbolView
+          name={{
+            ios: open ? "chevron.down" : "chevron.right",
+            android: open ? "expand_more" : "chevron_right",
+          }}
+          size={14}
+          tintColor={theme.textSecondary}
+        />
+      </Pressable>
+      {open ? (
+        <ScrollView style={styles.revertedList}>
+          {messages.map((message, index) => (
+            <View key={message.id} style={styles.revertedRow}>
+              <ThemedText
+                numberOfLines={1}
+                style={[styles.revertedLabel, { color: theme.textSecondary }]}
+              >
+                {message.label}
+              </ThemedText>
+              <Pressable
+                accessibilityLabel={`Restore ${message.label}`}
+                accessibilityRole="button"
+                disabled={restoreDisabled || restoringMessageId !== undefined}
+                onPress={() => onRestore(message.id, messages[index + 1]?.id)}
+                style={({ pressed }) => [
+                  styles.restoreButton,
+                  { borderColor: theme.backgroundSelected },
+                  (restoreDisabled || restoringMessageId !== undefined) &&
+                    styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {restoringMessageId === message.id ? (
+                  <ActivityIndicator size="small" />
+                ) : null}
+                <ThemedText style={styles.restoreText}>Restore</ThemedText>
+              </Pressable>
+            </View>
+          ))}
+        </ScrollView>
+      ) : null}
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
-  assistantMessage: {
-    alignSelf: "stretch",
-  },
   composerOuter: {
     gap: 6,
     paddingBottom: 10,
@@ -608,6 +833,10 @@ const styles = StyleSheet.create({
   error: {
     color: "#ef4444",
     fontSize: 12,
+    textAlign: "center",
+  },
+  emptyText: {
+    marginTop: 120,
     textAlign: "center",
   },
   header: {
@@ -665,20 +894,55 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 24,
   },
-  messageText: {
-    fontSize: 15,
-    lineHeight: 23,
+  rawResponse: {
+    fontFamily: Platform.select({ ios: "ui-monospace", default: "monospace" }),
+    fontSize: 11,
+    lineHeight: 17,
+    minWidth: 500,
   },
-  messageImage: {
-    borderRadius: 12,
-    height: 112,
-    width: 112,
-  },
-  messageImages: {
+  restoreButton: {
+    alignItems: "center",
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    flexWrap: "wrap",
+    gap: 5,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  restoreText: {
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  revertedHeader: {
+    alignItems: "center",
+    flexDirection: "row",
     gap: 8,
-    marginBottom: 8,
+    minHeight: 42,
+    paddingHorizontal: 12,
+  },
+  revertedLabel: {
+    flex: 1,
+    fontSize: 12,
+  },
+  revertedList: {
+    maxHeight: 150,
+    paddingHorizontal: 10,
+  },
+  revertedPanel: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  revertedRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    paddingBottom: 8,
+  },
+  revertedTitle: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: "700",
   },
   pressed: {
     opacity: 0.72,
@@ -691,11 +955,5 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 8,
   },
-  userMessage: {
-    alignSelf: "flex-end",
-    borderRadius: 16,
-    maxWidth: "88%",
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-  },
+  disabled: { opacity: 0.4 },
 });
