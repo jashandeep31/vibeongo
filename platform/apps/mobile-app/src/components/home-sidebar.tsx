@@ -1,10 +1,10 @@
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
+import { Image } from "expo-image";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "expo-router";
+import { useCallback, useEffect, useRef } from "react";
 import {
-  ActivityIndicator,
   Animated,
-  Alert,
   Modal,
   Pressable,
   StyleSheet,
@@ -12,11 +12,11 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { useUserMetadata } from "@repo/api-hooks";
 
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
-import { clearAccessToken } from "@/lib/auth";
 
 type HomeSidebarProps = {
   visible: boolean;
@@ -28,10 +28,11 @@ const supportsNativeGlass = isGlassEffectAPIAvailable();
 type NavigationItem = {
   title: string;
   icon: SymbolViewProps["name"];
+  href?: "/" | "/wallet";
 };
 
 const navigation: NavigationItem[] = [
-  { title: "Home", icon: { ios: "house", android: "home" } },
+  { title: "Home", icon: { ios: "house", android: "home" }, href: "/" },
   {
     title: "New Chat",
     icon: { ios: "square.and.pencil", android: "edit_square" },
@@ -47,6 +48,7 @@ const navigation: NavigationItem[] = [
   {
     title: "Wallet",
     icon: { ios: "wallet.bifold", android: "account_balance_wallet" },
+    href: "/wallet",
   },
   {
     title: "Settings",
@@ -57,11 +59,12 @@ const navigation: NavigationItem[] = [
 export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
+  const router = useRouter();
+  const userQuery = useUserMetadata();
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.94, 420);
   const translateX = useRef(new Animated.Value(-drawerWidth)).current;
   const backdropOpacity = useRef(new Animated.Value(0)).current;
-  const [isSigningOut, setIsSigningOut] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -101,17 +104,22 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
     });
   }, [backdropOpacity, drawerWidth, onClose, translateX]);
 
-  const signOut = async () => {
-    if (isSigningOut) return;
-    setIsSigningOut(true);
-    try {
-      await clearAccessToken();
-      closeSidebar();
-    } catch {
-      Alert.alert("Could not sign out", "Please try again.");
-    } finally {
-      setIsSigningOut(false);
-    }
+  const user = userQuery.data;
+  const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
+  const profileName =
+    fullName ||
+    user?.username ||
+    (userQuery.isPending ? "Loading profile..." : "Profile unavailable");
+  const profileHandle = user?.username ? `@${user.username}` : "Account";
+
+  const openProfile = () => {
+    router.navigate("/profile");
+    closeSidebar();
+  };
+
+  const selectNavigationItem = (item: NavigationItem) => {
+    if (item.href) router.navigate(item.href);
+    closeSidebar();
   };
 
   return (
@@ -185,7 +193,7 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                 <Pressable
                   accessibilityRole="menuitem"
                   key={item.title}
-                  onPress={closeSidebar}
+                  onPress={() => selectNavigationItem(item)}
                   style={({ pressed }) => [
                     styles.navigationItem,
                     pressed && styles.pressed,
@@ -206,34 +214,9 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
             <View style={styles.spacer} />
 
             <Pressable
-              accessibilityRole="button"
-              disabled={isSigningOut}
-              onPress={() => void signOut()}
-              style={({ pressed }) => [
-                styles.signOut,
-                { borderColor: theme.backgroundSelected },
-                (pressed || isSigningOut) && styles.pressed,
-              ]}
-            >
-              {isSigningOut ? (
-                <ActivityIndicator color="#ef4444" size="small" />
-              ) : (
-                <SymbolView
-                  name={{
-                    ios: "rectangle.portrait.and.arrow.right",
-                    android: "logout",
-                  }}
-                  size={19}
-                  tintColor="#ef4444"
-                />
-              )}
-              <ThemedText style={styles.signOutLabel}>Sign out</ThemedText>
-            </Pressable>
-
-            <Pressable
               accessibilityLabel="Open user profile"
               accessibilityRole="button"
-              onPress={closeSidebar}
+              onPress={openProfile}
               style={({ pressed }) => [
                 styles.profile,
                 { borderColor: theme.backgroundSelected },
@@ -251,14 +234,26 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                   size={20}
                   tintColor={theme.textSecondary}
                 />
+                {user?.username ? (
+                  <Image
+                    accessibilityLabel={`${profileName} profile picture`}
+                    contentFit="cover"
+                    source={`https://github.com/${user.username}.png`}
+                    style={styles.avatarImage}
+                    transition={120}
+                  />
+                ) : null}
               </View>
               <View style={styles.profileText}>
-                <ThemedText style={styles.profileName}>Your profile</ThemedText>
+                <ThemedText numberOfLines={1} style={styles.profileName}>
+                  {profileName}
+                </ThemedText>
                 <ThemedText
+                  numberOfLines={1}
                   style={styles.profileHandle}
                   themeColor="textSecondary"
                 >
-                  Account
+                  {profileHandle}
                 </ThemedText>
               </View>
               <SymbolView
@@ -339,19 +334,6 @@ const styles = StyleSheet.create({
   spacer: {
     flex: 1,
   },
-  signOut: {
-    alignItems: "center",
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 12,
-    minHeight: 52,
-    paddingHorizontal: 22,
-  },
-  signOutLabel: {
-    color: "#ef4444",
-    fontSize: 15,
-    fontWeight: "600",
-  },
   profile: {
     alignItems: "center",
     borderTopWidth: StyleSheet.hairlineWidth,
@@ -367,6 +349,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "hidden",
     width: 42,
+  },
+  avatarImage: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
   },
   profileText: {
     flex: 1,
