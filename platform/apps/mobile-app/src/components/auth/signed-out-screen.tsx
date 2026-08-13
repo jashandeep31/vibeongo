@@ -10,7 +10,7 @@ import { useTheme } from "@/hooks/use-theme";
 import { exchangeMobileToken } from "@/lib/auth";
 
 const redirectUri = AuthSession.makeRedirectUri({
-  scheme: "mobileapp",
+  scheme: "vibeongo",
   path: "auth/callback",
 });
 

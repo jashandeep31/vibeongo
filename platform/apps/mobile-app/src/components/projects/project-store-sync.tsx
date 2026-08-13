@@ -20,8 +20,9 @@ import {
   useSessionChatsStore,
   useSessionsStore,
 } from "@repo/app-store";
+import { fetch as expoFetch } from "expo/fetch";
 import { usePathname } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import { AppState } from "react-native";
 
 function getConfigValue(config: unknown, key: string) {
@@ -41,8 +42,6 @@ function ProjectSessionRuntimeSync({
   sessionId: string;
 }) {
   const queryClient = useQueryClient();
-  const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
-  activeOpencodeSessionIdRef.current = activeOpencodeSessionId;
   const updateSession = useSessionsStore((store) => store.updateSession);
   const instancesQuery = useGetInstances({
     sessionId,
@@ -163,6 +162,7 @@ function ProjectSessionRuntimeSync({
             signal,
             handleEvent,
             () => void sessionsQuery.refetch(),
+            expoFetch as unknown as typeof globalThis.fetch,
           );
         } catch (error) {
           if (!disposed && !signal.aborted) {
@@ -189,12 +189,6 @@ function ProjectSessionRuntimeSync({
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
       startStream();
-      const activeSessionId = activeOpencodeSessionIdRef.current;
-      if (activeSessionId) {
-        void queryClient.invalidateQueries({
-          queryKey: ["opencode", "session", sessionId, activeSessionId],
-        });
-      }
     });
 
     return () => {

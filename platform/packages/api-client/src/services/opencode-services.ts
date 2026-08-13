@@ -853,9 +853,20 @@ export async function streamOpencodeEvents(
   signal: AbortSignal,
   onEvent: (event: Event) => void,
   onConnected?: () => void,
+  eventFetch?: typeof globalThis.fetch,
 ) {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const subscription = await client.global.event({ signal });
+  const client = eventFetch
+    ? createOpencodeClient({
+        baseUrl: normalizeOpencodeServerUrl(serverUrl),
+        fetch: eventFetch,
+        headers: getOpencodeHeaders(accessToken, password),
+        throwOnError: true,
+      })
+    : getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const subscription = await client.global.event({
+    signal,
+    headers: { accept: "text/event-stream" },
+  });
   onConnected?.();
 
   for await (const streamedEvent of subscription.stream) {

@@ -10,14 +10,13 @@ import {
   useSendOpencodePrompt,
 } from "@repo/api-hooks";
 import { useSessionChatsStore } from "@repo/app-store";
-import { useLocalSearchParams, useRouter } from "expo-router";
+import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Animated,
   Alert,
-  AppState,
   Easing,
   Keyboard,
   KeyboardAvoidingView,
@@ -61,6 +60,7 @@ export function ProjectChatScreen() {
   const theme = useTheme();
   const router = useRouter();
   const scrollRef = useRef<ScrollView>(null);
+  const focusedChatIdsRef = useRef(new Set<string>());
   const chatTransitionX = useRef(new Animated.Value(0)).current;
   const isChatTransitioningRef = useRef(false);
   const params = useLocalSearchParams<{
@@ -135,6 +135,7 @@ export function ProjectChatScreen() {
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+  const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
   const data = sessionQuery.data;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
@@ -379,18 +380,19 @@ export function ProjectChatScreen() {
     );
   }, [data, opencodeSessionId, projectSessionId]);
 
-  useEffect(() => {
-    if (!sessionQuery.isStreaming) return;
-    const interval = setInterval(() => void sessionQuery.resync(), 1_000);
-    return () => clearInterval(interval);
-  }, [sessionQuery.isStreaming, sessionQuery.resync]);
+  useFocusEffect(
+    useCallback(() => {
+      const chatKey = `${projectSessionId}:${opencodeSessionId}`;
+      if (!projectSessionId || !opencodeSessionId) return;
 
-  useEffect(() => {
-    const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void sessionQuery.resync();
-    });
-    return () => subscription.remove();
-  }, [sessionQuery.resync]);
+      if (!focusedChatIdsRef.current.has(chatKey)) {
+        focusedChatIdsRef.current.add(chatKey);
+        return;
+      }
+
+      void sessionQuery.resync();
+    }, [opencodeSessionId, projectSessionId, sessionQuery.resync]),
+  );
 
   useEffect(() => {
     if (!data) return;
@@ -415,7 +417,6 @@ export function ProjectChatScreen() {
           setPrompt(text);
           setAttachments(submittedAttachments);
         },
-        onSuccess: () => void sessionQuery.resync(),
       },
     );
   };
@@ -442,6 +443,17 @@ export function ProjectChatScreen() {
       onError: (error) =>
         Alert.alert("Could not dismiss the question", error.message),
     });
+  };
+
+  const refreshManually = async () => {
+    if (isManuallyRefreshing) return;
+
+    setIsManuallyRefreshing(true);
+    try {
+      await sessionQuery.resync();
+    } finally {
+      setIsManuallyRefreshing(false);
+    }
   };
 
   if (runtime.isPending) {
@@ -560,14 +572,14 @@ export function ProjectChatScreen() {
               <Pressable
                 accessibilityLabel="Reload chat"
                 accessibilityRole="button"
-                disabled={sessionQuery.isFetching}
-                onPress={() => void sessionQuery.resync()}
+                disabled={isManuallyRefreshing}
+                onPress={() => void refreshManually()}
                 style={({ pressed }) => [
                   styles.headerAction,
                   pressed && styles.pressed,
                 ]}
               >
-                {sessionQuery.isFetching ? (
+                {isManuallyRefreshing ? (
                   <ActivityIndicator size="small" />
                 ) : (
                   <SymbolView
