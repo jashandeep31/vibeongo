@@ -26,6 +26,7 @@ type HomeSidebarProps = {
 const supportsNativeGlass = isGlassEffectAPIAvailable();
 
 type NavigationItem = {
+  comingSoon?: boolean;
   title: string;
   icon: SymbolViewProps["name"];
   href?: "/" | "/github-repos" | "/settings" | "/wallet";
@@ -40,6 +41,7 @@ const navigation: NavigationItem[] = [
     workspaceView: "chats",
   },
   {
+    comingSoon: true,
     title: "Limits",
     icon: { ios: "gauge.with.dots.needle.50percent", android: "speed" },
   },
@@ -200,10 +202,13 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
               {navigation.map((item) => (
                 <Pressable
                   accessibilityRole="menuitem"
+                  accessibilityState={{ disabled: item.comingSoon }}
+                  disabled={item.comingSoon}
                   key={item.title}
                   onPress={() => selectNavigationItem(item)}
                   style={({ pressed }) => [
                     styles.navigationItem,
+                    item.comingSoon && styles.navigationItemDisabled,
                     pressed && styles.pressed,
                   ]}
                 >
@@ -215,6 +220,14 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
                   <ThemedText style={styles.navigationLabel}>
                     {item.title}
                   </ThemedText>
+                  {item.comingSoon ? (
+                    <ThemedText
+                      style={styles.comingSoon}
+                      themeColor="textSecondary"
+                    >
+                      Coming soon
+                    </ThemedText>
+                  ) : null}
                 </Pressable>
               ))}
             </View>
@@ -338,6 +351,13 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "500",
     letterSpacing: -0.1,
+  },
+  navigationItemDisabled: {
+    opacity: 0.42,
+  },
+  comingSoon: {
+    fontSize: 11,
+    fontWeight: "600",
   },
   spacer: {
     flex: 1,

@@ -253,10 +253,10 @@ export function ChatList() {
         style={[styles.composerDock, { backgroundColor: theme.background }]}
       >
         <VibeongoComposer
-          disabled={!isConnected}
           isSubmitting={isCreatingChat}
           onSubmit={createChat}
           placeholder="Message VibeOnGo"
+          submitDisabled={!isConnected}
           variant="compact"
         />
       </View>
