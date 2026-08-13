@@ -1,6 +1,6 @@
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { SymbolView } from "expo-symbols";
-import { useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -28,6 +28,7 @@ export function WorkspacePage() {
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const { width } = useWindowDimensions();
+  const router = useRouter();
   const { view } = useLocalSearchParams<{ view?: string }>();
   const pagerRef = useRef<ScrollView>(null);
   const initialView: WorkspaceView = view === "chats" ? "chats" : "projects";
@@ -40,6 +41,7 @@ export function WorkspacePage() {
       animated: true,
       x: view === "chats" ? 0 : width,
     });
+    router.setParams({ view });
   };
 
   useEffect(() => {
@@ -134,7 +136,7 @@ export function WorkspacePage() {
           keyboardShouldPersistTaps="handled"
           onMomentumScrollEnd={(event) => {
             const page = Math.round(event.nativeEvent.contentOffset.x / width);
-            setActiveView(page === 0 ? "chats" : "projects");
+            selectView(page === 0 ? "chats" : "projects");
           }}
           pagingEnabled
           ref={pagerRef}
@@ -152,6 +154,7 @@ export function WorkspacePage() {
 
       <HomeSidebar
         onClose={() => setIsSidebarOpen(false)}
+        onSelectWorkspaceView={selectView}
         visible={isSidebarOpen}
       />
     </SafeAreaView>

@@ -75,6 +75,7 @@ export const useGetProjects = (enabled = true) => {
   });
 };
 
+// returns the projects list along with there non-archived sessions
 export const useGetProjectsWithSessions = (enabled = true) => {
   const client = useApiClient();
   return useQuery({

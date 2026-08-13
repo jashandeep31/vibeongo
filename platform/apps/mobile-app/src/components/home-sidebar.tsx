@@ -21,6 +21,7 @@ import { useTheme } from "@/hooks/use-theme";
 type HomeSidebarProps = {
   visible: boolean;
   onClose: () => void;
+  onSelectWorkspaceView: (view: "chats" | "projects") => void;
 };
 
 const supportsNativeGlass = isGlassEffectAPIAvailable();
@@ -34,7 +35,11 @@ type NavigationItem = {
 };
 
 const navigation: NavigationItem[] = [
-  { title: "Home", icon: { ios: "house", android: "home" }, href: "/" },
+  {
+    title: "Home",
+    icon: { ios: "house", android: "home" },
+    workspaceView: "projects",
+  },
   {
     title: "New Chat",
     icon: { ios: "square.and.pencil", android: "edit_square" },
@@ -62,7 +67,11 @@ const navigation: NavigationItem[] = [
   },
 ];
 
-export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
+export function HomeSidebar({
+  visible,
+  onClose,
+  onSelectWorkspaceView,
+}: HomeSidebarProps) {
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
@@ -125,7 +134,7 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
 
   const selectNavigationItem = (item: NavigationItem) => {
     if (item.workspaceView) {
-      router.navigate({ pathname: "/", params: { view: item.workspaceView } });
+      onSelectWorkspaceView(item.workspaceView);
     } else if (item.href) {
       router.navigate(item.href);
     }

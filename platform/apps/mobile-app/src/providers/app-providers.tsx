@@ -34,6 +34,8 @@ export function AppProviders({ children }: { children: ReactNode }) {
     () => (isTokenLoading ? null : createApiClient(accessToken ?? "")),
     [accessToken, isTokenLoading],
   );
+
+  // Creating the socket vibeongo app  related opreations
   const createAuthenticatedSocket = useCallback(
     (url: string) => {
       const NativeWebSocket =
