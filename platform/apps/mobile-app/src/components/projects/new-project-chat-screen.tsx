@@ -19,6 +19,7 @@ import {
   type ComposerImageAttachment,
 } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
+import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -172,7 +173,12 @@ export function NewProjectChatScreen() {
               tintColor={theme.text}
             />
           </Pressable>
-          <View style={styles.headerCopy}>
+          <View
+            style={[
+              styles.headerTitlePill,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
             <ThemedText numberOfLines={1} style={styles.headerTitle}>
               New chat
             </ThemedText>
@@ -183,6 +189,17 @@ export function NewProjectChatScreen() {
             >
               {projectName} · {sessionName}
             </ThemedText>
+          </View>
+          <View
+            style={[
+              styles.headerActions,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
+            <ProjectDomainsButton
+              instanceId={runtime.instance.id}
+              projectId={projectId}
+            />
           </View>
         </View>
 
@@ -241,9 +258,16 @@ const styles = StyleSheet.create({
   header: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
+    gap: 8,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+  },
+  headerActions: {
+    alignItems: "center",
+    borderRadius: 24,
+    flexDirection: "row",
+    height: 44,
+    overflow: "hidden",
   },
   headerButton: {
     alignItems: "center",
@@ -252,17 +276,24 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 40,
   },
-  headerCopy: {
-    flex: 1,
-  },
   headerSubtitle: {
+    flexShrink: 1,
     fontSize: 12,
-    lineHeight: 16,
+    lineHeight: 15,
   },
   headerTitle: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "700",
-    lineHeight: 21,
+    lineHeight: 17,
+  },
+  headerTitlePill: {
+    alignItems: "center",
+    borderRadius: 22,
+    flex: 1,
+    height: 42,
+    justifyContent: "center",
+    minWidth: 0,
+    paddingHorizontal: 16,
   },
   heading: {
     fontSize: 24,
