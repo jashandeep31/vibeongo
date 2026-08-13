@@ -28,7 +28,7 @@ const supportsNativeGlass = isGlassEffectAPIAvailable();
 type NavigationItem = {
   title: string;
   icon: SymbolViewProps["name"];
-  href?: "/" | "/wallet";
+  href?: "/" | "/settings" | "/wallet";
 };
 
 const navigation: NavigationItem[] = [
@@ -53,6 +53,7 @@ const navigation: NavigationItem[] = [
   {
     title: "Settings",
     icon: { ios: "gearshape", android: "settings" },
+    href: "/settings",
   },
 ];
 
