@@ -34,10 +34,6 @@ import { CreateProjectSessionDrawer } from "@/components/projects/create-project
 import { ProjectActionsMenu } from "@/components/projects/project-actions-menu";
 import { RepositoryDrawer } from "@/components/projects/repository-drawer";
 import {
-  SessionActionsMenu,
-  type SessionActionTarget,
-} from "@/components/projects/session-actions-menu";
-import {
   SessionRuntimeDrawer,
   type SessionRuntime,
 } from "@/components/projects/session-runtime-drawer";
@@ -54,6 +50,11 @@ type TerminationTarget = {
 type NewChatTarget = {
   projectId: string;
   sessionId: string;
+};
+
+type SessionActionTarget = {
+  id: string;
+  name: string;
 };
 
 export function ProjectList() {
@@ -100,10 +101,6 @@ export function ProjectList() {
     null,
   );
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
-  const [sessionMenu, setSessionMenu] = useState<{
-    session: SessionActionTarget;
-    anchorY: number;
-  } | null>(null);
   const [sessionToArchive, setSessionToArchive] =
     useState<SessionActionTarget | null>(null);
   const repositoriesQuery = useGetProjectGithubReposById(
@@ -226,13 +223,6 @@ export function ProjectList() {
     });
   };
 
-  const openSessionMenu = (
-    event: GestureResponderEvent,
-    session: SessionActionTarget,
-  ) => {
-    setSessionMenu({ session, anchorY: event.nativeEvent.pageY });
-  };
-
   const handleArchiveSession = () => {
     if (!sessionToArchive || archiveSession.isPending) return;
     archiveSession.mutate(
@@ -327,11 +317,6 @@ export function ProjectList() {
             style={[styles.project, { borderColor: theme.backgroundSelected }]}
           >
             <View style={styles.projectHeader}>
-              <SymbolView
-                name={{ ios: "folder", android: "folder" }}
-                size={17}
-                tintColor={theme.textSecondary}
-              />
               <ThemedText numberOfLines={1} style={styles.projectName}>
                 {project.name}
               </ThemedText>
@@ -360,7 +345,7 @@ export function ProjectList() {
                 This project does not have any sessions yet.
               </ThemedText>
             ) : (
-              <View style={styles.sessions}>
+              <View>
                 {sessions
                   .filter((entry) => entry.session.project_id === project.id)
                   .map((entry) => {
@@ -395,124 +380,121 @@ export function ProjectList() {
                           >
                             {session.name}
                           </ThemedText>
-                          <View
-                            accessibilityLabel={
-                              isRunning
-                                ? "Running"
-                                : entry.state === "processing"
-                                  ? "Starting"
-                                  : "Stopped"
-                            }
-                            style={[
-                              styles.statusDot,
-                              {
-                                backgroundColor: isRunning
-                                  ? "#10b981"
-                                  : entry.state === "processing"
-                                    ? "#f59e0b"
-                                    : theme.textSecondary,
-                                opacity: entry.state === "stopped" ? 0.5 : 1,
-                              },
-                            ]}
-                          />
-                          {runningInstance ? (
-                            <Pressable
-                              accessibilityLabel={`Terminate ${session.name}`}
-                              accessibilityRole="button"
-                              disabled={terminateInstance.isPending}
-                              onPress={() => {
-                                setTerminationTarget({
-                                  instanceId: runningInstance.id,
-                                  projectId: project.id,
-                                  sessionId: session.id,
-                                  sessionName: session.name,
-                                });
-                                setIsTerminationConfirmationOpen(true);
-                              }}
-                              style={({ pressed }) => [
-                                styles.sessionAction,
-                                styles.terminateButton,
-                                (pressed || terminateInstance.isPending) &&
-                                  styles.pressed,
-                              ]}
-                            >
-                              {isTerminating ? (
-                                <ActivityIndicator
-                                  color="#ef4444"
-                                  size="small"
-                                />
-                              ) : (
-                                <SymbolView
-                                  name={{
-                                    ios: "stop.fill",
-                                    android: "stop_circle",
-                                  }}
-                                  size={14}
-                                  tintColor="#ef4444"
-                                />
-                              )}
-                            </Pressable>
-                          ) : entry.state === "processing" ? (
-                            <ActivityIndicator size="small" />
-                          ) : (
-                            <>
-                              <Pressable
-                                accessibilityLabel={`Resume ${session.name}`}
-                                accessibilityRole="button"
-                                disabled={
-                                  resumeSession.isPending ||
-                                  archiveSession.isPending
+                          <View style={styles.sessionControls}>
+                            {entry.state !== "stopped" ? (
+                              <View
+                                accessibilityLabel={
+                                  isRunning ? "Running" : "Starting"
                                 }
-                                onPress={() => setRuntimeSessionId(session.id)}
+                                style={[
+                                  styles.statusDot,
+                                  {
+                                    backgroundColor: isRunning
+                                      ? "#10b981"
+                                      : "#f59e0b",
+                                  },
+                                ]}
+                              />
+                            ) : null}
+                            {runningInstance ? (
+                              <Pressable
+                                accessibilityLabel={`Terminate ${session.name}`}
+                                accessibilityRole="button"
+                                disabled={terminateInstance.isPending}
+                                onPress={() => {
+                                  setTerminationTarget({
+                                    instanceId: runningInstance.id,
+                                    projectId: project.id,
+                                    sessionId: session.id,
+                                    sessionName: session.name,
+                                  });
+                                  setIsTerminationConfirmationOpen(true);
+                                }}
                                 style={({ pressed }) => [
                                   styles.sessionAction,
-                                  { backgroundColor: theme.backgroundElement },
-                                  (pressed ||
-                                    resumeSession.isPending ||
-                                    archiveSession.isPending) &&
+                                  (pressed || terminateInstance.isPending) &&
                                     styles.pressed,
                                 ]}
                               >
-                                {isResuming ? (
-                                  <ActivityIndicator size="small" />
+                                {isTerminating ? (
+                                  <ActivityIndicator
+                                    color="#ef4444"
+                                    size="small"
+                                  />
                                 ) : (
                                   <SymbolView
                                     name={{
-                                      ios: "play.fill",
-                                      android: "play_arrow",
+                                      ios: "stop.fill",
+                                      android: "stop_circle",
                                     }}
-                                    size={13}
-                                    tintColor={theme.text}
+                                    size={14}
+                                    tintColor="#ef4444"
                                   />
                                 )}
                               </Pressable>
-                              <Pressable
-                                accessibilityLabel={`More options for ${session.name}`}
-                                accessibilityRole="button"
-                                disabled={archiveSession.isPending}
-                                onPress={(event) =>
-                                  openSessionMenu(event, {
-                                    id: session.id,
-                                    name: session.name,
-                                  })
-                                }
-                                style={({ pressed }) => [
-                                  styles.sessionAction,
-                                  (pressed || archiveSession.isPending) &&
-                                    styles.pressed,
-                                ]}
-                              >
-                                <SymbolView
-                                  name={{
-                                    ios: "ellipsis",
-                                    android: "more_vert",
-                                  }}
-                                  size={17}
-                                  tintColor={theme.textSecondary}
-                                />
-                              </Pressable>
-                            </>
-                          )}
+                            ) : entry.state === "processing" ? (
+                              <ActivityIndicator size="small" />
+                            ) : (
+                              <>
+                                <Pressable
+                                  accessibilityLabel={`Resume ${session.name}`}
+                                  accessibilityRole="button"
+                                  disabled={
+                                    resumeSession.isPending ||
+                                    archiveSession.isPending
+                                  }
+                                  onPress={() =>
+                                    setRuntimeSessionId(session.id)
+                                  }
+                                  style={({ pressed }) => [
+                                    styles.sessionAction,
+                                    (pressed ||
+                                      resumeSession.isPending ||
+                                      archiveSession.isPending) &&
+                                      styles.pressed,
+                                  ]}
+                                >
+                                  {isResuming ? (
+                                    <ActivityIndicator size="small" />
+                                  ) : (
+                                    <SymbolView
+                                      name={{
+                                        ios: "play.fill",
+                                        android: "play_arrow",
+                                      }}
+                                      size={17}
+                                      tintColor={theme.text}
+                                    />
+                                  )}
+                                </Pressable>
+                                <Pressable
+                                  accessibilityLabel={`Archive ${session.name}`}
+                                  accessibilityRole="button"
+                                  disabled={archiveSession.isPending}
+                                  onPress={() =>
+                                    setSessionToArchive({
+                                      id: session.id,
+                                      name: session.name,
+                                    })
+                                  }
+                                  style={({ pressed }) => [
+                                    styles.sessionAction,
+                                    (pressed || archiveSession.isPending) &&
+                                      styles.pressed,
+                                  ]}
+                                >
+                                  <SymbolView
+                                    name={{
+                                      ios: "archivebox",
+                                      android: "archive",
+                                    }}
+                                    size={17}
+                                    tintColor={theme.textSecondary}
+                                  />
+                                </Pressable>
+                              </>
+                            )}
+                          </View>
                         </View>
 
                         {isRunning ? (
@@ -659,15 +641,6 @@ export function ProjectList() {
         }}
         project={projectMenu?.project ?? null}
       />
-      <SessionActionsMenu
-        anchorY={sessionMenu?.anchorY ?? 0}
-        onArchive={(session) => {
-          setSessionMenu(null);
-          setSessionToArchive(session);
-        }}
-        onClose={() => setSessionMenu(null)}
-        session={sessionMenu?.session ?? null}
-      />
       <CreateProjectSessionDrawer
         onClose={() => setNewSessionProject(null)}
         project={newSessionProject}
@@ -783,8 +756,7 @@ const styles = StyleSheet.create({
   projectHeader: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 9,
-    paddingBottom: 8,
+    paddingBottom: 2,
   },
   projectActions: {
     alignItems: "center",
@@ -798,7 +770,7 @@ const styles = StyleSheet.create({
     fontFamily: Fonts.mono,
     fontSize: 14,
     fontWeight: "700",
-    letterSpacing: 0.4,
+    letterSpacing: -0.2,
     textTransform: "uppercase",
   },
   retryButton: {
@@ -818,30 +790,30 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 30,
   },
+  sessionControls: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
   sessionName: {
     flex: 1,
     fontFamily: Fonts.mono,
     fontSize: 14,
     fontWeight: "600",
+    letterSpacing: -0.2,
     textTransform: "capitalize",
   },
   sessionRow: {
     alignItems: "center",
     flexDirection: "row",
     gap: 8,
-    minHeight: 42,
+    minHeight: 36,
     paddingLeft: 2,
-  },
-  sessions: {
-    paddingTop: 2,
   },
   statusDot: {
     borderRadius: 4,
     height: 7,
     width: 7,
-  },
-  terminateButton: {
-    backgroundColor: "rgba(239, 68, 68, 0.12)",
   },
   unreadChatTitle: {
     fontWeight: "700",
