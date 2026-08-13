@@ -34,6 +34,8 @@ type WebSocketContextValue<TMessage extends WebSocketMessage> = {
   subscribeJsonMessage: (listener: MessageListener<TMessage>) => () => void;
 };
 
+export type WebSocketFactory = (url: string) => WebSocket;
+
 const WebSocketContext =
   createContext<WebSocketContextValue<WebSocketMessage> | null>(null);
 
@@ -61,7 +63,13 @@ const getWebSocketUrl = (client: ApiClient) => {
   return url.toString();
 };
 
-export function WebSocketProvider({ children }: { children: ReactNode }) {
+export function WebSocketProvider({
+  children,
+  createSocket,
+}: {
+  children: ReactNode;
+  createSocket?: WebSocketFactory;
+}) {
   const client = useApiClient();
   const [websocket, setWebsocket] = useState<WebSocket | null>(null);
   const [status, setStatus] = useState<WebSocketStatus>("connecting");
@@ -125,7 +133,8 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
 
       let socket: WebSocket;
       try {
-        socket = new WebSocket(getWebSocketUrl(client));
+        const url = getWebSocketUrl(client);
+        socket = createSocket ? createSocket(url) : new WebSocket(url);
       } catch {
         setStatus("error");
         scheduleReconnect();
@@ -185,7 +194,7 @@ export function WebSocketProvider({ children }: { children: ReactNode }) {
       socketRef.current = null;
       currentSocket?.close(1000, "WebSocket hook unmounted");
     };
-  }, [client]);
+  }, [client, createSocket]);
 
   return createElement(
     WebSocketContext.Provider,

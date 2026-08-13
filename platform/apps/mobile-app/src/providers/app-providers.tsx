@@ -2,8 +2,15 @@ import {
   ApiClientProvider,
   QueryClient,
   QueryClientProvider,
+  WebSocketProvider,
 } from "@repo/api-hooks";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 
 import { SignedOutScreen } from "@/components/auth/signed-out-screen";
@@ -11,6 +18,12 @@ import { ProjectStoreSync } from "@/components/projects/project-store-sync";
 import { useTheme } from "@/hooks/use-theme";
 import { createApiClient } from "@/lib/api-client";
 import { getAccessToken, subscribeAccessToken } from "@/lib/auth";
+
+type ReactNativeWebSocketConstructor = new (
+  url: string,
+  protocols?: string[],
+  options?: { headers?: Record<string, string> },
+) => WebSocket;
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const theme = useTheme();
@@ -20,6 +33,17 @@ export function AppProviders({ children }: { children: ReactNode }) {
   const apiClient = useMemo(
     () => (isTokenLoading ? null : createApiClient(accessToken ?? "")),
     [accessToken, isTokenLoading],
+  );
+  const createAuthenticatedSocket = useCallback(
+    (url: string) => {
+      const NativeWebSocket =
+        WebSocket as unknown as ReactNativeWebSocketConstructor;
+
+      return new NativeWebSocket(url, [], {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+    },
+    [accessToken],
   );
 
   useEffect(() => {
@@ -59,8 +83,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
   return (
     <ApiClientProvider client={apiClient}>
       <QueryClientProvider client={queryClient}>
-        <ProjectStoreSync enabled={Boolean(accessToken)} />
-        {children}
+        <WebSocketProvider createSocket={createAuthenticatedSocket}>
+          <ProjectStoreSync enabled={Boolean(accessToken)} />
+          {children}
+        </WebSocketProvider>
       </QueryClientProvider>
     </ApiClientProvider>
   );
