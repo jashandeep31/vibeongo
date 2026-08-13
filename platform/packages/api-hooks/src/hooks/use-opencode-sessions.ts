@@ -111,7 +111,19 @@ export const useStartOpencodeSession = () => {
       );
       const attachments = [...directAttachments, ...fileAttachments];
       const optimisticSession: OpencodeSessionData = {
-        session,
+        session: {
+          ...session,
+          ...(selection.agent ? { agent: selection.agent } : {}),
+          ...(providerID && modelID
+            ? {
+                model: {
+                  providerID,
+                  id: modelID,
+                  ...(selection.variant ? { variant: selection.variant } : {}),
+                },
+              }
+            : {}),
+        },
         status: { type: "busy" },
         changes: [],
         questions: [],

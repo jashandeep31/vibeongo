@@ -236,6 +236,7 @@ export type OpencodeAgentOption = {
 export type OpencodeInventory = {
   models: OpencodeModelOption[];
   agents: OpencodeAgentOption[];
+  defaultSelection: OpencodePromptSelection;
 };
 
 export type OpencodePromptSelection = {
@@ -530,9 +531,10 @@ export async function getOpencodeInventory(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const [providerResponse, agentsResponse] = await Promise.all([
+  const [providerResponse, agentsResponse, configResponse] = await Promise.all([
     client.provider.list(),
     client.app.agents(),
+    client.config.get(),
   ]);
 
   if (providerResponse.error || !providerResponse.data) {
@@ -540,6 +542,9 @@ export async function getOpencodeInventory(
   }
   if (agentsResponse.error) {
     throw new Error("Could not load OpenCode agents");
+  }
+  if (configResponse.error) {
+    throw new Error("Could not load OpenCode configuration");
   }
 
   const connected = new Set(providerResponse.data.connected);
@@ -567,7 +572,14 @@ export async function getOpencodeInventory(
       mode: agent.mode,
     }));
 
-  return { models, agents };
+  return {
+    models,
+    agents,
+    defaultSelection: {
+      model: configResponse.data?.model,
+      agent: configResponse.data?.default_agent,
+    },
+  };
 }
 
 export async function sendOpencodePrompt(

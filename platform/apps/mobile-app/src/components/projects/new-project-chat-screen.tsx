@@ -31,13 +31,19 @@ export function NewProjectChatScreen() {
   const theme = useTheme();
   const router = useRouter();
   const params = useLocalSearchParams<{
+    agent?: string | string[];
     directory?: string | string[];
+    model?: string | string[];
     projectId?: string | string[];
     projectSessionId?: string | string[];
+    variant?: string | string[];
   }>();
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
   const directory = firstParam(params.directory);
+  const inheritedAgent = firstParam(params.agent);
+  const inheritedModel = firstParam(params.model);
+  const inheritedVariant = firstParam(params.variant);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -58,7 +64,11 @@ export function NewProjectChatScreen() {
   const startSession = useStartOpencodeSession();
   const [prompt, setPrompt] = useState("");
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
-  const [selection, setSelection] = useState<OpencodePromptSelection>({});
+  const [selection, setSelection] = useState<OpencodePromptSelection>(() => ({
+    agent: inheritedAgent || undefined,
+    model: inheritedModel || undefined,
+    variant: inheritedVariant || undefined,
+  }));
 
   useEffect(() => {
     const inventory = inventoryQuery.data;
@@ -69,12 +79,13 @@ export function NewProjectChatScreen() {
         current.model &&
         inventory.models.some((model) => model.id === current.model)
           ? current.model
-          : inventory.models[0]?.id,
+          : (inventory.defaultSelection.model ?? inventory.models[0]?.id),
       agent:
         current.agent &&
         inventory.agents.some((agent) => agent.id === current.agent)
           ? current.agent
-          : (inventory.agents.find((agent) => agent.mode === "primary")?.id ??
+          : (inventory.defaultSelection.agent ??
+            inventory.agents.find((agent) => agent.mode === "primary")?.id ??
             inventory.agents[0]?.id),
     }));
   }, [inventoryQuery.data]);

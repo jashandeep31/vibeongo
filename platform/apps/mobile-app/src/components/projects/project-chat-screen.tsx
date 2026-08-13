@@ -33,6 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import {
   createChatTurns,
   getRevertedMessageLabel,
+  getSessionPromptSelection,
 } from "@/components/projects/opencode-chat-turns";
 import { OpencodeChatTurn } from "@/components/projects/opencode-chat-turn";
 import {
@@ -137,6 +138,10 @@ export function ProjectChatScreen() {
   const [showRawResponse, setShowRawResponse] = useState(false);
   const data = sessionQuery.data;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
+  const sessionSelection = useMemo(
+    () => getSessionPromptSelection(data),
+    [data],
+  );
   const { visibleMessages, revertedMessages } = useMemo(() => {
     const messages = data?.messages ?? [];
     const revertMessageId = data?.session.revert?.messageID;
@@ -170,28 +175,33 @@ export function ProjectChatScreen() {
   const activeQuestion = data?.questions[0];
 
   useEffect(() => {
-    const provider = data?.session.model?.providerID;
-    const model = data?.session.model?.id;
+    setSelection(sessionSelection);
+  }, [
+    opencodeSessionId,
+    sessionSelection.agent,
+    sessionSelection.model,
+    sessionSelection.variant,
+  ]);
+
+  useEffect(() => {
     const inventory = inventoryQuery.data;
+    if (!inventory) return;
     setSelection((current) => ({
       ...current,
       model:
-        current.model ??
-        (provider && model ? `${provider}/${model}` : inventory?.models[0]?.id),
-      variant: current.variant ?? data?.session.model?.variant,
+        current.model &&
+        inventory.models.some((model) => model.id === current.model)
+          ? current.model
+          : (inventory.defaultSelection.model ?? inventory.models[0]?.id),
       agent:
-        current.agent ??
-        data?.session.agent ??
-        inventory?.agents.find((agent) => agent.mode === "primary")?.id ??
-        inventory?.agents[0]?.id,
+        current.agent &&
+        inventory.agents.some((agent) => agent.id === current.agent)
+          ? current.agent
+          : (inventory.defaultSelection.agent ??
+            inventory.agents.find((agent) => agent.mode === "primary")?.id ??
+            inventory.agents[0]?.id),
     }));
-  }, [
-    data?.session.agent,
-    data?.session.model?.id,
-    data?.session.model?.providerID,
-    data?.session.model?.variant,
-    inventoryQuery.data,
-  ]);
+  }, [inventoryQuery.data]);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -203,6 +213,9 @@ export function ProjectChatScreen() {
       pathname: "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
       params: {
         directory: data?.session.directory ?? "",
+        ...(selection.agent ? { agent: selection.agent } : {}),
+        ...(selection.model ? { model: selection.model } : {}),
+        ...(selection.variant ? { variant: selection.variant } : {}),
         projectId,
         projectSessionId,
       },
@@ -538,28 +551,6 @@ export function ProjectChatScreen() {
                 { backgroundColor: theme.backgroundElement },
               ]}
             >
-              <Pressable
-                accessibilityLabel={
-                  showRawResponse ? "Show rendered chat" : "Show raw response"
-                }
-                accessibilityRole="button"
-                onPress={() => setShowRawResponse((visible) => !visible)}
-                style={({ pressed }) => [
-                  styles.headerAction,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <SymbolView
-                  name={{
-                    ios: showRawResponse
-                      ? "bubble.left.and.bubble.right"
-                      : "curlybraces",
-                    android: showRawResponse ? "forum" : "code",
-                  }}
-                  size={18}
-                  tintColor={theme.textSecondary}
-                />
-              </Pressable>
               <ProjectDomainsButton
                 instanceId={runtime.instance.id}
                 projectId={projectId}
@@ -697,6 +688,7 @@ export function ProjectChatScreen() {
                 onChangeAttachments={setAttachments}
                 onChangeText={setPrompt}
                 onNewChat={openNewChat}
+                onToggleRaw={() => setShowRawResponse((visible) => !visible)}
                 onStop={
                   sessionQuery.isStreaming
                     ? () =>
@@ -716,6 +708,7 @@ export function ProjectChatScreen() {
                     : "Ask a follow-up…"
                 }
                 selection={selection}
+                showRawResponse={showRawResponse}
                 submitDisabled={sessionQuery.isStreaming}
                 value={prompt}
               />

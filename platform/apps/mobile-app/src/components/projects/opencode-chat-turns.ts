@@ -1,4 +1,7 @@
-import type { OpencodeSessionData } from "@repo/api-client";
+import type {
+  OpencodePromptSelection,
+  OpencodeSessionData,
+} from "@repo/api-client";
 
 export type SessionMessage = OpencodeSessionData["messages"][number];
 export type SessionPart = SessionMessage["parts"][number];
@@ -27,6 +30,43 @@ export type ChatTurn = {
   model?: string;
   durationMs?: number;
 };
+
+export function getSessionPromptSelection(
+  data: OpencodeSessionData | undefined,
+): OpencodePromptSelection {
+  if (!data) return {};
+
+  if (data.session.model?.providerID && data.session.model.id) {
+    return {
+      model: `${data.session.model.providerID}/${data.session.model.id}`,
+      variant: data.session.model.variant,
+      agent: data.session.agent,
+    };
+  }
+
+  for (let index = data.messages.length - 1; index >= 0; index -= 1) {
+    const message = data.messages[index]?.info;
+    if (!message) continue;
+
+    if (message.role === "user" && message.model) {
+      return {
+        model: `${message.model.providerID}/${message.model.modelID}`,
+        variant: message.model.variant,
+        agent: message.agent || data.session.agent,
+      };
+    }
+
+    if (message.role === "assistant") {
+      return {
+        model: `${message.providerID}/${message.modelID}`,
+        variant: message.variant,
+        agent: message.agent || data.session.agent,
+      };
+    }
+  }
+
+  return { agent: data.session.agent };
+}
 
 export function getMessageText(parts: SessionPart[]) {
   return parts

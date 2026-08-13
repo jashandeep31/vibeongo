@@ -44,10 +44,12 @@ type OpencodeComposerProps = {
   onChangeAttachments?: (attachments: ComposerImageAttachment[]) => void;
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
+  onToggleRaw?: () => void;
   onStop?: () => void;
   onSubmit: () => void;
   placeholder: string;
   selection: OpencodePromptSelection;
+  showRawResponse?: boolean;
   value: string;
 };
 
@@ -63,10 +65,12 @@ export function OpencodeComposer({
   onChangeAttachments,
   onChangeText,
   onNewChat,
+  onToggleRaw,
   onStop,
   onSubmit,
   placeholder,
   selection,
+  showRawResponse,
   submitDisabled: submitDisabledProp,
   value,
 }: OpencodeComposerProps) {
@@ -183,7 +187,9 @@ export function OpencodeComposer({
         inventory={inventory}
         onChange={onChangeSelection}
         onNewChat={onNewChat}
+        onToggleRaw={onToggleRaw}
         selection={selection}
+        showRawResponse={showRawResponse}
       />
       <View style={styles.promptRow}>
         {onChangeAttachments ? (
@@ -269,13 +275,17 @@ function PromptSelectors({
   inventory,
   onChange,
   onNewChat,
+  onToggleRaw,
   selection,
+  showRawResponse,
 }: {
   disabled?: boolean;
   inventory?: OpencodeInventory;
   onChange: (selection: OpencodePromptSelection) => void;
   onNewChat?: () => void;
+  onToggleRaw?: () => void;
   selection: OpencodePromptSelection;
+  showRawResponse?: boolean;
 }) {
   const theme = useTheme();
   const [picker, setPicker] = useState<PickerKind | null>(null);
@@ -364,6 +374,16 @@ function PromptSelectors({
             showChevron={false}
           />
         ) : null}
+        {onToggleRaw ? (
+          <SelectorPill
+            disabled={disabled}
+            icon={{ ios: "curlybraces", android: "code" }}
+            label="Raw"
+            onPress={onToggleRaw}
+            selected={showRawResponse}
+            showChevron={false}
+          />
+        ) : null}
       </ScrollView>
       <SelectionSheet
         onChoose={choose}
@@ -394,12 +414,14 @@ function SelectorPill({
   icon,
   label,
   onPress,
+  selected,
   showChevron = true,
 }: {
   disabled?: boolean;
   icon: Parameters<typeof SymbolView>[0]["name"];
   label: string;
   onPress: () => void;
+  selected?: boolean;
   showChevron?: boolean;
 }) {
   const theme = useTheme();
@@ -413,7 +435,7 @@ function SelectorPill({
         styles.pill,
         {
           backgroundColor: theme.backgroundElement,
-          borderColor: theme.backgroundSelected,
+          borderColor: selected ? theme.text : theme.backgroundSelected,
         },
         disabled && styles.disabled,
         pressed && styles.pressed,
