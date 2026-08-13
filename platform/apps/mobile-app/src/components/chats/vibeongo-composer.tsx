@@ -115,6 +115,7 @@ export function VibeongoComposer({
   const inputRef = useRef<TextInput>(null);
   const selectionEndRef = useRef(0);
   const [message, setMessage] = useState("");
+  const [isMultiline, setIsMultiline] = useState(false);
   const [tagged, setTagged] = useState<VibeongoComposerTag[]>([]);
   const [projectMention, setProjectMention] = useState<ProjectMention | null>(
     null,
@@ -270,6 +271,7 @@ export function VibeongoComposer({
           style={[
             styles.composer,
             variant === "default" && styles.defaultComposer,
+            variant === "compact" && isMultiline && styles.multilineComposer,
             {
               backgroundColor: theme.backgroundElement,
               borderColor: theme.backgroundSelected,
@@ -282,6 +284,9 @@ export function VibeongoComposer({
             editable={!disabled}
             maxLength={MAX_MESSAGE_LENGTH}
             multiline
+            onContentSizeChange={(event) =>
+              setIsMultiline(event.nativeEvent.contentSize.height > 42)
+            }
             onChangeText={handleChangeText}
             onSelectionChange={handleSelectionChange}
             placeholder={placeholder}
@@ -400,6 +405,9 @@ const styles = StyleSheet.create({
   },
   mentionScroller: {
     maxHeight: 220,
+  },
+  multilineComposer: {
+    borderRadius: 24,
   },
   noMatches: {
     fontSize: 13,

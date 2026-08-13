@@ -76,6 +76,7 @@ export function OpencodeComposer({
 }: OpencodeComposerProps) {
   const theme = useTheme();
   const inputRef = useRef<TextInput>(null);
+  const [isMultiline, setIsMultiline] = useState(false);
   const submitDisabled =
     disabled ||
     submitDisabledProp ||
@@ -221,6 +222,7 @@ export function OpencodeComposer({
             {
               backgroundColor: theme.backgroundElement,
               borderColor: theme.backgroundSelected,
+              borderRadius: isMultiline ? 24 : 999,
             },
           ]}
         >
@@ -229,6 +231,9 @@ export function OpencodeComposer({
             autoFocus={autoFocus}
             editable={!disabled}
             multiline
+            onContentSizeChange={(event) =>
+              setIsMultiline(event.nativeEvent.contentSize.height > 42)
+            }
             onChangeText={onChangeText}
             onSubmitEditing={submit}
             placeholder={placeholder}
@@ -614,7 +619,6 @@ const styles = StyleSheet.create({
   },
   composer: {
     alignItems: "flex-end",
-    borderRadius: 999,
     borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
     flexDirection: "row",
