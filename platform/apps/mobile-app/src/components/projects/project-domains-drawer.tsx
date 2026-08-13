@@ -20,6 +20,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { useTheme } from "@/hooks/use-theme";
 
 export function ProjectDomainsButton({
@@ -162,7 +163,7 @@ export function ProjectDomainsButton({
       </Pressable>
 
       <Modal
-        animationType="slide"
+        animationType="none"
         onRequestClose={() => setVisible(false)}
         statusBarTranslucent
         transparent
@@ -175,8 +176,9 @@ export function ProjectDomainsButton({
             onPress={() => setVisible(false)}
             style={styles.backdrop}
           />
-          <View
+          <BottomDrawerPanel
             accessibilityViewIsModal
+            visible={visible}
             style={[
               styles.drawer,
               {
@@ -518,7 +520,7 @@ export function ProjectDomainsButton({
                 </View>
               ) : null}
             </ScrollView>
-          </View>
+          </BottomDrawerPanel>
         </View>
       </Modal>
     </>

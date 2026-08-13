@@ -10,6 +10,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -40,7 +41,7 @@ export function RepositoryDrawer({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
       transparent
@@ -53,8 +54,9 @@ export function RepositoryDrawer({
           onPress={onClose}
           style={styles.backdrop}
         />
-        <View
+        <BottomDrawerPanel
           accessibilityViewIsModal
+          visible={visible}
           style={[
             styles.drawer,
             {
@@ -137,7 +139,7 @@ export function RepositoryDrawer({
               );
             })}
           </View>
-        </View>
+        </BottomDrawerPanel>
       </View>
     </Modal>
   );

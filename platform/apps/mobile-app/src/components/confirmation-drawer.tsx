@@ -9,6 +9,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { useTheme } from "@/hooks/use-theme";
 
 type ConfirmationDrawerProps = {
@@ -56,7 +57,7 @@ export function ConfirmationDrawer({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onRequestClose={onCancel}
       statusBarTranslucent
       transparent
@@ -70,8 +71,9 @@ export function ConfirmationDrawer({
           style={styles.backdrop}
         />
 
-        <View
+        <BottomDrawerPanel
           accessibilityViewIsModal
+          visible={visible}
           style={[
             styles.drawer,
             {
@@ -139,7 +141,7 @@ export function ConfirmationDrawer({
               ) : null}
             </Pressable>
           </View>
-        </View>
+        </BottomDrawerPanel>
       </View>
     </Modal>
   );

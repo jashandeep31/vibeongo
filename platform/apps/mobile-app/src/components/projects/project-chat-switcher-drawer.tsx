@@ -8,6 +8,7 @@ import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -49,7 +50,7 @@ export function ProjectChatSwitcherDrawer({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
       transparent
@@ -62,8 +63,9 @@ export function ProjectChatSwitcherDrawer({
           onPress={onClose}
           style={styles.backdrop}
         />
-        <View
+        <BottomDrawerPanel
           accessibilityViewIsModal
+          visible={visible}
           style={[
             styles.drawer,
             {
@@ -320,7 +322,7 @@ export function ProjectChatSwitcherDrawer({
               );
             })}
           </ScrollView>
-        </View>
+        </BottomDrawerPanel>
       </View>
     </Modal>
   );

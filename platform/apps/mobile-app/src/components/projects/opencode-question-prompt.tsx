@@ -17,6 +17,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { useTheme } from "@/hooks/use-theme";
 
 export function OpencodeQuestionPrompt({
@@ -154,7 +155,7 @@ export function OpencodeQuestionPrompt({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onRequestClose={() => !isBusy && onDismiss(request.id)}
       presentationStyle="overFullScreen"
       statusBarTranslucent
@@ -165,7 +166,7 @@ export function OpencodeQuestionPrompt({
         style={styles.modalKeyboardView}
       >
         <View style={styles.backdrop} />
-        <View
+        <BottomDrawerPanel
           style={[
             styles.card,
             {
@@ -178,7 +179,7 @@ export function OpencodeQuestionPrompt({
         >
           <View style={styles.handle} />
           <QuestionContent />
-        </View>
+        </BottomDrawerPanel>
       </KeyboardAvoidingView>
     </Modal>
   );

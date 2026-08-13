@@ -45,7 +45,7 @@ export function ChatList() {
     isPending,
     isRefetching,
     refetch,
-  } = useGetVibeongoChats();
+  } = useGetVibeongoChats(10);
   const deleteChat = useDeleteChat();
   const { isConnected, sendJsonMessage, status, subscribeJsonMessage } =
     useWebSocket();

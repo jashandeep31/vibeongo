@@ -3,6 +3,7 @@ import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { useTheme } from "@/hooks/use-theme";
 
 export type SessionRuntime = "vm" | "sandbox";
@@ -36,7 +37,7 @@ export function SessionRuntimeDrawer({
 
   return (
     <Modal
-      animationType="slide"
+      animationType="none"
       onRequestClose={onClose}
       statusBarTranslucent
       transparent
@@ -50,8 +51,9 @@ export function SessionRuntimeDrawer({
           style={styles.backdrop}
         />
 
-        <View
+        <BottomDrawerPanel
           accessibilityViewIsModal
+          visible={visible}
           style={[
             styles.drawer,
             {
@@ -112,7 +114,7 @@ export function SessionRuntimeDrawer({
               </Pressable>
             ))}
           </View>
-        </View>
+        </BottomDrawerPanel>
       </View>
     </Modal>
   );
