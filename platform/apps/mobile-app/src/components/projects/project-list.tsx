@@ -1,4 +1,6 @@
+import type { Project } from "@repo/api-client";
 import {
+  useDeleteProject,
   useGetInstances,
   useGetProjectGithubReposById,
   useGetProjectsWithSessions,
@@ -16,6 +18,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  type GestureResponderEvent,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,6 +28,8 @@ import {
 
 import { ThemedText } from "@/components/themed-text";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
+import { CreateProjectSessionDrawer } from "@/components/projects/create-project-session-drawer";
+import { ProjectActionsMenu } from "@/components/projects/project-actions-menu";
 import { RepositoryDrawer } from "@/components/projects/repository-drawer";
 import {
   SessionRuntimeDrawer,
@@ -64,6 +69,7 @@ export function ProjectList() {
     (store) => store.attentionBySessionId,
   );
   const resumeSession = useResumeProjectSession();
+  const deleteProject = useDeleteProject();
   const [runtimeSessionId, setRuntimeSessionId] = useState<string | null>(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
     null,
@@ -79,6 +85,14 @@ export function ProjectList() {
     null,
   );
   const [isRepositoryDrawerOpen, setIsRepositoryDrawerOpen] = useState(false);
+  const [projectMenu, setProjectMenu] = useState<{
+    project: Project;
+    anchorY: number;
+  } | null>(null);
+  const [newSessionProject, setNewSessionProject] = useState<Project | null>(
+    null,
+  );
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const repositoriesQuery = useGetProjectGithubReposById(
     newChatTarget?.projectId ?? null,
     Boolean(newChatTarget),
@@ -158,9 +172,6 @@ export function ProjectList() {
           );
         },
         onSettled: () => setResumingSessionId(null),
-        onSuccess: () => {
-          Alert.alert("Session is starting");
-        },
       },
     );
   };
@@ -182,6 +193,23 @@ export function ProjectList() {
         setTerminatingInstanceId(null);
         setTerminationTarget(null);
       },
+    });
+  };
+
+  const openProjectMenu = (event: GestureResponderEvent, project: Project) => {
+    setProjectMenu({ project, anchorY: event.nativeEvent.pageY });
+  };
+
+  const handleDeleteProject = () => {
+    if (!projectToDelete || deleteProject.isPending) return;
+    deleteProject.mutate(projectToDelete.id, {
+      onError: () => {
+        Alert.alert(
+          "Could not delete project",
+          "Please check your connection and try again.",
+        );
+      },
+      onSuccess: () => setProjectToDelete(null),
     });
   };
 
@@ -267,6 +295,23 @@ export function ProjectList() {
               <ThemedText numberOfLines={1} style={styles.projectName}>
                 {project.name}
               </ThemedText>
+              <Pressable
+                accessibilityLabel={`More actions for ${project.name}`}
+                accessibilityRole="button"
+                hitSlop={6}
+                onPress={(event) => openProjectMenu(event, project)}
+                style={({ pressed }) => [
+                  styles.projectActions,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "ellipsis", android: "more_vert" }}
+                  size={19}
+                  tintColor={theme.textSecondary}
+                  weight="medium"
+                />
+              </Pressable>
             </View>
 
             {sessions.filter((entry) => entry.session.project_id === project.id)
@@ -529,6 +574,35 @@ export function ProjectList() {
         onSelect={handleRuntimeSelect}
         visible={runtimeSessionId !== null}
       />
+      <ProjectActionsMenu
+        anchorY={projectMenu?.anchorY ?? 0}
+        onClose={() => setProjectMenu(null)}
+        onDelete={(project) => {
+          setProjectMenu(null);
+          setProjectToDelete(project);
+        }}
+        onNewSession={(project) => {
+          setProjectMenu(null);
+          setNewSessionProject(project);
+        }}
+        project={projectMenu?.project ?? null}
+      />
+      <CreateProjectSessionDrawer
+        onClose={() => setNewSessionProject(null)}
+        project={newSessionProject}
+      />
+      <ConfirmationDrawer
+        confirmDelaySeconds={3}
+        confirmLabel="Delete project"
+        description={`Delete "${projectToDelete?.name ?? "this project"}"? All of its sessions and data will be permanently removed.`}
+        isConfirming={deleteProject.isPending}
+        onCancel={() => {
+          if (!deleteProject.isPending) setProjectToDelete(null);
+        }}
+        onConfirm={handleDeleteProject}
+        title="Delete project?"
+        visible={Boolean(projectToDelete)}
+      />
       <ConfirmationDrawer
         confirmDelaySeconds={3}
         confirmLabel="Terminate"
@@ -619,6 +693,13 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 9,
     paddingBottom: 8,
+  },
+  projectActions: {
+    alignItems: "center",
+    borderRadius: 9,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
   },
   projectName: {
     flex: 1,
