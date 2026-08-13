@@ -26,7 +26,7 @@ export function WorkspacePage() {
   const isDark = useColorScheme() === "dark";
   const { width } = useWindowDimensions();
   const pagerRef = useRef<ScrollView>(null);
-  const [activeView, setActiveView] = useState<WorkspaceView>("chats");
+  const [activeView, setActiveView] = useState<WorkspaceView>("projects");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const selectView = (view: WorkspaceView) => {
@@ -109,6 +109,7 @@ export function WorkspacePage() {
 
       <ScrollView
         bounces={false}
+        contentOffset={{ x: width, y: 0 }}
         decelerationRate="fast"
         horizontal
         onMomentumScrollEnd={(event) => {

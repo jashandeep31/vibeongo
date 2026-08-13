@@ -17,14 +17,22 @@ export type ProjectChatTarget = {
   projectSessionId: string;
 };
 
+export type NewProjectChatTarget = {
+  directory: string;
+  projectId: string;
+  projectSessionId: string;
+};
+
 export function ProjectChatSwitcherDrawer({
   current,
   onClose,
+  onNewChat,
   onSelect,
   visible,
 }: {
   current: ProjectChatTarget;
   onClose: () => void;
+  onNewChat: (target: NewProjectChatTarget) => void;
   onSelect: (target: ProjectChatTarget) => void;
   visible: boolean;
 }) {
@@ -37,6 +45,7 @@ export function ProjectChatSwitcherDrawer({
   );
   const statuses = useSessionChatsStore((store) => store.statusesBySessionId);
   const unread = useSessionChatsStore((store) => store.unreadBySessionId);
+  const attention = useSessionChatsStore((store) => store.attentionBySessionId);
 
   return (
     <Modal
@@ -172,6 +181,15 @@ export function ProjectChatSwitcherDrawer({
                                   Boolean(statuses[session.id]?.[chat.id]);
                                 const isUnread =
                                   unread[session.id]?.[chat.id] === true;
+                                const needsAttention =
+                                  attention[session.id]?.[chat.id] === true;
+                                const stateLabel = needsAttention
+                                  ? "Needs attention"
+                                  : busy
+                                    ? "Working"
+                                    : isUnread
+                                      ? "New answer"
+                                      : undefined;
                                 return (
                                   <Pressable
                                     accessibilityRole="button"
@@ -208,32 +226,78 @@ export function ProjectChatSwitcherDrawer({
                                       numberOfLines={1}
                                       style={[
                                         styles.chatTitle,
-                                        (selected || isUnread) &&
+                                        (selected ||
+                                          isUnread ||
+                                          needsAttention) &&
                                           styles.emphasized,
                                       ]}
                                       themeColor={
-                                        selected || isUnread
+                                        selected || isUnread || needsAttention
                                           ? "text"
                                           : "textSecondary"
                                       }
                                     >
                                       {chat.title || "Untitled chat"}
                                     </ThemedText>
-                                    {busy || isUnread ? (
+                                    {stateLabel ? (
                                       <View
+                                        accessibilityLabel={stateLabel}
                                         style={[
                                           styles.chatIndicator,
                                           {
-                                            backgroundColor: busy
-                                              ? "#f59e0b"
-                                              : "#3b82f6",
+                                            backgroundColor: needsAttention
+                                              ? "#ef4444"
+                                              : busy
+                                                ? "#f59e0b"
+                                                : "#3b82f6",
                                           },
                                         ]}
+                                      />
+                                    ) : null}
+                                    {selected ? (
+                                      <SymbolView
+                                        name={{
+                                          ios: "checkmark.circle.fill",
+                                          android: "check_circle",
+                                        }}
+                                        size={17}
+                                        tintColor={theme.text}
                                       />
                                     ) : null}
                                   </Pressable>
                                 );
                               })}
+                              {chats[0]?.directory ? (
+                                <Pressable
+                                  accessibilityLabel={`New chat in ${session.name}`}
+                                  accessibilityRole="button"
+                                  onPress={() =>
+                                    onNewChat({
+                                      directory: chats[0]?.directory ?? "",
+                                      projectId: project.id,
+                                      projectSessionId: session.id,
+                                    })
+                                  }
+                                  style={({ pressed }) => [
+                                    styles.chat,
+                                    pressed && {
+                                      backgroundColor: theme.backgroundElement,
+                                    },
+                                  ]}
+                                >
+                                  <SymbolView
+                                    name={{ ios: "plus", android: "add" }}
+                                    size={15}
+                                    tintColor={theme.textSecondary}
+                                  />
+                                  <ThemedText
+                                    style={styles.chatTitle}
+                                    themeColor="textSecondary"
+                                  >
+                                    New chat
+                                  </ThemedText>
+                                </Pressable>
+                              ) : null}
                             </View>
                           ) : (
                             <ThemedText

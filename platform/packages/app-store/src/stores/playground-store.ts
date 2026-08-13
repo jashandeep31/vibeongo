@@ -103,6 +103,7 @@ export type OpencodeChatMessage = {
 };
 
 interface SessionChatsStore {
+  attentionBySessionId: Record<string, Record<string, boolean>>;
   chatsBySessionId: Record<string, OpencodeSession[]>;
   messagesBySessionId: Record<string, Record<string, OpencodeChatMessage[]>>;
   statusesBySessionId: Record<string, Record<string, OpencodeSessionStatus>>;
@@ -117,6 +118,7 @@ interface SessionChatsStore {
     chatId: string,
   ) => OpencodeSessionStatus;
   getChatUnread: (projectSessionId: string, chatId: string) => boolean;
+  getChatAttention: (projectSessionId: string, chatId: string) => boolean;
   setSessionChats: (projectSessionId: string, chats: OpencodeSession[]) => void;
   upsertSessionChat: (projectSessionId: string, chat: OpencodeSession) => void;
   setChatMessages: (
@@ -145,11 +147,17 @@ interface SessionChatsStore {
     chatId: string,
     unread: boolean,
   ) => void;
+  setChatAttention: (
+    projectSessionId: string,
+    chatId: string,
+    attention: boolean,
+  ) => void;
   deleteSessionChat: (projectSessionId: string, chatId: string) => void;
   clearSessionChats: (projectSessionId: string) => void;
 }
 
 export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
+  attentionBySessionId: {},
   chatsBySessionId: {},
   messagesBySessionId: {},
   statusesBySessionId: {},
@@ -162,6 +170,8 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
     get().statusesBySessionId[projectSessionId]?.[chatId] ?? { type: "idle" },
   getChatUnread: (projectSessionId, chatId) =>
     get().unreadBySessionId[projectSessionId]?.[chatId] ?? false,
+  getChatAttention: (projectSessionId, chatId) =>
+    get().attentionBySessionId[projectSessionId]?.[chatId] ?? false,
   setSessionChats: (projectSessionId, chats) =>
     set((state) => ({
       chatsBySessionId: {
@@ -288,6 +298,16 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
         },
       },
     })),
+  setChatAttention: (projectSessionId, chatId, attention) =>
+    set((state) => ({
+      attentionBySessionId: {
+        ...state.attentionBySessionId,
+        [projectSessionId]: {
+          ...state.attentionBySessionId[projectSessionId],
+          [chatId]: attention,
+        },
+      },
+    })),
   deleteSessionChat: (projectSessionId, chatId) =>
     set((state) => {
       const projectSessionMessages = {
@@ -299,9 +319,13 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
       const projectSessionUnread = {
         ...state.unreadBySessionId[projectSessionId],
       };
+      const projectSessionAttention = {
+        ...state.attentionBySessionId[projectSessionId],
+      };
       Reflect.deleteProperty(projectSessionMessages, chatId);
       Reflect.deleteProperty(projectSessionStatuses, chatId);
       Reflect.deleteProperty(projectSessionUnread, chatId);
+      Reflect.deleteProperty(projectSessionAttention, chatId);
 
       return {
         chatsBySessionId: {
@@ -322,6 +346,10 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
           ...state.unreadBySessionId,
           [projectSessionId]: projectSessionUnread,
         },
+        attentionBySessionId: {
+          ...state.attentionBySessionId,
+          [projectSessionId]: projectSessionAttention,
+        },
       };
     }),
   clearSessionChats: (projectSessionId) =>
@@ -330,11 +358,14 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
       const remainingMessages = { ...state.messagesBySessionId };
       const remainingStatuses = { ...state.statusesBySessionId };
       const remainingUnread = { ...state.unreadBySessionId };
+      const remainingAttention = { ...state.attentionBySessionId };
       Reflect.deleteProperty(remainingChats, projectSessionId);
       Reflect.deleteProperty(remainingMessages, projectSessionId);
       Reflect.deleteProperty(remainingStatuses, projectSessionId);
       Reflect.deleteProperty(remainingUnread, projectSessionId);
+      Reflect.deleteProperty(remainingAttention, projectSessionId);
       return {
+        attentionBySessionId: remainingAttention,
         chatsBySessionId: remainingChats,
         messagesBySessionId: remainingMessages,
         statusesBySessionId: remainingStatuses,

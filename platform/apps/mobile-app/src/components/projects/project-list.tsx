@@ -60,6 +60,9 @@ export function ProjectList() {
   const unreadBySessionId = useSessionChatsStore(
     (store) => store.unreadBySessionId,
   );
+  const attentionBySessionId = useSessionChatsStore(
+    (store) => store.attentionBySessionId,
+  );
   const resumeSession = useResumeProjectSession();
   const [runtimeSessionId, setRuntimeSessionId] = useState<string | null>(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
@@ -404,6 +407,16 @@ export function ProjectList() {
                               const isUnread =
                                 unreadBySessionId[session.id]?.[chat.id] ===
                                 true;
+                              const needsAttention =
+                                attentionBySessionId[session.id]?.[chat.id] ===
+                                true;
+                              const stateLabel = needsAttention
+                                ? "Needs attention"
+                                : isBusy
+                                  ? "Working"
+                                  : isUnread
+                                    ? "New answer"
+                                    : undefined;
                               return (
                                 <Pressable
                                   accessibilityRole="button"
@@ -438,22 +451,28 @@ export function ProjectList() {
                                     numberOfLines={1}
                                     style={[
                                       styles.chatTitle,
-                                      isUnread && styles.unreadChatTitle,
+                                      (isUnread || needsAttention) &&
+                                        styles.unreadChatTitle,
                                     ]}
                                     themeColor={
-                                      isUnread ? "text" : "textSecondary"
+                                      isUnread || needsAttention
+                                        ? "text"
+                                        : "textSecondary"
                                     }
                                   >
                                     {chat.title || "Untitled chat"}
                                   </ThemedText>
-                                  {isBusy || isUnread ? (
+                                  {stateLabel ? (
                                     <View
+                                      accessibilityLabel={stateLabel}
                                       style={[
                                         styles.chatIndicator,
                                         {
-                                          backgroundColor: isBusy
-                                            ? "#f59e0b"
-                                            : "#3b82f6",
+                                          backgroundColor: needsAttention
+                                            ? "#ef4444"
+                                            : isBusy
+                                              ? "#f59e0b"
+                                              : "#3b82f6",
                                         },
                                       ]}
                                     />

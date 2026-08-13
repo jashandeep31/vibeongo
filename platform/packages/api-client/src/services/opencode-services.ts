@@ -483,6 +483,46 @@ export async function getOpencodeSessionStatuses(
   ) as Record<string, SessionStatus>;
 }
 
+export async function getOpencodeQuestions(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const projects = await getOpencodeProjectDirectories(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+  );
+  const directories = [
+    ...new Set(
+      projects.flatMap((project) => [project.worktree, ...project.sandboxes]),
+    ),
+  ].filter(Boolean);
+  const results = await Promise.all(
+    directories.map((directory) =>
+      getOpencodeClient(
+        chatId,
+        serverUrl,
+        accessToken,
+        password,
+        directory,
+      ).question.list({ directory }),
+    ),
+  );
+
+  if (results.some((result) => result.error)) {
+    throw new Error("Could not load OpenCode questions");
+  }
+
+  const questionsById = new Map<string, QuestionRequest>();
+  for (const question of results.flatMap((result) => result.data ?? [])) {
+    questionsById.set(question.id, question);
+  }
+  return [...questionsById.values()];
+}
+
 export async function createOpencodeSession(
   chatId: string,
   serverUrl: string,

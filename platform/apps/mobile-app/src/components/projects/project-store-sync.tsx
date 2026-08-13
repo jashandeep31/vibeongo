@@ -7,6 +7,7 @@ import {
 } from "@repo/api-hooks";
 import {
   getOpencodePassword,
+  getOpencodeQuestions,
   getOpencodeSessionStatuses,
   reduceOpencodeMessages,
   reduceOpencodeSessionData,
@@ -135,6 +136,15 @@ function ProjectSessionRuntimeSync({
         store.setChatStatus(sessionId, opencodeSessionId, { type: "idle" });
       }
 
+      if (event.type === "question.asked") {
+        store.setChatAttention(sessionId, opencodeSessionId, true);
+      } else if (
+        event.type === "question.replied" ||
+        event.type === "question.rejected"
+      ) {
+        store.setChatAttention(sessionId, opencodeSessionId, false);
+      }
+
       if (event.type === "session.idle") {
         void queryClient.invalidateQueries({
           queryKey: ["opencode", "session", sessionId, opencodeSessionId],
@@ -216,20 +226,31 @@ function ProjectSessionRuntimeSync({
     let disposed = false;
     const syncStatuses = async () => {
       try {
-        const statuses = await getOpencodeSessionStatuses(
-          sessionId,
-          opencodeSessions,
-          serverUrl,
-          accessToken,
-          password,
-        );
+        const [statuses, questions] = await Promise.all([
+          getOpencodeSessionStatuses(
+            sessionId,
+            opencodeSessions,
+            serverUrl,
+            accessToken,
+            password,
+          ),
+          getOpencodeQuestions(sessionId, serverUrl, accessToken, password),
+        ]);
         if (disposed) return;
 
         const store = useSessionChatsStore.getState();
+        const chatsNeedingAttention = new Set(
+          questions.map((question) => question.sessionID),
+        );
         for (const chat of opencodeSessions) {
           const previous = store.getChatStatus(sessionId, chat.id);
           const next = statuses[chat.id] ?? { type: "idle" as const };
           store.setChatStatus(sessionId, chat.id, next);
+          store.setChatAttention(
+            sessionId,
+            chat.id,
+            chatsNeedingAttention.has(chat.id),
+          );
 
           if (
             previous.type !== "idle" &&

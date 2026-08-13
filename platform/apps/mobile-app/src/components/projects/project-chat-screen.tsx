@@ -203,10 +203,7 @@ export function ProjectChatScreen() {
     }));
   }, [inventoryQuery.data]);
 
-  const goBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/");
-  };
+  const goBack = () => router.replace("/");
 
   const openNewChat = () => {
     router.push({
@@ -375,6 +372,11 @@ export function ProjectChatScreen() {
     store.upsertSessionChat(projectSessionId, data.session);
     store.setChatMessages(projectSessionId, opencodeSessionId, data.messages);
     store.setChatStatus(projectSessionId, opencodeSessionId, data.status);
+    store.setChatAttention(
+      projectSessionId,
+      opencodeSessionId,
+      data.questions.length > 0,
+    );
   }, [data, opencodeSessionId, projectSessionId]);
 
   useEffect(() => {
@@ -724,6 +726,28 @@ export function ProjectChatScreen() {
       <ProjectChatSwitcherDrawer
         current={{ opencodeSessionId, projectId, projectSessionId }}
         onClose={() => setIsChatSwitcherOpen(false)}
+        onNewChat={(target) => {
+          setIsChatSwitcherOpen(false);
+          router.push({
+            pathname:
+              "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
+            params: {
+              ...target,
+              ...(target.projectSessionId === projectSessionId &&
+              selection.agent
+                ? { agent: selection.agent }
+                : {}),
+              ...(target.projectSessionId === projectSessionId &&
+              selection.model
+                ? { model: selection.model }
+                : {}),
+              ...(target.projectSessionId === projectSessionId &&
+              selection.variant
+                ? { variant: selection.variant }
+                : {}),
+            },
+          });
+        }}
         onSelect={selectChat}
         visible={isChatSwitcherOpen}
       />
