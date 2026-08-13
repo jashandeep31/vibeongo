@@ -158,7 +158,11 @@ export function ProjectDomainsButton({
         <SymbolView
           name={{ ios: "globe", android: "public" }}
           size={19}
-          tintColor={needsAssignment ? "#3c87f7" : theme.textSecondary}
+          tintColor={
+            needsAssignment || (currentIp && !currentIpAllowed)
+              ? "#f59e0b"
+              : theme.textSecondary
+          }
         />
       </Pressable>
 
@@ -253,6 +257,54 @@ export function ProjectDomainsButton({
               contentContainerStyle={styles.domainList}
               keyboardShouldPersistTaps="handled"
             >
+              {currentIp && !currentIpAllowed ? (
+                <View
+                  style={[
+                    styles.ipWarning,
+                    { backgroundColor: theme.backgroundElement },
+                  ]}
+                >
+                  <SymbolView
+                    name={{
+                      ios: "exclamationmark.triangle.fill",
+                      android: "warning",
+                    }}
+                    size={20}
+                    tintColor="#f59e0b"
+                  />
+                  <View style={styles.ipWarningCopy}>
+                    <ThemedText style={styles.ipWarningTitle}>
+                      This device is not allowed
+                    </ThemedText>
+                    <ThemedText
+                      style={styles.ipWarningText}
+                      themeColor="textSecondary"
+                    >
+                      Add {currentIp} to access these domains.
+                    </ThemedText>
+                  </View>
+                  <Pressable
+                    accessibilityLabel={`Allow this device IP ${currentIp}`}
+                    accessibilityRole="button"
+                    disabled={ipMutationPending}
+                    onPress={() => addIp(currentIp)}
+                    style={({ pressed }) => [
+                      styles.warningAllowButton,
+                      ipMutationPending && styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {addAllowedIp.isPending ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <ThemedText style={styles.warningAllowText}>
+                        Allow
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                </View>
+              ) : null}
+
               {domainsQuery.isPending ? (
                 <ActivityIndicator style={styles.loading} />
               ) : domainsQuery.error ? (
@@ -646,6 +698,19 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 12,
   },
+  ipWarning: {
+    alignItems: "center",
+    borderColor: "#f59e0b",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 12,
+    padding: 12,
+  },
+  ipWarningCopy: { flex: 1, minWidth: 0 },
+  ipWarningText: { fontSize: 11, lineHeight: 16 },
+  ipWarningTitle: { fontSize: 13, fontWeight: "700" },
   ipList: { borderRadius: 12, borderWidth: StyleSheet.hairlineWidth },
   ipRow: {
     alignItems: "center",
@@ -687,4 +752,14 @@ const styles = StyleSheet.create({
   sectionSubtitle: { fontSize: 11, lineHeight: 16 },
   sectionTitle: { fontSize: 15, fontWeight: "700" },
   thisDevice: { fontSize: 10, marginRight: 3 },
+  warningAllowButton: {
+    alignItems: "center",
+    backgroundColor: "#3c87f7",
+    borderRadius: 9,
+    height: 36,
+    justifyContent: "center",
+    minWidth: 62,
+    paddingHorizontal: 10,
+  },
+  warningAllowText: { color: "#ffffff", fontSize: 12, fontWeight: "700" },
 });

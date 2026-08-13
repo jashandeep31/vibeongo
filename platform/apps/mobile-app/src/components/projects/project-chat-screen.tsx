@@ -46,6 +46,7 @@ import {
   type ProjectChatTarget,
 } from "@/components/projects/project-chat-switcher-drawer";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
+import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -565,6 +566,10 @@ export function ProjectChatScreen() {
                 { backgroundColor: theme.backgroundElement },
               ]}
             >
+              <ProjectSettingsButton
+                projectId={projectId}
+                projectSessionId={projectSessionId}
+              />
               <ProjectDomainsButton
                 instanceId={runtime.instance.id}
                 projectId={projectId}
