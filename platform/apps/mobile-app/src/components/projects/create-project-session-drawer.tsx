@@ -1,6 +1,6 @@
 import type { Project } from "@repo/api-client";
 import { useCreateProjectSession } from "@repo/api-hooks";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -38,11 +38,22 @@ export function CreateProjectSessionDrawer({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const createSession = useCreateProjectSession();
+  const sessionNameInputRef = useRef<TextInput>(null);
   const [sessionName, setSessionName] = useState("");
   const [sessionDescription, setSessionDescription] = useState("");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const trimmedName = sessionName.trim();
   const isNameTooShort = sessionName.length > 0 && trimmedName.length < 4;
+
+  useEffect(() => {
+    if (!project) return;
+
+    const focusTimer = setTimeout(() => {
+      sessionNameInputRef.current?.focus();
+    }, 220);
+
+    return () => clearTimeout(focusTimer);
+  }, [project]);
 
   const finishClose = () => {
     setSessionName("");
@@ -117,11 +128,11 @@ export function CreateProjectSessionDrawer({
                   Session name
                 </ThemedText>
                 <TextInput
-                  autoFocus
                   editable={!createSession.isPending}
                   onChangeText={setSessionName}
                   placeholder="e.g. Implement command palette"
                   placeholderTextColor={theme.textSecondary}
+                  ref={sessionNameInputRef}
                   style={[
                     styles.input,
                     {

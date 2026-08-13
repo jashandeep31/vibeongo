@@ -1,5 +1,6 @@
 import type { Project } from "@repo/api-client";
 import {
+  useArchiveProjectSession,
   useDeleteProject,
   useGetInstances,
   useGetProjectGithubReposById,
@@ -25,12 +26,17 @@ import {
   StyleSheet,
   View,
 } from "react-native";
+import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import { CreateProjectSessionDrawer } from "@/components/projects/create-project-session-drawer";
 import { ProjectActionsMenu } from "@/components/projects/project-actions-menu";
 import { RepositoryDrawer } from "@/components/projects/repository-drawer";
+import {
+  SessionActionsMenu,
+  type SessionActionTarget,
+} from "@/components/projects/session-actions-menu";
 import {
   SessionRuntimeDrawer,
   type SessionRuntime,
@@ -69,6 +75,7 @@ export function ProjectList() {
     (store) => store.attentionBySessionId,
   );
   const resumeSession = useResumeProjectSession();
+  const archiveSession = useArchiveProjectSession();
   const deleteProject = useDeleteProject();
   const [runtimeSessionId, setRuntimeSessionId] = useState<string | null>(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
@@ -93,6 +100,12 @@ export function ProjectList() {
     null,
   );
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [sessionMenu, setSessionMenu] = useState<{
+    session: SessionActionTarget;
+    anchorY: number;
+  } | null>(null);
+  const [sessionToArchive, setSessionToArchive] =
+    useState<SessionActionTarget | null>(null);
   const repositoriesQuery = useGetProjectGithubReposById(
     newChatTarget?.projectId ?? null,
     Boolean(newChatTarget),
@@ -211,6 +224,33 @@ export function ProjectList() {
       },
       onSuccess: () => setProjectToDelete(null),
     });
+  };
+
+  const openSessionMenu = (
+    event: GestureResponderEvent,
+    session: SessionActionTarget,
+  ) => {
+    setSessionMenu({ session, anchorY: event.nativeEvent.pageY });
+  };
+
+  const handleArchiveSession = () => {
+    if (!sessionToArchive || archiveSession.isPending) return;
+    archiveSession.mutate(
+      { id: sessionToArchive.id, action: true },
+      {
+        onError: () => {
+          setSessionToArchive(null);
+          requestAnimationFrame(() =>
+            Toast.show({
+              type: "error",
+              text1: "Could not archive session",
+              text2: "Please check your connection and try again.",
+            }),
+          );
+        },
+        onSuccess: () => setSessionToArchive(null),
+      },
+    );
   };
 
   if (
@@ -415,31 +455,63 @@ export function ProjectList() {
                           ) : entry.state === "processing" ? (
                             <ActivityIndicator size="small" />
                           ) : (
-                            <Pressable
-                              accessibilityLabel={`Resume ${session.name}`}
-                              accessibilityRole="button"
-                              disabled={resumeSession.isPending}
-                              onPress={() => setRuntimeSessionId(session.id)}
-                              style={({ pressed }) => [
-                                styles.sessionAction,
-                                { backgroundColor: theme.backgroundElement },
-                                (pressed || resumeSession.isPending) &&
-                                  styles.pressed,
-                              ]}
-                            >
-                              {isResuming ? (
-                                <ActivityIndicator size="small" />
-                              ) : (
+                            <>
+                              <Pressable
+                                accessibilityLabel={`Resume ${session.name}`}
+                                accessibilityRole="button"
+                                disabled={
+                                  resumeSession.isPending ||
+                                  archiveSession.isPending
+                                }
+                                onPress={() => setRuntimeSessionId(session.id)}
+                                style={({ pressed }) => [
+                                  styles.sessionAction,
+                                  { backgroundColor: theme.backgroundElement },
+                                  (pressed ||
+                                    resumeSession.isPending ||
+                                    archiveSession.isPending) &&
+                                    styles.pressed,
+                                ]}
+                              >
+                                {isResuming ? (
+                                  <ActivityIndicator size="small" />
+                                ) : (
+                                  <SymbolView
+                                    name={{
+                                      ios: "play.fill",
+                                      android: "play_arrow",
+                                    }}
+                                    size={13}
+                                    tintColor={theme.text}
+                                  />
+                                )}
+                              </Pressable>
+                              <Pressable
+                                accessibilityLabel={`More options for ${session.name}`}
+                                accessibilityRole="button"
+                                disabled={archiveSession.isPending}
+                                onPress={(event) =>
+                                  openSessionMenu(event, {
+                                    id: session.id,
+                                    name: session.name,
+                                  })
+                                }
+                                style={({ pressed }) => [
+                                  styles.sessionAction,
+                                  (pressed || archiveSession.isPending) &&
+                                    styles.pressed,
+                                ]}
+                              >
                                 <SymbolView
                                   name={{
-                                    ios: "play.fill",
-                                    android: "play_arrow",
+                                    ios: "ellipsis",
+                                    android: "more_vert",
                                   }}
-                                  size={13}
-                                  tintColor={theme.text}
+                                  size={17}
+                                  tintColor={theme.textSecondary}
                                 />
-                              )}
-                            </Pressable>
+                              </Pressable>
+                            </>
                           )}
                         </View>
 
@@ -587,9 +659,29 @@ export function ProjectList() {
         }}
         project={projectMenu?.project ?? null}
       />
+      <SessionActionsMenu
+        anchorY={sessionMenu?.anchorY ?? 0}
+        onArchive={(session) => {
+          setSessionMenu(null);
+          setSessionToArchive(session);
+        }}
+        onClose={() => setSessionMenu(null)}
+        session={sessionMenu?.session ?? null}
+      />
       <CreateProjectSessionDrawer
         onClose={() => setNewSessionProject(null)}
         project={newSessionProject}
+      />
+      <ConfirmationDrawer
+        confirmLabel="Archive"
+        description={`Archive "${sessionToArchive?.name ?? "this session"}"? It will be hidden from your active sessions list.`}
+        isConfirming={archiveSession.isPending}
+        onCancel={() => {
+          if (!archiveSession.isPending) setSessionToArchive(null);
+        }}
+        onConfirm={handleArchiveSession}
+        title="Archive session?"
+        visible={Boolean(sessionToArchive)}
       />
       <ConfirmationDrawer
         confirmDelaySeconds={3}
