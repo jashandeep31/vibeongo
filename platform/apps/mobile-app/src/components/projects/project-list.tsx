@@ -669,7 +669,7 @@ export function ProjectList() {
         visible={Boolean(projectToDelete)}
       />
       <ConfirmationDrawer
-        confirmDelaySeconds={3}
+        confirmDelaySeconds={1}
         confirmLabel="Terminate"
         description={`The running instance for "${terminationTarget?.sessionName ?? "this session"}" will stop immediately. Any unsaved work may be lost.`}
         onCancel={() => {
