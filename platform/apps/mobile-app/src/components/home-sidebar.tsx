@@ -29,6 +29,7 @@ type NavigationItem = {
   title: string;
   icon: SymbolViewProps["name"];
   href?: "/" | "/settings" | "/wallet";
+  workspaceView?: "chats" | "projects";
 };
 
 const navigation: NavigationItem[] = [
@@ -36,6 +37,7 @@ const navigation: NavigationItem[] = [
   {
     title: "New Chat",
     icon: { ios: "square.and.pencil", android: "edit_square" },
+    workspaceView: "chats",
   },
   {
     title: "Limits",
@@ -119,7 +121,11 @@ export function HomeSidebar({ visible, onClose }: HomeSidebarProps) {
   };
 
   const selectNavigationItem = (item: NavigationItem) => {
-    if (item.href) router.navigate(item.href);
+    if (item.workspaceView) {
+      router.navigate({ pathname: "/", params: { view: item.workspaceView } });
+    } else if (item.href) {
+      router.navigate(item.href);
+    }
     closeSidebar();
   };
 
