@@ -1,5 +1,11 @@
 import { useEffect, useState } from "react";
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import {
+  ActivityIndicator,
+  Modal,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
@@ -9,6 +15,7 @@ type ConfirmationDrawerProps = {
   confirmDelaySeconds?: number;
   confirmLabel: string;
   description: string;
+  isConfirming?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
   title: string;
@@ -19,6 +26,7 @@ export function ConfirmationDrawer({
   confirmDelaySeconds = 0,
   confirmLabel,
   description,
+  isConfirming = false,
   onCancel,
   onConfirm,
   title,
@@ -44,7 +52,7 @@ export function ConfirmationDrawer({
     return () => clearInterval(interval);
   }, [confirmDelaySeconds, visible]);
 
-  const isConfirmDisabled = secondsRemaining > 0;
+  const isConfirmDisabled = secondsRemaining > 0 || isConfirming;
 
   return (
     <Modal
@@ -98,9 +106,11 @@ export function ConfirmationDrawer({
             </Pressable>
             <Pressable
               accessibilityLabel={
-                isConfirmDisabled
-                  ? `${confirmLabel}, available in ${secondsRemaining} seconds`
-                  : confirmLabel
+                isConfirming
+                  ? `${confirmLabel} in progress`
+                  : isConfirmDisabled
+                    ? `${confirmLabel}, available in ${secondsRemaining} seconds`
+                    : confirmLabel
               }
               accessibilityRole="button"
               accessibilityState={{ disabled: isConfirmDisabled }}
@@ -113,10 +123,14 @@ export function ConfirmationDrawer({
                 pressed && styles.pressed,
               ]}
             >
-              <ThemedText style={styles.destructiveLabel}>
-                {confirmLabel}
-              </ThemedText>
-              {isConfirmDisabled ? (
+              {isConfirming ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <ThemedText style={styles.destructiveLabel}>
+                  {confirmLabel}
+                </ThemedText>
+              )}
+              {secondsRemaining > 0 ? (
                 <View style={styles.countdownBadge}>
                   <ThemedText style={styles.countdownText}>
                     {secondsRemaining}

@@ -3,11 +3,15 @@ import { useApiClient } from "../api-client-context.js";
 
 const VIBEONGO_AGENT = "vibeongo-agent" as const;
 
-export const useGetVibeongoChats = (limit = 5) => {
+export const useGetVibeongoChats = (limit?: number) => {
   const client = useApiClient();
   return useQuery({
     queryKey: ["chats", VIBEONGO_AGENT, { limit }],
-    queryFn: () => client.chats.getChats({ agentName: VIBEONGO_AGENT, limit }),
+    queryFn: () =>
+      client.chats.getChats({
+        agentName: VIBEONGO_AGENT,
+        ...(limit === undefined ? {} : { limit }),
+      }),
   });
 };
 

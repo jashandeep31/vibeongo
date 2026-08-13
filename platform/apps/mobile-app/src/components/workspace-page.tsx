@@ -1,7 +1,10 @@
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { SymbolView } from "expo-symbols";
-import { useRef, useState } from "react";
+import { useLocalSearchParams } from "expo-router";
+import { useEffect, useRef, useState } from "react";
 import {
+  KeyboardAvoidingView,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -25,8 +28,10 @@ export function WorkspacePage() {
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const { width } = useWindowDimensions();
+  const { view } = useLocalSearchParams<{ view?: string }>();
   const pagerRef = useRef<ScrollView>(null);
-  const [activeView, setActiveView] = useState<WorkspaceView>("projects");
+  const initialView: WorkspaceView = view === "chats" ? "chats" : "projects";
+  const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const selectView = (view: WorkspaceView) => {
@@ -37,97 +42,113 @@ export function WorkspacePage() {
     });
   };
 
+  useEffect(() => {
+    if (view !== "chats" && view !== "projects") return;
+    setActiveView(view);
+    pagerRef.current?.scrollTo({
+      animated: false,
+      x: view === "chats" ? 0 : width,
+    });
+  }, [view, width]);
+
   return (
     <SafeAreaView
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View style={styles.topBar}>
-        <Pressable
-          accessibilityLabel="Open sidebar"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => setIsSidebarOpen(true)}
-          style={({ pressed }) => [
-            styles.roundedControl,
-            pressed && styles.pressed,
-          ]}
-        >
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        enabled
+        style={styles.screen}
+      >
+        <View style={styles.topBar}>
+          <Pressable
+            accessibilityLabel="Open sidebar"
+            accessibilityRole="button"
+            hitSlop={8}
+            onPress={() => setIsSidebarOpen(true)}
+            style={({ pressed }) => [
+              styles.roundedControl,
+              pressed && styles.pressed,
+            ]}
+          >
+            <GlassView
+              glassEffectStyle="regular"
+              isInteractive
+              style={[
+                styles.menuButton,
+                !supportsNativeGlass && {
+                  backgroundColor: isDark ? "#242528" : "#FFFFFF",
+                  borderColor: isDark
+                    ? "rgba(255,255,255,0.10)"
+                    : "rgba(15,23,42,0.08)",
+                  borderWidth: 1,
+                },
+              ]}
+            >
+              <SymbolView
+                name={{ ios: "line.3.horizontal", android: "menu" }}
+                size={20}
+                tintColor={theme.text}
+              />
+            </GlassView>
+          </Pressable>
+
           <GlassView
+            accessibilityLabel="Workspace view"
+            accessibilityRole="tablist"
             glassEffectStyle="regular"
-            isInteractive
             style={[
-              styles.menuButton,
+              styles.tabPill,
               !supportsNativeGlass && {
-                backgroundColor: isDark ? "#242528" : "#FFFFFF",
+                backgroundColor: isDark ? "#242528" : "#F1F2F4",
                 borderColor: isDark
                   ? "rgba(255,255,255,0.10)"
-                  : "rgba(15,23,42,0.08)",
+                  : "rgba(15,23,42,0.06)",
                 borderWidth: 1,
+                overflow: "visible",
               },
             ]}
           >
-            <SymbolView
-              name={{ ios: "line.3.horizontal", android: "menu" }}
-              size={20}
-              tintColor={theme.text}
+            <TabButton
+              active={activeView === "chats"}
+              isDark={isDark}
+              label="Chats"
+              onPress={() => selectView("chats")}
+            />
+            <TabButton
+              active={activeView === "projects"}
+              isDark={isDark}
+              label="Projects"
+              onPress={() => selectView("projects")}
             />
           </GlassView>
-        </Pressable>
 
-        <GlassView
-          accessibilityLabel="Workspace view"
-          accessibilityRole="tablist"
-          glassEffectStyle="regular"
-          style={[
-            styles.tabPill,
-            !supportsNativeGlass && {
-              backgroundColor: isDark ? "#242528" : "#F1F2F4",
-              borderColor: isDark
-                ? "rgba(255,255,255,0.10)"
-                : "rgba(15,23,42,0.06)",
-              borderWidth: 1,
-              overflow: "visible",
-            },
-          ]}
+          <View style={styles.headerSpacer} />
+        </View>
+
+        <ScrollView
+          bounces={false}
+          contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
+          decelerationRate="fast"
+          horizontal
+          keyboardShouldPersistTaps="handled"
+          onMomentumScrollEnd={(event) => {
+            const page = Math.round(event.nativeEvent.contentOffset.x / width);
+            setActiveView(page === 0 ? "chats" : "projects");
+          }}
+          pagingEnabled
+          ref={pagerRef}
+          showsHorizontalScrollIndicator={false}
+          style={styles.pager}
         >
-          <TabButton
-            active={activeView === "chats"}
-            isDark={isDark}
-            label="Chats"
-            onPress={() => selectView("chats")}
-          />
-          <TabButton
-            active={activeView === "projects"}
-            isDark={isDark}
-            label="Projects"
-            onPress={() => selectView("projects")}
-          />
-        </GlassView>
-
-        <View style={styles.headerSpacer} />
-      </View>
-
-      <ScrollView
-        bounces={false}
-        contentOffset={{ x: width, y: 0 }}
-        decelerationRate="fast"
-        horizontal
-        onMomentumScrollEnd={(event) => {
-          const page = Math.round(event.nativeEvent.contentOffset.x / width);
-          setActiveView(page === 0 ? "chats" : "projects");
-        }}
-        pagingEnabled
-        ref={pagerRef}
-        showsHorizontalScrollIndicator={false}
-        style={styles.pager}
-      >
-        <View style={[styles.page, { width }]}>
-          <ChatList limit={5} />
-        </View>
-        <View style={[styles.page, { width }]}>
-          <ProjectList />
-        </View>
-      </ScrollView>
+          <View style={[styles.chatPage, { width }]}>
+            <ChatList />
+          </View>
+          <View style={[styles.page, { width }]}>
+            <ProjectList />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       <HomeSidebar
         onClose={() => setIsSidebarOpen(false)}
@@ -222,8 +243,14 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   page: {
+    flex: 1,
     paddingHorizontal: 24,
     paddingTop: 32,
+  },
+  chatPage: {
+    flex: 1,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
   pageLabel: {
     fontSize: 16,

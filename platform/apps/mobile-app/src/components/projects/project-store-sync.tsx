@@ -379,9 +379,10 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
     );
   }, [addAllProjects, addAllSessions, projectsWithSessions]);
 
-  const activeOpencodeSessionId = pathname.includes("/chats/")
-    ? (pathname.split("/chats/")[1]?.split("/")[0] ?? "")
-    : "";
+  const activeOpencodeSessionId =
+    pathname.match(
+      /^\/projects\/[^/]+\/sessions\/[^/]+\/chats\/([^/]+)/,
+    )?.[1] ?? "";
 
   if (!enabled) return null;
 
