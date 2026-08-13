@@ -28,7 +28,7 @@ const supportsNativeGlass = isGlassEffectAPIAvailable();
 type NavigationItem = {
   title: string;
   icon: SymbolViewProps["name"];
-  href?: "/" | "/settings" | "/wallet";
+  href?: "/" | "/github-repos" | "/settings" | "/wallet";
   workspaceView?: "chats" | "projects";
 };
 
@@ -46,6 +46,7 @@ const navigation: NavigationItem[] = [
   {
     title: "GitHub Repos",
     icon: { ios: "chevron.left.forwardslash.chevron.right", android: "code" },
+    href: "/github-repos",
   },
   {
     title: "Wallet",

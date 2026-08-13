@@ -16,6 +16,7 @@ type ConfirmationDrawerProps = {
   confirmDelaySeconds?: number;
   confirmLabel: string;
   description: string;
+  destructive?: boolean;
   isConfirming?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
@@ -27,6 +28,7 @@ export function ConfirmationDrawer({
   confirmDelaySeconds = 0,
   confirmLabel,
   description,
+  destructive = true,
   isConfirming = false,
   onCancel,
   onConfirm,
@@ -120,15 +122,25 @@ export function ConfirmationDrawer({
               onPress={onConfirm}
               style={({ pressed }) => [
                 styles.action,
-                styles.destructiveAction,
+                {
+                  backgroundColor: destructive ? "#dc2626" : theme.text,
+                },
                 isConfirmDisabled && styles.disabledAction,
                 pressed && styles.pressed,
               ]}
             >
               {isConfirming ? (
-                <ActivityIndicator color="#ffffff" size="small" />
+                <ActivityIndicator
+                  color={destructive ? "#ffffff" : theme.background}
+                  size="small"
+                />
               ) : (
-                <ThemedText style={styles.destructiveLabel}>
+                <ThemedText
+                  style={[
+                    styles.confirmLabel,
+                    { color: destructive ? "#ffffff" : theme.background },
+                  ]}
+                >
                   {confirmLabel}
                 </ThemedText>
               )}
@@ -194,11 +206,7 @@ const styles = StyleSheet.create({
     lineHeight: 21,
     marginTop: 6,
   },
-  destructiveAction: {
-    backgroundColor: "#dc2626",
-  },
-  destructiveLabel: {
-    color: "#ffffff",
+  confirmLabel: {
     fontSize: 14,
     fontWeight: "700",
     left: 0,
