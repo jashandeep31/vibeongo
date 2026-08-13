@@ -22,8 +22,15 @@ import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
+import { Fonts } from "@/constants/theme";
+import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  formatInstanceTimeRemaining,
+  getInstanceRemainingMs,
+  isInstanceExpiringSoon,
+} from "@/lib/instance-expiry";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -57,6 +64,12 @@ export function NewProjectChatScreen() {
         ?.session.name ?? "Session",
   );
   const runtime = useProjectRuntime(projectSessionId);
+  const now = useCurrentTime(Boolean(runtime.instance?.terminates_at));
+  const instanceRemainingMs = getInstanceRemainingMs(
+    runtime.instance?.terminates_at,
+    now,
+  );
+  const isInstanceExpiring = isInstanceExpiringSoon(instanceRemainingMs);
   const inventoryQuery = useOpencodeInventory(
     projectSessionId,
     runtime.serverUrl,
@@ -177,19 +190,39 @@ export function NewProjectChatScreen() {
           <View
             style={[
               styles.headerTitlePill,
-              { backgroundColor: theme.backgroundElement },
+              {
+                backgroundColor: isInstanceExpiring
+                  ? "rgba(245, 158, 11, 0.14)"
+                  : theme.backgroundElement,
+                borderColor: isInstanceExpiring
+                  ? "rgba(245, 158, 11, 0.55)"
+                  : "transparent",
+              },
             ]}
           >
             <ThemedText numberOfLines={1} style={styles.headerTitle}>
               New chat
             </ThemedText>
-            <ThemedText
-              numberOfLines={1}
-              style={styles.headerSubtitle}
-              themeColor="textSecondary"
-            >
-              {projectName} · {sessionName}
-            </ThemedText>
+            {isInstanceExpiring ? (
+              <View style={styles.headerExpiryRow}>
+                <SymbolView
+                  name={{ ios: "clock.fill", android: "schedule" }}
+                  size={11}
+                  tintColor="#f59e0b"
+                />
+                <ThemedText style={styles.headerCountdown}>
+                  Ends in {formatInstanceTimeRemaining(instanceRemainingMs)}
+                </ThemedText>
+              </View>
+            ) : (
+              <ThemedText
+                numberOfLines={1}
+                style={styles.headerSubtitle}
+                themeColor="textSecondary"
+              >
+                {projectName} · {sessionName}
+              </ThemedText>
+            )}
           </View>
           <View
             style={[
@@ -281,6 +314,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 40,
   },
+  headerCountdown: {
+    color: "#f59e0b",
+    fontFamily: Fonts.mono,
+    fontSize: 10,
+    fontWeight: "800",
+  },
+  headerExpiryRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 4,
+  },
   headerSubtitle: {
     flexShrink: 1,
     fontSize: 12,
@@ -294,6 +338,7 @@ const styles = StyleSheet.create({
   headerTitlePill: {
     alignItems: "center",
     borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
     height: 42,
     justifyContent: "center",

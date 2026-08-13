@@ -2,6 +2,8 @@ import {
   useAddAllowedIpToProject,
   useDeleteMultipleAllowedIpsFromProject,
   useGetProjectDomainsById,
+  useUpdateProjectDomainAccess,
+  useUpdateProjectDomainPort,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
 import { SymbolView } from "expo-symbols";
@@ -14,6 +16,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   View,
 } from "react-native";
@@ -36,10 +39,19 @@ export function ProjectDomainsButton({
   const [currentIp, setCurrentIp] = useState("");
   const [manualIp, setManualIp] = useState("");
   const [isCurrentIpLoading, setIsCurrentIpLoading] = useState(false);
+  const [editingDomain, setEditingDomain] = useState<{
+    domain: string;
+    id: string;
+    port: number;
+  } | null>(null);
+  const [portInput, setPortInput] = useState("");
+  const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(projectId));
   const assignDomains = useUpdateProjectRoutingTargetInstance();
   const addAllowedIp = useAddAllowedIpToProject();
   const deleteAllowedIps = useDeleteMultipleAllowedIpsFromProject();
+  const updateDomainAccess = useUpdateProjectDomainAccess();
+  const updateDomainPort = useUpdateProjectDomainPort();
   const domains = domainsQuery.data;
   const needsAssignment = Boolean(
     domains && domains.target_instance_id !== instanceId,
@@ -49,6 +61,9 @@ export function ProjectDomainsButton({
   );
   const currentIpAllowed = Boolean(
     currentIp && allowedIps.some((item) => item.ip.trim() === currentIp),
+  );
+  const requiresAllowedIp = Boolean(
+    domains?.proxy_domains.some((domain) => !domain.allow_all_ips),
   );
   const otherIps = currentIp
     ? allowedIps.filter((item) => item.ip.trim() !== currentIp)
@@ -138,6 +153,78 @@ export function ProjectDomainsButton({
     );
   };
 
+  const closePortEditor = () => {
+    if (updateDomainPort.isPending) return;
+    setEditingDomain(null);
+    setPortInput("");
+  };
+
+  const closeDrawer = () => {
+    setVisible(false);
+    setEditingDomain(null);
+    setPortInput("");
+  };
+
+  const editPort = (domain: {
+    domain: string;
+    id: string;
+    is_editable: boolean;
+    target_port: number;
+  }) => {
+    if (!domain.is_editable) {
+      Alert.alert(
+        "Managed domain",
+        "This domain port is managed by the platform and cannot be changed.",
+      );
+      return;
+    }
+    setEditingDomain({
+      domain: domain.domain,
+      id: domain.id,
+      port: domain.target_port,
+    });
+    setPortInput(String(domain.target_port));
+  };
+
+  const savePort = () => {
+    if (!editingDomain || updateDomainPort.isPending) return;
+    const port = Number(portInput.trim());
+    if (!Number.isInteger(port) || port < 1 || port > 65535) {
+      Alert.alert("Invalid port", "Enter a port between 1 and 65535.");
+      return;
+    }
+    if (port === editingDomain.port) {
+      closePortEditor();
+      return;
+    }
+
+    setUpdatingDomainId(editingDomain.id);
+    updateDomainPort.mutate(
+      { id: projectId, domainId: editingDomain.id, target_port: port },
+      {
+        onError: (error) => Alert.alert("Could not update port", error.message),
+        onSuccess: () => {
+          setEditingDomain(null);
+          setPortInput("");
+        },
+        onSettled: () => setUpdatingDomainId(null),
+      },
+    );
+  };
+
+  const setAllowAllIps = (domainId: string, allowAllIps: boolean) => {
+    if (updateDomainAccess.isPending) return;
+    setUpdatingDomainId(domainId);
+    updateDomainAccess.mutate(
+      { id: projectId, domainId, allow_all_ips: allowAllIps },
+      {
+        onError: (error) =>
+          Alert.alert("Could not update domain access", error.message),
+        onSettled: () => setUpdatingDomainId(null),
+      },
+    );
+  };
+
   const openDomain = (domain: string) => {
     void Linking.openURL(`https://${domain}`).catch(() =>
       Alert.alert("Could not open domain", domain),
@@ -159,7 +246,8 @@ export function ProjectDomainsButton({
           name={{ ios: "globe", android: "public" }}
           size={19}
           tintColor={
-            needsAssignment || (currentIp && !currentIpAllowed)
+            needsAssignment ||
+            (requiresAllowedIp && currentIp && !currentIpAllowed)
               ? "#f59e0b"
               : theme.textSecondary
           }
@@ -168,7 +256,7 @@ export function ProjectDomainsButton({
 
       <Modal
         animationType="none"
-        onRequestClose={() => setVisible(false)}
+        onRequestClose={closeDrawer}
         statusBarTranslucent
         transparent
         visible={visible}
@@ -177,7 +265,7 @@ export function ProjectDomainsButton({
           <Pressable
             accessibilityLabel="Close project domains"
             accessibilityRole="button"
-            onPress={() => setVisible(false)}
+            onPress={closeDrawer}
             style={styles.backdrop}
           />
           <BottomDrawerPanel
@@ -257,7 +345,7 @@ export function ProjectDomainsButton({
               contentContainerStyle={styles.domainList}
               keyboardShouldPersistTaps="handled"
             >
-              {currentIp && !currentIpAllowed ? (
+              {requiresAllowedIp && currentIp && !currentIpAllowed ? (
                 <View
                   style={[
                     styles.ipWarning,
@@ -316,34 +404,105 @@ export function ProjectDomainsButton({
                 </ThemedText>
               ) : domains?.proxy_domains.length ? (
                 domains.proxy_domains.map((domain) => (
-                  <Pressable
-                    accessibilityLabel={`Open ${domain.domain}`}
-                    accessibilityRole="link"
+                  <View
                     key={domain.id}
-                    onPress={() => openDomain(domain.domain)}
-                    style={({ pressed }) => [
+                    style={[
                       styles.domain,
                       { borderBottomColor: theme.backgroundSelected },
-                      pressed && styles.pressed,
                     ]}
                   >
-                    <View style={styles.domainCopy}>
-                      <ThemedText numberOfLines={1} style={styles.domainName}>
-                        {domain.domain}
-                      </ThemedText>
-                      <ThemedText
-                        style={styles.port}
-                        themeColor="textSecondary"
+                    <Pressable
+                      accessibilityLabel={`Open ${domain.domain}`}
+                      accessibilityRole="link"
+                      onPress={() => openDomain(domain.domain)}
+                      style={({ pressed }) => [
+                        styles.domainLink,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <View style={styles.domainCopy}>
+                        <ThemedText numberOfLines={1} style={styles.domainName}>
+                          {domain.domain}
+                        </ThemedText>
+                        <ThemedText
+                          style={styles.domainType}
+                          themeColor="textSecondary"
+                        >
+                          {domain.is_editable
+                            ? "Custom service route"
+                            : "Platform-managed route"}
+                        </ThemedText>
+                      </View>
+                      <SymbolView
+                        name={{ ios: "arrow.up.right", android: "open_in_new" }}
+                        size={17}
+                        tintColor={theme.textSecondary}
+                      />
+                    </Pressable>
+
+                    <View style={styles.domainActions}>
+                      <Pressable
+                        accessibilityLabel={
+                          domain.is_editable
+                            ? `Edit port ${domain.target_port} for ${domain.domain}`
+                            : `Port ${domain.target_port} is managed by the platform`
+                        }
+                        accessibilityRole="button"
+                        disabled={updatingDomainId === domain.id}
+                        onPress={() => editPort(domain)}
+                        style={({ pressed }) => [
+                          styles.portButton,
+                          {
+                            backgroundColor: theme.backgroundElement,
+                            borderColor: theme.backgroundSelected,
+                          },
+                          updatingDomainId === domain.id && styles.disabled,
+                          pressed && styles.pressed,
+                        ]}
                       >
-                        Port {domain.target_port}
-                      </ThemedText>
+                        <SymbolView
+                          name={
+                            domain.is_editable
+                              ? { ios: "pencil", android: "edit" }
+                              : { ios: "lock.fill", android: "lock" }
+                          }
+                          size={14}
+                          tintColor={theme.textSecondary}
+                        />
+                        <ThemedText style={styles.port}>
+                          Port {domain.target_port}
+                        </ThemedText>
+                      </Pressable>
+
+                      <View style={styles.accessToggle}>
+                        <ThemedText
+                          style={styles.accessToggleLabel}
+                          themeColor="textSecondary"
+                        >
+                          All IPs
+                        </ThemedText>
+                        {updatingDomainId === domain.id &&
+                        updateDomainAccess.isPending ? (
+                          <ActivityIndicator size="small" />
+                        ) : (
+                          <Switch
+                            accessibilityLabel={`Allow all IPs for ${domain.domain}`}
+                            disabled={updatingDomainId === domain.id}
+                            ios_backgroundColor={theme.backgroundSelected}
+                            onValueChange={(value) =>
+                              setAllowAllIps(domain.id, value)
+                            }
+                            thumbColor="#ffffff"
+                            trackColor={{
+                              false: theme.backgroundSelected,
+                              true: "#3c87f7",
+                            }}
+                            value={domain.allow_all_ips}
+                          />
+                        )}
+                      </View>
                     </View>
-                    <SymbolView
-                      name={{ ios: "arrow.up.right", android: "open_in_new" }}
-                      size={17}
-                      tintColor={theme.textSecondary}
-                    />
-                  </Pressable>
+                  </View>
                 ))
               ) : (
                 <ThemedText
@@ -573,6 +732,112 @@ export function ProjectDomainsButton({
               ) : null}
             </ScrollView>
           </BottomDrawerPanel>
+
+          {editingDomain ? (
+            <View accessibilityViewIsModal style={styles.dialogLayer}>
+              <Pressable
+                accessibilityLabel="Cancel port editing"
+                accessibilityRole="button"
+                disabled={updateDomainPort.isPending}
+                onPress={closePortEditor}
+                style={styles.dialogBackdrop}
+              />
+              <View
+                style={[
+                  styles.dialog,
+                  {
+                    backgroundColor: theme.background,
+                    borderColor: theme.backgroundSelected,
+                  },
+                ]}
+              >
+                <View style={styles.dialogIcon}>
+                  <SymbolView
+                    name={{ ios: "pencil", android: "edit" }}
+                    size={20}
+                    tintColor="#3c87f7"
+                  />
+                </View>
+                <ThemedText style={styles.dialogTitle}>Edit port</ThemedText>
+                <ThemedText
+                  numberOfLines={1}
+                  style={styles.dialogDomain}
+                  themeColor="textSecondary"
+                >
+                  {editingDomain.domain}
+                </ThemedText>
+                <ThemedText
+                  style={styles.dialogLabel}
+                  themeColor="textSecondary"
+                >
+                  Target port
+                </ThemedText>
+                <TextInput
+                  accessibilityLabel={`Target port for ${editingDomain.domain}`}
+                  autoFocus
+                  editable={!updateDomainPort.isPending}
+                  keyboardType="number-pad"
+                  maxLength={5}
+                  onChangeText={setPortInput}
+                  onSubmitEditing={savePort}
+                  placeholder="3101"
+                  placeholderTextColor={theme.textSecondary}
+                  returnKeyType="done"
+                  selectTextOnFocus
+                  style={[
+                    styles.portInput,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                      color: theme.text,
+                    },
+                  ]}
+                  value={portInput}
+                />
+                <ThemedText
+                  style={styles.dialogHint}
+                  themeColor="textSecondary"
+                >
+                  Enter a port from 1 to 65535.
+                </ThemedText>
+                <View style={styles.dialogActions}>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={updateDomainPort.isPending}
+                    onPress={closePortEditor}
+                    style={({ pressed }) => [
+                      styles.dialogCancel,
+                      { borderColor: theme.backgroundSelected },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <ThemedText style={styles.dialogCancelText}>
+                      Cancel
+                    </ThemedText>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    disabled={!portInput.trim() || updateDomainPort.isPending}
+                    onPress={savePort}
+                    style={({ pressed }) => [
+                      styles.dialogSave,
+                      (!portInput.trim() || updateDomainPort.isPending) &&
+                        styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {updateDomainPort.isPending ? (
+                      <ActivityIndicator color="#ffffff" size="small" />
+                    ) : (
+                      <ThemedText style={styles.dialogSaveText}>
+                        Save
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          ) : null}
         </View>
       </Modal>
     </>
@@ -580,6 +845,13 @@ export function ProjectDomainsButton({
 }
 
 const styles = StyleSheet.create({
+  accessToggle: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 36,
+  },
+  accessToggleLabel: { fontSize: 12, fontWeight: "600" },
   addIpButton: {
     alignItems: "center",
     backgroundColor: "#3c87f7",
@@ -643,14 +915,81 @@ const styles = StyleSheet.create({
   currentIpValue: { fontFamily: "monospace", fontSize: 13, marginTop: 2 },
   disabled: { opacity: 0.4 },
   domain: {
-    alignItems: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
+    paddingVertical: 12,
+  },
+  domainActions: {
+    alignItems: "center",
     flexDirection: "row",
-    minHeight: 64,
+    justifyContent: "space-between",
   },
   domainCopy: { flex: 1, minWidth: 0 },
+  domainLink: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 10,
+    minHeight: 34,
+  },
   domainList: { paddingTop: 12 },
   domainName: { fontSize: 14, fontWeight: "700" },
+  domainType: { fontSize: 11, marginTop: 2 },
+  dialog: {
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    maxWidth: 360,
+    padding: 20,
+    width: "88%",
+  },
+  dialogActions: { flexDirection: "row", gap: 10, marginTop: 20 },
+  dialogBackdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.48)",
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  dialogCancel: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  dialogCancelText: { fontSize: 14, fontWeight: "700" },
+  dialogDomain: { fontSize: 12, marginTop: 3 },
+  dialogHint: { fontSize: 11, marginTop: 7 },
+  dialogIcon: {
+    alignItems: "center",
+    backgroundColor: "rgba(60, 135, 247, 0.12)",
+    borderRadius: 20,
+    height: 40,
+    justifyContent: "center",
+    marginBottom: 12,
+    width: 40,
+  },
+  dialogLabel: { fontSize: 12, fontWeight: "600", marginTop: 20 },
+  dialogLayer: {
+    alignItems: "center",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  dialogSave: {
+    alignItems: "center",
+    backgroundColor: "#3c87f7",
+    borderRadius: 12,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+  },
+  dialogSaveText: { color: "#ffffff", fontSize: 14, fontWeight: "700" },
+  dialogTitle: { fontSize: 18, fontWeight: "700" },
   drawer: {
     alignSelf: "center",
     borderTopLeftRadius: 24,
@@ -723,7 +1062,25 @@ const styles = StyleSheet.create({
   ipValue: { flex: 1, fontFamily: "monospace", fontSize: 13 },
   loading: { marginVertical: 32 },
   noIps: { fontSize: 12, paddingVertical: 12, textAlign: "center" },
-  port: { fontSize: 12, marginTop: 2 },
+  port: { fontFamily: "monospace", fontSize: 12, fontWeight: "600" },
+  portButton: {
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 36,
+    paddingHorizontal: 10,
+  },
+  portInput: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    fontFamily: "monospace",
+    fontSize: 18,
+    height: 50,
+    marginTop: 7,
+    paddingHorizontal: 14,
+  },
   pressed: { opacity: 0.6 },
   removeIpButton: {
     alignItems: "center",

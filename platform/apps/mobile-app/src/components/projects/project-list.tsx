@@ -38,7 +38,13 @@ import {
   type SessionRuntime,
 } from "@/components/projects/session-runtime-drawer";
 import { Fonts } from "@/constants/theme";
+import { useCurrentTime } from "@/hooks/use-current-time";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  formatInstanceTimeRemaining,
+  getInstanceRemainingMs,
+  isInstanceExpiringSoon,
+} from "@/lib/instance-expiry";
 
 type TerminationTarget = {
   instanceId: string;
@@ -115,6 +121,10 @@ export function ProjectList() {
     { state: "running", limit: 100 },
     Boolean(projectsQuery.data),
   );
+  const hasRunningInstances = sessions.some(
+    (entry) => entry.state === "running" && entry.instance,
+  );
+  const now = useCurrentTime(hasRunningInstances);
 
   const openNewChat = useCallback(
     (directory: string) => {
@@ -359,6 +369,12 @@ export function ProjectList() {
                     const isStartingNewChat =
                       newChatTarget?.sessionId === session.id &&
                       repositoriesQuery.isFetching;
+                    const remainingMs = getInstanceRemainingMs(
+                      runningInstance?.terminates_at,
+                      now,
+                    );
+                    const isExpiringSoon =
+                      isRunning && isInstanceExpiringSoon(remainingMs);
 
                     return (
                       <View key={session.id}>
@@ -496,6 +512,28 @@ export function ProjectList() {
                             )}
                           </View>
                         </View>
+
+                        {isExpiringSoon ? (
+                          <View
+                            accessibilityLabel={`${session.name} ends in ${formatInstanceTimeRemaining(remainingMs)}`}
+                            style={styles.expiryWarning}
+                          >
+                            <SymbolView
+                              name={{
+                                ios: "exclamationmark.triangle.fill",
+                                android: "warning",
+                              }}
+                              size={14}
+                              tintColor="#f59e0b"
+                            />
+                            <ThemedText style={styles.expiryWarningLabel}>
+                              Session ends soon
+                            </ThemedText>
+                            <ThemedText style={styles.expiryCountdown}>
+                              {formatInstanceTimeRemaining(remainingMs)}
+                            </ThemedText>
+                          </View>
+                        ) : null}
 
                         {isRunning ? (
                           <View style={styles.opencodeChats}>
@@ -728,6 +766,31 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     fontSize: 18,
+    fontWeight: "700",
+  },
+  expiryCountdown: {
+    color: "#f59e0b",
+    fontFamily: Fonts.mono,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  expiryWarning: {
+    alignItems: "center",
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
+    borderColor: "rgba(245, 158, 11, 0.45)",
+    borderRadius: 9,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 7,
+    marginBottom: 5,
+    marginLeft: 24,
+    minHeight: 34,
+    paddingHorizontal: 10,
+  },
+  expiryWarningLabel: {
+    color: "#f59e0b",
+    flex: 1,
+    fontSize: 12,
     fontWeight: "700",
   },
   noSessions: {

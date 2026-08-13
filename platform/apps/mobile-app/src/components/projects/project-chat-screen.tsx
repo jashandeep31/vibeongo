@@ -25,6 +25,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -48,8 +49,15 @@ import {
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
+import { Fonts } from "@/constants/theme";
+import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  formatInstanceTimeRemaining,
+  getInstanceRemainingMs,
+  isInstanceExpiringSoon,
+} from "@/lib/instance-expiry";
 
 const EMPTY_SESSION_CHATS: Array<{ id: string }> = [];
 
@@ -60,10 +68,13 @@ function firstParam(value: string | string[] | undefined) {
 export function ProjectChatScreen() {
   const theme = useTheme();
   const router = useRouter();
+  const { width: windowWidth } = useWindowDimensions();
+  const chatTransitionDistance = Math.max(windowWidth, 320);
   const scrollRef = useRef<ScrollView>(null);
   const focusedChatIdsRef = useRef(new Set<string>());
   const chatTransitionX = useRef(new Animated.Value(0)).current;
   const isChatTransitioningRef = useRef(false);
+  const chatTransitionEntryXRef = useRef<number | null>(null);
   const params = useLocalSearchParams<{
     opencodeSessionId?: string | string[];
     projectId?: string | string[];
@@ -77,6 +88,12 @@ export function ProjectChatScreen() {
   );
   const sessionChats = storedSessionChats ?? EMPTY_SESSION_CHATS;
   const runtime = useProjectRuntime(projectSessionId);
+  const now = useCurrentTime(Boolean(runtime.instance?.terminates_at));
+  const instanceRemainingMs = getInstanceRemainingMs(
+    runtime.instance?.terminates_at,
+    now,
+  );
+  const isInstanceExpiring = isInstanceExpiringSoon(instanceRemainingMs);
   const sessionQuery = useOpencodeSession({
     chatId: projectSessionId,
     sessionId: opencodeSessionId,
@@ -138,7 +155,12 @@ export function ProjectChatScreen() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
-  const data = sessionQuery.data;
+  // Keep the outgoing chat mounted while the next chat is fetched. Replacing it
+  // with the loading screen between the exit and entrance animations causes a
+  // visible flash and makes the swipe feel like two separate transitions.
+  const displayedDataRef = useRef(sessionQuery.data);
+  if (sessionQuery.data) displayedDataRef.current = sessionQuery.data;
+  const data = sessionQuery.data ?? displayedDataRef.current;
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const sessionSelection = useMemo(
     () => getSessionPromptSelection(data),
@@ -268,11 +290,12 @@ export function ProjectChatScreen() {
       if (!nextChat) return;
 
       isChatTransitioningRef.current = true;
-      const exitX = offset === 1 ? -88 : 88;
+      const exitX =
+        offset === 1 ? -chatTransitionDistance : chatTransitionDistance;
       chatTransitionX.stopAnimation();
       Animated.timing(chatTransitionX, {
-        duration: 125,
-        easing: Easing.in(Easing.cubic),
+        duration: 190,
+        easing: Easing.inOut(Easing.cubic),
         toValue: exitX,
         useNativeDriver: true,
       }).start(({ finished }) => {
@@ -281,38 +304,38 @@ export function ProjectChatScreen() {
           return;
         }
 
-        router.replace({
-          pathname:
-            "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
-          params: {
-            opencodeSessionId: nextChat.id,
-            projectId,
-            projectSessionId,
-          },
-        });
-        chatTransitionX.setValue(-exitX * 0.7);
-        requestAnimationFrame(() =>
-          Animated.spring(chatTransitionX, {
-            damping: 19,
-            mass: 0.75,
-            stiffness: 220,
-            toValue: 0,
-            useNativeDriver: true,
-          }).start(() => {
-            isChatTransitioningRef.current = false;
-          }),
-        );
+        chatTransitionEntryXRef.current = -exitX;
+        // This is the same screen with a different chat id. Updating the route
+        // params avoids triggering a second native stack transition.
+        router.setParams({ opencodeSessionId: nextChat.id });
       });
     },
     [
       chatTransitionX,
+      chatTransitionDistance,
       opencodeSessionId,
-      projectId,
-      projectSessionId,
       router,
       sessionChats,
     ],
   );
+
+  useEffect(() => {
+    const entryX = chatTransitionEntryXRef.current;
+    if (!sessionQuery.data || entryX === null) return;
+
+    chatTransitionEntryXRef.current = null;
+    chatTransitionX.setValue(entryX);
+    requestAnimationFrame(() =>
+      Animated.timing(chatTransitionX, {
+        duration: 240,
+        easing: Easing.out(Easing.cubic),
+        toValue: 0,
+        useNativeDriver: true,
+      }).start(() => {
+        isChatTransitioningRef.current = false;
+      }),
+    );
+  }, [chatTransitionX, sessionQuery.data]);
 
   const pageSwipeResponder = useMemo(
     () =>
@@ -332,7 +355,10 @@ export function ProjectChatScreen() {
         onPanResponderGrant: () => chatTransitionX.stopAnimation(),
         onPanResponderMove: (_, gesture) =>
           chatTransitionX.setValue(
-            Math.max(-64, Math.min(64, gesture.dx * 0.5)),
+            Math.max(
+              -chatTransitionDistance * 0.22,
+              Math.min(chatTransitionDistance * 0.22, gesture.dx * 0.5),
+            ),
           ),
         onPanResponderRelease: (_, gesture) => {
           if (gesture.dx < -42) switchRelativeChat(1);
@@ -356,6 +382,7 @@ export function ProjectChatScreen() {
       }),
     [
       chatTransitionX,
+      chatTransitionDistance,
       isKeyboardVisible,
       sessionChats.length,
       switchRelativeChat,
@@ -369,17 +396,25 @@ export function ProjectChatScreen() {
   }, [opencodeSessionId, projectSessionId]);
 
   useEffect(() => {
-    if (!data) return;
+    if (!sessionQuery.data) return;
     const store = useSessionChatsStore.getState();
-    store.upsertSessionChat(projectSessionId, data.session);
-    store.setChatMessages(projectSessionId, opencodeSessionId, data.messages);
-    store.setChatStatus(projectSessionId, opencodeSessionId, data.status);
+    store.upsertSessionChat(projectSessionId, sessionQuery.data.session);
+    store.setChatMessages(
+      projectSessionId,
+      opencodeSessionId,
+      sessionQuery.data.messages,
+    );
+    store.setChatStatus(
+      projectSessionId,
+      opencodeSessionId,
+      sessionQuery.data.status,
+    );
     store.setChatAttention(
       projectSessionId,
       opencodeSessionId,
-      data.questions.length > 0,
+      sessionQuery.data.questions.length > 0,
     );
-  }, [data, opencodeSessionId, projectSessionId]);
+  }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
 
   useFocusEffect(
     useCallback(() => {
@@ -516,10 +551,6 @@ export function ProjectChatScreen() {
           style={[
             styles.screen,
             {
-              opacity: chatTransitionX.interpolate({
-                inputRange: [-88, 0, 88],
-                outputRange: [0.35, 1, 0.35],
-              }),
               transform: [{ translateX: chatTransitionX }],
             },
           ]}
@@ -548,12 +579,31 @@ export function ProjectChatScreen() {
               onPress={() => setIsChatSwitcherOpen(true)}
               style={[
                 styles.headerTitlePill,
-                { backgroundColor: theme.backgroundElement },
+                {
+                  backgroundColor: isInstanceExpiring
+                    ? "rgba(245, 158, 11, 0.14)"
+                    : theme.backgroundElement,
+                  borderColor: isInstanceExpiring
+                    ? "rgba(245, 158, 11, 0.55)"
+                    : "transparent",
+                },
               ]}
             >
+              {isInstanceExpiring ? (
+                <SymbolView
+                  name={{ ios: "clock.fill", android: "schedule" }}
+                  size={13}
+                  tintColor="#f59e0b"
+                />
+              ) : null}
               <ThemedText numberOfLines={1} style={styles.headerTitle}>
                 {data.session.title || "Untitled chat"}
               </ThemedText>
+              {isInstanceExpiring ? (
+                <ThemedText style={styles.headerCountdown}>
+                  {formatInstanceTimeRemaining(instanceRemainingMs)}
+                </ThemedText>
+              ) : null}
               <SymbolView
                 name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
                 size={13}
@@ -903,6 +953,7 @@ const styles = StyleSheet.create({
   headerTitlePill: {
     alignItems: "center",
     borderRadius: 22,
+    borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
     flexDirection: "row",
     gap: 7,
@@ -912,10 +963,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
   },
   headerTitle: {
+    flexShrink: 1,
     fontSize: 14,
     fontWeight: "700",
     lineHeight: 20,
     maxWidth: "100%",
+  },
+  headerCountdown: {
+    color: "#f59e0b",
+    fontFamily: Fonts.mono,
+    fontSize: 11,
+    fontWeight: "800",
   },
   loading: {
     alignItems: "center",
