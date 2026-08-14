@@ -16,6 +16,12 @@ import {
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
+type WebApp = "legacy" | "next";
+
+function getWebApp(clientId: unknown): WebApp {
+  return clientId === "vibeongo-next" ? "next" : "legacy";
+}
+
 const githubProfileSchema = z.object({
   email: z.string().nullable().optional(),
   name: z.string().nullable().optional(),
@@ -60,11 +66,15 @@ export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
   }
 
   const mobileState = isMobile && state ? `mobile:${state}` : undefined;
+  const webApp = isMobile ? undefined : getWebApp(req.query.client_id);
+  const webState = webApp ? `web:${webApp}` : undefined;
+
   const params = {
     client_id: env.GITHUB_CLIENT_ID,
     redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
     scope: "user:email",
     ...(mobileState ? { state: mobileState } : {}),
+    ...(webState ? { state: webState } : {}),
   };
 
   res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
@@ -77,6 +87,9 @@ export const githubAuthCallbackController = catchAsync(
     if (typeof code !== "string") {
       throw new Error("code is not string");
     }
+
+    const webRedirectUrl =
+      state === "web:next" ? env.NEXTJS_APP_URL : env.FRONTEND_URL;
 
     const accessTokenUrl = "https://github.com/login/oauth/access_token";
     const tokenResponse = await axios.post(
@@ -150,7 +163,7 @@ export const githubAuthCallbackController = catchAsync(
     }
 
     if (account.verified === false) {
-      res.redirect(env.FRONTEND_URL + "/invite");
+      res.redirect((webRedirectUrl ?? env.FRONTEND_URL) + "/invite");
       return;
     }
 
@@ -184,6 +197,6 @@ export const githubAuthCallbackController = catchAsync(
       ...sessionCookieOptions,
       maxAge: sessionMaxAgeMs,
     });
-    res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
+    res.redirect(webRedirectUrl ?? env.FRONTEND_URL);
   },
 );
