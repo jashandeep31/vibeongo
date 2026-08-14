@@ -12,6 +12,7 @@ import {
   type ReactNode,
 } from "react";
 import { ActivityIndicator, StyleSheet, View } from "react-native";
+import { usePathname } from "expo-router";
 
 import { SignedOutScreen } from "@/components/auth/signed-out-screen";
 import { ProjectStoreSync } from "@/components/projects/project-store-sync";
@@ -27,6 +28,7 @@ type ReactNativeWebSocketConstructor = new (
 
 export function AppProviders({ children }: { children: ReactNode }) {
   const theme = useTheme();
+  const pathname = usePathname();
   const [queryClient] = useState(() => new QueryClient());
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [isTokenLoading, setIsTokenLoading] = useState(true);
@@ -80,7 +82,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
     );
   }
 
-  if (!accessToken) return <SignedOutScreen />;
+  if (!accessToken) {
+    if (pathname === "/auth/callback") return <>{children}</>;
+    return <SignedOutScreen />;
+  }
 
   return (
     <ApiClientProvider client={apiClient}>
