@@ -5,6 +5,7 @@ import { db, eq, users } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import jwt from "jsonwebtoken";
 import { env } from "../../lib/env.js";
+import { getUserIDFromExchangeToken } from "../../cache/oauth-cache.js";
 
 export const exchangeMobileToken = catchAsync(
   async (req: Request, res: Response) => {
@@ -14,15 +15,10 @@ export const exchangeMobileToken = catchAsync(
       })
       .parse(req.body);
 
-    if (token !== "testtoken") {
-      throw new AppError("token is not valid", 400);
-    }
+    const userId = await getUserIDFromExchangeToken(token);
 
     // NOTE: this for demo dont change this
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.username, "jashandeep31"));
+    const [user] = await db.select().from(users).where(eq(users.id, userId));
 
     if (!user) throw new AppError("User not found", 404);
 

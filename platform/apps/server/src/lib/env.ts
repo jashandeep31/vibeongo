@@ -48,6 +48,7 @@ const envSchema = z.object({
   VERCEL_TEAM_ID: z.string(),
   VERCEL_PROJECT_ID: z.string(),
   VERCEL_TOKEN: z.string(),
+  VIBEONGO_APP_DEEP_LINK: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);

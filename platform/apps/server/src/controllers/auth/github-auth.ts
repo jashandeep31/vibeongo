@@ -2,11 +2,13 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { catchAsync } from "../../lib/catch-async.js";
 import { env } from "../../lib/env.js";
+import crypto from "crypto";
 
 import axios from "axios";
 import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
 import { sessionCookieOptions } from "../../lib/session-cookie.js";
+import { addHashedTokenAndUserIDd } from "../../cache/oauth-cache.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
@@ -126,9 +128,19 @@ export const githubAuthCallbackController = catchAsync(
     }
 
     if (typeof state === "string" && state.startsWith("mobile:")) {
-      const redirectUrl = new URL("vibeongo://auth/callback");
-      // const redirectUrl = new URL("exp://fedora:8081/--/auth/callback");
-      redirectUrl.searchParams.set("token", "testtoken");
+      const randomToken = crypto.randomBytes(32).toString("base64url");
+      const hash = crypto
+        .createHash("sha256")
+        .update(randomToken)
+        .digest("hex");
+
+      await addHashedTokenAndUserIDd(hash, user.id);
+      // const redirectUrl = new URL("vibeongo://auth/callback");
+      const redirectUrl = new URL(
+        env.VIBEONGO_APP_DEEP_LINK + "/auth/callback",
+      );
+
+      redirectUrl.searchParams.set("token", randomToken);
       redirectUrl.searchParams.set("state", state.slice("mobile:".length));
       res.redirect(redirectUrl.toString());
       return;
