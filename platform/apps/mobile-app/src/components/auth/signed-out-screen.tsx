@@ -1,4 +1,5 @@
 import * as AuthSession from "expo-auth-session";
+import * as SecureStore from "expo-secure-store";
 import * as WebBrowser from "expo-web-browser";
 import { useMemo, useState } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
@@ -12,6 +13,7 @@ const redirectUri = AuthSession.makeRedirectUri({
   scheme: "vibeongo",
   path: "auth/callback",
 });
+const MOBILE_PKCE_KEY = "vibeongo.mobilePkce";
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -29,14 +31,25 @@ export function SignedOutScreen() {
       clientId: "vibeongo-mobile",
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
-      usePKCE: false,
+      usePKCE: true,
     },
     discovery,
   );
 
   const signIn = async () => {
     setError(null);
+    if (!request?.state || !request.codeVerifier) {
+      setError("Could not prepare secure sign-in. Please try again.");
+      return;
+    }
     try {
+      await SecureStore.setItemAsync(
+        MOBILE_PKCE_KEY,
+        JSON.stringify({
+          state: request.state,
+          codeVerifier: request.codeVerifier,
+        }),
+      );
       await promptAsync();
     } catch {
       setError("Could not open GitHub sign-in. Please try again.");

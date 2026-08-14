@@ -8,7 +8,11 @@ import axios from "axios";
 import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
 import { sessionCookieOptions } from "../../lib/session-cookie.js";
-import { addHashedTokenAndUserIDd } from "../../cache/oauth-cache.js";
+import {
+  addMobileExchangeToken,
+  addPendingMobileAuthorization,
+  consumePendingMobileAuthorization,
+} from "../../cache/oauth-cache.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
@@ -28,11 +32,34 @@ const githubEmailsSchema = z.array(
 
 export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
   const requestUrl = "https://github.com/login/oauth/authorize";
-  const mobileState =
-    req.query.client_id === "vibeongo-mobile" &&
-    typeof req.query.state === "string"
-      ? `mobile:${req.query.state}`
+  const isMobile = req.query.client_id === "vibeongo-mobile";
+  const state =
+    typeof req.query.state === "string" ? req.query.state : undefined;
+  const codeChallenge =
+    typeof req.query.code_challenge === "string"
+      ? req.query.code_challenge
       : undefined;
+  const codeChallengeMethod = req.query.code_challenge_method;
+
+  if (
+    isMobile &&
+    (!state ||
+      !codeChallenge ||
+      !/^[A-Za-z0-9_-]{43}$/.test(codeChallenge) ||
+      codeChallengeMethod !== "S256")
+  ) {
+    res.status(400).json({ error: "Mobile PKCE parameters are required" });
+    return;
+  }
+
+  if (isMobile && state && codeChallenge) {
+    // This PKCE challenge binds our temporary deep-link exchange token to this
+    // app instance. It is intentionally not forwarded to GitHub because this
+    // server, rather than the mobile app, exchanges GitHub's authorization code.
+    await addPendingMobileAuthorization(state, codeChallenge);
+  }
+
+  const mobileState = isMobile && state ? `mobile:${state}` : undefined;
   const params = {
     client_id: env.GITHUB_CLIENT_ID,
     redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
@@ -128,20 +155,24 @@ export const githubAuthCallbackController = catchAsync(
     }
 
     if (typeof state === "string" && state.startsWith("mobile:")) {
+      const mobileState = state.slice("mobile:".length);
+      const { codeChallenge } =
+        await consumePendingMobileAuthorization(mobileState);
       const randomToken = crypto.randomBytes(32).toString("base64url");
-      const hash = crypto
-        .createHash("sha256")
-        .update(randomToken)
-        .digest("hex");
 
-      await addHashedTokenAndUserIDd(hash, user.id);
+      await addMobileExchangeToken(
+        randomToken,
+        user.id,
+        mobileState,
+        codeChallenge,
+      );
       // const redirectUrl = new URL("vibeongo://auth/callback");
       const redirectUrl = new URL(
         env.VIBEONGO_APP_DEEP_LINK + "/auth/callback",
       );
 
       redirectUrl.searchParams.set("token", randomToken);
-      redirectUrl.searchParams.set("state", state.slice("mobile:".length));
+      redirectUrl.searchParams.set("state", mobileState);
       res.redirect(redirectUrl.toString());
       return;
     }

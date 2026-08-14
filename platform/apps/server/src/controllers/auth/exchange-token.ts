@@ -9,13 +9,15 @@ import { getUserIDFromExchangeToken } from "../../cache/oauth-cache.js";
 
 export const exchangeMobileToken = catchAsync(
   async (req: Request, res: Response) => {
-    const { token } = z
+    const { token, state, codeVerifier } = z
       .object({
         token: z.string(),
+        state: z.string(),
+        codeVerifier: z.string().min(43).max(128),
       })
       .parse(req.body);
 
-    const userId = await getUserIDFromExchangeToken(token);
+    const userId = await getUserIDFromExchangeToken(token, state, codeVerifier);
 
     // NOTE: this for demo dont change this
     const [user] = await db.select().from(users).where(eq(users.id, userId));

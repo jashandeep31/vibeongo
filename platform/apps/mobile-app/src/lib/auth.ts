@@ -13,13 +13,17 @@ type TokenExchangeResponse = {
   message?: unknown;
 };
 
-export async function exchangeMobileToken(exchangeToken: string) {
+export async function exchangeMobileToken(
+  exchangeToken: string,
+  state: string,
+  codeVerifier: string,
+) {
   const response = await fetch(`${BACKEND_URL}/api/v1/auth/mobile/exchange`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ token: exchangeToken }),
+    body: JSON.stringify({ token: exchangeToken, state, codeVerifier }),
   });
   const body = (await response.json()) as TokenExchangeResponse;
 

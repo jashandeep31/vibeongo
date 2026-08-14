@@ -1,4 +1,5 @@
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet } from "react-native";
 
@@ -6,22 +7,43 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { exchangeMobileToken } from "@/lib/auth";
 
+const MOBILE_PKCE_KEY = "vibeongo.mobilePkce";
+
+type StoredMobilePkce = {
+  codeVerifier: string;
+  state: string;
+};
+
 export default function AuthCallbackScreen() {
-  const { token } = useLocalSearchParams<{ token?: string }>();
+  const { token, state } = useLocalSearchParams<{
+    token?: string;
+    state?: string;
+  }>();
   const router = useRouter();
   const [error, setError] = useState<string | null>(null);
   const hasStartedExchange = useRef(false);
 
   useEffect(() => {
-    if (!token) {
+    if (!token || !state) {
       setError("The authentication callback did not include a token.");
       return;
     }
     if (hasStartedExchange.current) return;
     hasStartedExchange.current = true;
 
-    void exchangeMobileToken(token)
-      .then(() => router.replace("/"))
+    void SecureStore.getItemAsync(MOBILE_PKCE_KEY)
+      .then((storedValue) => {
+        if (!storedValue) throw new Error("This sign-in request has expired.");
+        const stored = JSON.parse(storedValue) as StoredMobilePkce;
+        if (stored.state !== state || !stored.codeVerifier) {
+          throw new Error("This callback does not match the sign-in request.");
+        }
+        return exchangeMobileToken(token, state, stored.codeVerifier);
+      })
+      .then(async () => {
+        await SecureStore.deleteItemAsync(MOBILE_PKCE_KEY);
+        router.replace("/");
+      })
       .catch((exchangeError: unknown) => {
         setError(
           exchangeError instanceof Error
@@ -29,7 +51,7 @@ export default function AuthCallbackScreen() {
             : "Authentication failed.",
         );
       });
-  }, [router, token]);
+  }, [router, state, token]);
 
   return (
     <ThemedView style={styles.container}>
