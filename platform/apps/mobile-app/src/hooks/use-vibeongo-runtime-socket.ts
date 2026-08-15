@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 type RuntimeSocketStatus =
   | "connecting"
@@ -73,6 +73,9 @@ export function useVibeongoRuntimeSocket({
     null,
   );
   const [toolMessages, setToolMessages] = useState<RuntimeToolMessages>({});
+  const messageListenersRef = useRef(
+    new Set<(message: RuntimeSocketMessage) => void>(),
+  );
   const reconnectAttemptRef = useRef(0);
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -142,6 +145,7 @@ export function useVibeongoRuntimeSocket({
           return;
         }
         setLastMessage(message);
+        messageListenersRef.current.forEach((listener) => listener(message));
 
         if (
           message.type === "tool" &&
@@ -202,5 +206,23 @@ export function useVibeongoRuntimeSocket({
     return true;
   };
 
-  return { lastMessage, logs, sendJsonMessage, stats, status, toolMessages };
+  const subscribeJsonMessage = useCallback(
+    (listener: (message: RuntimeSocketMessage) => void) => {
+      messageListenersRef.current.add(listener);
+      return () => {
+        messageListenersRef.current.delete(listener);
+      };
+    },
+    [],
+  );
+
+  return {
+    lastMessage,
+    logs,
+    sendJsonMessage,
+    stats,
+    status,
+    subscribeJsonMessage,
+    toolMessages,
+  };
 }

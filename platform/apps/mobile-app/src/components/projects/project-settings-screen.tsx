@@ -19,6 +19,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
+import { RuntimeShellToolsCard } from "@/components/projects/runtime-shell-tools-card";
 import { RuntimeToolCard } from "@/components/projects/runtime-tool-card";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -313,6 +314,14 @@ export function ProjectSettingsScreen() {
                   )}
                 </Pressable>
               </View>
+            ) : null}
+
+            {runtime.instance.runtime_kind !== "sandbox" ? (
+              <RuntimeShellToolsCard
+                isConnected={runtimeSocket.status === "connected"}
+                sendJsonMessage={runtimeSocket.sendJsonMessage}
+                subscribeJsonMessage={runtimeSocket.subscribeJsonMessage}
+              />
             ) : null}
 
             <View
