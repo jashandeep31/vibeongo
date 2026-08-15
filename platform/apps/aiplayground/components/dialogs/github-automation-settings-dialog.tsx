@@ -1,8 +1,8 @@
 "use client";
 
-import { useUpdateGithubRepoAutomation } from "@/hooks/use-github-repos";
-import { useGetProjects } from "@/hooks/use-project";
-import type { GithubRepo } from "@/services/github-repo-services";
+import { useUpdateGithubRepoAutomation } from "@repo/api-hooks";
+import { useGetProjects } from "@repo/api-hooks";
+import type { GithubRepo } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
@@ -91,8 +91,8 @@ export function GithubAutomationSettingsDialog({
         <DialogHeader>
           <DialogTitle>Repository automation</DialogTitle>
           <DialogDescription>
-            Choose which GitHub events should automatically start an AI task
-            for {repo.full_name}.
+            Choose which GitHub events should automatically start an AI task for{" "}
+            {repo.full_name}.
           </DialogDescription>
         </DialogHeader>
 
@@ -129,7 +129,9 @@ export function GithubAutomationSettingsDialog({
             <span className="flex min-w-0 gap-3">
               <GitPullRequest className="text-muted-foreground mt-0.5 size-4 shrink-0" />
               <span>
-                <span className="block font-medium">Auto-review pull requests</span>
+                <span className="block font-medium">
+                  Auto-review pull requests
+                </span>
                 <span className="text-muted-foreground mt-1 block text-xs leading-5">
                   Start an AI review when a pull request is opened.
                 </span>

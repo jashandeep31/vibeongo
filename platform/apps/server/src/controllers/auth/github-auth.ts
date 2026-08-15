@@ -2,13 +2,25 @@ import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { catchAsync } from "../../lib/catch-async.js";
 import { env } from "../../lib/env.js";
+import crypto from "crypto";
 
 import axios from "axios";
 import { z } from "zod";
 import { createOrGetUser } from "./create-or-get-user.js";
 import { sessionCookieOptions } from "../../lib/session-cookie.js";
+import {
+  addMobileExchangeToken,
+  addPendingMobileAuthorization,
+  consumePendingMobileAuthorization,
+} from "../../cache/oauth-cache.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
+
+type WebApp = "legacy" | "next";
+
+function getWebApp(clientId: unknown): WebApp {
+  return clientId === "vibeongo-next" ? "next" : "legacy";
+}
 
 const githubProfileSchema = z.object({
   email: z.string().nullable().optional(),
@@ -24,26 +36,60 @@ const githubEmailsSchema = z.array(
   }),
 );
 
-export const githubAuthUrl = catchAsync(
-  async (_req: Request, res: Response) => {
-    const requestUrl = "https://github.com/login/oauth/authorize";
-    const params = {
-      client_id: env.GITHUB_CLIENT_ID,
-      redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
-      scope: "user:email",
-    };
+export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
+  const requestUrl = "https://github.com/login/oauth/authorize";
+  const isMobile = req.query.client_id === "vibeongo-mobile";
+  const state =
+    typeof req.query.state === "string" ? req.query.state : undefined;
+  const codeChallenge =
+    typeof req.query.code_challenge === "string"
+      ? req.query.code_challenge
+      : undefined;
+  const codeChallengeMethod = req.query.code_challenge_method;
 
-    res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
-  },
-);
+  if (
+    isMobile &&
+    (!state ||
+      !codeChallenge ||
+      !/^[A-Za-z0-9_-]{43}$/.test(codeChallenge) ||
+      codeChallengeMethod !== "S256")
+  ) {
+    res.status(400).json({ error: "Mobile PKCE parameters are required" });
+    return;
+  }
+
+  if (isMobile && state && codeChallenge) {
+    // This PKCE challenge binds our temporary deep-link exchange token to this
+    // app instance. It is intentionally not forwarded to GitHub because this
+    // server, rather than the mobile app, exchanges GitHub's authorization code.
+    await addPendingMobileAuthorization(state, codeChallenge);
+  }
+
+  const mobileState = isMobile && state ? `mobile:${state}` : undefined;
+  const webApp = isMobile ? undefined : getWebApp(req.query.client_id);
+  const webState = webApp ? `web:${webApp}` : undefined;
+
+  const params = {
+    client_id: env.GITHUB_CLIENT_ID,
+    redirect_uri: `${env.BACKEND_URL}/api/v1/auth/github/callback`,
+    scope: "user:email",
+    ...(mobileState ? { state: mobileState } : {}),
+    ...(webState ? { state: webState } : {}),
+  };
+
+  res.redirect(`${requestUrl}?${new URLSearchParams(params)}`);
+});
 
 export const githubAuthCallbackController = catchAsync(
   async (req: Request, res: Response) => {
-    const { code } = req.query;
+    const { code, state } = req.query;
 
     if (typeof code !== "string") {
       throw new Error("code is not string");
     }
+
+    const webRedirectUrl =
+      state === "web:next" ? env.NEXTJS_APP_URL : env.FRONTEND_URL;
 
     const accessTokenUrl = "https://github.com/login/oauth/access_token";
     const tokenResponse = await axios.post(
@@ -117,7 +163,30 @@ export const githubAuthCallbackController = catchAsync(
     }
 
     if (account.verified === false) {
-      res.redirect(env.FRONTEND_URL + "/invite");
+      res.redirect((webRedirectUrl ?? env.FRONTEND_URL) + "/invite");
+      return;
+    }
+
+    if (typeof state === "string" && state.startsWith("mobile:")) {
+      const mobileState = state.slice("mobile:".length);
+      const { codeChallenge } =
+        await consumePendingMobileAuthorization(mobileState);
+      const randomToken = crypto.randomBytes(32).toString("base64url");
+
+      await addMobileExchangeToken(
+        randomToken,
+        user.id,
+        mobileState,
+        codeChallenge,
+      );
+      // const redirectUrl = new URL("vibeongo://auth/callback");
+      const redirectUrl = new URL(
+        env.VIBEONGO_APP_DEEP_LINK + "/auth/callback",
+      );
+
+      redirectUrl.searchParams.set("token", randomToken);
+      redirectUrl.searchParams.set("state", mobileState);
+      res.redirect(redirectUrl.toString());
       return;
     }
 
@@ -128,7 +197,6 @@ export const githubAuthCallbackController = catchAsync(
       ...sessionCookieOptions,
       maxAge: sessionMaxAgeMs,
     });
-
-    res.redirect(env.FRONTEND_URL || "http://localhost:3000/dashboard");
+    res.redirect(webRedirectUrl ?? env.FRONTEND_URL);
   },
 );

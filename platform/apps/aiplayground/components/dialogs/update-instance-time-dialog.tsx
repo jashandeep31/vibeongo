@@ -1,6 +1,6 @@
 "use client";
 
-import { useUpdateInstanceTime } from "@/hooks/use-instance";
+import { useUpdateInstanceTime } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

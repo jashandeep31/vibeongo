@@ -4,12 +4,12 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { NavMain } from "@/components/nav-main";
 import { NavProjects } from "@/components/nav-projects";
 import { PlaygroundUserMenu } from "@/components/playground-user-menu";
-import { useDeleteChat, useGetVibeongoChats } from "@/hooks/use-chats";
-import { useGithubRepos } from "@/hooks/use-github-repos";
-import { useWebSocket } from "@/hooks/use-websocket";
+import { useDeleteChat, useGetVibeongoChats } from "@repo/api-hooks";
+import { useGithubRepos } from "@repo/api-hooks";
+import { useWebSocket } from "@repo/api-hooks";
 import { selectWorkspaceView } from "@/lib/workspace-view";
-import type { Chat } from "@/services/chat-services";
-import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
+import type { Chat } from "@repo/api-client";
+import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import { useQueryClient } from "@tanstack/react-query";
 import {

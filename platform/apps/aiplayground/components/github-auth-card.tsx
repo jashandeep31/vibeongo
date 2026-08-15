@@ -22,7 +22,7 @@ export function GithubAuthCard() {
         </CardHeader>
         <CardContent>
           <a
-            href={`${BACKEND_URL}/api/v1/auth/github`}
+            href={`${BACKEND_URL}/api/v1/auth/github?client_id=vibeongo-next`}
             className={cn(
               buttonVariants({ variant: "outline", size: "lg" }),
               "flex w-full items-center justify-center gap-2",

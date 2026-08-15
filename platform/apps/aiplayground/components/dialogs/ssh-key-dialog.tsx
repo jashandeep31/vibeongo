@@ -1,6 +1,6 @@
 "use client";
 
-import { useCreateSshKey, useUpdateSshKey } from "@/hooks/use-ssh-keys";
+import { useCreateSshKey, useUpdateSshKey } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

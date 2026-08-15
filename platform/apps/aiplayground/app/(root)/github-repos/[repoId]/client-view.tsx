@@ -8,21 +8,14 @@ import {
   useGithubRepoIssues,
   useGithubRepoPullRequests,
   useScheduleGithubRepoOverview,
-} from "@/hooks/use-github-repos";
-import type {
-  GithubRepoIssue,
-  GithubRepoPullRequest,
-} from "@/services/github-repo-services";
+} from "@repo/api-hooks";
+import type { GithubRepoIssue, GithubRepoPullRequest } from "@repo/api-client";
 import {
   Avatar,
   AvatarFallback,
   AvatarImage,
 } from "@repo/ui/components/avatar";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@repo/ui/components/alert";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Card, CardContent } from "@repo/ui/components/card";
@@ -106,7 +99,9 @@ function Author({ user }: { user?: { login: string; avatar_url: string } }) {
       {user?.avatar_url ? (
         <AvatarImage src={user.avatar_url} alt={user.login} />
       ) : null}
-      <AvatarFallback>{user?.login?.slice(0, 2).toUpperCase() ?? "GH"}</AvatarFallback>
+      <AvatarFallback>
+        {user?.login?.slice(0, 2).toUpperCase() ?? "GH"}
+      </AvatarFallback>
     </Avatar>
   );
 }
@@ -165,12 +160,14 @@ function PullRequestCard({
                   state={pullRequest.state}
                   merged={Boolean(pullRequest.merged_at)}
                 />
-                {pullRequest.draft ? <Badge variant="outline">Draft</Badge> : null}
+                {pullRequest.draft ? (
+                  <Badge variant="outline">Draft</Badge>
+                ) : null}
                 <span className="text-muted-foreground text-xs font-medium">
                   #{pullRequest.number}
                 </span>
               </div>
-              <h2 className="mt-2 text-base font-semibold leading-6">
+              <h2 className="mt-2 text-base leading-6 font-semibold">
                 {pullRequest.title}
               </h2>
             </div>
@@ -267,7 +264,7 @@ function IssueCard({
                   #{issue.number}
                 </span>
               </div>
-              <h2 className="mt-2 text-base font-semibold leading-6">
+              <h2 className="mt-2 text-base leading-6 font-semibold">
                 {issue.title}
               </h2>
             </div>
@@ -378,11 +375,15 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
     return (
       <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/github-repos"><ArrowLeft /> Repositories</Link>
+          <Link href="/github-repos">
+            <ArrowLeft /> Repositories
+          </Link>
         </Button>
         <Empty className="mt-8 min-h-72 border">
           <EmptyHeader>
-            <EmptyMedia variant="icon"><Github /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <Github />
+            </EmptyMedia>
             <EmptyTitle>Repository activity could not be loaded</EmptyTitle>
             <EmptyDescription>Refresh the page to try again.</EmptyDescription>
           </EmptyHeader>
@@ -394,7 +395,9 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10 md:py-14">
       <Button variant="ghost" size="sm" asChild className="-ml-3">
-        <Link href="/github-repos"><ArrowLeft className="size-4" /> Repositories</Link>
+        <Link href="/github-repos">
+          <ArrowLeft className="size-4" /> Repositories
+        </Link>
       </Button>
 
       <div className="mt-6 flex flex-col gap-5 border-b pb-8 sm:flex-row sm:items-start sm:justify-between">
@@ -406,13 +409,19 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                   <Github className="size-5" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-muted-foreground text-sm">{repo.repo_owner_username}</p>
+                  <p className="text-muted-foreground text-sm">
+                    {repo.repo_owner_username}
+                  </p>
                   <h1 className="truncate text-2xl font-semibold tracking-tight md:text-3xl">
                     {repo.full_name.split("/").at(-1)}
                   </h1>
                 </div>
                 <Badge variant="outline" className="gap-1 font-normal">
-                  {repo.public ? <ShieldCheck className="size-3" /> : <LockKeyhole className="size-3" />}
+                  {repo.public ? (
+                    <ShieldCheck className="size-3" />
+                  ) : (
+                    <LockKeyhole className="size-3" />
+                  )}
                   {repo.public ? "Public" : "Private"}
                 </Badge>
               </div>
@@ -480,7 +489,11 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
               </Button>
             </GithubAutomationSettingsDialog>
             <Button variant="outline" className="rounded-xl" asChild>
-              <a href={`https://github.com/${repo.full_name}`} target="_blank" rel="noreferrer">
+              <a
+                href={`https://github.com/${repo.full_name}`}
+                target="_blank"
+                rel="noreferrer"
+              >
                 View repository <ArrowUpRight className="size-4" />
               </a>
             </Button>
@@ -489,7 +502,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
       </div>
 
       {showOverview && repo?.overview ? (
-        <div className="text-muted-foreground mt-6 max-h-64 overflow-y-auto whitespace-pre-wrap rounded-xl border bg-muted/20 p-5 text-sm leading-6">
+        <div className="text-muted-foreground bg-muted/20 mt-6 max-h-64 overflow-y-auto rounded-xl border p-5 text-sm leading-6 whitespace-pre-wrap">
           {repo.overview}
         </div>
       ) : null}
@@ -529,7 +542,9 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-7 items-center justify-center gap-2 rounded-full px-4 font-normal transition-colors aria-pressed:shadow-sm"
           >
             <GitPullRequest className="size-4" /> Pull requests
-            {!pullRequestsQuery.isPending ? <span>{openPullRequests}</span> : null}
+            {!pullRequestsQuery.isPending ? (
+              <span>{openPullRequests}</span>
+            ) : null}
           </TabsTrigger>
           <TabsTrigger
             value="issues"
@@ -542,19 +557,59 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
         </TabsList>
 
         <TabsContent value="pull-requests">
-          {pullRequestsQuery.isPending ? <ActivitySkeleton /> : pullRequestsQuery.isError ? (
-            <Empty className="min-h-64 border"><EmptyHeader><EmptyTitle>Pull requests could not be loaded</EmptyTitle><EmptyDescription>Refresh the page to try again.</EmptyDescription></EmptyHeader></Empty>
+          {pullRequestsQuery.isPending ? (
+            <ActivitySkeleton />
+          ) : pullRequestsQuery.isError ? (
+            <Empty className="min-h-64 border">
+              <EmptyHeader>
+                <EmptyTitle>Pull requests could not be loaded</EmptyTitle>
+                <EmptyDescription>
+                  Refresh the page to try again.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : pullRequests.length > 0 ? (
-            <div className="space-y-3">{pullRequests.map((pullRequest) => <PullRequestCard key={pullRequest.id} repoId={repoId} pullRequest={pullRequest} canAutomate={Boolean(repo?.default_project_id)} />)}</div>
-          ) : <ResourceEmpty type="pull requests" />}
+            <div className="space-y-3">
+              {pullRequests.map((pullRequest) => (
+                <PullRequestCard
+                  key={pullRequest.id}
+                  repoId={repoId}
+                  pullRequest={pullRequest}
+                  canAutomate={Boolean(repo?.default_project_id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <ResourceEmpty type="pull requests" />
+          )}
         </TabsContent>
 
         <TabsContent value="issues">
-          {issuesQuery.isPending ? <ActivitySkeleton /> : issuesQuery.isError ? (
-            <Empty className="min-h-64 border"><EmptyHeader><EmptyTitle>Issues could not be loaded</EmptyTitle><EmptyDescription>Refresh the page to try again.</EmptyDescription></EmptyHeader></Empty>
+          {issuesQuery.isPending ? (
+            <ActivitySkeleton />
+          ) : issuesQuery.isError ? (
+            <Empty className="min-h-64 border">
+              <EmptyHeader>
+                <EmptyTitle>Issues could not be loaded</EmptyTitle>
+                <EmptyDescription>
+                  Refresh the page to try again.
+                </EmptyDescription>
+              </EmptyHeader>
+            </Empty>
           ) : issues.length > 0 ? (
-            <div className="space-y-3">{issues.map((issue) => <IssueCard key={issue.id} repoId={repoId} issue={issue} canAutomate={Boolean(repo?.default_project_id)} />)}</div>
-          ) : <ResourceEmpty type="issues" />}
+            <div className="space-y-3">
+              {issues.map((issue) => (
+                <IssueCard
+                  key={issue.id}
+                  repoId={repoId}
+                  issue={issue}
+                  canAutomate={Boolean(repo?.default_project_id)}
+                />
+              ))}
+            </div>
+          ) : (
+            <ResourceEmpty type="issues" />
+          )}
         </TabsContent>
       </Tabs>
     </div>

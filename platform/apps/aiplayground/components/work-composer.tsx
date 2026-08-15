@@ -1,6 +1,6 @@
 "use client";
 
-import { useProjectsStore } from "@/store/playground-store";
+import { useProjectsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import { ArrowUp, FolderKanban, Loader2 } from "lucide-react";

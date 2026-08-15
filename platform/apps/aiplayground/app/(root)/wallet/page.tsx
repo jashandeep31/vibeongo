@@ -1,8 +1,8 @@
 "use client";
 
 import { BuyCreditsDialog } from "@/components/dialogs/buy-credits-dialog";
-import { useUserCreditGrants } from "@/hooks/use-user";
-import { useGetWallet } from "@/hooks/use-wallet";
+import { useUserCreditGrants } from "@repo/api-hooks";
+import { useGetWallet } from "@repo/api-hooks";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";

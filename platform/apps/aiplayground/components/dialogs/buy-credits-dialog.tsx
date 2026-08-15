@@ -1,6 +1,6 @@
 "use client";
 
-import { useAddCredits } from "@/hooks/use-wallet";
+import { useAddCredits } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

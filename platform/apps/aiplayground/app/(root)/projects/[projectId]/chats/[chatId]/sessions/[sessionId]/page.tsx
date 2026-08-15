@@ -1,10 +1,10 @@
 "use client";
 
 import { OpencodeSessionChat } from "@/components/chat/opencode-session-chat";
-import { useGetInstances } from "@/hooks/use-instance";
-import { useOpencodeSession } from "@/hooks/use-opencode-session";
-import { useSessionsStore } from "@/store/playground-store";
-import { getOpencodePassword } from "@/services/opencode-services";
+import { useGetInstances } from "@repo/api-hooks";
+import { useOpencodeSession } from "@repo/api-hooks";
+import { useSessionsStore } from "@repo/app-store";
+import { getOpencodePassword } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { TriangleAlert } from "lucide-react";

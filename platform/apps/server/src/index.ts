@@ -126,21 +126,57 @@ function parseCookies(header: string) {
   return out;
 }
 
-ws.on("connection", async (socket, req) => {
-  try {
-    const cookies = req.headers.cookie;
-    if (!cookies) {
-      console.log(`not authenticated `);
-      return;
+function getWebSocketToken(req: {
+  headers: {
+    authorization?: string | undefined;
+    cookie?: string | undefined;
+  };
+}) {
+  const authorization = req.headers.authorization;
+
+  if (authorization) {
+    const [scheme, token, ...extraParts] = authorization.trim().split(/\s+/);
+    if (
+      scheme?.toLowerCase() === "bearer" &&
+      token &&
+      extraParts.length === 0
+    ) {
+      return token;
     }
+  }
 
-    const parsedCookies = parseCookies(cookies);
-    const decoded = jwt.verify(parsedCookies["session"]!, env.JWT_SECRET);
+  const cookies = req.headers.cookie;
+  if (!cookies) return undefined;
 
-    socket.userId = (decoded as any).id as string;
+  return parseCookies(cookies).session;
+}
+
+ws.on("connection", async (socket, req) => {
+  const token = getWebSocketToken(req);
+  if (!token) {
+    socket.close(4401, "Authentication required");
+    return;
+  }
+
+  let decoded: jwt.JwtPayload | string;
+  try {
+    decoded = jwt.verify(token, env.JWT_SECRET);
+  } catch (e) {
+    console.log(`WebSocket authentication failed: ${e}`);
+    socket.close(4401, "Invalid or expired authentication");
+    return;
+  }
+
+  if (typeof decoded !== "object" || typeof decoded.id !== "string") {
+    socket.close(4401, "Invalid authentication");
+    return;
+  }
+
+  socket.userId = decoded.id;
+  try {
     await SocketHandler(socket);
   } catch (e) {
-    console.log(`Error: ${e}`);
+    console.log(`WebSocket handler failed: ${e}`);
   }
 });
 

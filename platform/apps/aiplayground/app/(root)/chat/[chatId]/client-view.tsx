@@ -5,7 +5,7 @@ import {
   WorkComposer,
   type WorkComposerSubmitPayload,
 } from "@/components/work-composer";
-import { useWebSocket } from "@/hooks/use-websocket";
+import { useWebSocket } from "@repo/api-hooks";
 import {
   useChatStore,
   type Chat,
@@ -14,7 +14,7 @@ import {
   type ChatQuestion,
   type ChatTurn,
   type PersistedChatTurn,
-} from "@/store/chat-store";
+} from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import { ArrowDown, Loader2, MessageSquareOff } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";

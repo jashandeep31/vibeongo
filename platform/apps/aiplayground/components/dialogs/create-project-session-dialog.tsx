@@ -1,6 +1,6 @@
 "use client";
 
-import { useCreateProjectSession } from "@/hooks/use-project-sessions";
+import { useCreateProjectSession } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

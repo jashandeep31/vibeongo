@@ -5,7 +5,12 @@ dotenv.config();
 
 const envSchema = z.object({
   PORT: z.coerce.number(),
+  // new app
+  NEXTJS_APP_URL: z.string(),
+  // legacy app
   FRONTEND_URL: z.string(),
+  // APP backlink
+  VIBEONGO_APP_DEEP_LINK: z.string(),
   PROXY_DOMAIN: z.string(),
   PROXY_SERVER_TOKEN: z.string().min(1),
   NODE_ENV: z

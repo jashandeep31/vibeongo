@@ -1,7 +1,7 @@
 "use client";
 
 import { GithubRepoDialog } from "@/components/dialogs/github-repo-dialog";
-import { useGithubRepos } from "@/hooks/use-github-repos";
+import { useGithubRepos } from "@repo/api-hooks";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -137,9 +137,9 @@ export default function GithubReposView() {
               <Link
                 key={repo.id}
                 href={`/github-repos/${repo.id}`}
-                className="group rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                className="group focus-visible:ring-ring rounded-xl outline-none focus-visible:ring-2"
               >
-                <Card className="h-full min-h-60 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:ring-foreground/20 group-hover:shadow-lg">
+                <Card className="group-hover:ring-foreground/20 h-full min-h-60 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
                   <CardHeader className="grid-cols-[auto_1fr_auto] items-center gap-x-3">
                     <div className="bg-foreground text-background flex size-10 items-center justify-center rounded-xl shadow-sm">
                       <Github className="size-5" />
@@ -174,12 +174,18 @@ export default function GithubReposView() {
                     </p>
                     <div className="mt-5 flex flex-wrap gap-2">
                       {repo.auto_review_pull_requests_enabled ? (
-                        <Badge variant="secondary" className="gap-1 font-normal">
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 font-normal"
+                        >
                           <Bot className="size-3" /> Auto-review
                         </Badge>
                       ) : null}
                       {repo.auto_fix_issues_enabled ? (
-                        <Badge variant="secondary" className="gap-1 font-normal">
+                        <Badge
+                          variant="secondary"
+                          className="gap-1 font-normal"
+                        >
                           <Bot className="size-3" /> Auto-fix
                         </Badge>
                       ) : null}

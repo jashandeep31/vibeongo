@@ -1,9 +1,9 @@
 "use client";
 
 import { PromptInput } from "@/components/chat/prompt-input";
-import { useOpencodeInventory } from "@/hooks/use-opencode-session";
-import { useStartOpencodeSession } from "@/hooks/use-opencode-sessions";
-import type { OpencodePromptSelection } from "@/services/opencode-services";
+import { useOpencodeInventory } from "@repo/api-hooks";
+import { useStartOpencodeSession } from "@repo/api-hooks";
+import type { OpencodePromptSelection } from "@repo/api-client";
 import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";

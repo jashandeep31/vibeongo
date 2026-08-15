@@ -4,8 +4,8 @@ import {
   useCreateUserConfig,
   useUpdateUserConfig,
   useUserConfig,
-} from "@/hooks/use-user";
-import type { UserConfigValue } from "@/services/user-services";
+} from "@repo/api-hooks";
+import type { UserConfigValue } from "@repo/api-client";
 import type { userConfigs } from "@repo/db";
 import { Button } from "@repo/ui/components/button";
 import {

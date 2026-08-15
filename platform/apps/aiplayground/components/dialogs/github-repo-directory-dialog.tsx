@@ -1,6 +1,6 @@
 "use client";
 
-import type { ProjectGithubRepo } from "@/services/project-services";
+import type { ProjectGithubRepo } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,

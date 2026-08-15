@@ -6,8 +6,8 @@ import {
   useDisableTerminateAfterDone,
   useRuntimeStats,
   useTerminateAfterDoneStatus,
-} from "@/hooks/use-runtime-settings";
-import { useSessionsStore } from "@/store/playground-store";
+} from "@repo/api-hooks";
+import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import {
   DropdownMenu,

@@ -1,5 +1,7 @@
 "use client";
 
+import { apiClient } from "@/lib/api-client";
+import { ApiClientProvider } from "@repo/api-hooks";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ThemeProvider } from "next-themes";
 import { useState, type ReactNode } from "react";
@@ -14,7 +16,11 @@ export default function Provider({ children }: { children: ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      <ApiClientProvider client={apiClient}>
+        <QueryClientProvider client={queryClient}>
+          {children}
+        </QueryClientProvider>
+      </ApiClientProvider>
     </ThemeProvider>
   );
 }

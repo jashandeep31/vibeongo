@@ -1,6 +1,6 @@
 "use client";
 
-import { useAuthenticatedUser } from "@/hooks/use-user";
+import { useAuthenticatedUser } from "@repo/api-hooks";
 import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
 import { formatInternalMoney } from "@repo/shared";
 import {

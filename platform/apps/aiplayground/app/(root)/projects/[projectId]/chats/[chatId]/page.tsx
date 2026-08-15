@@ -7,8 +7,8 @@ import { Button } from "@repo/ui/components/button";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
-import { useProjectsStore, useSessionsStore } from "@/store/playground-store";
-import { getOpencodePassword } from "@/services/opencode-services";
+import { useProjectsStore, useSessionsStore } from "@repo/app-store";
+import { getOpencodePassword } from "@repo/api-client";
 
 export default function NewOpencodeChatPage() {
   const { projectId, chatId } = useParams<{
