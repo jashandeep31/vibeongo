@@ -126,7 +126,7 @@ export function RuntimeToolCard({
       tool === "opencode" &&
       !nextError &&
       nextStatus === "started" &&
-      pendingAction !== "status"
+      (pendingAction === "start" || pendingAction === "restart")
     ) {
       setPendingAction(null);
       void openUrl(url);

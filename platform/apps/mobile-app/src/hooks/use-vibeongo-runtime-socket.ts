@@ -20,6 +20,9 @@ export type RuntimeSocketMessage = {
   type?: unknown;
 };
 
+type RuntimeTool = "codex" | "opencode";
+type RuntimeToolMessages = Partial<Record<RuntimeTool, RuntimeSocketMessage>>;
+
 type ReactNativeWebSocketConstructor = new (
   url: string,
   protocols?: string[],
@@ -69,6 +72,7 @@ export function useVibeongoRuntimeSocket({
   const [lastMessage, setLastMessage] = useState<RuntimeSocketMessage | null>(
     null,
   );
+  const [toolMessages, setToolMessages] = useState<RuntimeToolMessages>({});
   const reconnectAttemptRef = useRef(0);
   const socketRef = useRef<WebSocket | null>(null);
 
@@ -78,6 +82,7 @@ export function useVibeongoRuntimeSocket({
       setStats(null);
       setLogs("");
       setLastMessage(null);
+      setToolMessages({});
       return;
     }
 
@@ -138,6 +143,18 @@ export function useVibeongoRuntimeSocket({
         }
         setLastMessage(message);
 
+        if (
+          message.type === "tool" &&
+          message.data &&
+          typeof message.data === "object" &&
+          !Array.isArray(message.data)
+        ) {
+          const tool = (message.data as Record<string, unknown>).tool;
+          if (tool === "codex" || tool === "opencode") {
+            setToolMessages((current) => ({ ...current, [tool]: message }));
+          }
+        }
+
         if (message.type === "stats" && isRuntimeStats(message.data)) {
           setStats(message.data);
         } else if (
@@ -165,6 +182,7 @@ export function useVibeongoRuntimeSocket({
     setStats(null);
     setLogs("");
     setLastMessage(null);
+    setToolMessages({});
     connect();
 
     return () => {
@@ -184,5 +202,5 @@ export function useVibeongoRuntimeSocket({
     return true;
   };
 
-  return { lastMessage, logs, sendJsonMessage, stats, status };
+  return { lastMessage, logs, sendJsonMessage, stats, status, toolMessages };
 }

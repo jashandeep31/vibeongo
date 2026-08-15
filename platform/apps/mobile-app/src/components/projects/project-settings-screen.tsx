@@ -1,5 +1,6 @@
 import {
   useGetProjectDomainsById,
+  useRestartDevScript,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
 import { useProjectsStore } from "@repo/app-store";
@@ -15,6 +16,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
 import { RuntimeToolCard } from "@/components/projects/runtime-tool-card";
@@ -70,6 +72,12 @@ export function ProjectSettingsScreen() {
     localToken,
     runtimeUrl,
   });
+  const restartDevScript = useRestartDevScript({
+    instanceId: runtimeInstanceId,
+    runtimeUrl,
+    localToken,
+    accessToken: runtime.accessToken,
+  });
   const domainsPointToRuntime = Boolean(
     runtime.instance &&
     domainsQuery.data?.target_instance_id === runtimeInstanceId,
@@ -77,6 +85,11 @@ export function ProjectSettingsScreen() {
   const t3CodeDomain = domainsPointToRuntime
     ? (domainsQuery.data?.proxy_domains.find(
         (domain) => domain.target_port === 3773,
+      )?.domain ?? "")
+    : "";
+  const opencodeDomain = domainsPointToRuntime
+    ? (domainsQuery.data?.proxy_domains.find(
+        (domain) => domain.target_port === 4096,
       )?.domain ?? "")
     : "";
   const cpuPercent = normalizePercent(runtimeSocket.stats?.cpu_percent);
@@ -91,6 +104,20 @@ export function ProjectSettingsScreen() {
   const goBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace("/");
+  };
+
+  const restartInstanceDevScript = async () => {
+    if (!runtime.instance || !localToken || restartDevScript.isPending) return;
+    try {
+      await restartDevScript.mutateAsync();
+      Toast.show({ type: "success", text1: "Dev script restarted" });
+    } catch {
+      Toast.show({
+        type: "error",
+        text1: "Failed to restart dev script",
+        text2: "Please try again.",
+      });
+    }
   };
 
   return (
@@ -166,16 +193,73 @@ export function ProjectSettingsScreen() {
               />
             </View>
 
+            <View
+              style={[
+                styles.card,
+                styles.devScriptCard,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected,
+                },
+              ]}
+            >
+              <View style={styles.devScriptCopy}>
+                <ThemedText style={styles.cardTitle}>Dev Script</ThemedText>
+                <ThemedText
+                  style={styles.devScriptDescription}
+                  themeColor="textSecondary"
+                >
+                  Restart the development processes for this instance.
+                </ThemedText>
+              </View>
+              <Pressable
+                accessibilityLabel="Restart dev script"
+                accessibilityRole="button"
+                disabled={!localToken || restartDevScript.isPending}
+                onPress={() => void restartInstanceDevScript()}
+                style={({ pressed }) => [
+                  styles.restartButton,
+                  { borderColor: theme.backgroundSelected },
+                  (!localToken || restartDevScript.isPending) &&
+                    styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {restartDevScript.isPending ? (
+                  <ActivityIndicator color={theme.text} size="small" />
+                ) : (
+                  <SymbolView
+                    name={{ ios: "arrow.clockwise", android: "refresh" }}
+                    size={16}
+                    tintColor={theme.text}
+                  />
+                )}
+                <ThemedText style={styles.restartButtonLabel}>
+                  {restartDevScript.isPending ? "Restarting…" : "Restart"}
+                </ThemedText>
+              </Pressable>
+            </View>
+
+            <RuntimeToolCard
+              disabled={!opencodeDomain}
+              isConnected={runtimeSocket.status === "connected"}
+              lastMessage={runtimeSocket.toolMessages.opencode ?? null}
+              opencodePassword={runtime.password}
+              sendJsonMessage={runtimeSocket.sendJsonMessage}
+              tool="opencode"
+              url={opencodeDomain ? `https://${opencodeDomain}` : ""}
+            />
+
             <RuntimeToolCard
               disabled={!t3CodeDomain}
               isConnected={runtimeSocket.status === "connected"}
-              lastMessage={runtimeSocket.lastMessage}
+              lastMessage={runtimeSocket.toolMessages.codex ?? null}
               sendJsonMessage={runtimeSocket.sendJsonMessage}
               tool="codex"
               url={t3CodeDomain ? `https://${t3CodeDomain}` : ""}
             />
 
-            {!domainsQuery.isPending && !t3CodeDomain ? (
+            {!domainsQuery.isPending && (!opencodeDomain || !t3CodeDomain) ? (
               <View
                 style={[
                   styles.domainWarning,
@@ -198,8 +282,8 @@ export function ProjectSettingsScreen() {
                     style={styles.domainWarningText}
                     themeColor="textSecondary"
                   >
-                    Point the project domains to this running instance to use T3
-                    Code.
+                    Point the project domains to this running instance to use
+                    OpenCode Web and T3 Code.
                   </ThemedText>
                 </View>
                 <Pressable
@@ -318,6 +402,22 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+  devScriptCard: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+  },
+  devScriptCopy: {
+    flex: 1,
+  },
+  devScriptDescription: {
+    fontSize: 12,
+    lineHeight: 17,
+    marginTop: 3,
+  },
+  disabled: {
+    opacity: 0.4,
+  },
   header: {
     alignItems: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
@@ -367,6 +467,19 @@ const styles = StyleSheet.create({
     backgroundColor: "#3c87f7",
     borderRadius: 4,
     height: "100%",
+  },
+  restartButton: {
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 7,
+    minHeight: 40,
+    paddingHorizontal: 12,
+  },
+  restartButtonLabel: {
+    fontSize: 12,
+    fontWeight: "700",
   },
   statCard: {
     borderRadius: 14,

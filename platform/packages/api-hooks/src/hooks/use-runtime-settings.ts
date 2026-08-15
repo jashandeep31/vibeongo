@@ -2,6 +2,7 @@ import {
   disableTerminateAfterDone,
   getRuntimeStats,
   getTerminateAfterDoneStatus,
+  restartDevScript,
 } from "@repo/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -64,5 +65,11 @@ export function useDisableTerminateAfterDone(
     onSuccess: (status) => {
       queryClient.setQueryData(getQueryKey(connection.instanceId), status);
     },
+  });
+}
+
+export function useRestartDevScript(connection: RuntimeSettingsConnection) {
+  return useMutation({
+    mutationFn: () => restartDevScript(connection),
   });
 }

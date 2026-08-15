@@ -99,3 +99,19 @@ export async function disableTerminateAfterDone({
   );
   return response.json() as Promise<TerminateAfterDoneStatus>;
 }
+
+export async function restartDevScript({
+  runtimeUrl,
+  localToken,
+  accessToken,
+}: RuntimeConnection): Promise<void> {
+  const response = await fetch(
+    `${getRuntimeUrl(runtimeUrl)}/restart-dev-script`,
+    {
+      method: "POST",
+      headers: getRuntimeHeaders(localToken, accessToken),
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  await assertRuntimeResponse(response, "Could not restart dev script");
+}
