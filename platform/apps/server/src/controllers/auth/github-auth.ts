@@ -15,6 +15,7 @@ import {
 } from "../../cache/oauth-cache.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
+const mobileCallbackUri = "vibeongo://auth/callback";
 
 type WebApp = "legacy" | "next";
 
@@ -38,7 +39,10 @@ const githubEmailsSchema = z.array(
 
 export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
   const requestUrl = "https://github.com/login/oauth/authorize";
-  const isMobile = req.query.client_id === "vibeongo-mobile";
+  const isMobile =
+    req.query.client_id === "vibeongo-mobile" ||
+    req.query.platform === "mobile" ||
+    req.query.redirect_uri === mobileCallbackUri;
   const state =
     typeof req.query.state === "string" ? req.query.state : undefined;
   const codeChallenge =

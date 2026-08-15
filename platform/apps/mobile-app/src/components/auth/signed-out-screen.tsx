@@ -32,6 +32,7 @@ export function SignedOutScreen() {
       redirectUri,
       responseType: AuthSession.ResponseType.Code,
       usePKCE: true,
+      extraParams: { platform: "mobile" },
     },
     discovery,
   );
