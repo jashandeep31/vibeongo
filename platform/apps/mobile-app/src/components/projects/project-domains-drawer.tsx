@@ -6,6 +6,7 @@ import {
   useUpdateProjectDomainPort,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
+import * as Clipboard from "expo-clipboard";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useState } from "react";
 import {
@@ -45,6 +46,7 @@ export function ProjectDomainsButton({
     port: number;
   } | null>(null);
   const [portInput, setPortInput] = useState("");
+  const [copiedDomainId, setCopiedDomainId] = useState<string | null>(null);
   const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(projectId));
   const assignDomains = useUpdateProjectRoutingTargetInstance();
@@ -53,6 +55,21 @@ export function ProjectDomainsButton({
   const updateDomainAccess = useUpdateProjectDomainAccess();
   const updateDomainPort = useUpdateProjectDomainPort();
   const domains = domainsQuery.data;
+  const orderedDomains = [...(domains?.proxy_domains ?? [])].sort(
+    (left, right) => {
+      if (left.is_editable !== right.is_editable) {
+        return Number(right.is_editable) - Number(left.is_editable);
+      }
+
+      const leftChangedAt = new Date(
+        left.updated_at ?? left.created_at,
+      ).getTime();
+      const rightChangedAt = new Date(
+        right.updated_at ?? right.created_at,
+      ).getTime();
+      return rightChangedAt - leftChangedAt || left.domain.localeCompare(right.domain);
+    },
+  );
   const needsAssignment = Boolean(
     domains && domains.target_instance_id !== instanceId,
   );
@@ -231,6 +248,13 @@ export function ProjectDomainsButton({
     );
   };
 
+  const copyDomain = (id: string, domain: string) => {
+    void Clipboard.setStringAsync(`https://${domain}`).then(() => {
+      setCopiedDomainId(id);
+      setTimeout(() => setCopiedDomainId(null), 1500);
+    });
+  };
+
   return (
     <>
       <Pressable
@@ -402,8 +426,8 @@ export function ProjectDomainsButton({
                 >
                   {domainsQuery.error.message}
                 </ThemedText>
-              ) : domains?.proxy_domains.length ? (
-                domains.proxy_domains.map((domain) => (
+              ) : orderedDomains.length ? (
+                orderedDomains.map((domain) => (
                   <View
                     key={domain.id}
                     style={[
@@ -411,34 +435,49 @@ export function ProjectDomainsButton({
                       { borderBottomColor: theme.backgroundSelected },
                     ]}
                   >
-                    <Pressable
-                      accessibilityLabel={`Open ${domain.domain}`}
-                      accessibilityRole="link"
-                      onPress={() => openDomain(domain.domain)}
-                      style={({ pressed }) => [
-                        styles.domainLink,
-                        pressed && styles.pressed,
-                      ]}
-                    >
+                    <View style={styles.domainHeader}>
                       <View style={styles.domainCopy}>
                         <ThemedText numberOfLines={1} style={styles.domainName}>
                           {domain.domain}
                         </ThemedText>
-                        <ThemedText
-                          style={styles.domainType}
-                          themeColor="textSecondary"
-                        >
-                          {domain.is_editable
-                            ? "Custom service route"
-                            : "Platform-managed route"}
-                        </ThemedText>
                       </View>
-                      <SymbolView
-                        name={{ ios: "arrow.up.right", android: "open_in_new" }}
-                        size={17}
-                        tintColor={theme.textSecondary}
-                      />
-                    </Pressable>
+                      <View style={styles.domainHeaderActions}>
+                        <Pressable
+                          accessibilityLabel={`Copy URL for ${domain.domain}`}
+                          accessibilityRole="button"
+                          onPress={() => copyDomain(domain.id, domain.domain)}
+                          style={({ pressed }) => [
+                            styles.domainIconButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <SymbolView
+                            name={
+                              copiedDomainId === domain.id
+                                ? { ios: "checkmark", android: "check" }
+                                : { ios: "doc.on.doc", android: "content_copy" }
+                            }
+                            size={17}
+                            tintColor={theme.textSecondary}
+                          />
+                        </Pressable>
+                        <Pressable
+                          accessibilityLabel={`Open ${domain.domain}`}
+                          accessibilityRole="link"
+                          onPress={() => openDomain(domain.domain)}
+                          style={({ pressed }) => [
+                            styles.domainIconButton,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          <SymbolView
+                            name={{ ios: "arrow.up.right", android: "open_in_new" }}
+                            size={17}
+                            tintColor={theme.textSecondary}
+                          />
+                        </Pressable>
+                      </View>
+                    </View>
 
                     <View style={styles.domainActions}>
                       <Pressable
@@ -925,15 +964,21 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
   },
   domainCopy: { flex: 1, minWidth: 0 },
-  domainLink: {
+  domainHeader: {
     alignItems: "center",
     flexDirection: "row",
     gap: 10,
     minHeight: 34,
   },
+  domainHeaderActions: { flexDirection: "row", gap: 4 },
+  domainIconButton: {
+    alignItems: "center",
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
   domainList: { paddingTop: 12 },
   domainName: { fontSize: 14, fontWeight: "700" },
-  domainType: { fontSize: 11, marginTop: 2 },
   dialog: {
     borderRadius: 20,
     borderWidth: StyleSheet.hairlineWidth,
