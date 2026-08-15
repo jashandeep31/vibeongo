@@ -43,7 +43,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
-    "postinstall": "cd ../.. && pnpm run build",
+    "postinstall": "if [ -z \"$VERCEL\" ]; then cd ../.. && pnpm run build; fi",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
