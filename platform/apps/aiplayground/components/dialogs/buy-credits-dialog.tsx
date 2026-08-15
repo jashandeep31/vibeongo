@@ -23,7 +23,7 @@ const MAX_CREDIT_AMOUNT = 300;
 export function BuyCreditsDialog() {
   const [open, setOpen] = useState(false);
   const [amount, setAmount] = useState(String(MIN_CREDIT_AMOUNT));
-  const addCredits = useAddCredits();
+  const addCredits = useAddCredits("web-app");
   const parsedAmount = Number(amount);
   const isValid =
     Number.isInteger(parsedAmount) &&

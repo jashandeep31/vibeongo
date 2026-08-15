@@ -14,7 +14,10 @@ export const useGetWallet = (params: GetWalletParams = {}) => {
   });
 };
 
-export const useAddCredits = () => {
+export const useAddCredits = (clientType: "web-app" | "mobile-app") => {
   const client = useApiClient();
-  return useMutation({ mutationFn: client.wallet.addCredits });
+  return useMutation({
+    mutationFn: (amount: number) =>
+      client.wallet.addCredits({ amount, client: clientType }),
+  });
 };

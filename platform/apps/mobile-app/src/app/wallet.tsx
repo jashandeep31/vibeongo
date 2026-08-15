@@ -520,7 +520,7 @@ function BuyCreditsDrawer({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [amount, setAmount] = useState(String(MIN_CREDIT_AMOUNT));
-  const addCredits = useAddCredits();
+  const addCredits = useAddCredits("mobile-app");
   const parsedAmount = Number(amount);
   const isValid =
     Number.isInteger(parsedAmount) &&

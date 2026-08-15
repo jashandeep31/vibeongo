@@ -21,23 +21,31 @@ export const getDodoPaymentCheckoutUrl = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("User not found", 401);
 
-    const { amount: amountInDollars } = z
+    const { amount: amountInDollars, client } = z
       .object({
         amount: z
           .number()
           .int()
           .min(MIN_CREDIT_AMOUNT_DOLLARS)
           .max(MAX_CREDIT_AMOUNT_DOLLARS),
+        client: z.enum(["mobile-app", "web-app", "legacy"]).default("legacy"),
       })
       .parse(req.body);
     const amount = amountInDollars * PAYMENT_GATEWAY_SCALE;
+
+    const returnUrl =
+      client === "mobile-app"
+        ? env.VIBEONGO_APP_DEEP_LINK + "/"
+        : client === "web-app"
+          ? env.NEXTJS_APP_URL + "/wallet"
+          : env.FRONTEND_URL + "/dashboard/wallet";
 
     const checkoutSession = await dodoPaymentClient.checkoutSessions.create({
       customer: {
         email: user.email,
         name: user.first_name + " " + user.last_name,
       },
-      return_url: env.FRONTEND_URL + "/dashboard/wallet",
+      return_url: returnUrl,
       product_cart: [
         { amount, quantity: 1, product_id: env.DODO_PAYMENT_PRODUCT_ID },
       ],

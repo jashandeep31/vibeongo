@@ -7,6 +7,11 @@ export type GetWalletParams = {
   transactions?: boolean;
 };
 
+export type AddCreditsParams = {
+  amount: number;
+  client: "web-app" | "mobile-app";
+};
+
 export const getWallet =
   (apiClient: AxiosInstance) =>
   async ({ page, limit, transactions }: GetWalletParams = {}): Promise<{
@@ -26,10 +31,12 @@ export const getWallet =
 
 export const addCredits =
   (apiClient: AxiosInstance) =>
-  async (amount: number): Promise<{ checkoutUrl: string }> => {
+  async (
+    { amount, client }: AddCreditsParams,
+  ): Promise<{ checkoutUrl: string }> => {
     const response = await apiClient.post(
       `/api/v1/payments/add-credits`,
-      { amount },
+      { amount, client },
       { withCredentials: true },
     );
     return response.data;
