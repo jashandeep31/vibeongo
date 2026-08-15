@@ -5,6 +5,11 @@ import { useGithubRepos } from "@repo/api-hooks";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@repo/ui/components/alert";
+import {
   Card,
   CardContent,
   CardFooter,
@@ -24,6 +29,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import {
   ArrowRight,
   Bot,
+  ExternalLink,
   GitFork,
   Github,
   LockKeyhole,
@@ -66,6 +72,24 @@ export default function GithubReposView() {
       <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
         Your repositories
       </h1>
+
+      <Alert className="mt-6">
+        <Github className="size-4" />
+        <AlertTitle>Install the GitHub App first</AlertTitle>
+        <AlertDescription>
+          Install the Vibeongo GitHub App on a repository before connecting it
+          here.{" "}
+          <a
+            href="https://github.com/apps/vibeongo/installations/new"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1 font-medium"
+          >
+            Install GitHub App
+            <ExternalLink className="size-3" />
+          </a>
+        </AlertDescription>
+      </Alert>
 
       <div className="mt-7 flex items-center justify-between gap-3">
         <div className="relative min-w-0 flex-1 sm:max-w-sm">

@@ -1,10 +1,12 @@
 import type { GithubRepo } from "@repo/api-client";
 import { useGithubRepos } from "@repo/api-hooks";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Pressable,
   RefreshControl,
   ScrollView,
@@ -25,6 +27,13 @@ export function GithubReposScreen() {
   const repos = reposQuery.data ?? [];
   const [query, setQuery] = useState("");
   const [isConnectOpen, setIsConnectOpen] = useState(false);
+  const openGithubAppInstall = () => {
+    void Linking.openURL(
+      "https://github.com/apps/vibeongo/installations/new",
+    ).catch(() =>
+      Alert.alert("Could not open GitHub", "Please try again later."),
+    );
+  };
   const filteredRepos = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
     if (!normalizedQuery) return repos;
@@ -131,6 +140,53 @@ export function GithubReposScreen() {
               />
             </Pressable>
           ) : null}
+        </View>
+
+        <View
+          style={[
+            styles.githubAppNotice,
+            {
+              backgroundColor: theme.backgroundElement,
+              borderColor: theme.backgroundSelected,
+            },
+          ]}
+        >
+          <View style={styles.githubAppNoticeCopy}>
+            <ThemedText style={styles.githubAppNoticeTitle}>
+              Install the GitHub App first
+            </ThemedText>
+            <ThemedText
+              style={styles.githubAppNoticeDescription}
+              themeColor="textSecondary"
+            >
+              Install the Vibeongo GitHub App on a repository before connecting
+              it here.
+            </ThemedText>
+          </View>
+          <Pressable
+            accessibilityLabel="Install GitHub App"
+            accessibilityRole="link"
+            onPress={openGithubAppInstall}
+            style={({ pressed }) => [
+              styles.githubAppInstallButton,
+              { backgroundColor: theme.text },
+              pressed && styles.pressed,
+            ]}
+          >
+            <ThemedText
+              style={[
+                styles.githubAppInstallButtonLabel,
+                { color: theme.background },
+              ]}
+            >
+              Install App
+            </ThemedText>
+            <SymbolView
+              name={{ ios: "arrow.up.right", android: "open_in_new" }}
+              size={13}
+              tintColor={theme.background}
+            />
+          </Pressable>
         </View>
 
         {reposQuery.isPending ? (
@@ -365,6 +421,27 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     textAlign: "center",
   },
+  githubAppInstallButton: {
+    alignItems: "center",
+    borderRadius: 9,
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 11,
+    paddingVertical: 9,
+  },
+  githubAppInstallButtonLabel: { fontSize: 12, fontWeight: "700" },
+  githubAppNotice: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 12,
+    marginTop: 12,
+    padding: 12,
+  },
+  githubAppNoticeCopy: { flex: 1 },
+  githubAppNoticeDescription: { fontSize: 12, lineHeight: 17, marginTop: 3 },
+  githubAppNoticeTitle: { fontSize: 13, fontWeight: "700" },
   metadataItem: {
     alignItems: "center",
     flexDirection: "row",
