@@ -5,6 +5,6 @@ android-build:
 
 android-bundle:
 	cp .env.prod .env
-	npx expo prebuild --platform android --clean
 	cd android && ./gradlew assembleRelease
 
+# npx expo prebuild --platform android --clean
