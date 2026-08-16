@@ -176,6 +176,13 @@
       "when": 1786273152615,
       "tag": "0024_flashy_living_lightning",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1786885717703,
+      "tag": "0025_careful_romulus",
+      "breakpoints": true
     }
   ]
 }
