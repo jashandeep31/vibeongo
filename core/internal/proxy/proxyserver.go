@@ -1,33 +1,24 @@
 package proxy
 
 import (
+	"log"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
+	"github.com/joho/godotenv"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 )
+
+var _ = godotenv.Load()
 
 var (
 	AppVersion = "v1.0.0-default"
 	BuildTime  = "unknown"
 )
-
-var allowedCORSOrigins = []string{
-	"https://www.vibeongo.com",
-	"https://vibeongo.com",
-	"https://ai.vibeongo.com",
-	"https://app.vibeongo.com",
-	"http://localhost:3000",
-	"http://localhost:4096",
-	"http://localhost:3003",
-	"https://app.t3.codes",
-	"t3code://app",
-	"t3code-dev://app",
-	"https://app.opencode.ai",
-}
 
 type ProxyServer struct {
 	store *store.ProxyManager
@@ -39,7 +30,7 @@ func NewProxyServer(store *store.ProxyManager) *ProxyServer {
 
 func proxyCORSConfig() middleware.CORSConfig {
 	return middleware.CORSConfig{
-		AllowOrigins: allowedCORSOrigins,
+		AllowOrigins: allowedCORSOrigins(),
 		AllowMethods: []string{
 			http.MethodGet,
 			http.MethodPost,
@@ -51,6 +42,21 @@ func proxyCORSConfig() middleware.CORSConfig {
 		// Keep AllowHeaders empty so Echo reflects every header from the
 		// browser's Access-Control-Request-Headers value.
 	}
+}
+
+func allowedCORSOrigins() []string {
+	configuredOrigins := strings.Split(os.Getenv("ALLOWED_ORIGINS"), ",")
+	origins := make([]string, 0, len(configuredOrigins))
+	for _, origin := range configuredOrigins {
+		if origin = strings.TrimSpace(origin); origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+
+	if len(origins) == 0 {
+		log.Fatalf("no allowedCORSOrigins  found ")
+	}
+	return origins
 }
 
 func (s *ProxyServer) Start(addr string) error {

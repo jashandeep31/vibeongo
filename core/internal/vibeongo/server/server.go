@@ -40,17 +40,9 @@ func Start() error {
 		tools.OpenCode.StartWebServer()
 	}()
 
-	// TODO: please use the proper cors way
-	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
-		AllowOrigins: []string{"http://localhost:3000", "http://localhost:3003", "https://vibeongo.com", "https://www.vibeongo.com"},
-		AllowHeaders: []string{
-			echo.HeaderOrigin,
-			echo.HeaderContentType,
-			echo.HeaderAccept,
-			echo.HeaderAuthorization,
-			"X-Vibeongo-Proxy-Authorization",
-		},
-	}))
+	// Allow requests from every origin. Echo reflects requested headers for
+	// preflight requests when no explicit AllowHeaders list is configured.
+	e.Use(middleware.CORS("*"))
 
 	e.Use(middleware.RequestLogger())
 
