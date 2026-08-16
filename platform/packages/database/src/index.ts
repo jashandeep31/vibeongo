@@ -46,3 +46,4 @@ export * from "./schemas/telegram-chat.js";
 export * from "./schemas/chat.js";
 export * from "./schemas/jobs-queues.js";
 export * from "./schemas/sandbox-metadata.js";
+export * from "./schemas/instance-openrouter-keys.js";

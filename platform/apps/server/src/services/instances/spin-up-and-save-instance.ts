@@ -22,6 +22,8 @@ import * as crypto from "crypto";
 import { createProviderInstance } from "../../providers/create-providers-instance.js";
 import type { InstanceRuntime } from "../../providers/types.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
+import { createOpenRouterVirtualKeyAndSave } from "../openrouter/index.js";
+import { INTERNAL_MONEY_SCALE } from "@repo/shared";
 
 interface SpinUpAndSaveInstanceInput {
   sshKeys: string[];
@@ -215,7 +217,14 @@ export const spinUpAndSaveInstance = async ({
     })
     .returning();
 
-  console.log(time - Date.now());
+  if (!instance) {
+    return null;
+  }
 
-  return instance || null;
+  await createOpenRouterVirtualKeyAndSave({
+    instanceId: instance.id,
+    limit_in_dollars: Math.min(5, userWalletRow.balance / INTERNAL_MONEY_SCALE),
+    expires_after_in_minutes: autoTerminateAfterInMinutes,
+  });
+  return instance;
 };
