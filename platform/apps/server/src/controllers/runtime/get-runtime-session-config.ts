@@ -15,6 +15,7 @@ import {
   instances,
   projectDomainRouting,
   proxyDomains,
+  instanceOpenRouterKeys,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
@@ -23,6 +24,7 @@ import { getDecryptedProjectConfig } from "../../services/project/project-config
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { resolveProjectUserConfigs } from "../../services/user-config/resolve-project-user-configs.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
+import { decryptData } from "../../lib/encryption-decryption.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -51,9 +53,9 @@ export const getRuntimeSessionConfig = catchAsync(
     const { project, instance } = sessionRow;
     const stringfiedConfig = await getDecryptedProjectConfig(project.id);
     const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
-    const resolvedProjectConfig = await resolveProjectUserConfigs(
-      parsedConfig,
-      project.user_id,
+    const resolvedProjectConfig = await appendOpenRouterKeysToOpencodeConfig(
+      instanceId,
+      await resolveProjectUserConfigs(parsedConfig, project.user_id),
     );
 
     const [tasks, repos, keys] = await Promise.all([
@@ -167,3 +169,46 @@ export const getSessionDomains = catchAsync(
     });
   },
 );
+type ResolvedProjectConfig = Awaited<
+  ReturnType<typeof resolveProjectUserConfigs>
+>;
+
+async function appendOpenRouterKeysToOpencodeConfig(
+  instanceId: string,
+  config: ResolvedProjectConfig,
+): Promise<ResolvedProjectConfig> {
+  const [openrouterInstanceKey] = await db
+    .select()
+    .from(instanceOpenRouterKeys)
+    .where(eq(instanceOpenRouterKeys.instance_id, instanceId));
+  if (!openrouterInstanceKey) return config;
+
+  const decryptedKey = decryptData({
+    iv: openrouterInstanceKey.iv,
+    encrypted: openrouterInstanceKey.encrypted_key,
+    tag: openrouterInstanceKey.tag,
+  });
+
+  const opencodePackage = config.packages.find(
+    (projectPackage) => projectPackage.name === "opencode",
+  );
+  if (!opencodePackage) return config;
+
+  const currentAuthJson = opencodePackage.config.auth_json;
+  const authJson =
+    currentAuthJson &&
+    typeof currentAuthJson === "object" &&
+    !Array.isArray(currentAuthJson)
+      ? currentAuthJson
+      : {};
+
+  opencodePackage.config.auth_json = {
+    ...authJson,
+    openrouter: {
+      type: "api",
+      key: decryptedKey,
+    },
+  };
+
+  return config;
+}
