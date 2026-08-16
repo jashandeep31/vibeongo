@@ -326,6 +326,9 @@ export const useOpencodeInventory = (
     queryFn: () =>
       getOpencodeInventory(chatId, serverUrl, accessToken, password),
     enabled: !!serverUrl && !!accessToken,
+    refetchInterval: (query) =>
+      query.state.data?.models.length ? false : 2_000,
+    refetchOnMount: "always",
     staleTime: 60_000,
   });
 

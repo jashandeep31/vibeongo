@@ -169,7 +169,12 @@ export function OpencodeChatTurn({
               name={copied === "answer" ? "checkmark" : "doc.on.doc"}
               onPress={() => void copy("answer", answer)}
             />
-            {[item.agent, item.model, formatDuration(item.durationMs)]
+            {[
+              item.agent,
+              item.provider,
+              item.model,
+              formatDuration(item.durationMs),
+            ]
               .filter(Boolean)
               .map((value, index) => (
                 <ThemedText

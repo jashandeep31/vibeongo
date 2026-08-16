@@ -1,4 +1,5 @@
 import type {
+  OpencodeModelOption,
   OpencodePromptSelection,
   OpencodeSessionData,
 } from "@repo/api-client";
@@ -27,6 +28,7 @@ export type ChatTurn = {
   summaryDiffs: SnapshotFileDiff[];
   content: ChatContent[];
   agent?: string;
+  provider?: string;
   model?: string;
   durationMs?: number;
 };
@@ -88,7 +90,16 @@ export function getRevertedMessageLabel(parts: SessionPart[]) {
   return "Empty message";
 }
 
-export function createChatTurns(messages: OpencodeSessionData["messages"]) {
+export function createChatTurns(
+  messages: OpencodeSessionData["messages"],
+  models: OpencodeModelOption[] = [],
+) {
+  const modelsById = new Map(
+    models.map((model) => [
+      `${model.providerID}/${model.modelID}`,
+      model,
+    ]),
+  );
   const turns: ChatTurn[] = messages
     .filter((message) => message.info.role === "user")
     .map((message) => ({
@@ -111,6 +122,7 @@ export function createChatTurns(messages: OpencodeSessionData["messages"]) {
           : [],
       content: [],
       agent: undefined,
+      provider: undefined,
       model: undefined,
       durationMs: undefined,
     }));
@@ -174,8 +186,12 @@ export function createChatTurns(messages: OpencodeSessionData["messages"]) {
       });
     }
 
+    const model = modelsById.get(
+      `${message.info.providerID}/${message.info.modelID}`,
+    );
     turn.agent = message.info.agent;
-    turn.model = message.info.modelID;
+    turn.provider = model?.providerName ?? message.info.providerID;
+    turn.model = model?.name ?? message.info.modelID;
     turn.durationMs = message.info.time.completed
       ? message.info.time.completed - message.info.time.created
       : undefined;

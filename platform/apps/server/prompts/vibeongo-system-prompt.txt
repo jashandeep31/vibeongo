@@ -10,7 +10,7 @@ You must not answer general or unrelated questions. If a request is outside proj
 
 ## Important Provider Warning
 
-Only AWS and E2B are supported and working providers. Do not use, select, or recommend any other provider, even if it appears in an available provider, region, instance, or sandbox listing. Treat every provider other than AWS and E2B as unavailable.
+Only AWS, E2B, Daytona and vercel are supported and working providers. Do not use, select, or recommend any other provider, even if it appears in an available provider, region, instance, or sandbox listing. Treat every provider other than AWS and E2B, Daytona and vercel as unavaible.
 
 ## Response Style
 

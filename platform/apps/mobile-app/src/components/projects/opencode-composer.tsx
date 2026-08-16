@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  FlatList,
   Keyboard,
   Modal,
   Pressable,
@@ -23,7 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 
-type PickerKind = "model" | "agent" | "variant";
+type PickerKind = "provider" | "model" | "agent" | "variant";
 type PickerOption = { id: string; title: string; subtitle?: string };
 
 export type ComposerImageAttachment = UploadAttachment & {
@@ -297,16 +298,37 @@ function PromptSelectors({
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
   );
+  const providers = useMemo(() => {
+    const seen = new Set<string>();
+    return (inventory?.models ?? []).reduce(
+      (result, model) => {
+        if (seen.has(model.providerID)) return result;
+        seen.add(model.providerID);
+        result.push({ id: model.providerID, name: model.providerName });
+        return result;
+      },
+      [] as Array<{ id: string; name: string }>,
+    );
+  }, [inventory?.models]);
+  const selectedProviderID = selectedModel?.providerID;
   const selectedAgent = inventory?.agents.find(
     (agent) => agent.id === selection.agent,
   );
   const options = useMemo<PickerOption[]>(() => {
-    if (picker === "model") {
-      return (inventory?.models ?? []).map((model) => ({
-        id: model.id,
-        title: model.name,
-        subtitle: model.providerName,
+    if (picker === "provider") {
+      return providers.map((provider) => ({
+        id: provider.id,
+        title: provider.name,
       }));
+    }
+    if (picker === "model") {
+      return (inventory?.models ?? [])
+        .filter((model) => model.providerID === selectedProviderID)
+        .map((model) => ({
+          id: model.id,
+          title: model.name,
+          subtitle: model.providerName,
+        }));
     }
     if (picker === "agent") {
       return (inventory?.agents ?? []).map((agent) => ({
@@ -325,10 +347,24 @@ function PromptSelectors({
       ];
     }
     return [];
-  }, [inventory, picker, selectedModel]);
+  }, [inventory, picker, providers, selectedModel, selectedProviderID]);
 
   const choose = (id: string) => {
-    if (picker === "model") {
+    if (picker === "provider") {
+      const providerModel = inventory?.models.find(
+        (model) => model.providerID === id,
+      );
+      const currentModelIsFromProvider = selectedModel?.providerID === id;
+      onChange({
+        ...selection,
+        model: currentModelIsFromProvider
+          ? selection.model
+          : providerModel?.id,
+        variant: currentModelIsFromProvider ? selection.variant : undefined,
+      });
+      setPicker(providerModel ? "model" : null);
+      return;
+    } else if (picker === "model") {
       onChange({ ...selection, model: id, variant: undefined });
     } else if (picker === "agent") {
       onChange({ ...selection, agent: id });
@@ -347,13 +383,13 @@ function PromptSelectors({
         showsHorizontalScrollIndicator={false}
       >
         <SelectorPill
-          disabled={disabled || !inventory?.models.length}
+          disabled={disabled || !providers.length}
           icon={{ ios: "brain", android: "psychology" }}
           label={
             selectedModel?.name ??
             (inventory ? "Choose model" : "Loading model…")
           }
-          onPress={() => setPicker("model")}
+          onPress={() => setPicker("provider")}
         />
         <SelectorPill
           disabled={disabled || !inventory?.agents.length}
@@ -395,14 +431,18 @@ function PromptSelectors({
         onClose={() => setPicker(null)}
         options={options}
         selectedId={
-          picker === "model"
+          picker === "provider"
+            ? selectedProviderID
+            : picker === "model"
             ? selection.model
             : picker === "agent"
               ? selection.agent
               : (selection.variant ?? "")
         }
         title={
-          picker === "model"
+          picker === "provider"
+            ? "Choose provider"
+            : picker === "model"
             ? "Choose model"
             : picker === "agent"
               ? "Choose agent"
@@ -481,14 +521,16 @@ function SelectionSheet({
 
   useEffect(() => setQuery(""), [title, visible]);
 
-  const normalizedQuery = query.trim().toLocaleLowerCase();
-  const filtered = normalizedQuery
-    ? options.filter((option) =>
-        `${option.title} ${option.subtitle ?? ""}`
-          .toLocaleLowerCase()
-          .includes(normalizedQuery),
-      )
-    : options;
+  const filtered = useMemo(() => {
+    const normalizedQuery = query.trim().toLocaleLowerCase();
+    return normalizedQuery
+      ? options.filter((option) =>
+          `${option.title} ${option.subtitle ?? ""}`
+            .toLocaleLowerCase()
+            .includes(normalizedQuery),
+        )
+      : options;
+  }, [options, query]);
 
   return (
     <Modal
@@ -538,58 +580,62 @@ function SelectionSheet({
             value={query}
           />
         ) : null}
-        <ScrollView
+        <FlatList
           contentContainerStyle={styles.options}
+          data={filtered}
+          initialNumToRender={12}
           keyboardShouldPersistTaps="handled"
-        >
-          {filtered.length ? (
-            filtered.map((option) => {
-              const selected = option.id === selectedId;
-              return (
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  key={option.id || "default"}
-                  onPress={() => onChoose(option.id)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    { borderBottomColor: theme.backgroundSelected },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <View style={styles.optionText}>
-                    <ThemedText style={styles.optionTitle}>
-                      {option.title}
-                    </ThemedText>
-                    {option.subtitle ? (
-                      <ThemedText
-                        numberOfLines={2}
-                        style={styles.optionSubtitle}
-                        themeColor="textSecondary"
-                      >
-                        {option.subtitle}
-                      </ThemedText>
-                    ) : null}
-                  </View>
-                  {selected ? (
-                    <SymbolView
-                      name={{
-                        ios: "checkmark.circle.fill",
-                        android: "check_circle",
-                      }}
-                      size={21}
-                      tintColor={theme.text}
-                    />
-                  ) : null}
-                </Pressable>
-              );
-            })
-          ) : (
+          keyExtractor={(option) => option.id || "default"}
+          ListEmptyComponent={
             <ThemedText style={styles.empty} themeColor="textSecondary">
               No options found.
             </ThemedText>
-          )}
-        </ScrollView>
+          }
+          maxToRenderPerBatch={12}
+          removeClippedSubviews
+          renderItem={({ item: option }) => {
+            const selected = option.id === selectedId;
+            return (
+              <Pressable
+                accessibilityRole="button"
+                accessibilityState={{ selected }}
+                onPress={() => onChoose(option.id)}
+                style={({ pressed }) => [
+                  styles.option,
+                  { borderBottomColor: theme.backgroundSelected },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.optionText}>
+                  <ThemedText style={styles.optionTitle}>
+                    {option.title}
+                  </ThemedText>
+                  {option.subtitle ? (
+                    <ThemedText
+                      numberOfLines={2}
+                      style={styles.optionSubtitle}
+                      themeColor="textSecondary"
+                    >
+                      {option.subtitle}
+                    </ThemedText>
+                  ) : null}
+                </View>
+                {selected ? (
+                  <SymbolView
+                    name={{
+                      ios: "checkmark.circle.fill",
+                      android: "check_circle",
+                    }}
+                    size={21}
+                    tintColor={theme.text}
+                  />
+                ) : null}
+              </Pressable>
+            );
+          }}
+          updateCellsBatchingPeriod={30}
+          windowSize={5}
+        />
       </SafeAreaView>
     </Modal>
   );

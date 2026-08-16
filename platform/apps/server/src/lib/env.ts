@@ -53,6 +53,8 @@ const envSchema = z.object({
   VERCEL_TEAM_ID: z.string(),
   VERCEL_PROJECT_ID: z.string(),
   VERCEL_TOKEN: z.string(),
+  OPENROUTER_MANAGEMENT_KEY: z.string(),
+  OPENROUTER_API_ENDPOINT: z.string().default("https://openrouter.ai/api/v1"),
 });
 
 const parsed = envSchema.safeParse(process.env);
