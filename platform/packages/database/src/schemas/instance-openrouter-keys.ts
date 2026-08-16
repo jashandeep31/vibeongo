@@ -6,7 +6,9 @@ export const instanceOpenRouterKeys = pgTable("instance_openrouter_keys", {
 
   instance_id: uuid()
     .primaryKey()
-    .references(() => instances.id, { onDelete: "cascade" }),
+    .references(() => instances.id, { onDelete: "cascade" })
+    .notNull()
+    .unique(),
 
   hash: varchar().notNull(),
   encrypted_key: text().notNull(),

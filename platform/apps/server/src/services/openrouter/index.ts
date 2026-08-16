@@ -1,7 +1,8 @@
 import axios from "axios";
 import { env } from "../../lib/env.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
-import { db, instanceOpenRouterKeys } from "@repo/db";
+import { db, instanceOpenRouterKeys, eq } from "@repo/db";
+import { tryCatch } from "bullmq";
 
 export const openRouterManagementInterface = axios.create({
   baseURL: env.OPENROUTER_API_ENDPOINT,
@@ -52,4 +53,29 @@ export async function createOpenRouterVirtualKeyAndSave({
   });
 
   return true;
+}
+
+export async function getOpenRouterKeyCharges(
+  instanceId: string,
+): Promise<number> {
+  try {
+    const [openrouterKeyData] = await db
+      .select()
+      .from(instanceOpenRouterKeys)
+      .where(eq(instanceOpenRouterKeys.instance_id, instanceId));
+    if (!openrouterKeyData) return 0;
+
+    const res = await openRouterManagementInterface.get(
+      `/keys/${openrouterKeyData.hash}`,
+    );
+    if (res.status != 200) {
+      return 0;
+    }
+    const converted = Math.ceil(Math.abs(res.data.data.usage * 1000_000_0));
+
+    return converted;
+  } catch {
+    console.log(`failed to get data`);
+    return 0;
+  }
 }

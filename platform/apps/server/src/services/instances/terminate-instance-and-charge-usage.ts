@@ -23,6 +23,7 @@ import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-prox
 import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
 import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
 import { formatInternalMoney, INTERNAL_MONEY_SCALE } from "@repo/shared";
+import { getOpenRouterKeyCharges } from "../openrouter/index.js";
 
 interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -83,14 +84,23 @@ export const terminateInstanceAndChargeUsage = async ({
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
   if (!instance) throw new AppError("instance not found", 404);
 
-  const { totalCostWithProfit, networkCharges, uptimeInMin, networkOutInGb } =
-    instance.runtime_kind === "vm"
-      ? await terminateVmInstance({
-          instance: instance,
-        })
-      : await terminateSandboxInstance({
-          instance: instance,
-        });
+  const openrouterCharges = await getOpenRouterKeyCharges(instance.id);
+
+  const {
+    totalCostWithProfit: totalCostWithProfitWithoutAICharges,
+    networkCharges,
+    uptimeInMin,
+    networkOutInGb,
+  } = instance.runtime_kind === "vm"
+    ? await terminateVmInstance({
+        instance: instance,
+      })
+    : await terminateSandboxInstance({
+        instance: instance,
+      });
+
+  const totalCostWithProfit =
+    totalCostWithProfitWithoutAICharges + openrouterCharges;
 
   // Start the database transaction.
   await db.transaction(async (tx) => {
@@ -167,8 +177,8 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  `,
-        raw_description: `Instance ${instanceId} ${instance.instance_type_id || instance.sandbox_type_id}  ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(networkOutInGb)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged.`,
+        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  | AI Chares: ${formatInternalMoney(openrouterCharges)}`,
+        raw_description: `Instance ${instanceId} ${instance.instance_type_id || instance.sandbox_type_id}  ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(networkOutInGb)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged. And openrouter charges ${openrouterCharges} `,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
       });
