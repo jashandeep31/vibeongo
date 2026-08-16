@@ -100,6 +100,11 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
   async (job) => {
     const { sandboxId, userData, provider = "e2b" } = job.data;
 
+    // NOTE: this needed to be removed
+    // add here to remove the race conidtion of sometimes openrouter key isn't created and it just moves without it
+    // STILL not best way to handle as its not measured weather 1sec can help or not
+    await new Promise((r) => setTimeout(r, 1000));
+
     switch (provider) {
       case "e2b":
         return setupE2BSandbox(sandboxId, userData);
