@@ -230,7 +230,7 @@ export function ProjectChatScreen() {
   const goBack = () => router.replace("/");
 
   const openNewChat = () => {
-    router.push({
+    router.replace({
       pathname: "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
       params: {
         directory: data?.session.directory ?? "",
@@ -239,6 +239,9 @@ export function ProjectChatScreen() {
         ...(selection.variant ? { variant: selection.variant } : {}),
         projectId,
         projectSessionId,
+        returnOpencodeSessionId: opencodeSessionId,
+        returnProjectId: projectId,
+        returnProjectSessionId: projectSessionId,
       },
     });
   };
@@ -798,11 +801,14 @@ export function ProjectChatScreen() {
         onClose={() => setIsChatSwitcherOpen(false)}
         onNewChat={(target) => {
           setIsChatSwitcherOpen(false);
-          router.push({
+          router.replace({
             pathname:
               "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
             params: {
               ...target,
+              returnOpencodeSessionId: opencodeSessionId,
+              returnProjectId: projectId,
+              returnProjectSessionId: projectSessionId,
               ...(target.projectSessionId === projectSessionId &&
               selection.agent
                 ? { agent: selection.agent }

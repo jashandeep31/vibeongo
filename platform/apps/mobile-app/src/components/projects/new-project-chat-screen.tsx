@@ -45,6 +45,9 @@ export function NewProjectChatScreen() {
     model?: string | string[];
     projectId?: string | string[];
     projectSessionId?: string | string[];
+    returnOpencodeSessionId?: string | string[];
+    returnProjectId?: string | string[];
+    returnProjectSessionId?: string | string[];
     variant?: string | string[];
   }>();
   const projectId = firstParam(params.projectId);
@@ -53,6 +56,9 @@ export function NewProjectChatScreen() {
   const inheritedAgent = firstParam(params.agent);
   const inheritedModel = firstParam(params.model);
   const inheritedVariant = firstParam(params.variant);
+  const returnOpencodeSessionId = firstParam(params.returnOpencodeSessionId);
+  const returnProjectId = firstParam(params.returnProjectId);
+  const returnProjectSessionId = firstParam(params.returnProjectSessionId);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -106,8 +112,24 @@ export function NewProjectChatScreen() {
   }, [inventoryQuery.data]);
 
   const goBack = () => {
-    if (router.canGoBack()) router.back();
-    else router.replace("/");
+    if (
+      returnOpencodeSessionId &&
+      returnProjectId &&
+      returnProjectSessionId
+    ) {
+      router.replace({
+        pathname:
+          "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
+        params: {
+          opencodeSessionId: returnOpencodeSessionId,
+          projectId: returnProjectId,
+          projectSessionId: returnProjectSessionId,
+        },
+      });
+      return;
+    }
+
+    router.replace("/");
   };
 
   const submit = () => {
