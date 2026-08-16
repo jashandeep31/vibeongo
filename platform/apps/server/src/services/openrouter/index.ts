@@ -2,9 +2,8 @@ import axios from "axios";
 import { env } from "../../lib/env.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { db, instanceOpenRouterKeys, eq } from "@repo/db";
-import { tryCatch } from "bullmq";
 
-export const openRouterManagementInterface = axios.create({
+export const openRouterInterface = axios.create({
   baseURL: env.OPENROUTER_API_ENDPOINT,
   headers: {
     Authorization: `Bearer ${env.OPENROUTER_MANAGEMENT_KEY}`,
@@ -24,7 +23,7 @@ export async function createOpenRouterVirtualKeyAndSave({
   const expires_at = new Date();
   expires_at.setMinutes(expires_at.getMinutes() + expires_after_in_minutes);
 
-  const res = await openRouterManagementInterface.post("/keys", {
+  const res = await openRouterInterface.post("/keys", {
     expires_at: expires_at.toISOString(),
     include_byok_in_limit: true,
     limit: limit_in_dollars,
@@ -55,7 +54,7 @@ export async function createOpenRouterVirtualKeyAndSave({
   return true;
 }
 
-export async function getOpenRouterKeyCharges(
+export async function getOpenRouterKeyChargesAnTerminateKey(
   instanceId: string,
 ): Promise<number> {
   try {
@@ -65,8 +64,11 @@ export async function getOpenRouterKeyCharges(
       .where(eq(instanceOpenRouterKeys.instance_id, instanceId));
     if (!openrouterKeyData) return 0;
 
-    const res = await openRouterManagementInterface.get(
+    const res = await openRouterInterface.patch(
       `/keys/${openrouterKeyData.hash}`,
+      {
+        disabled: true,
+      },
     );
     if (res.status != 200) {
       return 0;

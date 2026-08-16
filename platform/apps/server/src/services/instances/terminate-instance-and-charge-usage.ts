@@ -23,7 +23,7 @@ import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-prox
 import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
 import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
 import { formatInternalMoney, INTERNAL_MONEY_SCALE } from "@repo/shared";
-import { getOpenRouterKeyCharges } from "../openrouter/index.js";
+import { getOpenRouterKeyChargesAnTerminateKey } from "../openrouter/index.js";
 
 interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -84,7 +84,9 @@ export const terminateInstanceAndChargeUsage = async ({
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
   if (!instance) throw new AppError("instance not found", 404);
 
-  const openrouterCharges = await getOpenRouterKeyCharges(instance.id);
+  const openrouterCharges = await getOpenRouterKeyChargesAnTerminateKey(
+    instance.id,
+  );
 
   const {
     totalCostWithProfit: totalCostWithProfitWithoutAICharges,

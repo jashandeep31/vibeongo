@@ -181,6 +181,7 @@ async function appendOpenRouterKeysToOpencodeConfig(
     .select()
     .from(instanceOpenRouterKeys)
     .where(eq(instanceOpenRouterKeys.instance_id, instanceId));
+
   if (!openrouterInstanceKey) return config;
 
   const decryptedKey = decryptData({
@@ -192,6 +193,7 @@ async function appendOpenRouterKeysToOpencodeConfig(
   const opencodePackage = config.packages.find(
     (projectPackage) => projectPackage.name === "opencode",
   );
+
   if (!opencodePackage) return config;
 
   const currentAuthJson = opencodePackage.config.auth_json;
