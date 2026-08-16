@@ -183,8 +183,8 @@ export function ProjectChatScreen() {
         };
   }, [data?.messages, data?.session.revert?.messageID]);
   const turns = useMemo(
-    () => createChatTurns(visibleMessages),
-    [visibleMessages],
+    () => createChatTurns(visibleMessages, inventoryQuery.data?.models),
+    [inventoryQuery.data?.models, visibleMessages],
   );
   const revertedQuestions = useMemo(
     () =>
@@ -486,7 +486,10 @@ export function ProjectChatScreen() {
 
     setIsManuallyRefreshing(true);
     try {
-      await sessionQuery.resync();
+      await Promise.allSettled([
+        sessionQuery.resync(),
+        inventoryQuery.refetch(),
+      ]);
     } finally {
       setIsManuallyRefreshing(false);
     }
