@@ -1,18 +1,23 @@
 import {
   useGetProjectDomainsById,
   useRestartDevScript,
+  useUpdateInstanceTime,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
 import { useProjectsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -22,9 +27,14 @@ import { ThemedText } from "@/components/themed-text";
 import { RuntimeShellToolsCard } from "@/components/projects/runtime-shell-tools-card";
 import { RuntimeToolCard } from "@/components/projects/runtime-tool-card";
 import { Fonts } from "@/constants/theme";
+import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import { useVibeongoRuntimeSocket } from "@/hooks/use-vibeongo-runtime-socket";
+import {
+  formatInstanceTimeRemaining,
+  getInstanceRemainingMs,
+} from "@/lib/instance-expiry";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -39,6 +49,31 @@ function getConfigValue(config: unknown, key: string) {
 function normalizePercent(value: number | undefined) {
   if (!Number.isFinite(value)) return 0;
   return Math.min(100, Math.max(0, value ?? 0));
+}
+
+function formatDateTime(value: Date | string | null | undefined) {
+  if (!value) return "Unavailable";
+  const date = value instanceof Date ? value : new Date(value);
+  if (!Number.isFinite(date.getTime())) return "Unavailable";
+  return date.toLocaleString();
+}
+
+function formatUptime(value: Date | string | null | undefined, now: number) {
+  if (!value) return "Unavailable";
+  const startedAt =
+    value instanceof Date ? value.getTime() : new Date(value).getTime();
+  if (!Number.isFinite(startedAt)) return "Unavailable";
+
+  const totalSeconds = Math.max(0, Math.floor((now - startedAt) / 1000));
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+
+  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
+  if (hours > 0) return `${hours}h ${minutes}m ${seconds}s`;
+  if (minutes > 0) return `${minutes}m ${seconds}s`;
+  return `${seconds}s`;
 }
 
 export function ProjectSettingsScreen() {
@@ -57,7 +92,11 @@ export function ProjectSettingsScreen() {
       "Project",
   );
   const runtime = useProjectRuntime(projectSessionId);
+  const now = useCurrentTime(Boolean(runtime.instance));
   const runtimeInstanceId = runtime.instance?.id ?? "";
+  const updateInstanceTime = useUpdateInstanceTime(projectSessionId);
+  const [extendTimeOpen, setExtendTimeOpen] = useState(false);
+  const [extendMinutes, setExtendMinutes] = useState("60");
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(projectId));
   const assignDomains = useUpdateProjectRoutingTargetInstance();
   const runtimeUrl = runtime.instance
@@ -95,6 +134,10 @@ export function ProjectSettingsScreen() {
     : "";
   const cpuPercent = normalizePercent(runtimeSocket.stats?.cpu_percent);
   const memoryPercent = normalizePercent(runtimeSocket.stats?.used_percent);
+  const remainingTime = formatInstanceTimeRemaining(
+    getInstanceRemainingMs(runtime.instance?.terminates_at, now),
+  );
+  const uptime = formatUptime(runtime.instance?.started_at, now);
   const statusColor =
     runtimeSocket.status === "connected"
       ? "#10b981"
@@ -118,6 +161,34 @@ export function ProjectSettingsScreen() {
         text1: "Failed to restart dev script",
         text2: "Please try again.",
       });
+    }
+  };
+
+  const extendInstanceTime = async () => {
+    const timeInMinutes = Number(extendMinutes);
+    if (!Number.isInteger(timeInMinutes) || timeInMinutes < 1) {
+      Alert.alert(
+        "Invalid time",
+        "Enter a whole number of minutes greater than zero.",
+      );
+      return;
+    }
+    if (!runtime.instance || updateInstanceTime.isPending) return;
+
+    try {
+      await updateInstanceTime.mutateAsync({
+        action: "increase",
+        id: runtime.instance.id,
+        timeInMinutes,
+      });
+      setExtendTimeOpen(false);
+      Toast.show({
+        type: "success",
+        text1: "Instance time extended",
+        text2: `Added ${timeInMinutes} minutes.`,
+      });
+    } catch {
+      Toast.show({ type: "error", text1: "Failed to extend instance time" });
     }
   };
 
@@ -192,6 +263,91 @@ export function ProjectSettingsScreen() {
                 label="Memory"
                 percent={memoryPercent}
               />
+            </View>
+
+            <View
+              style={[
+                styles.card,
+                styles.timeCard,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected,
+                },
+              ]}
+            >
+              <View style={styles.timeHeader}>
+                <View style={styles.timeTitleRow}>
+                  <SymbolView
+                    name={{ ios: "clock", android: "schedule" }}
+                    size={17}
+                    tintColor={theme.textSecondary}
+                  />
+                  <ThemedText style={styles.cardTitle}>Runtime</ThemedText>
+                </View>
+                <View style={styles.liveBadge}>
+                  <View style={styles.liveDot} />
+                  <ThemedText style={styles.liveLabel}>LIVE</ThemedText>
+                </View>
+              </View>
+
+              <View
+                style={[
+                  styles.countdown,
+                  { backgroundColor: theme.backgroundSelected },
+                ]}
+              >
+                <ThemedText
+                  style={styles.countdownLabel}
+                  themeColor="textSecondary"
+                >
+                  Terminates in
+                </ThemedText>
+                <ThemedText style={styles.countdownValue}>
+                  {remainingTime}
+                </ThemedText>
+              </View>
+
+              <View style={styles.timeMetrics}>
+                <TimeMetric
+                  label="Started"
+                  value={formatDateTime(runtime.instance.started_at)}
+                />
+                <View
+                  style={[
+                    styles.timeDivider,
+                    { backgroundColor: theme.backgroundSelected },
+                  ]}
+                />
+                <TimeMetric label="Uptime" value={uptime} />
+              </View>
+
+              <Pressable
+                accessibilityLabel="Extend instance time"
+                accessibilityRole="button"
+                disabled={runtime.instance.runtime_kind === "sandbox"}
+                onPress={() => setExtendTimeOpen(true)}
+                style={({ pressed }) => [
+                  styles.extendButton,
+                  runtime.instance?.runtime_kind === "sandbox" &&
+                    styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "plus", android: "add" }}
+                  size={16}
+                  tintColor="#ffffff"
+                  weight="semibold"
+                />
+                <ThemedText style={styles.extendButtonLabel}>
+                  Extend time
+                </ThemedText>
+              </Pressable>
+              {runtime.instance.runtime_kind === "sandbox" ? (
+                <ThemedText style={styles.timeHint} themeColor="textSecondary">
+                  Sandbox instances cannot extend their time.
+                </ThemedText>
+              ) : null}
             </View>
 
             <View
@@ -351,7 +507,104 @@ export function ProjectSettingsScreen() {
           </>
         )}
       </ScrollView>
+
+      <Modal
+        animationType="fade"
+        onRequestClose={() => setExtendTimeOpen(false)}
+        transparent
+        visible={extendTimeOpen}
+      >
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : undefined}
+          style={styles.modalRoot}
+        >
+          <Pressable
+            accessibilityLabel="Close extend time dialog"
+            onPress={() => setExtendTimeOpen(false)}
+            style={styles.modalBackdrop}
+          />
+          <View
+            accessibilityViewIsModal
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.backgroundSelected,
+              },
+            ]}
+          >
+            <ThemedText style={styles.modalTitle}>
+              Extend instance time
+            </ThemedText>
+            <ThemedText
+              style={styles.modalDescription}
+              themeColor="textSecondary"
+            >
+              Add minutes to this instance&apos;s current termination time.
+            </ThemedText>
+            <ThemedText style={styles.inputLabel}>Minutes</ThemedText>
+            <TextInput
+              accessibilityLabel="Minutes to extend"
+              autoFocus
+              editable={!updateInstanceTime.isPending}
+              keyboardType="number-pad"
+              onChangeText={setExtendMinutes}
+              selectTextOnFocus
+              style={[
+                styles.timeInput,
+                {
+                  borderColor: theme.backgroundSelected,
+                  color: theme.text,
+                },
+              ]}
+              value={extendMinutes}
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                disabled={updateInstanceTime.isPending}
+                onPress={() => setExtendTimeOpen(false)}
+                style={({ pressed }) => [
+                  styles.cancelButton,
+                  { borderColor: theme.backgroundSelected },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText style={styles.cancelButtonLabel}>Cancel</ThemedText>
+              </Pressable>
+              <Pressable
+                disabled={updateInstanceTime.isPending}
+                onPress={() => void extendInstanceTime()}
+                style={({ pressed }) => [
+                  styles.confirmButton,
+                  updateInstanceTime.isPending && styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                {updateInstanceTime.isPending ? (
+                  <ActivityIndicator color="#ffffff" size="small" />
+                ) : null}
+                <ThemedText style={styles.extendButtonLabel}>
+                  {updateInstanceTime.isPending ? "Extending…" : "Extend Time"}
+                </ThemedText>
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
     </SafeAreaView>
+  );
+}
+
+function TimeMetric({ label, value }: { label: string; value: string }) {
+  return (
+    <View style={styles.timeMetric}>
+      <ThemedText style={styles.timeMetricLabel} themeColor="textSecondary">
+        {label}
+      </ThemedText>
+      <ThemedText numberOfLines={1} style={styles.timeMetricValue}>
+        {value}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -411,6 +664,25 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+  cancelButton: {
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  cancelButtonLabel: { fontSize: 13, fontWeight: "700" },
+  confirmButton: {
+    alignItems: "center",
+    backgroundColor: "#3c87f7",
+    borderRadius: 10,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
   devScriptCard: {
     alignItems: "center",
     flexDirection: "row",
@@ -435,6 +707,17 @@ const styles = StyleSheet.create({
     minHeight: 60,
     paddingHorizontal: 16,
   },
+  extendButton: {
+    alignItems: "center",
+    backgroundColor: "#3c87f7",
+    borderRadius: 11,
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 44,
+    width: "100%",
+  },
+  extendButtonLabel: { color: "#ffffff", fontSize: 13, fontWeight: "700" },
   headerButton: {
     alignItems: "center",
     borderRadius: 20,
@@ -466,6 +749,69 @@ const styles = StyleSheet.create({
     marginTop: 12,
     flex: 1,
   },
+  inputLabel: { fontSize: 12, fontWeight: "700", marginTop: 18 },
+  countdown: {
+    borderRadius: 12,
+    gap: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+  },
+  countdownLabel: {
+    fontSize: 11,
+    fontWeight: "600",
+    letterSpacing: 0.5,
+    textTransform: "uppercase",
+  },
+  countdownValue: {
+    fontFamily: Fonts.mono,
+    fontSize: 25,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  liveBadge: {
+    alignItems: "center",
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    borderRadius: 20,
+    flexDirection: "row",
+    gap: 6,
+    paddingHorizontal: 9,
+    paddingVertical: 5,
+  },
+  liveDot: {
+    backgroundColor: "#10b981",
+    borderRadius: 4,
+    height: 7,
+    width: 7,
+  },
+  liveLabel: {
+    color: "#10b981",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.8,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 10,
+    justifyContent: "flex-end",
+    marginTop: 20,
+  },
+  modalBackdrop: {
+    backgroundColor: "rgba(0, 0, 0, 0.55)",
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  modalCard: {
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    padding: 20,
+    width: "100%",
+  },
+  modalDescription: { fontSize: 13, lineHeight: 19, marginTop: 6 },
+  modalRoot: { flex: 1, justifyContent: "center", padding: 24 },
+  modalTitle: { fontSize: 18, fontWeight: "700" },
   progressTrack: {
     borderRadius: 4,
     height: 6,
@@ -517,6 +863,27 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     gap: 12,
   },
+  timeCard: { gap: 16 },
+  timeDivider: { height: "100%", width: StyleSheet.hairlineWidth },
+  timeHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  timeHint: { fontSize: 12, lineHeight: 17 },
+  timeInput: {
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    fontSize: 16,
+    marginTop: 7,
+    minHeight: 46,
+    paddingHorizontal: 12,
+  },
+  timeMetric: { flex: 1, gap: 5, minWidth: 0 },
+  timeMetricLabel: { fontSize: 11, fontWeight: "600" },
+  timeMetricValue: { fontSize: 13, fontWeight: "600" },
+  timeMetrics: { flexDirection: "row", gap: 14, minHeight: 39 },
+  timeTitleRow: { alignItems: "center", flexDirection: "row", gap: 8 },
   state: {
     alignItems: "center",
     gap: 10,
