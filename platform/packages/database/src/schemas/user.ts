@@ -13,10 +13,14 @@ import {
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
 
+export const userTier = pgEnum("user_tiers", ["tier1", "tier2", "tier3"]);
+
 export const users = pgTable("users", {
   id: uuid().unique().defaultRandom().notNull(),
   email: varchar({ length: 255 }).notNull().unique(),
   username: varchar({ length: 255 }).notNull().unique(),
+
+  tier: userTier().default("tier1").notNull(),
 
   first_name: varchar().notNull(),
   last_name: varchar(),
