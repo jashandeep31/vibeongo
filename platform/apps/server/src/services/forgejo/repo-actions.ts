@@ -1,5 +1,7 @@
+import { users } from "@repo/db";
 import { forgejoAPIClient } from "./user-actions.js";
 import axios from "axios";
+import crypto from "crypto";
 
 interface CreateForgejoRepo {
   username: string;
@@ -65,4 +67,30 @@ export async function createForgejoRepo({
         error instanceof Error ? error.message : "Failed to create repository",
     };
   }
+}
+
+export async function getForgejoRepoAccessToken({
+  username,
+  reponame,
+}: {
+  username: string;
+  reponame: string;
+}) {
+  const res = await forgejoAPIClient.post(`/admin/users/${username}/tokens`, {
+    username: username,
+    name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
+    repositories: [
+      {
+        name: reponame,
+        owner: username,
+      },
+    ],
+    scopes: [
+      "read:issue",
+      "write:issue",
+      "read:repository",
+      "write:repository",
+    ],
+  });
+  return res.data;
 }

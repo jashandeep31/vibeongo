@@ -4,7 +4,10 @@ import {
   getAllForgejoUsers,
 } from "./services/forgejo/user-actions.js";
 import { db, users } from "@repo/db";
-import { createForgejoRepo } from "./services/forgejo/repo-actions.js";
+import {
+  createForgejoRepo,
+  getForgejoRepoAccessToken,
+} from "./services/forgejo/repo-actions.js";
 dotenv.config();
 
 export default async function test() {
@@ -26,4 +29,6 @@ export default async function test() {
   //     reponame: "test",
   //   });
   //   console.log(res);
+  // const res = await getForgejoRepoAccessToken("jashandeep31");
+  // console.log(res);
 }
