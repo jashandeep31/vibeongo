@@ -61,7 +61,7 @@ export type GithubRepoWithPullRequests = GithubRepo & {
 
 export const getGithubRepos =
   (apiClient: AxiosInstance) => async (): Promise<GithubRepo[]> => {
-    const response = await apiClient.get(`/api/v1/github-repos/`, {
+    const response = await apiClient.get(`/api/v1/git-repos/`, {
       withCredentials: true,
     });
 
@@ -71,7 +71,7 @@ export const getGithubRepos =
 export const getGithubRepoIssues =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<GithubRepoWithIssues> => {
-    const response = await apiClient.get(`/api/v1/github-repos/${id}`, {
+    const response = await apiClient.get(`/api/v1/git-repos/${id}`, {
       withCredentials: true,
       params: { include: "issues" },
     });
@@ -82,7 +82,7 @@ export const getGithubRepoIssues =
 export const getGithubRepoPullRequests =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<GithubRepoWithPullRequests> => {
-    const response = await apiClient.get(`/api/v1/github-repos/${id}`, {
+    const response = await apiClient.get(`/api/v1/git-repos/${id}`, {
       withCredentials: true,
       params: { include: "pull_requests" },
     });
@@ -107,7 +107,7 @@ export const updateGithubRepoAutomation =
     | "auto_fix_issues_enabled"
   >): Promise<{ message: string }> => {
     const response = await apiClient.post(
-      `/api/v1/github-repos/${id}`,
+      `/api/v1/git-repos/${id}`,
       {
         setup_script,
         default_project_id,
@@ -124,7 +124,7 @@ export const scheduleGithubRepoOverview =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<{ message: string }> => {
     const response = await apiClient.post(
-      `/api/v1/github-repos/${id}/schedule-overview`,
+      `/api/v1/git-repos/${id}/schedule-overview`,
       {},
       { withCredentials: true },
     );
@@ -139,7 +139,7 @@ export const generateFixForIssue =
     issueNumber: number,
   ): Promise<{ instanceId: string; projectId: string }> => {
     const response = await apiClient.post(
-      `/api/v1/github-repos/${id}/issue/${issueNumber}`,
+      `/api/v1/git-repos/${id}/issue/${issueNumber}`,
       {},
       { withCredentials: true },
     );
@@ -154,7 +154,7 @@ export const generateReviewForPullRequest =
     pullRequestNumber: number,
   ): Promise<{ instanceId: string; projectId: string }> => {
     const response = await apiClient.post(
-      `/api/v1/github-repos/${id}/pull-request/${pullRequestNumber}`,
+      `/api/v1/git-repos/${id}/pull-request/${pullRequestNumber}`,
       {},
       { withCredentials: true },
     );

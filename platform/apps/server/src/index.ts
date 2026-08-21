@@ -92,7 +92,7 @@ app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/metadata", metadataRoutes);
-app.use("/api/v1/github-repos", githubRepoRoutes);
+app.use("/api/v1/git-repos", githubRepoRoutes);
 app.use("/api/v1/runtime", runtimeRoutes);
 app.use("/api/v1/internal", internalRoutes);
 app.use("/api/v1/payments", paymentRoutes);

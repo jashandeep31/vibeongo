@@ -7,9 +7,12 @@ import {
   boolean,
   integer,
   text,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { projects } from "./projects.js";
+
+export const gitRepoType = pgEnum("git_repo_type", ["github", "forgejo"]);
 
 export const gitRepos = pgTable(
   "git_repos",
@@ -20,6 +23,8 @@ export const gitRepos = pgTable(
         onDelete: "cascade",
       })
       .notNull(),
+
+    type: gitRepoType().default("github"),
 
     default_project_id: uuid()
       .references(() => projects.id, {

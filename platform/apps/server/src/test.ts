@@ -29,6 +29,9 @@ export default async function test() {
   //     reponame: "test",
   //   });
   //   console.log(res);
-  // const res = await getForgejoRepoAccessToken("jashandeep31");
+  // const res = await getForgejoRepoAccessToken({
+  //   username: "jashandeep31",
+  //   reponame: "tes",
+  // });
   // console.log(res);
 }

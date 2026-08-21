@@ -134,7 +134,7 @@ export const createGithubRepo =
     url: string;
     setup_script: string;
   }): Promise<{ message: string }> => {
-    const response = await apiClient.post(`/api/v1/github-repos/`, input, {
+    const response = await apiClient.post(`/api/v1/git-repos/`, input, {
       withCredentials: true,
     });
 
@@ -143,7 +143,7 @@ export const createGithubRepo =
 
 export const getGithubRepos =
   (apiClient: AxiosInstance) => async (): Promise<ProjectGithubRepo[]> => {
-    const response = await apiClient.get(`/api/v1/github-repos/`, {
+    const response = await apiClient.get(`/api/v1/git-repos/`, {
       withCredentials: true,
     });
 
