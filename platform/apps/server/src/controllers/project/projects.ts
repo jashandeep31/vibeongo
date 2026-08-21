@@ -5,7 +5,7 @@ import {
   eq,
   instanceTypes,
   sandboxTypes,
-  projectGithubRepos,
+  projectGitRepos,
   projects,
   projectSshKeys,
   desc,
@@ -99,12 +99,12 @@ export const getProjectGithubReposById = catchAsync(
         id: gitRepos.id,
         full_name: gitRepos.full_name,
       })
-      .from(projectGithubRepos)
-      .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
-      .innerJoin(projects, eq(projects.id, projectGithubRepos.project_id))
+      .from(projectGitRepos)
+      .innerJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
+      .innerJoin(projects, eq(projects.id, projectGitRepos.project_id))
       .where(
         and(
-          eq(projectGithubRepos.project_id, id),
+          eq(projectGitRepos.project_id, id),
           eq(projects.user_id, user.id),
           eq(projects.deleted, false),
           eq(gitRepos.user_id, user.id),
@@ -184,9 +184,9 @@ export const getProjectConfigForEdit = catchAsync(
       .where(eq(projectSshKeys.project_id, id));
 
     const githubRepoRows = await db
-      .select({ githubRepoId: projectGithubRepos.github_repo_id })
-      .from(projectGithubRepos)
-      .where(eq(projectGithubRepos.project_id, id));
+      .select({ githubRepoId: projectGitRepos.github_repo_id })
+      .from(projectGitRepos)
+      .where(eq(projectGitRepos.project_id, id));
 
     const projectConfig = JSON.parse(
       await getDecryptedProjectConfig(projectWithInstanceType.project.id),

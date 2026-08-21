@@ -6,7 +6,7 @@ import {
   sshKeys,
   gitRepos,
   db,
-  projectGithubRepos,
+  projectGitRepos,
   projectConfig,
   projectSshKeys,
 } from "@repo/db";
@@ -100,14 +100,14 @@ export const udpateProjectConfigByProjectIdAndUserId = async (
       .where(eq(projectConfig.project_id, projectId));
 
     await tx
-      .delete(projectGithubRepos)
-      .where(eq(projectGithubRepos.project_id, projectId));
+      .delete(projectGitRepos)
+      .where(eq(projectGitRepos.project_id, projectId));
     await tx
       .delete(projectSshKeys)
       .where(eq(projectSshKeys.project_id, projectId));
 
     if (validRepos.length) {
-      await tx.insert(projectGithubRepos).values(
+      await tx.insert(projectGitRepos).values(
         validRepos.map((repo) => ({
           project_id: projectId,
           github_repo_id: repo.id,

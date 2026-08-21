@@ -109,7 +109,7 @@ export const projectSshKeys = pgTable("project_ssh_keys", {
   updated_at: timestamp().defaultNow(),
 });
 
-export const projectGithubRepos = pgTable("project_github_repos", {
+export const projectGitRepos = pgTable("project_github_repos", {
   id: uuid("id").defaultRandom().primaryKey(),
 
   project_id: uuid()

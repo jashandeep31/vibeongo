@@ -4,7 +4,7 @@ import {
   eq,
   gitRepos,
   inArray,
-  projectGithubRepos,
+  projectGitRepos,
   projectDomainRouting,
   projects,
   projectSessions,
@@ -88,11 +88,11 @@ export const createProjectSessionInstance = async ({
       const repoIds = [...new Set(input.tasks.map((task) => task.repoId))];
       const requestedRepos = await tx
         .select({ repo: gitRepos })
-        .from(projectGithubRepos)
-        .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
+        .from(projectGitRepos)
+        .innerJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
         .where(
           and(
-            eq(projectGithubRepos.project_id, project.id),
+            eq(projectGitRepos.project_id, project.id),
             eq(gitRepos.user_id, userId),
             inArray(gitRepos.id, repoIds),
           ),

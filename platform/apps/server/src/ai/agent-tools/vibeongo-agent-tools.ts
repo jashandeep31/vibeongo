@@ -8,7 +8,7 @@ import {
   instanceTypes,
   projectFileData,
   projectFiles,
-  projectGithubRepos,
+  projectGitRepos,
   projects,
   sandboxRegions,
   sandboxTypes,
@@ -598,11 +598,8 @@ export const getProjectRepositoriesAgentTool = (userId: string): Tool =>
       const rows = await db
         .select({ repo: gitRepos })
         .from(projects)
-        .leftJoin(
-          projectGithubRepos,
-          eq(projectGithubRepos.project_id, projects.id),
-        )
-        .leftJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
+        .leftJoin(projectGitRepos, eq(projectGitRepos.project_id, projects.id))
+        .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
         .where(
           and(
             eq(projects.user_id, userId),

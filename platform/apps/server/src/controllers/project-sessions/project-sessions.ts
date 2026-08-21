@@ -12,7 +12,7 @@ import {
   projectSshKeys,
   sshKeys,
   projectDomainRouting,
-  projectGithubRepos,
+  projectGitRepos,
   customQuery,
   projectSessionTasks,
   gitRepos,
@@ -133,10 +133,10 @@ export const updateProjectSessionTask = catchAsync(
       .select({ repo: gitRepos })
       .from(projectSessions)
       .innerJoin(
-        projectGithubRepos,
-        eq(projectGithubRepos.project_id, projectSessions.project_id),
+        projectGitRepos,
+        eq(projectGitRepos.project_id, projectSessions.project_id),
       )
-      .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
+      .innerJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
       .where(
         and(
           eq(projectSessions.id, id),
@@ -212,11 +212,11 @@ export const addTaskToProjectSession = catchAsync(
 
     const [gitRepo] = await db
       .select({ repo: gitRepos })
-      .from(projectGithubRepos)
-      .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
+      .from(projectGitRepos)
+      .innerJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
       .where(
         and(
-          eq(projectGithubRepos.project_id, session.project_id),
+          eq(projectGitRepos.project_id, session.project_id),
           eq(gitRepos.user_id, user.id),
           eq(gitRepos.id, repoId),
         ),

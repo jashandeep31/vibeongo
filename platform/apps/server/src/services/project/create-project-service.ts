@@ -8,7 +8,7 @@ import {
   db,
   projectDomainRouting,
   projectSshKeys,
-  projectGithubRepos,
+  projectGitRepos,
   projectConfig,
   projectSessions,
 } from "@repo/db";
@@ -98,7 +98,7 @@ export const createProjectWithConfigAndUserIdService = async (
 
     // --- Linking the repective github repos and ssh keys to the project ---
     if (githubRepoData.length)
-      await tx.insert(projectGithubRepos).values(githubRepoData);
+      await tx.insert(projectGitRepos).values(githubRepoData);
 
     if (sshKeyData.length) await tx.insert(projectSshKeys).values(sshKeyData);
     const [projectRouting] = await tx

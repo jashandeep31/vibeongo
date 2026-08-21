@@ -6,7 +6,7 @@ import {
   eq,
   asc,
   gitRepos,
-  projectGithubRepos,
+  projectGitRepos,
   projectSessions,
   projectSessionTasks,
   projectSshKeys,
@@ -67,9 +67,9 @@ export const getRuntimeSessionConfig = catchAsync(
 
       db
         .select({ repo: gitRepos })
-        .from(projectGithubRepos)
-        .leftJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
-        .where(eq(projectGithubRepos.project_id, project.id)),
+        .from(projectGitRepos)
+        .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
+        .where(eq(projectGitRepos.project_id, project.id)),
 
       db
         .select({ value: sshKeys.value })
