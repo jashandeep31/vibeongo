@@ -1,8 +1,29 @@
 import dotenv from "dotenv";
-import { env } from "./lib/env.js";
+import {
+  createForgejoUserAccount,
+  getAllForgejoUsers,
+} from "./services/forgejo/user-actions.js";
+import { db, users } from "@repo/db";
+import { createForgejoRepo } from "./services/forgejo/repo-actions.js";
 dotenv.config();
 
 export default async function test() {
   console.log("server in running");
-  console.log(env.DATABASE_URL);
+
+  // const userRows = await db.select().from(users);
+  // for (const user of userRows) {
+  //   const isusercreatd = (await getAllForgejoUsers("jashandeep31")).length > 0;
+  //   if (!isusercreatd) {
+  //     await createForgejoUserAccount(user);
+  //   }
+  // }
+  //
+  // const allusers = await getAllForgejoUsers("jashandeep31");
+  // console.log(allusers);
+  // console.log(allusers.length);
+  //   const res = await createForgejoRepo({
+  //     username: "jashandeep31",
+  //     reponame: "test",
+  //   });
+  //   console.log(res);
 }
