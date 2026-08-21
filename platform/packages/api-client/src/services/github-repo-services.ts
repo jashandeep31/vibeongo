@@ -82,6 +82,16 @@ export const getGithubRepos =
     return response.data.data;
   };
 
+export const deleteGithubRepo =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.delete(`/api/v1/git-repos/${id}`, {
+      withCredentials: true,
+    });
+
+    return response.data;
+  };
+
 export const getGithubRepoIssues =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<GithubRepoWithIssues> => {
