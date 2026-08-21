@@ -208,7 +208,7 @@ export function GithubReposScreen() {
             }
             secondaryLabel={
               repos.length === 0
-                ? "Connect a GitHub repository to manage pull requests, issues, and automations."
+                ? "Connect a GitHub repository or create a Forgejo repository to manage pull requests, issues, and automations."
                 : "Try a different repository name."
             }
           />
@@ -248,6 +248,7 @@ function RepositoryRow({
   const theme = useTheme();
   const repoName =
     repo.full_name.split("/").filter(Boolean).at(-1) ?? repo.full_name;
+  const isForgejo = repo.type === "forgejo";
 
   return (
     <Pressable
@@ -271,10 +272,14 @@ function RepositoryRow({
           ]}
         >
           <SymbolView
-            name={{
-              ios: "chevron.left.forwardslash.chevron.right",
-              android: "code",
-            }}
+            name={
+              isForgejo
+                ? { ios: "arrow.triangle.branch", android: "account_tree" }
+                : {
+                    ios: "chevron.left.forwardslash.chevron.right",
+                    android: "code",
+                  }
+            }
             size={18}
             tintColor={theme.text}
           />
@@ -299,6 +304,23 @@ function RepositoryRow({
       </View>
 
       <View style={styles.repositoryMetadata}>
+        <View style={styles.metadataItem}>
+          <SymbolView
+            name={
+              isForgejo
+                ? { ios: "arrow.triangle.branch", android: "account_tree" }
+                : {
+                    ios: "chevron.left.forwardslash.chevron.right",
+                    android: "code",
+                  }
+            }
+            size={12}
+            tintColor={theme.textSecondary}
+          />
+          <ThemedText style={styles.metadataText} themeColor="textSecondary">
+            {isForgejo ? "Forgejo" : "GitHub"}
+          </ThemedText>
+        </View>
         <View style={styles.metadataItem}>
           <SymbolView
             name={

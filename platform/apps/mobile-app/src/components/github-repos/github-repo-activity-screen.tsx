@@ -1,5 +1,6 @@
 import type { GithubRepoIssue, GithubRepoPullRequest } from "@repo/api-client";
 import {
+  useDeleteGithubRepo,
   useGenerateFixForIssue,
   useGenerateReviewForPullRequest,
   useGithubRepoIssues,
@@ -30,6 +31,7 @@ import { useTheme } from "@/hooks/use-theme";
 
 type ResourceTab = "pull-requests" | "issues";
 type ConfirmationTarget =
+  | { kind: "delete" }
   | { kind: "overview" }
   | { kind: "review"; number: number }
   | { kind: "fix"; number: number };
@@ -66,6 +68,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
   const issuesQuery = useGithubRepoIssues(repoId);
   const pullRequestsQuery = useGithubRepoPullRequests(repoId);
   const scheduleOverview = useScheduleGithubRepoOverview();
+  const deleteRepo = useDeleteGithubRepo();
   const generateReview = useGenerateReviewForPullRequest(
     repoId,
     confirmationTarget?.kind === "review" ? confirmationTarget.number : 0,
@@ -75,6 +78,8 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
     confirmationTarget?.kind === "fix" ? confirmationTarget.number : 0,
   );
   const repo = pullRequestsQuery.data ?? issuesQuery.data;
+  const isForgejo = repo?.type === "forgejo";
+  const providerLabel = isForgejo ? "Forgejo" : "GitHub";
   const overview = repo?.overview.trim() ?? "";
   const issues = issuesQuery.data?.issues ?? [];
   const pullRequests = pullRequestsQuery.data?.pull_requests ?? [];
@@ -86,6 +91,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
     issuesQuery.isRefetching || pullRequestsQuery.isRefetching;
   const isConfirming =
     scheduleOverview.isPending ||
+    deleteRepo.isPending ||
     generateReview.isPending ||
     generateFix.isPending;
 
@@ -99,7 +105,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
     } catch {
       Toast.show({
         type: "error",
-        text1: "Could not open GitHub",
+        text1: "Could not open repository",
         text2: "Please try again.",
       });
     }
@@ -123,7 +129,13 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
     const target = confirmationTarget;
     if (!target || isConfirming) return;
     try {
-      if (target.kind === "overview") {
+      if (target.kind === "delete") {
+        await deleteRepo.mutateAsync(repoId);
+        setConfirmationTarget(null);
+        Toast.show({ type: "success", text1: "Repository removed" });
+        router.replace("/github-repos");
+        return;
+      } else if (target.kind === "overview") {
         await scheduleOverview.mutateAsync(repoId);
       } else if (target.kind === "review") {
         await generateReview.mutateAsync();
@@ -150,9 +162,11 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
           text1:
             target.kind === "overview"
               ? "Could not queue overview"
-              : target.kind === "review"
-                ? "Could not start review"
-                : "Could not start issue fix",
+              : target.kind === "delete"
+                ? "Could not remove repository"
+                : target.kind === "review"
+                  ? "Could not start review"
+                  : "Could not start issue fix",
           text2: getErrorMessage(error, "Please try again."),
         });
       });
@@ -218,10 +232,17 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                   style={[styles.repoIcon, { backgroundColor: theme.text }]}
                 >
                   <SymbolView
-                    name={{
-                      ios: "chevron.left.forwardslash.chevron.right",
-                      android: "code",
-                    }}
+                    name={
+                      isForgejo
+                        ? {
+                            ios: "arrow.triangle.branch",
+                            android: "account_tree",
+                          }
+                        : {
+                            ios: "chevron.left.forwardslash.chevron.right",
+                            android: "code",
+                          }
+                    }
                     size={19}
                     tintColor={theme.background}
                   />
@@ -233,6 +254,34 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                   <ThemedText numberOfLines={1} style={styles.repoName}>
                     {repo.full_name.split("/").filter(Boolean).at(-1) ??
                       repo.full_name}
+                  </ThemedText>
+                </View>
+                <View
+                  style={[
+                    styles.visibilityBadge,
+                    { borderColor: theme.backgroundSelected },
+                  ]}
+                >
+                  <SymbolView
+                    name={
+                      isForgejo
+                        ? {
+                            ios: "arrow.triangle.branch",
+                            android: "account_tree",
+                          }
+                        : {
+                            ios: "chevron.left.forwardslash.chevron.right",
+                            android: "code",
+                          }
+                    }
+                    size={12}
+                    tintColor={theme.textSecondary}
+                  />
+                  <ThemedText
+                    style={styles.visibilityText}
+                    themeColor="textSecondary"
+                  >
+                    {providerLabel}
                   </ThemedText>
                 </View>
                 <View
@@ -294,12 +343,23 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                   onPress={() => setSettingsOpen(true)}
                 />
                 <ActionButton
-                  icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-                  label="GitHub"
-                  onPress={() =>
-                    void openExternalUrl(`https://github.com/${repo.full_name}`)
-                  }
+                  disabled={deleteRepo.isPending}
+                  icon={{ ios: "trash", android: "delete" }}
+                  label="Remove"
+                  loading={deleteRepo.isPending}
+                  onPress={() => setConfirmationTarget({ kind: "delete" })}
                 />
+                {!isForgejo ? (
+                  <ActionButton
+                    icon={{ ios: "arrow.up.right", android: "open_in_new" }}
+                    label="GitHub"
+                    onPress={() =>
+                      void openExternalUrl(
+                        `https://github.com/${repo.full_name}`,
+                      )
+                    }
+                  />
+                ) : null}
               </ScrollView>
 
               {showOverview && overview ? (
@@ -401,6 +461,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                             number: pullRequest.number,
                           })
                         }
+                        providerLabel={providerLabel}
                         pullRequest={pullRequest}
                       />
                     ))}
@@ -430,6 +491,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                         })
                       }
                       onOpen={() => void openExternalUrl(issue.html_url)}
+                      providerLabel={providerLabel}
                     />
                   ))}
                 </View>
@@ -448,7 +510,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
       <ConfirmationDrawer
         confirmLabel={confirmation.confirmLabel}
         description={confirmation.description}
-        destructive={false}
+        destructive={confirmationTarget?.kind === "delete"}
         isConfirming={isConfirming}
         onCancel={() => {
           if (!isConfirming) setConfirmationTarget(null);
@@ -462,6 +524,14 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
 }
 
 function getConfirmationCopy(target: ConfirmationTarget | null) {
+  if (target?.kind === "delete") {
+    return {
+      confirmLabel: "Remove",
+      description:
+        "Remove this repository from VibeOngo? The repository itself will not be deleted from its Git provider.",
+      title: "Remove repository",
+    };
+  }
   if (target?.kind === "review") {
     return {
       confirmLabel: "Start review",
@@ -552,11 +622,13 @@ function PullRequestRow({
   canAutomate,
   onOpen,
   onReview,
+  providerLabel,
   pullRequest,
 }: {
   canAutomate: boolean;
   onOpen: () => void;
   onReview: () => void;
+  providerLabel: string;
   pullRequest: GithubRepoPullRequest;
 }) {
   const theme = useTheme();
@@ -611,7 +683,7 @@ function PullRequestRow({
           />
           <ResourceButton
             icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-            label="GitHub"
+            label={providerLabel}
             onPress={onOpen}
           />
         </View>
@@ -625,11 +697,13 @@ function IssueRow({
   issue,
   onFix,
   onOpen,
+  providerLabel,
 }: {
   canAutomate: boolean;
   issue: GithubRepoIssue;
   onFix: () => void;
   onOpen: () => void;
+  providerLabel: string;
 }) {
   const theme = useTheme();
   return (
@@ -676,7 +750,7 @@ function IssueRow({
           />
           <ResourceButton
             icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-            label="GitHub"
+            label={providerLabel}
             onPress={onOpen}
           />
         </View>
