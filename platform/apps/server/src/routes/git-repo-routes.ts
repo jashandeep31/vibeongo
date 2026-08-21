@@ -6,16 +6,21 @@ import {
   deleteGithubRepo,
   updateGithubRepoById,
   getGithubRepoById,
-} from "../controllers/github-repo/github-repo-controller.js";
+  createForgejoRepoController,
+} from "../controllers/github-repo/git-repo-controller.js";
 import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.js";
 import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-pullrequest.js";
-import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/github-repo-overview.js";
+import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/git-repo-overview.js";
 
 const routes: Router = Router();
 routes
   .route("/")
   .post(checkAuthorization(["all"]), createGithubRepo)
   .get(checkAuthorization(["all"]), getUserGitRepos);
+
+routes
+  .route("/forgejo")
+  .post(checkAuthorization(["all"]), createForgejoRepoController);
 
 routes
   .route("/:id")
@@ -33,4 +38,4 @@ routes
 routes
   .route("/:id/schedule-overview")
   .post(checkAuthorization(["all"]), createGithubRepoOverviewWithAI);
-export const githubRepoRoutes = routes;
+export const gitRepoRoutes = routes;

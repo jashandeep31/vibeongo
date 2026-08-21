@@ -6,6 +6,7 @@ import { db, gitRepos, eq, and, projects, desc } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
 import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
+import { createForgejoRepo } from "../../services/forgejo/repo-actions.js";
 
 type GithubRepoIssueResponse = {
   url: string;
@@ -316,5 +317,31 @@ export const updateGithubRepoById = catchAsync(
     res.status(200).json({
       message: "Successfully updated the github repo",
     });
+  },
+);
+
+export const createForgejoRepoController = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("authorization is required", 401);
+
+    const { reponame } = z
+      .object({
+        reponame: z.string(),
+      })
+      .parse(req.body);
+
+    const newRepo = await createForgejoRepo({
+      username: user.username,
+      reponame,
+    });
+
+    if (newRepo.status === "ok") {
+      res.status(201).json({
+        message: "Repo is created",
+      });
+      return;
+    }
+    throw new AppError(newRepo.error ?? "Failed to create a repo", 500);
   },
 );
