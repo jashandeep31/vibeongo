@@ -1,13 +1,15 @@
 package actions
 
 import (
+	"net/url"
 	"path/filepath"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
-// Create a and return a script to clone the github repo on their respective paths
+// GenerateGitCloneScript returns a script that clones each configured Git repository.
 func GenerateGitCloneScript(gitRepos []config.GitRepoConfig) string {
 	script := ``
 	path := "/home/ubuntu/code"
@@ -15,24 +17,28 @@ func GenerateGitCloneScript(gitRepos []config.GitRepoConfig) string {
 	for _, repo := range gitRepos {
 		projectFolderPath := filepath.Join(path, repo.FolderName)
 
-		utils.AppendToBashScript(&script, `mkdir -p `+projectFolderPath)
-		utils.AppendToBashScript(&script, `cd `+projectFolderPath)
-		utils.AppendToBashScript(&script, generateGitCloneCommand(repo)+" "+projectFolderPath)
+		utils.AppendToBashScript(&script, `mkdir -p `+shellQuote(projectFolderPath))
+		utils.AppendToBashScript(&script, `cd `+shellQuote(projectFolderPath))
+		utils.AppendToBashScript(&script, generateGitCloneCommand(repo)+" "+shellQuote(projectFolderPath))
 	}
 
 	return script
 }
 
-// Returns the command to clone the git repo with the access token if it is provided.
+// generateGitCloneCommand adds the provider-specific username and access token
+// to the provider-neutral HTTP URL supplied by the server.
 func generateGitCloneCommand(repo config.GitRepoConfig) string {
-	cmd := "git clone"
-
-	// Altough from the backend we forcing the tokens with every git repo but still to keep this func working without auth token we are writing this condition
-	if repo.AccessToken != "" {
-		cmd += " " + "https://x-access-token:" + repo.AccessToken + "@github.com/" + repo.FullName + ".git"
-		return cmd
+	cloneURL := repo.HTTPURL
+	if repo.AccessToken != "" && repo.GitUsername != "" {
+		if parsedURL, err := url.Parse(cloneURL); err == nil {
+			parsedURL.User = url.UserPassword(repo.GitUsername, repo.AccessToken)
+			cloneURL = parsedURL.String()
+		}
 	}
 
-	cmd += " " + "https://github.com/" + repo.FullName + ".git"
-	return cmd
+	return "git clone " + shellQuote(cloneURL)
+}
+
+func shellQuote(value string) string {
+	return "'" + strings.ReplaceAll(value, "'", `'"'"'`) + "'"
 }

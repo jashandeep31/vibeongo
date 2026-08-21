@@ -60,6 +60,8 @@ type DockerConfig struct {
 type GitRepoConfig struct {
 	FullName    string `json:"full_name"`
 	AccessToken string `json:"access_token"`
+	HTTPURL     string `json:"http_url"`
+	GitUsername string `json:"git_username"`
 	FolderName  string `json:"folder_name"`
 	Public      bool   `json:"public"`
 	SetupScript string `json:"setup_script"`

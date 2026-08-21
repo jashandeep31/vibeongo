@@ -1,24 +1,26 @@
 import { gitRepos } from "@repo/db";
-import { getGitRepoToken } from "./get-git-repo-token.js";
+import { getGitRepoCredentials } from "./get-git-repo-token.js";
 
-export type ProjectReadyGithubRepo = {
+export type ProjectReadyGitRepo = {
   full_name: string;
-  access_token: string | null;
+  access_token: string;
+  http_url: string;
+  git_username: string;
   public: boolean;
   folder_name: string;
   setup_script: string;
 };
 
-export const getConfigReadyGithubRepos = async (
+export const getConfigReadyGitRepos = async (
   repos: (typeof gitRepos.$inferSelect)[],
-): Promise<ProjectReadyGithubRepo[]> => {
+): Promise<ProjectReadyGitRepo[]> => {
   return Promise.all(
     repos.map(async (repo) => {
       const folder_name = repo.full_name.split("/").pop()!;
-      const access_token = await getGitRepoToken(repo);
+      const credentials = await getGitRepoCredentials(repo);
       return {
         full_name: repo.full_name,
-        access_token,
+        ...credentials,
         public: repo.public,
         folder_name,
         setup_script: repo.setup_script,

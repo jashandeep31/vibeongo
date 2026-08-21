@@ -1,18 +1,17 @@
 import { gitRepos } from "@repo/db";
 import { octokitApp } from "../webhooks/github/index.js";
 import { getForgejoRepoAccessToken } from "../services/forgejo/repo-actions.js";
+import { env } from "../lib/env.js";
 
-/**
- * Function allow to get the readonly token for the github repo
- *
- * @param repo_name - The name of the github repo don't include the owner
- * @param installationId - The installation id of the github app
- * @returns The readonly token for the github repo
- */
-export const getGitRepoToken = async (
+export type GitRepoCredentials = {
+  access_token: string;
+  http_url: string;
+  git_username: string;
+};
+
+export const getGitRepoCredentials = async (
   repo: typeof gitRepos.$inferSelect,
-): Promise<string> => {
-  console.log(repo);
+): Promise<GitRepoCredentials> => {
   if (repo.type === "github") {
     const { data } = await octokitApp.octokit.request(
       "POST /app/installations/{installation_id}/access_tokens",
@@ -27,13 +26,21 @@ export const getGitRepoToken = async (
         },
       },
     );
-    return data.token;
-  } else {
-    const data = await getForgejoRepoAccessToken({
-      username: repo.repo_owner_username,
-      reponame: repo.full_name.split("/")[1]!,
-    });
-
-    return data;
+    return {
+      access_token: data.token,
+      http_url: `https://github.com/${repo.full_name}.git`,
+      git_username: "x-access-token",
+    };
   }
+
+  const accessToken = await getForgejoRepoAccessToken({
+    username: repo.repo_owner_username,
+    reponame: repo.full_name.split("/").pop()!,
+  });
+
+  return {
+    access_token: accessToken,
+    http_url: `${env.FORGEJO_URL.replace(/\/$/, "")}/${repo.full_name}.git`,
+    git_username: repo.repo_owner_username,
+  };
 };

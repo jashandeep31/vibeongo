@@ -11,7 +11,7 @@ import {
   projectGitRepos,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
-import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
+import { getConfigReadyGitRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 
 // sending the renewed tokens
 export const renewTokens = catchAsync(async (req: Request, res: Response) => {
@@ -50,7 +50,7 @@ export const renewTokens = catchAsync(async (req: Request, res: Response) => {
     .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
 
   const config = {
-    repos: await getConfigReadyGithubRepos(validRepos),
+    repos: await getConfigReadyGitRepos(validRepos),
   };
 
   res.status(200).json({ data: config });

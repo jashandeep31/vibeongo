@@ -18,7 +18,7 @@ import {
   instanceOpenRouterKeys,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
-import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
+import { getConfigReadyGitRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 import { env } from "../../lib/env.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
@@ -94,7 +94,7 @@ export const getRuntimeSessionConfig = catchAsync(
       initialScript: project.initial_script,
       finalScript: project.final_script,
       devScript: project.dev_script,
-      repos: await getConfigReadyGithubRepos(validRepos),
+      repos: await getConfigReadyGitRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
         id: t.id,
@@ -203,10 +203,10 @@ async function appendOpenRouterKeysToOpencodeConfig(
 
   opencodePackage.config.auth_json = {
     ...authJson,
-    openrouter: {
-      type: "api",
-      key: decryptedKey,
-    },
+    // openrouter: {
+    //   type: "api",
+    //   key: decryptedKey,
+    // },
   };
 
   return config;
