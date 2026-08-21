@@ -6,7 +6,10 @@ import { db, gitRepos, eq, and, projects, desc } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
 import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
-import { createForgejoRepo } from "../../services/forgejo/repo-actions.js";
+import {
+  createForgejoRepo,
+  getForgejoRepo,
+} from "../../services/forgejo/repo-actions.js";
 
 type GithubRepoIssueResponse = {
   url: string;
@@ -97,6 +100,18 @@ export const getGithubRepoById = catchAsync(
       .where(and(eq(gitRepos.id, id), eq(gitRepos.user_id, user.id)));
 
     if (!githubRepo) throw new AppError("Repo not found", 404);
+
+    if (githubRepo.type === "forgejo") {
+      res.status(200).json({
+        data: {
+          ...githubRepo,
+          issues: [],
+          pull_requests: [],
+        },
+      });
+      return;
+    }
+
     let issues: GithubRepoIssueResponse[] = [];
     let pull_requests: GithubRepoPullRequestResponse[] = [];
     if (include === "issues") {
@@ -331,27 +346,36 @@ export const createForgejoRepoController = catchAsync(
       })
       .parse(req.body);
 
-    const newRepo = await createForgejoRepo({
+    let forgejoRepo = await getForgejoRepo({
       username: user.username,
       reponame,
     });
 
-    if (newRepo.status === "ok") {
-      await db.insert(gitRepos).values({
-        type: "forgejo",
-        installation_id: newRepo.repo.id,
-        full_name: newRepo.repo.full_name,
-        repo_owner_username: user.username,
-        setup_script: ``,
-        public: !!newRepo.repo.private,
-        user_id: user.id,
+    if (!forgejoRepo) {
+      const createdRepo = await createForgejoRepo({
+        username: user.username,
+        reponame,
       });
-      res.status(201).json({
-        message: "Repo is created",
-      });
-      return;
+
+      if (createdRepo.status === "error") {
+        throw new AppError(createdRepo.error, 500);
+      }
+
+      forgejoRepo = createdRepo.repo;
     }
 
-    throw new AppError(newRepo.error ?? "Failed to create a repo", 500);
+    await db.insert(gitRepos).values({
+      type: "forgejo",
+      installation_id: forgejoRepo.id,
+      full_name: forgejoRepo.full_name,
+      repo_owner_username: user.username,
+      setup_script: ``,
+      public: !!forgejoRepo.private,
+      user_id: user.id,
+    });
+
+    res.status(201).json({
+      message: "Forgejo repo is added",
+    });
   },
 );

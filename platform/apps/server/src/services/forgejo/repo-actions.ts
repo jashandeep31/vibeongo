@@ -69,6 +69,26 @@ export async function createForgejoRepo({
   }
 }
 
+export async function getForgejoRepo({
+  username,
+  reponame,
+}: {
+  username: string;
+  reponame: string;
+}): Promise<ForgejoRepo | null> {
+  try {
+    const res = await forgejoAPIClient.get<ForgejoRepo>(
+      `/repos/${username}/${reponame}`,
+    );
+    return res.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
 export async function getForgejoRepoAccessToken({
   username,
   reponame,
