@@ -7,7 +7,7 @@ import {
 
 import { Sandbox } from "e2b";
 import { and, db, eq, gitRepos, gitRepoOverviewJobs } from "@repo/db";
-import { getGitRepoToken } from "../github-app-functions/get-github-repo-readonly-token.js";
+import { getGitRepoToken } from "../github-app-functions/get-git-repo-token.js";
 import { env } from "../lib/env.js";
 
 export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
@@ -30,7 +30,7 @@ export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
     }
     const repoName: string = repo.full_name.split("/")[1]!;
 
-    const gitRepoToken = await getGitRepoToken(repoName, repo.installation_id);
+    const gitRepoToken = await getGitRepoToken(repo);
 
     const sandbox = await Sandbox.create("opencode", {
       envs: {},

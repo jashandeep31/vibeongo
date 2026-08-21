@@ -75,7 +75,7 @@ export async function getForgejoRepoAccessToken({
 }: {
   username: string;
   reponame: string;
-}) {
+}): Promise<string> {
   const res = await forgejoAPIClient.post(`/admin/users/${username}/tokens`, {
     username: username,
     name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
@@ -92,5 +92,5 @@ export async function getForgejoRepoAccessToken({
       "write:repository",
     ],
   });
-  return res.data;
+  return res.data.sha1 as string;
 }
