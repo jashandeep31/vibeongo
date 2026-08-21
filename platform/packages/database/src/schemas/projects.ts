@@ -12,7 +12,7 @@ import {
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
 import { sshKeys } from "./ssh-key.js";
-import { gitRepos } from "./github-repos.js";
+import { gitRepos } from "./git-repos.js";
 import { sandboxTypes } from "./sandbox-metadata.js";
 
 export const projects = pgTable("projects", {

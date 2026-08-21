@@ -1,5 +1,5 @@
 import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
-import { gitRepos } from "./github-repos.js";
+import { gitRepos } from "./git-repos.js";
 import { users } from "./user.js";
 
 export const gitRepoOverviewJobsStatusEnum = pgEnum(

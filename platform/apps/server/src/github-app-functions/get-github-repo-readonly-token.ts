@@ -7,7 +7,7 @@ import { octokitApp } from "../webhooks/github/index.js";
  * @param installationId - The installation id of the github app
  * @returns The readonly token for the github repo
  */
-export const getGithubRepoToken = async (
+export const getGitRepoToken = async (
   repo_name: string,
   installationId: number,
 ): Promise<string> => {
