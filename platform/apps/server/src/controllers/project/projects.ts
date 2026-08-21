@@ -15,7 +15,7 @@ import {
   routingAllowedIps,
   projectFiles,
   instances,
-  githubRepos,
+  gitRepos,
   projectSessions,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
@@ -96,24 +96,21 @@ export const getProjectGithubReposById = catchAsync(
     const { id } = z.object({ id: z.uuid() }).parse(req.params);
     const repos = await db
       .select({
-        id: githubRepos.id,
-        full_name: githubRepos.full_name,
+        id: gitRepos.id,
+        full_name: gitRepos.full_name,
       })
       .from(projectGithubRepos)
-      .innerJoin(
-        githubRepos,
-        eq(githubRepos.id, projectGithubRepos.github_repo_id),
-      )
+      .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
       .innerJoin(projects, eq(projects.id, projectGithubRepos.project_id))
       .where(
         and(
           eq(projectGithubRepos.project_id, id),
           eq(projects.user_id, user.id),
           eq(projects.deleted, false),
-          eq(githubRepos.user_id, user.id),
+          eq(gitRepos.user_id, user.id),
         ),
       )
-      .orderBy(asc(githubRepos.full_name));
+      .orderBy(asc(gitRepos.full_name));
 
     res.status(200).json({ data: repos });
   },
@@ -324,11 +321,11 @@ export const deleteProjectById = catchAsync(
         .where(eq(projectFiles.project_id, updatedProject.id));
 
       await tx
-        .update(githubRepos)
+        .update(gitRepos)
         .set({
           default_project_id: null,
         })
-        .where(eq(githubRepos.default_project_id, updatedProject.id));
+        .where(eq(gitRepos.default_project_id, updatedProject.id));
 
       await tx
         .update(projectSessions)

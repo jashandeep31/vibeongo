@@ -4,7 +4,7 @@ import {
   and,
   db,
   eq,
-  githubRepos,
+  gitRepos,
   instanceRegions,
   instanceTypes,
   projects,
@@ -40,12 +40,12 @@ export const commentHandler = async (
     .select({
       project: projects,
       user: users,
-      repo: githubRepos,
+      repo: gitRepos,
     })
-    .from(githubRepos)
+    .from(gitRepos)
     .innerJoin(users, and(eq(users.username, commenterUsername)))
-    .innerJoin(projects, eq(projects.id, githubRepos.default_project_id))
-    .where(eq(githubRepos.full_name, repoFullName));
+    .innerJoin(projects, eq(projects.id, gitRepos.default_project_id))
+    .where(eq(gitRepos.full_name, repoFullName));
 
   if (!githubRepoWithUserAndProject) return;
   const { project, user, repo } = githubRepoWithUserAndProject;

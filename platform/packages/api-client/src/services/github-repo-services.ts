@@ -1,7 +1,7 @@
-import { githubRepos } from "@repo/db";
+import { gitRepos } from "@repo/db";
 import type { AxiosInstance } from "axios";
 
-export type GithubRepo = typeof githubRepos.$inferSelect;
+export type GithubRepo = typeof gitRepos.$inferSelect;
 
 export type GithubRepoIssue = {
   id: number;

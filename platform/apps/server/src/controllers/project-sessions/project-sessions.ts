@@ -15,7 +15,7 @@ import {
   projectGithubRepos,
   customQuery,
   projectSessionTasks,
-  githubRepos,
+  gitRepos,
   exists,
   sql,
   asc,
@@ -130,22 +130,19 @@ export const updateProjectSessionTask = catchAsync(
       updateProjectSessionTaskSchema.parse(req.body);
 
     const [repo] = await db
-      .select({ repo: githubRepos })
+      .select({ repo: gitRepos })
       .from(projectSessions)
       .innerJoin(
         projectGithubRepos,
         eq(projectGithubRepos.project_id, projectSessions.project_id),
       )
-      .innerJoin(
-        githubRepos,
-        eq(githubRepos.id, projectGithubRepos.github_repo_id),
-      )
+      .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
       .where(
         and(
           eq(projectSessions.id, id),
           eq(projectSessions.user_id, user.id),
-          eq(githubRepos.id, repoId),
-          eq(githubRepos.user_id, user.id),
+          eq(gitRepos.id, repoId),
+          eq(gitRepos.user_id, user.id),
         ),
       );
     if (!repo) {
@@ -214,17 +211,14 @@ export const addTaskToProjectSession = catchAsync(
     }
 
     const [gitRepo] = await db
-      .select({ repo: githubRepos })
+      .select({ repo: gitRepos })
       .from(projectGithubRepos)
-      .innerJoin(
-        githubRepos,
-        eq(githubRepos.id, projectGithubRepos.github_repo_id),
-      )
+      .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
       .where(
         and(
           eq(projectGithubRepos.project_id, session.project_id),
-          eq(githubRepos.user_id, user.id),
-          eq(githubRepos.id, repoId),
+          eq(gitRepos.user_id, user.id),
+          eq(gitRepos.id, repoId),
         ),
       );
 

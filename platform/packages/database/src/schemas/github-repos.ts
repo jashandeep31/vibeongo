@@ -11,7 +11,7 @@ import {
 import { users } from "./user.js";
 import { projects } from "./projects.js";
 
-export const githubRepos = pgTable(
+export const gitRepos = pgTable(
   "github_repos",
   {
     id: uuid().primaryKey().defaultRandom(),
@@ -43,12 +43,12 @@ export const githubRepos = pgTable(
   (t) => [unique().on(t.user_id, t.full_name)],
 );
 
-export const githubRepoMembers = pgTable(
+export const gitRepoMembers = pgTable(
   "github_repo_members",
   {
     id: uuid().primaryKey().defaultRandom(),
     repo_id: uuid()
-      .references(() => githubRepos.id, { onDelete: "cascade" })
+      .references(() => gitRepos.id, { onDelete: "cascade" })
       .notNull(),
 
     username: varchar().notNull(),

@@ -1,5 +1,5 @@
 import {
-  githubRepos,
+  gitRepos,
   instances,
   instanceRegions,
   projectDomainRouting,
@@ -24,7 +24,7 @@ export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
 };
 
 export type ProjectGithubRepo = Pick<
-  typeof githubRepos.$inferSelect,
+  typeof gitRepos.$inferSelect,
   "id" | "full_name"
 >;
 

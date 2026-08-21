@@ -5,7 +5,7 @@ import {
   db,
   eq,
   asc,
-  githubRepos,
+  gitRepos,
   projectGithubRepos,
   projectSessions,
   projectSessionTasks,
@@ -66,12 +66,9 @@ export const getRuntimeSessionConfig = catchAsync(
         .where(eq(projectSessionTasks.project_session_id, id)),
 
       db
-        .select({ repo: githubRepos })
+        .select({ repo: gitRepos })
         .from(projectGithubRepos)
-        .leftJoin(
-          githubRepos,
-          eq(githubRepos.id, projectGithubRepos.github_repo_id),
-        )
+        .leftJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
         .where(eq(projectGithubRepos.project_id, project.id)),
 
       db
@@ -83,7 +80,7 @@ export const getRuntimeSessionConfig = catchAsync(
 
     const validRepos = repos
       .map((r) => r.repo)
-      .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
+      .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
 
     const config = {
       ...resolvedProjectConfig,

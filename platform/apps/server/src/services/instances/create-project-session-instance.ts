@@ -2,7 +2,7 @@ import {
   and,
   db,
   eq,
-  githubRepos,
+  gitRepos,
   inArray,
   projectGithubRepos,
   projectDomainRouting,
@@ -87,17 +87,14 @@ export const createProjectSessionInstance = async ({
     if (input.tasks.length > 0) {
       const repoIds = [...new Set(input.tasks.map((task) => task.repoId))];
       const requestedRepos = await tx
-        .select({ repo: githubRepos })
+        .select({ repo: gitRepos })
         .from(projectGithubRepos)
-        .innerJoin(
-          githubRepos,
-          eq(githubRepos.id, projectGithubRepos.github_repo_id),
-        )
+        .innerJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
         .where(
           and(
             eq(projectGithubRepos.project_id, project.id),
-            eq(githubRepos.user_id, userId),
-            inArray(githubRepos.id, repoIds),
+            eq(gitRepos.user_id, userId),
+            inArray(gitRepos.id, repoIds),
           ),
         );
 

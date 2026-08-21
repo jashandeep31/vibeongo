@@ -4,7 +4,7 @@ import {
   eq,
   projects,
   sshKeys,
-  githubRepos,
+  gitRepos,
   db,
   projectGithubRepos,
   projectConfig,
@@ -44,12 +44,12 @@ export const udpateProjectConfigByProjectIdAndUserId = async (
 
   const validRepos = githubRepoIds.length
     ? await db
-        .select({ id: githubRepos.id })
-        .from(githubRepos)
+        .select({ id: gitRepos.id })
+        .from(gitRepos)
         .where(
           and(
-            eq(githubRepos.user_id, userId),
-            inArray(githubRepos.id, githubRepoIds),
+            eq(gitRepos.user_id, userId),
+            inArray(gitRepos.id, githubRepoIds),
           ),
         )
     : [];

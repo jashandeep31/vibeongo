@@ -4,7 +4,7 @@ import {
   eq,
   projects,
   sshKeys,
-  githubRepos,
+  gitRepos,
   db,
   projectDomainRouting,
   projectSshKeys,
@@ -26,11 +26,11 @@ export const createProjectWithConfigAndUserIdService = async (
 
   const validRepos = await db
     .select()
-    .from(githubRepos)
+    .from(gitRepos)
     .where(
       and(
-        eq(githubRepos.user_id, userId),
-        inArray(githubRepos.id, parsedData.githubRepoIds),
+        eq(gitRepos.user_id, userId),
+        inArray(gitRepos.id, parsedData.githubRepoIds),
       ),
     );
 

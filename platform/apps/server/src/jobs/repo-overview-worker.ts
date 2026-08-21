@@ -6,7 +6,7 @@ import {
 } from "./repo-overview.js";
 
 import { Sandbox } from "e2b";
-import { and, db, eq, githubRepos, gitRepoOverviewJobs } from "@repo/db";
+import { and, db, eq, gitRepos, gitRepoOverviewJobs } from "@repo/db";
 import { getGithubRepoToken } from "../github-app-functions/get-github-repo-readonly-token.js";
 import { env } from "../lib/env.js";
 import { string } from "zod";
@@ -19,8 +19,8 @@ export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
 
     const [repo] = await db
       .select()
-      .from(githubRepos)
-      .where(and(eq(githubRepos.id, jobData.repoId)));
+      .from(gitRepos)
+      .where(and(eq(gitRepos.id, jobData.repoId)));
 
     if (!repo) {
       await db.update(gitRepoOverviewJobs).set({
@@ -66,11 +66,11 @@ export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
 
     if (diff.stdout) {
       await db
-        .update(githubRepos)
+        .update(gitRepos)
         .set({
           overview: diff.stdout,
         })
-        .where(eq(githubRepos.id, jobData.repoId));
+        .where(eq(gitRepos.id, jobData.repoId));
     }
 
     await sandbox.kill();

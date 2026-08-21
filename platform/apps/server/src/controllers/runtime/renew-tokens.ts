@@ -7,7 +7,7 @@ import {
   projects,
   instances,
   db,
-  githubRepos,
+  gitRepos,
   projectGithubRepos,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
@@ -40,17 +40,14 @@ export const renewTokens = catchAsync(async (req: Request, res: Response) => {
   const { project } = sessionRow;
 
   const repos = await db
-    .select({ repo: githubRepos })
+    .select({ repo: gitRepos })
     .from(projectGithubRepos)
-    .leftJoin(
-      githubRepos,
-      eq(githubRepos.id, projectGithubRepos.github_repo_id),
-    )
+    .leftJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
     .where(eq(projectGithubRepos.project_id, project.id));
 
   const validRepos = repos
     .map((r) => r.repo)
-    .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
+    .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
 
   const config = {
     repos: await getConfigReadyGithubRepos(validRepos),

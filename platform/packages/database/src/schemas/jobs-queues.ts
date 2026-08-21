@@ -1,5 +1,5 @@
 import { pgEnum, pgTable, timestamp, uuid, varchar } from "drizzle-orm/pg-core";
-import { githubRepos } from "./github-repos.js";
+import { gitRepos } from "./github-repos.js";
 import { users } from "./user.js";
 
 export const gitRepoOverviewJobsStatusEnum = pgEnum(
@@ -9,7 +9,7 @@ export const gitRepoOverviewJobsStatusEnum = pgEnum(
 export const gitRepoOverviewJobs = pgTable("git_repo_overview_jobs", {
   id: uuid().primaryKey().defaultRandom(),
   repoId: uuid()
-    .references(() => githubRepos.id, { onDelete: "cascade" })
+    .references(() => gitRepos.id, { onDelete: "cascade" })
     .notNull(),
   userId: uuid()
     .references(() => users.id, { onDelete: "cascade" })

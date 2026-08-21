@@ -2,7 +2,7 @@ import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
-import { db, githubRepos, eq, and, projects, desc } from "@repo/db";
+import { db, gitRepos, eq, and, projects, desc } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
 import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
@@ -65,9 +65,9 @@ export const getUserGitRepos = catchAsync(
 
     const rows = await db
       .select()
-      .from(githubRepos)
-      .where(eq(githubRepos.user_id, user.id))
-      .orderBy(desc(githubRepos.created_at));
+      .from(gitRepos)
+      .where(eq(gitRepos.user_id, user.id))
+      .orderBy(desc(gitRepos.created_at));
 
     res.status(200).json({ data: rows });
   },
@@ -92,8 +92,8 @@ export const getGithubRepoById = catchAsync(
 
     const [githubRepo] = await db
       .select()
-      .from(githubRepos)
-      .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
+      .from(gitRepos)
+      .where(and(eq(gitRepos.id, id), eq(gitRepos.user_id, user.id)));
 
     if (!githubRepo) throw new AppError("Repo not found", 404);
     let issues: GithubRepoIssueResponse[] = [];
@@ -216,7 +216,7 @@ export const createGithubRepo = catchAsync(
       throw new AppError("You are not the owner of this repo", 400);
 
     const newRepo = await db
-      .insert(githubRepos)
+      .insert(gitRepos)
       .values({
         user_id: user.id,
         installation_id: result.installationId,
@@ -244,10 +244,8 @@ export const deleteGithubRepo = catchAsync(
     if (!id) throw new AppError("Repo id is required", 400);
 
     const deletedRepo = await db
-      .delete(githubRepos)
-      .where(
-        and(eq(githubRepos.id, id as string), eq(githubRepos.user_id, user.id)),
-      )
+      .delete(gitRepos)
+      .where(and(eq(gitRepos.id, id as string), eq(gitRepos.user_id, user.id)))
       .returning();
 
     if (deletedRepo.length === 0) {
@@ -302,7 +300,7 @@ export const updateGithubRepoById = catchAsync(
     }
 
     await db
-      .update(githubRepos)
+      .update(gitRepos)
       .set({
         ...(setup_script !== undefined ? { setup_script } : {}),
         ...(default_project_id !== undefined ? { default_project_id } : {}),
@@ -313,7 +311,7 @@ export const updateGithubRepoById = catchAsync(
           ? { auto_fix_issues_enabled }
           : {}),
       })
-      .where(and(eq(githubRepos.id, id), eq(githubRepos.user_id, user.id)));
+      .where(and(eq(gitRepos.id, id), eq(gitRepos.user_id, user.id)));
 
     res.status(200).json({
       message: "Successfully updated the github repo",

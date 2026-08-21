@@ -1,6 +1,6 @@
 import {
   db,
-  githubRepos,
+  gitRepos,
   eq,
   and,
   instanceRuntimeKind,
@@ -38,8 +38,8 @@ export const getUserReposListAgentTool = (userId: string): Tool =>
     execute: async () => {
       const repos = await db
         .select()
-        .from(githubRepos)
-        .where(eq(githubRepos.user_id, userId));
+        .from(gitRepos)
+        .where(eq(gitRepos.user_id, userId));
 
       const res = repos.map((r) => ({
         id: r.id,
@@ -184,9 +184,7 @@ export const getProjectConfigAgentTool = (userId: string): Tool =>
       type: "text",
       value: JSON.stringify(output),
     }),
-    execute: async ({
-      projectId,
-    }: z.infer<typeof getProjectConfigSchema>) => {
+    execute: async ({ projectId }: z.infer<typeof getProjectConfigSchema>) => {
       const [project] = await db
         .select()
         .from(projects)
@@ -253,7 +251,7 @@ export const addGithubRepositoryAgentTool = (userId: string): Tool =>
       }
 
       const [newRepo] = await db
-        .insert(githubRepos)
+        .insert(gitRepos)
         .values({
           user_id: userId,
           installation_id: result.installationId,
@@ -359,7 +357,9 @@ const readProjectFileSchema = z.object({
     .optional()
     .nullable()
     .default(null)
-    .describe("Specific file version to read; omit to read the current version"),
+    .describe(
+      "Specific file version to read; omit to read the current version",
+    ),
 });
 
 export const readProjectFileAgentTool = (userId: string): Tool =>
@@ -372,9 +372,8 @@ export const readProjectFileAgentTool = (userId: string): Tool =>
       projectId,
       version,
     }: z.infer<typeof readProjectFileSchema>) => {
-      const versionFilter = version !== null
-        ? [eq(projectFileData.version, version)]
-        : [];
+      const versionFilter =
+        version !== null ? [eq(projectFileData.version, version)] : [];
       const [row] = await db
         .select({ projectFileData })
         .from(projectFileData)
@@ -597,16 +596,13 @@ export const getProjectRepositoriesAgentTool = (userId: string): Tool =>
       projectId,
     }: z.infer<typeof getProjectRepositoriesSchema>) => {
       const rows = await db
-        .select({ repo: githubRepos })
+        .select({ repo: gitRepos })
         .from(projects)
         .leftJoin(
           projectGithubRepos,
           eq(projectGithubRepos.project_id, projects.id),
         )
-        .leftJoin(
-          githubRepos,
-          eq(githubRepos.id, projectGithubRepos.github_repo_id),
-        )
+        .leftJoin(gitRepos, eq(gitRepos.id, projectGithubRepos.github_repo_id))
         .where(
           and(
             eq(projects.user_id, userId),
