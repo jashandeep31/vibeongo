@@ -337,11 +337,21 @@ export const createForgejoRepoController = catchAsync(
     });
 
     if (newRepo.status === "ok") {
+      await db.insert(gitRepos).values({
+        type: "forgejo",
+        installation_id: newRepo.repo.id,
+        full_name: newRepo.repo.full_name,
+        repo_owner_username: user.username,
+        setup_script: ``,
+        public: !!newRepo.repo.private,
+        user_id: user.id,
+      });
       res.status(201).json({
         message: "Repo is created",
       });
       return;
     }
+
     throw new AppError(newRepo.error ?? "Failed to create a repo", 500);
   },
 );

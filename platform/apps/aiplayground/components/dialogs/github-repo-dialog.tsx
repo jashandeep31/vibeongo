@@ -13,7 +13,6 @@ import {
 } from "@repo/ui/components/dialog";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
-import { Tabs, TabsList, TabsTrigger } from "@repo/ui/components/tabs";
 import { Textarea } from "@repo/ui/components/textarea";
 import { createGithubRepoSchema } from "@repo/shared";
 import axios from "axios";
@@ -107,18 +106,36 @@ export function GithubRepoDialog({ children }: { children: ReactNode }) {
           </DialogHeader>
 
           <div className="grid gap-4 py-5">
-            <Tabs
-              value={provider}
-              onValueChange={(value) => {
-                setProvider(value as RepositoryProvider);
-                setError(null);
-              }}
+            <div
+              className="bg-muted/60 flex w-full border p-1 shadow-sm dark:border-white/10 dark:bg-white/5"
+              aria-label="Repository provider"
+              role="group"
             >
-              <TabsList className="w-full">
-                <TabsTrigger value="github">GitHub</TabsTrigger>
-                <TabsTrigger value="forgejo">Forgejo</TabsTrigger>
-              </TabsList>
-            </Tabs>
+              <button
+                type="button"
+                aria-pressed={provider === "github"}
+                onClick={() => {
+                  setProvider("github");
+                  setError(null);
+                }}
+                disabled={isPending}
+                className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-9 flex-1 items-center justify-center rounded-md px-4 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 aria-pressed:shadow-sm"
+              >
+                GitHub
+              </button>
+              <button
+                type="button"
+                aria-pressed={provider === "forgejo"}
+                onClick={() => {
+                  setProvider("forgejo");
+                  setError(null);
+                }}
+                disabled={isPending}
+                className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-9 flex-1 items-center justify-center rounded-md px-4 text-sm transition-colors disabled:pointer-events-none disabled:opacity-50 aria-pressed:shadow-sm"
+              >
+                Forgejo
+              </button>
+            </div>
 
             {provider === "github" ? (
               <>
