@@ -4,11 +4,7 @@ import { GithubRepoDialog } from "@/components/dialogs/github-repo-dialog";
 import { useGithubRepos } from "@repo/api-hooks";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@repo/ui/components/alert";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import {
   Card,
   CardContent,
@@ -156,6 +152,7 @@ export default function GithubReposView() {
         <div className="mt-6 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {filteredRepos.map((repo) => {
             const [, repoName = repo.full_name] = repo.full_name.split("/");
+            const isForgejo = repo.type === "forgejo";
 
             return (
               <Link
@@ -166,7 +163,11 @@ export default function GithubReposView() {
                 <Card className="group-hover:ring-foreground/20 h-full min-h-60 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">
                   <CardHeader className="grid-cols-[auto_1fr_auto] items-center gap-x-3">
                     <div className="bg-foreground text-background flex size-10 items-center justify-center rounded-xl shadow-sm">
-                      <Github className="size-5" />
+                      {isForgejo ? (
+                        <GitFork className="size-5" />
+                      ) : (
+                        <Github className="size-5" />
+                      )}
                     </div>
                     <div className="min-w-0">
                       <p className="text-muted-foreground truncate text-xs">
@@ -176,14 +177,24 @@ export default function GithubReposView() {
                         {repoName}
                       </CardTitle>
                     </div>
-                    <Badge variant="outline" className="gap-1 font-normal">
-                      {repo.public ? (
-                        <ShieldCheck className="size-3" />
-                      ) : (
-                        <LockKeyhole className="size-3" />
-                      )}
-                      {repo.public ? "Public" : "Private"}
-                    </Badge>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <Badge variant="secondary" className="gap-1 font-normal">
+                        {isForgejo ? (
+                          <GitFork className="size-3" />
+                        ) : (
+                          <Github className="size-3" />
+                        )}
+                        {isForgejo ? "Forgejo" : "GitHub"}
+                      </Badge>
+                      <Badge variant="outline" className="gap-1 font-normal">
+                        {repo.public ? (
+                          <ShieldCheck className="size-3" />
+                        ) : (
+                          <LockKeyhole className="size-3" />
+                        )}
+                        {repo.public ? "Public" : "Private"}
+                      </Badge>
+                    </div>
                   </CardHeader>
                   <CardContent className="flex-1">
                     {!repo.default_project_id ? (

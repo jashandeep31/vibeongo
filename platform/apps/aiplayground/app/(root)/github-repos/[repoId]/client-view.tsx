@@ -41,6 +41,7 @@ import {
   ChevronDown,
   CircleDot,
   GitBranch,
+  GitFork,
   Github,
   GitPullRequest,
   Loader2,
@@ -349,6 +350,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   const issuesQuery = useGithubRepoIssues(repoId);
   const pullRequestsQuery = useGithubRepoPullRequests(repoId);
   const repo = pullRequestsQuery.data ?? issuesQuery.data;
+  const isForgejo = repo?.type === "forgejo";
   const issues = issuesQuery.data?.issues ?? [];
   const pullRequests = pullRequestsQuery.data?.pull_requests ?? [];
   const openIssues = issues.filter((issue) => issue.state === "open").length;
@@ -426,7 +428,11 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="bg-foreground text-background flex size-11 items-center justify-center rounded-xl">
-                  <Github className="size-5" />
+                  {isForgejo ? (
+                    <GitFork className="size-5" />
+                  ) : (
+                    <Github className="size-5" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-sm">
@@ -436,6 +442,14 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                     {repo.full_name.split("/").at(-1)}
                   </h1>
                 </div>
+                <Badge variant="secondary" className="gap-1 font-normal">
+                  {isForgejo ? (
+                    <GitFork className="size-3" />
+                  ) : (
+                    <Github className="size-3" />
+                  )}
+                  {isForgejo ? "Forgejo" : "GitHub"}
+                </Badge>
                 <Badge variant="outline" className="gap-1 font-normal">
                   {repo.public ? (
                     <ShieldCheck className="size-3" />
