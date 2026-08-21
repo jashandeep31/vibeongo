@@ -59,6 +59,20 @@ export type GithubRepoWithPullRequests = GithubRepo & {
   pull_requests: GithubRepoPullRequest[];
 };
 
+export type CreateForgejoRepoInput = {
+  reponame: string;
+};
+
+export const createForgejoRepo =
+  (apiClient: AxiosInstance) =>
+  async (input: CreateForgejoRepoInput): Promise<{ message: string }> => {
+    const response = await apiClient.post(`/api/v1/git-repos/forgejo`, input, {
+      withCredentials: true,
+    });
+
+    return response.data;
+  };
+
 export const getGithubRepos =
   (apiClient: AxiosInstance) => async (): Promise<GithubRepo[]> => {
     const response = await apiClient.get(`/api/v1/git-repos/`, {
