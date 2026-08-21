@@ -12,7 +12,7 @@ import { users } from "./user.js";
 import { projects } from "./projects.js";
 
 export const gitRepos = pgTable(
-  "github_repos",
+  "git_repos",
   {
     id: uuid().primaryKey().defaultRandom(),
     user_id: uuid()
@@ -44,7 +44,7 @@ export const gitRepos = pgTable(
 );
 
 export const gitRepoMembers = pgTable(
-  "github_repo_members",
+  "git_repo_members",
   {
     id: uuid().primaryKey().defaultRandom(),
     repo_id: uuid()
