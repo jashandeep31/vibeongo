@@ -125,7 +125,41 @@ export function WorkspacePage() {
             />
           </GlassView>
 
-          <View style={styles.headerSpacer} />
+          {activeView === "projects" ? (
+            <Pressable
+              accessibilityLabel="New project"
+              accessibilityRole="button"
+              hitSlop={8}
+              onPress={() => router.push("/projects/create")}
+              style={({ pressed }) => [
+                styles.roundedControl,
+                pressed && styles.pressed,
+              ]}
+            >
+              <GlassView
+                glassEffectStyle="regular"
+                isInteractive
+                style={[
+                  styles.menuButton,
+                  !supportsNativeGlass && {
+                    backgroundColor: isDark ? "#242528" : "#FFFFFF",
+                    borderColor: isDark
+                      ? "rgba(255,255,255,0.10)"
+                      : "rgba(15,23,42,0.08)",
+                    borderWidth: 1,
+                  },
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "plus", android: "add" }}
+                  size={20}
+                  tintColor={theme.text}
+                />
+              </GlassView>
+            </Pressable>
+          ) : (
+            <View style={styles.headerSpacer} />
+          )}
         </View>
 
         <ScrollView

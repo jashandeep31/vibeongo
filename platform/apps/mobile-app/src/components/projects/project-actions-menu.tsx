@@ -16,6 +16,7 @@ type ProjectActionsMenuProps = {
   anchorY: number;
   onClose: () => void;
   onDelete: (project: Project) => void;
+  onEdit: (project: Project) => void;
   onNewSession: (project: Project) => void;
   project: Project | null;
 };
@@ -24,6 +25,7 @@ export function ProjectActionsMenu({
   anchorY,
   onClose,
   onDelete,
+  onEdit,
   onNewSession,
   project,
 }: ProjectActionsMenuProps) {
@@ -66,10 +68,11 @@ export function ProjectActionsMenu({
             }}
           />
           <MenuItem
-            disabled
             icon={{ ios: "pencil", android: "edit" }}
             label="Edit project"
-            subtitle="Coming soon"
+            onPress={() => {
+              if (project) onEdit(project);
+            }}
           />
           <View
             style={[

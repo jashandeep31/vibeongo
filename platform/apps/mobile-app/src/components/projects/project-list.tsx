@@ -296,6 +296,26 @@ export function ProjectList() {
         <ThemedText style={styles.emptyDescription} themeColor="textSecondary">
           Your projects and sessions will appear here.
         </ThemedText>
+        <Pressable
+          accessibilityRole="button"
+          onPress={() => router.push("/projects/create")}
+          style={({ pressed }) => [
+            styles.emptyCreateButton,
+            { backgroundColor: theme.text },
+            pressed && styles.pressed,
+          ]}
+        >
+          <SymbolView
+            name={{ ios: "plus", android: "add" }}
+            size={16}
+            tintColor={theme.background}
+          />
+          <ThemedText
+            style={[styles.emptyCreateLabel, { color: theme.background }]}
+          >
+            New project
+          </ThemedText>
+        </Pressable>
       </View>
     );
   }
@@ -673,6 +693,13 @@ export function ProjectList() {
           setProjectMenu(null);
           setProjectToDelete(project);
         }}
+        onEdit={(project) => {
+          setProjectMenu(null);
+          router.push({
+            pathname: "/projects/[projectId]/edit",
+            params: { projectId: project.id },
+          });
+        }}
         onNewSession={(project) => {
           setProjectMenu(null);
           setNewSessionProject(project);
@@ -763,6 +790,19 @@ const styles = StyleSheet.create({
   emptyDescription: {
     lineHeight: 22,
     textAlign: "center",
+  },
+  emptyCreateButton: {
+    alignItems: "center",
+    borderRadius: 11,
+    flexDirection: "row",
+    gap: 7,
+    marginTop: 12,
+    minHeight: 44,
+    paddingHorizontal: 16,
+  },
+  emptyCreateLabel: {
+    fontSize: 14,
+    fontWeight: "700",
   },
   emptyTitle: {
     fontSize: 18,
