@@ -2,6 +2,7 @@ import { users } from "@repo/db";
 import { forgejoAPIClient } from "./user-actions.js";
 import axios from "axios";
 import crypto from "crypto";
+import { AppError } from "../../lib/app-error.js";
 
 interface CreateForgejoRepo {
   username: string;
@@ -24,6 +25,29 @@ type CreateForgejoRepoResult =
   | {
       status: "ok";
       repo: ForgejoRepo;
+    }
+  | {
+      status: "error";
+      error: string;
+    };
+
+type ForkedForgejoRepo = {
+  owner: string;
+  name: string;
+  url: string;
+  full_name: string;
+};
+
+type ForgejoForkResponse = Omit<ForkedForgejoRepo, "owner"> & {
+  owner: {
+    login: string;
+  };
+};
+
+type ForkForgejoRepoResult =
+  | {
+      status: "ok";
+      repo: ForkedForgejoRepo;
     }
   | {
       status: "error";
@@ -113,4 +137,76 @@ export async function getForgejoRepoAccessToken({
     ],
   });
   return res.data.sha1 as string;
+}
+
+export async function forkRepoToForgejo({
+  sourceRepoOwnername,
+  sourceReponame,
+  forkFor: forkForUsername,
+  newReponame,
+  newRepoOrganizationName,
+}: {
+  sourceRepoOwnername: string;
+  sourceReponame: string;
+  forkFor: string;
+  newReponame?: string;
+  newRepoOrganizationName?: string;
+}): Promise<ForkForgejoRepoResult> {
+  try {
+    const tokenResponse = await forgejoAPIClient.post(
+      `/admin/users/${forkForUsername}/tokens`,
+      {
+        name: "temp-token",
+        scope: ["write:repository"],
+      },
+    );
+
+    const token = tokenResponse.data.sha1;
+    if (!token) throw new AppError("Failed to create token", 500);
+
+    const res = await forgejoAPIClient.post<ForgejoForkResponse>(
+      `/repos/${sourceRepoOwnername}/${sourceReponame}/forks`,
+      {
+        ...(newReponame ? { name: newReponame } : {}),
+        ...(newRepoOrganizationName
+          ? { organization: newRepoOrganizationName }
+          : {}),
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (res.status !== 202) {
+      return {
+        status: "error",
+        error: `Unexpected Forgejo response status: ${res.status}`,
+      };
+    }
+
+    return {
+      status: "ok",
+      repo: {
+        owner: res.data.owner.login,
+        name: res.data.name,
+        url: res.data.url,
+        full_name: res.data.full_name,
+      },
+    };
+  } catch (error: unknown) {
+    if (axios.isAxiosError<{ message?: string }>(error)) {
+      return {
+        status: "error",
+        error: error.response?.data?.message ?? error.message,
+      };
+    }
+
+    return {
+      status: "error",
+      error:
+        error instanceof Error ? error.message : "Failed to fork repository",
+    };
+  }
 }
