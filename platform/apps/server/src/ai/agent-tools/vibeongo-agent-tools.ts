@@ -16,6 +16,7 @@ import {
   asc,
   desc,
   userConfigs,
+  users,
 } from "@repo/db";
 import { z } from "zod";
 import { Tool, tool } from "ai";
@@ -29,11 +30,12 @@ import { createProjectSessionInstance } from "../../services/instances/create-pr
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
+import { createForgejoRepo } from "../../services/forgejo/repo-actions.js";
 
 export const getUserReposListAgentTool = (userId: string): Tool =>
   tool({
     description:
-      "Lists the current user's connected GitHub repositories. Each result includes the repository ID, full name, visibility, and saved setup script.",
+      "Lists all repositories connected to the current user's account, including GitHub and Forgejo repositories. Each result includes all saved repository fields except creation and update timestamps.",
     inputSchema: z.object({}),
     execute: async () => {
       const repos = await db
@@ -43,8 +45,16 @@ export const getUserReposListAgentTool = (userId: string): Tool =>
 
       const res = repos.map((r) => ({
         id: r.id,
+        user_id: r.user_id,
+        type: r.type,
+        default_project_id: r.default_project_id,
+        installation_id: r.installation_id,
+        auto_review_pull_requests_enabled: r.auto_review_pull_requests_enabled,
+        auto_fix_issues_enabled: r.auto_fix_issues_enabled,
+        overview: r.overview,
         public: r.public,
         full_name: r.full_name,
+        repo_owner_username: r.repo_owner_username,
         setup_script: r.setup_script,
       }));
 
@@ -263,6 +273,78 @@ export const addGithubRepositoryAgentTool = (userId: string): Tool =>
         .returning();
 
       return JSON.stringify(newRepo);
+    },
+  });
+
+const createForgejoRepositorySchema = z.object({
+  reponame: z
+    .string()
+    .trim()
+    .min(1)
+    .describe("Name of the private Forgejo repository to create"),
+  description: z
+    .string()
+    .trim()
+    .optional()
+    .describe("Optional description for the Forgejo repository"),
+});
+
+export const createForgejoRepositoryAgentTool = (userId: string): Tool =>
+  tool({
+    description:
+      "Creates a private Forgejo repository for the current user and adds it to their connected repositories. Use this only after the user has explicitly asked to create the repository and confirmed its name.",
+    inputSchema: createForgejoRepositorySchema,
+    execute: async ({
+      reponame,
+      description,
+    }: z.infer<typeof createForgejoRepositorySchema>) => {
+      const [user] = await db
+        .select({ username: users.username })
+        .from(users)
+        .where(eq(users.id, userId));
+
+      if (!user) {
+        return { status: "error", error: "User not found" };
+      }
+
+      const result = await createForgejoRepo({
+        username: user.username,
+        reponame,
+        ...(description !== undefined ? { description } : {}),
+      });
+
+      if (result.status === "error") {
+        return result;
+      }
+
+      try {
+        const [savedRepo] = await db
+          .insert(gitRepos)
+          .values({
+            type: "forgejo",
+            installation_id: result.repo.id,
+            full_name: result.repo.full_name,
+            repo_owner_username: user.username,
+            setup_script: "",
+            public: !result.repo.private,
+            user_id: userId,
+          })
+          .returning();
+
+        return {
+          status: "ok",
+          repo: savedRepo,
+          forgejo_url: result.repo.html_url,
+        };
+      } catch (error) {
+        return {
+          status: "error",
+          error:
+            error instanceof Error
+              ? error.message
+              : "Repository was created in Forgejo but could not be saved",
+        };
+      }
     },
   });
 
@@ -590,7 +672,7 @@ const getProjectRepositoriesSchema = z.object({
 export const getProjectRepositoriesAgentTool = (userId: string): Tool =>
   tool({
     description:
-      "Lists the GitHub repositories attached to a project, including each repository's ID, full name, setup script, and overview. Use this before planning project-session tasks so repository IDs and workspace paths are not invented.",
+      "Lists all GitHub and Forgejo repositories attached to a project. Each result includes all saved repository fields except creation and update timestamps. Use this before planning project-session tasks so repository IDs, types, and workspace paths are not invented.",
     inputSchema: getProjectRepositoriesSchema,
     execute: async ({
       projectId,
@@ -617,9 +699,18 @@ export const getProjectRepositoriesAgentTool = (userId: string): Tool =>
           ? [
               {
                 id: repo.id,
-                full_name: repo.full_name,
-                setup_script: repo.setup_script,
+                user_id: repo.user_id,
+                type: repo.type,
+                default_project_id: repo.default_project_id,
+                installation_id: repo.installation_id,
+                auto_review_pull_requests_enabled:
+                  repo.auto_review_pull_requests_enabled,
+                auto_fix_issues_enabled: repo.auto_fix_issues_enabled,
                 overview: repo.overview,
+                public: repo.public,
+                full_name: repo.full_name,
+                repo_owner_username: repo.repo_owner_username,
+                setup_script: repo.setup_script,
               },
             ]
           : [],
