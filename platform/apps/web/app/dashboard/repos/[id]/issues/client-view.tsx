@@ -212,7 +212,7 @@ const ClientView = ({ id }: { id: string }) => {
     );
   }
 
-  const issues = repo.issues ?? [];
+  const issues: GithubRepoIssue[] = repo.issues ?? [];
   const openIssues = issues.filter((issue) => issue.state === "open");
   const closedIssues = issues.length - openIssues.length;
 

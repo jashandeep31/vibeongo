@@ -1,5 +1,5 @@
 import { BACKEND_URL } from "@/lib/constants";
-import { githubRepos } from "@repo/db";
+import { gitRepos } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import axios from "axios";
 
@@ -27,7 +27,7 @@ export type GithubRepoIssue = {
   }[];
 };
 
-export type GithubRepo = typeof githubRepos.$inferSelect;
+export type GithubRepo = typeof gitRepos.$inferSelect;
 
 export type GithubRepoWithIssues = GithubRepo & {
   issues: GithubRepoIssue[];
