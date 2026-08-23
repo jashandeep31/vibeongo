@@ -86,3 +86,30 @@ export const instances = pgTable(
     ),
   ],
 );
+
+export const instanceSlotStatus = pgEnum("instance_slot_status", [
+  "queued",
+  "active",
+  "temrinated",
+  "expired",
+]);
+
+export const instanceSlotInstaceCategory = pgEnum(
+  "instance_slot_instace_category",
+  ["auto", "manual"],
+);
+export const instanceSlots = pgTable("instance_slots", {
+  id: uuid().defaultRandom().primaryKey(),
+
+  user_id: uuid()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+  session_id: uuid().references(() => projectSessions.id, {
+    onDelete: "cascade",
+  }),
+  category: instanceSlotInstaceCategory().notNull(),
+
+  status: instanceSlotStatus().notNull(),
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow(),
+});

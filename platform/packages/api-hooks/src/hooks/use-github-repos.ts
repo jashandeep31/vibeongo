@@ -9,6 +9,30 @@ export const useGithubRepos = () => {
   });
 };
 
+export const useCreateForgejoRepo = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.githubRepos.createForgejoRepo,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["github-repos"] }),
+  });
+};
+
+export const useDeleteGithubRepo = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.githubRepos.deleteGithubRepo,
+    onSuccess: (_, id) => {
+      queryClient.removeQueries({ queryKey: ["github-repo", id] });
+      return queryClient.invalidateQueries({ queryKey: ["github-repos"] });
+    },
+  });
+};
+
 export const useGithubRepoIssues = (id: string) => {
   const client = useApiClient();
   return useQuery({

@@ -87,7 +87,7 @@ export async function getGithubRepoById(
   id: string,
   include?: GithubRepoInclude,
 ): Promise<GithubRepo | GithubRepoWithIssues | GithubRepoWithPullRequests> {
-  const res = await axios.get(BACKEND_URL + `/api/v1/github-repos/${id}`, {
+  const res = await axios.get(BACKEND_URL + `/api/v1/git-repos/${id}`, {
     withCredentials: true,
     params: { include: include },
   });
@@ -97,21 +97,21 @@ export async function getGithubRepoById(
 export const createGithubRepo = async (
   data: z.infer<typeof createGithubRepoSchema>,
 ) => {
-  const res = await axios.post(BACKEND_URL + "/api/v1/github-repos/", data, {
+  const res = await axios.post(BACKEND_URL + "/api/v1/git-repos/", data, {
     withCredentials: true,
   });
   return res.data;
 };
 
 export const getGithubRepos = async (): Promise<GithubRepo[]> => {
-  const res = await axios.get(BACKEND_URL + "/api/v1/github-repos/", {
+  const res = await axios.get(BACKEND_URL + "/api/v1/git-repos/", {
     withCredentials: true,
   });
   return res.data.data;
 };
 
 export const deleteGithubRepo = async (id: string) => {
-  const res = await axios.delete(BACKEND_URL + `/api/v1/github-repos/${id}`, {
+  const res = await axios.delete(BACKEND_URL + `/api/v1/git-repos/${id}`, {
     withCredentials: true,
   });
   return res.data;
@@ -131,7 +131,7 @@ export const updateGithubRepoById = async ({
   auto_fix_issues_enabled: boolean;
 }) => {
   const res = await axios.post(
-    BACKEND_URL + `/api/v1/github-repos/${id}`,
+    BACKEND_URL + `/api/v1/git-repos/${id}`,
     {
       setup_script,
       default_project_id,
@@ -148,7 +148,7 @@ export const updateGithubRepoById = async ({
 
 export const scheduleGithubRepoOverview = async (id: string) => {
   const res = await axios.post(
-    BACKEND_URL + `/api/v1/github-repos/${id}/schedule-overview`,
+    BACKEND_URL + `/api/v1/git-repos/${id}/schedule-overview`,
     {},
     {
       withCredentials: true,
@@ -166,7 +166,7 @@ export const generateFixForIssue = async (
   projectId: string;
 }> => {
   const res = await axios.post(
-    BACKEND_URL + `/api/v1/github-repos/${id}/issue/${issueNumber}`,
+    BACKEND_URL + `/api/v1/git-repos/${id}/issue/${issueNumber}`,
     {},
     {
       withCredentials: true,
@@ -184,7 +184,7 @@ export const generateFixForPullRequest = async (
 }> => {
   const res = await axios.post(
     BACKEND_URL +
-      `/api/v1/github-repos/${id}/pull-request/${pullRequestNumber}`,
+      `/api/v1/git-repos/${id}/pull-request/${pullRequestNumber}`,
     {},
     {
       withCredentials: true,

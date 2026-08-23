@@ -1,6 +1,6 @@
 import { PullRequestOpenedEvent } from "@octokit/webhooks-types";
 import { WebhookHandler } from "../types.js";
-import { db, eq, githubRepos } from "@repo/db";
+import { db, eq, gitRepos } from "@repo/db";
 import { pullRequestOpenedHandler } from "../../../services/github/pull-request-handler.js";
 
 export const pullRequestOpenedWebhookHandler = async (
@@ -16,8 +16,8 @@ export const pullRequestOpenedWebhookHandler = async (
 
   const [githubRepo] = await db
     .select()
-    .from(githubRepos)
-    .where(eq(githubRepos.full_name, full_name));
+    .from(gitRepos)
+    .where(eq(gitRepos.full_name, full_name));
 
   if (!githubRepo) return;
 

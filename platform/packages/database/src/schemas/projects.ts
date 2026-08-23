@@ -12,7 +12,7 @@ import {
 import { users } from "./user.js";
 import { instanceTypes } from "./instances-metadata.js";
 import { sshKeys } from "./ssh-key.js";
-import { githubRepos } from "./github-repos.js";
+import { gitRepos } from "./git-repos.js";
 import { sandboxTypes } from "./sandbox-metadata.js";
 
 export const projects = pgTable("projects", {
@@ -109,7 +109,7 @@ export const projectSshKeys = pgTable("project_ssh_keys", {
   updated_at: timestamp().defaultNow(),
 });
 
-export const projectGithubRepos = pgTable("project_github_repos", {
+export const projectGitRepos = pgTable("project_git_repos", {
   id: uuid("id").defaultRandom().primaryKey(),
 
   project_id: uuid()
@@ -119,7 +119,7 @@ export const projectGithubRepos = pgTable("project_github_repos", {
     .notNull(),
 
   github_repo_id: uuid()
-    .references(() => githubRepos.id, {
+    .references(() => gitRepos.id, {
       onDelete: "cascade",
     })
     .notNull(),

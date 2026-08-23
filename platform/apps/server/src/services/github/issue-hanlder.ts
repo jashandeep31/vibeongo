@@ -2,7 +2,7 @@ import {
   and,
   db,
   eq,
-  githubRepos,
+  gitRepos,
   projects,
   projectSessionsCategory,
   users,
@@ -30,19 +30,17 @@ export const issueRequestHandler = async ({
 }: issueHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
   const [githubRepoWithUserAndProject] = await db
     .select({
-      repo: githubRepos,
+      repo: gitRepos,
       user: users,
       project: projects,
     })
-    .from(githubRepos)
-    .innerJoin(users, eq(githubRepos.user_id, users.id))
-    .leftJoin(projects, eq(githubRepos.default_project_id, projects.id))
+    .from(gitRepos)
+    .innerJoin(users, eq(gitRepos.user_id, users.id))
+    .leftJoin(projects, eq(gitRepos.default_project_id, projects.id))
     .where(
       and(
-        eq(githubRepos.id, gitRepoId),
-        requestedByUserId
-          ? eq(githubRepos.user_id, requestedByUserId)
-          : undefined,
+        eq(gitRepos.id, gitRepoId),
+        requestedByUserId ? eq(gitRepos.user_id, requestedByUserId) : undefined,
       ),
     );
 

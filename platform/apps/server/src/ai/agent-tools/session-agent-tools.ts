@@ -2,9 +2,9 @@ import {
   and,
   db,
   eq,
-  githubRepos,
+  gitRepos,
   instanceRuntimeKind,
-  projectGithubRepos,
+  projectGitRepos,
   projects,
 } from "@repo/db";
 import { createInstanceSchema } from "@repo/shared";
@@ -25,16 +25,10 @@ export const getProjectGithubRepos = (
     inputSchema: getProjectGithubReposSchema,
     execute: async (rawData: unknown) => {
       const project = await db
-        .select({ repo: githubRepos })
+        .select({ repo: gitRepos })
         .from(projects)
-        .leftJoin(
-          projectGithubRepos,
-          eq(projectGithubRepos.project_id, projects.id),
-        )
-        .leftJoin(
-          githubRepos,
-          eq(githubRepos.id, projectGithubRepos.github_repo_id),
-        )
+        .leftJoin(projectGitRepos, eq(projectGitRepos.project_id, projects.id))
+        .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
         .where(and(eq(projects.user_id, userId), eq(projects.id, projectId)));
 
       if (!project || project.length === 0)

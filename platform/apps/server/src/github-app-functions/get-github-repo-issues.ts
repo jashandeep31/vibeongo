@@ -1,4 +1,4 @@
-import { githubRepos } from "@repo/db";
+import { gitRepos } from "@repo/db";
 import { Endpoints } from "@octokit/types";
 import { octokitApp } from "../webhooks/github/index.js";
 
@@ -6,7 +6,7 @@ export type GithubRepoIssue =
   Endpoints["GET /repos/{owner}/{repo}/issues"]["response"]["data"][number];
 
 export const getGithubRepoIssues = async (
-  repo: typeof githubRepos.$inferSelect,
+  repo: typeof gitRepos.$inferSelect,
 ): Promise<GithubRepoIssue[]> => {
   const installationOctokit = await octokitApp.getInstallationOctokit(
     repo.installation_id,

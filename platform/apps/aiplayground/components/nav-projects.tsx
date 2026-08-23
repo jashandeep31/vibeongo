@@ -1,15 +1,17 @@
 "use client";
 
-import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
-import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
-import { useTerminateInstance } from "@repo/api-hooks";
 import {
-  useDeleteProject,
+  formatTimeRemaining,
+  InstanceControlsDropdown,
+  ProjectActionsDropdown,
+  SessionActionsDropdown,
+} from "@/components/project-action-menus";
+import {
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
 } from "@repo/api-hooks";
@@ -36,34 +38,19 @@ import {
 } from "@repo/ui/components/sidebar-v2";
 import { Button } from "@repo/ui/components/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
-import {
-  Archive,
-  Clock3,
   ChevronRight,
-  Ellipsis,
-  FileCode2,
   Folder,
   Loader2,
-  Pencil,
   Play,
   Plus,
   SquareDashedMousePointer,
   Timer,
-  Trash2,
   BotMessageSquare,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { instances, projects, projectSessions } from "@repo/db";
-import axios from "axios";
+import { projects, projectSessions } from "@repo/db";
 import { toast } from "sonner";
 
 type ProjectSessionNavItem = Pick<
@@ -86,25 +73,6 @@ type ProjectSessionNavItemProps = {
   onArchive: (sessionId: string) => void;
   onNavigate: () => void;
 };
-
-function formatTimeRemaining(terminatesAt: string, now: number) {
-  const expiresAt = new Date(terminatesAt).getTime();
-  if (Number.isNaN(expiresAt)) return "N/A";
-
-  const remainingMs = expiresAt - now;
-  if (remainingMs <= 0) return "Expired";
-
-  const totalSeconds = Math.ceil(remainingMs / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
 
 function RunningSessionButtonContent({
   sessionName,
@@ -208,92 +176,6 @@ function getRepoDirectory(fullName: string) {
   return `/home/ubuntu/code/${repoName}`;
 }
 
-function InstanceControls({
-  instance,
-  projectId,
-  sessionId,
-}: {
-  instance: typeof instances.$inferSelect;
-  projectId: string;
-  sessionId: string;
-}) {
-  const [now, setNow] = useState(() => Date.now());
-  const [isOpen, setIsOpen] = useState(false);
-  const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
-    useState(false);
-  const terminateInstance = useTerminateInstance(projectId, sessionId);
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(interval);
-  }, [isOpen]);
-
-  return (
-    <>
-      <DropdownMenu
-        open={isOpen}
-        onOpenChange={(open) => {
-          setIsOpen(open);
-          if (open) setNow(Date.now());
-        }}
-      >
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-xs"
-            aria-label="Instance controls"
-            title="Instance controls"
-            disabled={terminateInstance.isPending}
-          >
-            {terminateInstance.isPending ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Ellipsis />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-56">
-          <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
-          <div className="flex items-center gap-2 px-1.5 py-2">
-            <Clock3 className="text-muted-foreground size-4 shrink-0" />
-            <div className="min-w-0">
-              <p className="text-muted-foreground text-xs">Terminates in</p>
-              <p className="font-mono text-sm font-medium tabular-nums">
-                {/*  NOTE: fix this later by checking what is function i doing its ai generated */}
-                {formatTimeRemaining(String(instance.terminates_at), now)}
-              </p>
-            </div>
-          </div>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            disabled={terminateInstance.isPending}
-            onSelect={() => setIsTerminationConfirmationOpen(true)}
-          >
-            <Trash2 />
-            Terminate now
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <ConfirmationDialog
-        open={isTerminationConfirmationOpen}
-        onOpenChange={setIsTerminationConfirmationOpen}
-        title="Terminate this instance?"
-        description="The running session instance will be terminated immediately. Any unsaved work on the instance may be lost."
-        confirmText="Terminate now"
-        isDestructive
-        onConfirm={() => {
-          setIsTerminationConfirmationOpen(false);
-          terminateInstance.mutate(instance.id);
-        }}
-      />
-    </>
-  );
-}
-
 function ProjectSessionNavItem({
   session,
   isResumePending,
@@ -306,8 +188,6 @@ function ProjectSessionNavItem({
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
-  const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
-    useState(false);
   const sessionEntry = useSessionsStore((store) =>
     store.sessions.find((entry) => entry.session.id === session.id),
   );
@@ -388,10 +268,12 @@ function ProjectSessionNavItem({
                   </button>
                 </SidebarMenuSubButton>
               </CollapsibleTrigger>
-              <InstanceControls
+              <InstanceControlsDropdown
                 instance={instance}
                 projectId={session.projectId}
                 sessionId={session.id}
+                sessionName={session.name}
+                triggerSize="icon-xs"
               />
             </div>
 
@@ -505,10 +387,12 @@ function ProjectSessionNavItem({
             ) : null}
           </SidebarMenuSubButton>
           {instance ? (
-            <InstanceControls
+            <InstanceControlsDropdown
               instance={instance}
               projectId={session.projectId}
               sessionId={session.id}
+              sessionName={session.name}
+              triggerSize="icon-xs"
             />
           ) : null}
           {!isInstancePending && !isInstanceError && !instance ? (
@@ -524,47 +408,16 @@ function ProjectSessionNavItem({
               >
                 <Play />
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    aria-label={`More options for ${session.name}`}
-                    title="Session options"
-                    disabled={isArchivePending}
-                  >
-                    {isArchivePending ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Ellipsis />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => setIsArchiveConfirmationOpen(true)}
-                  >
-                    <Archive />
-                    Archive
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <SessionActionsDropdown
+                sessionName={session.name}
+                isArchivePending={isArchivePending}
+                onArchive={() => onArchive(session.id)}
+                triggerSize="icon-xs"
+              />
             </>
           ) : null}
         </div>
       </SidebarMenuSubItem>
-      <ConfirmationDialog
-        open={isArchiveConfirmationOpen}
-        onOpenChange={setIsArchiveConfirmationOpen}
-        title="Archive session?"
-        description={`Archive "${session.name}"? It will be hidden from your active sessions list.`}
-        confirmText="Archive"
-        onConfirm={() => {
-          setIsArchiveConfirmationOpen(false);
-          onArchive(session.id);
-        }}
-      />
     </>
   );
 }
@@ -572,8 +425,6 @@ function ProjectSessionNavItem({
 export function NavProjects({ projects }: { projects: Project[] }) {
   const params = useParams<{ projectId?: string }>();
   const activeProjectId = params.projectId;
-  const router = useRouter();
-  const deleteProject = useDeleteProject();
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
   const sessions = useSessionsStore((store) => store.sessions);
@@ -587,7 +438,6 @@ export function NavProjects({ projects }: { projects: Project[] }) {
   const [archivingSessionId, setArchivingSessionId] = useState<string | null>(
     null,
   );
-  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   useEffect(() => {
     const projectIdsToOpen = sessions
@@ -635,34 +485,6 @@ export function NavProjects({ projects }: { projects: Project[] }) {
     );
   };
 
-  const handleDeleteProject = () => {
-    if (!projectToDelete) return;
-
-    const project = projectToDelete;
-    setProjectToDelete(null);
-    deleteProject.mutate(project.id, {
-      onSuccess: () => {
-        setOpenProjectIds((current) => {
-          const next = new Set(current);
-          next.delete(project.id);
-          return next;
-        });
-        if (activeProjectId === project.id) router.push("/");
-        toast.success("Project deleted");
-      },
-      onError: (error) => {
-        const responseMessage = axios.isAxiosError<{ message?: unknown }>(error)
-          ? error.response?.data?.message
-          : undefined;
-        toast.error(
-          typeof responseMessage === "string"
-            ? responseMessage
-            : "Failed to delete project",
-        );
-      },
-    });
-  };
-
   return (
     <>
       <SidebarGroup className="px-2 py-3">
@@ -701,60 +523,18 @@ export function NavProjects({ projects }: { projects: Project[] }) {
                         <ChevronRight className="ml-auto transition-transform group-data-[state=open]/project:rotate-90" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          className="shrink-0"
-                          aria-label={`Actions for ${project.name}`}
-                          title={`Actions for ${project.name}`}
-                        >
-                          <Ellipsis />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={`/projects/${project.id}/edit`}
-                            onClick={closeMobileSidebar}
-                          >
-                            <Pencil />
-                            Edit project
-                          </Link>
-                        </DropdownMenuItem>
-                        <DropdownMenuItem asChild>
-                          <Link
-                            href={`/projects/${project.id}/env`}
-                            onClick={closeMobileSidebar}
-                          >
-                            <FileCode2 />
-                            Edit environment
-                          </Link>
-                        </DropdownMenuItem>
-                        <CreateProjectSessionDialog
-                          projectId={project.id}
-                          projectName={project.name}
-                        >
-                          <DropdownMenuItem
-                            onSelect={(event) => event.preventDefault()}
-                          >
-                            <Plus />
-                            New session
-                          </DropdownMenuItem>
-                        </CreateProjectSessionDialog>
-                        <DropdownMenuSeparator />
-                        <DropdownMenuItem
-                          variant="destructive"
-                          disabled={deleteProject.isPending}
-                          onSelect={() => setProjectToDelete(project)}
-                        >
-                          <Trash2 />
-                          Delete
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                    <ProjectActionsDropdown
+                      projectId={project.id}
+                      projectName={project.name}
+                      onNavigate={closeMobileSidebar}
+                      onDeleted={() => {
+                        setOpenProjectIds((current) => {
+                          const next = new Set(current);
+                          next.delete(project.id);
+                          return next;
+                        });
+                      }}
+                    />
                   </div>
 
                   <CollapsibleContent>
@@ -784,23 +564,6 @@ export function NavProjects({ projects }: { projects: Project[] }) {
           if (!open) setRuntimeDialogSessionId(null);
         }}
         onSelect={handleRuntimeSelect}
-      />
-      <ConfirmationDialog
-        open={projectToDelete !== null}
-        onOpenChange={(open) => {
-          if (!open) setProjectToDelete(null);
-        }}
-        title="Delete project?"
-        description={
-          projectToDelete
-            ? `Delete "${projectToDelete.name}"? This cannot be undone.`
-            : "This cannot be undone."
-        }
-        confirmText="Delete project"
-        isDestructive
-        lockSeconds={3}
-        requiredConfirmationText="delete"
-        onConfirm={handleDeleteProject}
       />
     </>
   );

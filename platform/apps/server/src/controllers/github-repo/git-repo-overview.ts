@@ -2,7 +2,7 @@ import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
-import { and, db, eq, githubRepos, gitRepoOverviewJobs } from "@repo/db";
+import { and, db, eq, gitRepos, gitRepoOverviewJobs } from "@repo/db";
 import { addGitRepoOverviewJob } from "../../jobs/repo-overview.js";
 
 export const createGithubRepoOverviewWithAI = catchAsync(
@@ -17,9 +17,9 @@ export const createGithubRepoOverviewWithAI = catchAsync(
       .parse(req.params);
 
     const [repo] = await db
-      .select({ id: githubRepos.id })
-      .from(githubRepos)
-      .where(and(eq(githubRepos.id, repoId), eq(githubRepos.user_id, user.id)));
+      .select({ id: gitRepos.id })
+      .from(gitRepos)
+      .where(and(eq(gitRepos.id, repoId), eq(gitRepos.user_id, user.id)));
 
     if (!repo) throw new AppError("GitHub repository not found", 404);
 

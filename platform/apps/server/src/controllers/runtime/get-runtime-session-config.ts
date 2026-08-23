@@ -5,8 +5,8 @@ import {
   db,
   eq,
   asc,
-  githubRepos,
-  projectGithubRepos,
+  gitRepos,
+  projectGitRepos,
   projectSessions,
   projectSessionTasks,
   projectSshKeys,
@@ -18,7 +18,7 @@ import {
   instanceOpenRouterKeys,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
-import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
+import { getConfigReadyGitRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 import { env } from "../../lib/env.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
@@ -66,13 +66,10 @@ export const getRuntimeSessionConfig = catchAsync(
         .where(eq(projectSessionTasks.project_session_id, id)),
 
       db
-        .select({ repo: githubRepos })
-        .from(projectGithubRepos)
-        .leftJoin(
-          githubRepos,
-          eq(githubRepos.id, projectGithubRepos.github_repo_id),
-        )
-        .where(eq(projectGithubRepos.project_id, project.id)),
+        .select({ repo: gitRepos })
+        .from(projectGitRepos)
+        .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
+        .where(eq(projectGitRepos.project_id, project.id)),
 
       db
         .select({ value: sshKeys.value })
@@ -83,7 +80,7 @@ export const getRuntimeSessionConfig = catchAsync(
 
     const validRepos = repos
       .map((r) => r.repo)
-      .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
+      .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
 
     const config = {
       ...resolvedProjectConfig,
@@ -97,7 +94,7 @@ export const getRuntimeSessionConfig = catchAsync(
       initialScript: project.initial_script,
       finalScript: project.final_script,
       devScript: project.dev_script,
-      repos: await getConfigReadyGithubRepos(validRepos),
+      repos: await getConfigReadyGitRepos(validRepos),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
         id: t.id,
@@ -206,10 +203,10 @@ async function appendOpenRouterKeysToOpencodeConfig(
 
   opencodePackage.config.auth_json = {
     ...authJson,
-    openrouter: {
-      type: "api",
-      key: decryptedKey,
-    },
+    // openrouter: {
+    //   type: "api",
+    //   key: decryptedKey,
+    // },
   };
 
   return config;

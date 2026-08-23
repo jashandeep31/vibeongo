@@ -3,6 +3,7 @@
 import { GithubAutomationSettingsDialog } from "@/components/dialogs/github-automation-settings-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
+  useDeleteGithubRepo,
   useGenerateFixForIssue,
   useGenerateReviewForPullRequest,
   useGithubRepoIssues,
@@ -40,6 +41,7 @@ import {
   ChevronDown,
   CircleDot,
   GitBranch,
+  GitFork,
   Github,
   GitPullRequest,
   Loader2,
@@ -49,10 +51,12 @@ import {
   Settings,
   ShieldCheck,
   Sparkles,
+  Trash2,
   TriangleAlert,
   WandSparkles,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -336,14 +340,17 @@ function ResourceEmpty({ type }: { type: "pull requests" | "issues" }) {
 }
 
 export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
+  const router = useRouter();
   const [showOverview, setShowOverview] = useState(false);
   const [activeResource, setActiveResource] = useState<
     "pull-requests" | "issues"
   >("pull-requests");
   const scheduleOverview = useScheduleGithubRepoOverview();
+  const deleteRepo = useDeleteGithubRepo();
   const issuesQuery = useGithubRepoIssues(repoId);
   const pullRequestsQuery = useGithubRepoPullRequests(repoId);
   const repo = pullRequestsQuery.data ?? issuesQuery.data;
+  const isForgejo = repo?.type === "forgejo";
   const issues = issuesQuery.data?.issues ?? [];
   const pullRequests = pullRequestsQuery.data?.pull_requests ?? [];
   const openIssues = issues.filter((issue) => issue.state === "open").length;
@@ -367,6 +374,21 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? (error.response?.data?.message ?? "Failed to queue overview")
         : "Failed to queue overview";
+      toast.error(message, { id: toastId });
+    }
+  };
+
+  const handleDeleteRepo = async () => {
+    const toastId = toast.loading("Deleting repository...");
+
+    try {
+      await deleteRepo.mutateAsync(repoId);
+      toast.success("Repository deleted", { id: toastId });
+      router.push("/github-repos");
+    } catch (error: unknown) {
+      const message = axios.isAxiosError<{ message?: string }>(error)
+        ? (error.response?.data?.message ?? "Failed to delete repository")
+        : "Failed to delete repository";
       toast.error(message, { id: toastId });
     }
   };
@@ -406,7 +428,11 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             <>
               <div className="flex flex-wrap items-center gap-3">
                 <div className="bg-foreground text-background flex size-11 items-center justify-center rounded-xl">
-                  <Github className="size-5" />
+                  {isForgejo ? (
+                    <GitFork className="size-5" />
+                  ) : (
+                    <Github className="size-5" />
+                  )}
                 </div>
                 <div className="min-w-0">
                   <p className="text-muted-foreground text-sm">
@@ -416,6 +442,14 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                     {repo.full_name.split("/").at(-1)}
                   </h1>
                 </div>
+                <Badge variant="secondary" className="gap-1 font-normal">
+                  {isForgejo ? (
+                    <GitFork className="size-3" />
+                  ) : (
+                    <Github className="size-3" />
+                  )}
+                  {isForgejo ? "Forgejo" : "GitHub"}
+                </Badge>
                 <Badge variant="outline" className="gap-1 font-normal">
                   {repo.public ? (
                     <ShieldCheck className="size-3" />
@@ -488,6 +522,26 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                 <Settings /> Settings
               </Button>
             </GithubAutomationSettingsDialog>
+            <ConfirmationDialog
+              title="Delete repository"
+              description="Remove this repository from VibeOngo? The repository itself will not be deleted from its Git provider."
+              confirmText="Delete"
+              isDestructive
+              onConfirm={() => void handleDeleteRepo()}
+            >
+              <Button
+                variant="outline"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive rounded-xl"
+                disabled={deleteRepo.isPending}
+              >
+                {deleteRepo.isPending ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Trash2 />
+                )}
+                Delete
+              </Button>
+            </ConfirmationDialog>
             <Button variant="outline" className="rounded-xl" asChild>
               <a
                 href={`https://github.com/${repo.full_name}`}

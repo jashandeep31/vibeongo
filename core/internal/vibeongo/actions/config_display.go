@@ -16,7 +16,10 @@ func FormatConfigSummary(cfg config.Config) string {
 		b.WriteString(repo.FullName)
 		b.WriteString(" token: ")
 		b.WriteString(repo.AccessToken)
-		b.WriteString("\nthis x-access-token is valid for 1 hour so use like: git clone https://x-access-token:YOUR_TOKEN@github.com/owner/repo.git")
+		b.WriteString("\nclone URL: ")
+		b.WriteString(repo.HTTPURL)
+		b.WriteString(" username: ")
+		b.WriteString(repo.GitUsername)
 	}
 
 	return b.String()

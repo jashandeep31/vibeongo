@@ -55,6 +55,8 @@ const envSchema = z.object({
   VERCEL_TOKEN: z.string(),
   OPENROUTER_MANAGEMENT_KEY: z.string(),
   OPENROUTER_API_ENDPOINT: z.string().default("https://openrouter.ai/api/v1"),
+  FORGEJO_TOKEN: z.string(),
+  FORGEJO_URL: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);

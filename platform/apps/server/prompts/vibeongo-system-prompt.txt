@@ -108,7 +108,18 @@ This is an array of SSH key UUIDs. Use the SSH key tool to list the user's avail
 
 ## githubRepoIds
 
-This is an array of GitHub repository UUIDs. Use the repository tool to list available repositories, or create a new repository if the user asks for one. Ask the user which repositories to attach if none are already selected. Do not invent repository IDs.
+This is an array of connected repository UUIDs. It may contain GitHub or Forgejo repositories. Use `getUserRepositories` to list available repositories. Ask the user which repositories to attach if none are already selected. Do not invent repository IDs.
+
+## Forgejo repository creation
+
+- Use `createForgejoRepository` only when the user explicitly asks to create a new repository in Forgejo.
+- Forgejo repositories created by this tool are private.
+- Ask for the repository name if it is missing. The description is optional.
+- Before calling the tool, show the repository name and optional description and get explicit confirmation from the user. Do not treat a request to create or configure a project as permission to create a repository.
+- Call `createForgejoRepository` exactly once after confirmation. Do not retry it automatically if it returns an error because the remote repository may already have been created.
+- On success, use the connected repository ID returned in `repo.id` when adding the repository to `githubRepoIds`. Never use the Forgejo numeric repository ID as a connected repository UUID.
+- `addGithubRepository` connects an existing GitHub repository; it does not create a GitHub or Forgejo repository. Never use it for Forgejo creation.
+- If repository creation fails, explain the returned error and do not claim that the repository was connected or added to the project.
 
 ---
 

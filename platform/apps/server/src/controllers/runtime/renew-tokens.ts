@@ -7,11 +7,11 @@ import {
   projects,
   instances,
   db,
-  githubRepos,
-  projectGithubRepos,
+  gitRepos,
+  projectGitRepos,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
-import { getConfigReadyGithubRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
+import { getConfigReadyGitRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
 
 // sending the renewed tokens
 export const renewTokens = catchAsync(async (req: Request, res: Response) => {
@@ -40,20 +40,17 @@ export const renewTokens = catchAsync(async (req: Request, res: Response) => {
   const { project } = sessionRow;
 
   const repos = await db
-    .select({ repo: githubRepos })
-    .from(projectGithubRepos)
-    .leftJoin(
-      githubRepos,
-      eq(githubRepos.id, projectGithubRepos.github_repo_id),
-    )
-    .where(eq(projectGithubRepos.project_id, project.id));
+    .select({ repo: gitRepos })
+    .from(projectGitRepos)
+    .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
+    .where(eq(projectGitRepos.project_id, project.id));
 
   const validRepos = repos
     .map((r) => r.repo)
-    .filter((r): r is typeof githubRepos.$inferSelect => r !== null);
+    .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
 
   const config = {
-    repos: await getConfigReadyGithubRepos(validRepos),
+    repos: await getConfigReadyGitRepos(validRepos),
   };
 
   res.status(200).json({ data: config });

@@ -7,12 +7,15 @@ import {
   boolean,
   integer,
   text,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { projects } from "./projects.js";
 
-export const githubRepos = pgTable(
-  "github_repos",
+export const gitRepoType = pgEnum("git_repo_type", ["github", "forgejo"]);
+
+export const gitRepos = pgTable(
+  "git_repos",
   {
     id: uuid().primaryKey().defaultRandom(),
     user_id: uuid()
@@ -20,6 +23,8 @@ export const githubRepos = pgTable(
         onDelete: "cascade",
       })
       .notNull(),
+
+    type: gitRepoType().default("github"),
 
     default_project_id: uuid()
       .references(() => projects.id, {
@@ -43,12 +48,12 @@ export const githubRepos = pgTable(
   (t) => [unique().on(t.user_id, t.full_name)],
 );
 
-export const githubRepoMembers = pgTable(
-  "github_repo_members",
+export const gitRepoMembers = pgTable(
+  "git_repo_members",
   {
     id: uuid().primaryKey().defaultRandom(),
     repo_id: uuid()
-      .references(() => githubRepos.id, { onDelete: "cascade" })
+      .references(() => gitRepos.id, { onDelete: "cascade" })
       .notNull(),
 
     username: varchar().notNull(),
