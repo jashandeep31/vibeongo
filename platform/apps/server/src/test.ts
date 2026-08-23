@@ -14,6 +14,21 @@ dotenv.config();
 
 export default async function test() {
   console.log("server in running");
+  // const allUsers = await db.select().from(users);
+  // console.log(allUsers);
+  // const [user] = await db
+  //   .select()
+  //   .from(users)
+  //   .where(eq(users.username, "vibeongo"));
+  //
+  // console.log(user);
+  // if (user) {
+  //   console.log(user.username);
+  //   // await createForgejoUserAccount(user);
+  //   const res = await addDemoProjectsToUserProfile(user);
+  //   console.log(res);
+  // }
+  //
   // const userRows = await db.select().from(users);
   // for (const user of userRows) {
   //   const isusercreatd = (await getAllForgejoUsers("jashandeep31")).length > 0;
