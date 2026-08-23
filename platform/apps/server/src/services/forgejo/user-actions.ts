@@ -42,6 +42,36 @@ export async function createForgejoUserAccount(
   }
 }
 
+export async function getForgejoUser(
+  username: string,
+): Promise<unknown | null> {
+  try {
+    const res = await forgejoAPIClient.get(
+      `/users/${encodeURIComponent(username)}`,
+    );
+    return res.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return null;
+    }
+    throw error;
+  }
+}
+
+export async function ensureForgejoUserAccount(
+  user: typeof users.$inferSelect,
+): Promise<void> {
+  if (await getForgejoUser(user.username)) return;
+
+  try {
+    await createForgejoUserAccount(user);
+  } catch (error: unknown) {
+    // A retry or concurrent job may have created the account after our check.
+    if (await getForgejoUser(user.username)) return;
+    throw error;
+  }
+}
+
 export async function getAllForgejoUsers(login_name?: string) {
   const res = await forgejoAPIClient.get("/admin/users", {
     params: {

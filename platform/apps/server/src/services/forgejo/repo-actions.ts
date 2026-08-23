@@ -153,7 +153,7 @@ export async function forkRepoToForgejo({
   newRepoOrganizationName?: string;
 }): Promise<ForkForgejoRepoResult> {
   const tokenName = `temp-token-${crypto.randomBytes(4).toString("hex")}`;
-  let tokenId = null;
+  let tokenId: number | null = null;
   try {
     const tokenResponse = await forgejoAPIClient.post(
       `/admin/users/${forkFor}/tokens`,
@@ -213,8 +213,66 @@ export async function forkRepoToForgejo({
         error instanceof Error ? error.message : "Failed to fork repository",
     };
   } finally {
-    await forgejoAPIClient.delete(
-      `/admin/users/${forkFor}/tokens/${tokenId ?? tokenName}`,
-    );
+    if (tokenId !== null) {
+      try {
+        await forgejoAPIClient.delete(
+          `/admin/users/${forkFor}/tokens/${tokenId}`,
+        );
+      } catch (error: unknown) {
+        console.error(`Failed to delete temporary Forgejo token ${tokenName}`);
+      }
+    }
   }
+}
+
+const toForkedRepo = (repo: ForgejoRepo, owner: string): ForkedForgejoRepo => ({
+  owner,
+  name: repo.name,
+  url: repo.html_url,
+  full_name: repo.full_name,
+});
+
+const waitForForgejoRepo = async (
+  owner: string,
+  reponame: string,
+): Promise<ForgejoRepo | null> => {
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const repo = await getForgejoRepo({ username: owner, reponame });
+    if (repo) return repo;
+    await new Promise((resolve) => setTimeout(resolve, 1_000));
+  }
+  return null;
+};
+
+export async function ensureRepoForkToForgejo({
+  sourceRepoOwnername,
+  sourceReponame,
+  forkFor,
+  newReponame,
+}: {
+  sourceRepoOwnername: string;
+  sourceReponame: string;
+  forkFor: string;
+  newReponame?: string;
+}): Promise<ForkedForgejoRepo> {
+  const targetReponame = newReponame ?? sourceReponame;
+  const existingRepo = await getForgejoRepo({
+    username: forkFor,
+    reponame: targetReponame,
+  });
+  if (existingRepo) return toForkedRepo(existingRepo, forkFor);
+
+  const forkedRepo = await forkRepoToForgejo({
+    sourceRepoOwnername,
+    sourceReponame,
+    forkFor,
+    ...(newReponame ? { newReponame } : {}),
+  });
+  if (forkedRepo.status === "ok") return forkedRepo.repo;
+
+  // Forgejo may report a conflict while an earlier asynchronous fork finishes.
+  const repoAfterFork = await waitForForgejoRepo(forkFor, targetReponame);
+  if (repoAfterFork) return toForkedRepo(repoAfterFork, forkFor);
+
+  throw new Error(`Failed to fork demo repository: ${forkedRepo.error}`);
 }

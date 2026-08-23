@@ -25,6 +25,10 @@ interface UserWithAccount {
   account: Account;
 }
 
+interface CreateOrGetUserResult extends UserWithAccount {
+  isNewUser: boolean;
+}
+
 const githubProvider: typeof accounts.$inferInsert.provider = "github";
 const internalError = "Something went wrong on our side";
 
@@ -148,8 +152,9 @@ const createUserWithGithubAccount = async ({
 
 export const createOrGetUser = async (
   input: CreateUserInput,
-): Promise<UserWithAccount> => {
+): Promise<CreateOrGetUserResult> => {
   const existingUser = await getUserByEmail(input.email);
+  const isNewUser = !existingUser;
 
   const ip = input.ip ? input.ip.toString() : "unknown";
   const user_agent = input.user_agent ? input.user_agent.toString() : "unknown";
@@ -172,5 +177,5 @@ export const createOrGetUser = async (
     user_agent,
   });
 
-  return userWithAccount;
+  return { ...userWithAccount, isNewUser };
 };

@@ -13,6 +13,7 @@ import {
   addPendingMobileAuthorization,
   consumePendingMobileAuthorization,
 } from "../../cache/oauth-cache.js";
+import { addUserOnboardingJob } from "../../jobs/user-onboarding.js";
 
 const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 const mobileCallbackUri = "vibeongo://auth/callback";
@@ -153,7 +154,7 @@ export const githubAuthCallbackController = catchAsync(
 
     const ip = req.headers["x-forwarded-for"] || req.socket.remoteAddress;
     const user_agent = req.headers["user-agent"];
-    const { user, account } = await createOrGetUser({
+    const { user, account, isNewUser } = await createOrGetUser({
       email,
       name: profile.name ?? undefined,
       token: accessToken,
@@ -164,6 +165,18 @@ export const githubAuthCallbackController = catchAsync(
 
     if (account.status !== "active") {
       throw new Error("Account is not active");
+    }
+
+    if (isNewUser) {
+      try {
+        await addUserOnboardingJob({ userId: user.id });
+      } catch (error: unknown) {
+        // Onboarding must not prevent the user from completing authentication.
+        console.error(
+          `Failed to enqueue onboarding for user ${user.id}`,
+          error,
+        );
+      }
     }
 
     if (account.verified === false) {
