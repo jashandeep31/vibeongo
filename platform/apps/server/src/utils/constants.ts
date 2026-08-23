@@ -12,3 +12,10 @@ export const tierLimits = {
     auto: 2,
   },
 } as const;
+
+export const demoReposToFork: { reponame: string; ownername: string }[] = [
+  {
+    reponame: "todo-nextjs",
+    ownername: "jashandeep31",
+  },
+];

@@ -1,6 +1,7 @@
 export const BACKEND_URL =
   process.env.NEXT_PUBLIC_BACKEND_URL || "https://server.vibeongo.com";
 
+// These are not getting used any where yet
 export const popularOpencodeModels = [
   "openai/gpt-5.4-mini-fast",
   "openai/gpt-5.5",

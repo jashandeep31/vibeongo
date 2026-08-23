@@ -3,16 +3,17 @@ import {
   createForgejoUserAccount,
   getAllForgejoUsers,
 } from "./services/forgejo/user-actions.js";
-import { db, users } from "@repo/db";
+import { db, users, eq } from "@repo/db";
 import {
   createForgejoRepo,
   getForgejoRepoAccessToken,
 } from "./services/forgejo/repo-actions.js";
+import { demoReposToFork } from "./utils/constants.js";
+import { addDemoProjectsToUserProfile } from "./services/users/add-demo-projects.js";
 dotenv.config();
 
 export default async function test() {
   console.log("server in running");
-
   // const userRows = await db.select().from(users);
   // for (const user of userRows) {
   //   const isusercreatd = (await getAllForgejoUsers("jashandeep31")).length > 0;

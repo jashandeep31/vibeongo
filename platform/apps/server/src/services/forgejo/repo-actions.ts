@@ -142,7 +142,7 @@ export async function getForgejoRepoAccessToken({
 export async function forkRepoToForgejo({
   sourceRepoOwnername,
   sourceReponame,
-  forkFor: forkForUsername,
+  forkFor,
   newReponame,
   newRepoOrganizationName,
 }: {
@@ -152,14 +152,18 @@ export async function forkRepoToForgejo({
   newReponame?: string;
   newRepoOrganizationName?: string;
 }): Promise<ForkForgejoRepoResult> {
+  const tokenName = `temp-token-${crypto.randomBytes(4).toString("hex")}`;
+  let tokenId = null;
   try {
     const tokenResponse = await forgejoAPIClient.post(
-      `/admin/users/${forkForUsername}/tokens`,
+      `/admin/users/${forkFor}/tokens`,
       {
-        name: "temp-token",
-        scope: ["write:repository"],
+        name: tokenName,
+        scopes: ["write:repository", "read:repository"],
       },
     );
+
+    tokenId = tokenResponse.data.id;
 
     const token = tokenResponse.data.sha1;
     if (!token) throw new AppError("Failed to create token", 500);
@@ -208,5 +212,9 @@ export async function forkRepoToForgejo({
       error:
         error instanceof Error ? error.message : "Failed to fork repository",
     };
+  } finally {
+    await forgejoAPIClient.delete(
+      `/admin/users/${forkFor}/tokens/${tokenId ?? tokenName}`,
+    );
   }
 }
