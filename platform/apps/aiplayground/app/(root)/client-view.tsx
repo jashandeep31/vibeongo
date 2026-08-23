@@ -9,9 +9,12 @@ import {
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
-import { useTerminateInstance } from "@repo/api-hooks";
+import {
+  InstanceControlsDropdown,
+  ProjectActionsDropdown,
+  SessionActionsDropdown,
+} from "@/components/project-action-menus";
 import { useGetProjectGithubReposById } from "@repo/api-hooks";
 import { useAuthenticatedUser } from "@repo/api-hooks";
 import { useWebSocket } from "@repo/api-hooks";
@@ -34,31 +37,19 @@ import {
 } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@repo/ui/components/dropdown-menu";
-import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
 } from "@repo/ui/components/tabs";
 import {
-  Archive,
   BotMessageSquare,
   ChevronRight,
-  Clock3,
-  Ellipsis,
   FolderKanban,
   Loader2,
   Play,
   Plus,
   TriangleAlert,
-  Trash2,
   X,
 } from "lucide-react";
 import Link from "next/link";
@@ -88,23 +79,6 @@ function getServerUrl(entry: SessionEntry) {
   return `https://4096-${entry.instance.id}${entry.instance.proxy_domain}`;
 }
 
-function formatTimeRemaining(terminatesAt: string, now: number) {
-  const remainingMs = new Date(terminatesAt).getTime() - now;
-  if (!Number.isFinite(remainingMs)) return "N/A";
-  if (remainingMs <= 0) return "Expired";
-
-  const totalSeconds = Math.ceil(remainingMs / 1000);
-  const days = Math.floor(totalSeconds / 86400);
-  const hours = Math.floor((totalSeconds % 86400) / 3600);
-  const minutes = Math.floor((totalSeconds % 3600) / 60);
-  const seconds = totalSeconds % 60;
-
-  if (days > 0) return `${days}d ${hours}h ${minutes}m`;
-  if (hours > 0) return `${hours}h ${minutes}m`;
-  if (minutes > 0) return `${minutes}m ${seconds}s`;
-  return `${seconds}s`;
-}
-
 function SessionRow({
   entry,
   isResumePending,
@@ -121,35 +95,18 @@ function SessionRow({
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
-  const [isArchiveConfirmationOpen, setIsArchiveConfirmationOpen] =
-    useState(false);
-  const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
-    useState(false);
-  const [isInstanceMenuOpen, setIsInstanceMenuOpen] = useState(false);
-  const [now, setNow] = useState(() => Date.now());
   const serverUrl = getServerUrl(entry);
   const chatUrl = `/projects/${entry.session.project_id}/chats/${entry.session.id}`;
   const storedOpencodeSessions = useSessionChatsStore(
     (store) => store.chatsBySessionId[entry.session.id],
   );
   const opencodeSessions = storedOpencodeSessions ?? [];
-  const terminateInstance = useTerminateInstance(
-    entry.session.project_id,
-    entry.session.id,
-  );
   const {
     data: githubRepos,
     isPending: isReposPending,
     isError: isReposError,
     refetch: refetchGithubRepos,
   } = useGetProjectGithubReposById(entry.session.project_id, isRepoDialogOpen);
-
-  useEffect(() => {
-    if (!isInstanceMenuOpen) return;
-
-    const interval = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(interval);
-  }, [isInstanceMenuOpen]);
 
   const openDirectory = (directory: string) => {
     const runningUrl = getRunningSessionUrl(entry, directory);
@@ -207,54 +164,12 @@ function SessionRow({
           </div>
 
           {entry.instance ? (
-            <DropdownMenu
-              open={isInstanceMenuOpen}
-              onOpenChange={(open) => {
-                setIsInstanceMenuOpen(open);
-                if (open) setNow(Date.now());
-              }}
-            >
-              <DropdownMenuTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Instance controls for ${entry.session.name}`}
-                  disabled={terminateInstance.isPending}
-                >
-                  {terminateInstance.isPending ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Ellipsis />
-                  )}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>Instance controls</DropdownMenuLabel>
-                <div className="flex items-center gap-2 px-1.5 py-2">
-                  <Clock3 className="text-muted-foreground size-4" />
-                  <div>
-                    <p className="text-muted-foreground text-xs">
-                      Terminates in
-                    </p>
-                    <p className="font-mono text-sm font-medium tabular-nums">
-                      {formatTimeRemaining(
-                        String(entry.instance.terminates_at),
-                        now,
-                      )}
-                    </p>
-                  </div>
-                </div>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  variant="destructive"
-                  onSelect={() => setIsTerminationConfirmationOpen(true)}
-                >
-                  <Trash2 />
-                  Terminate now
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <InstanceControlsDropdown
+              instance={entry.instance}
+              projectId={entry.session.project_id}
+              sessionId={entry.session.id}
+              sessionName={entry.session.name}
+            />
           ) : entry.state === "stopped" ? (
             <>
               <Button
@@ -270,31 +185,11 @@ function SessionRow({
                   <Play />
                 )}
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`More options for ${entry.session.name}`}
-                    disabled={isArchivePending}
-                  >
-                    {isArchivePending ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Ellipsis />
-                    )}
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem
-                    onSelect={() => setIsArchiveConfirmationOpen(true)}
-                  >
-                    <Archive />
-                    Archive
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <SessionActionsDropdown
+                sessionName={entry.session.name}
+                isArchivePending={isArchivePending}
+                onArchive={() => onArchive(entry.session.id)}
+              />
             </>
           ) : (
             <Button disabled variant="ghost" size="sm">
@@ -349,30 +244,6 @@ function SessionRow({
         ) : null}
       </div>
 
-      <ConfirmationDialog
-        open={isArchiveConfirmationOpen}
-        onOpenChange={setIsArchiveConfirmationOpen}
-        title="Archive session?"
-        description={`Archive "${entry.session.name}"? It will be hidden from your active sessions list.`}
-        confirmText="Archive"
-        onConfirm={() => {
-          setIsArchiveConfirmationOpen(false);
-          onArchive(entry.session.id);
-        }}
-      />
-      <ConfirmationDialog
-        open={isTerminationConfirmationOpen}
-        onOpenChange={setIsTerminationConfirmationOpen}
-        title="Terminate this instance?"
-        description="The running session instance will be terminated immediately. Any unsaved work on the instance may be lost."
-        confirmText="Terminate now"
-        isDestructive
-        onConfirm={() => {
-          if (!entry.instance) return;
-          setIsTerminationConfirmationOpen(false);
-          terminateInstance.mutate(entry.instance.id);
-        }}
-      />
       <GithubRepoDirectoryDialog
         open={isRepoDialogOpen}
         onOpenChange={setIsRepoDialogOpen}
@@ -710,31 +581,10 @@ export default function ClientView() {
                               </span>
                             </span>
                           </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon-sm"
-                                aria-label={`Actions for ${project.name}`}
-                              >
-                                <Ellipsis />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <CreateProjectSessionDialog
-                                projectId={project.id}
-                                projectName={project.name}
-                              >
-                                <DropdownMenuItem
-                                  onSelect={(event) => event.preventDefault()}
-                                >
-                                  <Plus />
-                                  New session
-                                </DropdownMenuItem>
-                              </CreateProjectSessionDialog>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
+                          <ProjectActionsDropdown
+                            projectId={project.id}
+                            projectName={project.name}
+                          />
                         </div>
 
                         <div>

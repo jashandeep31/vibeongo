@@ -54,12 +54,6 @@ const navigation = [
     icon: House,
   },
   {
-    title: "New Chat",
-    url: "/?view=chats",
-    icon: SquarePen,
-    isActive: false,
-  },
-  {
     title: "Limits",
     url: "/limits",
     icon: Gauge,
@@ -131,6 +125,25 @@ function NavChats({
     <>
       <SidebarGroup className="px-2 py-3">
         <SidebarGroupContent>
+          <SidebarMenu className="mb-1 gap-1">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                className="h-9 rounded-xl px-3 text-sm font-normal"
+              >
+                <Link
+                  href="/?view=chats"
+                  onClick={() => {
+                    selectWorkspaceView("chats");
+                    closeMobileSidebar();
+                  }}
+                >
+                  <SquarePen />
+                  <span>New Chat</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
           {isPending ? (
             <div className="text-muted-foreground flex items-center gap-2 px-3 py-4 text-sm">
               <Loader2 className="size-4 animate-spin" />
@@ -247,14 +260,6 @@ export function PlaygroundSidebar() {
     ...item,
     ...(item.url === "/github-repos"
       ? { warningCount: unconfiguredRepoCount }
-      : {}),
-    ...(item.title === "New Chat"
-      ? {
-          onSelect: () => {
-            setActiveView("chats");
-            selectWorkspaceView("chats");
-          },
-        }
       : {}),
   }));
 
