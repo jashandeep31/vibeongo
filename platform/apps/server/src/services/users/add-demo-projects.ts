@@ -4,6 +4,8 @@ import {
   eq,
   gitRepos,
   instanceTypes,
+  projectFileData,
+  projectFiles,
   projectGitRepos,
   projects,
   users,
@@ -11,8 +13,52 @@ import {
 import { demoReposToFork } from "../../utils/constants.js";
 import { ensureRepoForkToForgejo } from "../forgejo/repo-actions.js";
 import { createProjectWithConfigAndUserIdService } from "../project/create-project-service.js";
+import { encryptData } from "../../lib/encryption-decryption.js";
 
 type DemoProject = (typeof demoReposToFork)[number]["project"];
+
+const ensureDemoProjectFiles = async (
+  projectId: string,
+  files: readonly { name: string; path: string; content: string }[],
+) => {
+  for (const file of files) {
+    const [existingFile] = await db
+      .select({ id: projectFiles.id })
+      .from(projectFiles)
+      .where(
+        and(
+          eq(projectFiles.project_id, projectId),
+          eq(projectFiles.name, file.name),
+          eq(projectFiles.path, file.path),
+        ),
+      )
+      .limit(1);
+
+    if (existingFile) continue;
+
+    await db.transaction(async (tx) => {
+      const [projectFile] = await tx
+        .insert(projectFiles)
+        .values({
+          project_id: projectId,
+          name: file.name,
+          path: file.path,
+        })
+        .returning({ id: projectFiles.id });
+
+      if (!projectFile) throw new Error("Demo project file was not created");
+
+      const encryptedContent = encryptData(file.content);
+      await tx.insert(projectFileData).values({
+        project_file_id: projectFile.id,
+        encrypted_content: encryptedContent.encryptedData,
+        iv: encryptedContent.iv,
+        tag: encryptedContent.tag,
+        version: 1,
+      });
+    });
+  }
+};
 
 export const createDemoProjectForUser = async ({
   userId,
@@ -116,10 +162,14 @@ export const addDemoProjectsToUserProfile = async (
       fullName: forkedRepo.full_name,
     });
 
-    await createDemoProjectForUser({
+    const project = await createDemoProjectForUser({
       userId: user.id,
       repoId: repoRow.id,
       project: repo.project,
     });
+
+    if ("files" in repo) {
+      await ensureDemoProjectFiles(project.id, repo.files);
+    }
   }
 };
