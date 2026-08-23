@@ -1,9 +1,6 @@
 "use client";
 
-import {
-  useGetDemoProjects,
-  useImportDemoProjects,
-} from "@repo/api-hooks";
+import { useGetDemoProjects, useImportDemoProjects } from "@repo/api-hooks";
 import { useProjectsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
@@ -11,15 +8,17 @@ import { toast } from "sonner";
 
 export default function ClientView() {
   const projects = useProjectsStore((store) => store.projects);
-  const { data: demoProjects = [], isPending, isError } =
-    useGetDemoProjects();
+  const { data: demoProjects = [], isPending, isError } = useGetDemoProjects();
   const importDemoProjects = useImportDemoProjects();
 
-  const handleImport = () => {
-    importDemoProjects.mutate(undefined, {
-      onSuccess: () => toast.success("Demo project imported"),
-      onError: () => toast.error("Could not import the demo project"),
-    });
+  const handleImport = (ownername: string, reponame: string) => {
+    importDemoProjects.mutate(
+      { ownername, reponame },
+      {
+        onSuccess: () => toast.success("Demo project imported"),
+        onError: () => toast.error("Could not import the demo project"),
+      },
+    );
   };
 
   return (
@@ -48,6 +47,10 @@ export default function ClientView() {
             const isImported = projects.some(
               (project) => project.name === demo.project.name,
             );
+            const isImporting =
+              importDemoProjects.isPending &&
+              importDemoProjects.variables?.ownername === demo.ownername &&
+              importDemoProjects.variables.reponame === demo.reponame;
 
             return (
               <div
@@ -71,18 +74,18 @@ export default function ClientView() {
                   variant="outline"
                   className="shrink-0"
                   disabled={isImported || importDemoProjects.isPending}
-                  onClick={handleImport}
+                  onClick={() => handleImport(demo.ownername, demo.reponame)}
                 >
                   {isImported ? (
                     <Check />
-                  ) : importDemoProjects.isPending ? (
+                  ) : isImporting ? (
                     <Loader2 className="animate-spin" />
                   ) : (
                     <ArrowRight />
                   )}
                   {isImported
                     ? "Imported"
-                    : importDemoProjects.isPending
+                    : isImporting
                       ? "Importing…"
                       : "Import"}
                 </Button>

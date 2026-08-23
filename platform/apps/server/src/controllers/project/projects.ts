@@ -28,7 +28,10 @@ import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 import { projectSessionRoutes } from "../../routes/project-session-routes.js";
 import { demoReposToFork } from "../../utils/constants.js";
-import { addDemoProjectsToUserProfile } from "../../services/users/add-demo-projects.js";
+import {
+  addDemoProjectToUserProfile,
+  addDemoProjectsToUserProfile,
+} from "../../services/users/add-demo-projects.js";
 
 export const getDemoProjects = (_req: Request, res: Response) => {
   res.status(200).json({ data: demoReposToFork });
@@ -38,9 +41,29 @@ export const importDemoProjects = catchAsync(
   async (req: Request, res: Response) => {
     if (!req.user) throw new AppError("authentication is required", 401);
 
-    await addDemoProjectsToUserProfile(req.user);
+    const input = z
+      .object({ ownername: z.string().min(1), reponame: z.string().min(1) })
+      .optional()
+      .parse(req.body);
 
-    res.status(201).json({ message: "Demo projects imported successfully" });
+    if (input) {
+      const demo = demoReposToFork.find(
+        (entry) =>
+          entry.ownername === input.ownername &&
+          entry.reponame === input.reponame,
+      );
+      if (!demo) throw new AppError("demo project was not found", 404);
+
+      await addDemoProjectToUserProfile(req.user, demo);
+    } else {
+      await addDemoProjectsToUserProfile(req.user);
+    }
+
+    res.status(201).json({
+      message: input
+        ? "Demo project imported successfully"
+        : "Demo projects imported successfully",
+    });
   },
 );
 

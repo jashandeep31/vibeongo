@@ -22,6 +22,7 @@ export type {
 } from "./services/github-repo-services.js";
 export type {
   DemoProject,
+  ImportDemoProjectInput,
   Project,
   ProjectConfigForEdit,
   ProjectDomains,

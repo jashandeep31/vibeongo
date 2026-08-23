@@ -12,10 +12,12 @@ import {
 } from "@repo/db";
 import { demoReposToFork } from "../../utils/constants.js";
 import { ensureRepoForkToForgejo } from "../forgejo/repo-actions.js";
+import { ensureForgejoUserAccount } from "../forgejo/user-actions.js";
 import { createProjectWithConfigAndUserIdService } from "../project/create-project-service.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
 
 type DemoProject = (typeof demoReposToFork)[number]["project"];
+type DemoRepo = (typeof demoReposToFork)[number];
 
 const ensureDemoProjectFiles = async (
   projectId: string,
@@ -147,29 +149,46 @@ const ensureGitRepoForUser = async ({
   return repoRow;
 };
 
+const addDemoProjectToUserProfileUnchecked = async (
+  user: typeof users.$inferSelect,
+  repo: DemoRepo,
+) => {
+  const forkedRepo = await ensureRepoForkToForgejo({
+    sourceRepoOwnername: repo.ownername,
+    sourceReponame: repo.reponame,
+    forkFor: user.username,
+  });
+
+  const repoRow = await ensureGitRepoForUser({
+    user,
+    fullName: forkedRepo.full_name,
+  });
+
+  const project = await createDemoProjectForUser({
+    userId: user.id,
+    repoId: repoRow.id,
+    project: repo.project,
+  });
+
+  if ("files" in repo) {
+    await ensureDemoProjectFiles(project.id, repo.files);
+  }
+};
+
+export const addDemoProjectToUserProfile = async (
+  user: typeof users.$inferSelect,
+  repo: DemoRepo,
+) => {
+  await ensureForgejoUserAccount(user);
+  await addDemoProjectToUserProfileUnchecked(user, repo);
+};
+
 export const addDemoProjectsToUserProfile = async (
   user: typeof users.$inferSelect,
 ) => {
+  await ensureForgejoUserAccount(user);
+
   for (const repo of demoReposToFork) {
-    const forkedRepo = await ensureRepoForkToForgejo({
-      sourceRepoOwnername: repo.ownername,
-      sourceReponame: repo.reponame,
-      forkFor: user.username,
-    });
-
-    const repoRow = await ensureGitRepoForUser({
-      user,
-      fullName: forkedRepo.full_name,
-    });
-
-    const project = await createDemoProjectForUser({
-      userId: user.id,
-      repoId: repoRow.id,
-      project: repo.project,
-    });
-
-    if ("files" in repo) {
-      await ensureDemoProjectFiles(project.id, repo.files);
-    }
+    await addDemoProjectToUserProfileUnchecked(user, repo);
   }
 };

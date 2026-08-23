@@ -30,6 +30,11 @@ export type DemoProject = {
   };
 };
 
+export type ImportDemoProjectInput = Pick<
+  DemoProject,
+  "ownername" | "reponame"
+>;
+
 export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
   proxy_domains: (typeof proxyDomains.$inferSelect)[];
   allowed_ips: (typeof routingAllowedIps.$inferSelect)[];
@@ -115,10 +120,11 @@ export const getDemoProjects =
   };
 
 export const importDemoProjects =
-  (apiClient: AxiosInstance) => async (): Promise<{ message: string }> => {
+  (apiClient: AxiosInstance) =>
+  async (demo?: ImportDemoProjectInput): Promise<{ message: string }> => {
     const response = await apiClient.post(
       `/api/v1/projects/demo-projects/import`,
-      undefined,
+      demo,
       { withCredentials: true },
     );
 
