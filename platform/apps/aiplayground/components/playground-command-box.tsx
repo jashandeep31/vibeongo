@@ -32,9 +32,11 @@ import {
   BotMessageSquare,
   ExternalLink,
   Folder,
+  Gauge,
   Globe,
   Github,
   House,
+  Import,
   Loader2,
   MessageSquarePlus,
   Play,
@@ -59,11 +61,43 @@ type CommandView =
   | { kind: "domains"; projectId: string };
 
 const staticNavigation = [
-  { title: "Home", url: "/", icon: House },
-  { title: "New Chat", url: "/", icon: SquarePen },
-  { title: "Git Repos", url: "/git-repos", icon: Github },
-  { title: "Wallet", url: "/wallet", icon: WalletCards },
-  { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Home", url: "/", icon: House, keywords: "home" },
+  {
+    title: "New Chat",
+    url: "/",
+    icon: SquarePen,
+    keywords: "new chat message",
+  },
+  {
+    title: "Limits",
+    url: "/limits",
+    icon: Gauge,
+    keywords: "limits usage quota",
+  },
+  {
+    title: "Git Repos",
+    url: "/git-repos",
+    icon: Github,
+    keywords: "git repos repositories github",
+  },
+  {
+    title: "Import",
+    url: "/import-projects",
+    icon: Import,
+    keywords: "import demo projects templates",
+  },
+  {
+    title: "Wallet",
+    url: "/wallet",
+    icon: WalletCards,
+    keywords: "wallet credits billing",
+  },
+  {
+    title: "Settings",
+    url: "/settings",
+    icon: Settings,
+    keywords: "settings preferences",
+  },
 ] as const;
 
 function getServerUrl(
@@ -606,7 +640,7 @@ export function PlaygroundCommandBox() {
               {staticNavigation.map((item) => (
                 <CommandItem
                   key={item.title}
-                  value={`navigate ${item.title} ${item.url}`}
+                  value={`navigate ${item.title} ${item.url} ${item.keywords}`}
                   onSelect={() => {
                     router.push(item.url);
                     setOpen(false);
