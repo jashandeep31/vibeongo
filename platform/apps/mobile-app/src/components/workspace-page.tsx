@@ -1,17 +1,27 @@
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { SymbolView } from "expo-symbols";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   Pressable,
-  ScrollView,
   StyleSheet,
   View,
   useWindowDimensions,
 } from "react-native";
+import Animated, {
+  Easing,
+  cancelAnimation,
+  scrollTo,
+  useAnimatedRef,
+  useAnimatedScrollHandler,
+  useDerivedValue,
+  useSharedValue,
+  withTiming,
+} from "react-native-reanimated";
 import { SafeAreaView } from "react-native-safe-area-context";
+import { scheduleOnRN } from "react-native-worklets";
 
 import { ChatList } from "@/components/chats/chat-list";
 import { HomeSidebar } from "@/components/home-sidebar";
@@ -23,6 +33,7 @@ import { useTheme } from "@/hooks/use-theme";
 type WorkspaceView = "chats" | "projects";
 
 const supportsNativeGlass = isGlassEffectAPIAvailable();
+const PAGE_ANIMATION_DURATION = 180;
 
 export function WorkspacePage() {
   const theme = useTheme();
@@ -30,28 +41,73 @@ export function WorkspacePage() {
   const { width } = useWindowDimensions();
   const router = useRouter();
   const { view } = useLocalSearchParams<{ view?: string }>();
-  const pagerRef = useRef<ScrollView>(null);
   const initialView: WorkspaceView = view === "chats" ? "chats" : "projects";
+  const pagerRef = useAnimatedRef<Animated.ScrollView>();
+  const activeViewRef = useRef<WorkspaceView>(initialView);
+  const currentScrollX = useSharedValue(initialView === "chats" ? 0 : width);
+  const animatedScrollX = useSharedValue(currentScrollX.value);
   const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const selectView = (view: WorkspaceView) => {
-    setActiveView(view);
-    pagerRef.current?.scrollTo({
-      animated: true,
-      x: view === "chats" ? 0 : width,
-    });
-    router.setParams({ view });
-  };
+  useDerivedValue(() => {
+    scrollTo(pagerRef, animatedScrollX.value, 0, false);
+  });
+
+  const scrollHandler = useAnimatedScrollHandler((event) => {
+    currentScrollX.value = event.contentOffset.x;
+  });
+
+  const commitView = useCallback(
+    (nextView: WorkspaceView) => {
+      router.setParams({ view: nextView });
+    },
+    [router],
+  );
+
+  const setSettledView = useCallback(
+    (nextView: WorkspaceView) => {
+      activeViewRef.current = nextView;
+      setActiveView(nextView);
+      commitView(nextView);
+    },
+    [commitView],
+  );
+
+  const selectView = useCallback(
+    (nextView: WorkspaceView) => {
+      activeViewRef.current = nextView;
+      setActiveView(nextView);
+
+      cancelAnimation(animatedScrollX);
+      animatedScrollX.value = currentScrollX.value;
+      animatedScrollX.value = withTiming(
+        nextView === "chats" ? 0 : width,
+        {
+          duration: PAGE_ANIMATION_DURATION,
+          easing: Easing.out(Easing.cubic),
+        },
+        (finished) => {
+          if (finished) scheduleOnRN(commitView, nextView);
+        },
+      );
+    },
+    [animatedScrollX, commitView, currentScrollX, width],
+  );
 
   useEffect(() => {
     if (view !== "chats" && view !== "projects") return;
+    if (view === activeViewRef.current) return;
+
+    activeViewRef.current = view;
     setActiveView(view);
-    pagerRef.current?.scrollTo({
-      animated: false,
-      x: view === "chats" ? 0 : width,
-    });
-  }, [view, width]);
+    cancelAnimation(animatedScrollX);
+    animatedScrollX.value = view === "chats" ? 0 : width;
+  }, [animatedScrollX, view, width]);
+
+  useEffect(() => {
+    cancelAnimation(animatedScrollX);
+    animatedScrollX.value = activeViewRef.current === "chats" ? 0 : width;
+  }, [animatedScrollX, width]);
 
   return (
     <SafeAreaView
@@ -162,7 +218,7 @@ export function WorkspacePage() {
           )}
         </View>
 
-        <ScrollView
+        <Animated.ScrollView
           bounces={false}
           contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
           decelerationRate="fast"
@@ -170,10 +226,16 @@ export function WorkspacePage() {
           keyboardShouldPersistTaps="handled"
           onMomentumScrollEnd={(event) => {
             const page = Math.round(event.nativeEvent.contentOffset.x / width);
-            selectView(page === 0 ? "chats" : "projects");
+            setSettledView(page === 0 ? "chats" : "projects");
+          }}
+          onScroll={scrollHandler}
+          onScrollBeginDrag={(event) => {
+            cancelAnimation(animatedScrollX);
+            animatedScrollX.value = event.nativeEvent.contentOffset.x;
           }}
           pagingEnabled
           ref={pagerRef}
+          scrollEventThrottle={16}
           showsHorizontalScrollIndicator={false}
           style={styles.pager}
         >
@@ -183,7 +245,7 @@ export function WorkspacePage() {
           <View style={[styles.page, { width }]}>
             <ProjectList />
           </View>
-        </ScrollView>
+        </Animated.ScrollView>
       </KeyboardAvoidingView>
 
       <HomeSidebar
