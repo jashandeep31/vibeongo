@@ -157,7 +157,7 @@ export default function GithubReposView() {
             return (
               <Link
                 key={repo.id}
-                href={`/github-repos/${repo.id}`}
+                href={`/git-repos/${repo.id}`}
                 className="group focus-visible:ring-ring rounded-xl outline-none focus-visible:ring-2"
               >
                 <Card className="group-hover:ring-foreground/20 h-full min-h-60 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:shadow-lg">

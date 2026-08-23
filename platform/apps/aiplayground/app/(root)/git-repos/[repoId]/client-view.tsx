@@ -384,7 +384,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
     try {
       await deleteRepo.mutateAsync(repoId);
       toast.success("Repository deleted", { id: toastId });
-      router.push("/github-repos");
+      router.push("/git-repos");
     } catch (error: unknown) {
       const message = axios.isAxiosError<{ message?: string }>(error)
         ? (error.response?.data?.message ?? "Failed to delete repository")
@@ -397,7 +397,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
     return (
       <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10">
         <Button variant="ghost" size="sm" asChild>
-          <Link href="/github-repos">
+          <Link href="/git-repos">
             <ArrowLeft /> Repositories
           </Link>
         </Button>
@@ -417,7 +417,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10 md:py-14">
       <Button variant="ghost" size="sm" asChild className="-ml-3">
-        <Link href="/github-repos">
+        <Link href="/git-repos">
           <ArrowLeft className="size-4" /> Repositories
         </Link>
       </Button>

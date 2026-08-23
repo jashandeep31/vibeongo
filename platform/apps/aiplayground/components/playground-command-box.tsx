@@ -33,6 +33,7 @@ import {
   ExternalLink,
   Folder,
   Globe,
+  Github,
   House,
   Loader2,
   MessageSquarePlus,
@@ -60,6 +61,7 @@ type CommandView =
 const staticNavigation = [
   { title: "Home", url: "/", icon: House },
   { title: "New Chat", url: "/", icon: SquarePen },
+  { title: "Git Repos", url: "/git-repos", icon: Github },
   { title: "Wallet", url: "/wallet", icon: WalletCards },
   { title: "Settings", url: "/settings", icon: Settings },
 ] as const;

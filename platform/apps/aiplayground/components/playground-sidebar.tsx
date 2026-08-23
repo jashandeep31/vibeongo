@@ -59,8 +59,8 @@ const navigation = [
     icon: Gauge,
   },
   {
-    title: "GitHub Repos",
-    url: "/github-repos",
+    title: "Git Repos",
+    url: "/git-repos",
     icon: Github,
   },
   {
@@ -258,7 +258,7 @@ export function PlaygroundSidebar() {
   const [activeView, setActiveView] = useState<SidebarView>(routeView);
   const navigationItems = navigation.map((item) => ({
     ...item,
-    ...(item.url === "/github-repos"
+    ...(item.url === "/git-repos"
       ? { warningCount: unconfiguredRepoCount }
       : {}),
   }));
