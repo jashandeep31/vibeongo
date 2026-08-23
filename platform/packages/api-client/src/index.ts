@@ -21,6 +21,7 @@ export type {
   GithubRepoWithPullRequests,
 } from "./services/github-repo-services.js";
 export type {
+  DemoProject,
   Project,
   ProjectConfigForEdit,
   ProjectDomains,

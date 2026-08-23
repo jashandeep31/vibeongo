@@ -35,6 +35,7 @@ import {
   Gauge,
   Github,
   House,
+  Import,
   Loader2,
   Settings,
   SquarePen,
@@ -62,6 +63,11 @@ const navigation = [
     title: "Git Repos",
     url: "/git-repos",
     icon: Github,
+  },
+  {
+    title: "Import",
+    url: "/import-projects",
+    icon: Import,
   },
   {
     title: "Wallet",

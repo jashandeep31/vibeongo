@@ -75,6 +75,32 @@ export const useGetProjects = (enabled = true) => {
   });
 };
 
+export const useGetDemoProjects = (enabled = true) => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["projects", "demos"],
+    queryFn: client.projects.getDemoProjects,
+    enabled,
+  });
+};
+
+export const useImportDemoProjects = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.projects.importDemoProjects,
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["projects", "with-sessions"],
+        }),
+        queryClient.invalidateQueries({ queryKey: ["github-repos"] }),
+      ]);
+    },
+  });
+};
+
 // returns the projects list along with there non-archived sessions
 export const useGetProjectsWithSessions = (enabled = true) => {
   const client = useApiClient();

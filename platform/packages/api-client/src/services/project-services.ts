@@ -18,6 +18,18 @@ export type ProjectWithSessions = Project & {
   sessions: (typeof projectSessions.$inferSelect)[];
 };
 
+export type DemoProject = {
+  reponame: string;
+  ownername: string;
+  description: string;
+  tags: string[];
+  project: {
+    name: string;
+    description: string;
+    devScript: string;
+  };
+};
+
 export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
   proxy_domains: (typeof proxyDomains.$inferSelect)[];
   allowed_ips: (typeof routingAllowedIps.$inferSelect)[];
@@ -91,6 +103,26 @@ export const getProjects =
     });
 
     return response.data.data;
+  };
+
+export const getDemoProjects =
+  (apiClient: AxiosInstance) => async (): Promise<DemoProject[]> => {
+    const response = await apiClient.get(`/api/v1/projects/demo-projects`, {
+      withCredentials: true,
+    });
+
+    return response.data.data;
+  };
+
+export const importDemoProjects =
+  (apiClient: AxiosInstance) => async (): Promise<{ message: string }> => {
+    const response = await apiClient.post(
+      `/api/v1/projects/demo-projects/import`,
+      undefined,
+      { withCredentials: true },
+    );
+
+    return response.data;
   };
 
 export const createProject =

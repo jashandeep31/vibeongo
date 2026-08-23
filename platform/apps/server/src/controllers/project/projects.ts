@@ -27,6 +27,22 @@ import { encryptData } from "../../lib/encryption-decryption.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 import { projectSessionRoutes } from "../../routes/project-session-routes.js";
+import { demoReposToFork } from "../../utils/constants.js";
+import { addDemoProjectsToUserProfile } from "../../services/users/add-demo-projects.js";
+
+export const getDemoProjects = (_req: Request, res: Response) => {
+  res.status(200).json({ data: demoReposToFork });
+};
+
+export const importDemoProjects = catchAsync(
+  async (req: Request, res: Response) => {
+    if (!req.user) throw new AppError("authentication is required", 401);
+
+    await addDemoProjectsToUserProfile(req.user);
+
+    res.status(201).json({ message: "Demo projects imported successfully" });
+  },
+);
 
 export const getProjects = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;

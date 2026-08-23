@@ -7,8 +7,10 @@ import {
   getProjectDomainsById,
   getProjectGithubReposById,
   getProjectById,
+  getDemoProjects,
   getProjects,
   getProjectsWithSessions,
+  importDemoProjects,
   updateProjectById,
 } from "../controllers/project/projects.js";
 import {
@@ -34,6 +36,12 @@ routes
 routes
   .route("/with-sessions")
   .get(checkAuthorization(["all"]), getProjectsWithSessions);
+routes
+  .route("/demo-projects")
+  .get(checkAuthorization(["all"]), getDemoProjects);
+routes
+  .route("/demo-projects/import")
+  .post(checkAuthorization(["all"]), importDemoProjects);
 routes
   .route("/:id")
   .get(checkAuthorization(["all"]), getProjectById)

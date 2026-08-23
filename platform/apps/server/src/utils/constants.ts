@@ -17,9 +17,13 @@ export const demoReposToFork = [
   {
     reponame: "todo-nextjs",
     ownername: "jashandeep31",
+    description:
+      "A simple Next.js todo app for trying the Vibeongo project workflow.",
+    tags: ["Next.js", "TypeScript", "Todo"],
     project: {
       name: "todo-nextjs",
-      description: "",
+      description:
+        "A simple Next.js todo app for trying the Vibeongo project workflow.",
       provider: "aws",
       instanceTypeId: "f5cc34ea-e819-48f5-a858-8298e10e6754",
       sandboxTypeId: "a6617669-8424-472b-be1d-d5b95f3826dd",
