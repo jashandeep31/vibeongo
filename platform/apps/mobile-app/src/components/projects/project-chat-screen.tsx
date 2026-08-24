@@ -83,6 +83,13 @@ export function ProjectChatScreen() {
   const projectSessionId = firstParam(params.projectSessionId);
   const projectId = firstParam(params.projectId);
   const opencodeSessionId = firstParam(params.opencodeSessionId);
+  const openTerminal = useCallback(() => {
+    Keyboard.dismiss();
+    router.push({
+      pathname: "/projects/[projectId]/sessions/[projectSessionId]/terminal",
+      params: { projectId, projectSessionId },
+    });
+  }, [projectId, projectSessionId, router]);
   const storedSessionChats = useSessionChatsStore(
     (store) => store.chatsBySessionId[projectSessionId],
   );
@@ -763,6 +770,7 @@ export function ProjectChatScreen() {
                 onChangeAttachments={setAttachments}
                 onChangeText={setPrompt}
                 onNewChat={openNewChat}
+                onOpenTerminal={openTerminal}
                 onToggleRaw={() => setShowRawResponse((visible) => !visible)}
                 onStop={
                   sessionQuery.isStreaming

@@ -45,6 +45,7 @@ type OpencodeComposerProps = {
   onChangeAttachments?: (attachments: ComposerImageAttachment[]) => void;
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
+  onOpenTerminal?: () => void;
   onToggleRaw?: () => void;
   onStop?: () => void;
   onSubmit: () => void;
@@ -66,6 +67,7 @@ export function OpencodeComposer({
   onChangeAttachments,
   onChangeText,
   onNewChat,
+  onOpenTerminal,
   onToggleRaw,
   onStop,
   onSubmit,
@@ -189,6 +191,7 @@ export function OpencodeComposer({
         inventory={inventory}
         onChange={onChangeSelection}
         onNewChat={onNewChat}
+        onOpenTerminal={onOpenTerminal}
         onToggleRaw={onToggleRaw}
         selection={selection}
         showRawResponse={showRawResponse}
@@ -281,6 +284,7 @@ function PromptSelectors({
   inventory,
   onChange,
   onNewChat,
+  onOpenTerminal,
   onToggleRaw,
   selection,
   showRawResponse,
@@ -289,6 +293,7 @@ function PromptSelectors({
   inventory?: OpencodeInventory;
   onChange: (selection: OpencodePromptSelection) => void;
   onNewChat?: () => void;
+  onOpenTerminal?: () => void;
   onToggleRaw?: () => void;
   selection: OpencodePromptSelection;
   showRawResponse?: boolean;
@@ -422,6 +427,15 @@ function PromptSelectors({
             label="Raw"
             onPress={onToggleRaw}
             selected={showRawResponse}
+            showChevron={false}
+          />
+        ) : null}
+        {onOpenTerminal ? (
+          <SelectorPill
+            disabled={disabled}
+            icon={{ ios: "apple.terminal", android: "terminal" }}
+            label="Terminal"
+            onPress={onOpenTerminal}
             showChevron={false}
           />
         ) : null}

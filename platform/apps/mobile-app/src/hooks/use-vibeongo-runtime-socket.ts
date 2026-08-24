@@ -16,7 +16,11 @@ export type RuntimeSocketStats = {
 };
 
 export type RuntimeSocketMessage = {
+  activeId?: unknown;
   data?: unknown;
+  hasBuffer?: unknown;
+  ids?: unknown;
+  sessionId?: unknown;
   type?: unknown;
 };
 
@@ -144,7 +148,9 @@ export function useVibeongoRuntimeSocket({
         } catch {
           return;
         }
-        setLastMessage(message);
+        if (message.type !== "terminal") {
+          setLastMessage(message);
+        }
         messageListenersRef.current.forEach((listener) => listener(message));
 
         if (
@@ -198,13 +204,17 @@ export function useVibeongoRuntimeSocket({
     };
   }, [accessToken, enabled, localToken, runtimeUrl]);
 
-  const sendJsonMessage = (message: unknown) => {
+  const sendJsonMessage = useCallback((message: unknown) => {
     if (!socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) {
       return false;
     }
-    socketRef.current.send(JSON.stringify(message));
-    return true;
-  };
+    try {
+      socketRef.current.send(JSON.stringify(message));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const subscribeJsonMessage = useCallback(
     (listener: (message: RuntimeSocketMessage) => void) => {

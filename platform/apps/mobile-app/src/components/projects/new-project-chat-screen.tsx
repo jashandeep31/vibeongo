@@ -3,9 +3,10 @@ import { useOpencodeInventory, useStartOpencodeSession } from "@repo/api-hooks";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -52,6 +53,13 @@ export function NewProjectChatScreen() {
   }>();
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
+  const openTerminal = useCallback(() => {
+    Keyboard.dismiss();
+    router.push({
+      pathname: "/projects/[projectId]/sessions/[projectSessionId]/terminal",
+      params: { projectId, projectSessionId },
+    });
+  }, [projectId, projectSessionId, router]);
   const directory = firstParam(params.directory);
   const inheritedAgent = firstParam(params.agent);
   const inheritedModel = firstParam(params.model);
@@ -112,11 +120,7 @@ export function NewProjectChatScreen() {
   }, [inventoryQuery.data]);
 
   const goBack = () => {
-    if (
-      returnOpencodeSessionId &&
-      returnProjectId &&
-      returnProjectSessionId
-    ) {
+    if (returnOpencodeSessionId && returnProjectId && returnProjectSessionId) {
       router.replace({
         pathname:
           "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
@@ -281,6 +285,7 @@ export function NewProjectChatScreen() {
             onChangeSelection={setSelection}
             onChangeAttachments={setAttachments}
             onChangeText={setPrompt}
+            onOpenTerminal={openTerminal}
             onSubmit={submit}
             placeholder="Describe the task…"
             selection={selection}

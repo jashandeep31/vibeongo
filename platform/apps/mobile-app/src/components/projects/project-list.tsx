@@ -433,41 +433,70 @@ export function ProjectList() {
                               />
                             ) : null}
                             {runningInstance ? (
-                              <Pressable
-                                accessibilityLabel={`Terminate ${session.name}`}
-                                accessibilityRole="button"
-                                disabled={terminateInstance.isPending}
-                                onPress={() => {
-                                  setTerminationTarget({
-                                    instanceId: runningInstance.id,
-                                    projectId: project.id,
-                                    sessionId: session.id,
-                                    sessionName: session.name,
-                                  });
-                                  setIsTerminationConfirmationOpen(true);
-                                }}
-                                style={({ pressed }) => [
-                                  styles.sessionAction,
-                                  (pressed || terminateInstance.isPending) &&
-                                    styles.pressed,
-                                ]}
-                              >
-                                {isTerminating ? (
-                                  <ActivityIndicator
-                                    color="#ef4444"
-                                    size="small"
-                                  />
-                                ) : (
+                              <>
+                                <Pressable
+                                  accessibilityLabel={`Open terminal for ${session.name}`}
+                                  accessibilityRole="button"
+                                  onPress={() =>
+                                    router.push({
+                                      pathname:
+                                        "/projects/[projectId]/sessions/[projectSessionId]/terminal",
+                                      params: {
+                                        projectId: project.id,
+                                        projectSessionId: session.id,
+                                      },
+                                    })
+                                  }
+                                  style={({ pressed }) => [
+                                    styles.sessionAction,
+                                    pressed && styles.pressed,
+                                  ]}
+                                >
                                   <SymbolView
                                     name={{
-                                      ios: "stop.fill",
-                                      android: "stop_circle",
+                                      ios: "apple.terminal",
+                                      android: "terminal",
                                     }}
-                                    size={14}
-                                    tintColor="#ef4444"
+                                    size={16}
+                                    tintColor={theme.textSecondary}
                                   />
-                                )}
-                              </Pressable>
+                                </Pressable>
+                                <Pressable
+                                  accessibilityLabel={`Terminate ${session.name}`}
+                                  accessibilityRole="button"
+                                  disabled={terminateInstance.isPending}
+                                  onPress={() => {
+                                    setTerminationTarget({
+                                      instanceId: runningInstance.id,
+                                      projectId: project.id,
+                                      sessionId: session.id,
+                                      sessionName: session.name,
+                                    });
+                                    setIsTerminationConfirmationOpen(true);
+                                  }}
+                                  style={({ pressed }) => [
+                                    styles.sessionAction,
+                                    (pressed || terminateInstance.isPending) &&
+                                      styles.pressed,
+                                  ]}
+                                >
+                                  {isTerminating ? (
+                                    <ActivityIndicator
+                                      color="#ef4444"
+                                      size="small"
+                                    />
+                                  ) : (
+                                    <SymbolView
+                                      name={{
+                                        ios: "stop.fill",
+                                        android: "stop_circle",
+                                      }}
+                                      size={14}
+                                      tintColor="#ef4444"
+                                    />
+                                  )}
+                                </Pressable>
+                              </>
                             ) : entry.state === "processing" ? (
                               <ActivityIndicator size="small" />
                             ) : (
