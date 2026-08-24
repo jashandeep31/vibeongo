@@ -24,10 +24,6 @@ export const demoReposToFork = [
       name: "todo-nextjs",
       description:
         "A simple Next.js todo app for trying the Vibeongo project workflow.",
-      provider: "aws",
-      instanceTypeId: "f5cc34ea-e819-48f5-a858-8298e10e6754",
-      sandboxTypeId: "a6617669-8424-472b-be1d-d5b95f3826dd",
-      sshKeyIds: ["6834735d-a160-4095-800c-7d9e98f24ecc"],
       initialScript: "",
       finalScript: `cd /home/ubuntu/code/todo-nextjs
 npm i`,
@@ -77,10 +73,6 @@ npm run dev`,
       name: "vibeongo-url",
       description:
         "A TypeScript and Express URL shortener with PostgreSQL and Prisma.",
-      provider: "aws",
-      instanceTypeId: "f5cc34ea-e819-48f5-a858-8298e10e6754",
-      sandboxTypeId: "a6617669-8424-472b-be1d-d5b95f3826dd",
-      sshKeyIds: ["6834735d-a160-4095-800c-7d9e98f24ecc"],
       initialScript: "",
       finalScript: `cd /home/ubuntu/code/vibeongo-url-shortner
 npm install

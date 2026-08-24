@@ -1,13 +1,17 @@
 import {
   and,
+  asc,
   db,
   eq,
   gitRepos,
+  instanceRegions,
   instanceTypes,
   projectFileData,
   projectFiles,
   projectGitRepos,
   projects,
+  sandboxRegions,
+  sandboxTypes,
   users,
 } from "@repo/db";
 import { demoReposToFork } from "../../utils/constants.js";
@@ -87,23 +91,67 @@ export const createDemoProjectForUser = async ({
 
   if (existingProject) return existingProject;
 
-  const [instanceType] = await db
-    .select({ regionId: instanceTypes.region_id })
-    .from(instanceTypes)
-    .where(eq(instanceTypes.id, project.instanceTypeId))
-    .limit(1);
+  const [[awsRuntime], [e2bRuntime]] = await Promise.all([
+    db
+      .select({
+        instanceTypeId: instanceTypes.id,
+        regionId: instanceRegions.id,
+      })
+      .from(instanceTypes)
+      .innerJoin(
+        instanceRegions,
+        and(
+          eq(instanceRegions.id, instanceTypes.region_id),
+          eq(instanceRegions.provider, "aws"),
+        ),
+      )
+      .where(
+        and(
+          eq(instanceTypes.provider, "aws"),
+          eq(instanceTypes.slug, "m6i.large"),
+        ),
+      )
+      .orderBy(
+        asc(instanceRegions.created_at),
+        asc(instanceTypes.created_at),
+        asc(instanceTypes.name),
+      )
+      .limit(1),
+    db
+      .select({ sandboxTypeId: sandboxTypes.id })
+      .from(sandboxTypes)
+      .innerJoin(
+        sandboxRegions,
+        and(
+          eq(sandboxRegions.id, sandboxTypes.sandbox_region),
+          eq(sandboxRegions.provider, "e2b"),
+        ),
+      )
+      .where(eq(sandboxTypes.provider, "e2b"))
+      .orderBy(
+        asc(sandboxRegions.created_at),
+        asc(sandboxTypes.created_at),
+        asc(sandboxTypes.name),
+      )
+      .limit(1),
+  ]);
 
-  if (!instanceType?.regionId) {
+  if (!awsRuntime)
     throw new Error(
-      `Demo project instance type ${project.instanceTypeId} has no region`,
+      "No AWS m6i.large instance type with a valid region is configured",
     );
-  }
+  if (!e2bRuntime)
+    throw new Error("No E2B sandbox type with a valid region is configured");
 
   return createProjectWithConfigAndUserIdService(
     {
       ...project,
-      regionId: instanceType.regionId,
+      provider: "aws",
+      regionId: awsRuntime.regionId,
+      instanceTypeId: awsRuntime.instanceTypeId,
+      sandboxTypeId: e2bRuntime.sandboxTypeId,
       githubRepoIds: [repoId],
+      sshKeyIds: [],
     },
     userId,
   );
