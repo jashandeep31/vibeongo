@@ -7,8 +7,7 @@ import { env } from "../lib/env.js";
 const RootPath = process.cwd();
 
 export const installScript = catchAsync(async (req: Request, res: Response) => {
-  res.status(200).type("text/plain").send(`
-#!/usr/bin/env bash
+  res.status(200).type("text/plain").send(`#!/usr/bin/env bash
 set -euo pipefail
 
 APP="vibeongo"
@@ -52,9 +51,7 @@ EOF
 else
   nohup sudo dockerd 2>&1 &
   nohup /usr/local/bin/vibeongo serve 2>&1 &
-fi
-
-`);
+fi`);
 });
 
 export const serveServer = catchAsync(async (_req: Request, res: Response) => {
