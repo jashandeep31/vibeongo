@@ -1,34 +1,22 @@
-import { useProjectsStore } from "@repo/app-store";
+import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
+  useWindowDimensions,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import ProjectTerminalDom, {
-  type ProjectTerminalDomRef,
-} from "@/components/projects/project-terminal.dom";
 import { ThemedText } from "@/components/themed-text";
+import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import { useVibeongoRuntimeSocket } from "@/hooks/use-vibeongo-runtime-socket";
-
-const TERMINAL_DOM_PROPS: import("expo/dom").DOMProps = {
-  bounces: false,
-  contentInsetAdjustmentBehavior: "never",
-  keyboardDisplayRequiresUserAction: false,
-  overScrollMode: "never",
-  scrollEnabled: false,
-};
+import { type TmuxSession, useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -40,35 +28,11 @@ function getLocalToken(config: unknown) {
   return typeof value === "string" ? value : "";
 }
 
-function getControlCharacter(data: string) {
-  if (data.length !== 1) return null;
-  if (data === " ") return "\u0000";
-  if (data === "?") return "\u007f";
-
-  const code = data.toUpperCase().charCodeAt(0);
-  return code >= 64 && code <= 95 ? String.fromCharCode(code - 64) : null;
-}
-
-function setTerminalInputEnabled(
-  terminal: ProjectTerminalDomRef | null,
-  enabled: boolean,
-) {
-  if (typeof terminal?.setInputEnabled === "function") {
-    terminal.setInputEnabled(enabled);
-  }
-}
-
 export function ProjectTerminalScreen() {
   const router = useRouter();
   const theme = useTheme();
-  const terminalRef = useRef<ProjectTerminalDomRef>(null);
-  const awaitingBufferReplayRef = useRef(false);
-  const controlActiveRef = useRef(false);
-  const terminalSizeRef = useRef({ cols: 80, rows: 24 });
-  const [controlActive, setControlActive] = useState(false);
-  const [terminalReady, setTerminalReady] = useState(false);
-  const [sessionIds, setSessionIds] = useState<string[]>([]);
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
+  const { width: windowWidth } = useWindowDimensions();
+  const terminalCardSize = Math.floor((Math.min(windowWidth, 560) - 48) / 2);
   const params = useLocalSearchParams<{
     projectId?: string | string[];
     projectSessionId?: string | string[];
@@ -80,174 +44,54 @@ export function ProjectTerminalScreen() {
       store.projects.find((project) => project.id === projectId)?.name ??
       "Project",
   );
+  const sessionName = useSessionsStore(
+    (store) =>
+      store.sessions.find((entry) => entry.session.id === projectSessionId)
+        ?.session.name ?? "Session",
+  );
   const runtime = useProjectRuntime(projectSessionId);
   const runtimeUrl = runtime.instance
     ? `https://3101-${runtime.instance.id}${runtime.instance.proxy_domain}`
     : "";
   const localToken = getLocalToken(runtime.instance?.config);
-  const runtimeSocket = useVibeongoRuntimeSocket({
+  const terminalWorkspace = useVibeongoWsV2({
     accessToken: runtime.accessToken,
-    enabled: terminalReady && Boolean(runtime.instance),
+    enabled: Boolean(runtime.instance && localToken && runtime.accessToken),
     localToken,
     runtimeUrl,
   });
-
-  useEffect(
-    () =>
-      runtimeSocket.subscribeJsonMessage((message) => {
-        if (message.type === "terminal" && typeof message.data === "string") {
-          if (awaitingBufferReplayRef.current) {
-            awaitingBufferReplayRef.current = false;
-            terminalRef.current?.replace(message.data);
-          } else {
-            terminalRef.current?.write(message.data);
-          }
-          return;
-        }
-        if (message.type === "sessionIds" && Array.isArray(message.ids)) {
-          setSessionIds(
-            message.ids.filter(
-              (sessionId): sessionId is string => typeof sessionId === "string",
-            ),
-          );
-          setActiveSessionId(
-            typeof message.activeId === "string" ? message.activeId : null,
-          );
-          return;
-        }
-        if (message.type === "ptyUpdate") {
-          controlActiveRef.current = false;
-          setControlActive(false);
-          if (typeof message.sessionId === "string") {
-            setActiveSessionId(message.sessionId);
-          }
-          awaitingBufferReplayRef.current = message.hasBuffer === true;
-          if (!awaitingBufferReplayRef.current) {
-            terminalRef.current?.reset();
-          }
-        }
-      }),
-    [runtimeSocket.subscribeJsonMessage],
-  );
-
-  useEffect(() => {
-    const connected = runtimeSocket.status === "connected";
-    setTerminalInputEnabled(terminalRef.current, connected);
-    if (!connected) {
-      awaitingBufferReplayRef.current = false;
-      controlActiveRef.current = false;
-      setControlActive(false);
-      return;
-    }
-    runtimeSocket.sendJsonMessage({
-      type: "size",
-      data: terminalSizeRef.current,
-    });
-  }, [runtimeSocket.sendJsonMessage, runtimeSocket.status]);
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
     else router.replace("/");
   };
 
-  const sendInput = useCallback(
-    async (data: string) => {
-      if (
-        runtimeSocket.status !== "connected" ||
-        awaitingBufferReplayRef.current
-      ) {
-        return;
-      }
-
-      let terminalData = data;
-      if (controlActiveRef.current) {
-        controlActiveRef.current = false;
-        setControlActive(false);
-        const controlCharacter = getControlCharacter(data);
-        if (controlCharacter !== null) {
-          terminalData = controlCharacter;
-        }
-      }
-      runtimeSocket.sendJsonMessage({ type: "terminal", data: terminalData });
-    },
-    [runtimeSocket.sendJsonMessage, runtimeSocket.status],
-  );
-
-  const sendSize = useCallback(
-    async (rows: number, cols: number) => {
-      terminalSizeRef.current = { cols, rows };
-      runtimeSocket.sendJsonMessage({
-        type: "size",
-        data: terminalSizeRef.current,
-      });
-    },
-    [runtimeSocket.sendJsonMessage],
-  );
-
-  const markTerminalReady = useCallback(async () => {
-    const connected = runtimeSocket.status === "connected";
-    setTerminalInputEnabled(terminalRef.current, connected);
-    setTerminalReady(true);
-    if (connected) {
-      runtimeSocket.sendJsonMessage({ type: "clientReady" });
-      runtimeSocket.sendJsonMessage({
-        type: "size",
-        data: terminalSizeRef.current,
-      });
-    }
-  }, [runtimeSocket.sendJsonMessage, runtimeSocket.status]);
-
-  const resetControlModifier = () => {
-    controlActiveRef.current = false;
-    setControlActive(false);
+  const openTerminal = (terminalId: string) => {
+    router.push({
+      pathname:
+        "/projects/[projectId]/sessions/[projectSessionId]/terminal/[terminalId]",
+      params: { projectId, projectSessionId, terminalId },
+    });
   };
 
-  const sendKey = (data: string) => {
-    resetControlModifier();
-    if (awaitingBufferReplayRef.current) return;
-    if (!runtimeSocket.sendJsonMessage({ type: "terminal", data })) {
+  const addTerminalSession = async () => {
+    try {
+      const sessionId = await terminalWorkspace.createTerminalSession();
+      if (sessionId) openTerminal(sessionId);
+    } catch (error) {
       Alert.alert(
-        "Terminal disconnected",
-        "Wait for it to reconnect and try again.",
+        "Could not create terminal",
+        error instanceof Error ? error.message : "Please try again.",
       );
     }
-    terminalRef.current?.focus();
   };
-
-  const closeTerminalSession = (sessionId: string, index: number) => {
-    Alert.alert(
-      `Close terminal ${index + 1}?`,
-      "This will end the terminal session. Any running command in this terminal will be stopped.",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Close terminal",
-          style: "destructive",
-          onPress: () => {
-            runtimeSocket.sendJsonMessage({
-              type: "endSession",
-              data: { sessionId },
-            });
-          },
-        },
-      ],
-    );
-  };
-
-  const statusColor =
-    runtimeSocket.status === "connected"
-      ? "#10b981"
-      : runtimeSocket.status === "connecting"
-        ? "#f59e0b"
-        : "#ef4444";
 
   if (runtime.isPending) {
     return (
       <TerminalStateScreen
         loading
-        message="Loading runtime…"
+        message="Loading terminal sessions…"
         onBack={goBack}
-        theme={theme}
       />
     );
   }
@@ -257,7 +101,6 @@ export function ProjectTerminalScreen() {
       <TerminalStateScreen
         message="Could not load this runtime. Check your connection and try again."
         onBack={goBack}
-        theme={theme}
       />
     );
   }
@@ -265,9 +108,8 @@ export function ProjectTerminalScreen() {
   if (!runtime.instance) {
     return (
       <TerminalStateScreen
-        message="Resume this project session before opening its terminal."
+        message="Resume this project session to view its terminals."
         onBack={goBack}
-        theme={theme}
       />
     );
   }
@@ -277,10 +119,16 @@ export function ProjectTerminalScreen() {
       <TerminalStateScreen
         message="Terminal credentials are unavailable for this runtime."
         onBack={goBack}
-        theme={theme}
       />
     );
   }
+
+  const statusColor =
+    terminalWorkspace.status === "connected"
+      ? "#10b981"
+      : terminalWorkspace.status === "connecting"
+        ? "#f59e0b"
+        : "#ef4444";
 
   return (
     <SafeAreaView
@@ -293,10 +141,10 @@ export function ProjectTerminalScreen() {
         <Pressable
           accessibilityLabel="Go back"
           accessibilityRole="button"
+          hitSlop={8}
           onPress={goBack}
           style={({ pressed }) => [
             styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
             pressed && styles.pressed,
           ]}
         >
@@ -306,225 +154,277 @@ export function ProjectTerminalScreen() {
             tintColor={theme.text}
           />
         </Pressable>
-        <View style={styles.titleRow}>
-          <SymbolView
-            name={{ ios: "apple.terminal", android: "terminal" }}
-            size={17}
-            tintColor={theme.textSecondary}
-          />
-          <ThemedText numberOfLines={1} style={styles.title}>
-            {projectName} Terminal
-          </ThemedText>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-        </View>
-        <Pressable
-          accessibilityLabel="Show keyboard"
-          accessibilityRole="button"
-          onPress={() => terminalRef.current?.focus()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "keyboard", android: "keyboard" }}
-            size={20}
-            tintColor={theme.textSecondary}
-          />
-        </Pressable>
+        <SymbolView
+          name={{ ios: "apple.terminal", android: "terminal" }}
+          size={17}
+          tintColor={theme.textSecondary}
+        />
+        <ThemedText numberOfLines={1} style={styles.title}>
+          {projectName} · {sessionName} · Terminal
+        </ThemedText>
+        <View
+          accessibilityLabel={`WebSocket ${terminalWorkspace.status}`}
+          accessibilityRole="text"
+          style={[styles.statusDot, { backgroundColor: statusColor }]}
+        />
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.terminalArea}
+      <ScrollView
+        contentContainerStyle={styles.content}
+        showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[
-            styles.sessions,
-            { borderBottomColor: theme.backgroundSelected },
-          ]}
-        >
-          <ScrollView
-            contentContainerStyle={styles.sessionTabs}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-          >
-            {sessionIds.map((sessionId, index) => {
-              const active = sessionId === activeSessionId;
-              return (
-                <View
-                  key={sessionId}
-                  style={[
-                    styles.sessionGroup,
-                    {
-                      backgroundColor: active
-                        ? theme.text
-                        : theme.backgroundElement,
-                    },
-                  ]}
-                >
-                  <Pressable
-                    accessibilityRole="tab"
-                    accessibilityState={{ selected: active }}
-                    disabled={runtimeSocket.status !== "connected"}
-                    onPress={() => {
-                      if (
-                        runtimeSocket.sendJsonMessage({
-                          type: "switchSession",
-                          data: { sessionId },
-                        })
-                      ) {
-                        resetControlModifier();
-                        setActiveSessionId(sessionId);
-                      }
-                    }}
-                    style={({ pressed }) => [
-                      styles.sessionTab,
-                      runtimeSocket.status !== "connected" && styles.disabled,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText
-                      style={[
-                        styles.sessionLabel,
-                        active && { color: theme.background },
-                      ]}
-                    >
-                      Terminal {index + 1}
-                    </ThemedText>
-                  </Pressable>
-                  <Pressable
-                    accessibilityLabel={`Close terminal ${index + 1}`}
-                    accessibilityRole="button"
-                    disabled={runtimeSocket.status !== "connected"}
-                    hitSlop={4}
-                    onPress={() => closeTerminalSession(sessionId, index)}
-                    style={({ pressed }) => [
-                      styles.closeSession,
-                      runtimeSocket.status !== "connected" && styles.disabled,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <SymbolView
-                      name={{ ios: "xmark", android: "close" }}
-                      size={13}
-                      tintColor={
-                        active ? theme.background : theme.textSecondary
-                      }
-                      weight="semibold"
-                    />
-                  </Pressable>
-                </View>
-              );
-            })}
-            <Pressable
-              accessibilityLabel="Add terminal"
-              accessibilityRole="button"
-              disabled={runtimeSocket.status !== "connected"}
-              onPress={() =>
-                runtimeSocket.sendJsonMessage({ type: "newSession" })
-              }
-              style={({ pressed }) => [
-                styles.addSession,
-                { borderColor: theme.backgroundSelected },
-                runtimeSocket.status !== "connected" && styles.disabled,
-                pressed && styles.pressed,
-              ]}
-            >
-              <SymbolView
-                name={{ ios: "plus", android: "add" }}
-                size={16}
-                tintColor={theme.textSecondary}
-              />
-            </Pressable>
-          </ScrollView>
-        </View>
+        <SectionHeading
+          count={terminalWorkspace.terminalSessionIds.length}
+          title="Terminal sessions"
+        />
 
-        <View style={styles.terminalFrame}>
-          <ProjectTerminalDom
-            dom={TERMINAL_DOM_PROPS}
-            onInput={sendInput}
-            onReady={markTerminalReady}
-            onResize={sendSize}
-            ref={terminalRef}
-          />
-        </View>
-
-        <ScrollView
-          contentContainerStyle={styles.keys}
-          horizontal
-          keyboardShouldPersistTaps="always"
-          showsHorizontalScrollIndicator={false}
-          style={[styles.keyBar, { borderTopColor: theme.backgroundSelected }]}
-        >
+        <View style={styles.terminalGrid}>
           <Pressable
-            accessibilityLabel={
-              controlActive
-                ? "Disable Control modifier"
-                : "Enable Control modifier"
-            }
+            accessibilityLabel="New terminal session"
             accessibilityRole="button"
-            accessibilityState={{ selected: controlActive }}
-            disabled={runtimeSocket.status !== "connected"}
-            onPress={() => {
-              const active = !controlActiveRef.current;
-              controlActiveRef.current = active;
-              setControlActive(active);
-              terminalRef.current?.focus();
-            }}
+            disabled={terminalWorkspace.isCreatingTerminal}
+            onPress={() => void addTerminalSession()}
             style={({ pressed }) => [
-              styles.key,
+              styles.newSessionCard,
+              { height: terminalCardSize, width: terminalCardSize },
               {
-                backgroundColor: controlActive
-                  ? theme.text
-                  : theme.backgroundElement,
-                borderColor: controlActive
-                  ? theme.text
-                  : theme.backgroundSelected,
+                backgroundColor: theme.backgroundElement,
+                borderColor: theme.backgroundSelected,
               },
-              runtimeSocket.status !== "connected" && styles.disabled,
+              terminalWorkspace.isCreatingTerminal && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
-            <ThemedText
+            <View
               style={[
-                styles.keyLabel,
-                controlActive && { color: theme.background },
+                styles.newSessionIcon,
+                { backgroundColor: theme.backgroundSelected },
               ]}
             >
-              Ctrl
-            </ThemedText>
+              {terminalWorkspace.isCreatingTerminal ? (
+                <ActivityIndicator color={theme.text} size="small" />
+              ) : (
+                <SymbolView
+                  name={{ ios: "plus", android: "add" }}
+                  size={20}
+                  tintColor={theme.text}
+                />
+              )}
+            </View>
+            <View>
+              <ThemedText style={styles.cardTitle}>New session</ThemedText>
+              <ThemedText
+                style={styles.newSessionHint}
+                themeColor="textSecondary"
+              >
+                Open a fresh shell
+              </ThemedText>
+            </View>
           </Pressable>
-          {[
-            ["Esc", "\u001b"],
-            ["Tab", "\t"],
-            ["↑", "\u001b[A"],
-            ["↓", "\u001b[B"],
-            ["←", "\u001b[D"],
-            ["→", "\u001b[C"],
-          ].map(([label, data]) => (
-            <Pressable
-              accessibilityLabel={`Send ${label}`}
-              accessibilityRole="button"
-              disabled={runtimeSocket.status !== "connected"}
-              key={label}
-              onPress={() => sendKey(data)}
-              style={({ pressed }) => [
-                styles.key,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
-                runtimeSocket.status !== "connected" && styles.disabled,
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText style={styles.keyLabel}>{label}</ThemedText>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+          {terminalWorkspace.terminalSessionIds.map((terminalId, index) => {
+            const isActive =
+              terminalId === terminalWorkspace.activeTerminalSessionId;
+            return (
+              <Pressable
+                accessibilityLabel={`Open Terminal ${index + 1}`}
+                accessibilityRole="button"
+                key={terminalId}
+                onPress={() => openTerminal(terminalId)}
+                style={({ pressed }) => [
+                  styles.terminalCard,
+                  { height: terminalCardSize, width: terminalCardSize },
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: isActive
+                      ? "rgba(16, 185, 129, 0.55)"
+                      : theme.backgroundSelected,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View style={styles.terminalCardTop}>
+                  <View
+                    style={[
+                      styles.iconTile,
+                      { backgroundColor: theme.backgroundSelected },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "apple.terminal", android: "terminal" }}
+                      size={17}
+                      tintColor={theme.text}
+                    />
+                  </View>
+                  {isActive ? (
+                    <View style={styles.activeBadge}>
+                      <View style={styles.activeDot} />
+                      <ThemedText style={styles.activeLabel}>Active</ThemedText>
+                    </View>
+                  ) : null}
+                </View>
+                <View style={styles.cardFooter}>
+                  <View style={styles.cardCopy}>
+                    <ThemedText style={styles.cardTitle}>
+                      Terminal {index + 1}
+                    </ThemedText>
+                    <ThemedText
+                      numberOfLines={1}
+                      style={[
+                        styles.identifier,
+                        { color: theme.textSecondary },
+                      ]}
+                    >
+                      {terminalId}
+                    </ThemedText>
+                  </View>
+                  <SymbolView
+                    name={{ ios: "chevron.right", android: "chevron_right" }}
+                    size={16}
+                    tintColor={theme.textSecondary}
+                  />
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
+
+        <View style={styles.tmuxSection}>
+          <SectionHeading
+            count={terminalWorkspace.tmuxSessions.length}
+            title="Tmux sessions"
+          />
+          {terminalWorkspace.tmuxSessions.length > 0 ? (
+            <View style={styles.tmuxList}>
+              {terminalWorkspace.tmuxSessions.map((session) => (
+                <TmuxSessionCard key={session.name} session={session} />
+              ))}
+            </View>
+          ) : (
+            <EmptyState
+              message={
+                terminalWorkspace.status === "connected"
+                  ? "No tmux sessions are running."
+                  : "Waiting for tmux sessions…"
+              }
+            />
+          )}
+        </View>
+      </ScrollView>
     </SafeAreaView>
+  );
+}
+
+function SectionHeading({ count, title }: { count: number; title: string }) {
+  const theme = useTheme();
+
+  return (
+    <View style={styles.sectionHeading}>
+      <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
+      <View
+        style={[
+          styles.countBadge,
+          { backgroundColor: theme.backgroundElement },
+        ]}
+      >
+        <ThemedText style={styles.countText} themeColor="textSecondary">
+          {count}
+        </ThemedText>
+      </View>
+    </View>
+  );
+}
+
+function TmuxSessionCard({ session }: { session: TmuxSession }) {
+  const theme = useTheme();
+
+  return (
+    <View style={[styles.tmuxCard, { borderColor: theme.backgroundSelected }]}>
+      <View
+        style={[
+          styles.tmuxHeader,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderBottomColor: theme.backgroundSelected,
+          },
+        ]}
+      >
+        <SymbolView
+          name={{ ios: "apple.terminal", android: "terminal" }}
+          size={17}
+          tintColor={theme.textSecondary}
+        />
+        <ThemedText style={styles.tmuxName}>{session.name}</ThemedText>
+        <ThemedText style={styles.windowCount} themeColor="textSecondary">
+          {session.windows.length}{" "}
+          {session.windows.length === 1 ? "window" : "windows"}
+        </ThemedText>
+      </View>
+
+      {session.windows.length > 0 ? (
+        session.windows.map((window, index) => (
+          <View
+            key={`${session.name}-${window.name}`}
+            style={[
+              styles.windowRow,
+              index > 0 && {
+                borderTopColor: theme.backgroundSelected,
+                borderTopWidth: StyleSheet.hairlineWidth,
+              },
+            ]}
+          >
+            <View style={styles.windowNameRow}>
+              <SymbolView
+                name={{ ios: "chevron.right", android: "chevron_right" }}
+                size={15}
+                tintColor={theme.textSecondary}
+              />
+              <ThemedText numberOfLines={1} style={styles.windowName}>
+                {window.name}
+              </ThemedText>
+            </View>
+            <View style={styles.panes}>
+              {window.panes.map((pane) => (
+                <View
+                  key={`${session.name}-${window.name}-${pane.name}`}
+                  style={[
+                    styles.paneBadge,
+                    { backgroundColor: theme.backgroundElement },
+                  ]}
+                >
+                  <ThemedText style={styles.paneText}>
+                    Pane {pane.name}
+                  </ThemedText>
+                </View>
+              ))}
+            </View>
+          </View>
+        ))
+      ) : (
+        <ThemedText style={styles.noWindows} themeColor="textSecondary">
+          No windows
+        </ThemedText>
+      )}
+    </View>
+  );
+}
+
+function EmptyState({ message }: { message: string }) {
+  const theme = useTheme();
+  return (
+    <View
+      style={[
+        styles.emptyState,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.backgroundSelected,
+        },
+      ]}
+    >
+      <ThemedText style={styles.emptyText} themeColor="textSecondary">
+        {message}
+      </ThemedText>
+    </View>
   );
 }
 
@@ -532,13 +432,12 @@ function TerminalStateScreen({
   loading = false,
   message,
   onBack,
-  theme,
 }: {
   loading?: boolean;
   message: string;
   onBack: () => void;
-  theme: ReturnType<typeof useTheme>;
 }) {
+  const theme = useTheme();
   return (
     <SafeAreaView
       style={[styles.screen, { backgroundColor: theme.background }]}
@@ -561,69 +460,108 @@ function TerminalStateScreen({
 }
 
 const styles = StyleSheet.create({
-  addSession: {
+  activeBadge: {
     alignItems: "center",
-    borderRadius: 8,
+    backgroundColor: "rgba(16, 185, 129, 0.12)",
+    borderRadius: 10,
+    flexDirection: "row",
+    gap: 5,
+    paddingHorizontal: 7,
+    paddingVertical: 4,
+  },
+  activeDot: {
+    backgroundColor: "#10b981",
+    borderRadius: 3,
+    height: 6,
+    width: 6,
+  },
+  activeLabel: { color: "#10b981", fontSize: 10, fontWeight: "700" },
+  cardCopy: { flex: 1, minWidth: 0 },
+  cardFooter: {
+    alignItems: "flex-end",
+    flexDirection: "row",
+    gap: 8,
+  },
+  cardTitle: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  content: {
+    alignSelf: "center",
+    maxWidth: 560,
+    padding: 18,
+    paddingBottom: 36,
+    width: "100%",
+  },
+  countBadge: {
+    borderRadius: 12,
+    minWidth: 24,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+  },
+  countText: { fontSize: 12, lineHeight: 16, textAlign: "center" },
+  disabled: { opacity: 0.5 },
+  emptyState: {
+    alignItems: "center",
+    borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
-    height: 34,
-    justifyContent: "center",
-    width: 38,
+    padding: 24,
   },
-  closeSession: {
-    alignItems: "center",
-    height: 34,
-    justifyContent: "center",
-    width: 34,
-  },
-  disabled: { opacity: 0.45 },
+  emptyText: { fontSize: 13, textAlign: "center" },
   header: {
     alignItems: "center",
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: 10,
+    gap: 8,
     height: 56,
-    paddingHorizontal: 12,
+    paddingHorizontal: 8,
   },
   headerButton: {
     alignItems: "center",
-    borderRadius: 20,
-    height: 40,
+    height: 44,
     justifyContent: "center",
-    width: 40,
+    width: 44,
   },
-  key: {
+  iconTile: {
     alignItems: "center",
     borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 36,
-    justifyContent: "center",
-    minWidth: 48,
-    paddingHorizontal: 12,
-  },
-  keyBar: {
-    borderTopWidth: StyleSheet.hairlineWidth,
-    flexGrow: 0,
-  },
-  keyLabel: { fontSize: 12, fontWeight: "700" },
-  keys: { gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  pressed: { opacity: 0.65 },
-  screen: { flex: 1 },
-  sessionLabel: { fontSize: 12, fontWeight: "700" },
-  sessionGroup: {
-    alignItems: "center",
-    borderRadius: 8,
-    flexDirection: "row",
-    overflow: "hidden",
-  },
-  sessions: { borderBottomWidth: StyleSheet.hairlineWidth },
-  sessionTab: {
-    alignItems: "center",
     height: 34,
     justifyContent: "center",
-    minWidth: 88,
-    paddingHorizontal: 12,
+    width: 34,
   },
-  sessionTabs: { gap: 7, paddingHorizontal: 10, paddingVertical: 8 },
+  identifier: { fontFamily: Fonts.mono, fontSize: 11, lineHeight: 16 },
+  newSessionCard: {
+    borderRadius: 14,
+    borderStyle: "dashed",
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: "space-between",
+    padding: 15,
+  },
+  newSessionHint: { fontSize: 11, lineHeight: 16 },
+  newSessionIcon: {
+    alignItems: "center",
+    borderRadius: 17,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
+  },
+  noWindows: { fontSize: 13, padding: 16 },
+  paneBadge: { borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 },
+  panes: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  paneText: { fontFamily: Fonts.mono, fontSize: 11, lineHeight: 15 },
+  pressed: { opacity: 0.65 },
+  screen: { flex: 1 },
+  sectionHeading: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 14,
+  },
+  sectionTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+    letterSpacing: 0.8,
+    lineHeight: 18,
+    textTransform: "uppercase",
+  },
   state: {
     alignItems: "center",
     flex: 1,
@@ -633,16 +571,42 @@ const styles = StyleSheet.create({
   },
   stateBack: { padding: 18 },
   stateText: { textAlign: "center" },
-  statusDot: { borderRadius: 4, height: 8, width: 8 },
-  terminalArea: { flex: 1 },
-  terminalFrame: { backgroundColor: "#000000", flex: 1 },
-  title: { flexShrink: 1, fontSize: 15, fontWeight: "700" },
-  titleRow: {
-    alignItems: "center",
-    flex: 1,
-    flexDirection: "row",
-    gap: 7,
-    justifyContent: "center",
-    minWidth: 0,
+  statusDot: { borderRadius: 5, height: 9, marginRight: 8, width: 9 },
+  terminalCard: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: "space-between",
+    padding: 15,
   },
+  terminalCardTop: {
+    alignItems: "flex-start",
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
+  terminalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
+  title: { flex: 1, fontSize: 14, fontWeight: "700" },
+  tmuxCard: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
+  },
+  tmuxHeader: {
+    alignItems: "center",
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 9,
+    padding: 13,
+  },
+  tmuxList: { gap: 12 },
+  tmuxName: {
+    flex: 1,
+    fontFamily: Fonts.mono,
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  tmuxSection: { marginTop: 32 },
+  windowCount: { fontSize: 11 },
+  windowName: { flexShrink: 1, fontSize: 13, fontWeight: "600" },
+  windowNameRow: { alignItems: "center", flexDirection: "row", gap: 5 },
+  windowRow: { gap: 10, padding: 13 },
 });

@@ -13,11 +13,12 @@ import (
 )
 
 type terminalControlMessage struct {
-	Type   string `json:"type"`
-	ID     string `json:"id,omitempty"`
-	Cols   int    `json:"cols,omitempty"`
-	Rows   int    `json:"rows,omitempty"`
-	SentAt int64  `json:"sentAt,omitempty"`
+	Type      string `json:"type"`
+	ID        string `json:"id,omitempty"`
+	Cols      int    `json:"cols,omitempty"`
+	Rows      int    `json:"rows,omitempty"`
+	SentAt    int64  `json:"sentAt,omitempty"`
+	HasBuffer bool   `json:"hasBuffer,omitempty"`
 }
 
 func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
@@ -60,8 +61,9 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		defer unsubscribe()
 
 		if err := writeTerminalControl(conn, &writeMu, terminalControlMessage{
-			Type: "session",
-			ID:   terminalSession.ID,
+			Type:      "session",
+			ID:        terminalSession.ID,
+			HasBuffer: len(buffer) > 0,
 		}); err != nil {
 			return nil
 		}
