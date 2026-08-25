@@ -9,8 +9,8 @@ import (
 )
 
 type websocketAuthTokenResponse struct {
-	Token     string    `json:"token"`
-	ExpiresAt time.Time `json:"expiresAt"`
+	VibeongoToken string    `json:"vibeongoToken"`
+	ExpiresAt     time.Time `json:"expiresAt"`
 }
 
 // WebSocketAuthTokenHandler issues short-lived, single-use WebSocket tokens.
@@ -24,8 +24,8 @@ func WebSocketAuthTokenHandler(tokenStore *store.AuthTokenStore) echo.HandlerFun
 		}
 
 		return c.JSON(http.StatusOK, websocketAuthTokenResponse{
-			Token:     token,
-			ExpiresAt: expiresAt,
+			VibeongoToken: token,
+			ExpiresAt:     expiresAt,
 		})
 	}
 }

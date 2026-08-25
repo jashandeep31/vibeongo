@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
 	"github.com/labstack/echo/v5"
 )
 
@@ -40,6 +41,20 @@ func CheckLocalWebSocketAuth(expectedToken string) echo.MiddlewareFunc {
 			}
 
 			if subtle.ConstantTimeCompare([]byte(token), []byte(expectedToken)) != 1 {
+				return c.String(http.StatusUnauthorized, "Unauthorized")
+			}
+
+			return next(c)
+		}
+	}
+}
+
+// CheckVibeongoWebSocketAuth validates and consumes a one-time WebSocket token.
+func CheckVibeongoWebSocketAuth(tokenStore *store.AuthTokenStore) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c *echo.Context) error {
+			vibeongoToken := c.QueryParam("vibeongoToken")
+			if tokenStore == nil || !tokenStore.ValidateToken(vibeongoToken) {
 				return c.String(http.StatusUnauthorized, "Unauthorized")
 			}
 
