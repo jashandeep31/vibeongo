@@ -14,7 +14,12 @@ import {
 import { useQueryClient } from "@repo/api-hooks";
 import { useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
-import { useEffect, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -35,7 +40,11 @@ import Toast from "react-native-toast-message";
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -123,6 +132,7 @@ const terminationRows = [
 export default function SettingsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const { preference, setPreference } = useThemePreference();
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
@@ -275,9 +285,18 @@ export default function SettingsScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <PageChromeLayout top={<ScreenHeader onBack={() => router.back()} />}>
+      <PageChromeLayout
+        top={
+          <ScreenHeader
+            onBack={() => router.back()}
+            titleOpacity={titleOpacity}
+          />
+        }
+      >
         {({ topInset }) => (
           <ScrollView
+            onScroll={onTitleScroll}
+            scrollEventThrottle={16}
             contentContainerStyle={[styles.content, { paddingTop: topInset }]}
             keyboardShouldPersistTaps="handled"
             refreshControl={
@@ -570,8 +589,16 @@ export default function SettingsScreen() {
   );
 }
 
-function ScreenHeader({ onBack }: { onBack: () => void }) {
-  return <PageHeader onBack={onBack} title="Settings" />;
+function ScreenHeader({
+  onBack,
+  titleOpacity,
+}: {
+  onBack: () => void;
+  titleOpacity: ComponentProps<typeof PageHeader>["titleOpacity"];
+}) {
+  return (
+    <PageHeader onBack={onBack} title="Settings" titleOpacity={titleOpacity} />
+  );
 }
 
 function SettingsSection({

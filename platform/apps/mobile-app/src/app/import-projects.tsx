@@ -15,13 +15,18 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 export default function ImportProjectsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const projects = useProjectsStore((store) => store.projects);
   const demosQuery = useGetDemoProjects();
   const importDemo = useImportDemoProjects();
@@ -56,7 +61,11 @@ export default function ImportProjectsScreen() {
     >
       <PageChromeLayout
         top={
-          <PageHeader onBack={() => router.back()} title="Import projects" />
+          <PageHeader
+            onBack={() => router.back()}
+            title="Import projects"
+            titleOpacity={titleOpacity}
+          />
         }
       >
         {({ topInset }) => (
@@ -104,6 +113,8 @@ export default function ImportProjectsScreen() {
               </View>
             ) : (
               <ScrollView
+                onScroll={onTitleScroll}
+                scrollEventThrottle={16}
                 contentContainerStyle={styles.content}
                 refreshControl={
                   <RefreshControl

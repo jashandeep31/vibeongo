@@ -26,7 +26,11 @@ import Toast from "react-native-toast-message";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import { GithubAutomationDrawer } from "@/components/github-repos/github-automation-drawer";
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -60,6 +64,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const [activeResource, setActiveResource] =
     useState<ResourceTab>("pull-requests");
   const [showOverview, setShowOverview] = useState(false);
@@ -182,7 +187,13 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
       <PageChromeLayout
-        top={<PageHeader onBack={() => router.back()} title="Repository" />}
+        top={
+          <PageHeader
+            onBack={() => router.back()}
+            title="Repository"
+            titleOpacity={titleOpacity}
+          />
+        }
       >
         {({ topInset }) =>
           issuesQuery.isError && pullRequestsQuery.isError ? (
@@ -196,6 +207,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
           ) : (
             <ScrollView
               contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+              onScroll={onTitleScroll}
               refreshControl={
                 <RefreshControl
                   onRefresh={refresh}
@@ -204,6 +216,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                 />
               }
               showsVerticalScrollIndicator={false}
+              scrollEventThrottle={16}
             >
               {repo ? (
                 <>

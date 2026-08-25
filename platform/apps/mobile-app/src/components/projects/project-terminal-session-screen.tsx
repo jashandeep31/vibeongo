@@ -14,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { ProjectTerminalSwitcherDrawer } from "@/components/projects/project-terminal-switcher-drawer";
 import ProjectTerminalDom, {
   type ProjectTerminalDomRef,
@@ -253,241 +254,246 @@ export function ProjectTerminalSessionScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View style={styles.header}>
-        <Pressable
-          accessibilityLabel="Back to all terminals"
-          accessibilityRole="button"
-          onPress={goBack}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={18}
-            tintColor={theme.text}
-          />
-        </Pressable>
-
-        <Pressable
-          accessibilityHint="Opens all terminal sessions"
-          accessibilityLabel={`Terminal ${terminalId}, ${terminal.status}`}
-          accessibilityRole="button"
-          onPress={() => {
-            Keyboard.dismiss();
-            setSwitcherVisible(true);
-          }}
-          style={({ pressed }) => [
-            styles.headerTitleWrap,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <SymbolView
-            name={{ ios: "apple.terminal", android: "terminal" }}
-            size={15}
-            tintColor={theme.textSecondary}
-          />
-          <ThemedText numberOfLines={1} style={styles.headerTitle}>
-            {terminalLabel}
-          </ThemedText>
-          <ThemedText style={styles.latency} themeColor="textSecondary">
-            {terminal.latencyMs === null ? "--" : terminal.latencyMs} ms
-          </ThemedText>
-          <SymbolView
-            name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
-            size={14}
-            tintColor={theme.textSecondary}
-          />
-        </Pressable>
-
-        <View
-          style={[
-            styles.headerActions,
-            { backgroundColor: theme.backgroundElement },
-          ]}
-        >
-          <Pressable
-            accessibilityLabel="Monitor VPS"
-            accessibilityRole="button"
-            onPress={() =>
-              router.push({
-                pathname:
-                  "/projects/[projectId]/sessions/[projectSessionId]/settings",
-                params: { projectId, projectSessionId },
-              })
-            }
-            style={({ pressed }) => [
-              styles.headerAction,
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "waveform.path.ecg", android: "monitor_heart" }}
-              size={19}
-              tintColor={theme.textSecondary}
-            />
-          </Pressable>
-          <ProjectDomainsButton
-            instanceId={runtime.instance.id}
-            projectId={projectId}
-          />
-        </View>
-      </View>
-
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.terminalArea}
-      >
-        <View style={styles.terminalFrame}>
-          <ProjectTerminalDom
-            dom={TERMINAL_DOM_PROPS}
-            onInput={sendInput}
-            onReady={markTerminalReady}
-            onResize={sendSize}
-            ref={terminalRef}
-          />
-        </View>
-        <ScrollView
-          contentContainerStyle={styles.keys}
-          horizontal
-          keyboardShouldPersistTaps="always"
-          showsHorizontalScrollIndicator={false}
-          style={[
-            styles.keyBar,
-            {
-              backgroundColor: theme.background,
-              borderTopColor: theme.backgroundSelected,
-            },
-          ]}
-        >
-          <Pressable
-            accessibilityLabel={
-              panMode ? "Disable terminal pan mode" : "Enable terminal pan mode"
-            }
-            accessibilityRole="button"
-            accessibilityState={{ selected: panMode }}
-            onPress={() => updatePanMode(!panMode)}
-            style={({ pressed }) => [
-              styles.key,
-              {
-                backgroundColor: panMode ? theme.text : theme.backgroundElement,
-                borderColor: panMode ? theme.text : theme.backgroundSelected,
-              },
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "hand.draw", android: "pan_tool" }}
-              size={17}
-              tintColor={panMode ? theme.background : theme.text}
-            />
-          </Pressable>
-          <Pressable
-            accessibilityLabel={
-              controlActive
-                ? "Disable Control modifier"
-                : "Enable Control modifier"
-            }
-            accessibilityRole="button"
-            accessibilityState={{ selected: controlActive }}
-            disabled={terminal.status !== "connected" || panMode}
-            onPress={() => {
-              const active = !controlActiveRef.current;
-              controlActiveRef.current = active;
-              setControlActive(active);
-              terminalRef.current?.focus();
+      <PageChromeLayout
+        top={
+          <PageHeader
+            accessibilityLabel={`Terminal ${terminalId}, ${terminal.status}`}
+            onBack={goBack}
+            onTitlePress={() => {
+              Keyboard.dismiss();
+              setSwitcherVisible(true);
             }}
-            style={({ pressed }) => [
-              styles.key,
-              {
-                backgroundColor: controlActive
-                  ? theme.text
-                  : theme.backgroundElement,
-                borderColor: controlActive
-                  ? theme.text
-                  : theme.backgroundSelected,
-              },
-              (terminal.status !== "connected" || panMode) && styles.disabled,
-              pressed && styles.pressed,
-            ]}
+            right={
+              <View
+                style={[
+                  styles.headerActions,
+                  { backgroundColor: theme.backgroundElement },
+                ]}
+              >
+                <Pressable
+                  accessibilityLabel="Monitor VPS"
+                  accessibilityRole="button"
+                  onPress={() =>
+                    router.push({
+                      pathname:
+                        "/projects/[projectId]/sessions/[projectSessionId]/settings",
+                      params: { projectId, projectSessionId },
+                    })
+                  }
+                  style={({ pressed }) => [
+                    styles.headerAction,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{
+                      ios: "waveform.path.ecg",
+                      android: "monitor_heart",
+                    }}
+                    size={19}
+                    tintColor={theme.textSecondary}
+                  />
+                </Pressable>
+                <ProjectDomainsButton
+                  instanceId={runtime.instance.id}
+                  projectId={projectId}
+                />
+              </View>
+            }
+            title={terminalLabel}
+            titleLeading={
+              <>
+                <View
+                  style={[styles.statusDot, { backgroundColor: statusColor }]}
+                />
+                <SymbolView
+                  name={{ ios: "apple.terminal", android: "terminal" }}
+                  size={15}
+                  tintColor={theme.textSecondary}
+                />
+              </>
+            }
+            titleTextStyle={styles.headerTitle}
+            titleTrailing={
+              <>
+                <ThemedText style={styles.latency} themeColor="textSecondary">
+                  {terminal.latencyMs === null ? "--" : terminal.latencyMs} ms
+                </ThemedText>
+                <SymbolView
+                  name={{
+                    ios: "chevron.down",
+                    android: "keyboard_arrow_down",
+                  }}
+                  size={14}
+                  tintColor={theme.textSecondary}
+                />
+              </>
+            }
+            titleVariant="pill"
+          />
+        }
+      >
+        {({ topInset }) => (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === "ios" ? "padding" : "height"}
+            style={[styles.terminalArea, { paddingTop: topInset }]}
           >
-            <ThemedText
+            <View style={styles.terminalFrame}>
+              <ProjectTerminalDom
+                dom={TERMINAL_DOM_PROPS}
+                onInput={sendInput}
+                onReady={markTerminalReady}
+                onResize={sendSize}
+                ref={terminalRef}
+              />
+            </View>
+            <ScrollView
+              contentContainerStyle={styles.keys}
+              horizontal
+              keyboardShouldPersistTaps="always"
+              showsHorizontalScrollIndicator={false}
               style={[
-                styles.keyLabel,
-                controlActive && { color: theme.background },
-              ]}
-            >
-              Ctrl
-            </ThemedText>
-          </Pressable>
-          {[
-            ["Esc", "\u001b"],
-            ["Tab", "\t"],
-            ["↑", "\u001b[A"],
-            ["↓", "\u001b[B"],
-            ["←", "\u001b[D"],
-            ["→", "\u001b[C"],
-          ].map(([keyLabel, data]) => (
-            <Pressable
-              accessibilityLabel={`Send ${keyLabel}`}
-              accessibilityRole="button"
-              disabled={terminal.status !== "connected" || panMode}
-              key={keyLabel}
-              onPress={() => sendKey(data)}
-              style={({ pressed }) => [
-                styles.key,
+                styles.keyBar,
                 {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
+                  backgroundColor: theme.background,
+                  borderTopColor: theme.backgroundSelected,
                 },
-                (terminal.status !== "connected" || panMode) && styles.disabled,
-                pressed && styles.pressed,
               ]}
             >
-              <ThemedText style={styles.keyLabel}>{keyLabel}</ThemedText>
-            </Pressable>
-          ))}
-          {[
-            ["A−", "Zoom out", "zoomOut"],
-            ["A+", "Zoom in", "zoomIn"],
-          ].map(([keyLabel, accessibilityLabel, action]) => (
-            <Pressable
-              accessibilityLabel={accessibilityLabel}
-              accessibilityRole="button"
-              key={action}
-              onPress={() => {
-                const terminalDom = terminalRef.current;
-                if (
-                  action === "zoomIn" &&
-                  typeof terminalDom?.zoomIn === "function"
-                ) {
-                  terminalDom.zoomIn();
-                } else if (
-                  action === "zoomOut" &&
-                  typeof terminalDom?.zoomOut === "function"
-                ) {
-                  terminalDom.zoomOut();
+              <Pressable
+                accessibilityLabel={
+                  panMode
+                    ? "Disable terminal pan mode"
+                    : "Enable terminal pan mode"
                 }
-                terminalDom?.focus();
-              }}
-              style={({ pressed }) => [
-                styles.key,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText style={styles.keyLabel}>{keyLabel}</ThemedText>
-            </Pressable>
-          ))}
-        </ScrollView>
-      </KeyboardAvoidingView>
+                accessibilityRole="button"
+                accessibilityState={{ selected: panMode }}
+                onPress={() => updatePanMode(!panMode)}
+                style={({ pressed }) => [
+                  styles.key,
+                  {
+                    backgroundColor: panMode
+                      ? theme.text
+                      : theme.backgroundElement,
+                    borderColor: panMode
+                      ? theme.text
+                      : theme.backgroundSelected,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "hand.draw", android: "pan_tool" }}
+                  size={17}
+                  tintColor={panMode ? theme.background : theme.text}
+                />
+              </Pressable>
+              <Pressable
+                accessibilityLabel={
+                  controlActive
+                    ? "Disable Control modifier"
+                    : "Enable Control modifier"
+                }
+                accessibilityRole="button"
+                accessibilityState={{ selected: controlActive }}
+                disabled={terminal.status !== "connected" || panMode}
+                onPress={() => {
+                  const active = !controlActiveRef.current;
+                  controlActiveRef.current = active;
+                  setControlActive(active);
+                  terminalRef.current?.focus();
+                }}
+                style={({ pressed }) => [
+                  styles.key,
+                  {
+                    backgroundColor: controlActive
+                      ? theme.text
+                      : theme.backgroundElement,
+                    borderColor: controlActive
+                      ? theme.text
+                      : theme.backgroundSelected,
+                  },
+                  (terminal.status !== "connected" || panMode) &&
+                    styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText
+                  style={[
+                    styles.keyLabel,
+                    controlActive && { color: theme.background },
+                  ]}
+                >
+                  Ctrl
+                </ThemedText>
+              </Pressable>
+              {[
+                ["Esc", "\u001b"],
+                ["Tab", "\t"],
+                ["↑", "\u001b[A"],
+                ["↓", "\u001b[B"],
+                ["←", "\u001b[D"],
+                ["→", "\u001b[C"],
+              ].map(([keyLabel, data]) => (
+                <Pressable
+                  accessibilityLabel={`Send ${keyLabel}`}
+                  accessibilityRole="button"
+                  disabled={terminal.status !== "connected" || panMode}
+                  key={keyLabel}
+                  onPress={() => sendKey(data)}
+                  style={({ pressed }) => [
+                    styles.key,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
+                    (terminal.status !== "connected" || panMode) &&
+                      styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.keyLabel}>{keyLabel}</ThemedText>
+                </Pressable>
+              ))}
+              {[
+                ["A−", "Zoom out", "zoomOut"],
+                ["A+", "Zoom in", "zoomIn"],
+              ].map(([keyLabel, accessibilityLabel, action]) => (
+                <Pressable
+                  accessibilityLabel={accessibilityLabel}
+                  accessibilityRole="button"
+                  key={action}
+                  onPress={() => {
+                    const terminalDom = terminalRef.current;
+                    if (
+                      action === "zoomIn" &&
+                      typeof terminalDom?.zoomIn === "function"
+                    ) {
+                      terminalDom.zoomIn();
+                    } else if (
+                      action === "zoomOut" &&
+                      typeof terminalDom?.zoomOut === "function"
+                    ) {
+                      terminalDom.zoomOut();
+                    }
+                    terminalDom?.focus();
+                  }}
+                  style={({ pressed }) => [
+                    styles.key,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.keyLabel}>{keyLabel}</ThemedText>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </KeyboardAvoidingView>
+        )}
+      </PageChromeLayout>
       <ProjectTerminalSwitcherDrawer
         accessToken={runtime.accessToken}
         currentTerminalId={terminalId}

@@ -28,7 +28,11 @@ import {
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 
 const PAGE_LIMIT = 10;
@@ -49,6 +53,7 @@ function formatDate(value: unknown) {
 export default function WalletScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const [activeTab, setActiveTab] = useState<WalletTab>("transactions");
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [creditGrantsPage, setCreditGrantsPage] = useState(1);
@@ -84,11 +89,18 @@ export default function WalletScreen() {
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
       <PageChromeLayout
-        top={<PageHeader onBack={() => router.back()} title="Wallet" />}
+        top={
+          <PageHeader
+            onBack={() => router.back()}
+            title="Wallet"
+            titleOpacity={titleOpacity}
+          />
+        }
       >
         {({ topInset }) => (
           <ScrollView
             contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            onScroll={onTitleScroll}
             refreshControl={
               <RefreshControl
                 onRefresh={refresh}
@@ -97,6 +109,7 @@ export default function WalletScreen() {
               />
             }
             showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
           >
             <View
               style={[

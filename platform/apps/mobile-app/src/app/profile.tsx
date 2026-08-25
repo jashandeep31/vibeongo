@@ -15,13 +15,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 import { clearAccessToken } from "@/lib/auth";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const userQuery = useUserMetadata();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const user = userQuery.data;
@@ -61,11 +66,19 @@ export default function ProfileScreen() {
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
       <PageChromeLayout
-        top={<PageHeader onBack={() => router.back()} title="Profile" />}
+        top={
+          <PageHeader
+            onBack={() => router.back()}
+            title="Profile"
+            titleOpacity={titleOpacity}
+          />
+        }
       >
         {({ topInset }) => (
           <ScrollView
             contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            onScroll={onTitleScroll}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
           >
             {userQuery.isPending ? (

@@ -19,7 +19,11 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -41,6 +45,7 @@ function getLocalToken(config: unknown) {
 export function ProjectTerminalScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const { width: windowWidth } = useWindowDimensions();
   const terminalCardSize = Math.floor((Math.min(windowWidth, 560) - 48) / 2);
   const params = useLocalSearchParams<{
@@ -156,6 +161,7 @@ export function ProjectTerminalScreen() {
           <PageHeader
             onBack={goBack}
             title={`${projectName} · ${sessionName} · Terminal`}
+            titleOpacity={titleOpacity}
             titleLeading={
               <SymbolView
                 name={{ ios: "apple.terminal", android: "terminal" }}
@@ -176,6 +182,8 @@ export function ProjectTerminalScreen() {
         {({ topInset }) => (
           <ScrollView
             contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            onScroll={onTitleScroll}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
           >
             <SectionHeading

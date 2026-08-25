@@ -32,7 +32,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ConnectGithubRepoDrawer } from "@/components/github-repos/connect-github-repo-drawer";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import {
   buildProjectPackages,
   createDefaultProjectServicesConfig,
@@ -69,6 +73,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function ProjectFormScreen({ projectId }: { projectId?: string }) {
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const router = useRouter();
   const isEditing = Boolean(projectId);
   const createProject = useCreateProject();
@@ -339,6 +344,7 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
             <Header
               onBack={goBack}
               title={isEditing ? "Edit project" : "Create project"}
+              titleOpacity={titleOpacity}
             />
           }
         >
@@ -346,6 +352,8 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
             <ScrollView
               contentContainerStyle={[styles.content, { paddingTop: topInset }]}
               keyboardShouldPersistTaps="handled"
+              onScroll={onTitleScroll}
+              scrollEventThrottle={16}
               showsVerticalScrollIndicator={false}
             >
               <FormSection title="Project details">
@@ -600,8 +608,18 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
   );
 }
 
-function Header({ onBack, title }: { onBack: () => void; title: string }) {
-  return <PageHeader onBack={onBack} title={title} />;
+function Header({
+  onBack,
+  title,
+  titleOpacity,
+}: {
+  onBack: () => void;
+  title: string;
+  titleOpacity?: React.ComponentProps<typeof PageHeader>["titleOpacity"];
+}) {
+  return (
+    <PageHeader onBack={onBack} title={title} titleOpacity={titleOpacity} />
+  );
 }
 
 function LoadingState({ label }: { label: string }) {

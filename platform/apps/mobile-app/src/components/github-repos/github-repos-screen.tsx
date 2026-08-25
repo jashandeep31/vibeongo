@@ -18,12 +18,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ConnectGithubRepoDrawer } from "@/components/github-repos/connect-github-repo-drawer";
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 
 export function GithubReposScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const reposQuery = useGithubRepos();
   const repos = reposQuery.data ?? [];
   const [query, setQuery] = useState("");
@@ -73,6 +78,7 @@ export function GithubReposScreen() {
               </Pressable>
             }
             title="Repositories"
+            titleOpacity={titleOpacity}
           />
         }
       >
@@ -80,6 +86,7 @@ export function GithubReposScreen() {
           <ScrollView
             contentContainerStyle={[styles.content, { paddingTop: topInset }]}
             keyboardShouldPersistTaps="handled"
+            onScroll={onTitleScroll}
             refreshControl={
               <RefreshControl
                 onRefresh={() => void reposQuery.refetch()}
@@ -88,6 +95,7 @@ export function GithubReposScreen() {
               />
             }
             showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
           >
             <View
               style={[

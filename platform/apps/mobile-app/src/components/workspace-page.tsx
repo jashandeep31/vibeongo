@@ -122,136 +122,138 @@ export function WorkspacePage() {
         <PageChromeLayout
           top={
             <View style={styles.topBar}>
-          <Pressable
-            accessibilityLabel="Open sidebar"
-            accessibilityRole="button"
-            hitSlop={8}
-            onPress={() => setIsSidebarOpen(true)}
-            style={({ pressed }) => [
-              styles.roundedControl,
-              pressed && styles.pressed,
-            ]}
-          >
-            <GlassView
-              glassEffectStyle="regular"
-              isInteractive
-              style={[
-                styles.menuButton,
-                !supportsNativeGlass && {
-                  backgroundColor: isDark ? "#242528" : "#FFFFFF",
-                  borderColor: isDark
-                    ? "rgba(255,255,255,0.10)"
-                    : "rgba(15,23,42,0.08)",
-                  borderWidth: 1,
-                },
-              ]}
-            >
-              <SymbolView
-                name={{ ios: "line.3.horizontal", android: "menu" }}
-                size={20}
-                tintColor={theme.text}
-              />
-            </GlassView>
-          </Pressable>
+              <Pressable
+                accessibilityLabel="Open sidebar"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setIsSidebarOpen(true)}
+                style={({ pressed }) => [
+                  styles.roundedControl,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <GlassView
+                  glassEffectStyle="regular"
+                  isInteractive
+                  style={[
+                    styles.menuButton,
+                    !supportsNativeGlass && {
+                      backgroundColor: isDark ? "#242528" : "#FFFFFF",
+                      borderColor: isDark
+                        ? "rgba(255,255,255,0.10)"
+                        : "rgba(15,23,42,0.08)",
+                      borderWidth: 1,
+                    },
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "line.3.horizontal", android: "menu" }}
+                    size={20}
+                    tintColor={theme.text}
+                  />
+                </GlassView>
+              </Pressable>
 
-          <GlassView
-            accessibilityLabel="Workspace view"
-            accessibilityRole="tablist"
-            glassEffectStyle="regular"
-            style={[
-              styles.tabPill,
-              !supportsNativeGlass && {
-                backgroundColor: isDark ? "#242528" : "#F1F2F4",
-                borderColor: isDark
-                  ? "rgba(255,255,255,0.10)"
-                  : "rgba(15,23,42,0.06)",
-                borderWidth: 1,
-                overflow: "visible",
-              },
-            ]}
-          >
-            <TabButton
-              active={activeView === "chats"}
-              isDark={isDark}
-              label="Chats"
-              onPress={() => selectView("chats")}
-            />
-            <TabButton
-              active={activeView === "projects"}
-              isDark={isDark}
-              label="Projects"
-              onPress={() => selectView("projects")}
-            />
-          </GlassView>
-
-          {activeView === "projects" ? (
-            <Pressable
-              accessibilityLabel="New project"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => router.push("/projects/create")}
-              style={({ pressed }) => [
-                styles.roundedControl,
-                pressed && styles.pressed,
-              ]}
-            >
               <GlassView
+                accessibilityLabel="Workspace view"
+                accessibilityRole="tablist"
                 glassEffectStyle="regular"
-                isInteractive
                 style={[
-                  styles.menuButton,
+                  styles.tabPill,
                   !supportsNativeGlass && {
-                    backgroundColor: isDark ? "#242528" : "#FFFFFF",
+                    backgroundColor: isDark ? "#242528" : "#F1F2F4",
                     borderColor: isDark
                       ? "rgba(255,255,255,0.10)"
-                      : "rgba(15,23,42,0.08)",
+                      : "rgba(15,23,42,0.06)",
                     borderWidth: 1,
+                    overflow: "visible",
                   },
                 ]}
               >
-                <SymbolView
-                  name={{ ios: "plus", android: "add" }}
-                  size={20}
-                  tintColor={theme.text}
+                <TabButton
+                  active={activeView === "chats"}
+                  isDark={isDark}
+                  label="Chats"
+                  onPress={() => selectView("chats")}
+                />
+                <TabButton
+                  active={activeView === "projects"}
+                  isDark={isDark}
+                  label="Projects"
+                  onPress={() => selectView("projects")}
                 />
               </GlassView>
-            </Pressable>
-          ) : (
-            <View style={styles.headerSpacer} />
-          )}
+
+              {activeView === "projects" ? (
+                <Pressable
+                  accessibilityLabel="New project"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => router.push("/projects/create")}
+                  style={({ pressed }) => [
+                    styles.roundedControl,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <GlassView
+                    glassEffectStyle="regular"
+                    isInteractive
+                    style={[
+                      styles.menuButton,
+                      !supportsNativeGlass && {
+                        backgroundColor: isDark ? "#242528" : "#FFFFFF",
+                        borderColor: isDark
+                          ? "rgba(255,255,255,0.10)"
+                          : "rgba(15,23,42,0.08)",
+                        borderWidth: 1,
+                      },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "plus", android: "add" }}
+                      size={20}
+                      tintColor={theme.text}
+                    />
+                  </GlassView>
+                </Pressable>
+              ) : (
+                <View style={styles.headerSpacer} />
+              )}
             </View>
           }
         >
           {({ topInset }) => (
-            <View style={[styles.screen, { paddingTop: topInset }]}> 
-        <Animated.ScrollView
-          bounces={false}
-          contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
-          decelerationRate="fast"
-          horizontal
-          keyboardShouldPersistTaps="handled"
-          onMomentumScrollEnd={(event) => {
-            const page = Math.round(event.nativeEvent.contentOffset.x / width);
-            setSettledView(page === 0 ? "chats" : "projects");
-          }}
-          onScroll={scrollHandler}
-          onScrollBeginDrag={(event) => {
-            cancelAnimation(animatedScrollX);
-            animatedScrollX.value = event.nativeEvent.contentOffset.x;
-          }}
-          pagingEnabled
-          ref={pagerRef}
-          scrollEventThrottle={16}
-          showsHorizontalScrollIndicator={false}
-          style={styles.pager}
-        >
-          <View style={[styles.chatPage, { width }]}>
-            <ChatList />
-          </View>
-          <View style={[styles.page, { width }]}>
-            <ProjectList />
-          </View>
-        </Animated.ScrollView>
+            <View style={[styles.screen, { paddingTop: topInset }]}>
+              <Animated.ScrollView
+                bounces={false}
+                contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
+                decelerationRate="fast"
+                horizontal
+                keyboardShouldPersistTaps="handled"
+                onMomentumScrollEnd={(event) => {
+                  const page = Math.round(
+                    event.nativeEvent.contentOffset.x / width,
+                  );
+                  setSettledView(page === 0 ? "chats" : "projects");
+                }}
+                onScroll={scrollHandler}
+                onScrollBeginDrag={(event) => {
+                  cancelAnimation(animatedScrollX);
+                  animatedScrollX.value = event.nativeEvent.contentOffset.x;
+                }}
+                pagingEnabled
+                ref={pagerRef}
+                scrollEventThrottle={16}
+                showsHorizontalScrollIndicator={false}
+                style={styles.pager}
+              >
+                <View style={[styles.chatPage, { width }]}>
+                  <ChatList />
+                </View>
+                <View style={[styles.page, { width }]}>
+                  <ProjectList />
+                </View>
+              </Animated.ScrollView>
             </View>
           )}
         </PageChromeLayout>

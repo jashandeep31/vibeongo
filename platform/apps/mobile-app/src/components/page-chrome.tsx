@@ -10,6 +10,9 @@ import {
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
+  type StyleProp,
+  type TextStyle,
+  type ViewStyle,
 } from "react-native";
 
 import { ThemedText } from "@/components/themed-text";
@@ -73,7 +76,9 @@ export function PageHeader({
   onTitlePress,
   right,
   title,
+  titleContainerStyle,
   titleLeading,
+  titleTextStyle,
   titleTrailing,
   titleOpacity,
   titleVariant = "plain",
@@ -84,7 +89,9 @@ export function PageHeader({
   onTitlePress?: () => void;
   right?: ReactNode;
   title: string;
+  titleContainerStyle?: StyleProp<ViewStyle>;
   titleLeading?: ReactNode;
+  titleTextStyle?: StyleProp<TextStyle>;
   titleTrailing?: ReactNode;
   titleOpacity?: Animated.AnimatedInterpolation<number>;
   titleVariant?: "pill" | "plain";
@@ -93,7 +100,7 @@ export function PageHeader({
   const titleContent = (
     <>
       {titleLeading}
-      <ThemedText numberOfLines={1} style={styles.title}>
+      <ThemedText numberOfLines={1} style={[styles.title, titleTextStyle]}>
         {title}
       </ThemedText>
       {titleTrailing}
@@ -134,6 +141,7 @@ export function PageHeader({
           style={({ pressed }) => [
             styles.titlePill,
             { backgroundColor: theme.backgroundElement },
+            titleContainerStyle,
             pressed && styles.pressed,
           ]}
         >
@@ -141,7 +149,10 @@ export function PageHeader({
         </Pressable>
       ) : (
         <Animated.View
-          style={[styles.plainTitle, titleOpacity ? { opacity: titleOpacity } : null]}
+          style={[
+            styles.plainTitle,
+            titleOpacity ? { opacity: titleOpacity } : null,
+          ]}
         >
           {titleContent}
         </Animated.View>

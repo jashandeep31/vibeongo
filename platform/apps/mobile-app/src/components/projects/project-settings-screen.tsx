@@ -24,7 +24,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { RuntimeShellToolsCard } from "@/components/projects/runtime-shell-tools-card";
 import { RuntimeToolCard } from "@/components/projects/runtime-tool-card";
 import { Fonts } from "@/constants/theme";
@@ -80,6 +84,7 @@ function formatUptime(value: Date | string | null | undefined, now: number) {
 export function ProjectSettingsScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const logsRef = useRef<ScrollView>(null);
   const params = useLocalSearchParams<{
     projectId?: string | string[];
@@ -203,6 +208,7 @@ export function ProjectSettingsScreen() {
           <PageHeader
             onBack={goBack}
             title={projectName}
+            titleOpacity={titleOpacity}
             titleTrailing={
               <View
                 style={[styles.statusDot, { backgroundColor: statusColor }]}
@@ -214,6 +220,8 @@ export function ProjectSettingsScreen() {
         {({ topInset }) => (
           <ScrollView
             contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            onScroll={onTitleScroll}
+            scrollEventThrottle={16}
             showsVerticalScrollIndicator={false}
           >
             {runtime.isPending ? (
