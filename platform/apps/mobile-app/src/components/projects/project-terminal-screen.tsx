@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -150,182 +151,178 @@ export function ProjectTerminalScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View
-        style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
-      >
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={goBack}
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={20}
-            tintColor={theme.text}
+      <PageChromeLayout
+        top={
+          <PageHeader
+            onBack={goBack}
+            title={`${projectName} · ${sessionName} · Terminal`}
+            titleLeading={
+              <SymbolView
+                name={{ ios: "apple.terminal", android: "terminal" }}
+                size={16}
+                tintColor={theme.textSecondary}
+              />
+            }
+            titleTrailing={
+              <View
+                accessibilityLabel={`WebSocket ${terminalWorkspace.status}`}
+                accessibilityRole="text"
+                style={[styles.statusDot, { backgroundColor: statusColor }]}
+              />
+            }
           />
-        </Pressable>
-        <SymbolView
-          name={{ ios: "apple.terminal", android: "terminal" }}
-          size={17}
-          tintColor={theme.textSecondary}
-        />
-        <ThemedText numberOfLines={1} style={styles.title}>
-          {projectName} · {sessionName} · Terminal
-        </ThemedText>
-        <View
-          accessibilityLabel={`WebSocket ${terminalWorkspace.status}`}
-          accessibilityRole="text"
-          style={[styles.statusDot, { backgroundColor: statusColor }]}
-        />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+        }
       >
-        <SectionHeading
-          count={terminalWorkspace.terminalSessionIds.length}
-          title="Terminal sessions"
-        />
-
-        <View style={styles.terminalGrid}>
-          <Pressable
-            accessibilityLabel="New terminal session"
-            accessibilityRole="button"
-            disabled={isCreatingTerminal}
-            onPress={() => void addTerminalSession()}
-            style={({ pressed }) => [
-              styles.newSessionCard,
-              { height: terminalCardSize, width: terminalCardSize },
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.backgroundSelected,
-              },
-              isCreatingTerminal && styles.disabled,
-              pressed && styles.pressed,
-            ]}
+        {({ topInset }) => (
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            showsVerticalScrollIndicator={false}
           >
-            <View
-              style={[
-                styles.newSessionIcon,
-                { backgroundColor: theme.backgroundSelected },
-              ]}
-            >
-              {isCreatingTerminal ? (
-                <ActivityIndicator color={theme.text} size="small" />
-              ) : (
-                <SymbolView
-                  name={{ ios: "plus", android: "add" }}
-                  size={20}
-                  tintColor={theme.text}
-                />
-              )}
-            </View>
-            <View>
-              <ThemedText style={styles.cardTitle}>New session</ThemedText>
-              <ThemedText
-                style={styles.newSessionHint}
-                themeColor="textSecondary"
-              >
-                Open a fresh shell
-              </ThemedText>
-            </View>
-          </Pressable>
+            <SectionHeading
+              count={terminalWorkspace.terminalSessionIds.length}
+              title="Terminal sessions"
+            />
 
-          {terminalWorkspace.terminalSessionIds.map((terminalId, index) => {
-            const isActive =
-              terminalId === terminalWorkspace.activeTerminalSessionId;
-            return (
+            <View style={styles.terminalGrid}>
               <Pressable
-                accessibilityLabel={`Open Terminal ${index + 1}`}
+                accessibilityLabel="New terminal session"
                 accessibilityRole="button"
-                key={terminalId}
-                onPress={() => openTerminal(terminalId)}
+                disabled={isCreatingTerminal}
+                onPress={() => void addTerminalSession()}
                 style={({ pressed }) => [
-                  styles.terminalCard,
+                  styles.newSessionCard,
                   { height: terminalCardSize, width: terminalCardSize },
                   {
                     backgroundColor: theme.backgroundElement,
-                    borderColor: isActive
-                      ? "rgba(16, 185, 129, 0.55)"
-                      : theme.backgroundSelected,
+                    borderColor: theme.backgroundSelected,
                   },
+                  isCreatingTerminal && styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
-                <View style={styles.terminalCardTop}>
-                  <View
-                    style={[
-                      styles.iconTile,
-                      { backgroundColor: theme.backgroundSelected },
-                    ]}
-                  >
+                <View
+                  style={[
+                    styles.newSessionIcon,
+                    { backgroundColor: theme.backgroundSelected },
+                  ]}
+                >
+                  {isCreatingTerminal ? (
+                    <ActivityIndicator color={theme.text} size="small" />
+                  ) : (
                     <SymbolView
-                      name={{ ios: "apple.terminal", android: "terminal" }}
-                      size={17}
+                      name={{ ios: "plus", android: "add" }}
+                      size={20}
                       tintColor={theme.text}
                     />
-                  </View>
-                  {isActive ? (
-                    <View style={styles.activeBadge}>
-                      <View style={styles.activeDot} />
-                      <ThemedText style={styles.activeLabel}>Active</ThemedText>
-                    </View>
-                  ) : null}
+                  )}
                 </View>
-                <View style={styles.cardFooter}>
-                  <View style={styles.cardCopy}>
-                    <ThemedText style={styles.cardTitle}>
-                      Terminal {index + 1}
-                    </ThemedText>
-                    <ThemedText
-                      numberOfLines={1}
-                      style={[
-                        styles.identifier,
-                        { color: theme.textSecondary },
-                      ]}
-                    >
-                      {terminalId}
-                    </ThemedText>
-                  </View>
-                  <SymbolView
-                    name={{ ios: "chevron.right", android: "chevron_right" }}
-                    size={16}
-                    tintColor={theme.textSecondary}
-                  />
+                <View>
+                  <ThemedText style={styles.cardTitle}>New session</ThemedText>
+                  <ThemedText
+                    style={styles.newSessionHint}
+                    themeColor="textSecondary"
+                  >
+                    Open a fresh shell
+                  </ThemedText>
                 </View>
               </Pressable>
-            );
-          })}
-        </View>
 
-        <View style={styles.tmuxSection}>
-          <SectionHeading
-            count={terminalWorkspace.tmuxSessions.length}
-            title="Tmux sessions"
-          />
-          {terminalWorkspace.tmuxSessions.length > 0 ? (
-            <View style={styles.tmuxList}>
-              {terminalWorkspace.tmuxSessions.map((session) => (
-                <TmuxSessionCard key={session.name} session={session} />
-              ))}
+              {terminalWorkspace.terminalSessionIds.map((terminalId, index) => {
+                const isActive =
+                  terminalId === terminalWorkspace.activeTerminalSessionId;
+                return (
+                  <Pressable
+                    accessibilityLabel={`Open Terminal ${index + 1}`}
+                    accessibilityRole="button"
+                    key={terminalId}
+                    onPress={() => openTerminal(terminalId)}
+                    style={({ pressed }) => [
+                      styles.terminalCard,
+                      { height: terminalCardSize, width: terminalCardSize },
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: isActive
+                          ? "rgba(16, 185, 129, 0.55)"
+                          : theme.backgroundSelected,
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <View style={styles.terminalCardTop}>
+                      <View
+                        style={[
+                          styles.iconTile,
+                          { backgroundColor: theme.backgroundSelected },
+                        ]}
+                      >
+                        <SymbolView
+                          name={{ ios: "apple.terminal", android: "terminal" }}
+                          size={17}
+                          tintColor={theme.text}
+                        />
+                      </View>
+                      {isActive ? (
+                        <View style={styles.activeBadge}>
+                          <View style={styles.activeDot} />
+                          <ThemedText style={styles.activeLabel}>
+                            Active
+                          </ThemedText>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View style={styles.cardFooter}>
+                      <View style={styles.cardCopy}>
+                        <ThemedText style={styles.cardTitle}>
+                          Terminal {index + 1}
+                        </ThemedText>
+                        <ThemedText
+                          numberOfLines={1}
+                          style={[
+                            styles.identifier,
+                            { color: theme.textSecondary },
+                          ]}
+                        >
+                          {terminalId}
+                        </ThemedText>
+                      </View>
+                      <SymbolView
+                        name={{
+                          ios: "chevron.right",
+                          android: "chevron_right",
+                        }}
+                        size={16}
+                        tintColor={theme.textSecondary}
+                      />
+                    </View>
+                  </Pressable>
+                );
+              })}
             </View>
-          ) : (
-            <EmptyState
-              message={
-                terminalWorkspace.status === "connected"
-                  ? "No tmux sessions are running."
-                  : "Waiting for tmux sessions…"
-              }
-            />
-          )}
-        </View>
-      </ScrollView>
+
+            <View style={styles.tmuxSection}>
+              <SectionHeading
+                count={terminalWorkspace.tmuxSessions.length}
+                title="Tmux sessions"
+              />
+              {terminalWorkspace.tmuxSessions.length > 0 ? (
+                <View style={styles.tmuxList}>
+                  {terminalWorkspace.tmuxSessions.map((session) => (
+                    <TmuxSessionCard key={session.name} session={session} />
+                  ))}
+                </View>
+              ) : (
+                <EmptyState
+                  message={
+                    terminalWorkspace.status === "connected"
+                      ? "No tmux sessions are running."
+                      : "Waiting for tmux sessions…"
+                  }
+                />
+              )}
+            </View>
+          </ScrollView>
+        )}
+      </PageChromeLayout>
     </SafeAreaView>
   );
 }

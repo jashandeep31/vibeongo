@@ -26,6 +26,7 @@ import Toast from "react-native-toast-message";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import { GithubAutomationDrawer } from "@/components/github-repos/github-automation-drawer";
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -180,328 +181,320 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View
-        style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
+      <PageChromeLayout
+        top={<PageHeader onBack={() => router.back()} title="Repository" />}
       >
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={21}
-            tintColor={theme.text}
-            weight="medium"
-          />
-        </Pressable>
-        <ThemedText numberOfLines={1} style={styles.headerTitle}>
-          Repository
-        </ThemedText>
-        <View style={styles.headerButton} />
-      </View>
-
-      {issuesQuery.isError && pullRequestsQuery.isError ? (
-        <ResourceState
-          actionLabel="Try again"
-          label="Repository activity could not be loaded"
-          onAction={refresh}
-        />
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={
-            <RefreshControl
-              onRefresh={refresh}
-              refreshing={isRefreshing}
-              tintColor={theme.textSecondary}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {repo ? (
-            <>
-              <View style={styles.identity}>
-                <View
-                  style={[styles.repoIcon, { backgroundColor: theme.text }]}
-                >
-                  <SymbolView
-                    name={
-                      isForgejo
-                        ? {
-                            ios: "arrow.triangle.branch",
-                            android: "account_tree",
-                          }
-                        : {
-                            ios: "chevron.left.forwardslash.chevron.right",
-                            android: "code",
-                          }
-                    }
-                    size={19}
-                    tintColor={theme.background}
-                  />
-                </View>
-                <View style={styles.identityCopy}>
-                  <ThemedText style={styles.owner} themeColor="textSecondary">
-                    {repo.repo_owner_username}
-                  </ThemedText>
-                  <ThemedText numberOfLines={1} style={styles.repoName}>
-                    {repo.full_name.split("/").filter(Boolean).at(-1) ??
-                      repo.full_name}
-                  </ThemedText>
-                </View>
-                <View
-                  style={[
-                    styles.visibilityBadge,
-                    { borderColor: theme.backgroundSelected },
-                  ]}
-                >
-                  <SymbolView
-                    name={
-                      isForgejo
-                        ? {
-                            ios: "arrow.triangle.branch",
-                            android: "account_tree",
-                          }
-                        : {
-                            ios: "chevron.left.forwardslash.chevron.right",
-                            android: "code",
-                          }
-                    }
-                    size={12}
-                    tintColor={theme.textSecondary}
-                  />
-                  <ThemedText
-                    style={styles.visibilityText}
-                    themeColor="textSecondary"
-                  >
-                    {providerLabel}
-                  </ThemedText>
-                </View>
-                <View
-                  style={[
-                    styles.visibilityBadge,
-                    { borderColor: theme.backgroundSelected },
-                  ]}
-                >
-                  <SymbolView
-                    name={
-                      repo.public
-                        ? { ios: "checkmark.shield", android: "verified_user" }
-                        : { ios: "lock", android: "lock" }
-                    }
-                    size={12}
-                    tintColor={theme.textSecondary}
-                  />
-                  <ThemedText
-                    style={styles.visibilityText}
-                    themeColor="textSecondary"
-                  >
-                    {repo.public ? "Public" : "Private"}
-                  </ThemedText>
-                </View>
-              </View>
-
-              <ScrollView
-                contentContainerStyle={styles.actions}
-                horizontal
-                showsHorizontalScrollIndicator={false}
-              >
-                {overview ? (
-                  <ActionButton
-                    icon={{ ios: "doc.text", android: "description" }}
-                    label={showOverview ? "Hide overview" : "Show overview"}
-                    onPress={() => setShowOverview((current) => !current)}
-                  />
-                ) : null}
-                <ActionButton
-                  disabled={scheduleOverview.isPending}
-                  icon={
-                    overview
-                      ? { ios: "arrow.clockwise", android: "refresh" }
-                      : { ios: "sparkles", android: "auto_awesome" }
-                  }
-                  label={overview ? "Refresh overview" : "Create overview"}
-                  loading={scheduleOverview.isPending}
-                  onPress={() => {
-                    if (overview) {
-                      setConfirmationTarget({ kind: "overview" });
-                    } else {
-                      void createOverview();
-                    }
-                  }}
-                />
-                <ActionButton
-                  icon={{ ios: "gearshape", android: "settings" }}
-                  label="Settings"
-                  onPress={() => setSettingsOpen(true)}
-                />
-                <ActionButton
-                  disabled={deleteRepo.isPending}
-                  icon={{ ios: "trash", android: "delete" }}
-                  label="Remove"
-                  loading={deleteRepo.isPending}
-                  onPress={() => setConfirmationTarget({ kind: "delete" })}
-                />
-                {!isForgejo ? (
-                  <ActionButton
-                    icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-                    label="GitHub"
-                    onPress={() =>
-                      void openExternalUrl(
-                        `https://github.com/${repo.full_name}`,
-                      )
-                    }
-                  />
-                ) : null}
-              </ScrollView>
-
-              {showOverview && overview ? (
-                <View
-                  style={[
-                    styles.overview,
-                    {
-                      backgroundColor: theme.backgroundElement,
-                      borderColor: theme.backgroundSelected,
-                    },
-                  ]}
-                >
-                  <ThemedText style={styles.overviewTitle}>Overview</ThemedText>
-                  <ThemedText
-                    selectable
-                    style={styles.overviewText}
-                    themeColor="textSecondary"
-                  >
-                    {overview}
-                  </ThemedText>
-                </View>
-              ) : null}
-
-              {!repo.default_project_id ? (
-                <Pressable
-                  accessibilityRole="button"
-                  onPress={() => setSettingsOpen(true)}
-                  style={styles.warning}
-                >
-                  <SymbolView
-                    name={{
-                      ios: "exclamationmark.triangle",
-                      android: "warning",
-                    }}
-                    size={18}
-                    tintColor="#d97706"
-                  />
-                  <View style={styles.warningCopy}>
-                    <ThemedText style={styles.warningTitle}>
-                      Default project required
-                    </ThemedText>
-                    <ThemedText style={styles.warningDescription}>
-                      Choose a project before reviewing pull requests or fixing
-                      issues.
-                    </ThemedText>
-                  </View>
-                  <SymbolView
-                    name={{ ios: "chevron.right", android: "chevron_right" }}
-                    size={17}
-                    tintColor="#d97706"
-                  />
-                </Pressable>
-              ) : null}
-              <View
-                accessibilityRole="tablist"
-                style={[
-                  styles.tabs,
-                  {
-                    backgroundColor: theme.backgroundElement,
-                    borderColor: theme.backgroundSelected,
-                  },
-                ]}
-              >
-                <TabButton
-                  active={activeResource === "pull-requests"}
-                  label={`Pull requests${pullRequestsQuery.isPending ? "" : ` ${openPullRequests}`}`}
-                  onPress={() => setActiveResource("pull-requests")}
-                />
-                <TabButton
-                  active={activeResource === "issues"}
-                  label={`Issues${issuesQuery.isPending ? "" : ` ${openIssues}`}`}
-                  onPress={() => setActiveResource("issues")}
-                />
-              </View>
-
-              {activeResource === "pull-requests" ? (
-                pullRequestsQuery.isPending ? (
-                  <ActivityListSkeleton />
-                ) : pullRequestsQuery.isError ? (
-                  <ResourceState
-                    actionLabel="Try again"
-                    label="Pull requests could not be loaded"
-                    onAction={() => void pullRequestsQuery.refetch()}
-                  />
-                ) : pullRequests.length === 0 ? (
-                  <ResourceState label="No pull requests found" />
-                ) : (
-                  <View style={styles.resources}>
-                    {pullRequests.map((pullRequest) => (
-                      <PullRequestRow
-                        canAutomate={Boolean(repo.default_project_id)}
-                        key={pullRequest.id}
-                        onOpen={() =>
-                          void openExternalUrl(pullRequest.html_url)
-                        }
-                        onReview={() =>
-                          setConfirmationTarget({
-                            kind: "review",
-                            number: pullRequest.number,
-                          })
-                        }
-                        providerLabel={providerLabel}
-                        pullRequest={pullRequest}
-                      />
-                    ))}
-                  </View>
-                )
-              ) : issuesQuery.isPending ? (
-                <ActivityListSkeleton />
-              ) : issuesQuery.isError ? (
-                <ResourceState
-                  actionLabel="Try again"
-                  label="Issues could not be loaded"
-                  onAction={() => void issuesQuery.refetch()}
-                />
-              ) : issues.length === 0 ? (
-                <ResourceState label="No issues found" />
-              ) : (
-                <View style={styles.resources}>
-                  {issues.map((issue) => (
-                    <IssueRow
-                      canAutomate={Boolean(repo.default_project_id)}
-                      issue={issue}
-                      key={issue.id}
-                      onFix={() =>
-                        setConfirmationTarget({
-                          kind: "fix",
-                          number: issue.number,
-                        })
-                      }
-                      onOpen={() => void openExternalUrl(issue.html_url)}
-                      providerLabel={providerLabel}
-                    />
-                  ))}
-                </View>
-              )}
-            </>
+        {({ topInset }) =>
+          issuesQuery.isError && pullRequestsQuery.isError ? (
+            <View style={[styles.screen, { paddingTop: topInset }]}>
+              <ResourceState
+                actionLabel="Try again"
+                label="Repository activity could not be loaded"
+                onAction={refresh}
+              />
+            </View>
           ) : (
-            <RepositoryDetailSkeleton />
-          )}
-        </ScrollView>
-      )}
+            <ScrollView
+              contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+              refreshControl={
+                <RefreshControl
+                  onRefresh={refresh}
+                  refreshing={isRefreshing}
+                  tintColor={theme.textSecondary}
+                />
+              }
+              showsVerticalScrollIndicator={false}
+            >
+              {repo ? (
+                <>
+                  <View style={styles.identity}>
+                    <View
+                      style={[styles.repoIcon, { backgroundColor: theme.text }]}
+                    >
+                      <SymbolView
+                        name={
+                          isForgejo
+                            ? {
+                                ios: "arrow.triangle.branch",
+                                android: "account_tree",
+                              }
+                            : {
+                                ios: "chevron.left.forwardslash.chevron.right",
+                                android: "code",
+                              }
+                        }
+                        size={19}
+                        tintColor={theme.background}
+                      />
+                    </View>
+                    <View style={styles.identityCopy}>
+                      <ThemedText
+                        style={styles.owner}
+                        themeColor="textSecondary"
+                      >
+                        {repo.repo_owner_username}
+                      </ThemedText>
+                      <ThemedText numberOfLines={1} style={styles.repoName}>
+                        {repo.full_name.split("/").filter(Boolean).at(-1) ??
+                          repo.full_name}
+                      </ThemedText>
+                    </View>
+                    <View
+                      style={[
+                        styles.visibilityBadge,
+                        { borderColor: theme.backgroundSelected },
+                      ]}
+                    >
+                      <SymbolView
+                        name={
+                          isForgejo
+                            ? {
+                                ios: "arrow.triangle.branch",
+                                android: "account_tree",
+                              }
+                            : {
+                                ios: "chevron.left.forwardslash.chevron.right",
+                                android: "code",
+                              }
+                        }
+                        size={12}
+                        tintColor={theme.textSecondary}
+                      />
+                      <ThemedText
+                        style={styles.visibilityText}
+                        themeColor="textSecondary"
+                      >
+                        {providerLabel}
+                      </ThemedText>
+                    </View>
+                    <View
+                      style={[
+                        styles.visibilityBadge,
+                        { borderColor: theme.backgroundSelected },
+                      ]}
+                    >
+                      <SymbolView
+                        name={
+                          repo.public
+                            ? {
+                                ios: "checkmark.shield",
+                                android: "verified_user",
+                              }
+                            : { ios: "lock", android: "lock" }
+                        }
+                        size={12}
+                        tintColor={theme.textSecondary}
+                      />
+                      <ThemedText
+                        style={styles.visibilityText}
+                        themeColor="textSecondary"
+                      >
+                        {repo.public ? "Public" : "Private"}
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  <ScrollView
+                    contentContainerStyle={styles.actions}
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                  >
+                    {overview ? (
+                      <ActionButton
+                        icon={{ ios: "doc.text", android: "description" }}
+                        label={showOverview ? "Hide overview" : "Show overview"}
+                        onPress={() => setShowOverview((current) => !current)}
+                      />
+                    ) : null}
+                    <ActionButton
+                      disabled={scheduleOverview.isPending}
+                      icon={
+                        overview
+                          ? { ios: "arrow.clockwise", android: "refresh" }
+                          : { ios: "sparkles", android: "auto_awesome" }
+                      }
+                      label={overview ? "Refresh overview" : "Create overview"}
+                      loading={scheduleOverview.isPending}
+                      onPress={() => {
+                        if (overview) {
+                          setConfirmationTarget({ kind: "overview" });
+                        } else {
+                          void createOverview();
+                        }
+                      }}
+                    />
+                    <ActionButton
+                      icon={{ ios: "gearshape", android: "settings" }}
+                      label="Settings"
+                      onPress={() => setSettingsOpen(true)}
+                    />
+                    <ActionButton
+                      disabled={deleteRepo.isPending}
+                      icon={{ ios: "trash", android: "delete" }}
+                      label="Remove"
+                      loading={deleteRepo.isPending}
+                      onPress={() => setConfirmationTarget({ kind: "delete" })}
+                    />
+                    {!isForgejo ? (
+                      <ActionButton
+                        icon={{ ios: "arrow.up.right", android: "open_in_new" }}
+                        label="GitHub"
+                        onPress={() =>
+                          void openExternalUrl(
+                            `https://github.com/${repo.full_name}`,
+                          )
+                        }
+                      />
+                    ) : null}
+                  </ScrollView>
+
+                  {showOverview && overview ? (
+                    <View
+                      style={[
+                        styles.overview,
+                        {
+                          backgroundColor: theme.backgroundElement,
+                          borderColor: theme.backgroundSelected,
+                        },
+                      ]}
+                    >
+                      <ThemedText style={styles.overviewTitle}>
+                        Overview
+                      </ThemedText>
+                      <ThemedText
+                        selectable
+                        style={styles.overviewText}
+                        themeColor="textSecondary"
+                      >
+                        {overview}
+                      </ThemedText>
+                    </View>
+                  ) : null}
+
+                  {!repo.default_project_id ? (
+                    <Pressable
+                      accessibilityRole="button"
+                      onPress={() => setSettingsOpen(true)}
+                      style={styles.warning}
+                    >
+                      <SymbolView
+                        name={{
+                          ios: "exclamationmark.triangle",
+                          android: "warning",
+                        }}
+                        size={18}
+                        tintColor="#d97706"
+                      />
+                      <View style={styles.warningCopy}>
+                        <ThemedText style={styles.warningTitle}>
+                          Default project required
+                        </ThemedText>
+                        <ThemedText style={styles.warningDescription}>
+                          Choose a project before reviewing pull requests or
+                          fixing issues.
+                        </ThemedText>
+                      </View>
+                      <SymbolView
+                        name={{
+                          ios: "chevron.right",
+                          android: "chevron_right",
+                        }}
+                        size={17}
+                        tintColor="#d97706"
+                      />
+                    </Pressable>
+                  ) : null}
+                  <View
+                    accessibilityRole="tablist"
+                    style={[
+                      styles.tabs,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: theme.backgroundSelected,
+                      },
+                    ]}
+                  >
+                    <TabButton
+                      active={activeResource === "pull-requests"}
+                      label={`Pull requests${pullRequestsQuery.isPending ? "" : ` ${openPullRequests}`}`}
+                      onPress={() => setActiveResource("pull-requests")}
+                    />
+                    <TabButton
+                      active={activeResource === "issues"}
+                      label={`Issues${issuesQuery.isPending ? "" : ` ${openIssues}`}`}
+                      onPress={() => setActiveResource("issues")}
+                    />
+                  </View>
+
+                  {activeResource === "pull-requests" ? (
+                    pullRequestsQuery.isPending ? (
+                      <ActivityListSkeleton />
+                    ) : pullRequestsQuery.isError ? (
+                      <ResourceState
+                        actionLabel="Try again"
+                        label="Pull requests could not be loaded"
+                        onAction={() => void pullRequestsQuery.refetch()}
+                      />
+                    ) : pullRequests.length === 0 ? (
+                      <ResourceState label="No pull requests found" />
+                    ) : (
+                      <View style={styles.resources}>
+                        {pullRequests.map((pullRequest) => (
+                          <PullRequestRow
+                            canAutomate={Boolean(repo.default_project_id)}
+                            key={pullRequest.id}
+                            onOpen={() =>
+                              void openExternalUrl(pullRequest.html_url)
+                            }
+                            onReview={() =>
+                              setConfirmationTarget({
+                                kind: "review",
+                                number: pullRequest.number,
+                              })
+                            }
+                            providerLabel={providerLabel}
+                            pullRequest={pullRequest}
+                          />
+                        ))}
+                      </View>
+                    )
+                  ) : issuesQuery.isPending ? (
+                    <ActivityListSkeleton />
+                  ) : issuesQuery.isError ? (
+                    <ResourceState
+                      actionLabel="Try again"
+                      label="Issues could not be loaded"
+                      onAction={() => void issuesQuery.refetch()}
+                    />
+                  ) : issues.length === 0 ? (
+                    <ResourceState label="No issues found" />
+                  ) : (
+                    <View style={styles.resources}>
+                      {issues.map((issue) => (
+                        <IssueRow
+                          canAutomate={Boolean(repo.default_project_id)}
+                          issue={issue}
+                          key={issue.id}
+                          onFix={() =>
+                            setConfirmationTarget({
+                              kind: "fix",
+                              number: issue.number,
+                            })
+                          }
+                          onOpen={() => void openExternalUrl(issue.html_url)}
+                          providerLabel={providerLabel}
+                        />
+                      ))}
+                    </View>
+                  )}
+                </>
+              ) : (
+                <RepositoryDetailSkeleton />
+              )}
+            </ScrollView>
+          )
+        }
+      </PageChromeLayout>
 
       <GithubAutomationDrawer
         onClose={() => setSettingsOpen(false)}

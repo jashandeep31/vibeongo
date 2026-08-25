@@ -28,6 +28,7 @@ import {
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 
 const PAGE_LIMIT = 10;
@@ -82,181 +83,171 @@ export default function WalletScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View
-        style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
+      <PageChromeLayout
+        top={<PageHeader onBack={() => router.back()} title="Wallet" />}
       >
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={21}
-            tintColor={theme.text}
-            weight="medium"
-          />
-        </Pressable>
-        <ThemedText style={styles.headerTitle}>Wallet</ThemedText>
-        <View style={styles.headerButton} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        refreshControl={
-          <RefreshControl
-            onRefresh={refresh}
-            refreshing={isRefreshing}
-            tintColor={theme.textSecondary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <View
-          style={[
-            styles.balanceCard,
-            {
-              backgroundColor: theme.backgroundElement,
-              borderColor: theme.backgroundSelected,
-            },
-          ]}
-        >
-          <View style={styles.balanceLabelRow}>
-            <SymbolView
-              name={{ ios: "wallet.bifold", android: "account_balance_wallet" }}
-              size={18}
-              tintColor={theme.textSecondary}
-            />
-            <ThemedText style={styles.balanceLabel} themeColor="textSecondary">
-              Available balance
-            </ThemedText>
-          </View>
-          {walletQuery.isPending ? (
-            <ActivityIndicator
-              color={theme.textSecondary}
-              style={styles.balanceLoader}
-            />
-          ) : walletQuery.isError ? (
-            <ThemedText style={styles.errorText}>
-              Failed to load wallet balance.
-            </ThemedText>
-          ) : (
-            <View style={styles.balanceRow}>
-              <ThemedText
-                adjustsFontSizeToFit
-                numberOfLines={1}
-                style={styles.balance}
-              >
-                ${formatInternalMoney(wallet?.balance ?? 0, 2)}
-              </ThemedText>
-              <ThemedText
-                style={styles.creditsLabel}
-                themeColor="textSecondary"
-              >
-                credits
-              </ThemedText>
-            </View>
-          )}
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => setShowBuyCredits(true)}
-            style={({ pressed }) => [
-              styles.buyButton,
-              { backgroundColor: theme.text },
-              pressed && styles.pressed,
-            ]}
+        {({ topInset }) => (
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            refreshControl={
+              <RefreshControl
+                onRefresh={refresh}
+                refreshing={isRefreshing}
+                tintColor={theme.textSecondary}
+              />
+            }
+            showsVerticalScrollIndicator={false}
           >
-            <SymbolView
-              name={{ ios: "plus", android: "add" }}
-              size={18}
-              tintColor={theme.background}
-              weight="semibold"
-            />
-            <ThemedText
-              style={[styles.buyButtonLabel, { color: theme.background }]}
+            <View
+              style={[
+                styles.balanceCard,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected,
+                },
+              ]}
             >
-              Buy credits
-            </ThemedText>
-          </Pressable>
-        </View>
+              <View style={styles.balanceLabelRow}>
+                <SymbolView
+                  name={{
+                    ios: "wallet.bifold",
+                    android: "account_balance_wallet",
+                  }}
+                  size={18}
+                  tintColor={theme.textSecondary}
+                />
+                <ThemedText
+                  style={styles.balanceLabel}
+                  themeColor="textSecondary"
+                >
+                  Available balance
+                </ThemedText>
+              </View>
+              {walletQuery.isPending ? (
+                <ActivityIndicator
+                  color={theme.textSecondary}
+                  style={styles.balanceLoader}
+                />
+              ) : walletQuery.isError ? (
+                <ThemedText style={styles.errorText}>
+                  Failed to load wallet balance.
+                </ThemedText>
+              ) : (
+                <View style={styles.balanceRow}>
+                  <ThemedText
+                    adjustsFontSizeToFit
+                    numberOfLines={1}
+                    style={styles.balance}
+                  >
+                    ${formatInternalMoney(wallet?.balance ?? 0, 2)}
+                  </ThemedText>
+                  <ThemedText
+                    style={styles.creditsLabel}
+                    themeColor="textSecondary"
+                  >
+                    credits
+                  </ThemedText>
+                </View>
+              )}
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setShowBuyCredits(true)}
+                style={({ pressed }) => [
+                  styles.buyButton,
+                  { backgroundColor: theme.text },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "plus", android: "add" }}
+                  size={18}
+                  tintColor={theme.background}
+                  weight="semibold"
+                />
+                <ThemedText
+                  style={[styles.buyButtonLabel, { color: theme.background }]}
+                >
+                  Buy credits
+                </ThemedText>
+              </Pressable>
+            </View>
 
-        <View
-          accessibilityRole="tablist"
-          style={[styles.tabs, { borderBottomColor: theme.backgroundSelected }]}
-        >
-          <WalletTabButton
-            active={activeTab === "transactions"}
-            label="Transactions"
-            onPress={() => setActiveTab("transactions")}
-          />
-          <WalletTabButton
-            active={activeTab === "credit-grants"}
-            label="Credit grants"
-            onPress={() => setActiveTab("credit-grants")}
-          />
-        </View>
-
-        {activeTab === "transactions" ? (
-          <>
-            {walletQuery.isPending ? (
-              <LoadingRows />
-            ) : walletQuery.isError ? (
-              <ErrorState
-                label="Failed to load transactions."
-                onRetry={() => void walletQuery.refetch()}
+            <View
+              accessibilityRole="tablist"
+              style={[
+                styles.tabs,
+                { borderBottomColor: theme.backgroundSelected },
+              ]}
+            >
+              <WalletTabButton
+                active={activeTab === "transactions"}
+                label="Transactions"
+                onPress={() => setActiveTab("transactions")}
               />
-            ) : transactions.length ? (
-              <View style={styles.list}>
-                {transactions.map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
+              <WalletTabButton
+                active={activeTab === "credit-grants"}
+                label="Credit grants"
+                onPress={() => setActiveTab("credit-grants")}
+              />
+            </View>
+
+            {activeTab === "transactions" ? (
+              <>
+                {walletQuery.isPending ? (
+                  <LoadingRows />
+                ) : walletQuery.isError ? (
+                  <ErrorState
+                    label="Failed to load transactions."
+                    onRetry={() => void walletQuery.refetch()}
                   />
-                ))}
-              </View>
+                ) : transactions.length ? (
+                  <View style={styles.list}>
+                    {transactions.map((transaction) => (
+                      <TransactionRow
+                        key={transaction.id}
+                        transaction={transaction}
+                      />
+                    ))}
+                  </View>
+                ) : (
+                  <EmptyState icon="card" label="No transactions found." />
+                )}
+                <PageControls
+                  hasNext={walletQuery.data?.hasNext ?? false}
+                  isLoading={walletQuery.isFetching}
+                  onChange={setTransactionsPage}
+                  page={currentTransactionsPage}
+                />
+              </>
             ) : (
-              <EmptyState icon="card" label="No transactions found." />
+              <>
+                {creditGrantsQuery.isPending ? (
+                  <LoadingRows />
+                ) : creditGrantsQuery.isError ? (
+                  <ErrorState
+                    label="Failed to load credit grants."
+                    onRetry={() => void creditGrantsQuery.refetch()}
+                  />
+                ) : grants.length ? (
+                  <View style={styles.list}>
+                    {grants.map((grant) => (
+                      <CreditGrantRow grant={grant} key={grant.id} />
+                    ))}
+                  </View>
+                ) : (
+                  <EmptyState icon="gift" label="No credit grants found." />
+                )}
+                <PageControls
+                  hasNext={creditGrantsQuery.data?.hasNext ?? false}
+                  isLoading={creditGrantsQuery.isFetching}
+                  onChange={setCreditGrantsPage}
+                  page={currentCreditGrantsPage}
+                />
+              </>
             )}
-            <PageControls
-              hasNext={walletQuery.data?.hasNext ?? false}
-              isLoading={walletQuery.isFetching}
-              onChange={setTransactionsPage}
-              page={currentTransactionsPage}
-            />
-          </>
-        ) : (
-          <>
-            {creditGrantsQuery.isPending ? (
-              <LoadingRows />
-            ) : creditGrantsQuery.isError ? (
-              <ErrorState
-                label="Failed to load credit grants."
-                onRetry={() => void creditGrantsQuery.refetch()}
-              />
-            ) : grants.length ? (
-              <View style={styles.list}>
-                {grants.map((grant) => (
-                  <CreditGrantRow grant={grant} key={grant.id} />
-                ))}
-              </View>
-            ) : (
-              <EmptyState icon="gift" label="No credit grants found." />
-            )}
-            <PageControls
-              hasNext={creditGrantsQuery.data?.hasNext ?? false}
-              isLoading={creditGrantsQuery.isFetching}
-              onChange={setCreditGrantsPage}
-              page={currentCreditGrantsPage}
-            />
-          </>
+          </ScrollView>
         )}
-      </ScrollView>
+      </PageChromeLayout>
 
       <BuyCreditsDrawer
         onClose={() => setShowBuyCredits(false)}

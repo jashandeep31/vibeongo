@@ -25,6 +25,7 @@ import { scheduleOnRN } from "react-native-worklets";
 
 import { ChatList } from "@/components/chats/chat-list";
 import { HomeSidebar } from "@/components/home-sidebar";
+import { PageChromeLayout } from "@/components/page-chrome";
 import { ProjectList } from "@/components/projects/project-list";
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -118,7 +119,9 @@ export function WorkspacePage() {
         enabled
         style={styles.screen}
       >
-        <View style={styles.topBar}>
+        <PageChromeLayout
+          top={
+            <View style={styles.topBar}>
           <Pressable
             accessibilityLabel="Open sidebar"
             accessibilityRole="button"
@@ -216,8 +219,11 @@ export function WorkspacePage() {
           ) : (
             <View style={styles.headerSpacer} />
           )}
-        </View>
-
+            </View>
+          }
+        >
+          {({ topInset }) => (
+            <View style={[styles.screen, { paddingTop: topInset }]}> 
         <Animated.ScrollView
           bounces={false}
           contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
@@ -246,6 +252,9 @@ export function WorkspacePage() {
             <ProjectList />
           </View>
         </Animated.ScrollView>
+            </View>
+          )}
+        </PageChromeLayout>
       </KeyboardAvoidingView>
 
       <HomeSidebar

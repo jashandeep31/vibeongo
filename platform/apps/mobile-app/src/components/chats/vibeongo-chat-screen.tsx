@@ -1,5 +1,4 @@
 import type { ChatTurn } from "@repo/app-store";
-import { LinearGradient } from "expo-linear-gradient";
 import { SymbolView } from "expo-symbols";
 import { useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -19,12 +18,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VibeongoChatTurn } from "@/components/chats/vibeongo-chat-turn";
 import { VibeongoComposer } from "@/components/chats/vibeongo-composer";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 import { useVibeongoChat } from "@/hooks/use-vibeongo-chat";
-
-const TOP_FADE_HEIGHT = 14;
-const BOTTOM_FADE_HEIGHT = 10;
 
 export function VibeongoChatScreen({ chatId }: { chatId: string }) {
   const theme = useTheme();
@@ -32,9 +29,7 @@ export function VibeongoChatScreen({ chatId }: { chatId: string }) {
   const listRef = useRef<FlatList<ChatTurn>>(null);
   const shouldStickToBottomRef = useRef(true);
   const wasStreamingRef = useRef(false);
-  const [bottomChromeHeight, setBottomChromeHeight] = useState(82);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [topChromeHeight, setTopChromeHeight] = useState(74);
   const {
     chat,
     isConnected,
@@ -154,134 +149,8 @@ export function VibeongoChatScreen({ chatId }: { chatId: string }) {
         enabled
         style={styles.screen}
       >
-        <View style={styles.screen}>
-          <View style={styles.body}>
-            <FlatList
-              contentContainerStyle={[
-                styles.messages,
-                {
-                  paddingBottom: bottomChromeHeight,
-                  paddingTop: topChromeHeight,
-                },
-              ]}
-              data={visibleTurns}
-              keyExtractor={(turn) => turn.id}
-              keyboardDismissMode="interactive"
-              keyboardShouldPersistTaps="handled"
-              onContentSizeChange={() => {
-                if (shouldStickToBottomRef.current) scrollToBottom(false);
-              }}
-              onScroll={handleScroll}
-              ref={listRef}
-              renderItem={({ item }) => (
-                <VibeongoChatTurn
-                  isStreaming={streamingTurn?.id === item.id}
-                  turn={item}
-                />
-              )}
-              scrollEventThrottle={16}
-              scrollIndicatorInsets={{
-                bottom: bottomChromeHeight,
-                top: topChromeHeight,
-              }}
-              showsVerticalScrollIndicator={false}
-            />
-
-            {showScrollButton ? (
-              <Pressable
-                accessibilityLabel="Scroll to latest message"
-                accessibilityRole="button"
-                onPress={() => scrollToBottom(true)}
-                style={({ pressed }) => [
-                  styles.scrollButton,
-                  {
-                    backgroundColor: theme.text,
-                    borderColor: theme.backgroundSelected,
-                    bottom: bottomChromeHeight + 10,
-                  },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "arrow.down", android: "arrow_downward" }}
-                  size={18}
-                  tintColor={theme.background}
-                />
-              </Pressable>
-            ) : null}
-          </View>
-
-          <View
-            onLayout={(event) =>
-              setTopChromeHeight(event.nativeEvent.layout.height)
-            }
-            pointerEvents="box-none"
-            style={styles.topChrome}
-          >
-            <LinearGradient
-              colors={[
-                `${theme.background}F2`,
-                `${theme.background}80`,
-                `${theme.background}00`,
-              ]}
-              dither
-              end={{ x: 0.5, y: 1 }}
-              locations={[0, 0.7, 1]}
-              pointerEvents="none"
-              start={{ x: 0.5, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
-            <View style={styles.header}>
-              <Pressable
-                accessibilityLabel="Go back"
-                accessibilityRole="button"
-                onPress={goBack}
-                style={({ pressed }) => [
-                  styles.headerButton,
-                  { backgroundColor: theme.backgroundElement },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "chevron.left", android: "arrow_back" }}
-                  size={18}
-                  tintColor={theme.text}
-                />
-              </Pressable>
-              <View
-                style={[
-                  styles.headerTitleWrap,
-                  { backgroundColor: theme.backgroundElement },
-                ]}
-              >
-                <ThemedText numberOfLines={1} style={styles.headerTitle}>
-                  {chat.name || "Untitled chat"}
-                </ThemedText>
-              </View>
-              <View style={styles.headerSpacer} />
-            </View>
-          </View>
-
-          <View
-            onLayout={(event) =>
-              setBottomChromeHeight(event.nativeEvent.layout.height)
-            }
-            pointerEvents="box-none"
-            style={styles.bottomChrome}
-          >
-            <LinearGradient
-              colors={[
-                `${theme.background}00`,
-                `${theme.background}80`,
-                `${theme.background}F2`,
-              ]}
-              dither
-              end={{ x: 0.5, y: 1 }}
-              locations={[0, 0.3, 1]}
-              pointerEvents="none"
-              start={{ x: 0.5, y: 0 }}
-              style={StyleSheet.absoluteFill}
-            />
+        <PageChromeLayout
+          bottom={
             <View style={styles.composerOuter}>
               <VibeongoComposer
                 disabled={!isConnected}
@@ -292,8 +161,70 @@ export function VibeongoChatScreen({ chatId }: { chatId: string }) {
                 variant="compact"
               />
             </View>
-          </View>
-        </View>
+          }
+          top={
+            <PageHeader
+              onBack={goBack}
+              title={chat.name || "Untitled chat"}
+              titleVariant="pill"
+            />
+          }
+        >
+          {({ bottomInset, topInset }) => (
+            <View style={styles.body}>
+              <FlatList
+                contentContainerStyle={[
+                  styles.messages,
+                  { paddingBottom: bottomInset, paddingTop: topInset },
+                ]}
+                data={visibleTurns}
+                keyExtractor={(turn) => turn.id}
+                keyboardDismissMode="interactive"
+                keyboardShouldPersistTaps="handled"
+                onContentSizeChange={() => {
+                  if (shouldStickToBottomRef.current) scrollToBottom(false);
+                }}
+                onScroll={handleScroll}
+                ref={listRef}
+                renderItem={({ item }) => (
+                  <VibeongoChatTurn
+                    isStreaming={streamingTurn?.id === item.id}
+                    turn={item}
+                  />
+                )}
+                scrollEventThrottle={16}
+                scrollIndicatorInsets={{
+                  bottom: bottomInset,
+                  top: topInset,
+                }}
+                showsVerticalScrollIndicator={false}
+              />
+
+              {showScrollButton ? (
+                <Pressable
+                  accessibilityLabel="Scroll to latest message"
+                  accessibilityRole="button"
+                  onPress={() => scrollToBottom(true)}
+                  style={({ pressed }) => [
+                    styles.scrollButton,
+                    {
+                      backgroundColor: theme.text,
+                      borderColor: theme.backgroundSelected,
+                      bottom: bottomInset + 10,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "arrow.down", android: "arrow_downward" }}
+                    size={18}
+                    tintColor={theme.background}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
+          )}
+        </PageChromeLayout>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -315,51 +246,11 @@ const styles = StyleSheet.create({
     flex: 1,
     position: "relative",
   },
-  bottomChrome: {
-    bottom: 0,
-    left: 0,
-    paddingTop: BOTTOM_FADE_HEIGHT,
-    position: "absolute",
-    right: 0,
-    zIndex: 3,
-  },
   composerOuter: {
     gap: 6,
     paddingBottom: 10,
     paddingHorizontal: 14,
     paddingTop: 6,
-  },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    paddingBottom: 10,
-    paddingHorizontal: 14,
-    paddingTop: 6,
-  },
-  headerButton: {
-    alignItems: "center",
-    borderRadius: 22,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 19,
-  },
-  headerTitleWrap: {
-    alignItems: "center",
-    borderRadius: 999,
-    flex: 1,
-    height: 40,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  headerSpacer: {
-    height: 44,
-    width: 44,
   },
   messages: {
     flexGrow: 1,
@@ -405,13 +296,5 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "700",
     lineHeight: 24,
-  },
-  topChrome: {
-    left: 0,
-    paddingBottom: TOP_FADE_HEIGHT,
-    position: "absolute",
-    right: 0,
-    top: 0,
-    zIndex: 3,
   },
 });

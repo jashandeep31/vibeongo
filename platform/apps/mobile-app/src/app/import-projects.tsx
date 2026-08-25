@@ -15,6 +15,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -53,164 +54,161 @@ export default function ImportProjectsScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View style={styles.topBar}>
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={22}
-            tintColor={theme.text}
-            weight="medium"
-          />
-        </Pressable>
-        <ThemedText style={styles.headerTitle}>Import projects</ThemedText>
-        <View style={styles.headerButton} />
-      </View>
+      <PageChromeLayout
+        top={
+          <PageHeader onBack={() => router.back()} title="Import projects" />
+        }
+      >
+        {({ topInset }) => (
+          <View style={[styles.screen, { paddingTop: topInset }]}>
+            <View style={styles.intro}>
+              <ThemedText style={styles.title}>Demo projects</ThemedText>
+              <ThemedText style={styles.description} themeColor="textSecondary">
+                Pick a project to add to your workspace.
+              </ThemedText>
+            </View>
 
-      <View style={styles.intro}>
-        <ThemedText style={styles.title}>Demo projects</ThemedText>
-        <ThemedText style={styles.description} themeColor="textSecondary">
-          Pick a project to add to your workspace.
-        </ThemedText>
-      </View>
-
-      {demosQuery.isPending ? (
-        <View style={styles.centeredState}>
-          <ActivityIndicator color={theme.textSecondary} />
-          <ThemedText themeColor="textSecondary">
-            Loading demo projects…
-          </ThemedText>
-        </View>
-      ) : demosQuery.isError ? (
-        <View style={styles.centeredState}>
-          <ThemedText style={styles.stateTitle}>
-            Could not load demo projects
-          </ThemedText>
-          <ThemedText
-            style={styles.stateDescription}
-            themeColor="textSecondary"
-          >
-            Check your connection and try again.
-          </ThemedText>
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void demosQuery.refetch()}
-            style={({ pressed }) => [
-              styles.retryButton,
-              { backgroundColor: theme.text },
-              pressed && styles.pressed,
-            ]}
-          >
-            <ThemedText
-              style={[styles.retryLabel, { color: theme.background }]}
-            >
-              Try again
-            </ThemedText>
-          </Pressable>
-        </View>
-      ) : (
-        <ScrollView
-          contentContainerStyle={styles.content}
-          refreshControl={
-            <RefreshControl
-              onRefresh={() => void demosQuery.refetch()}
-              refreshing={demosQuery.isRefetching}
-              tintColor={theme.textSecondary}
-            />
-          }
-          showsVerticalScrollIndicator={false}
-        >
-          {demos.map((demo) => {
-            const key = `${demo.ownername}/${demo.reponame}`;
-            const isImported = projects.some(
-              (project) => project.name === demo.project.name,
-            );
-            const isImporting = importingKey === key;
-
-            return (
-              <View
-                key={key}
-                style={[
-                  styles.project,
-                  { borderColor: theme.backgroundSelected },
-                ]}
-              >
-                <View style={styles.projectHeader}>
-                  <ThemedText numberOfLines={1} style={styles.projectName}>
-                    {demo.project.name}
-                  </ThemedText>
-                  <Pressable
-                    accessibilityLabel={
-                      isImported
-                        ? `${demo.project.name} is imported`
-                        : `Import ${demo.project.name}`
-                    }
-                    accessibilityRole="button"
-                    accessibilityState={{
-                      busy: isImporting,
-                      disabled: isImported || importDemo.isPending,
-                    }}
-                    disabled={isImported || importDemo.isPending}
-                    onPress={() =>
-                      void handleImport(demo.ownername, demo.reponame)
-                    }
-                    style={({ pressed }) => [
-                      styles.importButton,
-                      { backgroundColor: theme.text },
-                      isImported && styles.disabled,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    {isImporting ? (
-                      <ActivityIndicator
-                        color={theme.background}
-                        size="small"
-                      />
-                    ) : (
-                      <SymbolView
-                        name={
-                          isImported
-                            ? { ios: "checkmark", android: "check" }
-                            : { ios: "plus", android: "add" }
-                        }
-                        size={16}
-                        tintColor={theme.background}
-                        weight="semibold"
-                      />
-                    )}
-                    <ThemedText
-                      style={[styles.importLabel, { color: theme.background }]}
-                    >
-                      {isImported
-                        ? "Imported"
-                        : isImporting
-                          ? "Importing…"
-                          : "Import"}
-                    </ThemedText>
-                  </Pressable>
-                </View>
-                <ThemedText
-                  style={styles.projectDescription}
-                  themeColor="textSecondary"
-                >
-                  {demo.description}
-                </ThemedText>
-                <ThemedText style={styles.tags} themeColor="textSecondary">
-                  {demo.tags.join(" · ")}
+            {demosQuery.isPending ? (
+              <View style={styles.centeredState}>
+                <ActivityIndicator color={theme.textSecondary} />
+                <ThemedText themeColor="textSecondary">
+                  Loading demo projects…
                 </ThemedText>
               </View>
-            );
-          })}
-        </ScrollView>
-      )}
+            ) : demosQuery.isError ? (
+              <View style={styles.centeredState}>
+                <ThemedText style={styles.stateTitle}>
+                  Could not load demo projects
+                </ThemedText>
+                <ThemedText
+                  style={styles.stateDescription}
+                  themeColor="textSecondary"
+                >
+                  Check your connection and try again.
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void demosQuery.refetch()}
+                  style={({ pressed }) => [
+                    styles.retryButton,
+                    { backgroundColor: theme.text },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText
+                    style={[styles.retryLabel, { color: theme.background }]}
+                  >
+                    Try again
+                  </ThemedText>
+                </Pressable>
+              </View>
+            ) : (
+              <ScrollView
+                contentContainerStyle={styles.content}
+                refreshControl={
+                  <RefreshControl
+                    onRefresh={() => void demosQuery.refetch()}
+                    refreshing={demosQuery.isRefetching}
+                    tintColor={theme.textSecondary}
+                  />
+                }
+                showsVerticalScrollIndicator={false}
+              >
+                {demos.map((demo) => {
+                  const key = `${demo.ownername}/${demo.reponame}`;
+                  const isImported = projects.some(
+                    (project) => project.name === demo.project.name,
+                  );
+                  const isImporting = importingKey === key;
+
+                  return (
+                    <View
+                      key={key}
+                      style={[
+                        styles.project,
+                        { borderColor: theme.backgroundSelected },
+                      ]}
+                    >
+                      <View style={styles.projectHeader}>
+                        <ThemedText
+                          numberOfLines={1}
+                          style={styles.projectName}
+                        >
+                          {demo.project.name}
+                        </ThemedText>
+                        <Pressable
+                          accessibilityLabel={
+                            isImported
+                              ? `${demo.project.name} is imported`
+                              : `Import ${demo.project.name}`
+                          }
+                          accessibilityRole="button"
+                          accessibilityState={{
+                            busy: isImporting,
+                            disabled: isImported || importDemo.isPending,
+                          }}
+                          disabled={isImported || importDemo.isPending}
+                          onPress={() =>
+                            void handleImport(demo.ownername, demo.reponame)
+                          }
+                          style={({ pressed }) => [
+                            styles.importButton,
+                            { backgroundColor: theme.text },
+                            isImported && styles.disabled,
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          {isImporting ? (
+                            <ActivityIndicator
+                              color={theme.background}
+                              size="small"
+                            />
+                          ) : (
+                            <SymbolView
+                              name={
+                                isImported
+                                  ? { ios: "checkmark", android: "check" }
+                                  : { ios: "plus", android: "add" }
+                              }
+                              size={16}
+                              tintColor={theme.background}
+                              weight="semibold"
+                            />
+                          )}
+                          <ThemedText
+                            style={[
+                              styles.importLabel,
+                              { color: theme.background },
+                            ]}
+                          >
+                            {isImported
+                              ? "Imported"
+                              : isImporting
+                                ? "Importing…"
+                                : "Import"}
+                          </ThemedText>
+                        </Pressable>
+                      </View>
+                      <ThemedText
+                        style={styles.projectDescription}
+                        themeColor="textSecondary"
+                      >
+                        {demo.description}
+                      </ThemedText>
+                      <ThemedText
+                        style={styles.tags}
+                        themeColor="textSecondary"
+                      >
+                        {demo.tags.join(" · ")}
+                      </ThemedText>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+            )}
+          </View>
+        )}
+      </PageChromeLayout>
     </SafeAreaView>
   );
 }

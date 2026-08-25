@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { RuntimeShellToolsCard } from "@/components/projects/runtime-shell-tools-card";
 import { RuntimeToolCard } from "@/components/projects/runtime-tool-card";
 import { Fonts } from "@/constants/theme";
@@ -197,316 +198,318 @@ export function ProjectSettingsScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View
-        style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
-      >
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={goBack}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={21}
-            tintColor={theme.text}
-            weight="medium"
-          />
-        </Pressable>
-        <View style={styles.headerTitleRow}>
-          <ThemedText numberOfLines={1} style={styles.headerTitle}>
-            {projectName}
-          </ThemedText>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-        </View>
-        <View style={styles.headerButton} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {runtime.isPending ? (
-          <View style={styles.state}>
-            <ActivityIndicator color={theme.textSecondary} />
-            <ThemedText themeColor="textSecondary">Loading runtime…</ThemedText>
-          </View>
-        ) : runtime.isError || !runtime.instance ? (
-          <View style={styles.state}>
-            <SymbolView
-              name={{ ios: "exclamationmark.circle", android: "error_outline" }}
-              size={28}
-              tintColor={theme.textSecondary}
-            />
-            <ThemedText style={styles.stateTitle}>
-              Runtime unavailable
-            </ThemedText>
-            <ThemedText style={styles.stateCopy} themeColor="textSecondary">
-              Resume this project session before opening its runtime settings.
-            </ThemedText>
-          </View>
-        ) : (
-          <>
-            <View style={styles.statsRow}>
-              <RuntimeStat
-                icon={{ ios: "cpu", android: "memory" }}
-                label="CPU"
-                percent={cpuPercent}
-              />
-              <RuntimeStat
-                icon={{ ios: "memorychip", android: "storage" }}
-                label="Memory"
-                percent={memoryPercent}
-              />
-            </View>
-
-            <View
-              style={[
-                styles.card,
-                styles.timeCard,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
-              ]}
-            >
-              <View style={styles.timeHeader}>
-                <View style={styles.timeTitleRow}>
-                  <SymbolView
-                    name={{ ios: "clock", android: "schedule" }}
-                    size={17}
-                    tintColor={theme.textSecondary}
-                  />
-                  <ThemedText style={styles.cardTitle}>Runtime</ThemedText>
-                </View>
-                <View style={styles.liveBadge}>
-                  <View style={styles.liveDot} />
-                  <ThemedText style={styles.liveLabel}>LIVE</ThemedText>
-                </View>
-              </View>
-
+      <PageChromeLayout
+        top={
+          <PageHeader
+            onBack={goBack}
+            title={projectName}
+            titleTrailing={
               <View
-                style={[
-                  styles.countdown,
-                  { backgroundColor: theme.backgroundSelected },
-                ]}
-              >
-                <ThemedText
-                  style={styles.countdownLabel}
-                  themeColor="textSecondary"
-                >
-                  Terminates in
-                </ThemedText>
-                <ThemedText style={styles.countdownValue}>
-                  {remainingTime}
+                style={[styles.statusDot, { backgroundColor: statusColor }]}
+              />
+            }
+          />
+        }
+      >
+        {({ topInset }) => (
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            showsVerticalScrollIndicator={false}
+          >
+            {runtime.isPending ? (
+              <View style={styles.state}>
+                <ActivityIndicator color={theme.textSecondary} />
+                <ThemedText themeColor="textSecondary">
+                  Loading runtime…
                 </ThemedText>
               </View>
-
-              <View style={styles.timeMetrics}>
-                <TimeMetric
-                  label="Started"
-                  value={formatDateTime(runtime.instance.started_at)}
+            ) : runtime.isError || !runtime.instance ? (
+              <View style={styles.state}>
+                <SymbolView
+                  name={{
+                    ios: "exclamationmark.circle",
+                    android: "error_outline",
+                  }}
+                  size={28}
+                  tintColor={theme.textSecondary}
                 />
+                <ThemedText style={styles.stateTitle}>
+                  Runtime unavailable
+                </ThemedText>
+                <ThemedText style={styles.stateCopy} themeColor="textSecondary">
+                  Resume this project session before opening its runtime
+                  settings.
+                </ThemedText>
+              </View>
+            ) : (
+              <>
+                <View style={styles.statsRow}>
+                  <RuntimeStat
+                    icon={{ ios: "cpu", android: "memory" }}
+                    label="CPU"
+                    percent={cpuPercent}
+                  />
+                  <RuntimeStat
+                    icon={{ ios: "memorychip", android: "storage" }}
+                    label="Memory"
+                    percent={memoryPercent}
+                  />
+                </View>
+
                 <View
                   style={[
-                    styles.timeDivider,
-                    { backgroundColor: theme.backgroundSelected },
+                    styles.card,
+                    styles.timeCard,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
                   ]}
-                />
-                <TimeMetric label="Uptime" value={uptime} />
-              </View>
-
-              <Pressable
-                accessibilityLabel="Extend instance time"
-                accessibilityRole="button"
-                disabled={runtime.instance.runtime_kind === "sandbox"}
-                onPress={() => setExtendTimeOpen(true)}
-                style={({ pressed }) => [
-                  styles.extendButton,
-                  runtime.instance?.runtime_kind === "sandbox" &&
-                    styles.disabled,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "plus", android: "add" }}
-                  size={16}
-                  tintColor="#ffffff"
-                  weight="semibold"
-                />
-                <ThemedText style={styles.extendButtonLabel}>
-                  Extend time
-                </ThemedText>
-              </Pressable>
-              {runtime.instance.runtime_kind === "sandbox" ? (
-                <ThemedText style={styles.timeHint} themeColor="textSecondary">
-                  Sandbox instances cannot extend their time.
-                </ThemedText>
-              ) : null}
-            </View>
-
-            <View
-              style={[
-                styles.card,
-                styles.devScriptCard,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
-              ]}
-            >
-              <View style={styles.devScriptCopy}>
-                <ThemedText style={styles.cardTitle}>Dev Script</ThemedText>
-                <ThemedText
-                  style={styles.devScriptDescription}
-                  themeColor="textSecondary"
                 >
-                  Restart the development processes for this instance.
-                </ThemedText>
-              </View>
-              <Pressable
-                accessibilityLabel="Restart dev script"
-                accessibilityRole="button"
-                disabled={!localToken || restartDevScript.isPending}
-                onPress={() => void restartInstanceDevScript()}
-                style={({ pressed }) => [
-                  styles.restartButton,
-                  { borderColor: theme.backgroundSelected },
-                  (!localToken || restartDevScript.isPending) &&
-                    styles.disabled,
-                  pressed && styles.pressed,
-                ]}
-              >
-                {restartDevScript.isPending ? (
-                  <ActivityIndicator color={theme.text} size="small" />
-                ) : (
-                  <SymbolView
-                    name={{ ios: "arrow.clockwise", android: "refresh" }}
-                    size={16}
-                    tintColor={theme.text}
-                  />
-                )}
-                <ThemedText style={styles.restartButtonLabel}>
-                  {restartDevScript.isPending ? "Restarting…" : "Restart"}
-                </ThemedText>
-              </Pressable>
-            </View>
+                  <View style={styles.timeHeader}>
+                    <View style={styles.timeTitleRow}>
+                      <SymbolView
+                        name={{ ios: "clock", android: "schedule" }}
+                        size={17}
+                        tintColor={theme.textSecondary}
+                      />
+                      <ThemedText style={styles.cardTitle}>Runtime</ThemedText>
+                    </View>
+                    <View style={styles.liveBadge}>
+                      <View style={styles.liveDot} />
+                      <ThemedText style={styles.liveLabel}>LIVE</ThemedText>
+                    </View>
+                  </View>
 
-            <RuntimeToolCard
-              disabled={!opencodeDomain}
-              isConnected={runtimeSocket.status === "connected"}
-              lastMessage={runtimeSocket.toolMessages.opencode ?? null}
-              opencodePassword={runtime.password}
-              sendJsonMessage={runtimeSocket.sendJsonMessage}
-              tool="opencode"
-              url={opencodeDomain ? `https://${opencodeDomain}` : ""}
-            />
-
-            <RuntimeToolCard
-              disabled={!t3CodeDomain}
-              isConnected={runtimeSocket.status === "connected"}
-              lastMessage={runtimeSocket.toolMessages.codex ?? null}
-              sendJsonMessage={runtimeSocket.sendJsonMessage}
-              tool="codex"
-              url={t3CodeDomain ? `https://${t3CodeDomain}` : ""}
-            />
-
-            {!domainsQuery.isPending && (!opencodeDomain || !t3CodeDomain) ? (
-              <View
-                style={[
-                  styles.domainWarning,
-                  {
-                    backgroundColor: theme.backgroundElement,
-                    borderColor: "#f59e0b",
-                  },
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "exclamationmark.triangle", android: "warning" }}
-                  size={20}
-                  tintColor="#f59e0b"
-                />
-                <View style={styles.domainWarningCopy}>
-                  <ThemedText style={styles.domainWarningTitle}>
-                    Domains are not pointed here
-                  </ThemedText>
-                  <ThemedText
-                    style={styles.domainWarningText}
-                    themeColor="textSecondary"
+                  <View
+                    style={[
+                      styles.countdown,
+                      { backgroundColor: theme.backgroundSelected },
+                    ]}
                   >
-                    Point the project domains to this running instance to use
-                    OpenCode Web and T3 Code.
-                  </ThemedText>
+                    <ThemedText
+                      style={styles.countdownLabel}
+                      themeColor="textSecondary"
+                    >
+                      Terminates in
+                    </ThemedText>
+                    <ThemedText style={styles.countdownValue}>
+                      {remainingTime}
+                    </ThemedText>
+                  </View>
+
+                  <View style={styles.timeMetrics}>
+                    <TimeMetric
+                      label="Started"
+                      value={formatDateTime(runtime.instance.started_at)}
+                    />
+                    <View
+                      style={[
+                        styles.timeDivider,
+                        { backgroundColor: theme.backgroundSelected },
+                      ]}
+                    />
+                    <TimeMetric label="Uptime" value={uptime} />
+                  </View>
+
+                  <Pressable
+                    accessibilityLabel="Extend instance time"
+                    accessibilityRole="button"
+                    disabled={runtime.instance.runtime_kind === "sandbox"}
+                    onPress={() => setExtendTimeOpen(true)}
+                    style={({ pressed }) => [
+                      styles.extendButton,
+                      runtime.instance?.runtime_kind === "sandbox" &&
+                        styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "plus", android: "add" }}
+                      size={16}
+                      tintColor="#ffffff"
+                      weight="semibold"
+                    />
+                    <ThemedText style={styles.extendButtonLabel}>
+                      Extend time
+                    </ThemedText>
+                  </Pressable>
+                  {runtime.instance.runtime_kind === "sandbox" ? (
+                    <ThemedText
+                      style={styles.timeHint}
+                      themeColor="textSecondary"
+                    >
+                      Sandbox instances cannot extend their time.
+                    </ThemedText>
+                  ) : null}
                 </View>
-                <Pressable
-                  accessibilityLabel="Point project domains to this instance"
-                  accessibilityRole="button"
-                  disabled={assignDomains.isPending}
-                  onPress={() =>
-                    assignDomains.mutate(
-                      { id: projectId, instanceId: runtimeInstanceId },
-                      {
-                        onError: (error) =>
-                          Alert.alert("Could not point domains", error.message),
-                      },
-                    )
-                  }
-                  style={({ pressed }) => [
-                    styles.pointDomainsButton,
-                    pressed && styles.pressed,
+
+                <View
+                  style={[
+                    styles.card,
+                    styles.devScriptCard,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
                   ]}
                 >
-                  {assignDomains.isPending ? (
-                    <ActivityIndicator color="#ffffff" size="small" />
-                  ) : (
-                    <ThemedText style={styles.pointDomainsLabel}>
-                      Point domains
+                  <View style={styles.devScriptCopy}>
+                    <ThemedText style={styles.cardTitle}>Dev Script</ThemedText>
+                    <ThemedText
+                      style={styles.devScriptDescription}
+                      themeColor="textSecondary"
+                    >
+                      Restart the development processes for this instance.
                     </ThemedText>
-                  )}
-                </Pressable>
-              </View>
-            ) : null}
+                  </View>
+                  <Pressable
+                    accessibilityLabel="Restart dev script"
+                    accessibilityRole="button"
+                    disabled={!localToken || restartDevScript.isPending}
+                    onPress={() => void restartInstanceDevScript()}
+                    style={({ pressed }) => [
+                      styles.restartButton,
+                      { borderColor: theme.backgroundSelected },
+                      (!localToken || restartDevScript.isPending) &&
+                        styles.disabled,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {restartDevScript.isPending ? (
+                      <ActivityIndicator color={theme.text} size="small" />
+                    ) : (
+                      <SymbolView
+                        name={{ ios: "arrow.clockwise", android: "refresh" }}
+                        size={16}
+                        tintColor={theme.text}
+                      />
+                    )}
+                    <ThemedText style={styles.restartButtonLabel}>
+                      {restartDevScript.isPending ? "Restarting…" : "Restart"}
+                    </ThemedText>
+                  </Pressable>
+                </View>
 
-            {runtime.instance.runtime_kind !== "sandbox" ? (
-              <RuntimeShellToolsCard
-                isConnected={runtimeSocket.status === "connected"}
-                sendJsonMessage={runtimeSocket.sendJsonMessage}
-                subscribeJsonMessage={runtimeSocket.subscribeJsonMessage}
-              />
-            ) : null}
+                <RuntimeToolCard
+                  disabled={!opencodeDomain}
+                  isConnected={runtimeSocket.status === "connected"}
+                  lastMessage={runtimeSocket.toolMessages.opencode ?? null}
+                  opencodePassword={runtime.password}
+                  sendJsonMessage={runtimeSocket.sendJsonMessage}
+                  tool="opencode"
+                  url={opencodeDomain ? `https://${opencodeDomain}` : ""}
+                />
 
-            <View
-              style={[
-                styles.card,
-                styles.logsCard,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
-              ]}
-            >
-              <ThemedText style={styles.cardTitle}>Logs</ThemedText>
-              <ScrollView
-                nestedScrollEnabled
-                onContentSizeChange={() =>
-                  logsRef.current?.scrollToEnd({ animated: true })
-                }
-                ref={logsRef}
-                style={styles.logsScroll}
-              >
-                <ThemedText style={styles.logs} themeColor="textSecondary">
-                  {runtimeSocket.logs || "Waiting for server logs…"}
-                </ThemedText>
-              </ScrollView>
-            </View>
-          </>
+                <RuntimeToolCard
+                  disabled={!t3CodeDomain}
+                  isConnected={runtimeSocket.status === "connected"}
+                  lastMessage={runtimeSocket.toolMessages.codex ?? null}
+                  sendJsonMessage={runtimeSocket.sendJsonMessage}
+                  tool="codex"
+                  url={t3CodeDomain ? `https://${t3CodeDomain}` : ""}
+                />
+
+                {!domainsQuery.isPending &&
+                (!opencodeDomain || !t3CodeDomain) ? (
+                  <View
+                    style={[
+                      styles.domainWarning,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: "#f59e0b",
+                      },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{
+                        ios: "exclamationmark.triangle",
+                        android: "warning",
+                      }}
+                      size={20}
+                      tintColor="#f59e0b"
+                    />
+                    <View style={styles.domainWarningCopy}>
+                      <ThemedText style={styles.domainWarningTitle}>
+                        Domains are not pointed here
+                      </ThemedText>
+                      <ThemedText
+                        style={styles.domainWarningText}
+                        themeColor="textSecondary"
+                      >
+                        Point the project domains to this running instance to
+                        use OpenCode Web and T3 Code.
+                      </ThemedText>
+                    </View>
+                    <Pressable
+                      accessibilityLabel="Point project domains to this instance"
+                      accessibilityRole="button"
+                      disabled={assignDomains.isPending}
+                      onPress={() =>
+                        assignDomains.mutate(
+                          { id: projectId, instanceId: runtimeInstanceId },
+                          {
+                            onError: (error) =>
+                              Alert.alert(
+                                "Could not point domains",
+                                error.message,
+                              ),
+                          },
+                        )
+                      }
+                      style={({ pressed }) => [
+                        styles.pointDomainsButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      {assignDomains.isPending ? (
+                        <ActivityIndicator color="#ffffff" size="small" />
+                      ) : (
+                        <ThemedText style={styles.pointDomainsLabel}>
+                          Point domains
+                        </ThemedText>
+                      )}
+                    </Pressable>
+                  </View>
+                ) : null}
+
+                {runtime.instance.runtime_kind !== "sandbox" ? (
+                  <RuntimeShellToolsCard
+                    isConnected={runtimeSocket.status === "connected"}
+                    sendJsonMessage={runtimeSocket.sendJsonMessage}
+                    subscribeJsonMessage={runtimeSocket.subscribeJsonMessage}
+                  />
+                ) : null}
+
+                <View
+                  style={[
+                    styles.card,
+                    styles.logsCard,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
+                  ]}
+                >
+                  <ThemedText style={styles.cardTitle}>Logs</ThemedText>
+                  <ScrollView
+                    nestedScrollEnabled
+                    onContentSizeChange={() =>
+                      logsRef.current?.scrollToEnd({ animated: true })
+                    }
+                    ref={logsRef}
+                    style={styles.logsScroll}
+                  >
+                    <ThemedText style={styles.logs} themeColor="textSecondary">
+                      {runtimeSocket.logs || "Waiting for server logs…"}
+                    </ThemedText>
+                  </ScrollView>
+                </View>
+              </>
+            )}
+          </ScrollView>
         )}
-      </ScrollView>
+      </PageChromeLayout>
 
       <Modal
         animationType="fade"

@@ -35,6 +35,7 @@ import Toast from "react-native-toast-message";
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -274,271 +275,282 @@ export default function SettingsScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <ScreenHeader onBack={() => router.back()} />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            onRefresh={refresh}
-            refreshing={isRefreshing}
-            tintColor={theme.textSecondary}
-          />
-        }
-        showsVerticalScrollIndicator={false}
-      >
-        <SettingsSection
-          icon={{ ios: "sun.max", android: "light_mode" }}
-          title="Appearance"
-        >
-          <View style={styles.optionList}>
-            {themeOptions.map((option) => {
-              const selected = preference === option.value;
-              return (
-                <Pressable
-                  accessibilityRole="radio"
-                  accessibilityState={{ checked: selected }}
-                  key={option.value}
-                  onPress={() => void setPreference(option.value)}
-                  style={({ pressed }) => [
-                    styles.option,
-                    {
-                      backgroundColor: theme.backgroundElement,
-                      borderColor: selected
-                        ? theme.text
-                        : theme.backgroundSelected,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <SymbolView
-                    name={option.icon}
-                    size={20}
-                    tintColor={theme.text}
-                  />
-                  <View style={styles.optionCopy}>
-                    <ThemedText style={styles.optionTitle}>
-                      {option.label}
-                    </ThemedText>
-                    <ThemedText
-                      style={styles.optionDescription}
-                      themeColor="textSecondary"
-                    >
-                      {option.description}
-                    </ThemedText>
-                  </View>
-                  {selected ? (
-                    <SymbolView
-                      name={{ ios: "checkmark", android: "check" }}
-                      size={18}
-                      tintColor={theme.text}
-                      weight="semibold"
-                    />
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </View>
-        </SettingsSection>
-
-        <SettingsSection
-          icon={{ ios: "cpu", android: "smart_toy" }}
-          title="Tool configurations"
-        >
-          {configTypes.map((config) => {
-            const configured = (configsQuery.data ?? []).some(
-              (item) => item.config_type === config.type,
-            );
-            return (
-              <SettingsRow key={config.type} last={config.type === "pi"}>
-                <View style={styles.rowCopy}>
-                  <ThemedText style={styles.rowTitle}>{config.name}</ThemedText>
-                  <ThemedText
-                    style={styles.rowDescription}
-                    themeColor="textSecondary"
-                  >
-                    {config.description}
-                  </ThemedText>
-                </View>
-                {configsQuery.isPending ? (
-                  <ActivityIndicator color={theme.textSecondary} size="small" />
-                ) : configsQuery.isError ? (
-                  <ThemedText style={styles.inlineError}>
-                    Load failed
-                  </ThemedText>
-                ) : (
-                  <SmallButton
-                    label={configured ? "Edit" : "Configure"}
-                    onPress={() =>
-                      setConfigEditor({
-                        type: config.type,
-                        name: config.name,
-                        configured,
-                      })
-                    }
-                  />
-                )}
-              </SettingsRow>
-            );
-          })}
-        </SettingsSection>
-
-        <SettingsSection
-          icon={{ ios: "paperplane", android: "send" }}
-          title="Telegram"
-        >
-          <ServerSettingsState query={settingsQuery}>
-            <SettingsTextInput
-              editable={
-                Boolean(userSettings) && !updateTelegramSettings.isPending
-              }
-              keyboardType="numbers-and-punctuation"
-              onChangeText={(value) => {
-                if (/^-?\d*$/.test(value)) {
-                  setTelegramChatId(value);
-                  setIsTelegramDirty(true);
-                }
-              }}
-              placeholder="e.g. -1001234567890"
-              value={telegramChatId}
-            />
-            <SaveButton
-              disabled={!userSettings || !isTelegramDirty}
-              label="Save Telegram"
-              onPress={() => void saveTelegram()}
-              pending={updateTelegramSettings.isPending}
-            />
-          </ServerSettingsState>
-        </SettingsSection>
-
-        <SettingsSection
-          icon={{ ios: "slider.horizontal.3", android: "tune" }}
-          title="Default models"
-        >
-          <ServerSettingsState query={settingsQuery}>
-            <View style={styles.formFields}>
-              {modelRows.map((row) => (
-                <LabeledInput
-                  editable={
-                    Boolean(userSettings) && !updateModelSettings.isPending
-                  }
-                  key={row.name}
-                  label={row.label}
-                  onChangeText={(value) => {
-                    setModelForm((current) => ({
-                      ...current,
-                      [row.name]: value,
-                    }));
-                    setIsModelFormDirty(true);
-                  }}
-                  value={modelForm[row.name]}
-                />
-              ))}
-            </View>
-            <SaveButton
-              disabled={!userSettings || !isModelFormDirty}
-              label="Save models"
-              onPress={() => void saveModels()}
-              pending={updateModelSettings.isPending}
-            />
-          </ServerSettingsState>
-        </SettingsSection>
-
-        <SettingsSection
-          description="Whole minutes from 15 to 1200."
-          icon={{ ios: "timer", android: "timer" }}
-          title="Instance auto-termination"
-        >
-          <ServerSettingsState query={settingsQuery}>
-            <View style={styles.formFields}>
-              {terminationRows.map((row) => (
-                <LabeledInput
-                  editable={
-                    Boolean(userSettings) &&
-                    !updateTerminationSettings.isPending
-                  }
-                  key={row.name}
-                  keyboardType="number-pad"
-                  label={row.label}
-                  onChangeText={(value) => {
-                    if (!/^\d*$/.test(value)) return;
-                    setTerminationForm((current) => ({
-                      ...current,
-                      [row.name]: value,
-                    }));
-                    setIsTerminationFormDirty(true);
-                  }}
-                  value={terminationForm[row.name]}
-                />
-              ))}
-            </View>
-            <SaveButton
-              disabled={!userSettings || !isTerminationFormDirty}
-              label="Save auto-termination"
-              onPress={() => void saveTermination()}
-              pending={updateTerminationSettings.isPending}
-            />
-          </ServerSettingsState>
-        </SettingsSection>
-
-        <SettingsSection
-          action={
-            <SmallButton label="Add key" onPress={() => setSshEditor("new")} />
-          }
-          icon={{ ios: "key", android: "key" }}
-          title="SSH keys"
-        >
-          {sshKeysQuery.isPending ? (
-            <LoadingBlocks />
-          ) : sshKeysQuery.isError ? (
-            <InlineError
-              label="Failed to load SSH keys."
-              onRetry={() => void sshKeysQuery.refetch()}
-            />
-          ) : sshKeysQuery.data?.length ? (
-            sshKeysQuery.data.map((sshKey, index) => (
-              <SettingsRow
-                key={sshKey.id}
-                last={index === sshKeysQuery.data.length - 1}
-              >
-                <View style={styles.keyIcon}>
-                  <SymbolView
-                    name={{ ios: "key", android: "key" }}
-                    size={18}
-                    tintColor={theme.textSecondary}
-                  />
-                </View>
-                <ThemedText numberOfLines={1} style={styles.keyName}>
-                  {sshKey.name}
-                </ThemedText>
-                <IconButton
-                  accessibilityLabel={`Edit ${sshKey.name}`}
-                  icon={{ ios: "pencil", android: "edit" }}
-                  onPress={() => setSshEditor(sshKey)}
-                />
-                <IconButton
-                  accessibilityLabel={`Delete ${sshKey.name}`}
-                  destructive
-                  disabled={deleteSshKey.isPending}
-                  icon={{ ios: "trash", android: "delete" }}
-                  onPress={() => setSshKeyToDelete(sshKey)}
-                />
-              </SettingsRow>
-            ))
-          ) : (
-            <View style={styles.emptyState}>
-              <SymbolView
-                name={{ ios: "key", android: "key" }}
-                size={28}
+      <PageChromeLayout top={<ScreenHeader onBack={() => router.back()} />}>
+        {({ topInset }) => (
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            keyboardShouldPersistTaps="handled"
+            refreshControl={
+              <RefreshControl
+                onRefresh={refresh}
+                refreshing={isRefreshing}
                 tintColor={theme.textSecondary}
               />
-              <ThemedText themeColor="textSecondary">
-                No SSH keys configured.
-              </ThemedText>
-            </View>
-          )}
-        </SettingsSection>
-      </ScrollView>
+            }
+            showsVerticalScrollIndicator={false}
+          >
+            <SettingsSection
+              icon={{ ios: "sun.max", android: "light_mode" }}
+              title="Appearance"
+            >
+              <View style={styles.optionList}>
+                {themeOptions.map((option) => {
+                  const selected = preference === option.value;
+                  return (
+                    <Pressable
+                      accessibilityRole="radio"
+                      accessibilityState={{ checked: selected }}
+                      key={option.value}
+                      onPress={() => void setPreference(option.value)}
+                      style={({ pressed }) => [
+                        styles.option,
+                        {
+                          backgroundColor: theme.backgroundElement,
+                          borderColor: selected
+                            ? theme.text
+                            : theme.backgroundSelected,
+                        },
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <SymbolView
+                        name={option.icon}
+                        size={20}
+                        tintColor={theme.text}
+                      />
+                      <View style={styles.optionCopy}>
+                        <ThemedText style={styles.optionTitle}>
+                          {option.label}
+                        </ThemedText>
+                        <ThemedText
+                          style={styles.optionDescription}
+                          themeColor="textSecondary"
+                        >
+                          {option.description}
+                        </ThemedText>
+                      </View>
+                      {selected ? (
+                        <SymbolView
+                          name={{ ios: "checkmark", android: "check" }}
+                          size={18}
+                          tintColor={theme.text}
+                          weight="semibold"
+                        />
+                      ) : null}
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </SettingsSection>
+
+            <SettingsSection
+              icon={{ ios: "cpu", android: "smart_toy" }}
+              title="Tool configurations"
+            >
+              {configTypes.map((config) => {
+                const configured = (configsQuery.data ?? []).some(
+                  (item) => item.config_type === config.type,
+                );
+                return (
+                  <SettingsRow key={config.type} last={config.type === "pi"}>
+                    <View style={styles.rowCopy}>
+                      <ThemedText style={styles.rowTitle}>
+                        {config.name}
+                      </ThemedText>
+                      <ThemedText
+                        style={styles.rowDescription}
+                        themeColor="textSecondary"
+                      >
+                        {config.description}
+                      </ThemedText>
+                    </View>
+                    {configsQuery.isPending ? (
+                      <ActivityIndicator
+                        color={theme.textSecondary}
+                        size="small"
+                      />
+                    ) : configsQuery.isError ? (
+                      <ThemedText style={styles.inlineError}>
+                        Load failed
+                      </ThemedText>
+                    ) : (
+                      <SmallButton
+                        label={configured ? "Edit" : "Configure"}
+                        onPress={() =>
+                          setConfigEditor({
+                            type: config.type,
+                            name: config.name,
+                            configured,
+                          })
+                        }
+                      />
+                    )}
+                  </SettingsRow>
+                );
+              })}
+            </SettingsSection>
+
+            <SettingsSection
+              icon={{ ios: "paperplane", android: "send" }}
+              title="Telegram"
+            >
+              <ServerSettingsState query={settingsQuery}>
+                <SettingsTextInput
+                  editable={
+                    Boolean(userSettings) && !updateTelegramSettings.isPending
+                  }
+                  keyboardType="numbers-and-punctuation"
+                  onChangeText={(value) => {
+                    if (/^-?\d*$/.test(value)) {
+                      setTelegramChatId(value);
+                      setIsTelegramDirty(true);
+                    }
+                  }}
+                  placeholder="e.g. -1001234567890"
+                  value={telegramChatId}
+                />
+                <SaveButton
+                  disabled={!userSettings || !isTelegramDirty}
+                  label="Save Telegram"
+                  onPress={() => void saveTelegram()}
+                  pending={updateTelegramSettings.isPending}
+                />
+              </ServerSettingsState>
+            </SettingsSection>
+
+            <SettingsSection
+              icon={{ ios: "slider.horizontal.3", android: "tune" }}
+              title="Default models"
+            >
+              <ServerSettingsState query={settingsQuery}>
+                <View style={styles.formFields}>
+                  {modelRows.map((row) => (
+                    <LabeledInput
+                      editable={
+                        Boolean(userSettings) && !updateModelSettings.isPending
+                      }
+                      key={row.name}
+                      label={row.label}
+                      onChangeText={(value) => {
+                        setModelForm((current) => ({
+                          ...current,
+                          [row.name]: value,
+                        }));
+                        setIsModelFormDirty(true);
+                      }}
+                      value={modelForm[row.name]}
+                    />
+                  ))}
+                </View>
+                <SaveButton
+                  disabled={!userSettings || !isModelFormDirty}
+                  label="Save models"
+                  onPress={() => void saveModels()}
+                  pending={updateModelSettings.isPending}
+                />
+              </ServerSettingsState>
+            </SettingsSection>
+
+            <SettingsSection
+              description="Whole minutes from 15 to 1200."
+              icon={{ ios: "timer", android: "timer" }}
+              title="Instance auto-termination"
+            >
+              <ServerSettingsState query={settingsQuery}>
+                <View style={styles.formFields}>
+                  {terminationRows.map((row) => (
+                    <LabeledInput
+                      editable={
+                        Boolean(userSettings) &&
+                        !updateTerminationSettings.isPending
+                      }
+                      key={row.name}
+                      keyboardType="number-pad"
+                      label={row.label}
+                      onChangeText={(value) => {
+                        if (!/^\d*$/.test(value)) return;
+                        setTerminationForm((current) => ({
+                          ...current,
+                          [row.name]: value,
+                        }));
+                        setIsTerminationFormDirty(true);
+                      }}
+                      value={terminationForm[row.name]}
+                    />
+                  ))}
+                </View>
+                <SaveButton
+                  disabled={!userSettings || !isTerminationFormDirty}
+                  label="Save auto-termination"
+                  onPress={() => void saveTermination()}
+                  pending={updateTerminationSettings.isPending}
+                />
+              </ServerSettingsState>
+            </SettingsSection>
+
+            <SettingsSection
+              action={
+                <SmallButton
+                  label="Add key"
+                  onPress={() => setSshEditor("new")}
+                />
+              }
+              icon={{ ios: "key", android: "key" }}
+              title="SSH keys"
+            >
+              {sshKeysQuery.isPending ? (
+                <LoadingBlocks />
+              ) : sshKeysQuery.isError ? (
+                <InlineError
+                  label="Failed to load SSH keys."
+                  onRetry={() => void sshKeysQuery.refetch()}
+                />
+              ) : sshKeysQuery.data?.length ? (
+                sshKeysQuery.data.map((sshKey, index) => (
+                  <SettingsRow
+                    key={sshKey.id}
+                    last={index === sshKeysQuery.data.length - 1}
+                  >
+                    <View style={styles.keyIcon}>
+                      <SymbolView
+                        name={{ ios: "key", android: "key" }}
+                        size={18}
+                        tintColor={theme.textSecondary}
+                      />
+                    </View>
+                    <ThemedText numberOfLines={1} style={styles.keyName}>
+                      {sshKey.name}
+                    </ThemedText>
+                    <IconButton
+                      accessibilityLabel={`Edit ${sshKey.name}`}
+                      icon={{ ios: "pencil", android: "edit" }}
+                      onPress={() => setSshEditor(sshKey)}
+                    />
+                    <IconButton
+                      accessibilityLabel={`Delete ${sshKey.name}`}
+                      destructive
+                      disabled={deleteSshKey.isPending}
+                      icon={{ ios: "trash", android: "delete" }}
+                      onPress={() => setSshKeyToDelete(sshKey)}
+                    />
+                  </SettingsRow>
+                ))
+              ) : (
+                <View style={styles.emptyState}>
+                  <SymbolView
+                    name={{ ios: "key", android: "key" }}
+                    size={28}
+                    tintColor={theme.textSecondary}
+                  />
+                  <ThemedText themeColor="textSecondary">
+                    No SSH keys configured.
+                  </ThemedText>
+                </View>
+              )}
+            </SettingsSection>
+          </ScrollView>
+        )}
+      </PageChromeLayout>
 
       <UserConfigDrawer
         editor={configEditor}
@@ -559,33 +571,7 @@ export default function SettingsScreen() {
 }
 
 function ScreenHeader({ onBack }: { onBack: () => void }) {
-  const theme = useTheme();
-  return (
-    <View
-      style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
-    >
-      <Pressable
-        accessibilityLabel="Go back"
-        accessibilityRole="button"
-        hitSlop={8}
-        onPress={onBack}
-        style={({ pressed }) => [
-          styles.headerButton,
-          { backgroundColor: theme.backgroundElement },
-          pressed && styles.pressed,
-        ]}
-      >
-        <SymbolView
-          name={{ ios: "chevron.left", android: "arrow_back" }}
-          size={21}
-          tintColor={theme.text}
-          weight="medium"
-        />
-      </Pressable>
-      <ThemedText style={styles.headerTitle}>Settings</ThemedText>
-      <View style={styles.headerButton} />
-    </View>
-  );
+  return <PageHeader onBack={onBack} title="Settings" />;
 }
 
 function SettingsSection({
