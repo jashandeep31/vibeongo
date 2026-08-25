@@ -1,7 +1,9 @@
 package utils
 
 import (
+	"fmt"
 	"os/exec"
+	"sort"
 	"strings"
 )
 
@@ -28,9 +30,15 @@ func GetListOfTmuxSessions() ([]TmuxSession, error) {
 		"#{session_name}\t#{window_name}\t#{pane_index}",
 	)
 
-	output, err := cmd.Output()
+	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return nil, err
+		message := strings.ToLower(string(output))
+		if strings.Contains(message, "no server running") ||
+			strings.Contains(message, "failed to connect to server") {
+			return []TmuxSession{}, nil
+		}
+
+		return nil, fmt.Errorf("list tmux sessions: %w: %s", err, strings.TrimSpace(string(output)))
 	}
 
 	lines := strings.Split(strings.TrimSpace(string(output)), "\n")
@@ -84,6 +92,9 @@ func GetListOfTmuxSessions() ([]TmuxSession, error) {
 	for _, session := range sessionMap {
 		sessions = append(sessions, *session)
 	}
+	sort.Slice(sessions, func(i, j int) bool {
+		return sessions[i].Name < sessions[j].Name
+	})
 
 	return sessions, nil
 }
