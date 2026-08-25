@@ -2,7 +2,6 @@ package ws
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"sync"
 
@@ -15,9 +14,10 @@ import (
 
 type terminalControlMessage struct {
 	Type   string `json:"type"`
-	Cols   int    `json:"cols"`
-	Rows   int    `json:"rows"`
-	SentAt int64  `json:"sentAt"`
+	ID     string `json:"id,omitempty"`
+	Cols   int    `json:"cols,omitempty"`
+	Rows   int    `json:"rows,omitempty"`
+	SentAt int64  `json:"sentAt,omitempty"`
 }
 
 func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
@@ -33,15 +33,12 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		defer conn.Close()
 		var writeMu sync.Mutex
 
-		// slug to connect to a particular terminal session and new for adding the new session
+		// ID connects to a stored terminal session; "new" creates one.
 		id := c.Param("id")
-		fmt.Println("id", id)
-		// making the slug default to the new
 		if id == "" {
 			id = "new"
 		}
 
-		// NOTE: this fuction is not prroper way
 		terminalSession, err := func() (*newstores.TerminalSession, error) {
 			if id == "new" {
 				terminalSession, err := sessionsStore.CreateTerminalSession()
@@ -59,29 +56,24 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		}
 
 		ptmx := terminalSession.Ptmx
+		buffer, output, unsubscribe := terminalSession.Subscribe()
+		defer unsubscribe()
 
-		defer func() { _ = ptmx.Close() }()
+		if err := writeTerminalControl(conn, &writeMu, terminalControlMessage{
+			Type: "session",
+			ID:   terminalSession.ID,
+		}); err != nil {
+			return nil
+		}
+		if len(buffer) > 0 {
+			if err := writeTerminalOutput(conn, &writeMu, buffer); err != nil {
+				return nil
+			}
+		}
 
 		go func() {
-			buf := make([]byte, 32*1024)
-
-			for {
-				n, err := ptmx.Read(buf)
-
-				if n > 0 {
-					writeMu.Lock()
-					writeErr := conn.WriteMessage(
-						websocket.BinaryMessage,
-						buf[:n],
-					)
-					writeMu.Unlock()
-
-					if writeErr != nil {
-						return
-					}
-				}
-
-				if err != nil {
+			for data := range output {
+				if err := writeTerminalOutput(conn, &writeMu, data); err != nil {
 					return
 				}
 			}
@@ -112,17 +104,10 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 						}
 					}
 				case "ping":
-					pong, err := json.Marshal(terminalControlMessage{
+					err := writeTerminalControl(conn, &writeMu, terminalControlMessage{
 						Type:   "pong",
 						SentAt: control.SentAt,
 					})
-					if err != nil {
-						continue
-					}
-
-					writeMu.Lock()
-					err = conn.WriteMessage(websocket.TextMessage, pong)
-					writeMu.Unlock()
 					if err != nil {
 						return nil
 					}
@@ -135,4 +120,21 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		}
 		return nil
 	}
+}
+
+func writeTerminalControl(conn *websocket.Conn, writeMu *sync.Mutex, message terminalControlMessage) error {
+	payload, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
+	writeMu.Lock()
+	defer writeMu.Unlock()
+	return conn.WriteMessage(websocket.TextMessage, payload)
+}
+
+func writeTerminalOutput(conn *websocket.Conn, writeMu *sync.Mutex, output []byte) error {
+	writeMu.Lock()
+	defer writeMu.Unlock()
+	return conn.WriteMessage(websocket.BinaryMessage, output)
 }

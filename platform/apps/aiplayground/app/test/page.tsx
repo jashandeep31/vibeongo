@@ -4,7 +4,9 @@ import { Terminal, useTerminal } from "@wterm/react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "@wterm/react/css";
 
-const TERMINAL_WEBSOCKET_URL = "ws://localhost:3101/v2/ws/terminal/new";
+const TERMINAL_WEBSOCKET_URL = "ws://localhost:3101/v2/ws/terminal";
+const TERMINAL_SESSION_STORAGE_KEY = "test-terminal-session-id";
+const RECONNECT_DELAY_MS = 500;
 
 function sendTerminalSize(socket: WebSocket, cols: number, rows: number) {
   if (socket.readyState !== WebSocket.OPEN) {
@@ -27,75 +29,124 @@ export default function TestTerminalPage() {
   const socketRef = useRef<WebSocket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [latencyMs, setLatencyMs] = useState<number | null>(null);
+  const [sessionId, setSessionId] = useState<string | null>(null);
 
   useEffect(() => {
-    const socket = new WebSocket(TERMINAL_WEBSOCKET_URL);
-    socket.binaryType = "arraybuffer";
-    socketRef.current = socket;
+    let disposed = false;
+    let reconnectTimeout: number | undefined;
+    let storedSessionId = window.localStorage.getItem(
+      TERMINAL_SESSION_STORAGE_KEY,
+    );
 
-    const handleOpen = () => {
-      setIsConnected(true);
-      focus();
+    setSessionId(storedSessionId);
 
-      const terminal = ref.current?.instance;
-      if (terminal) {
-        sendTerminalSize(socket, terminal.cols, terminal.rows);
-      }
-
-      sendPing(socket);
-    };
-
-    const handleMessage = (event: MessageEvent<string | ArrayBuffer>) => {
-      if (typeof event.data === "string") {
-        try {
-          const message: unknown = JSON.parse(event.data);
-
-          if (
-            typeof message === "object" &&
-            message !== null &&
-            "type" in message &&
-            message.type === "pong" &&
-            "sentAt" in message &&
-            typeof message.sentAt === "number"
-          ) {
-            setLatencyMs(Math.max(0, Date.now() - message.sentAt));
-            return;
-          }
-        } catch {
-          // Non-JSON text is terminal output.
-        }
-      }
-
-      write(
-        typeof event.data === "string"
-          ? event.data
-          : new Uint8Array(event.data),
+    const connect = () => {
+      let confirmedSession = false;
+      const requestedSession = storedSessionId ?? "new";
+      const socket = new WebSocket(
+        `${TERMINAL_WEBSOCKET_URL}/${encodeURIComponent(requestedSession)}`,
       );
+      socket.binaryType = "arraybuffer";
+      socketRef.current = socket;
+
+      socket.addEventListener("open", () => {
+        setIsConnected(true);
+        focus();
+
+        const terminal = ref.current?.instance;
+        if (terminal) {
+          sendTerminalSize(socket, terminal.cols, terminal.rows);
+        }
+
+        sendPing(socket);
+      });
+
+      socket.addEventListener(
+        "message",
+        (event: MessageEvent<string | ArrayBuffer>) => {
+          if (typeof event.data === "string") {
+            try {
+              const message: unknown = JSON.parse(event.data);
+
+              if (
+                typeof message === "object" &&
+                message !== null &&
+                "type" in message
+              ) {
+                if (
+                  message.type === "session" &&
+                  "id" in message &&
+                  typeof message.id === "string"
+                ) {
+                  confirmedSession = true;
+                  storedSessionId = message.id;
+                  window.localStorage.setItem(
+                    TERMINAL_SESSION_STORAGE_KEY,
+                    message.id,
+                  );
+                  setSessionId(message.id);
+                  // The server follows this message with the full stored buffer.
+                  write("\x1bc");
+                  return;
+                }
+
+                if (
+                  message.type === "pong" &&
+                  "sentAt" in message &&
+                  typeof message.sentAt === "number"
+                ) {
+                  setLatencyMs(Math.max(0, Date.now() - message.sentAt));
+                  return;
+                }
+              }
+            } catch {
+              // Non-JSON text is terminal output.
+            }
+          }
+
+          write(
+            typeof event.data === "string"
+              ? event.data
+              : new Uint8Array(event.data),
+          );
+        },
+      );
+
+      socket.addEventListener("close", () => {
+        if (socketRef.current === socket) {
+          socketRef.current = null;
+        }
+        setIsConnected(false);
+        setLatencyMs(null);
+
+        if (!confirmedSession) {
+          storedSessionId = null;
+          window.localStorage.removeItem(TERMINAL_SESSION_STORAGE_KEY);
+          setSessionId(null);
+        }
+
+        if (!disposed) {
+          reconnectTimeout = window.setTimeout(connect, RECONNECT_DELAY_MS);
+        }
+      });
     };
 
-    const handleDisconnect = () => {
-      setIsConnected(false);
-      setLatencyMs(null);
-    };
-
-    const pingInterval = window.setInterval(() => sendPing(socket), 1000);
-
-    socket.addEventListener("open", handleOpen);
-    socket.addEventListener("message", handleMessage);
-    socket.addEventListener("error", handleDisconnect);
-    socket.addEventListener("close", handleDisconnect);
+    connect();
+    const pingInterval = window.setInterval(() => {
+      const socket = socketRef.current;
+      if (socket) {
+        sendPing(socket);
+      }
+    }, 1000);
 
     return () => {
-      socket.removeEventListener("open", handleOpen);
-      socket.removeEventListener("message", handleMessage);
-      socket.removeEventListener("error", handleDisconnect);
-      socket.removeEventListener("close", handleDisconnect);
+      disposed = true;
       window.clearInterval(pingInterval);
-      socket.close();
-
-      if (socketRef.current === socket) {
-        socketRef.current = null;
+      if (reconnectTimeout !== undefined) {
+        window.clearTimeout(reconnectTimeout);
       }
+      socketRef.current?.close();
+      socketRef.current = null;
     };
   }, [focus, ref, write]);
 
@@ -141,7 +192,10 @@ export default function TestTerminalPage() {
             isConnected ? "bg-emerald-500" : "bg-red-500"
           }`}
         />
-        <span>{latencyMs === null ? "--" : latencyMs} ms</span>
+        <span>
+          {sessionId ? sessionId.slice(0, 8) : "new"} ·{" "}
+          {latencyMs === null ? "--" : latencyMs} ms
+        </span>
       </div>
     </main>
   );
