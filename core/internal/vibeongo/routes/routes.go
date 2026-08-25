@@ -16,6 +16,7 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 
 	protected := e.Group("")
 	protected.Use(middlewares.CheckLocalAuth(localToken))
+	protected.POST("/ws/token", handlers.WebSocketAuthTokenHandler(tools.AuthTokenStore))
 	protected.GET("/tools-stats", handlers.ToolsStatsHandler(tools))
 	protected.GET("/stats", handlers.GetRuntimeStats)
 	protected.GET("/ufw", handlers.GetAllowedPorts)

@@ -6,6 +6,7 @@ type Tools struct {
 	OpenCode             *OpencodeWeb
 	T3Code               *T3Code
 	TerminalSessionStore *newstores.SessionsStore
+	AuthTokenStore       *AuthTokenStore
 }
 
 func NewTools() *Tools {
@@ -13,6 +14,7 @@ func NewTools() *Tools {
 		OpenCode:             NewOpencodeWeb(),
 		T3Code:               NewT3Code(),
 		TerminalSessionStore: newstores.NewSessionsStore(),
+		AuthTokenStore:       NewAuthTokenStore(),
 	}
 	return tools
 }
