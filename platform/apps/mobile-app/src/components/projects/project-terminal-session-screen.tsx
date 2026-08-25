@@ -3,6 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Keyboard,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -13,6 +14,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
+import { ProjectTerminalSwitcherDrawer } from "@/components/projects/project-terminal-switcher-drawer";
 import ProjectTerminalDom, {
   type ProjectTerminalDomRef,
 } from "@/components/projects/project-terminal.dom";
@@ -80,6 +82,7 @@ export function ProjectTerminalSessionScreen() {
   const awaitingBufferReplayRef = useRef(false);
   const [controlActive, setControlActive] = useState(false);
   const [panMode, setPanMode] = useState(false);
+  const [switcherVisible, setSwitcherVisible] = useState(false);
   const [terminalReady, setTerminalReady] = useState(false);
   const terminal = useVibeongoTermV2({
     accessToken: runtime.accessToken,
@@ -99,6 +102,23 @@ export function ProjectTerminalSessionScreen() {
     router.dismissTo({
       pathname: "/projects/[projectId]/sessions/[projectSessionId]/terminal",
       params: { projectId, projectSessionId },
+    });
+  };
+
+  const selectTerminal = (nextTerminalId: string) => {
+    setSwitcherVisible(false);
+    if (nextTerminalId === terminalId) {
+      terminalRef.current?.focus();
+      return;
+    }
+    router.replace({
+      pathname:
+        "/projects/[projectId]/sessions/[projectSessionId]/terminal/[terminalId]",
+      params: {
+        projectId,
+        projectSessionId,
+        terminalId: nextTerminalId,
+      },
     });
   };
 
@@ -251,12 +271,18 @@ export function ProjectTerminalSessionScreen() {
           />
         </Pressable>
 
-        <View
+        <Pressable
+          accessibilityHint="Opens all terminal sessions"
           accessibilityLabel={`Terminal ${terminalId}, ${terminal.status}`}
-          accessibilityRole="text"
-          style={[
+          accessibilityRole="button"
+          onPress={() => {
+            Keyboard.dismiss();
+            setSwitcherVisible(true);
+          }}
+          style={({ pressed }) => [
             styles.headerTitleWrap,
             { backgroundColor: theme.backgroundElement },
+            pressed && styles.pressed,
           ]}
         >
           <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
@@ -271,7 +297,12 @@ export function ProjectTerminalSessionScreen() {
           <ThemedText style={styles.latency} themeColor="textSecondary">
             {terminal.latencyMs === null ? "--" : terminal.latencyMs} ms
           </ThemedText>
-        </View>
+          <SymbolView
+            name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
+            size={14}
+            tintColor={theme.textSecondary}
+          />
+        </Pressable>
 
         <View
           style={[
@@ -333,28 +364,6 @@ export function ProjectTerminalSessionScreen() {
             },
           ]}
         >
-          <Pressable
-            accessibilityLabel="Show keyboard"
-            accessibilityRole="button"
-            onPress={() => {
-              if (panMode) updatePanMode(false);
-              else terminalRef.current?.focus();
-            }}
-            style={({ pressed }) => [
-              styles.key,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.backgroundSelected,
-              },
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "keyboard", android: "keyboard" }}
-              size={17}
-              tintColor={theme.text}
-            />
-          </Pressable>
           <Pressable
             accessibilityLabel={
               panMode ? "Disable terminal pan mode" : "Enable terminal pan mode"
@@ -479,6 +488,16 @@ export function ProjectTerminalSessionScreen() {
           ))}
         </ScrollView>
       </KeyboardAvoidingView>
+      <ProjectTerminalSwitcherDrawer
+        accessToken={runtime.accessToken}
+        currentTerminalId={terminalId}
+        localToken={localToken}
+        onClose={() => setSwitcherVisible(false)}
+        onSelect={selectTerminal}
+        projectSessionId={projectSessionId}
+        runtimeUrl={runtimeUrl}
+        visible={switcherVisible}
+      />
     </SafeAreaView>
   );
 }

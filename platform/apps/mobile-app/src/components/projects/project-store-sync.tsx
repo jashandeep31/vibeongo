@@ -19,11 +19,14 @@ import {
   useProjectsStore,
   useSessionChatsStore,
   useSessionsStore,
+  useTerminalWorkspaceStore,
 } from "@repo/app-store";
 import { fetch as expoFetch } from "expo/fetch";
 import { usePathname } from "expo-router";
 import { useEffect } from "react";
 import { AppState } from "react-native";
+
+import { useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
 
 function getConfigValue(config: unknown, key: string) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -57,6 +60,15 @@ function ProjectSessionRuntimeSync({
     : "";
   const accessToken = instance?.access_token ?? "";
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
+  const terminalWorkspace = useVibeongoWsV2({
+    accessToken,
+    enabled: Boolean(instance && localToken && accessToken),
+    localToken,
+    runtimeUrl,
+  });
+  const setTerminalWorkspace = useTerminalWorkspaceStore(
+    (store) => store.setWorkspace,
+  );
   const password = getOpencodePassword(instance?.config);
   const statusQuery = useOpencodeStatus(
     instance?.id ?? "",
@@ -73,6 +85,22 @@ function ProjectSessionRuntimeSync({
     password,
     isOpencodeRunning,
   );
+
+  useEffect(() => {
+    setTerminalWorkspace(sessionId, {
+      activeTerminalSessionId: terminalWorkspace.activeTerminalSessionId,
+      status: terminalWorkspace.status,
+      terminalSessionIds: terminalWorkspace.terminalSessionIds,
+      tmuxSessions: terminalWorkspace.tmuxSessions,
+    });
+  }, [
+    sessionId,
+    setTerminalWorkspace,
+    terminalWorkspace.activeTerminalSessionId,
+    terminalWorkspace.status,
+    terminalWorkspace.terminalSessionIds,
+    terminalWorkspace.tmuxSessions,
+  ]);
 
   useEffect(() => {
     if (!isOpencodeRunning || !serverUrl || !accessToken) return;

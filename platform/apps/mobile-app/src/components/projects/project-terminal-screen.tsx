@@ -1,6 +1,12 @@
-import { useProjectsStore, useSessionsStore } from "@repo/app-store";
+import {
+  EMPTY_TERMINAL_WORKSPACE,
+  useProjectsStore,
+  useSessionsStore,
+  useTerminalWorkspaceStore,
+} from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,7 +22,10 @@ import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import { type TmuxSession, useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
+import {
+  createVibeongoTerminalSession,
+  type TmuxSession,
+} from "@/hooks/use-vibeongo-ws-v2";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -39,6 +48,7 @@ export function ProjectTerminalScreen() {
   }>();
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
+  const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -54,12 +64,9 @@ export function ProjectTerminalScreen() {
     ? `https://3101-${runtime.instance.id}${runtime.instance.proxy_domain}`
     : "";
   const localToken = getLocalToken(runtime.instance?.config);
-  const terminalWorkspace = useVibeongoWsV2({
-    accessToken: runtime.accessToken,
-    enabled: Boolean(runtime.instance && localToken && runtime.accessToken),
-    localToken,
-    runtimeUrl,
-  });
+  const terminalWorkspace = useTerminalWorkspaceStore(
+    (store) => store.workspaces[projectSessionId] ?? EMPTY_TERMINAL_WORKSPACE,
+  );
 
   const goBack = () => {
     if (router.canGoBack()) router.back();
@@ -75,14 +82,22 @@ export function ProjectTerminalScreen() {
   };
 
   const addTerminalSession = async () => {
+    if (isCreatingTerminal) return;
+    setIsCreatingTerminal(true);
     try {
-      const sessionId = await terminalWorkspace.createTerminalSession();
+      const sessionId = await createVibeongoTerminalSession({
+        accessToken: runtime.accessToken,
+        localToken,
+        runtimeUrl,
+      });
       if (sessionId) openTerminal(sessionId);
     } catch (error) {
       Alert.alert(
         "Could not create terminal",
         error instanceof Error ? error.message : "Please try again.",
       );
+    } finally {
+      setIsCreatingTerminal(false);
     }
   };
 
@@ -182,7 +197,7 @@ export function ProjectTerminalScreen() {
           <Pressable
             accessibilityLabel="New terminal session"
             accessibilityRole="button"
-            disabled={terminalWorkspace.isCreatingTerminal}
+            disabled={isCreatingTerminal}
             onPress={() => void addTerminalSession()}
             style={({ pressed }) => [
               styles.newSessionCard,
@@ -191,7 +206,7 @@ export function ProjectTerminalScreen() {
                 backgroundColor: theme.backgroundElement,
                 borderColor: theme.backgroundSelected,
               },
-              terminalWorkspace.isCreatingTerminal && styles.disabled,
+              isCreatingTerminal && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
@@ -201,7 +216,7 @@ export function ProjectTerminalScreen() {
                 { backgroundColor: theme.backgroundSelected },
               ]}
             >
-              {terminalWorkspace.isCreatingTerminal ? (
+              {isCreatingTerminal ? (
                 <ActivityIndicator color={theme.text} size="small" />
               ) : (
                 <SymbolView

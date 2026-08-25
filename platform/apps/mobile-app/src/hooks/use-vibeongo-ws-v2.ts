@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   createVibeongoWsV2Socket,
@@ -25,6 +25,69 @@ type VibeongoWsV2Message = {
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
 const TERMINAL_CREATION_TIMEOUT_MS = 10_000;
+
+export async function createVibeongoTerminalSession({
+  accessToken,
+  localToken,
+  runtimeUrl,
+}: {
+  accessToken: string;
+  localToken: string;
+  runtimeUrl: string;
+}) {
+  const token = await requestVibeongoWsV2Token({
+    accessToken,
+    localToken,
+    runtimeUrl,
+  });
+
+  return new Promise<string>((resolve, reject) => {
+    const socket = createVibeongoWsV2Socket({
+      accessToken,
+      path: "/v2/ws/terminal/new",
+      runtimeUrl,
+      token,
+    });
+    let settled = false;
+    const timeout = setTimeout(() => {
+      if (settled) return;
+      settled = true;
+      socket.close();
+      reject(new Error("Timed out while creating the terminal session"));
+    }, TERMINAL_CREATION_TIMEOUT_MS);
+
+    const finish = (result: { id: string } | { error: Error }) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      socket.close(1000, "Terminal session created");
+      if ("id" in result) resolve(result.id);
+      else reject(result.error);
+    };
+
+    socket.onmessage = (event) => {
+      if (typeof event.data !== "string") return;
+      try {
+        const message = JSON.parse(event.data) as {
+          id?: unknown;
+          type?: unknown;
+        };
+        if (message.type === "session" && typeof message.id === "string") {
+          finish({ id: message.id });
+        }
+      } catch {
+        // Terminal output is not relevant while creating the session.
+      }
+    };
+    socket.onerror = () =>
+      finish({ error: new Error("Could not create terminal session") });
+    socket.onclose = () => {
+      if (!settled) {
+        finish({ error: new Error("Terminal connection closed early") });
+      }
+    };
+  });
+}
 
 function parseTmuxSessions(value: unknown): TmuxSession[] | null {
   if (!Array.isArray(value)) return null;
@@ -95,9 +158,7 @@ export function useVibeongoWsV2({
     string | null
   >(null);
   const [tmuxSessions, setTmuxSessions] = useState<TmuxSession[]>([]);
-  const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
   const reconnectAttemptRef = useRef(0);
-  const creatingTerminalRef = useRef(false);
 
   useEffect(() => {
     if (!enabled || !runtimeUrl || !localToken || !accessToken) {
@@ -211,85 +272,12 @@ export function useVibeongoWsV2({
       active = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectAttemptRef.current = 0;
-      socket?.close(1000, "Terminal sessions screen unmounted");
+      socket?.close(1000, "Terminal workspace sync unmounted");
     };
   }, [accessToken, enabled, localToken, runtimeUrl]);
 
-  const createTerminalSession = useCallback(async () => {
-    if (
-      creatingTerminalRef.current ||
-      !runtimeUrl ||
-      !localToken ||
-      !accessToken
-    ) {
-      return null;
-    }
-
-    creatingTerminalRef.current = true;
-    setIsCreatingTerminal(true);
-    try {
-      const token = await requestVibeongoWsV2Token({
-        accessToken,
-        localToken,
-        runtimeUrl,
-      });
-
-      return await new Promise<string>((resolve, reject) => {
-        const socket = createVibeongoWsV2Socket({
-          accessToken,
-          path: "/v2/ws/terminal/new",
-          runtimeUrl,
-          token,
-        });
-        let settled = false;
-        const timeout = setTimeout(() => {
-          if (settled) return;
-          settled = true;
-          socket.close();
-          reject(new Error("Timed out while creating the terminal session"));
-        }, TERMINAL_CREATION_TIMEOUT_MS);
-
-        const finish = (result: { id: string } | { error: Error }) => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          socket.close(1000, "Terminal session created");
-          if ("id" in result) resolve(result.id);
-          else reject(result.error);
-        };
-
-        socket.onmessage = (event) => {
-          if (typeof event.data !== "string") return;
-          try {
-            const message = JSON.parse(event.data) as {
-              id?: unknown;
-              type?: unknown;
-            };
-            if (message.type === "session" && typeof message.id === "string") {
-              finish({ id: message.id });
-            }
-          } catch {
-            // Terminal output is not relevant while creating the session.
-          }
-        };
-        socket.onerror = () =>
-          finish({ error: new Error("Could not create terminal session") });
-        socket.onclose = () => {
-          if (!settled) {
-            finish({ error: new Error("Terminal connection closed early") });
-          }
-        };
-      });
-    } finally {
-      creatingTerminalRef.current = false;
-      setIsCreatingTerminal(false);
-    }
-  }, [accessToken, localToken, runtimeUrl]);
-
   return {
     activeTerminalSessionId,
-    createTerminalSession,
-    isCreatingTerminal,
     status,
     terminalSessionIds,
     tmuxSessions,
