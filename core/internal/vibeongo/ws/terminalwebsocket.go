@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/creack/pty"
+	"github.com/gorilla/websocket"
 	"github.com/labstack/echo/v5"
 )
 
@@ -30,7 +31,7 @@ func TerminalWebSocket() echo.HandlerFunc {
 			slug = "new"
 		}
 
-		conn, err := upgrader.Upgrade(c.Response(), c.Request(), c.Request().Header)
+		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
 			return err
 		}
@@ -39,13 +40,39 @@ func TerminalWebSocket() echo.HandlerFunc {
 		// testing Context
 		baseCommand := exec.Command("bash")
 
-		ptmx, err := pty.Start(baseCommand)
+		ptmx, err := pty.StartWithSize(baseCommand, &pty.Winsize{Rows: 40, Cols: 90})
+		// ptmx, err := pty.Start(baseCommand)
 		if err != nil {
 			return err
 		}
 
 		// this may get removed
 		defer func() { _ = ptmx.Close() }()
+
+		go func() {
+			buf := make([]byte, 32*1024)
+
+			for {
+				n, err := ptmx.Read(buf)
+
+				if n > 0 {
+					writeMu.Lock()
+					writeErr := conn.WriteMessage(
+						websocket.BinaryMessage,
+						buf[:n],
+					)
+					writeMu.Unlock()
+
+					if writeErr != nil {
+						return
+					}
+				}
+
+				if err != nil {
+					return
+				}
+			}
+		}()
 
 		for {
 			messageType, msg, err := conn.ReadMessage()
@@ -55,13 +82,13 @@ func TerminalWebSocket() echo.HandlerFunc {
 			}
 			log.Printf("Received: %s", msg)
 
-			// Echo message back to client
-			writeMu.Lock()
-			err = conn.WriteMessage(messageType, msg)
-			writeMu.Unlock()
-			if err != nil {
-				log.Println("Write failed:", err)
-				break
+			if messageType != websocket.TextMessage &&
+				messageType != websocket.BinaryMessage {
+				continue
+			}
+
+			if _, err := ptmx.Write(msg); err != nil {
+				return nil
 			}
 		}
 		return nil

@@ -15,7 +15,7 @@ func WebSocketV2() echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		var writeMu sync.Mutex
 
-		conn, err := upgrader.Upgrade(c.Response(), c.Request(), c.Request().Header)
+		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
 			return err
 		}
