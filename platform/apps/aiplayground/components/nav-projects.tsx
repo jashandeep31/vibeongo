@@ -44,6 +44,7 @@ import {
   Play,
   Plus,
   SquareDashedMousePointer,
+  Terminal,
   Timer,
   BotMessageSquare,
 } from "lucide-react";
@@ -336,6 +337,18 @@ function ProjectSessionNavItem({
                     </SidebarMenuSubItem>
                   );
                 })}
+                <SidebarMenuSubItem>
+                  <SidebarMenuSubButton
+                    asChild
+                    size="sm"
+                    isActive={pathname === `${chatUrl}/terminal`}
+                  >
+                    <Link href={`${chatUrl}/terminal`} onClick={onNavigate}>
+                      <Terminal />
+                      <span>Terminal</span>
+                    </Link>
+                  </SidebarMenuSubButton>
+                </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton asChild size="sm">
                     <button

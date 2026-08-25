@@ -27,9 +27,12 @@ import {
   ChevronRight,
   Loader2,
   MessagesSquare,
+  Plus,
   RefreshCw,
+  Terminal,
   Undo2,
 } from "lucide-react";
+import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -438,6 +441,38 @@ export function OpencodeSessionChat({
       {showRawResponse ? "Rendered chat" : "Raw response"}
     </Button>
   );
+  const chatUrl = `/projects/${projectId}/chats/${chatId}`;
+  const newChatParams = new URLSearchParams({ serverUrl });
+  const sessionUrl = `${chatUrl}/sessions/${encodeURIComponent(sessionId)}`;
+  const composerControls = (
+    <>
+      <Button
+        asChild
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
+      >
+        <Link href={`${chatUrl}?${newChatParams.toString()}`}>
+          <Plus className="size-3.5" />
+          New chat
+        </Link>
+      </Button>
+      {rawResponseControl}
+      <Button
+        asChild
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
+      >
+        <Link href={`${sessionUrl}/terminal`}>
+          <Terminal className="size-3.5" />
+          Terminal
+        </Link>
+      </Button>
+    </>
+  );
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
@@ -595,7 +630,7 @@ export function OpencodeSessionChat({
               onSubmitSuccess={() => scrollToBottom("smooth")}
               autoFocus
               focusOnTyping
-              trailingControl={rawResponseControl}
+              trailingControl={composerControls}
             />
           )}
         </div>
