@@ -6,7 +6,7 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/actions"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
-	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/server"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/test"
 	"github.com/spf13/cobra"
 )
 
@@ -94,7 +94,8 @@ func ServeCmd() *cobra.Command {
 		Short: "Start the local Vibeongo runtime server",
 		Long:  "Start the local runtime server that handles workspace commands, terminal access, and runtime health checks.",
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return server.Start()
+			// return server.Start()
+			return test.TestFnc()
 		},
 	}
 }
