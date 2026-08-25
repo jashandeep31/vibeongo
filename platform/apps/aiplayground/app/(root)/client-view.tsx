@@ -49,6 +49,7 @@ import {
   Loader2,
   Play,
   Plus,
+  Terminal,
   TriangleAlert,
   X,
 } from "lucide-react";
@@ -164,12 +165,25 @@ function SessionRow({
           </div>
 
           {entry.instance ? (
-            <InstanceControlsDropdown
-              instance={entry.instance}
-              projectId={entry.session.project_id}
-              sessionId={entry.session.id}
-              sessionName={entry.session.name}
-            />
+            <>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`Open terminal for ${entry.session.name}`}
+                title="Open terminal"
+              >
+                <Link href={`${chatUrl}/terminal`}>
+                  <Terminal />
+                </Link>
+              </Button>
+              <InstanceControlsDropdown
+                instance={entry.instance}
+                projectId={entry.session.project_id}
+                sessionId={entry.session.id}
+                sessionName={entry.session.name}
+              />
+            </>
           ) : entry.state === "stopped" ? (
             <>
               <Button

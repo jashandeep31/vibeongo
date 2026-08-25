@@ -23,6 +23,7 @@ import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -196,107 +197,89 @@ export function NewProjectChatScreen() {
         enabled
         style={styles.screen}
       >
-        <View style={styles.header}>
-          <Pressable
-            accessibilityLabel="Go back"
-            accessibilityRole="button"
-            onPress={goBack}
-            style={({ pressed }) => [
-              styles.headerButton,
-              { backgroundColor: theme.backgroundElement },
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "chevron.left", android: "arrow_back" }}
-              size={18}
-              tintColor={theme.text}
+        <PageChromeLayout
+          top={
+            <PageHeader
+              onBack={goBack}
+              right={
+                <View
+                  style={[
+                    styles.headerActions,
+                    { backgroundColor: theme.backgroundElement },
+                  ]}
+                >
+                  <ProjectSettingsButton
+                    projectId={projectId}
+                    projectSessionId={projectSessionId}
+                  />
+                  <ProjectDomainsButton
+                    instanceId={runtime.instance.id}
+                    projectId={projectId}
+                  />
+                </View>
+              }
+              title="New chat"
+              titleContainerStyle={
+                isInstanceExpiring
+                  ? {
+                      backgroundColor: "rgba(245, 158, 11, 0.14)",
+                      borderColor: "rgba(245, 158, 11, 0.55)",
+                      borderWidth: 1,
+                    }
+                  : undefined
+              }
+              titleTrailing={
+                isInstanceExpiring ? (
+                  <ThemedText style={styles.headerCountdown}>
+                    {formatInstanceTimeRemaining(instanceRemainingMs)}
+                  </ThemedText>
+                ) : (
+                  <ThemedText
+                    numberOfLines={1}
+                    style={styles.headerSubtitle}
+                    themeColor="textSecondary"
+                  >
+                    {projectName} · {sessionName}
+                  </ThemedText>
+                )
+              }
+              titleVariant="pill"
             />
-          </Pressable>
-          <View
-            style={[
-              styles.headerTitlePill,
-              {
-                backgroundColor: isInstanceExpiring
-                  ? "rgba(245, 158, 11, 0.14)"
-                  : theme.backgroundElement,
-                borderColor: isInstanceExpiring
-                  ? "rgba(245, 158, 11, 0.55)"
-                  : "transparent",
-              },
-            ]}
-          >
-            <ThemedText numberOfLines={1} style={styles.headerTitle}>
-              New chat
-            </ThemedText>
-            {isInstanceExpiring ? (
-              <View style={styles.headerExpiryRow}>
-                <SymbolView
-                  name={{ ios: "clock.fill", android: "schedule" }}
-                  size={11}
-                  tintColor="#f59e0b"
-                />
-                <ThemedText style={styles.headerCountdown}>
-                  Ends in {formatInstanceTimeRemaining(instanceRemainingMs)}
+          }
+        >
+          {({ topInset }) => (
+            <View style={[styles.body, { paddingTop: topInset }]}>
+              <View>
+                <ThemedText style={styles.heading}>
+                  What should we work on?
+                </ThemedText>
+                <ThemedText style={styles.directory} themeColor="textSecondary">
+                  {directory}
                 </ThemedText>
               </View>
-            ) : (
-              <ThemedText
-                numberOfLines={1}
-                style={styles.headerSubtitle}
-                themeColor="textSecondary"
-              >
-                {projectName} · {sessionName}
-              </ThemedText>
-            )}
-          </View>
-          <View
-            style={[
-              styles.headerActions,
-              { backgroundColor: theme.backgroundElement },
-            ]}
-          >
-            <ProjectSettingsButton
-              projectId={projectId}
-              projectSessionId={projectSessionId}
-            />
-            <ProjectDomainsButton
-              instanceId={runtime.instance.id}
-              projectId={projectId}
-            />
-          </View>
-        </View>
-
-        <View style={styles.body}>
-          <View>
-            <ThemedText style={styles.heading}>
-              What should we work on?
-            </ThemedText>
-            <ThemedText style={styles.directory} themeColor="textSecondary">
-              {directory}
-            </ThemedText>
-          </View>
-          <OpencodeComposer
-            accessibilityLabel="First prompt"
-            attachments={attachments}
-            autoFocus
-            inventory={inventoryQuery.data}
-            isSubmitting={startSession.isPending}
-            onChangeSelection={setSelection}
-            onChangeAttachments={setAttachments}
-            onChangeText={setPrompt}
-            onOpenTerminal={openTerminal}
-            onSubmit={submit}
-            placeholder="Describe the task…"
-            selection={selection}
-            value={prompt}
-          />
-          {startSession.error ? (
-            <ThemedText style={styles.error}>
-              {startSession.error.message}
-            </ThemedText>
-          ) : null}
-        </View>
+              <OpencodeComposer
+                accessibilityLabel="First prompt"
+                attachments={attachments}
+                autoFocus
+                inventory={inventoryQuery.data}
+                isSubmitting={startSession.isPending}
+                onChangeSelection={setSelection}
+                onChangeAttachments={setAttachments}
+                onChangeText={setPrompt}
+                onOpenTerminal={openTerminal}
+                onSubmit={submit}
+                placeholder="Describe the task…"
+                selection={selection}
+                value={prompt}
+              />
+              {startSession.error ? (
+                <ThemedText style={styles.error}>
+                  {startSession.error.message}
+                </ThemedText>
+              ) : null}
+            </View>
+          )}
+        </PageChromeLayout>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );

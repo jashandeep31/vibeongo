@@ -399,7 +399,9 @@ export function PromptInput({
         ) : null}
 
         {trailingControl ? (
-          <div className="ml-auto shrink-0">{trailingControl}</div>
+          <div className="ml-auto flex shrink-0 items-center gap-2">
+            {trailingControl}
+          </div>
         ) : null}
       </div>
 

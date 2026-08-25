@@ -49,6 +49,7 @@ import {
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -569,239 +570,247 @@ export function ProjectChatScreen() {
           ]}
           {...pageSwipeResponder.panHandlers}
         >
-          <View style={styles.header}>
-            <Pressable
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-              onPress={goBack}
-              style={({ pressed }) => [
-                styles.headerButton,
-                { backgroundColor: theme.backgroundElement },
-                pressed && styles.pressed,
-              ]}
-            >
-              <SymbolView
-                name={{ ios: "chevron.left", android: "arrow_back" }}
-                size={18}
-                tintColor={theme.text}
-              />
-            </Pressable>
-            <Pressable
-              accessibilityLabel="Switch chat"
-              accessibilityRole="button"
-              onPress={() => setIsChatSwitcherOpen(true)}
-              style={[
-                styles.headerTitlePill,
-                {
-                  backgroundColor: isInstanceExpiring
-                    ? "rgba(245, 158, 11, 0.14)"
-                    : theme.backgroundElement,
-                  borderColor: isInstanceExpiring
-                    ? "rgba(245, 158, 11, 0.55)"
-                    : "transparent",
-                },
-              ]}
-            >
-              {isInstanceExpiring ? (
-                <SymbolView
-                  name={{ ios: "clock.fill", android: "schedule" }}
-                  size={13}
-                  tintColor="#f59e0b"
-                />
-              ) : null}
-              <ThemedText numberOfLines={1} style={styles.headerTitle}>
-                {data.session.title || "Untitled chat"}
-              </ThemedText>
-              {isInstanceExpiring ? (
-                <ThemedText style={styles.headerCountdown}>
-                  {formatInstanceTimeRemaining(instanceRemainingMs)}
-                </ThemedText>
-              ) : null}
-              <SymbolView
-                name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
-                size={13}
-                tintColor={theme.textSecondary}
-              />
-            </Pressable>
-            <View
-              style={[
-                styles.headerActions,
-                { backgroundColor: theme.backgroundElement },
-              ]}
-            >
-              <ProjectSettingsButton
-                projectId={projectId}
-                projectSessionId={projectSessionId}
-              />
-              <ProjectDomainsButton
-                instanceId={runtime.instance.id}
-                projectId={projectId}
-              />
-              <Pressable
-                accessibilityLabel="Reload chat"
-                accessibilityRole="button"
-                disabled={isManuallyRefreshing}
-                onPress={() => void refreshManually()}
-                style={({ pressed }) => [
-                  styles.headerAction,
-                  pressed && styles.pressed,
-                ]}
-              >
-                {isManuallyRefreshing ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <SymbolView
-                    name={{ ios: "arrow.clockwise", android: "refresh" }}
-                    size={19}
-                    tintColor={theme.textSecondary}
-                  />
-                )}
-              </Pressable>
-            </View>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.messages}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            onContentSizeChange={() => {
-              if (sessionQuery.isStreaming) {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              }
-            }}
-            ref={scrollRef}
-            showsVerticalScrollIndicator={false}
-          >
-            {showRawResponse ? (
-              <ScrollView horizontal showsHorizontalScrollIndicator>
-                <ThemedText selectable style={styles.rawResponse}>
-                  {JSON.stringify(data, null, 2)}
-                </ThemedText>
-              </ScrollView>
-            ) : null}
-            {!showRawResponse &&
-              turns.map((turn, index) => (
-                <OpencodeChatTurn
-                  isReverting={
-                    revertSession.isPending &&
-                    revertSession.variables === turn.id
-                  }
-                  isStreaming={
-                    sessionQuery.isStreaming && index === turns.length - 1
-                  }
-                  item={turn}
-                  key={turn.id}
-                  onRevert={() =>
-                    revertSession.mutate(turn.id, {
-                      onError: (error) =>
-                        Alert.alert("Could not revert messages", error.message),
-                    })
-                  }
-                  revertDisabled={
-                    sessionQuery.isStreaming ||
-                    revertSession.isPending ||
-                    restoreMessage.isPending
-                  }
-                />
-              ))}
-            {!showRawResponse &&
-            turns.length === 0 &&
-            !activeQuestion &&
-            !sessionQuery.isStreaming ? (
-              <ThemedText
-                style={[styles.emptyText, { color: theme.textSecondary }]}
-              >
-                Start the chat by describing what you want to build.
-              </ThemedText>
-            ) : null}
-            {!showRawResponse &&
-            sessionQuery.isStreaming &&
-            turns.length === 0 ? (
-              <View style={styles.thinking}>
-                <ActivityIndicator size="small" />
-                <ThemedText themeColor="textSecondary">
-                  Vibeongo is working…
-                </ThemedText>
-              </View>
-            ) : null}
-          </ScrollView>
-
-          <View
-            style={[
-              styles.composerOuter,
-              { backgroundColor: theme.background },
-            ]}
-          >
-            {!showRawResponse && revertedQuestions.length > 0 ? (
-              <RevertedMessagesPanel
-                messages={revertedQuestions}
-                onRestore={(messageId, nextMessageId) =>
-                  restoreMessage.mutate(
-                    { messageId, nextMessageId },
-                    {
-                      onError: (error) =>
-                        Alert.alert("Could not restore message", error.message),
-                    },
-                  )
+          <PageChromeLayout
+            top={
+              <PageHeader
+                accessibilityLabel="Switch chat"
+                onBack={goBack}
+                onTitlePress={() => setIsChatSwitcherOpen(true)}
+                right={
+                  <View
+                    style={[
+                      styles.headerActions,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
+                  >
+                    <ProjectSettingsButton
+                      projectId={projectId}
+                      projectSessionId={projectSessionId}
+                    />
+                    <ProjectDomainsButton
+                      instanceId={runtime.instance.id}
+                      projectId={projectId}
+                    />
+                    <Pressable
+                      accessibilityLabel="Reload chat"
+                      accessibilityRole="button"
+                      disabled={isManuallyRefreshing}
+                      onPress={() => void refreshManually()}
+                      style={({ pressed }) => [
+                        styles.headerAction,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      {isManuallyRefreshing ? (
+                        <ActivityIndicator size="small" />
+                      ) : (
+                        <SymbolView
+                          name={{ ios: "arrow.clockwise", android: "refresh" }}
+                          size={19}
+                          tintColor={theme.textSecondary}
+                        />
+                      )}
+                    </Pressable>
+                  </View>
                 }
-                restoreDisabled={
-                  sessionQuery.isStreaming || revertSession.isPending
-                }
-                restoringMessageId={restoreMessage.variables?.messageId}
-              />
-            ) : null}
-            {activeQuestion ? (
-              <OpencodeQuestionPrompt
-                isDismissing={rejectQuestion.isPending}
-                isSubmitting={answerQuestion.isPending}
-                key={activeQuestion.id}
-                onDismiss={dismissQuestion}
-                onSubmit={submitQuestionAnswer}
-                request={activeQuestion}
-              />
-            ) : (
-              <OpencodeComposer
-                accessibilityLabel="Follow-up prompt"
-                attachments={attachments}
-                inventory={inventoryQuery.data}
-                isStopping={abortSession.isPending}
-                isSubmitting={sendPrompt.isPending}
-                onChangeSelection={setSelection}
-                onChangeAttachments={setAttachments}
-                onChangeText={setPrompt}
-                onNewChat={openNewChat}
-                onOpenTerminal={openTerminal}
-                onToggleRaw={() => setShowRawResponse((visible) => !visible)}
-                onStop={
-                  sessionQuery.isStreaming
-                    ? () =>
-                        abortSession.mutate(undefined, {
-                          onError: (error) =>
-                            Alert.alert(
-                              "Could not stop OpenCode",
-                              error.message,
-                            ),
-                        })
+                title={data.session.title || "Untitled chat"}
+                titleContainerStyle={
+                  isInstanceExpiring
+                    ? {
+                        backgroundColor: "rgba(245, 158, 11, 0.14)",
+                        borderColor: "rgba(245, 158, 11, 0.55)",
+                        borderWidth: 1,
+                      }
                     : undefined
                 }
-                onSubmit={submit}
-                placeholder={
-                  sessionQuery.isStreaming
-                    ? "Write your next message…"
-                    : "Ask a follow-up…"
+                titleLeading={
+                  isInstanceExpiring ? (
+                    <SymbolView
+                      name={{ ios: "clock.fill", android: "schedule" }}
+                      size={13}
+                      tintColor="#f59e0b"
+                    />
+                  ) : undefined
                 }
-                selection={selection}
-                showRawResponse={showRawResponse}
-                submitDisabled={sessionQuery.isStreaming}
-                value={prompt}
+                titleTrailing={
+                  <>
+                    {isInstanceExpiring ? (
+                      <ThemedText style={styles.headerCountdown}>
+                        {formatInstanceTimeRemaining(instanceRemainingMs)}
+                      </ThemedText>
+                    ) : null}
+                    <SymbolView
+                      name={{
+                        ios: "chevron.down",
+                        android: "keyboard_arrow_down",
+                      }}
+                      size={13}
+                      tintColor={theme.textSecondary}
+                    />
+                  </>
+                }
+                titleVariant="pill"
               />
+            }
+          >
+            {({ topInset }) => (
+              <>
+                <ScrollView
+                  contentContainerStyle={[
+                    styles.messages,
+                    { paddingTop: topInset },
+                  ]}
+                  keyboardDismissMode="interactive"
+                  keyboardShouldPersistTaps="handled"
+                  onContentSizeChange={() => {
+                    if (sessionQuery.isStreaming) {
+                      scrollRef.current?.scrollToEnd({ animated: true });
+                    }
+                  }}
+                  ref={scrollRef}
+                  showsVerticalScrollIndicator={false}
+                >
+                  {showRawResponse ? (
+                    <ScrollView horizontal showsHorizontalScrollIndicator>
+                      <ThemedText selectable style={styles.rawResponse}>
+                        {JSON.stringify(data, null, 2)}
+                      </ThemedText>
+                    </ScrollView>
+                  ) : null}
+                  {!showRawResponse &&
+                    turns.map((turn, index) => (
+                      <OpencodeChatTurn
+                        isReverting={
+                          revertSession.isPending &&
+                          revertSession.variables === turn.id
+                        }
+                        isStreaming={
+                          sessionQuery.isStreaming && index === turns.length - 1
+                        }
+                        item={turn}
+                        key={turn.id}
+                        onRevert={() =>
+                          revertSession.mutate(turn.id, {
+                            onError: (error) =>
+                              Alert.alert(
+                                "Could not revert messages",
+                                error.message,
+                              ),
+                          })
+                        }
+                        revertDisabled={
+                          sessionQuery.isStreaming ||
+                          revertSession.isPending ||
+                          restoreMessage.isPending
+                        }
+                      />
+                    ))}
+                  {!showRawResponse &&
+                  turns.length === 0 &&
+                  !activeQuestion &&
+                  !sessionQuery.isStreaming ? (
+                    <ThemedText
+                      style={[styles.emptyText, { color: theme.textSecondary }]}
+                    >
+                      Start the chat by describing what you want to build.
+                    </ThemedText>
+                  ) : null}
+                  {!showRawResponse &&
+                  sessionQuery.isStreaming &&
+                  turns.length === 0 ? (
+                    <View style={styles.thinking}>
+                      <ActivityIndicator size="small" />
+                      <ThemedText themeColor="textSecondary">
+                        Vibeongo is working…
+                      </ThemedText>
+                    </View>
+                  ) : null}
+                </ScrollView>
+
+                <View
+                  style={[
+                    styles.composerOuter,
+                    { backgroundColor: theme.background },
+                  ]}
+                >
+                  {!showRawResponse && revertedQuestions.length > 0 ? (
+                    <RevertedMessagesPanel
+                      messages={revertedQuestions}
+                      onRestore={(messageId, nextMessageId) =>
+                        restoreMessage.mutate(
+                          { messageId, nextMessageId },
+                          {
+                            onError: (error) =>
+                              Alert.alert(
+                                "Could not restore message",
+                                error.message,
+                              ),
+                          },
+                        )
+                      }
+                      restoreDisabled={
+                        sessionQuery.isStreaming || revertSession.isPending
+                      }
+                      restoringMessageId={restoreMessage.variables?.messageId}
+                    />
+                  ) : null}
+                  {activeQuestion ? (
+                    <OpencodeQuestionPrompt
+                      isDismissing={rejectQuestion.isPending}
+                      isSubmitting={answerQuestion.isPending}
+                      key={activeQuestion.id}
+                      onDismiss={dismissQuestion}
+                      onSubmit={submitQuestionAnswer}
+                      request={activeQuestion}
+                    />
+                  ) : (
+                    <OpencodeComposer
+                      accessibilityLabel="Follow-up prompt"
+                      attachments={attachments}
+                      inventory={inventoryQuery.data}
+                      isStopping={abortSession.isPending}
+                      isSubmitting={sendPrompt.isPending}
+                      onChangeSelection={setSelection}
+                      onChangeAttachments={setAttachments}
+                      onChangeText={setPrompt}
+                      onNewChat={openNewChat}
+                      onOpenTerminal={openTerminal}
+                      onToggleRaw={() =>
+                        setShowRawResponse((visible) => !visible)
+                      }
+                      onStop={
+                        sessionQuery.isStreaming
+                          ? () =>
+                              abortSession.mutate(undefined, {
+                                onError: (error) =>
+                                  Alert.alert(
+                                    "Could not stop OpenCode",
+                                    error.message,
+                                  ),
+                              })
+                          : undefined
+                      }
+                      onSubmit={submit}
+                      placeholder={
+                        sessionQuery.isStreaming
+                          ? "Write your next message…"
+                          : "Ask a follow-up…"
+                      }
+                      selection={selection}
+                      showRawResponse={showRawResponse}
+                      submitDisabled={sessionQuery.isStreaming}
+                      value={prompt}
+                    />
+                  )}
+                  {sendPrompt.error ? (
+                    <ThemedText style={styles.error}>
+                      {sendPrompt.error.message}
+                    </ThemedText>
+                  ) : null}
+                </View>
+              </>
             )}
-            {sendPrompt.error ? (
-              <ThemedText style={styles.error}>
-                {sendPrompt.error.message}
-              </ThemedText>
-            ) : null}
-          </View>
+          </PageChromeLayout>
         </Animated.View>
       </KeyboardAvoidingView>
       <ProjectChatSwitcherDrawer

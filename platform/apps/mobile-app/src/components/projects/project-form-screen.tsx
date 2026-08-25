@@ -33,6 +33,11 @@ import Toast from "react-native-toast-message";
 
 import { ConnectGithubRepoDrawer } from "@/components/github-repos/connect-github-repo-drawer";
 import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
+import {
   buildProjectPackages,
   createDefaultProjectServicesConfig,
   hydrateProjectServicesConfig,
@@ -68,6 +73,7 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 export function ProjectFormScreen({ projectId }: { projectId?: string }) {
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const router = useRouter();
   const isEditing = Boolean(projectId);
   const createProject = useCreateProject();
@@ -301,20 +307,26 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
       <SafeAreaView
         style={[styles.screen, { backgroundColor: theme.background }]}
       >
-        <Header onBack={goBack} title="Edit project" />
-        <View style={styles.centeredState}>
-          <SymbolView
-            name={{ ios: "exclamationmark.circle", android: "error_outline" }}
-            size={28}
-            tintColor="#ef4444"
-          />
-          <ThemedText style={styles.stateTitle}>
-            Project could not be loaded
-          </ThemedText>
-          <ThemedText themeColor="textSecondary">
-            Check your connection and try again.
-          </ThemedText>
-        </View>
+        <PageChromeLayout top={<Header onBack={goBack} title="Edit project" />}>
+          {({ topInset }) => (
+            <View style={[styles.centeredState, { paddingTop: topInset }]}>
+              <SymbolView
+                name={{
+                  ios: "exclamationmark.circle",
+                  android: "error_outline",
+                }}
+                size={28}
+                tintColor="#ef4444"
+              />
+              <ThemedText style={styles.stateTitle}>
+                Project could not be loaded
+              </ThemedText>
+              <ThemedText themeColor="textSecondary">
+                Check your connection and try again.
+              </ThemedText>
+            </View>
+          )}
+        </PageChromeLayout>
       </SafeAreaView>
     );
   }
@@ -327,246 +339,266 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.screen}
       >
-        <Header
-          onBack={goBack}
-          title={isEditing ? "Edit project" : "Create project"}
-        />
-        <ScrollView
-          contentContainerStyle={styles.content}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <PageChromeLayout
+          top={
+            <Header
+              onBack={goBack}
+              title={isEditing ? "Edit project" : "Create project"}
+              titleOpacity={titleOpacity}
+            />
+          }
         >
-          <FormSection title="Project details">
-            <FormField label="Name">
-              <FormInput
-                autoCapitalize="words"
-                editable={!isSaving}
-                maxLength={20}
-                onChangeText={setName}
-                placeholder="My project"
-                value={name}
-              />
-            </FormField>
-            <FormField label="Description (optional)">
-              <FormInput
-                editable={!isSaving}
-                multiline
-                onChangeText={setDescription}
-                placeholder="What is this project for?"
-                style={styles.multilineInput}
-                value={description}
-              />
-            </FormField>
-          </FormSection>
+          {({ topInset }) => (
+            <ScrollView
+              contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+              keyboardShouldPersistTaps="handled"
+              onScroll={onTitleScroll}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={false}
+            >
+              <FormSection title="Project details">
+                <FormField label="Name">
+                  <FormInput
+                    autoCapitalize="words"
+                    editable={!isSaving}
+                    maxLength={20}
+                    onChangeText={setName}
+                    placeholder="My project"
+                    value={name}
+                  />
+                </FormField>
+                <FormField label="Description (optional)">
+                  <FormInput
+                    editable={!isSaving}
+                    multiline
+                    onChangeText={setDescription}
+                    placeholder="What is this project for?"
+                    style={styles.multilineInput}
+                    value={description}
+                  />
+                </FormField>
+              </FormSection>
 
-          <FormSection title="Runtime">
-            <ThemedText style={styles.subheading}>Virtual machine</ThemedText>
-            <ChoiceField
-              disabled={instanceRegionsQuery.isPending || isSaving}
-              label="Region"
-              onChange={(id) => {
-                setInstanceRegionId(id);
-                setInstanceTypeId("");
-              }}
-              options={instanceRegions.map((region) => ({
-                id: region.id,
-                label: `${region.name} (${region.slug})`,
-              }))}
-              placeholder={
-                instanceRegionsQuery.isPending
-                  ? "Loading regions…"
-                  : "Select a region"
-              }
-              value={instanceRegionId}
-            />
-            <ChoiceField
-              disabled={
-                !instanceRegionId || instanceTypesQuery.isPending || isSaving
-              }
-              label="Machine type"
-              onChange={setInstanceTypeId}
-              options={instanceTypes.map((type) => ({
-                id: type.id,
-                label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
-              }))}
-              placeholder={
-                instanceTypesQuery.isPending
-                  ? "Loading machine types…"
-                  : "Select a machine type"
-              }
-              value={instanceTypeId}
-            />
-            <ThemedText style={[styles.subheading, styles.subheadingSpacing]}>
-              Sandbox
-            </ThemedText>
-            <ChoiceField
-              disabled={sandboxRegionsQuery.isPending || isSaving}
-              label="Provider"
-              onChange={(id) => {
-                if (!isSandboxProvider(id)) return;
-                setSandboxProvider(id);
-                setSandboxRegionId("");
-                setSandboxTypeId("");
-              }}
-              options={sandboxProviderOptions}
-              placeholder="Select a provider"
-              value={sandboxProvider}
-            />
-            <ChoiceField
-              disabled={sandboxRegionsQuery.isPending || isSaving}
-              label="Region"
-              onChange={(id) => {
-                setSandboxRegionId(id);
-                setSandboxTypeId("");
-              }}
-              options={sandboxRegions.map((region) => ({
-                id: region.id,
-                label: `${region.name} (${region.slug})`,
-              }))}
-              placeholder={
-                sandboxRegionsQuery.isPending
-                  ? "Loading regions…"
-                  : "Select a region"
-              }
-              value={sandboxRegionId}
-            />
-            <ChoiceField
-              disabled={
-                !sandboxRegionId || sandboxTypesQuery.isPending || isSaving
-              }
-              label="Machine type"
-              onChange={setSandboxTypeId}
-              options={sandboxTypes.map((type) => ({
-                id: type.id,
-                label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
-              }))}
-              placeholder={
-                sandboxTypesQuery.isPending
-                  ? "Loading machine types…"
-                  : "Select a machine type"
-              }
-              value={sandboxTypeId}
-            />
-          </FormSection>
-
-          <FormSection title="Source and access">
-            <SelectableGroup
-              actionLabel="Add repository"
-              emptyLabel="No repositories connected."
-              icon={{
-                ios: "chevron.left.forwardslash.chevron.right",
-                android: "code",
-              }}
-              isLoading={reposQuery.isPending}
-              label="GitHub repositories"
-              layout="list"
-              onAction={() => setIsRepoDrawerOpen(true)}
-              onToggle={(id) => toggle(id, githubRepoIds, setGithubRepoIds)}
-              options={(reposQuery.data ?? []).map((repo) => ({
-                id: repo.id,
-                label: repo.full_name,
-              }))}
-              selectedIds={githubRepoIds}
-            />
-            <SelectableGroup
-              emptyLabel="No SSH keys added. Add keys from Settings."
-              icon={{ ios: "key", android: "key" }}
-              isLoading={sshKeysQuery.isPending}
-              label="SSH keys"
-              onToggle={(id) => toggle(id, sshKeyIds, setSshKeyIds)}
-              options={(sshKeysQuery.data ?? []).map((key) => ({
-                id: key.id,
-                label: key.name,
-              }))}
-              selectedIds={sshKeyIds}
-            />
-          </FormSection>
-
-          <FormSection title="Advanced settings">
-            <ScriptField
-              label="Initial script"
-              onChangeText={setInitialScript}
-              placeholder="Runs before repositories are set up"
-              value={initialScript}
-            />
-            <ScriptField
-              label="Final script"
-              onChangeText={setFinalScript}
-              placeholder="Runs after repositories are set up"
-              value={finalScript}
-            />
-            <ScriptField
-              label="Development script"
-              onChangeText={setDevScript}
-              placeholder="Starts the development environment"
-              value={devScript}
-            />
-          </FormSection>
-
-          <FormSection title="Additional services">
-            <ProjectServicesConfig
-              disabled={isSaving}
-              onChange={setServicesConfig}
-              value={servicesConfig}
-            />
-          </FormSection>
-
-          {errors.length ? (
-            <View style={styles.errorCard}>
-              <ThemedText style={styles.errorTitle}>
-                Fix the following before {isEditing ? "saving" : "creating"}:
-              </ThemedText>
-              {errors.map((error) => (
-                <ThemedText key={error} style={styles.errorText}>
-                  • {error}
+              <FormSection title="Runtime">
+                <ThemedText style={styles.subheading}>
+                  Virtual machine
                 </ThemedText>
-              ))}
-            </View>
-          ) : null}
+                <ChoiceField
+                  disabled={instanceRegionsQuery.isPending || isSaving}
+                  label="Region"
+                  onChange={(id) => {
+                    setInstanceRegionId(id);
+                    setInstanceTypeId("");
+                  }}
+                  options={instanceRegions.map((region) => ({
+                    id: region.id,
+                    label: `${region.name} (${region.slug})`,
+                  }))}
+                  placeholder={
+                    instanceRegionsQuery.isPending
+                      ? "Loading regions…"
+                      : "Select a region"
+                  }
+                  value={instanceRegionId}
+                />
+                <ChoiceField
+                  disabled={
+                    !instanceRegionId ||
+                    instanceTypesQuery.isPending ||
+                    isSaving
+                  }
+                  label="Machine type"
+                  onChange={setInstanceTypeId}
+                  options={instanceTypes.map((type) => ({
+                    id: type.id,
+                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  }))}
+                  placeholder={
+                    instanceTypesQuery.isPending
+                      ? "Loading machine types…"
+                      : "Select a machine type"
+                  }
+                  value={instanceTypeId}
+                />
+                <ThemedText
+                  style={[styles.subheading, styles.subheadingSpacing]}
+                >
+                  Sandbox
+                </ThemedText>
+                <ChoiceField
+                  disabled={sandboxRegionsQuery.isPending || isSaving}
+                  label="Provider"
+                  onChange={(id) => {
+                    if (!isSandboxProvider(id)) return;
+                    setSandboxProvider(id);
+                    setSandboxRegionId("");
+                    setSandboxTypeId("");
+                  }}
+                  options={sandboxProviderOptions}
+                  placeholder="Select a provider"
+                  value={sandboxProvider}
+                />
+                <ChoiceField
+                  disabled={sandboxRegionsQuery.isPending || isSaving}
+                  label="Region"
+                  onChange={(id) => {
+                    setSandboxRegionId(id);
+                    setSandboxTypeId("");
+                  }}
+                  options={sandboxRegions.map((region) => ({
+                    id: region.id,
+                    label: `${region.name} (${region.slug})`,
+                  }))}
+                  placeholder={
+                    sandboxRegionsQuery.isPending
+                      ? "Loading regions…"
+                      : "Select a region"
+                  }
+                  value={sandboxRegionId}
+                />
+                <ChoiceField
+                  disabled={
+                    !sandboxRegionId || sandboxTypesQuery.isPending || isSaving
+                  }
+                  label="Machine type"
+                  onChange={setSandboxTypeId}
+                  options={sandboxTypes.map((type) => ({
+                    id: type.id,
+                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  }))}
+                  placeholder={
+                    sandboxTypesQuery.isPending
+                      ? "Loading machine types…"
+                      : "Select a machine type"
+                  }
+                  value={sandboxTypeId}
+                />
+              </FormSection>
 
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSaving}
-              onPress={goBack}
-              style={({ pressed }) => [
-                styles.secondaryButton,
-                { borderColor: theme.backgroundSelected },
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText style={styles.secondaryButtonLabel}>
-                Cancel
-              </ThemedText>
-            </Pressable>
-            <Pressable
-              accessibilityRole="button"
-              disabled={isSaving}
-              onPress={() => void submit()}
-              style={({ pressed }) => [
-                styles.primaryButton,
-                { backgroundColor: theme.text },
-                pressed && styles.pressed,
-                isSaving && styles.disabled,
-              ]}
-            >
-              {isSaving ? (
-                <ActivityIndicator color={theme.background} size="small" />
+              <FormSection title="Source and access">
+                <SelectableGroup
+                  actionLabel="Add repository"
+                  emptyLabel="No repositories connected."
+                  icon={{
+                    ios: "chevron.left.forwardslash.chevron.right",
+                    android: "code",
+                  }}
+                  isLoading={reposQuery.isPending}
+                  label="GitHub repositories"
+                  layout="list"
+                  onAction={() => setIsRepoDrawerOpen(true)}
+                  onToggle={(id) => toggle(id, githubRepoIds, setGithubRepoIds)}
+                  options={(reposQuery.data ?? []).map((repo) => ({
+                    id: repo.id,
+                    label: repo.full_name,
+                  }))}
+                  selectedIds={githubRepoIds}
+                />
+                <SelectableGroup
+                  emptyLabel="No SSH keys added. Add keys from Settings."
+                  icon={{ ios: "key", android: "key" }}
+                  isLoading={sshKeysQuery.isPending}
+                  label="SSH keys"
+                  onToggle={(id) => toggle(id, sshKeyIds, setSshKeyIds)}
+                  options={(sshKeysQuery.data ?? []).map((key) => ({
+                    id: key.id,
+                    label: key.name,
+                  }))}
+                  selectedIds={sshKeyIds}
+                />
+              </FormSection>
+
+              <FormSection title="Advanced settings">
+                <ScriptField
+                  label="Initial script"
+                  onChangeText={setInitialScript}
+                  placeholder="Runs before repositories are set up"
+                  value={initialScript}
+                />
+                <ScriptField
+                  label="Final script"
+                  onChangeText={setFinalScript}
+                  placeholder="Runs after repositories are set up"
+                  value={finalScript}
+                />
+                <ScriptField
+                  label="Development script"
+                  onChangeText={setDevScript}
+                  placeholder="Starts the development environment"
+                  value={devScript}
+                />
+              </FormSection>
+
+              <FormSection title="Additional services">
+                <ProjectServicesConfig
+                  disabled={isSaving}
+                  onChange={setServicesConfig}
+                  value={servicesConfig}
+                />
+              </FormSection>
+
+              {errors.length ? (
+                <View style={styles.errorCard}>
+                  <ThemedText style={styles.errorTitle}>
+                    Fix the following before {isEditing ? "saving" : "creating"}
+                    :
+                  </ThemedText>
+                  {errors.map((error) => (
+                    <ThemedText key={error} style={styles.errorText}>
+                      • {error}
+                    </ThemedText>
+                  ))}
+                </View>
               ) : null}
-              <ThemedText
-                style={[styles.primaryButtonLabel, { color: theme.background }]}
-              >
-                {isSaving
-                  ? isEditing
-                    ? "Saving…"
-                    : "Creating…"
-                  : isEditing
-                    ? "Save changes"
-                    : "Create project"}
-              </ThemedText>
-            </Pressable>
-          </View>
-        </ScrollView>
+
+              <View style={styles.actions}>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSaving}
+                  onPress={goBack}
+                  style={({ pressed }) => [
+                    styles.secondaryButton,
+                    { borderColor: theme.backgroundSelected },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.secondaryButtonLabel}>
+                    Cancel
+                  </ThemedText>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isSaving}
+                  onPress={() => void submit()}
+                  style={({ pressed }) => [
+                    styles.primaryButton,
+                    { backgroundColor: theme.text },
+                    pressed && styles.pressed,
+                    isSaving && styles.disabled,
+                  ]}
+                >
+                  {isSaving ? (
+                    <ActivityIndicator color={theme.background} size="small" />
+                  ) : null}
+                  <ThemedText
+                    style={[
+                      styles.primaryButtonLabel,
+                      { color: theme.background },
+                    ]}
+                  >
+                    {isSaving
+                      ? isEditing
+                        ? "Saving…"
+                        : "Creating…"
+                      : isEditing
+                        ? "Save changes"
+                        : "Create project"}
+                  </ThemedText>
+                </Pressable>
+              </View>
+            </ScrollView>
+          )}
+        </PageChromeLayout>
       </KeyboardAvoidingView>
       <ConnectGithubRepoDrawer
         onClose={() => setIsRepoDrawerOpen(false)}
@@ -576,31 +608,17 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
   );
 }
 
-function Header({ onBack, title }: { onBack: () => void; title: string }) {
-  const theme = useTheme();
+function Header({
+  onBack,
+  title,
+  titleOpacity,
+}: {
+  onBack: () => void;
+  title: string;
+  titleOpacity?: React.ComponentProps<typeof PageHeader>["titleOpacity"];
+}) {
   return (
-    <View
-      style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
-    >
-      <Pressable
-        accessibilityLabel="Go back"
-        accessibilityRole="button"
-        hitSlop={8}
-        onPress={onBack}
-        style={({ pressed }) => [
-          styles.headerButton,
-          pressed && styles.pressed,
-        ]}
-      >
-        <SymbolView
-          name={{ ios: "chevron.left", android: "arrow_back" }}
-          size={21}
-          tintColor={theme.text}
-        />
-      </Pressable>
-      <ThemedText style={styles.headerTitle}>{title}</ThemedText>
-      <View style={styles.headerButton} />
-    </View>
+    <PageHeader onBack={onBack} title={title} titleOpacity={titleOpacity} />
   );
 }
 

@@ -18,11 +18,17 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ConnectGithubRepoDrawer } from "@/components/github-repos/connect-github-repo-drawer";
 import { ThemedText } from "@/components/themed-text";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 
 export function GithubReposScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const reposQuery = useGithubRepos();
   const repos = reposQuery.data ?? [];
   const [query, setQuery] = useState("");
@@ -47,188 +53,182 @@ export function GithubReposScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View
-        style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
-      >
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={21}
-            tintColor={theme.text}
-            weight="medium"
-          />
-        </Pressable>
-        <ThemedText numberOfLines={1} style={styles.headerTitle}>
-          Repositories
-        </ThemedText>
-        <Pressable
-          accessibilityLabel="Connect repository"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => setIsConnectOpen(true)}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "plus", android: "add" }}
-            size={20}
-            tintColor={theme.text}
-            weight="medium"
-          />
-        </Pressable>
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        keyboardShouldPersistTaps="handled"
-        refreshControl={
-          <RefreshControl
-            onRefresh={() => void reposQuery.refetch()}
-            refreshing={reposQuery.isRefetching}
-            tintColor={theme.textSecondary}
+      <PageChromeLayout
+        top={
+          <PageHeader
+            onBack={() => router.back()}
+            right={
+              <Pressable
+                accessibilityLabel="Connect repository"
+                accessibilityRole="button"
+                hitSlop={8}
+                onPress={() => setIsConnectOpen(true)}
+                style={({ pressed }) => [
+                  styles.headerButton,
+                  { backgroundColor: theme.backgroundElement },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "plus", android: "add" }}
+                  size={20}
+                  tintColor={theme.text}
+                  weight="medium"
+                />
+              </Pressable>
+            }
+            title="Repositories"
+            titleOpacity={titleOpacity}
           />
         }
-        showsVerticalScrollIndicator={false}
       >
-        <View
-          style={[
-            styles.search,
-            {
-              backgroundColor: theme.backgroundElement,
-              borderColor: theme.backgroundSelected,
-            },
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "magnifyingglass", android: "search" }}
-            size={17}
-            tintColor={theme.textSecondary}
-          />
-          <TextInput
-            autoCapitalize="none"
-            autoCorrect={false}
-            onChangeText={setQuery}
-            placeholder="Search repositories"
-            placeholderTextColor={theme.textSecondary}
-            style={[styles.searchInput, { color: theme.text }]}
-            value={query}
-          />
-          {query ? (
-            <Pressable
-              accessibilityLabel="Clear repository search"
-              accessibilityRole="button"
-              hitSlop={8}
-              onPress={() => setQuery("")}
+        {({ topInset }) => (
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            keyboardShouldPersistTaps="handled"
+            onScroll={onTitleScroll}
+            refreshControl={
+              <RefreshControl
+                onRefresh={() => void reposQuery.refetch()}
+                refreshing={reposQuery.isRefetching}
+                tintColor={theme.textSecondary}
+              />
+            }
+            showsVerticalScrollIndicator={false}
+            scrollEventThrottle={16}
+          >
+            <View
+              style={[
+                styles.search,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected,
+                },
+              ]}
             >
               <SymbolView
-                name={{ ios: "xmark.circle.fill", android: "cancel" }}
+                name={{ ios: "magnifyingglass", android: "search" }}
                 size={17}
                 tintColor={theme.textSecondary}
               />
-            </Pressable>
-          ) : null}
-        </View>
+              <TextInput
+                autoCapitalize="none"
+                autoCorrect={false}
+                onChangeText={setQuery}
+                placeholder="Search repositories"
+                placeholderTextColor={theme.textSecondary}
+                style={[styles.searchInput, { color: theme.text }]}
+                value={query}
+              />
+              {query ? (
+                <Pressable
+                  accessibilityLabel="Clear repository search"
+                  accessibilityRole="button"
+                  hitSlop={8}
+                  onPress={() => setQuery("")}
+                >
+                  <SymbolView
+                    name={{ ios: "xmark.circle.fill", android: "cancel" }}
+                    size={17}
+                    tintColor={theme.textSecondary}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
 
-        <View
-          style={[
-            styles.githubAppNotice,
-            {
-              backgroundColor: theme.backgroundElement,
-              borderColor: theme.backgroundSelected,
-            },
-          ]}
-        >
-          <View style={styles.githubAppNoticeCopy}>
-            <ThemedText style={styles.githubAppNoticeTitle}>
-              Install the GitHub App first
-            </ThemedText>
-            <ThemedText
-              style={styles.githubAppNoticeDescription}
-              themeColor="textSecondary"
-            >
-              Install the Vibeongo GitHub App on a repository before connecting
-              it here.
-            </ThemedText>
-          </View>
-          <Pressable
-            accessibilityLabel="Install GitHub App"
-            accessibilityRole="link"
-            onPress={openGithubAppInstall}
-            style={({ pressed }) => [
-              styles.githubAppInstallButton,
-              { backgroundColor: theme.text },
-              pressed && styles.pressed,
-            ]}
-          >
-            <ThemedText
+            <View
               style={[
-                styles.githubAppInstallButtonLabel,
-                { color: theme.background },
+                styles.githubAppNotice,
+                {
+                  backgroundColor: theme.backgroundElement,
+                  borderColor: theme.backgroundSelected,
+                },
               ]}
             >
-              Install App
-            </ThemedText>
-            <SymbolView
-              name={{ ios: "arrow.up.right", android: "open_in_new" }}
-              size={13}
-              tintColor={theme.background}
-            />
-          </Pressable>
-        </View>
+              <View style={styles.githubAppNoticeCopy}>
+                <ThemedText style={styles.githubAppNoticeTitle}>
+                  Install the GitHub App first
+                </ThemedText>
+                <ThemedText
+                  style={styles.githubAppNoticeDescription}
+                  themeColor="textSecondary"
+                >
+                  Install the Vibeongo GitHub App on a repository before
+                  connecting it here.
+                </ThemedText>
+              </View>
+              <Pressable
+                accessibilityLabel="Install GitHub App"
+                accessibilityRole="link"
+                onPress={openGithubAppInstall}
+                style={({ pressed }) => [
+                  styles.githubAppInstallButton,
+                  { backgroundColor: theme.text },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText
+                  style={[
+                    styles.githubAppInstallButtonLabel,
+                    { color: theme.background },
+                  ]}
+                >
+                  Install App
+                </ThemedText>
+                <SymbolView
+                  name={{ ios: "arrow.up.right", android: "open_in_new" }}
+                  size={13}
+                  tintColor={theme.background}
+                />
+              </Pressable>
+            </View>
 
-        {reposQuery.isPending ? (
-          <ScreenState label="Loading repositories…" loading />
-        ) : reposQuery.isError ? (
-          <ScreenState
-            actionLabel="Try again"
-            label="Repositories could not be loaded"
-            onAction={() => void reposQuery.refetch()}
-          />
-        ) : filteredRepos.length === 0 ? (
-          <ScreenState
-            actionLabel={repos.length === 0 ? "Connect repository" : undefined}
-            label={
-              repos.length === 0 ? "No repositories yet" : "No matches found"
-            }
-            onAction={
-              repos.length === 0 ? () => setIsConnectOpen(true) : undefined
-            }
-            secondaryLabel={
-              repos.length === 0
-                ? "Connect a GitHub repository or create a Forgejo repository to manage pull requests, issues, and automations."
-                : "Try a different repository name."
-            }
-          />
-        ) : (
-          <View style={styles.repositories}>
-            {filteredRepos.map((repo) => (
-              <RepositoryRow
-                key={repo.id}
-                onPress={() =>
-                  router.push({
-                    pathname: "/github-repos/[repoId]",
-                    params: { repoId: repo.id },
-                  })
-                }
-                repo={repo}
+            {reposQuery.isPending ? (
+              <ScreenState label="Loading repositories…" loading />
+            ) : reposQuery.isError ? (
+              <ScreenState
+                actionLabel="Try again"
+                label="Repositories could not be loaded"
+                onAction={() => void reposQuery.refetch()}
               />
-            ))}
-          </View>
+            ) : filteredRepos.length === 0 ? (
+              <ScreenState
+                actionLabel={
+                  repos.length === 0 ? "Connect repository" : undefined
+                }
+                label={
+                  repos.length === 0
+                    ? "No repositories yet"
+                    : "No matches found"
+                }
+                onAction={
+                  repos.length === 0 ? () => setIsConnectOpen(true) : undefined
+                }
+                secondaryLabel={
+                  repos.length === 0
+                    ? "Connect a GitHub repository or create a Forgejo repository to manage pull requests, issues, and automations."
+                    : "Try a different repository name."
+                }
+              />
+            ) : (
+              <View style={styles.repositories}>
+                {filteredRepos.map((repo) => (
+                  <RepositoryRow
+                    key={repo.id}
+                    onPress={() =>
+                      router.push({
+                        pathname: "/github-repos/[repoId]",
+                        params: { repoId: repo.id },
+                      })
+                    }
+                    repo={repo}
+                  />
+                ))}
+              </View>
+            )}
+          </ScrollView>
         )}
-      </ScrollView>
+      </PageChromeLayout>
 
       <ConnectGithubRepoDrawer
         onClose={() => setIsConnectOpen(false)}

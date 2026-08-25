@@ -18,6 +18,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { VibeongoChatTurn } from "@/components/chats/vibeongo-chat-turn";
 import { VibeongoComposer } from "@/components/chats/vibeongo-composer";
+import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 import { useVibeongoChat } from "@/hooks/use-vibeongo-chat";
@@ -148,98 +149,82 @@ export function VibeongoChatScreen({ chatId }: { chatId: string }) {
         enabled
         style={styles.screen}
       >
-        <View style={styles.screen}>
-          <View style={styles.header}>
-            <Pressable
-              accessibilityLabel="Go back"
-              accessibilityRole="button"
-              onPress={goBack}
-              style={({ pressed }) => [
-                styles.headerButton,
-                { backgroundColor: theme.backgroundElement },
-                pressed && styles.pressed,
-              ]}
-            >
-              <SymbolView
-                name={{ ios: "chevron.left", android: "arrow_back" }}
-                size={18}
-                tintColor={theme.text}
+        <PageChromeLayout
+          bottom={
+            <View style={styles.composerOuter}>
+              <VibeongoComposer
+                disabled={!isConnected}
+                isSubmitting={isSending}
+                onSubmit={submitQuestion}
+                placeholder={placeholder}
+                submitDisabled={isStreaming}
+                variant="compact"
               />
-            </Pressable>
-            <View
-              style={[
-                styles.headerTitleWrap,
-                { backgroundColor: theme.backgroundElement },
-              ]}
-            >
-              <ThemedText numberOfLines={1} style={styles.headerTitle}>
-                {chat.name || "Untitled chat"}
-              </ThemedText>
             </View>
-            <View style={styles.headerSpacer} />
-          </View>
-
-          <View style={styles.body}>
-            <FlatList
-              contentContainerStyle={styles.messages}
-              data={visibleTurns}
-              keyExtractor={(turn) => turn.id}
-              keyboardDismissMode="interactive"
-              keyboardShouldPersistTaps="handled"
-              onContentSizeChange={() => {
-                if (shouldStickToBottomRef.current) scrollToBottom(false);
-              }}
-              onScroll={handleScroll}
-              ref={listRef}
-              renderItem={({ item }) => (
-                <VibeongoChatTurn
-                  isStreaming={streamingTurn?.id === item.id}
-                  turn={item}
-                />
-              )}
-              scrollEventThrottle={16}
-              showsVerticalScrollIndicator={false}
+          }
+          top={
+            <PageHeader
+              onBack={goBack}
+              title={chat.name || "Untitled chat"}
+              titleVariant="pill"
             />
-
-            {showScrollButton ? (
-              <Pressable
-                accessibilityLabel="Scroll to latest message"
-                accessibilityRole="button"
-                onPress={() => scrollToBottom(true)}
-                style={({ pressed }) => [
-                  styles.scrollButton,
-                  {
-                    backgroundColor: theme.text,
-                    borderColor: theme.backgroundSelected,
-                  },
-                  pressed && styles.pressed,
+          }
+        >
+          {({ bottomInset, topInset }) => (
+            <View style={styles.body}>
+              <FlatList
+                contentContainerStyle={[
+                  styles.messages,
+                  { paddingBottom: bottomInset, paddingTop: topInset },
                 ]}
-              >
-                <SymbolView
-                  name={{ ios: "arrow.down", android: "arrow_downward" }}
-                  size={18}
-                  tintColor={theme.background}
-                />
-              </Pressable>
-            ) : null}
-          </View>
+                data={visibleTurns}
+                keyExtractor={(turn) => turn.id}
+                keyboardDismissMode="interactive"
+                keyboardShouldPersistTaps="handled"
+                onContentSizeChange={() => {
+                  if (shouldStickToBottomRef.current) scrollToBottom(false);
+                }}
+                onScroll={handleScroll}
+                ref={listRef}
+                renderItem={({ item }) => (
+                  <VibeongoChatTurn
+                    isStreaming={streamingTurn?.id === item.id}
+                    turn={item}
+                  />
+                )}
+                scrollEventThrottle={16}
+                scrollIndicatorInsets={{
+                  bottom: bottomInset,
+                  top: topInset,
+                }}
+                showsVerticalScrollIndicator={false}
+              />
 
-          <View
-            style={[
-              styles.composerOuter,
-              { backgroundColor: theme.background },
-            ]}
-          >
-            <VibeongoComposer
-              disabled={!isConnected}
-              isSubmitting={isSending}
-              onSubmit={submitQuestion}
-              placeholder={placeholder}
-              submitDisabled={isStreaming}
-              variant="compact"
-            />
-          </View>
-        </View>
+              {showScrollButton ? (
+                <Pressable
+                  accessibilityLabel="Scroll to latest message"
+                  accessibilityRole="button"
+                  onPress={() => scrollToBottom(true)}
+                  style={({ pressed }) => [
+                    styles.scrollButton,
+                    {
+                      backgroundColor: theme.text,
+                      borderColor: theme.backgroundSelected,
+                      bottom: bottomInset + 10,
+                    },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "arrow.down", android: "arrow_downward" }}
+                    size={18}
+                    tintColor={theme.background}
+                  />
+                </Pressable>
+              ) : null}
+            </View>
+          )}
+        </PageChromeLayout>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -267,42 +252,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingTop: 6,
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 10,
-    paddingBottom: 10,
-    paddingHorizontal: 14,
-    paddingTop: 6,
-  },
-  headerButton: {
-    alignItems: "center",
-    borderRadius: 22,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 19,
-  },
-  headerTitleWrap: {
-    alignItems: "center",
-    borderRadius: 18,
-    flex: 1,
-    height: 40,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
-  headerSpacer: {
-    height: 44,
-    width: 44,
-  },
   messages: {
     flexGrow: 1,
     paddingHorizontal: 18,
-    paddingTop: 24,
   },
   pressed: {
     opacity: 0.72,
@@ -314,7 +266,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderRadius: 22,
     borderWidth: StyleSheet.hairlineWidth,
-    bottom: 14,
     height: 44,
     justifyContent: "center",
     position: "absolute",

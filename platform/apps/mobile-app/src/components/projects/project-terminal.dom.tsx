@@ -12,7 +12,10 @@ export interface ProjectTerminalDomRef extends DOMImperativeFactory {
   replace: DOMImperativeFactory[string];
   reset: () => void;
   setInputEnabled: DOMImperativeFactory[string];
+  setPanMode: DOMImperativeFactory[string];
   write: DOMImperativeFactory[string];
+  zoomIn: () => void;
+  zoomOut: () => void;
 }
 
 type TerminalOperation =
@@ -33,9 +36,12 @@ export default function ProjectTerminalDom({
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const isDrainingRef = useRef(false);
+  const inputEnabledRef = useRef(false);
   const isReplayingRef = useRef(false);
   const operationQueueRef = useRef<TerminalOperation[]>([]);
+  const panModeRef = useRef(false);
   const terminalRef = useRef<Terminal | null>(null);
+  const refitTerminalRef = useRef<() => void>(() => {});
   const onInputRef = useRef(onInput);
   const onReadyRef = useRef(onReady);
   const onResizeRef = useRef(onResize);
@@ -81,11 +87,18 @@ export default function ProjectTerminalDom({
     drainOperations();
   };
 
+  const applyInputMode = () => {
+    if (terminalRef.current) {
+      terminalRef.current.options.disableStdin =
+        !inputEnabledRef.current || panModeRef.current;
+    }
+  };
+
   useDOMImperativeHandle<ProjectTerminalDomRef>(
     ref as Parameters<typeof useDOMImperativeHandle<ProjectTerminalDomRef>>[0],
     () => ({
       focus: () => {
-        terminalRef.current?.focus();
+        if (!panModeRef.current) terminalRef.current?.focus();
       },
       replace: (...args) => {
         const data = args[0];
@@ -98,8 +111,18 @@ export default function ProjectTerminalDom({
       },
       setInputEnabled: (...args) => {
         const enabled = args[0];
-        if (typeof enabled === "boolean" && terminalRef.current) {
-          terminalRef.current.options.disableStdin = !enabled;
+        if (typeof enabled === "boolean") {
+          inputEnabledRef.current = enabled;
+          applyInputMode();
+        }
+      },
+      setPanMode: (...args) => {
+        const enabled = args[0];
+        if (typeof enabled === "boolean") {
+          panModeRef.current = enabled;
+          hostRef.current?.classList.toggle("pan-mode", enabled);
+          applyInputMode();
+          if (enabled) terminalRef.current?.textarea?.blur();
         }
       },
       write: (...args) => {
@@ -107,6 +130,24 @@ export default function ProjectTerminalDom({
         if (typeof data === "string") {
           enqueueOperation({ data, type: "write" });
         }
+      },
+      zoomIn: () => {
+        const terminal = terminalRef.current;
+        if (!terminal) return;
+        terminal.options.fontSize = Math.min(
+          24,
+          (terminal.options.fontSize ?? 13) + 1,
+        );
+        refitTerminalRef.current();
+      },
+      zoomOut: () => {
+        const terminal = terminalRef.current;
+        if (!terminal) return;
+        terminal.options.fontSize = Math.max(
+          9,
+          (terminal.options.fontSize ?? 13) - 1,
+        );
+        refitTerminalRef.current();
       },
     }),
     [],
@@ -136,6 +177,7 @@ export default function ProjectTerminalDom({
     terminal.loadAddon(fitAddon);
     terminal.open(host);
     terminalRef.current = terminal;
+    applyInputMode();
     drainOperations();
 
     const input = terminal.textarea;
@@ -166,16 +208,63 @@ export default function ProjectTerminalDom({
       cancelAnimationFrame(fitFrame);
       fitFrame = requestAnimationFrame(fit);
     };
+    refitTerminalRef.current = scheduleFit;
 
     const dataSubscription = terminal.onData((data) => {
       if (isReplayingRef.current) return;
       void onInputRef.current(data);
     });
     const resizeObserver = new ResizeObserver(scheduleFit);
-    const focusTerminal = () => terminal.focus();
+    let panLastY: number | null = null;
+    let panRemainder = 0;
+    const focusTerminal = () => {
+      if (!panModeRef.current) terminal.focus();
+    };
+    const startPan = (event: TouchEvent) => {
+      if (!panModeRef.current || event.touches.length !== 1) return;
+      event.preventDefault();
+      panLastY = event.touches[0]?.clientY ?? null;
+      panRemainder = 0;
+    };
+    const movePan = (event: TouchEvent) => {
+      if (
+        !panModeRef.current ||
+        panLastY === null ||
+        event.touches.length !== 1
+      ) {
+        return;
+      }
+      const clientY = event.touches[0]?.clientY;
+      if (clientY === undefined) return;
+      event.preventDefault();
+      const row = host.querySelector<HTMLElement>(".xterm-rows > div");
+      const rowHeight = Math.max(1, row?.getBoundingClientRect().height ?? 16);
+      panRemainder += panLastY - clientY;
+      panLastY = clientY;
+
+      const lines = Math.trunc(panRemainder / rowHeight);
+      if (lines !== 0) {
+        terminal.scrollLines(lines);
+        panRemainder -= lines * rowHeight;
+      }
+    };
+    const endPan = () => {
+      panLastY = null;
+      panRemainder = 0;
+    };
     resizeObserver.observe(host);
     window.addEventListener("resize", scheduleFit);
     host.addEventListener("pointerdown", focusTerminal);
+    host.addEventListener("touchstart", startPan, {
+      capture: true,
+      passive: false,
+    });
+    host.addEventListener("touchmove", movePan, {
+      capture: true,
+      passive: false,
+    });
+    host.addEventListener("touchend", endPan, true);
+    host.addEventListener("touchcancel", endPan, true);
     scheduleFit();
     terminal.focus();
     void onReadyRef.current();
@@ -184,6 +273,10 @@ export default function ProjectTerminalDom({
       cancelAnimationFrame(fitFrame);
       window.removeEventListener("resize", scheduleFit);
       host.removeEventListener("pointerdown", focusTerminal);
+      host.removeEventListener("touchstart", startPan, true);
+      host.removeEventListener("touchmove", movePan, true);
+      host.removeEventListener("touchend", endPan, true);
+      host.removeEventListener("touchcancel", endPan, true);
       resizeObserver.disconnect();
       dataSubscription.dispose();
       operationQueueRef.current = [];
@@ -191,6 +284,7 @@ export default function ProjectTerminalDom({
       isReplayingRef.current = false;
       terminal.dispose();
       terminalRef.current = null;
+      refitTerminalRef.current = () => {};
     };
   }, []);
 
@@ -208,6 +302,8 @@ export default function ProjectTerminalDom({
         main { padding: 8px 4px 4px; }
         #terminal-host .xterm { height: 100%; }
         #terminal-host .xterm-viewport { overscroll-behavior: contain; }
+        #terminal-host.pan-mode { cursor: grab; touch-action: none; }
+        #terminal-host.pan-mode:active { cursor: grabbing; }
       `}</style>
       <div aria-label="Terminal" id="terminal-host" ref={hostRef} />
     </main>

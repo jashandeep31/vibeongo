@@ -15,12 +15,18 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import {
+  PageChromeLayout,
+  PageHeader,
+  usePageTitleScrollFade,
+} from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 import { clearAccessToken } from "@/lib/auth";
 
 export default function ProfileScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const userQuery = useUserMetadata();
   const [isSigningOut, setIsSigningOut] = useState(false);
   const user = userQuery.data;
@@ -59,138 +65,133 @@ export default function ProfileScreen() {
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <View
-        style={[styles.header, { borderBottomColor: theme.backgroundSelected }]}
-      >
-        <Pressable
-          accessibilityLabel="Go back"
-          accessibilityRole="button"
-          hitSlop={8}
-          onPress={() => router.back()}
-          style={({ pressed }) => [
-            styles.headerButton,
-            { backgroundColor: theme.backgroundElement },
-            pressed && styles.pressed,
-          ]}
-        >
-          <SymbolView
-            name={{ ios: "chevron.left", android: "arrow_back" }}
-            size={21}
-            tintColor={theme.text}
-            weight="medium"
+      <PageChromeLayout
+        top={
+          <PageHeader
+            onBack={() => router.back()}
+            title="Profile"
+            titleOpacity={titleOpacity}
           />
-        </Pressable>
-        <ThemedText style={styles.headerTitle}>Profile</ThemedText>
-        <View style={styles.headerButton} />
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
+        }
       >
-        {userQuery.isPending ? (
-          <View style={styles.state}>
-            <ActivityIndicator color={theme.textSecondary} />
-            <ThemedText themeColor="textSecondary">
-              Loading profile...
-            </ThemedText>
-          </View>
-        ) : userQuery.isError || !user ? (
-          <View style={styles.state}>
-            <SymbolView
-              name={{ ios: "exclamationmark.circle", android: "error_outline" }}
-              size={28}
-              tintColor={theme.textSecondary}
-            />
-            <ThemedText style={styles.stateTitle}>
-              Could not load profile
-            </ThemedText>
-            <Pressable
-              accessibilityRole="button"
-              onPress={() => void userQuery.refetch()}
-              style={({ pressed }) => [
-                styles.retryButton,
-                { backgroundColor: theme.backgroundElement },
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText style={styles.retryLabel}>Try again</ThemedText>
-            </Pressable>
-          </View>
-        ) : (
-          <>
-            <View style={styles.identity}>
-              <View
-                style={[
-                  styles.avatar,
-                  { backgroundColor: theme.backgroundElement },
-                ]}
-              >
+        {({ topInset }) => (
+          <ScrollView
+            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+            onScroll={onTitleScroll}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          >
+            {userQuery.isPending ? (
+              <View style={styles.state}>
+                <ActivityIndicator color={theme.textSecondary} />
+                <ThemedText themeColor="textSecondary">
+                  Loading profile...
+                </ThemedText>
+              </View>
+            ) : userQuery.isError || !user ? (
+              <View style={styles.state}>
                 <SymbolView
-                  name={{ ios: "person.fill", android: "person" }}
-                  size={36}
+                  name={{
+                    ios: "exclamationmark.circle",
+                    android: "error_outline",
+                  }}
+                  size={28}
                   tintColor={theme.textSecondary}
                 />
-                <Image
-                  accessibilityLabel={`${displayName} profile picture`}
-                  contentFit="cover"
-                  source={`https://github.com/${user.username}.png`}
-                  style={styles.avatarImage}
-                  transition={120}
-                />
+                <ThemedText style={styles.stateTitle}>
+                  Could not load profile
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  onPress={() => void userQuery.refetch()}
+                  style={({ pressed }) => [
+                    styles.retryButton,
+                    { backgroundColor: theme.backgroundElement },
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.retryLabel}>Try again</ThemedText>
+                </Pressable>
               </View>
-              <ThemedText numberOfLines={2} style={styles.name}>
-                {displayName}
-              </ThemedText>
-              <ThemedText style={styles.username} themeColor="textSecondary">
-                @{user.username}
-              </ThemedText>
-            </View>
+            ) : (
+              <>
+                <View style={styles.identity}>
+                  <View
+                    style={[
+                      styles.avatar,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "person.fill", android: "person" }}
+                      size={36}
+                      tintColor={theme.textSecondary}
+                    />
+                    <Image
+                      accessibilityLabel={`${displayName} profile picture`}
+                      contentFit="cover"
+                      source={`https://github.com/${user.username}.png`}
+                      style={styles.avatarImage}
+                      transition={120}
+                    />
+                  </View>
+                  <ThemedText numberOfLines={2} style={styles.name}>
+                    {displayName}
+                  </ThemedText>
+                  <ThemedText
+                    style={styles.username}
+                    themeColor="textSecondary"
+                  >
+                    @{user.username}
+                  </ThemedText>
+                </View>
 
-            <View
-              style={[
-                styles.details,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
+                <View
+                  style={[
+                    styles.details,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
+                  ]}
+                >
+                  <ProfileField label="Username" value={`@${user.username}`} />
+                  <ProfileField
+                    label="Balance"
+                    value={`$${formatInternalMoney(user.balance)}`}
+                  />
+                </View>
+              </>
+            )}
+
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: isSigningOut }}
+              disabled={isSigningOut}
+              onPress={requestSignOut}
+              style={({ pressed }) => [
+                styles.signOut,
+                { borderColor: theme.backgroundSelected },
+                (pressed || isSigningOut) && styles.pressed,
               ]}
             >
-              <ProfileField label="Username" value={`@${user.username}`} />
-              <ProfileField
-                label="Balance"
-                value={`$${formatInternalMoney(user.balance)}`}
-              />
-            </View>
-          </>
+              {isSigningOut ? (
+                <ActivityIndicator color="#ef4444" size="small" />
+              ) : (
+                <SymbolView
+                  name={{
+                    ios: "rectangle.portrait.and.arrow.right",
+                    android: "logout",
+                  }}
+                  size={20}
+                  tintColor="#ef4444"
+                />
+              )}
+              <ThemedText style={styles.signOutLabel}>Sign out</ThemedText>
+            </Pressable>
+          </ScrollView>
         )}
-
-        <Pressable
-          accessibilityRole="button"
-          accessibilityState={{ disabled: isSigningOut }}
-          disabled={isSigningOut}
-          onPress={requestSignOut}
-          style={({ pressed }) => [
-            styles.signOut,
-            { borderColor: theme.backgroundSelected },
-            (pressed || isSigningOut) && styles.pressed,
-          ]}
-        >
-          {isSigningOut ? (
-            <ActivityIndicator color="#ef4444" size="small" />
-          ) : (
-            <SymbolView
-              name={{
-                ios: "rectangle.portrait.and.arrow.right",
-                android: "logout",
-              }}
-              size={20}
-              tintColor="#ef4444"
-            />
-          )}
-          <ThemedText style={styles.signOutLabel}>Sign out</ThemedText>
-        </Pressable>
-      </ScrollView>
+      </PageChromeLayout>
     </SafeAreaView>
   );
 }
