@@ -3,15 +3,18 @@ package ws
 import (
 	"log"
 	"reflect"
+	"slices"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store/newstores"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/labstack/echo/v5"
 )
 
-func WebSocketV2() echo.HandlerFunc {
+func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 	return func(c *echo.Context) error {
 		var writeMu sync.Mutex
 
@@ -26,6 +29,8 @@ func WebSocketV2() echo.HandlerFunc {
 		// creating channels
 		stopTmuxPolling := make(chan struct{})
 		tmuxPollingDone := make(chan struct{})
+		stopTerminalPolling := make(chan struct{})
+		terminalPollingDone := make(chan struct{})
 
 		go func() {
 			defer close(tmuxPollingDone)
@@ -34,10 +39,19 @@ func WebSocketV2() echo.HandlerFunc {
 				conn.Close()
 			}
 		}()
+		go func() {
+			defer close(terminalPollingDone)
+			if err := handleTerminalSessionsList(conn, &writeMu, tools.TerminalSessionStore, stopTerminalPolling); err != nil {
+				log.Println("Terminal session polling failed:", err)
+				conn.Close()
+			}
+		}()
 
 		defer func() {
 			close(stopTmuxPolling)
+			close(stopTerminalPolling)
 			<-tmuxPollingDone
+			<-terminalPollingDone
 		}()
 
 		// handling the messages
@@ -60,6 +74,48 @@ func WebSocketV2() echo.HandlerFunc {
 		}
 
 		return nil
+	}
+}
+
+func handleTerminalSessionsList(conn *websocket.Conn, writeMu *sync.Mutex, sessionsStore *newstores.SessionsStore, stop <-chan struct{}) error {
+	sendSessions := func(ids []string) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+
+		return conn.WriteJSON(struct {
+			Type     string   `json:"type"`
+			IDs      []string `json:"ids"`
+			ActiveID string   `json:"activeId"`
+		}{
+			Type: "sessionIds",
+			IDs:  ids,
+		})
+	}
+
+	previousIDs := sessionsStore.GetTerminalSessionIDs()
+	if err := sendSessions(previousIDs); err != nil {
+		log.Println("Failed to send terminal sessions:", err)
+		return err
+	}
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			currentIDs := sessionsStore.GetTerminalSessionIDs()
+			if slices.Equal(previousIDs, currentIDs) {
+				continue
+			}
+
+			if err := sendSessions(currentIDs); err != nil {
+				return err
+			}
+			previousIDs = currentIDs
+		case <-stop:
+			return nil
+		}
 	}
 }
 

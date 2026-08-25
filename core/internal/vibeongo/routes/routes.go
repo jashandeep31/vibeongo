@@ -11,7 +11,7 @@ import (
 func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	e.GET("/", handlers.Health)
 	e.GET("/ws", ws.WebSocket(tools), middlewares.CheckLocalWebSocketAuth(localToken))
-	e.GET("/v2/ws", ws.WebSocketV2())
+	e.GET("/v2/ws", ws.WebSocketV2(tools))
 	e.GET("/v2/ws/terminal/:id", ws.TerminalWebSocket(tools))
 
 	protected := e.Group("")

@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"sort"
 	"sync"
 	"time"
 
@@ -41,6 +42,31 @@ func (s *SessionsStore) GetTerminalSession(id string) (*TerminalSession, error) 
 		return termSession, nil
 	}
 	return nil, fmt.Errorf("Terminal Session not round")
+}
+
+// GetTerminalSessionIDs returns a stable snapshot of the stored terminal
+// sessions, ordered from oldest to newest.
+func (s *SessionsStore) GetTerminalSessionIDs() []string {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+
+	sessions := make([]*TerminalSession, 0, len(s.sessions))
+	for _, session := range s.sessions {
+		sessions = append(sessions, session)
+	}
+
+	sort.Slice(sessions, func(i, j int) bool {
+		if sessions[i].CreatedAt.Equal(sessions[j].CreatedAt) {
+			return sessions[i].ID < sessions[j].ID
+		}
+		return sessions[i].CreatedAt.Before(sessions[j].CreatedAt)
+	})
+
+	ids := make([]string, len(sessions))
+	for i, session := range sessions {
+		ids[i] = session.ID
+	}
+	return ids
 }
 
 func (s *SessionsStore) CreateTerminalSession() (*TerminalSession, error) {
