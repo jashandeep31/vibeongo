@@ -81,7 +81,7 @@ const staticNavigation = [
     keywords: "git repos repositories github",
   },
   {
-    title: "Import",
+    title: "Demo Projects",
     url: "/import-projects",
     icon: Import,
     keywords: "import demo projects templates",
