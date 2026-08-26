@@ -50,6 +50,7 @@ import { ProjectDomainsButton } from "@/components/projects/project-domains-draw
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
 import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import { PAGE_CHROME } from "@/constants/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -571,6 +572,12 @@ export function ProjectChatScreen() {
           {...pageSwipeResponder.panHandlers}
         >
           <PageChromeLayout
+            bottom={
+              <View
+                pointerEvents="none"
+                style={{ height: PAGE_CHROME.bottom.composerFadeInset }}
+              />
+            }
             top={
               <PageHeader
                 accessibilityLabel="Switch chat"
@@ -727,12 +734,14 @@ export function ProjectChatScreen() {
                   ) : null}
                 </ScrollView>
 
-                <View
-                  style={[
-                    styles.composerOuter,
-                    { backgroundColor: theme.background },
-                  ]}
-                >
+                <View style={styles.composerOuter}>
+                  <View
+                    pointerEvents="none"
+                    style={[
+                      styles.inputSolidBackground,
+                      { backgroundColor: theme.background },
+                    ]}
+                  />
                   {!showRawResponse && revertedQuestions.length > 0 ? (
                     <RevertedMessagesPanel
                       messages={revertedQuestions}
@@ -935,10 +944,16 @@ function RevertedMessagesPanel({
 
 const styles = StyleSheet.create({
   composerOuter: {
+    backgroundColor: "transparent",
+    bottom: 0,
     gap: 6,
+    left: 0,
     paddingBottom: 10,
     paddingHorizontal: 14,
     paddingTop: 6,
+    position: "absolute",
+    right: 0,
+    zIndex: 2,
   },
   error: {
     color: "#ef4444",
@@ -988,6 +1003,13 @@ const styles = StyleSheet.create({
     minWidth: 0,
     paddingHorizontal: 16,
   },
+  inputSolidBackground: {
+    bottom: 0,
+    height: PAGE_CHROME.bottom.estimatedInset,
+    left: 0,
+    position: "absolute",
+    right: 0,
+  },
   headerTitle: {
     flexShrink: 1,
     fontSize: 14,
@@ -1008,7 +1030,7 @@ const styles = StyleSheet.create({
   },
   messages: {
     gap: 28,
-    paddingBottom: 24,
+    paddingBottom: 150,
     paddingHorizontal: 18,
     paddingTop: 24,
   },

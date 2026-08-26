@@ -1,5 +1,6 @@
 export const PAGE_CHROME = {
   bottom: {
+    composerFadeInset: 154,
     estimatedInset: 82,
     extension: 10,
     locations: [0, 0.3, 1] as const,

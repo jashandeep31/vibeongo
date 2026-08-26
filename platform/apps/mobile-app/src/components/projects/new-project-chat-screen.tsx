@@ -24,6 +24,7 @@ import { ProjectDomainsButton } from "@/components/projects/project-domains-draw
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
 import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import { PAGE_CHROME } from "@/constants/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
@@ -198,6 +199,12 @@ export function NewProjectChatScreen() {
         style={styles.screen}
       >
         <PageChromeLayout
+          bottom={
+            <View
+              pointerEvents="none"
+              style={{ height: PAGE_CHROME.bottom.composerFadeInset }}
+            />
+          }
           top={
             <PageHeader
               onBack={goBack}
@@ -248,7 +255,19 @@ export function NewProjectChatScreen() {
           }
         >
           {({ topInset }) => (
-            <View style={[styles.body, { paddingTop: topInset }]}>
+            <View
+              style={[
+                styles.body,
+                { backgroundColor: "transparent", paddingTop: topInset },
+              ]}
+            >
+              <View
+                pointerEvents="none"
+                style={[
+                  styles.inputSolidBackground,
+                  { backgroundColor: theme.background },
+                ]}
+              />
               <View>
                 <ThemedText style={styles.heading}>
                   What should we work on?
@@ -292,6 +311,7 @@ const styles = StyleSheet.create({
     justifyContent: "flex-end",
     paddingBottom: 20,
     paddingHorizontal: 20,
+    zIndex: 2,
   },
   directory: {
     fontSize: 12,
@@ -354,6 +374,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 0,
     paddingHorizontal: 16,
+  },
+  inputSolidBackground: {
+    bottom: 0,
+    height: PAGE_CHROME.bottom.estimatedInset,
+    left: 0,
+    position: "absolute",
+    right: 0,
   },
   heading: {
     fontSize: 24,

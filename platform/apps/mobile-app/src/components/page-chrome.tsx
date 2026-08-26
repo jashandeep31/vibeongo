@@ -44,6 +44,16 @@ export function PageChromeLayout({
 
   return (
     <View style={styles.screen}>
+      {bottom ? (
+        <View
+          onLayout={updateBottomInset}
+          pointerEvents="box-none"
+          style={styles.bottomChrome}
+        >
+          <ChromeGradient color={theme.background} edge="bottom" />
+          {bottom}
+        </View>
+      ) : null}
       {children({ bottomInset, topInset })}
       {top ? (
         <View
@@ -53,16 +63,6 @@ export function PageChromeLayout({
         >
           <ChromeGradient color={theme.background} edge="top" />
           {top}
-        </View>
-      ) : null}
-      {bottom ? (
-        <View
-          onLayout={updateBottomInset}
-          pointerEvents="box-none"
-          style={styles.bottomChrome}
-        >
-          <ChromeGradient color={theme.background} edge="bottom" />
-          {bottom}
         </View>
       ) : null}
     </View>
@@ -224,7 +224,7 @@ const styles = StyleSheet.create({
     paddingTop: PAGE_CHROME.bottom.extension,
     position: "absolute",
     right: 0,
-    zIndex: 20,
+    zIndex: 1,
   },
   header: {
     alignItems: "center",

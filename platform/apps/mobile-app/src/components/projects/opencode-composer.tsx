@@ -362,9 +362,7 @@ function PromptSelectors({
       const currentModelIsFromProvider = selectedModel?.providerID === id;
       onChange({
         ...selection,
-        model: currentModelIsFromProvider
-          ? selection.model
-          : providerModel?.id,
+        model: currentModelIsFromProvider ? selection.model : providerModel?.id,
         variant: currentModelIsFromProvider ? selection.variant : undefined,
       });
       setPicker(providerModel ? "model" : null);
@@ -386,6 +384,7 @@ function PromptSelectors({
         horizontal
         keyboardShouldPersistTaps="handled"
         showsHorizontalScrollIndicator={false}
+        style={styles.pillsScroller}
       >
         <SelectorPill
           disabled={disabled || !providers.length}
@@ -448,19 +447,19 @@ function PromptSelectors({
           picker === "provider"
             ? selectedProviderID
             : picker === "model"
-            ? selection.model
-            : picker === "agent"
-              ? selection.agent
-              : (selection.variant ?? "")
+              ? selection.model
+              : picker === "agent"
+                ? selection.agent
+                : (selection.variant ?? "")
         }
         title={
           picker === "provider"
             ? "Choose provider"
             : picker === "model"
-            ? "Choose model"
-            : picker === "agent"
-              ? "Choose agent"
-              : "Choose variant"
+              ? "Choose model"
+              : picker === "agent"
+                ? "Choose agent"
+                : "Choose variant"
         }
         visible={picker !== null}
       />
@@ -749,6 +748,9 @@ const styles = StyleSheet.create({
   },
   pills: {
     gap: 8,
+  },
+  pillsScroller: {
+    backgroundColor: "transparent",
   },
   pillText: {
     flexShrink: 1,
