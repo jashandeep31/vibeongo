@@ -10,6 +10,24 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
+func ProvisionFx(cfg *config.FxConfig) error {
+	if cfg == nil {
+		return nil
+	}
+	fmt.Println("Setting up fx")
+	authJSON := cfg.AuthJSON
+	authDir := "/home/ubuntu/.fx"
+	if err := os.MkdirAll(authDir, 0o755); err != nil {
+		return fmt.Errorf("failed to create fx auth directory: %w", err)
+	}
+	authfilePath := filepath.Join(authDir, "auth.json")
+	if err := os.WriteFile(authfilePath, authJSON, 0o600); err != nil {
+		return fmt.Errorf("failed to write fx auth.json: %w", err)
+	}
+	fmt.Println("updated the auth.json")
+	return nil
+}
+
 func ProvisionCodex(cfg *config.CodexConfig) error {
 	if cfg == nil {
 		return nil

@@ -188,11 +188,15 @@ func ProvissionToolsCmd() *cobra.Command {
 				return err
 			}
 
-			if err := actions.ProvisionDockerContainers(cfg.Docker); err != nil {
+			if err := actions.ProvisionOpenCode(cfg.OpenCode); err != nil {
 				return err
 			}
 
-			if err := actions.ProvisionOpenCode(cfg.OpenCode); err != nil {
+			if err := actions.ProvisionFx(cfg.Fx); err != nil {
+				return err
+			}
+
+			if err := actions.ProvisionDockerContainers(cfg.Docker); err != nil {
 				return err
 			}
 

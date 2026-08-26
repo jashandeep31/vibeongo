@@ -21,6 +21,7 @@ type Config struct {
 	OpenCode       *OpenCodeConfig `json:"opencode"`
 	Pi             *PiConfig       `json:"pi"`
 	Codex          *CodexConfig    `json:"codex"`
+	Fx             *FxConfig       `json:"fx"`
 	Nvim           *NvimConfig     `json:"nvim"`
 	Tasks          []TaskConfig    `json:"tasks"`
 	InitialScript  string          `json:"initialScript"`
@@ -80,6 +81,9 @@ type PiConfig struct {
 type CodexConfig struct {
 	AuthJSON json.RawMessage `json:"auth_json"`
 }
+type FxConfig struct {
+	AuthJSON json.RawMessage `json:"auth_json"`
+}
 
 type NvimConfig struct {
 	ConfigJSON json.RawMessage `json:"config_json"`
@@ -108,9 +112,16 @@ func validateConfig(file []byte) (Config, error) {
 		case "codex":
 			var codexConfig CodexConfig
 			if err := json.Unmarshal(pkg.Config, &codexConfig); err != nil {
-				return cfg, fmt.Errorf("error parsing opencode package config: %w", err)
+				return cfg, fmt.Errorf("error parsing codex package config: %w", err)
 			}
 			cfg.Codex = &codexConfig
+
+		case "fx":
+			var fxConfig FxConfig
+			if err := json.Unmarshal(pkg.Config, &fxConfig); err != nil {
+				return cfg, fmt.Errorf("error parsing fx package config: %w", err)
+			}
+			cfg.Fx = &fxConfig
 
 		case "pi":
 			var piConfig PiConfig
