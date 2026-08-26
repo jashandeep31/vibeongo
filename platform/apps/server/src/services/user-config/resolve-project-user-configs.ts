@@ -4,7 +4,7 @@ import { decryptData } from "../../lib/encryption-decryption.js";
 
 type ProjectConfig = z.infer<typeof projectConfigValidator>["config"];
 type ProjectPackage = ProjectConfig["packages"][number];
-type UserConfigType = "opencode" | "codex" | "pi";
+type UserConfigType = "opencode" | "codex" | "pi" | "fx";
 type UserConfigurablePackage = Extract<
   ProjectPackage,
   { name: UserConfigType }
@@ -18,7 +18,8 @@ const isUserConfigurablePackage = (
 ): projectPackage is UserConfigurablePackage =>
   projectPackage.name === "opencode" ||
   projectPackage.name === "codex" ||
-  projectPackage.name === "pi";
+  projectPackage.name === "pi" ||
+  projectPackage.name === "fx";
 
 const replacePackageAuthJson = (
   projectPackage: UserConfigurablePackage,
@@ -36,6 +37,11 @@ const replacePackageAuthJson = (
         config: { ...projectPackage.config, auth_json: authJson },
       };
     case "pi":
+      return {
+        ...projectPackage,
+        config: { ...projectPackage.config, auth_json: authJson },
+      };
+    case "fx":
       return {
         ...projectPackage,
         config: { ...projectPackage.config, auth_json: authJson },

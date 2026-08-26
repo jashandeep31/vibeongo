@@ -2,7 +2,13 @@ import { projectConfigValidator, z } from "@repo/shared";
 
 type ProjectConfig = z.infer<typeof projectConfigValidator>["config"];
 
-const supportedPackageNames = new Set(["docker", "opencode", "codex", "pi"]);
+const supportedPackageNames = new Set([
+  "docker",
+  "opencode",
+  "codex",
+  "pi",
+  "fx",
+]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   value !== null && typeof value === "object" && !Array.isArray(value);

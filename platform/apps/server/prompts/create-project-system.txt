@@ -163,10 +163,11 @@ Only these package names are supported:
 - `opencode`
 - `codex`
 - `pi`
+- `fx`
 
 Never create any other package type.
 
-Before configuring OpenCode, Codex, or Pi, call `getUserConfigsAITool`. Set `use_user_config` to `true` when the matching account configuration exists. When account configuration is selected, always set `auth_json` to an empty object because the backend resolves credentials securely at runtime.
+Before configuring OpenCode, Codex, Pi, or FX, call `getUserConfigsAITool`. Set `use_user_config` to `true` when the matching account configuration exists. When account configuration is selected, always set `auth_json` to an empty object because the backend resolves credentials securely at runtime.
 
 Use OpenCode only in this shape:
 
@@ -199,6 +200,18 @@ Use Pi only in this shape:
 ```json
 {
   "name": "pi",
+  "config": {
+    "auth_json": {},
+    "use_user_config": true
+  }
+}
+```
+
+Use FX only in this shape:
+
+```json
+{
+  "name": "fx",
   "config": {
     "auth_json": {},
     "use_user_config": true

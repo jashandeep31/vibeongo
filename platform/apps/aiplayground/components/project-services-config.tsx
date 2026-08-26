@@ -47,6 +47,7 @@ export type ProjectServicesConfigValue = {
   };
   codex: AuthConfig;
   pi: AuthConfig;
+  fx: AuthConfig;
 };
 
 const PREDEFINED_CONTAINERS = [
@@ -71,6 +72,7 @@ export function createDefaultProjectServicesConfig(): ProjectServicesConfigValue
     },
     codex: { authJson: "", useUserConfig: true },
     pi: { authJson: "", useUserConfig: true },
+    fx: { authJson: "", useUserConfig: true },
   };
 }
 
@@ -94,6 +96,7 @@ export function hydrateProjectServicesConfig(
   const opencode = packages.find((item) => item.name === "opencode");
   const codex = packages.find((item) => item.name === "codex");
   const pi = packages.find((item) => item.name === "pi");
+  const fx = packages.find((item) => item.name === "fx");
 
   return {
     dockerContainers:
@@ -114,6 +117,10 @@ export function hydrateProjectServicesConfig(
     pi: {
       authJson: formatAuthJson(pi?.config.auth_json),
       useUserConfig: pi?.config.use_user_config ?? true,
+    },
+    fx: {
+      authJson: formatAuthJson(fx?.config.auth_json),
+      useUserConfig: fx?.config.use_user_config ?? true,
     },
   };
 }
@@ -167,6 +174,15 @@ export function buildProjectPackages(
           ? {}
           : parseAuthJson(value.pi.authJson, "Pi"),
         use_user_config: value.pi.useUserConfig,
+      },
+    },
+    {
+      name: "fx",
+      config: {
+        auth_json: value.fx.useUserConfig
+          ? {}
+          : parseAuthJson(value.fx.authJson, "FX"),
+        use_user_config: value.fx.useUserConfig,
       },
     },
   ];
@@ -504,6 +520,26 @@ export function ProjectServicesConfig({
             value={value.pi.authJson}
             disabled={disabled}
             onChange={(authJson) => update({ pi: { ...value.pi, authJson } })}
+          />
+        ) : null}
+      </ServiceCard>
+
+      <ServiceCard icon={<Bot className="mr-2 size-4" />} title="FX">
+        <UseAccountConfig
+          id="fx-use-user-config"
+          checked={value.fx.useUserConfig}
+          disabled={disabled}
+          onChange={(useUserConfig) =>
+            update({ fx: { ...value.fx, useUserConfig } })
+          }
+        />
+        {!value.fx.useUserConfig ? (
+          <SensitiveAuthJsonField
+            id="fx-auth-json"
+            serviceName="FX"
+            value={value.fx.authJson}
+            disabled={disabled}
+            onChange={(authJson) => update({ fx: { ...value.fx, authJson } })}
           />
         ) : null}
       </ServiceCard>

@@ -4,7 +4,7 @@ type ProjectConfig = z.infer<typeof projectConfigValidator>["config"];
 type ProjectPackage = ProjectConfig["packages"][number];
 type UserConfigurablePackage = Extract<
   ProjectPackage,
-  { name: "opencode" | "codex" | "pi" }
+  { name: "opencode" | "codex" | "pi" | "fx" }
 >;
 
 const isUserConfigurablePackage = (
@@ -12,7 +12,8 @@ const isUserConfigurablePackage = (
 ): projectPackage is UserConfigurablePackage =>
   projectPackage.name === "opencode" ||
   projectPackage.name === "codex" ||
-  projectPackage.name === "pi";
+  projectPackage.name === "pi" ||
+  projectPackage.name === "fx";
 
 const removeEmbeddedAccountAuth = (
   projectPackage: UserConfigurablePackage,
@@ -29,6 +30,11 @@ const removeEmbeddedAccountAuth = (
         config: { ...projectPackage.config, auth_json: {} },
       };
     case "pi":
+      return {
+        ...projectPackage,
+        config: { ...projectPackage.config, auth_json: {} },
+      };
+    case "fx":
       return {
         ...projectPackage,
         config: { ...projectPackage.config, auth_json: {} },
