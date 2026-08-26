@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
-  KeyboardAvoidingView,
+  type KeyboardEvent,
   Platform,
   Pressable,
   ScrollView,
@@ -78,13 +78,16 @@ export function ProjectTerminalSessionScreen() {
     : "";
   const localToken = getLocalToken(runtime.instance?.config);
   const terminalRef = useRef<ProjectTerminalDomRef>(null);
+  const terminalAreaRef = useRef<View>(null);
   const terminalSizeRef = useRef({ cols: 80, rows: 24 });
+  const keyboardTopRef = useRef<number | null>(null);
   const controlActiveRef = useRef(false);
   const awaitingBufferReplayRef = useRef(false);
   const [controlActive, setControlActive] = useState(false);
   const [panMode, setPanMode] = useState(false);
   const [switcherVisible, setSwitcherVisible] = useState(false);
   const [terminalReady, setTerminalReady] = useState(false);
+  const [keyboardOverlap, setKeyboardOverlap] = useState(0);
   const terminal = useVibeongoTermV2({
     accessToken: runtime.accessToken,
     enabled: Boolean(
@@ -153,6 +156,50 @@ export function ProjectTerminalSessionScreen() {
       terminalRef.current?.focus();
     }
   }, [terminal.sendResize, terminal.status]);
+
+  const updateKeyboardOverlap = useCallback(() => {
+    const keyboardTop = keyboardTopRef.current;
+    if (keyboardTop === null) {
+      setKeyboardOverlap(0);
+      return;
+    }
+
+    terminalAreaRef.current?.measureInWindow((_x, y, _width, height) => {
+      const nextOverlap = Math.max(0, Math.round(y + height - keyboardTop));
+      setKeyboardOverlap((current) =>
+        current === nextOverlap ? current : nextOverlap,
+      );
+    });
+  }, []);
+
+  useEffect(() => {
+    const showEvent =
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow";
+    const hideEvent =
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide";
+
+    const showSubscription = Keyboard.addListener(
+      showEvent,
+      (event: KeyboardEvent) => {
+        keyboardTopRef.current = event.endCoordinates.screenY;
+        if (Platform.OS === "ios") Keyboard.scheduleLayoutAnimation(event);
+        updateKeyboardOverlap();
+      },
+    );
+    const hideSubscription = Keyboard.addListener(
+      hideEvent,
+      (event: KeyboardEvent) => {
+        keyboardTopRef.current = null;
+        if (Platform.OS === "ios") Keyboard.scheduleLayoutAnimation(event);
+        setKeyboardOverlap(0);
+      },
+    );
+
+    return () => {
+      showSubscription.remove();
+      hideSubscription.remove();
+    };
+  }, [updateKeyboardOverlap]);
 
   const sendInput = useCallback(
     async (data: string) => {
@@ -334,17 +381,32 @@ export function ProjectTerminalSessionScreen() {
         }
       >
         {({ topInset }) => (
-          <KeyboardAvoidingView
-            behavior={Platform.OS === "ios" ? "padding" : "height"}
-            style={[styles.terminalArea, { paddingTop: topInset }]}
+          <View
+            onLayout={updateKeyboardOverlap}
+            ref={terminalAreaRef}
+            style={[
+              styles.terminalArea,
+              { backgroundColor: theme.background, paddingTop: topInset },
+            ]}
           >
-            <View style={styles.terminalFrame}>
+            <View
+              style={[
+                styles.terminalFrame,
+                { backgroundColor: theme.background },
+              ]}
+            >
               <ProjectTerminalDom
                 dom={TERMINAL_DOM_PROPS}
                 onInput={sendInput}
                 onReady={markTerminalReady}
                 onResize={sendSize}
                 ref={terminalRef}
+                terminalTheme={{
+                  background: theme.background,
+                  cursor: theme.text,
+                  foreground: theme.text,
+                  selectionBackground: theme.backgroundSelected,
+                }}
               />
             </View>
             <ScrollView
@@ -491,7 +553,10 @@ export function ProjectTerminalSessionScreen() {
                 </Pressable>
               ))}
             </ScrollView>
-          </KeyboardAvoidingView>
+            {keyboardOverlap > 0 ? (
+              <View pointerEvents="none" style={{ height: keyboardOverlap }} />
+            ) : null}
+          </View>
         )}
       </PageChromeLayout>
       <ProjectTerminalSwitcherDrawer
@@ -610,6 +675,6 @@ const styles = StyleSheet.create({
   stateBack: { padding: 18 },
   stateText: { textAlign: "center" },
   statusDot: { borderRadius: 4, height: 8, width: 8 },
-  terminalArea: { backgroundColor: "#000000", flex: 1 },
-  terminalFrame: { backgroundColor: "#000000", flex: 1 },
+  terminalArea: { flex: 1 },
+  terminalFrame: { flex: 1 },
 });

@@ -22,18 +22,35 @@ type TerminalOperation =
   | { data: string; type: "replace" | "write" }
   | { type: "reset" };
 
+type TerminalTheme = {
+  background: string;
+  cursor: string;
+  foreground: string;
+  selectionBackground: string;
+};
+
+const DEFAULT_TERMINAL_THEME: TerminalTheme = {
+  background: "#000000",
+  cursor: "#f8f8f2",
+  foreground: "#f8f8f2",
+  selectionBackground: "#47556999",
+};
+
 export default function ProjectTerminalDom({
   onInput,
   onReady,
   onResize,
   ref,
+  terminalTheme,
 }: {
   dom?: import("expo/dom").DOMProps;
   onInput: (data: string) => Promise<void>;
   onReady: () => Promise<void>;
   onResize: (rows: number, cols: number) => Promise<void>;
   ref: unknown;
+  terminalTheme?: TerminalTheme;
 }) {
+  const resolvedTerminalTheme = terminalTheme ?? DEFAULT_TERMINAL_THEME;
   const hostRef = useRef<HTMLDivElement>(null);
   const isDrainingRef = useRef(false);
   const inputEnabledRef = useRef(false);
@@ -41,6 +58,7 @@ export default function ProjectTerminalDom({
   const operationQueueRef = useRef<TerminalOperation[]>([]);
   const panModeRef = useRef(false);
   const terminalRef = useRef<Terminal | null>(null);
+  const terminalThemeRef = useRef(resolvedTerminalTheme);
   const refitTerminalRef = useRef<() => void>(() => {});
   const onInputRef = useRef(onInput);
   const onReadyRef = useRef(onReady);
@@ -49,6 +67,7 @@ export default function ProjectTerminalDom({
   onInputRef.current = onInput;
   onReadyRef.current = onReady;
   onResizeRef.current = onResize;
+  terminalThemeRef.current = resolvedTerminalTheme;
 
   const drainOperations = () => {
     const terminal = terminalRef.current;
@@ -166,12 +185,7 @@ export default function ProjectTerminalDom({
         'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace',
       fontSize: 13,
       scrollback: 5_000,
-      theme: {
-        background: "#000000",
-        cursor: "#f8f8f2",
-        foreground: "#f8f8f2",
-        selectionBackground: "#47556999",
-      },
+      theme: terminalThemeRef.current,
     });
     const fitAddon = new FitAddon();
     terminal.loadAddon(fitAddon);
@@ -288,6 +302,12 @@ export default function ProjectTerminalDom({
     };
   }, []);
 
+  useEffect(() => {
+    if (terminalRef.current) {
+      terminalRef.current.options.theme = resolvedTerminalTheme;
+    }
+  }, [resolvedTerminalTheme]);
+
   return (
     <main>
       <style>{`
@@ -297,11 +317,26 @@ export default function ProjectTerminalDom({
           height: 100%;
           margin: 0;
           overflow: hidden;
-          background: #000;
+          background: ${resolvedTerminalTheme.background};
         }
         main { padding: 8px 4px 4px; }
+        #terminal-host .xterm,
+        #terminal-host .xterm-screen,
+        #terminal-host .xterm-viewport {
+          background-color: ${resolvedTerminalTheme.background} !important;
+        }
         #terminal-host .xterm { height: 100%; }
-        #terminal-host .xterm-viewport { overscroll-behavior: contain; }
+        #terminal-host .xterm-viewport {
+          overflow-x: hidden !important;
+          overscroll-behavior: contain;
+          scrollbar-color: transparent transparent;
+          scrollbar-width: none;
+        }
+        #terminal-host .xterm-viewport::-webkit-scrollbar {
+          display: none;
+          height: 0;
+          width: 0;
+        }
         #terminal-host.pan-mode { cursor: grab; touch-action: none; }
         #terminal-host.pan-mode:active { cursor: grabbing; }
       `}</style>
