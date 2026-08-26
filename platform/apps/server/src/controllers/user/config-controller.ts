@@ -5,7 +5,7 @@ import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
 
-const userConfigTypeSchema = z.enum(["opencode", "codex", "pi"]);
+const userConfigTypeSchema = z.enum(["opencode", "codex", "pi", "fx"]);
 const userConfigSchema = z.record(z.string(), z.unknown());
 
 const createUserConfigSchema = z.object({

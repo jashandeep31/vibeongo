@@ -70,6 +70,11 @@ const configTypes = [
     name: "Pi",
     description: "Pi authentication configuration.",
   },
+  {
+    type: "fx",
+    name: "FX",
+    description: "FX authentication configuration.",
+  },
 ] as const;
 
 function SettingsSection({
