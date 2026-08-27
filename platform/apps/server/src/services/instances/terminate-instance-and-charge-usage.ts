@@ -179,7 +179,7 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  | AI Chares: ${formatInternalMoney(openrouterCharges)}`,
+        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  | AI Charges: ${formatInternalMoney(openrouterCharges)}`,
         raw_description: `Instance ${instanceId} ${instance.instance_type_id || instance.sandbox_type_id}  ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(networkOutInGb)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged. And openrouter charges ${openrouterCharges} `,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
