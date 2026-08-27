@@ -8,14 +8,19 @@ import {
   LoaderCircle,
   Plus,
   Terminal as TerminalIcon,
+  Trash2,
 } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import { WebTerminal } from "@/components/web-terminal";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { TerminalDirectoryDialog } from "@/components/terminal-directory-dialog";
+import { WebTerminal } from "@/components/web-terminal";
 import { useWebTerminalSessionSocket } from "@/hooks/use-web-terminal-session-socket";
 import { useWebTerminalWorkspaceSocket } from "@/hooks/use-web-terminal-workspace-socket";
-import { createWebTerminalSession } from "@/lib/web-terminal-socket";
+import {
+  createWebTerminalSession,
+  killWebTerminalSession,
+} from "@/lib/web-terminal-socket";
 
 function getLocalToken(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return "";
@@ -33,6 +38,11 @@ export function ProjectTerminalPage({
   const [pendingTerminalId, setPendingTerminalId] = useState("");
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
   const [isDirectoryDialogOpen, setIsDirectoryDialogOpen] = useState(false);
+  const [killingTerminalId, setKillingTerminalId] = useState("");
+  const [terminalPendingKill, setTerminalPendingKill] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
   const [terminalCreationError, setTerminalCreationError] = useState("");
   const sessionEntry = useSessionsStore((store) =>
     store.sessions.find((entry) => entry.session.id === projectSessionId),
@@ -113,6 +123,25 @@ export function ProjectTerminalPage({
     }
   };
 
+  const killTerminal = async (terminalId: string) => {
+    if (killingTerminalId) return;
+    setKillingTerminalId(terminalId);
+    setTerminalCreationError("");
+    try {
+      await killWebTerminalSession({
+        accessToken,
+        localToken,
+        runtimeUrl,
+        terminalId,
+      });
+    } catch {
+      setTerminalCreationError("Could not kill terminal. Try again.");
+    } finally {
+      setTerminalPendingKill(null);
+      setKillingTerminalId("");
+    }
+  };
+
   const selectedTerminalLabel = useMemo(() => {
     if (isCreatingTerminal) return "Creating terminal…";
     const index = workspace.terminalSessionIds.indexOf(selectedTerminalId);
@@ -169,27 +198,53 @@ export function ProjectTerminalPage({
               </Button>
               {workspace.terminalSessionIds.map((terminalId, index) => {
                 const selected = terminalId === selectedTerminalId;
+                const terminalLabel = `Terminal ${index + 1}`;
                 return (
-                  <button
+                  <div
                     key={terminalId}
-                    type="button"
-                    onClick={() => setSelectedTerminalId(terminalId)}
-                    className={`flex min-w-max shrink-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-left transition-colors md:min-w-0 md:gap-2 md:rounded-lg md:px-3 md:py-2 ${
+                    className={`flex min-w-max shrink-0 items-center rounded-md border p-1 transition-colors md:min-w-0 md:rounded-lg ${
                       selected
                         ? "border-primary/40 bg-primary/10"
                         : "bg-background hover:bg-muted"
                     }`}
                   >
-                    <TerminalIcon className="size-3.5 shrink-0 md:size-4" />
-                    <span className="min-w-0 flex-1">
-                      <span className="block text-xs font-medium md:text-sm">
-                        Terminal {index + 1}
+                    <button
+                      className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5 text-left md:gap-2 md:px-2 md:py-1"
+                      type="button"
+                      onClick={() => setSelectedTerminalId(terminalId)}
+                    >
+                      <TerminalIcon className="size-3.5 shrink-0 md:size-4" />
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-xs font-medium md:text-sm">
+                          {terminalLabel}
+                        </span>
+                        <span className="text-muted-foreground hidden truncate font-mono text-[11px] md:block">
+                          {terminalId}
+                        </span>
                       </span>
-                      <span className="text-muted-foreground hidden truncate font-mono text-[11px] md:block">
-                        {terminalId}
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                    <Button
+                      aria-label={`Kill ${terminalLabel}`}
+                      className="text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      disabled={Boolean(killingTerminalId)}
+                      size="icon-xs"
+                      title={`Kill ${terminalLabel}`}
+                      type="button"
+                      variant="ghost"
+                      onClick={() =>
+                        setTerminalPendingKill({
+                          id: terminalId,
+                          label: terminalLabel,
+                        })
+                      }
+                    >
+                      {killingTerminalId === terminalId ? (
+                        <LoaderCircle className="animate-spin" />
+                      ) : (
+                        <Trash2 />
+                      )}
+                    </Button>
+                  </div>
                 );
               })}
               {workspace.terminalSessionIds.length === 0 &&
@@ -268,6 +323,21 @@ export function ProjectTerminalPage({
         onOpenChange={setIsDirectoryDialogOpen}
         onSelect={(workingDirectory) => void addTerminal(workingDirectory)}
         open={isDirectoryDialogOpen}
+      />
+      <ConfirmationDialog
+        confirmText="Kill terminal"
+        description="The shell and any running command in this terminal will be stopped."
+        isDestructive
+        onConfirm={() => {
+          if (terminalPendingKill) {
+            void killTerminal(terminalPendingKill.id);
+          }
+        }}
+        onOpenChange={(open) => {
+          if (!open && !killingTerminalId) setTerminalPendingKill(null);
+        }}
+        open={terminalPendingKill !== null}
+        title={`Kill ${terminalPendingKill?.label ?? "terminal"}?`}
       />
     </div>
   );

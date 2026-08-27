@@ -94,6 +94,83 @@ export async function createVibeongoTerminalSession({
   });
 }
 
+export async function killVibeongoTerminalSession({
+  accessToken,
+  localToken,
+  runtimeUrl,
+  terminalId,
+}: {
+  accessToken: string;
+  localToken: string;
+  runtimeUrl: string;
+  terminalId: string;
+}) {
+  const token = await requestVibeongoWsV2Token({
+    accessToken,
+    localToken,
+    runtimeUrl,
+  });
+
+  return new Promise<void>((resolve, reject) => {
+    const socket = createVibeongoWsV2Socket({
+      accessToken,
+      path: "/v2/ws",
+      runtimeUrl,
+      token,
+    });
+    let settled = false;
+    const timeout = setTimeout(() => {
+      finish(new Error("Timed out while killing the terminal session"));
+    }, TERMINAL_CREATION_TIMEOUT_MS);
+
+    const finish = (error?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
+      socket.close(1000, "Terminal kill request completed");
+      if (error) reject(error);
+      else resolve();
+    };
+
+    socket.onopen = () => {
+      try {
+        socket.send(JSON.stringify({ type: "killTerminal", id: terminalId }));
+      } catch {
+        finish(new Error("Could not send terminal kill request"));
+      }
+    };
+    socket.onmessage = (event) => {
+      if (typeof event.data !== "string") return;
+      try {
+        const message = JSON.parse(event.data) as {
+          error?: unknown;
+          id?: unknown;
+          type?: unknown;
+        };
+        if (message.id !== terminalId) return;
+        if (message.type === "terminalKilled") {
+          finish();
+        } else if (message.type === "terminalKillError") {
+          finish(
+            new Error(
+              typeof message.error === "string"
+                ? message.error
+                : "Could not kill terminal session",
+            ),
+          );
+        }
+      } catch {
+        // Ignore unrelated workspace messages.
+      }
+    };
+    socket.onerror = () =>
+      finish(new Error("Could not connect to kill terminal session"));
+    socket.onclose = () => {
+      if (!settled) finish(new Error("Terminal connection closed early"));
+    };
+  });
+}
+
 function parseTmuxSessions(value: unknown): TmuxSession[] | null {
   if (!Array.isArray(value)) return null;
 

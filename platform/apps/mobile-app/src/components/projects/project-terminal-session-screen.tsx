@@ -3,6 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   type KeyboardEvent,
   Platform,
@@ -14,6 +15,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
+import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { ProjectTerminalSwitcherDrawer } from "@/components/projects/project-terminal-switcher-drawer";
 import ProjectTerminalDom, {
@@ -24,6 +26,7 @@ import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import { useVibeongoTermV2 } from "@/hooks/use-vibeongo-term-v2";
+import { killVibeongoTerminalSession } from "@/hooks/use-vibeongo-ws-v2";
 
 const TERMINAL_DOM_PROPS: import("expo/dom").DOMProps = {
   bounces: false,
@@ -86,6 +89,8 @@ export function ProjectTerminalSessionScreen() {
   const [controlActive, setControlActive] = useState(false);
   const [panMode, setPanMode] = useState(false);
   const [switcherVisible, setSwitcherVisible] = useState(false);
+  const [isKillingTerminal, setIsKillingTerminal] = useState(false);
+  const [killConfirmationVisible, setKillConfirmationVisible] = useState(false);
   const [terminalReady, setTerminalReady] = useState(false);
   const [keyboardOverlap, setKeyboardOverlap] = useState(0);
   const terminal = useVibeongoTermV2({
@@ -124,6 +129,33 @@ export function ProjectTerminalSessionScreen() {
         terminalId: nextTerminalId,
       },
     });
+  };
+
+  const killTerminal = async () => {
+    if (isKillingTerminal || !terminalId) return;
+    setIsKillingTerminal(true);
+    try {
+      await killVibeongoTerminalSession({
+        accessToken: runtime.accessToken,
+        localToken,
+        runtimeUrl,
+        terminalId,
+      });
+      goBack();
+    } catch (error) {
+      setKillConfirmationVisible(false);
+      Alert.alert(
+        "Could not kill terminal",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsKillingTerminal(false);
+    }
+  };
+
+  const openKillConfirmation = () => {
+    Keyboard.dismiss();
+    setKillConfirmationVisible(true);
   };
 
   useEffect(
@@ -317,6 +349,27 @@ export function ProjectTerminalSessionScreen() {
                   { backgroundColor: theme.backgroundElement },
                 ]}
               >
+                <Pressable
+                  accessibilityLabel="Kill terminal"
+                  accessibilityRole="button"
+                  disabled={isKillingTerminal}
+                  onPress={openKillConfirmation}
+                  style={({ pressed }) => [
+                    styles.headerAction,
+                    isKillingTerminal && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  {isKillingTerminal ? (
+                    <ActivityIndicator color="#ef4444" size="small" />
+                  ) : (
+                    <SymbolView
+                      name={{ ios: "trash", android: "delete" }}
+                      size={18}
+                      tintColor="#ef4444"
+                    />
+                  )}
+                </Pressable>
                 <Pressable
                   accessibilityLabel="Monitor VPS"
                   accessibilityRole="button"
@@ -568,6 +621,18 @@ export function ProjectTerminalSessionScreen() {
         projectSessionId={projectSessionId}
         runtimeUrl={runtimeUrl}
         visible={switcherVisible}
+      />
+      <ConfirmationDrawer
+        confirmLabel="Kill terminal"
+        description="The shell and any running command in this terminal will be stopped."
+        destructive
+        isConfirming={isKillingTerminal}
+        onCancel={() => {
+          if (!isKillingTerminal) setKillConfirmationVisible(false);
+        }}
+        onConfirm={() => void killTerminal()}
+        title="Kill this terminal?"
+        visible={killConfirmationVisible}
       />
     </SafeAreaView>
   );

@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"encoding/json"
 	"log"
 	"os"
 	"os/user"
@@ -77,6 +78,17 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 			}
 			log.Printf("Received: %s", msg)
 
+			if messageType == websocket.TextMessage {
+				var control websocketV2ControlMessage
+				if err := json.Unmarshal(msg, &control); err == nil && control.Type == "killTerminal" {
+					if err := handleKillTerminalSession(conn, &writeMu, tools.TerminalSessionStore, control.ID); err != nil {
+						log.Println("Failed to handle terminal kill:", err)
+						break
+					}
+					continue
+				}
+			}
+
 			// Echo message back to client
 			writeMu.Lock()
 			err = conn.WriteMessage(messageType, msg)
@@ -94,6 +106,35 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 type favoriteDir struct {
 	Name string `json:"name"`
 	Path string `json:"path"`
+}
+
+type websocketV2ControlMessage struct {
+	Type string `json:"type"`
+	ID   string `json:"id,omitempty"`
+}
+
+func handleKillTerminalSession(conn *websocket.Conn, writeMu *sync.Mutex, sessionsStore *newstores.SessionsStore, id string) error {
+	responseType := "terminalKilled"
+	response := struct {
+		Type  string `json:"type"`
+		ID    string `json:"id,omitempty"`
+		Error string `json:"error,omitempty"`
+	}{
+		Type: responseType,
+		ID:   id,
+	}
+
+	if id == "" {
+		response.Type = "terminalKillError"
+		response.Error = "terminal session id is required"
+	} else if err := sessionsStore.KillTerminalSession(id); err != nil {
+		response.Type = "terminalKillError"
+		response.Error = err.Error()
+	}
+
+	writeMu.Lock()
+	defer writeMu.Unlock()
+	return conn.WriteJSON(response)
 }
 
 func handleFavoriteDirsList(conn *websocket.Conn, writeMu *sync.Mutex, stop <-chan struct{}) error {

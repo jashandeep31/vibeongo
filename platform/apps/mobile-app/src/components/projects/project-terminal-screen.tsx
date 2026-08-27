@@ -19,6 +19,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import {
   PageChromeLayout,
   PageHeader,
@@ -30,6 +31,7 @@ import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import {
   createVibeongoTerminalSession,
+  killVibeongoTerminalSession,
   type TmuxSession,
 } from "@/hooks/use-vibeongo-ws-v2";
 
@@ -57,6 +59,11 @@ export function ProjectTerminalScreen() {
   const projectSessionId = firstParam(params.projectSessionId);
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
   const [directoryDrawerVisible, setDirectoryDrawerVisible] = useState(false);
+  const [killingTerminalId, setKillingTerminalId] = useState("");
+  const [terminalPendingKill, setTerminalPendingKill] = useState<{
+    id: string;
+    label: string;
+  } | null>(null);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -108,6 +115,27 @@ export function ProjectTerminalScreen() {
       );
     } finally {
       setIsCreatingTerminal(false);
+    }
+  };
+
+  const killTerminalSession = async (terminalId: string) => {
+    if (killingTerminalId) return;
+    setKillingTerminalId(terminalId);
+    try {
+      await killVibeongoTerminalSession({
+        accessToken: runtime.accessToken,
+        localToken,
+        runtimeUrl,
+        terminalId,
+      });
+    } catch (error) {
+      Alert.alert(
+        "Could not kill terminal",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setTerminalPendingKill(null);
+      setKillingTerminalId("");
     }
   };
 
@@ -242,6 +270,7 @@ export function ProjectTerminalScreen() {
               {terminalWorkspace.terminalSessionIds.map((terminalId, index) => {
                 const isActive =
                   terminalId === terminalWorkspace.activeTerminalSessionId;
+                const terminalLabel = `Terminal ${index + 1}`;
                 return (
                   <Pressable
                     accessibilityLabel={`Open Terminal ${index + 1}`}
@@ -273,19 +302,49 @@ export function ProjectTerminalScreen() {
                           tintColor={theme.text}
                         />
                       </View>
-                      {isActive ? (
-                        <View style={styles.activeBadge}>
-                          <View style={styles.activeDot} />
-                          <ThemedText style={styles.activeLabel}>
-                            Active
-                          </ThemedText>
-                        </View>
-                      ) : null}
+                      <View style={styles.terminalCardActions}>
+                        {isActive ? (
+                          <View style={styles.activeBadge}>
+                            <View style={styles.activeDot} />
+                            <ThemedText style={styles.activeLabel}>
+                              Active
+                            </ThemedText>
+                          </View>
+                        ) : null}
+                        <Pressable
+                          accessibilityLabel={`Kill ${terminalLabel}`}
+                          accessibilityRole="button"
+                          disabled={Boolean(killingTerminalId)}
+                          hitSlop={8}
+                          onPress={(event) => {
+                            event.stopPropagation();
+                            setTerminalPendingKill({
+                              id: terminalId,
+                              label: terminalLabel,
+                            });
+                          }}
+                          style={({ pressed }) => [
+                            styles.killButton,
+                            { backgroundColor: theme.backgroundSelected },
+                            pressed && styles.pressed,
+                          ]}
+                        >
+                          {killingTerminalId === terminalId ? (
+                            <ActivityIndicator color="#ef4444" size="small" />
+                          ) : (
+                            <SymbolView
+                              name={{ ios: "trash", android: "delete" }}
+                              size={15}
+                              tintColor="#ef4444"
+                            />
+                          )}
+                        </Pressable>
+                      </View>
                     </View>
                     <View style={styles.cardFooter}>
                       <View style={styles.cardCopy}>
                         <ThemedText style={styles.cardTitle}>
-                          Terminal {index + 1}
+                          {terminalLabel}
                         </ThemedText>
                         <ThemedText
                           numberOfLines={1}
@@ -343,6 +402,22 @@ export function ProjectTerminalScreen() {
           void addTerminalSession(workingDirectory)
         }
         visible={directoryDrawerVisible}
+      />
+      <ConfirmationDrawer
+        confirmLabel="Kill terminal"
+        description="The shell and any running command in this terminal will be stopped."
+        destructive
+        isConfirming={Boolean(killingTerminalId)}
+        onCancel={() => {
+          if (!killingTerminalId) setTerminalPendingKill(null);
+        }}
+        onConfirm={() => {
+          if (terminalPendingKill) {
+            void killTerminalSession(terminalPendingKill.id);
+          }
+        }}
+        title={`Kill ${terminalPendingKill?.label ?? "terminal"}?`}
+        visible={terminalPendingKill !== null}
       />
     </SafeAreaView>
   );
@@ -560,6 +635,13 @@ const styles = StyleSheet.create({
     width: 34,
   },
   identifier: { fontFamily: Fonts.mono, fontSize: 11, lineHeight: 16 },
+  killButton: {
+    alignItems: "center",
+    borderRadius: 8,
+    height: 30,
+    justifyContent: "center",
+    width: 30,
+  },
   newSessionCard: {
     borderRadius: 14,
     borderStyle: "dashed",
@@ -615,6 +697,11 @@ const styles = StyleSheet.create({
     alignItems: "flex-start",
     flexDirection: "row",
     justifyContent: "space-between",
+  },
+  terminalCardActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
   },
   terminalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   title: { flex: 1, fontSize: 14, fontWeight: "700" },

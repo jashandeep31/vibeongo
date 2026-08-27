@@ -2,6 +2,7 @@ package newstores
 
 import (
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -19,9 +20,15 @@ type TerminalSession struct {
 	Ptmx        *os.File
 	Mu          sync.Mutex
 	CreatedAt   time.Time
+	command     *exec.Cmd
+	processDone chan struct{}
+	killOnce    sync.Once
+	killErr     error
 	readerOnce  sync.Once
 	subscribers map[chan []byte]struct{}
 }
+
+var ErrTerminalSessionNotFound = errors.New("terminal session not found")
 
 type SessionsStore struct {
 	Mu       sync.Mutex
@@ -41,7 +48,7 @@ func (s *SessionsStore) GetTerminalSession(id string) (*TerminalSession, error) 
 	if ok {
 		return termSession, nil
 	}
-	return nil, fmt.Errorf("Terminal Session not round")
+	return nil, fmt.Errorf("%w: %s", ErrTerminalSessionNotFound, id)
 }
 
 // GetTerminalSessionIDs returns a stable snapshot of the stored terminal
@@ -83,11 +90,66 @@ func (s *SessionsStore) CreateTerminalSession(workingDirectory string) (*Termina
 		Buffer:      make([]byte, 0),
 		Ptmx:        ptmx,
 		CreatedAt:   time.Now(),
+		command:     baseCommand,
+		processDone: make(chan struct{}),
 		subscribers: make(map[chan []byte]struct{}),
 	}
 	s.sessions[termSession.ID] = termSession
 	termSession.startReader()
+	go func() {
+		_ = baseCommand.Wait()
+		close(termSession.processDone)
+	}()
 	return termSession, nil
+}
+
+// KillTerminalSession removes a terminal from the store and terminates its
+// shell process and PTY. Removing it first prevents new clients from attaching
+// while shutdown is in progress.
+func (s *SessionsStore) KillTerminalSession(id string) error {
+	s.Mu.Lock()
+	terminalSession, ok := s.sessions[id]
+	if ok {
+		delete(s.sessions, id)
+	}
+	s.Mu.Unlock()
+
+	if !ok {
+		return fmt.Errorf("%w: %s", ErrTerminalSessionNotFound, id)
+	}
+	return terminalSession.kill()
+}
+
+func (s *TerminalSession) kill() error {
+	s.killOnce.Do(func() {
+		var errs []error
+		waitForProcess := false
+		if s.command != nil && s.command.Process != nil {
+			if err := s.command.Process.Kill(); err == nil || errors.Is(err, os.ErrProcessDone) {
+				waitForProcess = true
+			} else {
+				errs = append(errs, fmt.Errorf("kill terminal process: %w", err))
+			}
+		}
+		if s.Ptmx != nil {
+			if err := s.Ptmx.Close(); err != nil && !errors.Is(err, os.ErrClosed) {
+				errs = append(errs, fmt.Errorf("close terminal PTY: %w", err))
+			}
+		}
+		if waitForProcess && s.processDone != nil {
+			<-s.processDone
+		}
+
+		s.Mu.Lock()
+		for subscriber := range s.subscribers {
+			delete(s.subscribers, subscriber)
+			close(subscriber)
+		}
+		s.Mu.Unlock()
+
+		s.killErr = errors.Join(errs...)
+	})
+	return s.killErr
 }
 
 func (s *TerminalSession) startReader() {
@@ -100,7 +162,7 @@ func (s *TerminalSession) startReader() {
 					s.appendOutput(buf[:n])
 				}
 				if err != nil {
-					if err != io.EOF {
+					if err != io.EOF && !errors.Is(err, os.ErrClosed) {
 						fmt.Printf("terminal PTY read failed: %v\n", err)
 					}
 					return
