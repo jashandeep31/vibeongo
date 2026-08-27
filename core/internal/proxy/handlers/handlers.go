@@ -12,24 +12,30 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/gorilla/websocket"
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
+
+	ts "github.com/jashandeep31/vibeongo/core/internal/shared/store"
+
 	"github.com/labstack/echo/v5"
 )
 
 const proxyAuthorizationHeader = "X-Vibeongo-Proxy-Authorization"
 
 type Handler struct {
-	store        *store.ProxyManager
-	version      string
-	buildTime    string
-	reverseProxy *httputil.ReverseProxy
+	store          *store.ProxyManager
+	version        string
+	buildTime      string
+	reverseProxy   *httputil.ReverseProxy
+	authTokenStore *ts.AuthTokenStore
 }
 
-func NewHandler(proxyStore *store.ProxyManager, version, buildTime string) *Handler {
+func NewHandler(proxyStore *store.ProxyManager, version, buildTime string, tokenStore *ts.AuthTokenStore) *Handler {
 	h := &Handler{
-		store:     proxyStore,
-		version:   version,
-		buildTime: buildTime,
+		store:          proxyStore,
+		version:        version,
+		buildTime:      buildTime,
+		authTokenStore: tokenStore,
 	}
 	h.reverseProxy = &httputil.ReverseProxy{
 		Director: func(r *http.Request) {
@@ -121,9 +127,31 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 	if !ok {
 		return c.String(http.StatusNotFound, "404")
 	}
+	hasValidAccessToken := func() bool {
 
-	hasValidAccessToken := proxyData.Protected &&
-		hasValidProxyAccessToken(request.Header, proxyData.AccessToken)
+		headerAuthWorked := proxyData.Protected &&
+			hasValidProxyAccessToken(request.Header, proxyData.AccessToken)
+
+		if headerAuthWorked {
+			return true
+		}
+
+		isWebSocketUpgradeRequest := websocket.IsWebSocketUpgrade(request)
+		// if not a websocket upgrade request then the token is not accepted
+		if !isWebSocketUpgradeRequest {
+			return false
+		}
+
+		requestQueryParams := request.URL.Query()
+		proxyToken := requestQueryParams.Get("proxytoken")
+
+		isTokenValid := h.authTokenStore.ValidateToken(proxyToken)
+		if isTokenValid {
+			return true
+		}
+
+		return false
+	}()
 
 	// A valid access token is sufficient authorization for a protected proxy,
 	// regardless of the caller's IP address.
