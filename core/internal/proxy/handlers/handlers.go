@@ -14,9 +14,6 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
-
-	ts "github.com/jashandeep31/vibeongo/core/internal/shared/store"
-
 	"github.com/labstack/echo/v5"
 )
 
@@ -27,10 +24,10 @@ type Handler struct {
 	version        string
 	buildTime      string
 	reverseProxy   *httputil.ReverseProxy
-	authTokenStore *ts.AuthTokenStore
+	authTokenStore *store.AuthTokenStore
 }
 
-func NewHandler(proxyStore *store.ProxyManager, version, buildTime string, tokenStore *ts.AuthTokenStore) *Handler {
+func NewHandler(proxyStore *store.ProxyManager, version, buildTime string, tokenStore *store.AuthTokenStore) *Handler {
 	h := &Handler{
 		store:          proxyStore,
 		version:        version,
@@ -145,7 +142,10 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 		requestQueryParams := request.URL.Query()
 		proxyToken := requestQueryParams.Get("proxytoken")
 
-		isTokenValid := h.authTokenStore.ValidateToken(proxyToken)
+		isTokenValid := h.authTokenStore.ValidateToken(
+			proxyToken,
+			normalizeHost(request.Host),
+		)
 		if isTokenValid {
 			return true
 		}

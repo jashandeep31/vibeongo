@@ -9,9 +9,14 @@ import (
 
 const WebSocketAuthTokenTTL = 30 * time.Second
 
+type AuthToken struct {
+	Host      string
+	ExpiresAt time.Time
+}
+
 type AuthTokenStore struct {
 	mu     sync.Mutex
-	tokens map[string]time.Time
+	tokens map[string]AuthToken
 	ttl    time.Duration
 	now    func() time.Time
 }
@@ -22,14 +27,14 @@ func NewAuthTokenStore() *AuthTokenStore {
 
 func newAuthTokenStore(ttl time.Duration, now func() time.Time) *AuthTokenStore {
 	return &AuthTokenStore{
-		tokens: make(map[string]time.Time),
+		tokens: make(map[string]AuthToken),
 		ttl:    ttl,
 		now:    now,
 	}
 }
 
 // NewToken creates a cryptographically secure token with a fixed lifetime.
-func (s *AuthTokenStore) NewToken() (string, time.Time, error) {
+func (s *AuthTokenStore) NewToken(host string) (string, time.Time, error) {
 	for {
 		token, err := generateAuthToken()
 		if err != nil {
@@ -43,7 +48,10 @@ func (s *AuthTokenStore) NewToken() (string, time.Time, error) {
 			s.mu.Unlock()
 			continue
 		}
-		s.tokens[token] = expiresAt
+		s.tokens[token] = AuthToken{
+			Host:      host,
+			ExpiresAt: expiresAt,
+		}
 		s.mu.Unlock()
 
 		time.AfterFunc(s.ttl, func() {
@@ -55,21 +63,30 @@ func (s *AuthTokenStore) NewToken() (string, time.Time, error) {
 }
 
 // ValidateToken atomically validates and consumes a token.
-func (s *AuthTokenStore) ValidateToken(token string) bool {
-	if token == "" {
+func (s *AuthTokenStore) ValidateToken(token, host string) bool {
+	if token == "" || host == "" {
 		return false
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	expiresAt, exists := s.tokens[token]
+	tokenData, exists := s.tokens[token]
 	if !exists {
 		return false
 	}
 
+	if !s.now().Before(tokenData.ExpiresAt) {
+		delete(s.tokens, token)
+		return false
+	}
+
+	if tokenData.Host != host {
+		return false
+	}
+
 	delete(s.tokens, token)
-	return s.now().Before(expiresAt)
+	return true
 }
 
 // ExpireToken removes a token before its scheduled expiration.
@@ -83,7 +100,7 @@ func (s *AuthTokenStore) expireTokenAt(token string, expiresAt time.Time) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if currentExpiry, exists := s.tokens[token]; exists && currentExpiry.Equal(expiresAt) {
+	if currentExpiry, exists := s.tokens[token]; exists && currentExpiry.ExpiresAt.Equal(expiresAt) {
 		delete(s.tokens, token)
 	}
 }

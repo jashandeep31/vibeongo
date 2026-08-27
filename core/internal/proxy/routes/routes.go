@@ -3,8 +3,6 @@ package routes
 import (
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/handlers"
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/middlewares"
-	ts "github.com/jashandeep31/vibeongo/core/internal/shared/store"
-
 	"github.com/jashandeep31/vibeongo/core/internal/proxy/store"
 	"github.com/labstack/echo/v5"
 )
@@ -16,7 +14,7 @@ func Register(
 	buildTime string,
 	proxyServerToken string,
 ) {
-	tokenStore := ts.NewAuthTokenStore()
+	tokenStore := store.NewAuthTokenStore()
 	h := handlers.NewHandler(proxyStore, version, buildTime, tokenStore)
 
 	e.GET("/proxy/version", h.Status)
@@ -31,8 +29,13 @@ func Register(
 		middlewares.CheckProxyAuth(proxyServerToken),
 	)
 
-	// route to get the ws temp token
-	e.POST("/ws/token", handlers.WebSocketAuthTokenHandler(tokenStore), middlewares.CheckProxyAuth(proxyServerToken))
+	// Browser WebSockets cannot send the proxy authorization header. Exchange
+	// the host's access token for a short-lived token without shadowing the
+	// upstream runtime's /ws/token route.
+	e.POST(
+		"/proxy/ws-token",
+		handlers.WebSocketAuthTokenHandler(tokenStore, proxyStore),
+	)
 
 	e.GET("/proxy/my-ip", h.MyIP)
 	e.Any("/*", h.ReverseProxy)
