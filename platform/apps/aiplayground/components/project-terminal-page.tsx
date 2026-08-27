@@ -1,343 +1,303 @@
 "use client";
 
-import { useProjectsStore, useSessionsStore } from "@repo/app-store";
+import { useGetInstances } from "@repo/api-hooks";
+import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
-import { ArrowLeft, ChevronRight, Plus, Terminal } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState, type ReactNode } from "react";
+import {
+  ChevronRight,
+  LoaderCircle,
+  Plus,
+  Terminal as TerminalIcon,
+} from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-type TerminalSessionsResponse = {
-  type: "sessionIds";
-  ids: string[];
-  activeId: string;
-};
+import { WebTerminal } from "@/components/web-terminal";
+import { useWebTerminalSessionSocket } from "@/hooks/use-web-terminal-session-socket";
+import { useWebTerminalWorkspaceSocket } from "@/hooks/use-web-terminal-workspace-socket";
+import { createWebTerminalSession } from "@/lib/web-terminal-socket";
 
-type TmuxSessionsResponse = {
-  type: "tmuxSessions";
-  sessions: Array<{
-    name: string;
-    windows: Array<{
-      name: string;
-      panes: Array<{ name: string }>;
-    }>;
-  }>;
-};
-
-const INITIAL_TERMINAL_SESSIONS: TerminalSessionsResponse = {
-  type: "sessionIds",
-  ids: ["terminal-1", "terminal-2", "terminal-3"],
-  activeId: "terminal-1",
-};
-
-const INITIAL_TMUX_SESSIONS: TmuxSessionsResponse = {
-  type: "tmuxSessions",
-  sessions: [
-    {
-      name: "dev",
-      windows: [
-        {
-          name: "app",
-          panes: [{ name: "0" }, { name: "1" }],
-        },
-        {
-          name: "server",
-          panes: [{ name: "0" }],
-        },
-      ],
-    },
-    {
-      name: "ops",
-      windows: [
-        {
-          name: "opencode",
-          panes: [{ name: "0" }],
-        },
-      ],
-    },
-  ],
-};
+function getLocalToken(config: unknown) {
+  if (!config || typeof config !== "object" || Array.isArray(config)) return "";
+  const token = (config as Record<string, unknown>).vibeongoLocalToken;
+  return typeof token === "string" ? token : "";
+}
 
 export function ProjectTerminalPage({
-  projectId,
   projectSessionId,
 }: {
   projectId: string;
   projectSessionId: string;
 }) {
-  const router = useRouter();
-  const [terminalSessions, setTerminalSessions] = useState(
-    INITIAL_TERMINAL_SESSIONS,
+  const [selectedTerminalId, setSelectedTerminalId] = useState("");
+  const [pendingTerminalId, setPendingTerminalId] = useState("");
+  const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
+  const [terminalCreationError, setTerminalCreationError] = useState("");
+  const sessionEntry = useSessionsStore((store) =>
+    store.sessions.find((entry) => entry.session.id === projectSessionId),
   );
-  const [tmuxSessions, setTmuxSessions] = useState(INITIAL_TMUX_SESSIONS);
-  const projectName = useProjectsStore(
-    (store) =>
-      store.projects.find((project) => project.id === projectId)?.name ??
-      "Project",
+  const instancesQuery = useGetInstances(
+    { limit: 1, sessionId: projectSessionId, state: "running" },
+    !sessionEntry?.instance,
   );
-  const sessionName = useSessionsStore(
-    (store) =>
-      store.sessions.find((entry) => entry.session.id === projectSessionId)
-        ?.session.name ?? "Session",
-  );
+  const instance = sessionEntry?.instance ?? instancesQuery.data?.data[0];
+  const runtimeUrl = instance
+    ? `https://3101-${instance.id}${instance.proxy_domain}`
+    : "";
+  const localToken = getLocalToken(instance?.config);
+  const accessToken = instance?.access_token ?? "";
+  const socketsEnabled = Boolean(runtimeUrl && localToken && accessToken);
 
-  const addTerminalSession = () => {
-    setTerminalSessions((current) => ({
-      ...current,
-      ids: [...current.ids, `terminal-${current.ids.length + 1}`],
-    }));
+  const workspace = useWebTerminalWorkspaceSocket({
+    accessToken,
+    enabled: socketsEnabled,
+    localToken,
+    runtimeUrl,
+  });
+  const terminal = useWebTerminalSessionSocket({
+    accessToken,
+    enabled: socketsEnabled && Boolean(selectedTerminalId),
+    localToken,
+    runtimeUrl,
+    sessionId: selectedTerminalId,
+  });
+
+  useEffect(() => {
+    if (selectedTerminalId === pendingTerminalId) return;
+    if (
+      selectedTerminalId &&
+      workspace.terminalSessionIds.includes(selectedTerminalId)
+    ) {
+      return;
+    }
+    setSelectedTerminalId(
+      workspace.activeTerminalSessionId ??
+        workspace.terminalSessionIds[0] ??
+        "",
+    );
+  }, [
+    selectedTerminalId,
+    pendingTerminalId,
+    workspace.activeTerminalSessionId,
+    workspace.terminalSessionIds,
+  ]);
+
+  useEffect(() => {
+    if (
+      pendingTerminalId &&
+      workspace.terminalSessionIds.includes(pendingTerminalId)
+    ) {
+      setPendingTerminalId("");
+    }
+  }, [pendingTerminalId, workspace.terminalSessionIds]);
+
+  const addTerminal = async () => {
+    if (isCreatingTerminal) return;
+    setIsCreatingTerminal(true);
+    setTerminalCreationError("");
+    try {
+      const id = await createWebTerminalSession({
+        accessToken,
+        localToken,
+        runtimeUrl,
+      });
+      setPendingTerminalId(id);
+      setSelectedTerminalId(id);
+    } catch {
+      setTerminalCreationError("Could not create terminal. Try again.");
+    } finally {
+      setIsCreatingTerminal(false);
+    }
   };
 
-  const addTmuxSession = () => {
-    setTmuxSessions((current) => ({
-      ...current,
-      sessions: [
-        ...current.sessions,
-        {
-          name: `session-${current.sessions.length + 1}`,
-          windows: [],
-        },
-      ],
-    }));
-  };
+  const selectedTerminalLabel = useMemo(() => {
+    if (isCreatingTerminal) return "Creating terminal…";
+    const index = workspace.terminalSessionIds.indexOf(selectedTerminalId);
+    return index >= 0 ? `Terminal ${index + 1}` : "Terminal";
+  }, [isCreatingTerminal, selectedTerminalId, workspace.terminalSessionIds]);
 
-  const addWindow = (sessionName: string) => {
-    setTmuxSessions((current) => ({
-      ...current,
-      sessions: current.sessions.map((session) =>
-        session.name === sessionName
-          ? {
-              ...session,
-              windows: [
-                ...session.windows,
-                {
-                  name: `window-${session.windows.length + 1}`,
-                  panes: [],
-                },
-              ],
-            }
-          : session,
-      ),
-    }));
-  };
-
-  const addPane = (sessionName: string, windowName: string) => {
-    setTmuxSessions((current) => ({
-      ...current,
-      sessions: current.sessions.map((session) =>
-        session.name === sessionName
-          ? {
-              ...session,
-              windows: session.windows.map((window) =>
-                window.name === windowName
-                  ? {
-                      ...window,
-                      panes: [
-                        ...window.panes,
-                        { name: String(window.panes.length) },
-                      ],
-                    }
-                  : window,
-              ),
-            }
-          : session,
-      ),
-    }));
-  };
+  const isLoading = !instance && instancesQuery.isPending;
+  const errorMessage = instancesQuery.isError
+    ? "Could not load the runtime."
+    : !instance
+      ? "Resume this project session to open its terminal."
+      : !localToken || !accessToken
+        ? "Terminal credentials are unavailable."
+        : null;
+  const combinedSocketStatus =
+    workspace.status === "error" || terminal.status === "error"
+      ? "error"
+      : workspace.status === "connected" && terminal.status === "connected"
+        ? "connected"
+        : workspace.status === "connecting" || terminal.status === "connecting"
+          ? "connecting"
+          : "disconnected";
 
   return (
     <div className="bg-background text-foreground flex h-svh min-h-0 w-full flex-col">
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b px-3 sm:px-5">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Go back"
-          title="Go back"
-          onClick={() => router.back()}
-        >
-          <ArrowLeft />
-        </Button>
-        <Terminal className="text-muted-foreground size-4 shrink-0" />
-        <h1 className="min-w-0 truncate text-sm font-semibold">
-          {projectName} · {sessionName} · Terminal
-        </h1>
-      </header>
-
-      <main
-        className="min-h-0 flex-1 overflow-y-auto px-4 py-6 sm:px-6"
-        aria-label="Terminal workspace"
-      >
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8">
-          <section aria-labelledby="terminal-sessions-heading">
-            <SectionHeading
-              action={
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  aria-label="New terminal session"
-                  title="New terminal session"
-                  onClick={addTerminalSession}
-                >
+      {isLoading ? (
+        <PageState loading message="Loading terminal runtime…" />
+      ) : errorMessage ? (
+        <PageState message={errorMessage} />
+      ) : (
+        <main className="grid min-h-0 flex-1 grid-cols-1 grid-rows-[minmax(0,1fr)_auto] md:grid-cols-[16rem_minmax(0,1fr)] md:grid-rows-1">
+          <aside className="bg-muted/20 order-2 flex min-w-0 shrink-0 flex-col overflow-hidden border-t md:order-none md:min-h-0 md:border-t-0 md:border-r">
+            <div className="flex min-w-0 flex-nowrap gap-1 overflow-x-auto p-1.5 md:flex-col md:gap-2 md:overflow-y-auto md:p-2">
+              <Button
+                className="shrink-0 md:w-full"
+                type="button"
+                size="xs"
+                aria-label="New terminal session"
+                title="New terminal session"
+                disabled={
+                  isCreatingTerminal || workspace.status !== "connected"
+                }
+                onClick={() => void addTerminal()}
+              >
+                {isCreatingTerminal ? (
+                  <LoaderCircle className="animate-spin" />
+                ) : (
                   <Plus />
-                </Button>
-              }
-              count={terminalSessions.ids.length}
-              eventType={terminalSessions.type}
-              id="terminal-sessions-heading"
-              title="Terminal sessions"
-            />
-            <div className="flex flex-wrap gap-3">
-              {terminalSessions.ids.map((terminalId, index) => {
-                const isActive = terminalId === terminalSessions.activeId;
-
+                )}
+                <span>New terminal</span>
+              </Button>
+              {workspace.terminalSessionIds.map((terminalId, index) => {
+                const selected = terminalId === selectedTerminalId;
                 return (
-                  <div
+                  <button
                     key={terminalId}
-                    className={`flex aspect-square w-36 flex-col justify-between rounded-xl border p-4 ${
-                      isActive ? "border-emerald-500/50 bg-emerald-500/5" : ""
+                    type="button"
+                    onClick={() => setSelectedTerminalId(terminalId)}
+                    className={`flex min-w-max shrink-0 items-center gap-1.5 rounded-md border px-2 py-1.5 text-left transition-colors md:min-w-0 md:gap-2 md:rounded-lg md:px-3 md:py-2 ${
+                      selected
+                        ? "border-primary/40 bg-primary/10"
+                        : "bg-background hover:bg-muted"
                     }`}
                   >
-                    <div className="flex items-start justify-between gap-2">
-                      <span className="bg-muted flex size-9 shrink-0 items-center justify-center rounded-lg">
-                        <Terminal className="size-4" />
-                      </span>
-                      {isActive ? (
-                        <span
-                          className="size-2 rounded-full bg-emerald-500"
-                          aria-label="Active"
-                        />
-                      ) : null}
-                    </div>
-                    <span className="min-w-0">
-                      <span className="block text-sm font-medium">
+                    <TerminalIcon className="size-3.5 shrink-0 md:size-4" />
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-xs font-medium md:text-sm">
                         Terminal {index + 1}
                       </span>
-                      <span className="text-muted-foreground block truncate font-mono text-xs">
+                      <span className="text-muted-foreground hidden truncate font-mono text-[11px] md:block">
                         {terminalId}
                       </span>
                     </span>
-                  </div>
+                  </button>
                 );
               })}
+              {workspace.terminalSessionIds.length === 0 &&
+              workspace.status === "connected" ? (
+                <p className="text-muted-foreground px-2 py-4 text-center text-xs">
+                  No terminal sessions yet.
+                </p>
+              ) : null}
+              {terminalCreationError ? (
+                <p className="text-destructive px-2 py-1 text-xs">
+                  {terminalCreationError}
+                </p>
+              ) : null}
             </div>
-          </section>
 
-          <section aria-labelledby="tmux-sessions-heading">
-            <SectionHeading
-              action={
-                <Button
-                  type="button"
-                  size="icon-sm"
-                  aria-label="New tmux session"
-                  title="New tmux session"
-                  onClick={addTmuxSession}
-                >
-                  <Plus />
-                </Button>
-              }
-              count={tmuxSessions.sessions.length}
-              eventType={tmuxSessions.type}
-              id="tmux-sessions-heading"
-              title="Tmux sessions"
-            />
-            <div className="space-y-3">
-              {tmuxSessions.sessions.map((tmuxSession) => (
-                <div
-                  key={tmuxSession.name}
-                  className="overflow-hidden rounded-xl border"
-                >
-                  <div className="bg-muted/40 flex items-center gap-3 border-b px-4 py-3">
-                    <Terminal className="text-muted-foreground size-4" />
-                    <span className="font-mono text-sm font-semibold">
-                      {tmuxSession.name}
-                    </span>
-                    <span className="text-muted-foreground ml-auto text-xs">
-                      {tmuxSession.windows.length}{" "}
-                      {tmuxSession.windows.length === 1 ? "window" : "windows"}
-                    </span>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="icon-sm"
-                      aria-label={`New window in ${tmuxSession.name}`}
-                      title="New window"
-                      onClick={() => addWindow(tmuxSession.name)}
-                    >
-                      <Plus />
-                    </Button>
-                  </div>
-                  <div className="divide-y">
-                    {tmuxSession.windows.map((window) => (
-                      <div
-                        key={`${tmuxSession.name}-${window.name}`}
-                        className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center"
-                      >
-                        <div className="flex min-w-0 items-center gap-2">
-                          <ChevronRight className="text-muted-foreground size-4 shrink-0" />
-                          <span className="truncate text-sm font-medium">
-                            {window.name}
-                          </span>
-                        </div>
-                        <div className="flex flex-wrap gap-2 sm:ml-auto">
-                          {window.panes.map((pane) => (
-                            <span
-                              key={`${tmuxSession.name}-${window.name}-${pane.name}`}
-                              className="bg-secondary text-secondary-foreground rounded-md px-2.5 py-1 font-mono text-xs"
-                            >
-                              Pane {pane.name}
-                            </span>
-                          ))}
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="icon-sm"
-                            aria-label={`New pane in ${tmuxSession.name}/${window.name}`}
-                            title="New pane"
-                            onClick={() =>
-                              addPane(tmuxSession.name, window.name)
-                            }
-                          >
-                            <Plus />
-                          </Button>
-                        </div>
+            {workspace.tmuxSessions.length > 0 ? (
+              <div className="hidden border-t p-3 md:block">
+                <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
+                  Tmux
+                </p>
+                <div className="max-h-44 space-y-1 overflow-y-auto">
+                  {workspace.tmuxSessions.map((tmuxSession) => (
+                    <div key={tmuxSession.name} className="text-xs">
+                      <div className="flex items-center gap-1.5 py-1 font-mono font-medium">
+                        <ChevronRight className="size-3.5" />
+                        {tmuxSession.name}
                       </div>
-                    ))}
-                  </div>
+                      <p className="text-muted-foreground pl-5">
+                        {tmuxSession.windows.length}{" "}
+                        {tmuxSession.windows.length === 1
+                          ? "window"
+                          : "windows"}
+                      </p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+            ) : null}
+          </aside>
+
+          <section className="order-1 flex min-h-0 min-w-0 flex-col bg-black md:order-none">
+            <div className="bg-background text-foreground flex min-h-10 shrink-0 items-center gap-3 border-b px-3 py-2">
+              <div className="ml-auto flex min-w-0 items-center gap-3">
+                <span className="truncate text-sm font-medium">
+                  {selectedTerminalLabel}
+                </span>
+                {terminal.latencyMs !== null ? (
+                  <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                    {terminal.latencyMs} ms
+                  </span>
+                ) : null}
+                <ConnectionStatus status={combinedSocketStatus} />
+              </div>
+            </div>
+            <div className="min-h-0 flex-1">
+              {selectedTerminalId ? (
+                <WebTerminal
+                  key={selectedTerminalId}
+                  sendInput={terminal.sendInput}
+                  sendResize={terminal.sendResize}
+                  status={terminal.status}
+                  subscribe={terminal.subscribe}
+                />
+              ) : (
+                <div className="text-muted-foreground flex h-full min-h-0 items-center justify-center p-6 text-sm">
+                  Select a terminal or create a new one.
+                </div>
+              )}
             </div>
           </section>
-        </div>
-      </main>
+        </main>
+      )}
     </div>
   );
 }
 
-function SectionHeading({
-  action,
-  count,
-  eventType,
-  id,
-  title,
+function ConnectionStatus({
+  className,
+  status,
 }: {
-  action: ReactNode;
-  count: number;
-  eventType: TerminalSessionsResponse["type"] | TmuxSessionsResponse["type"];
-  id: string;
-  title: string;
+  className?: string;
+  status: "connecting" | "connected" | "disconnected" | "error";
+}) {
+  const color =
+    status === "connected"
+      ? "bg-emerald-500"
+      : status === "connecting"
+        ? "bg-amber-500"
+        : "bg-red-500";
+  return (
+    <span
+      className={className}
+      aria-label={`Workspace and terminal sockets: ${status}`}
+      title={`Workspace and terminal sockets: ${status}`}
+    >
+      <span className={`size-2 rounded-full ${color}`} />
+    </span>
+  );
+}
+
+function PageState({
+  loading = false,
+  message,
+}: {
+  loading?: boolean;
+  message: string;
 }) {
   return (
-    <div className="mb-3 flex flex-wrap items-center gap-2">
-      <h2 id={id} className="text-base font-semibold">
-        {title}
-      </h2>
-      <span className="bg-muted text-muted-foreground rounded-full px-2 py-0.5 text-xs tabular-nums">
-        {count}
-      </span>
-      <code className="text-muted-foreground ml-auto text-xs">
-        {eventType}
-      </code>
-      {action}
+    <div className="text-muted-foreground flex min-h-0 flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
+      {loading ? (
+        <LoaderCircle className="size-5 animate-spin" />
+      ) : (
+        <TerminalIcon className="size-6" />
+      )}
+      <p>{message}</p>
     </div>
   );
 }
