@@ -1,37 +1,40 @@
 import "./lib/sentry.js";
-import express, { Request, Response } from "express";
-import cors from "cors";
-import test from "./test.js";
-import { env } from "./lib/env.js";
-import { testRoutes } from "./routes/test-routes.js";
-import { authRoutes } from "./routes/auth-routes.js";
-import { userRoutes } from "./routes/user-routes.js";
-import { checkAuthorization } from "./middlewares/check-authorization.js";
-import cookieParser from "cookie-parser";
-import { projectRoutes } from "./routes/project-routes.js";
-import { metadataRoutes } from "./routes/metadata-routes.js";
-import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
-import { instanceRoutes } from "./routes/instance-routes.js";
-import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
-import { gitRepoRoutes } from "./routes/git-repo-routes.js";
-import { AppError } from "./lib/app-error.js";
-import { NextFunction } from "express";
-import { runtimeRoutes } from "./routes/runtime-routes.js";
-import { projectSessionRoutes } from "./routes/project-session-routes.js";
-import { internalRoutes } from "./routes/internal-routes.js";
-import { paymentRoutes } from "./routes/payment-routes.js";
 import "./lib/cron.js";
 import "./jobs/repo-overview-worker.js";
 import "./jobs/sandbox-setup-worker.js";
 import "./jobs/user-onboarding-worker.js";
-import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
-import * as Sentry from "@sentry/node";
-import { WebSocketServer } from "ws";
+
 import { createServer } from "node:http";
-import { SocketHandler } from "./websocket/socket-handler.js";
+
+import * as Sentry from "@sentry/node";
+import cookieParser from "cookie-parser";
+import cors from "cors";
+import express, { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
-import { chatRoutes } from "./routes/chat-routes.js";
+import { WebSocketServer } from "ws";
+
 import { telegramBot } from "./bots/telegram/setup.js";
+import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
+import { AppError } from "./lib/app-error.js";
+import { env } from "./lib/env.js";
+import { checkAuthorization } from "./middlewares/check-authorization.js";
+import { authRoutes } from "./routes/auth-routes.js";
+import { chatRoutes } from "./routes/chat-routes.js";
+import { gitRepoRoutes } from "./routes/git-repo-routes.js";
+import { instanceRoutes } from "./routes/instance-routes.js";
+import { internalRoutes } from "./routes/internal-routes.js";
+import { metadataRoutes } from "./routes/metadata-routes.js";
+import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
+import { paymentRoutes } from "./routes/payment-routes.js";
+import { projectRoutes } from "./routes/project-routes.js";
+import { projectSessionRoutes } from "./routes/project-session-routes.js";
+import { runtimeRoutes } from "./routes/runtime-routes.js";
+import { testRoutes } from "./routes/test-routes.js";
+import { userRoutes } from "./routes/user-routes.js";
+import test from "./test.js";
+import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
+import { SocketHandler } from "./websocket/socket-handler.js";
+
 const app = express();
 
 const server = createServer(app);
