@@ -5,10 +5,17 @@ import { decryptData } from "../../lib/encryption-decryption.js";
 type ProjectConfig = z.infer<typeof projectConfigValidator>["config"];
 type ProjectPackage = ProjectConfig["packages"][number];
 type UserConfigType = "opencode" | "codex" | "pi" | "fx";
+type AgentConfigType = Exclude<UserConfigType, "opencode">;
 type UserConfigurablePackage = Extract<
   ProjectPackage,
   { name: UserConfigType }
 >;
+
+const agentConfigTypes = [
+  "codex",
+  "pi",
+  "fx",
+] as const satisfies readonly AgentConfigType[];
 
 const userConfigValueSchema = z.record(z.string(), z.json());
 type UserConfigValue = z.infer<typeof userConfigValueSchema>;
@@ -49,18 +56,33 @@ const replacePackageAuthJson = (
   }
 };
 
+const createAgentPackage = (
+  configType: AgentConfigType,
+  authJson: UserConfigValue,
+): ProjectPackage => ({
+  name: configType,
+  config: { auth_json: authJson, use_user_config: true },
+});
+
 export const resolveProjectUserConfigs = async (
   projectConfig: ProjectConfig,
   userId: string,
+  options: { includeUnusedAgentConfigs?: boolean } = {},
 ): Promise<ProjectConfig> => {
-  const requestedConfigTypes = [
-    ...new Set(
-      projectConfig.packages
-        .filter(isUserConfigurablePackage)
-        .filter((projectPackage) => projectPackage.config.use_user_config)
-        .map((projectPackage) => projectPackage.name),
-    ),
-  ];
+  const requestedConfigTypeSet = new Set<UserConfigType>(
+    projectConfig.packages
+      .filter(isUserConfigurablePackage)
+      .filter((projectPackage) => projectPackage.config.use_user_config)
+      .map((projectPackage) => projectPackage.name),
+  );
+
+  if (options.includeUnusedAgentConfigs) {
+    agentConfigTypes.forEach((configType) =>
+      requestedConfigTypeSet.add(configType),
+    );
+  }
+
+  const requestedConfigTypes = [...requestedConfigTypeSet];
 
   if (requestedConfigTypes.length === 0) return projectConfig;
 
@@ -94,20 +116,36 @@ export const resolveProjectUserConfigs = async (
     decryptedConfigs.set(configRow.config_type, decryptedConfig);
   }
 
+  const resolvedPackages = projectConfig.packages.map((projectPackage) => {
+    if (
+      !isUserConfigurablePackage(projectPackage) ||
+      !projectPackage.config.use_user_config
+    ) {
+      return projectPackage;
+    }
+
+    const userConfig = decryptedConfigs.get(projectPackage.name);
+    if (!userConfig) return projectPackage;
+
+    return replacePackageAuthJson(projectPackage, userConfig);
+  });
+
+  if (!options.includeUnusedAgentConfigs) {
+    return { ...projectConfig, packages: resolvedPackages };
+  }
+
+  const configuredPackageNames = new Set(
+    resolvedPackages.map((projectPackage) => projectPackage.name),
+  );
+  const missingAgentPackages = agentConfigTypes.flatMap((configType) => {
+    if (configuredPackageNames.has(configType)) return [];
+
+    const userConfig = decryptedConfigs.get(configType);
+    return userConfig ? [createAgentPackage(configType, userConfig)] : [];
+  });
+
   return {
     ...projectConfig,
-    packages: projectConfig.packages.map((projectPackage) => {
-      if (
-        !isUserConfigurablePackage(projectPackage) ||
-        !projectPackage.config.use_user_config
-      ) {
-        return projectPackage;
-      }
-
-      const userConfig = decryptedConfigs.get(projectPackage.name);
-      if (!userConfig) return projectPackage;
-
-      return replacePackageAuthJson(projectPackage, userConfig);
-    }),
+    packages: [...resolvedPackages, ...missingAgentPackages],
   };
 };

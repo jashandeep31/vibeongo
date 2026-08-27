@@ -55,7 +55,9 @@ export const getRuntimeSessionConfig = catchAsync(
     const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
     const resolvedProjectConfig = await appendOpenRouterKeysToOpencodeConfig(
       instanceId,
-      await resolveProjectUserConfigs(parsedConfig, project.user_id),
+      await resolveProjectUserConfigs(parsedConfig, project.user_id, {
+        includeUnusedAgentConfigs: true,
+      }),
     );
 
     const [tasks, repos, keys] = await Promise.all([
