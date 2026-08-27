@@ -69,11 +69,11 @@ func (s *SessionsStore) GetTerminalSessionIDs() []string {
 	return ids
 }
 
-func (s *SessionsStore) CreateTerminalSession(path string) (*TerminalSession, error) {
+func (s *SessionsStore) CreateTerminalSession(workingDirectory string) (*TerminalSession, error) {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 	baseCommand := exec.Command("bash")
-	baseCommand.Path = path
+	baseCommand.Dir = workingDirectory
 	ptmx, err := pty.StartWithSize(baseCommand, &pty.Winsize{Rows: 40, Cols: 90})
 	if err != nil {
 		return nil, err

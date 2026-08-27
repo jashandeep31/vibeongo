@@ -14,9 +14,11 @@ export type VibeongoWsV2Status =
 export type TmuxPane = { name: string };
 export type TmuxWindow = { name: string; panes: TmuxPane[] };
 export type TmuxSession = { name: string; windows: TmuxWindow[] };
+export type FavoriteDir = { name: string; path: string };
 
 type VibeongoWsV2Message = {
   activeId?: unknown;
+  dirs?: unknown;
   ids?: unknown;
   sessions?: unknown;
   type?: unknown;
@@ -30,10 +32,12 @@ export async function createVibeongoTerminalSession({
   accessToken,
   localToken,
   runtimeUrl,
+  workingDirectory,
 }: {
   accessToken: string;
   localToken: string;
   runtimeUrl: string;
+  workingDirectory?: string;
 }) {
   const token = await requestVibeongoWsV2Token({
     accessToken,
@@ -47,6 +51,7 @@ export async function createVibeongoTerminalSession({
       path: "/v2/ws/terminal/new",
       runtimeUrl,
       token,
+      workingDirectory,
     });
     let settled = false;
     const timeout = setTimeout(() => {
@@ -141,6 +146,28 @@ function parseTmuxSessions(value: unknown): TmuxSession[] | null {
   return sessions;
 }
 
+function parseFavoriteDirs(value: unknown): FavoriteDir[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const dirs: FavoriteDir[] = [];
+  for (const dirValue of value) {
+    if (!dirValue || typeof dirValue !== "object" || Array.isArray(dirValue)) {
+      return null;
+    }
+    const dir = dirValue as Record<string, unknown>;
+    if (
+      typeof dir.name !== "string" ||
+      !dir.name ||
+      typeof dir.path !== "string" ||
+      !dir.path
+    ) {
+      return null;
+    }
+    dirs.push({ name: dir.name, path: dir.path });
+  }
+  return dirs;
+}
+
 export function useVibeongoWsV2({
   accessToken,
   enabled,
@@ -158,6 +185,7 @@ export function useVibeongoWsV2({
     string | null
   >(null);
   const [tmuxSessions, setTmuxSessions] = useState<TmuxSession[]>([]);
+  const [favoriteDirs, setFavoriteDirs] = useState<FavoriteDir[]>([]);
   const reconnectAttemptRef = useRef(0);
 
   useEffect(() => {
@@ -166,6 +194,7 @@ export function useVibeongoWsV2({
       setTerminalSessionIds([]);
       setActiveTerminalSessionId(null);
       setTmuxSessions([]);
+      setFavoriteDirs([]);
       return;
     }
 
@@ -247,6 +276,12 @@ export function useVibeongoWsV2({
         if (message.type === "tmuxSessions") {
           const sessions = parseTmuxSessions(message.sessions);
           if (sessions) setTmuxSessions(sessions);
+          return;
+        }
+
+        if (message.type === "favoriteDirs") {
+          const dirs = parseFavoriteDirs(message.dirs);
+          if (dirs) setFavoriteDirs(dirs);
         }
       };
       currentSocket.onerror = () => {
@@ -266,6 +301,7 @@ export function useVibeongoWsV2({
     setTerminalSessionIds([]);
     setActiveTerminalSessionId(null);
     setTmuxSessions([]);
+    setFavoriteDirs([]);
     void connect();
 
     return () => {
@@ -278,6 +314,7 @@ export function useVibeongoWsV2({
 
   return {
     activeTerminalSessionId,
+    favoriteDirs,
     status,
     terminalSessionIds,
     tmuxSessions,

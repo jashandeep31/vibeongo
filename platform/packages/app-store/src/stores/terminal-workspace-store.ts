@@ -15,9 +15,11 @@ export type TerminalTmuxSession = {
   name: string;
   windows: TerminalTmuxWindow[];
 };
+export type TerminalFavoriteDir = { name: string; path: string };
 
 export type TerminalWorkspaceSnapshot = {
   activeTerminalSessionId: string | null;
+  favoriteDirs: TerminalFavoriteDir[];
   status: TerminalWorkspaceStatus;
   terminalSessionIds: string[];
   tmuxSessions: TerminalTmuxSession[];
@@ -35,6 +37,7 @@ interface TerminalWorkspaceStore {
 
 export const EMPTY_TERMINAL_WORKSPACE: TerminalWorkspaceSnapshot = {
   activeTerminalSessionId: null,
+  favoriteDirs: [],
   status: "disconnected",
   terminalSessionIds: [],
   tmuxSessions: [],

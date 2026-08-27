@@ -24,6 +24,7 @@ import {
   PageHeader,
   usePageTitleScrollFade,
 } from "@/components/page-chrome";
+import { ProjectTerminalDirectoryDrawer } from "@/components/projects/project-terminal-directory-drawer";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -55,6 +56,7 @@ export function ProjectTerminalScreen() {
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
+  const [directoryDrawerVisible, setDirectoryDrawerVisible] = useState(false);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -87,14 +89,16 @@ export function ProjectTerminalScreen() {
     });
   };
 
-  const addTerminalSession = async () => {
+  const addTerminalSession = async (workingDirectory?: string) => {
     if (isCreatingTerminal) return;
+    setDirectoryDrawerVisible(false);
     setIsCreatingTerminal(true);
     try {
       const sessionId = await createVibeongoTerminalSession({
         accessToken: runtime.accessToken,
         localToken,
         runtimeUrl,
+        workingDirectory,
       });
       if (sessionId) openTerminal(sessionId);
     } catch (error) {
@@ -196,7 +200,7 @@ export function ProjectTerminalScreen() {
                 accessibilityLabel="New terminal session"
                 accessibilityRole="button"
                 disabled={isCreatingTerminal}
-                onPress={() => void addTerminalSession()}
+                onPress={() => setDirectoryDrawerVisible(true)}
                 style={({ pressed }) => [
                   styles.newSessionCard,
                   { height: terminalCardSize, width: terminalCardSize },
@@ -331,6 +335,15 @@ export function ProjectTerminalScreen() {
           </ScrollView>
         )}
       </PageChromeLayout>
+      <ProjectTerminalDirectoryDrawer
+        dirs={terminalWorkspace.favoriteDirs}
+        disabled={isCreatingTerminal}
+        onClose={() => setDirectoryDrawerVisible(false)}
+        onSelect={(workingDirectory) =>
+          void addTerminalSession(workingDirectory)
+        }
+        visible={directoryDrawerVisible}
+      />
     </SafeAreaView>
   );
 }

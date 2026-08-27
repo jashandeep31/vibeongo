@@ -16,6 +16,7 @@ export type WebTerminalSocketStatus =
 export type WebTmuxPane = { name: string };
 export type WebTmuxWindow = { name: string; panes: WebTmuxPane[] };
 export type WebTmuxSession = { name: string; windows: WebTmuxWindow[] };
+export type WebFavoriteDir = { name: string; path: string };
 
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -53,6 +54,26 @@ function parseTmuxSessions(value: unknown): WebTmuxSession[] | null {
   return sessions;
 }
 
+function parseFavoriteDirs(value: unknown): WebFavoriteDir[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const dirs: WebFavoriteDir[] = [];
+  for (const dirValue of value) {
+    if (!dirValue || typeof dirValue !== "object") return null;
+    const dir = dirValue as Record<string, unknown>;
+    if (
+      typeof dir.name !== "string" ||
+      !dir.name ||
+      typeof dir.path !== "string" ||
+      !dir.path
+    ) {
+      return null;
+    }
+    dirs.push({ name: dir.name, path: dir.path });
+  }
+  return dirs;
+}
+
 export function useWebTerminalWorkspaceSocket({
   accessToken,
   enabled,
@@ -70,6 +91,7 @@ export function useWebTerminalWorkspaceSocket({
     string | null
   >(null);
   const [tmuxSessions, setTmuxSessions] = useState<WebTmuxSession[]>([]);
+  const [favoriteDirs, setFavoriteDirs] = useState<WebFavoriteDir[]>([]);
   const reconnectAttemptRef = useRef(0);
 
   useEffect(() => {
@@ -78,6 +100,7 @@ export function useWebTerminalWorkspaceSocket({
       setTerminalSessionIds([]);
       setActiveTerminalSessionId(null);
       setTmuxSessions([]);
+      setFavoriteDirs([]);
       return;
     }
 
@@ -143,6 +166,9 @@ export function useWebTerminalWorkspaceSocket({
           } else if (message.type === "tmuxSessions") {
             const sessions = parseTmuxSessions(message.sessions);
             if (sessions) setTmuxSessions(sessions);
+          } else if (message.type === "favoriteDirs") {
+            const dirs = parseFavoriteDirs(message.dirs);
+            if (dirs) setFavoriteDirs(dirs);
           }
         } catch {
           // Ignore non-control messages on the workspace socket.
@@ -174,6 +200,7 @@ export function useWebTerminalWorkspaceSocket({
 
   return {
     activeTerminalSessionId,
+    favoriteDirs,
     status,
     terminalSessionIds,
     tmuxSessions,

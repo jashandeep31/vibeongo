@@ -19,16 +19,19 @@ export function createVibeongoWsV2Socket({
   path,
   runtimeUrl,
   token,
+  workingDirectory,
 }: {
   accessToken: string;
   path: string;
   runtimeUrl: string;
   token: string;
+  workingDirectory?: string;
 }) {
   const url = new URL(getRuntimeUrl(runtimeUrl));
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = path;
   url.searchParams.set("vibeongoToken", token);
+  if (workingDirectory) url.searchParams.set("cwd", workingDirectory);
 
   const NativeWebSocket =
     WebSocket as unknown as ReactNativeWebSocketConstructor;

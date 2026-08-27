@@ -12,6 +12,7 @@ import {
 import { useEffect, useMemo, useState } from "react";
 
 import { WebTerminal } from "@/components/web-terminal";
+import { TerminalDirectoryDialog } from "@/components/terminal-directory-dialog";
 import { useWebTerminalSessionSocket } from "@/hooks/use-web-terminal-session-socket";
 import { useWebTerminalWorkspaceSocket } from "@/hooks/use-web-terminal-workspace-socket";
 import { createWebTerminalSession } from "@/lib/web-terminal-socket";
@@ -31,6 +32,7 @@ export function ProjectTerminalPage({
   const [selectedTerminalId, setSelectedTerminalId] = useState("");
   const [pendingTerminalId, setPendingTerminalId] = useState("");
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
+  const [isDirectoryDialogOpen, setIsDirectoryDialogOpen] = useState(false);
   const [terminalCreationError, setTerminalCreationError] = useState("");
   const sessionEntry = useSessionsStore((store) =>
     store.sessions.find((entry) => entry.session.id === projectSessionId),
@@ -90,8 +92,9 @@ export function ProjectTerminalPage({
     }
   }, [pendingTerminalId, workspace.terminalSessionIds]);
 
-  const addTerminal = async () => {
+  const addTerminal = async (workingDirectory?: string) => {
     if (isCreatingTerminal) return;
+    setIsDirectoryDialogOpen(false);
     setIsCreatingTerminal(true);
     setTerminalCreationError("");
     try {
@@ -99,6 +102,7 @@ export function ProjectTerminalPage({
         accessToken,
         localToken,
         runtimeUrl,
+        workingDirectory,
       });
       setPendingTerminalId(id);
       setSelectedTerminalId(id);
@@ -151,7 +155,10 @@ export function ProjectTerminalPage({
                 disabled={
                   isCreatingTerminal || workspace.status !== "connected"
                 }
-                onClick={() => void addTerminal()}
+                onClick={() => {
+                  setTerminalCreationError("");
+                  setIsDirectoryDialogOpen(true);
+                }}
               >
                 {isCreatingTerminal ? (
                   <LoaderCircle className="animate-spin" />
@@ -255,6 +262,13 @@ export function ProjectTerminalPage({
           </section>
         </main>
       )}
+      <TerminalDirectoryDialog
+        dirs={workspace.favoriteDirs}
+        isCreating={isCreatingTerminal}
+        onOpenChange={setIsDirectoryDialogOpen}
+        onSelect={(workingDirectory) => void addTerminal(workingDirectory)}
+        open={isDirectoryDialogOpen}
+      />
     </div>
   );
 }

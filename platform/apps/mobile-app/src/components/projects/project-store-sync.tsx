@@ -89,6 +89,7 @@ function ProjectSessionRuntimeSync({
   useEffect(() => {
     setTerminalWorkspace(sessionId, {
       activeTerminalSessionId: terminalWorkspace.activeTerminalSessionId,
+      favoriteDirs: terminalWorkspace.favoriteDirs,
       status: terminalWorkspace.status,
       terminalSessionIds: terminalWorkspace.terminalSessionIds,
       tmuxSessions: terminalWorkspace.tmuxSessions,
@@ -97,6 +98,7 @@ function ProjectSessionRuntimeSync({
     sessionId,
     setTerminalWorkspace,
     terminalWorkspace.activeTerminalSessionId,
+    terminalWorkspace.favoriteDirs,
     terminalWorkspace.status,
     terminalWorkspace.terminalSessionIds,
     terminalWorkspace.tmuxSessions,

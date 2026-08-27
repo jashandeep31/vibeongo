@@ -85,15 +85,18 @@ export function createWebTerminalSocket({
   proxyToken,
   runtimeToken,
   runtimeUrl,
+  workingDirectory,
 }: WebTerminalSocketTokens & {
   path: string;
   runtimeUrl: string;
+  workingDirectory?: string;
 }) {
   const url = new URL(normalizeRuntimeUrl(runtimeUrl));
   url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
   url.pathname = path;
   url.searchParams.set("proxytoken", proxyToken);
   url.searchParams.set("vibeongoToken", runtimeToken);
+  if (workingDirectory) url.searchParams.set("cwd", workingDirectory);
   return new WebSocket(url);
 }
 
@@ -101,10 +104,12 @@ export async function createWebTerminalSession({
   accessToken,
   localToken,
   runtimeUrl,
+  workingDirectory,
 }: {
   accessToken: string;
   localToken: string;
   runtimeUrl: string;
+  workingDirectory?: string;
 }) {
   const tokens = await requestWebTerminalSocketTokens({
     accessToken,
@@ -117,6 +122,7 @@ export async function createWebTerminalSession({
       ...tokens,
       path: "/v2/ws/terminal/new",
       runtimeUrl,
+      workingDirectory,
     });
     let settled = false;
     const timeout = setTimeout(() => {

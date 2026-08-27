@@ -2,8 +2,13 @@ package ws
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
+	"net/http"
+	"os"
 	"os/user"
+	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/creack/pty"
@@ -32,6 +37,23 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 			return err
 		}
 
+		// ID connects to a stored terminal session; "new" creates one.
+		id := c.Param("id")
+		if id == "" {
+			id = "new"
+		}
+
+		workingDirectory := currentUser.HomeDir
+		if id == "new" {
+			workingDirectory, err = resolveTerminalWorkingDirectory(
+				currentUser.HomeDir,
+				c.QueryParam("cwd"),
+			)
+			if err != nil {
+				return c.String(http.StatusBadRequest, err.Error())
+			}
+		}
+
 		// making a http request to websocket connection
 		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
@@ -40,15 +62,9 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		defer conn.Close()
 		var writeMu sync.Mutex
 
-		// ID connects to a stored terminal session; "new" creates one.
-		id := c.Param("id")
-		if id == "" {
-			id = "new"
-		}
-
 		terminalSession, err := func() (*newstores.TerminalSession, error) {
 			if id == "new" {
-				terminalSession, err := sessionsStore.CreateTerminalSession(currentUser.HomeDir)
+				terminalSession, err := sessionsStore.CreateTerminalSession(workingDirectory)
 				if err != nil {
 					return nil, err
 				}
@@ -128,6 +144,46 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		}
 		return nil
 	}
+}
+
+// resolveTerminalWorkingDirectory resolves user input relative to homeDir and
+// keeps terminal sessions inside that directory. EvalSymlinks ensures a path
+// cannot escape homeDir through a symlink.
+func resolveTerminalWorkingDirectory(homeDir, requestedPath string) (string, error) {
+	resolvedHome, err := filepath.EvalSymlinks(homeDir)
+	if err != nil {
+		return "", fmt.Errorf("could not resolve terminal home directory: %w", err)
+	}
+
+	requestedPath = strings.TrimSpace(requestedPath)
+	switch {
+	case requestedPath == "", requestedPath == "~":
+		requestedPath = resolvedHome
+	case strings.HasPrefix(requestedPath, "~/"):
+		requestedPath = filepath.Join(resolvedHome, strings.TrimPrefix(requestedPath, "~/"))
+	case !filepath.IsAbs(requestedPath):
+		requestedPath = filepath.Join(resolvedHome, requestedPath)
+	}
+
+	resolvedPath, err := filepath.EvalSymlinks(filepath.Clean(requestedPath))
+	if err != nil {
+		return "", fmt.Errorf("invalid terminal working directory: %w", err)
+	}
+
+	relativePath, err := filepath.Rel(resolvedHome, resolvedPath)
+	if err != nil || relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(os.PathSeparator)) {
+		return "", fmt.Errorf("terminal working directory must be inside %s", resolvedHome)
+	}
+
+	info, err := os.Stat(resolvedPath)
+	if err != nil {
+		return "", fmt.Errorf("invalid terminal working directory: %w", err)
+	}
+	if !info.IsDir() {
+		return "", fmt.Errorf("terminal working directory is not a directory")
+	}
+
+	return resolvedPath, nil
 }
 
 func writeTerminalControl(conn *websocket.Conn, writeMu *sync.Mutex, message terminalControlMessage) error {

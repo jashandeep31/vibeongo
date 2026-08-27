@@ -2,6 +2,9 @@ package ws
 
 import (
 	"log"
+	"os"
+	"os/user"
+	"path/filepath"
 	"reflect"
 	"slices"
 	"sync"
@@ -31,6 +34,8 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 		tmuxPollingDone := make(chan struct{})
 		stopTerminalPolling := make(chan struct{})
 		terminalPollingDone := make(chan struct{})
+		stopFavoriteDirsPolling := make(chan struct{})
+		favoriteDirsPollingDone := make(chan struct{})
 
 		go func() {
 			defer close(tmuxPollingDone)
@@ -46,12 +51,21 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 				conn.Close()
 			}
 		}()
+		go func() {
+			defer close(favoriteDirsPollingDone)
+			if err := handleFavoriteDirsList(conn, &writeMu, stopFavoriteDirsPolling); err != nil {
+				log.Println("Favorite directory polling failed:", err)
+				conn.Close()
+			}
+		}()
 
 		defer func() {
 			close(stopTmuxPolling)
 			close(stopTerminalPolling)
+			close(stopFavoriteDirsPolling)
 			<-tmuxPollingDone
 			<-terminalPollingDone
+			<-favoriteDirsPollingDone
 		}()
 
 		// handling the messages
@@ -75,6 +89,94 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 
 		return nil
 	}
+}
+
+type favoriteDir struct {
+	Name string `json:"name"`
+	Path string `json:"path"`
+}
+
+func handleFavoriteDirsList(conn *websocket.Conn, writeMu *sync.Mutex, stop <-chan struct{}) error {
+	currentUser, err := user.Current()
+	if err != nil {
+		return err
+	}
+
+	sendDirs := func(dirs []favoriteDir) error {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+
+		return conn.WriteJSON(struct {
+			Type string        `json:"type"`
+			Dirs []favoriteDir `json:"dirs"`
+		}{
+			Type: "favoriteDirs",
+			Dirs: dirs,
+		})
+	}
+
+	previousDirs, err := getListFavoriteDirs(currentUser.HomeDir)
+	if err != nil {
+		return err
+	}
+	if err := sendDirs(previousDirs); err != nil {
+		return err
+	}
+
+	ticker := time.NewTicker(time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			currentDirs, err := getListFavoriteDirs(currentUser.HomeDir)
+			if err != nil {
+				log.Println("Failed to get favorite directories:", err)
+				continue
+			}
+			if slices.Equal(previousDirs, currentDirs) {
+				continue
+			}
+			if err := sendDirs(currentDirs); err != nil {
+				return err
+			}
+			previousDirs = currentDirs
+		case <-stop:
+			return nil
+		}
+	}
+}
+
+func getListFavoriteDirs(homeDir string) ([]favoriteDir, error) {
+	dirs := make([]favoriteDir, 0)
+	codeDir := filepath.Join(homeDir, "code")
+	entries, err := os.ReadDir(codeDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, err
+	}
+
+	for _, entry := range entries {
+		if entry.IsDir() {
+			dirs = append(dirs, favoriteDir{
+				Name: entry.Name(),
+				Path: filepath.Join(codeDir, entry.Name()),
+			})
+		}
+	}
+
+	dirs = append(dirs, favoriteDir{Name: "Home", Path: homeDir})
+	dirs = appendExistingFavoriteDir(dirs, "Config", filepath.Join(homeDir, ".config", "vibeongo"))
+	dirs = appendExistingFavoriteDir(dirs, "Logs Vibeongo", filepath.Join(homeDir, ".logs"))
+
+	return dirs, nil
+}
+
+func appendExistingFavoriteDir(dirs []favoriteDir, name, path string) []favoriteDir {
+	info, err := os.Stat(path)
+	if err == nil && info.IsDir() {
+		return append(dirs, favoriteDir{Name: name, Path: path})
+	}
+	return dirs
 }
 
 func handleTerminalSessionsList(conn *websocket.Conn, writeMu *sync.Mutex, sessionsStore *newstores.SessionsStore, stop <-chan struct{}) error {

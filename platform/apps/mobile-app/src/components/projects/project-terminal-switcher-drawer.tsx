@@ -3,7 +3,7 @@ import {
   useTerminalWorkspaceStore,
 } from "@repo/app-store";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -16,6 +16,7 @@ import {
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
+import { ProjectTerminalDirectoryDrawer } from "@/components/projects/project-terminal-directory-drawer";
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
@@ -43,18 +44,25 @@ export function ProjectTerminalSwitcherDrawer({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [isCreating, setIsCreating] = useState(false);
+  const [directoryDrawerVisible, setDirectoryDrawerVisible] = useState(false);
   const workspace = useTerminalWorkspaceStore(
     (store) => store.workspaces[projectSessionId] ?? EMPTY_TERMINAL_WORKSPACE,
   );
 
-  const createTerminal = async () => {
+  useEffect(() => {
+    if (!visible) setDirectoryDrawerVisible(false);
+  }, [visible]);
+
+  const createTerminal = async (workingDirectory?: string) => {
     if (isCreating) return;
+    setDirectoryDrawerVisible(false);
     setIsCreating(true);
     try {
       const terminalId = await createVibeongoTerminalSession({
         accessToken,
         localToken,
         runtimeUrl,
+        workingDirectory,
       });
       onSelect(terminalId);
     } catch (error) {
@@ -68,223 +76,234 @@ export function ProjectTerminalSwitcherDrawer({
   };
 
   return (
-    <Modal
-      animationType="none"
-      onRequestClose={onClose}
-      statusBarTranslucent
-      transparent
-      visible={visible}
-    >
-      <View style={styles.root}>
-        <Pressable
-          accessibilityLabel="Close terminal switcher"
-          accessibilityRole="button"
-          onPress={onClose}
-          style={styles.backdrop}
-        />
-        <BottomDrawerPanel
-          accessibilityViewIsModal
-          visible={visible}
-          style={[
-            styles.drawer,
-            {
-              backgroundColor: theme.background,
-              borderColor: theme.backgroundSelected,
-              paddingBottom: Math.max(insets.bottom, 16),
-            },
-          ]}
-        >
-          <View
-            style={[
-              styles.handle,
-              { backgroundColor: theme.backgroundSelected },
-            ]}
+    <Fragment>
+      <Modal
+        animationType="none"
+        onRequestClose={onClose}
+        statusBarTranslucent
+        transparent
+        visible={visible && !directoryDrawerVisible}
+      >
+        <View style={styles.root}>
+          <Pressable
+            accessibilityLabel="Close terminal switcher"
+            accessibilityRole="button"
+            onPress={onClose}
+            style={styles.backdrop}
           />
-          <View style={styles.header}>
-            <View style={styles.headerCopy}>
-              <ThemedText style={styles.title}>Terminal sessions</ThemedText>
-              <ThemedText style={styles.subtitle} themeColor="textSecondary">
-                {workspace.terminalSessionIds.length} open · {workspace.status}
-              </ThemedText>
-            </View>
-            <Pressable
-              accessibilityLabel="Close"
-              accessibilityRole="button"
-              onPress={onClose}
-              style={styles.close}
-            >
-              <SymbolView
-                name={{ ios: "xmark", android: "close" }}
-                size={18}
-                tintColor={theme.textSecondary}
-              />
-            </Pressable>
-          </View>
-
-          <ScrollView
-            contentContainerStyle={styles.content}
-            showsVerticalScrollIndicator={false}
+          <BottomDrawerPanel
+            accessibilityViewIsModal
+            visible={visible}
+            style={[
+              styles.drawer,
+              {
+                backgroundColor: theme.background,
+                borderColor: theme.backgroundSelected,
+                paddingBottom: Math.max(insets.bottom, 16),
+              },
+            ]}
           >
-            <Pressable
-              accessibilityLabel="New terminal session"
-              accessibilityRole="button"
-              disabled={isCreating}
-              onPress={() => void createTerminal()}
-              style={({ pressed }) => [
-                styles.newTerminal,
-                {
-                  backgroundColor: theme.backgroundElement,
-                  borderColor: theme.backgroundSelected,
-                },
-                isCreating && styles.disabled,
-                pressed && styles.pressed,
+            <View
+              style={[
+                styles.handle,
+                { backgroundColor: theme.backgroundSelected },
               ]}
-            >
-              <View
-                style={[
-                  styles.iconTile,
-                  { backgroundColor: theme.backgroundSelected },
-                ]}
-              >
-                {isCreating ? (
-                  <ActivityIndicator color={theme.text} size="small" />
-                ) : (
-                  <SymbolView
-                    name={{ ios: "plus", android: "add" }}
-                    size={18}
-                    tintColor={theme.text}
-                  />
-                )}
-              </View>
-              <View style={styles.rowCopy}>
-                <ThemedText style={styles.rowTitle}>New terminal</ThemedText>
-                <ThemedText style={styles.rowMeta} themeColor="textSecondary">
-                  Open a fresh shell
+            />
+            <View style={styles.header}>
+              <View style={styles.headerCopy}>
+                <ThemedText style={styles.title}>Terminal sessions</ThemedText>
+                <ThemedText style={styles.subtitle} themeColor="textSecondary">
+                  {workspace.terminalSessionIds.length} open ·{" "}
+                  {workspace.status}
                 </ThemedText>
               </View>
-              <SymbolView
-                name={{ ios: "arrow.up.right", android: "north_east" }}
-                size={16}
-                tintColor={theme.textSecondary}
-              />
-            </Pressable>
+              <Pressable
+                accessibilityLabel="Close"
+                accessibilityRole="button"
+                onPress={onClose}
+                style={styles.close}
+              >
+                <SymbolView
+                  name={{ ios: "xmark", android: "close" }}
+                  size={18}
+                  tintColor={theme.textSecondary}
+                />
+              </Pressable>
+            </View>
 
-            <View style={styles.list}>
-              {workspace.terminalSessionIds.map((terminalId, index) => {
-                const selected = terminalId === currentTerminalId;
-                const active = terminalId === workspace.activeTerminalSessionId;
-                return (
-                  <Pressable
-                    accessibilityLabel={`Open Terminal ${index + 1}`}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected }}
-                    key={terminalId}
-                    onPress={() => onSelect(terminalId)}
-                    style={({ pressed }) => [
-                      styles.terminal,
-                      {
-                        backgroundColor: selected
-                          ? theme.backgroundElement
-                          : "transparent",
-                        borderColor: selected
-                          ? theme.backgroundSelected
-                          : "transparent",
-                      },
-                      pressed && { backgroundColor: theme.backgroundElement },
-                    ]}
-                  >
+            <ScrollView
+              contentContainerStyle={styles.content}
+              showsVerticalScrollIndicator={false}
+            >
+              <Pressable
+                accessibilityLabel="New terminal session"
+                accessibilityRole="button"
+                disabled={isCreating}
+                onPress={() => setDirectoryDrawerVisible(true)}
+                style={({ pressed }) => [
+                  styles.newTerminal,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.backgroundSelected,
+                  },
+                  isCreating && styles.disabled,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <View
+                  style={[
+                    styles.iconTile,
+                    { backgroundColor: theme.backgroundSelected },
+                  ]}
+                >
+                  {isCreating ? (
+                    <ActivityIndicator color={theme.text} size="small" />
+                  ) : (
+                    <SymbolView
+                      name={{ ios: "plus", android: "add" }}
+                      size={18}
+                      tintColor={theme.text}
+                    />
+                  )}
+                </View>
+                <View style={styles.rowCopy}>
+                  <ThemedText style={styles.rowTitle}>New terminal</ThemedText>
+                  <ThemedText style={styles.rowMeta} themeColor="textSecondary">
+                    Open a fresh shell
+                  </ThemedText>
+                </View>
+                <SymbolView
+                  name={{ ios: "arrow.up.right", android: "north_east" }}
+                  size={16}
+                  tintColor={theme.textSecondary}
+                />
+              </Pressable>
+
+              <View style={styles.list}>
+                {workspace.terminalSessionIds.map((terminalId, index) => {
+                  const selected = terminalId === currentTerminalId;
+                  const active =
+                    terminalId === workspace.activeTerminalSessionId;
+                  return (
+                    <Pressable
+                      accessibilityLabel={`Open Terminal ${index + 1}`}
+                      accessibilityRole="button"
+                      accessibilityState={{ selected }}
+                      key={terminalId}
+                      onPress={() => onSelect(terminalId)}
+                      style={({ pressed }) => [
+                        styles.terminal,
+                        {
+                          backgroundColor: selected
+                            ? theme.backgroundElement
+                            : "transparent",
+                          borderColor: selected
+                            ? theme.backgroundSelected
+                            : "transparent",
+                        },
+                        pressed && { backgroundColor: theme.backgroundElement },
+                      ]}
+                    >
+                      <View
+                        style={[
+                          styles.iconTile,
+                          { backgroundColor: theme.backgroundElement },
+                        ]}
+                      >
+                        <SymbolView
+                          name={{ ios: "apple.terminal", android: "terminal" }}
+                          size={16}
+                          tintColor={theme.textSecondary}
+                        />
+                      </View>
+                      <View style={styles.rowCopy}>
+                        <View style={styles.nameRow}>
+                          <ThemedText style={styles.rowTitle}>
+                            Terminal {index + 1}
+                          </ThemedText>
+                          {active ? <View style={styles.activeDot} /> : null}
+                        </View>
+                        <ThemedText
+                          numberOfLines={1}
+                          style={styles.identifier}
+                          themeColor="textSecondary"
+                        >
+                          {terminalId}
+                        </ThemedText>
+                      </View>
+                      {selected ? (
+                        <SymbolView
+                          name={{
+                            ios: "checkmark.circle.fill",
+                            android: "check_circle",
+                          }}
+                          size={19}
+                          tintColor="#10b981"
+                        />
+                      ) : (
+                        <SymbolView
+                          name={{
+                            ios: "chevron.right",
+                            android: "chevron_right",
+                          }}
+                          size={17}
+                          tintColor={theme.textSecondary}
+                        />
+                      )}
+                    </Pressable>
+                  );
+                })}
+              </View>
+
+              {workspace.tmuxSessions.length ? (
+                <View style={styles.tmuxSection}>
+                  <ThemedText style={styles.sectionTitle}>
+                    Tmux sessions
+                  </ThemedText>
+                  {workspace.tmuxSessions.map((session) => (
                     <View
+                      key={session.name}
                       style={[
-                        styles.iconTile,
-                        { backgroundColor: theme.backgroundElement },
+                        styles.tmuxRow,
+                        {
+                          backgroundColor: theme.backgroundElement,
+                          borderColor: theme.backgroundSelected,
+                        },
                       ]}
                     >
                       <SymbolView
-                        name={{ ios: "apple.terminal", android: "terminal" }}
+                        name={{
+                          ios: "rectangle.split.2x1",
+                          android: "view_agenda",
+                        }}
                         size={16}
                         tintColor={theme.textSecondary}
                       />
-                    </View>
-                    <View style={styles.rowCopy}>
-                      <View style={styles.nameRow}>
-                        <ThemedText style={styles.rowTitle}>
-                          Terminal {index + 1}
-                        </ThemedText>
-                        {active ? <View style={styles.activeDot} /> : null}
-                      </View>
+                      <ThemedText numberOfLines={1} style={styles.tmuxName}>
+                        {session.name}
+                      </ThemedText>
                       <ThemedText
-                        numberOfLines={1}
-                        style={styles.identifier}
+                        style={styles.rowMeta}
                         themeColor="textSecondary"
                       >
-                        {terminalId}
+                        {session.windows.length} windows
                       </ThemedText>
                     </View>
-                    {selected ? (
-                      <SymbolView
-                        name={{
-                          ios: "checkmark.circle.fill",
-                          android: "check_circle",
-                        }}
-                        size={19}
-                        tintColor="#10b981"
-                      />
-                    ) : (
-                      <SymbolView
-                        name={{
-                          ios: "chevron.right",
-                          android: "chevron_right",
-                        }}
-                        size={17}
-                        tintColor={theme.textSecondary}
-                      />
-                    )}
-                  </Pressable>
-                );
-              })}
-            </View>
-
-            {workspace.tmuxSessions.length ? (
-              <View style={styles.tmuxSection}>
-                <ThemedText style={styles.sectionTitle}>
-                  Tmux sessions
-                </ThemedText>
-                {workspace.tmuxSessions.map((session) => (
-                  <View
-                    key={session.name}
-                    style={[
-                      styles.tmuxRow,
-                      {
-                        backgroundColor: theme.backgroundElement,
-                        borderColor: theme.backgroundSelected,
-                      },
-                    ]}
-                  >
-                    <SymbolView
-                      name={{
-                        ios: "rectangle.split.2x1",
-                        android: "view_agenda",
-                      }}
-                      size={16}
-                      tintColor={theme.textSecondary}
-                    />
-                    <ThemedText numberOfLines={1} style={styles.tmuxName}>
-                      {session.name}
-                    </ThemedText>
-                    <ThemedText
-                      style={styles.rowMeta}
-                      themeColor="textSecondary"
-                    >
-                      {session.windows.length} windows
-                    </ThemedText>
-                  </View>
-                ))}
-              </View>
-            ) : null}
-          </ScrollView>
-        </BottomDrawerPanel>
-      </View>
-    </Modal>
+                  ))}
+                </View>
+              ) : null}
+            </ScrollView>
+          </BottomDrawerPanel>
+        </View>
+      </Modal>
+      <ProjectTerminalDirectoryDrawer
+        dirs={workspace.favoriteDirs}
+        disabled={isCreating}
+        onClose={() => setDirectoryDrawerVisible(false)}
+        onSelect={(workingDirectory) => void createTerminal(workingDirectory)}
+        visible={visible && directoryDrawerVisible}
+      />
+    </Fragment>
   );
 }
 
