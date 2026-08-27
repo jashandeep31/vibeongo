@@ -3,6 +3,7 @@ package ws
 import (
 	"encoding/json"
 	"log"
+	"os/user"
 	"sync"
 
 	"github.com/creack/pty"
@@ -26,6 +27,11 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 
 		sessionsStore := tools.TerminalSessionStore
 
+		currentUser, err := user.Current()
+		if err != nil {
+			return err
+		}
+
 		// making a http request to websocket connection
 		conn, err := upgrader.Upgrade(c.Response(), c.Request(), nil)
 		if err != nil {
@@ -42,7 +48,7 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 
 		terminalSession, err := func() (*newstores.TerminalSession, error) {
 			if id == "new" {
-				terminalSession, err := sessionsStore.CreateTerminalSession()
+				terminalSession, err := sessionsStore.CreateTerminalSession(currentUser.HomeDir)
 				if err != nil {
 					return nil, err
 				}
