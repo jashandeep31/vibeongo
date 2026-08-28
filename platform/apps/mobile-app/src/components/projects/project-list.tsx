@@ -63,7 +63,7 @@ type SessionActionTarget = {
   name: string;
 };
 
-export function ProjectList() {
+export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const theme = useTheme();
   const router = useRouter();
   const projectsQuery = useGetProjectsWithSessions();
@@ -258,7 +258,7 @@ export function ProjectList() {
     (Boolean(projectsQuery.data?.length) && projects.length === 0)
   ) {
     return (
-      <View style={styles.centeredState}>
+      <View style={[styles.centeredState, { paddingTop: topInset + 72 }]}>
         <ActivityIndicator />
         <ThemedText themeColor="textSecondary">Loading projects…</ThemedText>
       </View>
@@ -267,7 +267,7 @@ export function ProjectList() {
 
   if (projectsQuery.isError) {
     return (
-      <View style={styles.centeredState}>
+      <View style={[styles.centeredState, { paddingTop: topInset + 72 }]}>
         <ThemedText style={styles.emptyTitle}>
           Could not load projects
         </ThemedText>
@@ -291,7 +291,7 @@ export function ProjectList() {
 
   if (projects.length === 0) {
     return (
-      <View style={styles.centeredState}>
+      <View style={[styles.centeredState, { paddingTop: topInset + 72 }]}>
         <ThemedText style={styles.emptyTitle}>No projects yet</ThemedText>
         <ThemedText style={styles.emptyDescription} themeColor="textSecondary">
           Your projects and sessions will appear here.
@@ -323,7 +323,7 @@ export function ProjectList() {
   return (
     <>
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: topInset }]}
         nestedScrollEnabled
         refreshControl={
           <RefreshControl

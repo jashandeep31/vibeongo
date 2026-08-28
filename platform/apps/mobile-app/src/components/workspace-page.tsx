@@ -214,7 +214,7 @@ export function WorkspacePage() {
           }
         >
           {({ topInset }) => (
-            <View style={[styles.screen, { paddingTop: topInset }]}>
+            <View style={styles.screen}>
               <Animated.ScrollView
                 contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
                 horizontal
@@ -227,10 +227,10 @@ export function WorkspacePage() {
                 style={styles.pager}
               >
                 <View style={[styles.chatPage, { width }]}>
-                  <ChatList />
+                  <ChatList topInset={topInset + 4} />
                 </View>
                 <View style={[styles.page, { width }]}>
-                  <ProjectList />
+                  <ProjectList topInset={topInset + 4} />
                 </View>
               </Animated.ScrollView>
             </View>
@@ -334,12 +334,10 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 4,
   },
   chatPage: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 4,
   },
   pageLabel: {
     fontSize: 16,

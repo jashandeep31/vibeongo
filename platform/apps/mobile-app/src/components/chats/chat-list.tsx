@@ -36,7 +36,7 @@ function getSocketError(data: unknown) {
   return "Could not create the chat. Please try again.";
 }
 
-export function ChatList() {
+export function ChatList({ topInset = 0 }: { topInset?: number }) {
   const theme = useTheme();
   const router = useRouter();
   const {
@@ -197,7 +197,7 @@ export function ChatList() {
   return (
     <View style={styles.root}>
       <FlatList
-        contentContainerStyle={styles.content}
+        contentContainerStyle={[styles.content, { paddingTop: topInset }]}
         data={isError ? [] : chats}
         ItemSeparatorComponent={() => (
           <View
