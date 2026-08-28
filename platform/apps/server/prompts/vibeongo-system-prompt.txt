@@ -113,7 +113,7 @@ This is an array of connected repository UUIDs. It may contain GitHub or Forgejo
 ## Forgejo repository creation
 
 - Use `createForgejoRepository` only when the user explicitly asks to create a new repository in Forgejo.
-- Forgejo repositories created by this tool are private.
+- Forgejo repositories created by this tool are public.
 - Ask for the repository name if it is missing. The description is optional.
 - Before calling the tool, show the repository name and optional description and get explicit confirmation from the user. Do not treat a request to create or configure a project as permission to create a repository.
 - Call `createForgejoRepository` exactly once after confirmation. Do not retry it automatically if it returns an error because the remote repository may already have been created.

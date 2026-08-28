@@ -31,11 +31,12 @@ import { getDecryptedProjectConfig } from "../../services/project/project-config
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 import { createForgejoRepo } from "../../services/forgejo/repo-actions.js";
+import { getGitRepoHtmlUrl } from "../../services/github/git-repo-url.js";
 
 export const getUserReposListAgentTool = (userId: string): Tool =>
   tool({
     description:
-      "Lists all repositories connected to the current user's account, including GitHub and Forgejo repositories. Each result includes all saved repository fields except creation and update timestamps.",
+      "Lists all repositories connected to the current user's account, including GitHub and Forgejo repositories. Each result includes its provider-aware html_url and all saved repository fields except creation and update timestamps.",
     inputSchema: z.object({}),
     execute: async () => {
       const repos = await db
@@ -54,6 +55,7 @@ export const getUserReposListAgentTool = (userId: string): Tool =>
         overview: r.overview,
         public: r.public,
         full_name: r.full_name,
+        html_url: getGitRepoHtmlUrl(r),
         repo_owner_username: r.repo_owner_username,
         setup_script: r.setup_script,
       }));
@@ -272,7 +274,11 @@ export const addGithubRepositoryAgentTool = (userId: string): Tool =>
         })
         .returning();
 
-      return JSON.stringify(newRepo);
+      return JSON.stringify(
+        newRepo
+          ? { ...newRepo, html_url: getGitRepoHtmlUrl(newRepo) }
+          : newRepo,
+      );
     },
   });
 
@@ -281,7 +287,7 @@ const createForgejoRepositorySchema = z.object({
     .string()
     .trim()
     .min(1)
-    .describe("Name of the private Forgejo repository to create"),
+    .describe("Name of the public Forgejo repository to create"),
   description: z
     .string()
     .trim()
@@ -292,7 +298,7 @@ const createForgejoRepositorySchema = z.object({
 export const createForgejoRepositoryAgentTool = (userId: string): Tool =>
   tool({
     description:
-      "Creates a private Forgejo repository for the current user and adds it to their connected repositories. Use this only after the user has explicitly asked to create the repository and confirmed its name.",
+      "Creates a public Forgejo repository for the current user and adds it to their connected repositories. Use this only after the user has explicitly asked to create the repository and confirmed its name.",
     inputSchema: createForgejoRepositorySchema,
     execute: async ({
       reponame,
@@ -331,10 +337,16 @@ export const createForgejoRepositoryAgentTool = (userId: string): Tool =>
           })
           .returning();
 
+        if (!savedRepo) {
+          throw new Error("Repository was created but could not be saved");
+        }
+
+        const htmlUrl = getGitRepoHtmlUrl(savedRepo);
+
         return {
           status: "ok",
-          repo: savedRepo,
-          forgejo_url: result.repo.html_url,
+          repo: { ...savedRepo, html_url: htmlUrl },
+          forgejo_url: htmlUrl,
         };
       } catch (error) {
         return {

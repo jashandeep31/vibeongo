@@ -10,20 +10,7 @@ import {
   createForgejoRepo,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
-import { env } from "../../lib/env.js";
-
-type GitRepoLinkSource = {
-  type: "github" | "forgejo" | null;
-  full_name: string;
-};
-
-const withHtmlUrl = <T extends GitRepoLinkSource>(repo: T) => ({
-  ...repo,
-  html_url:
-    repo.type === "forgejo"
-      ? `${env.FORGEJO_URL.replace(/\/$/, "")}/${repo.full_name}`
-      : `https://github.com/${repo.full_name}`,
-});
+import { withGitRepoHtmlUrl } from "../../services/github/git-repo-url.js";
 
 type GithubRepoIssueResponse = {
   url: string;
@@ -87,7 +74,7 @@ export const getUserGitRepos = catchAsync(
       .where(eq(gitRepos.user_id, user.id))
       .orderBy(desc(gitRepos.created_at));
 
-    res.status(200).json({ data: rows.map(withHtmlUrl) });
+    res.status(200).json({ data: rows.map(withGitRepoHtmlUrl) });
   },
 );
 
@@ -118,7 +105,7 @@ export const getGithubRepoById = catchAsync(
     if (githubRepo.type === "forgejo") {
       res.status(200).json({
         data: {
-          ...withHtmlUrl(githubRepo),
+          ...withGitRepoHtmlUrl(githubRepo),
           issues: [],
           pull_requests: [],
         },
@@ -204,7 +191,7 @@ export const getGithubRepoById = catchAsync(
 
     res.status(200).json({
       data: {
-        ...withHtmlUrl(githubRepo),
+        ...withGitRepoHtmlUrl(githubRepo),
         issues,
         pull_requests,
       },
@@ -259,7 +246,7 @@ export const createGithubRepo = catchAsync(
 
     res.status(201).json({
       message: "Successfully had created the project intance",
-      data: newRepo.map(withHtmlUrl),
+      data: newRepo.map(withGitRepoHtmlUrl),
     });
   },
 );
