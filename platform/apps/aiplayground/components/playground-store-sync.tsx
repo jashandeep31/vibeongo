@@ -322,7 +322,19 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
             opencodePassword,
             signal,
             handleEvent,
-            () => void refreshStatuses(),
+            () => {
+              void refreshStatuses();
+              void queryClient.invalidateQueries({
+                queryKey: [
+                  "opencode",
+                  "chat-sessions",
+                  sessionId,
+                  serverUrl,
+                ],
+                exact: true,
+              });
+              resyncActiveChat();
+            },
           );
         } catch (error) {
           if (!disposed && !signal.aborted) {
@@ -391,6 +403,27 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       void connect(streamController.signal);
     };
 
+    const resyncActiveChat = () => {
+      const activeChat = activeChatRef.current;
+      if (
+        activeChat.projectSessionId !== sessionId ||
+        !activeChat.opencodeSessionId
+      ) {
+        return;
+      }
+
+      void queryClient.invalidateQueries({
+        queryKey: [
+          "opencode",
+          "session",
+          sessionId,
+          activeChat.opencodeSessionId,
+          serverUrl,
+        ],
+        exact: true,
+      });
+    };
+
     const reconnectWhenVisible = () => {
       if (document.visibilityState !== "visible") return;
       const activeChat = activeChatRef.current;
@@ -405,7 +438,9 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       startStream();
       void queryClient.invalidateQueries({
         queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],
+        exact: true,
       });
+      resyncActiveChat();
     };
 
     startStream();

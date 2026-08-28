@@ -193,7 +193,21 @@ function ProjectSessionRuntimeSync({
             password,
             signal,
             handleEvent,
-            () => void sessionsQuery.refetch(),
+            () => {
+              void sessionsQuery.refetch();
+              if (activeOpencodeSessionId) {
+                void queryClient.invalidateQueries({
+                  queryKey: [
+                    "opencode",
+                    "session",
+                    sessionId,
+                    activeOpencodeSessionId,
+                    serverUrl,
+                  ],
+                  exact: true,
+                });
+              }
+            },
             expoFetch as unknown as typeof globalThis.fetch,
           );
         } catch (error) {
@@ -221,6 +235,18 @@ function ProjectSessionRuntimeSync({
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
       startStream();
+      if (activeOpencodeSessionId) {
+        void queryClient.invalidateQueries({
+          queryKey: [
+            "opencode",
+            "session",
+            sessionId,
+            activeOpencodeSessionId,
+            serverUrl,
+          ],
+          exact: true,
+        });
+      }
     });
 
     return () => {
@@ -230,6 +256,7 @@ function ProjectSessionRuntimeSync({
     };
   }, [
     accessToken,
+    activeOpencodeSessionId,
     isOpencodeRunning,
     password,
     queryClient,
@@ -405,16 +432,19 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
     );
   }, [addAllProjects, addAllSessions, projectsWithSessions]);
 
-  const activeOpencodeSessionId =
-    pathname.match(
-      /^\/projects\/[^/]+\/sessions\/[^/]+\/chats\/([^/]+)/,
-    )?.[1] ?? "";
+  const activeChatMatch = pathname.match(
+    /^\/projects\/[^/]+\/sessions\/([^/]+)\/chats\/([^/]+)/,
+  );
+  const activeProjectSessionId = activeChatMatch?.[1] ?? "";
+  const activeOpencodeSessionId = activeChatMatch?.[2] ?? "";
 
   if (!enabled) return null;
 
   return sessions.map(({ session }) => (
     <ProjectSessionRuntimeSync
-      activeOpencodeSessionId={activeOpencodeSessionId}
+      activeOpencodeSessionId={
+        session.id === activeProjectSessionId ? activeOpencodeSessionId : ""
+      }
       key={session.id}
       sessionId={session.id}
     />

@@ -18,6 +18,7 @@ import {
 } from "./proxy-auth.js";
 
 const clients = new Map<string, OpencodeClient>();
+const OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
 
 export type OpencodeSessionData = {
   session: Session;
@@ -846,7 +847,7 @@ export async function rejectOpencodeQuestion(
 }
 
 export async function streamOpencodeEvents(
-  chatId: string,
+  _chatId: string,
   serverUrl: string,
   accessToken: string,
   password: string | undefined,
@@ -855,25 +856,113 @@ export async function streamOpencodeEvents(
   onConnected?: () => void,
   eventFetch?: typeof globalThis.fetch,
 ) {
-  const client = eventFetch
-    ? createOpencodeClient({
-        baseUrl: normalizeOpencodeServerUrl(serverUrl),
-        fetch: eventFetch,
-        headers: getOpencodeHeaders(accessToken, password),
-        throwOnError: true,
-      })
-    : getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const subscription = await client.global.event({
-    signal,
-    headers: { accept: "text/event-stream" },
-  });
+  // The generated OpenCode SDK's SSE helper calls global `fetch` internally,
+  // ignoring the custom fetch configured on its client. Mobile must use
+  // expo/fetch so response chunks are delivered as a real ReadableStream.
+  const fetchEventStream = eventFetch ?? globalThis.fetch;
+  const streamController = new AbortController();
+  const abortStream = () => streamController.abort(signal.reason);
+  if (signal.aborted) {
+    abortStream();
+  } else {
+    signal.addEventListener("abort", abortStream, { once: true });
+  }
+
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const resetIdleTimer = () => {
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      streamController.abort(
+        new Error("OpenCode event stream stopped sending data"),
+      );
+    }, OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS);
+  };
+
+  resetIdleTimer();
+  let response: Response;
+  try {
+    response = await fetchEventStream(
+      `${normalizeOpencodeServerUrl(serverUrl)}/global/event`,
+      {
+        cache: "no-store",
+        headers: {
+          ...getOpencodeHeaders(accessToken, password),
+          accept: "text/event-stream",
+        },
+        signal: streamController.signal,
+      },
+    );
+  } catch (error) {
+    clearTimeout(idleTimer);
+    signal.removeEventListener("abort", abortStream);
+    throw error;
+  }
+
+  if (!response.ok) {
+    clearTimeout(idleTimer);
+    signal.removeEventListener("abort", abortStream);
+    throw new Error(
+      `OpenCode event stream failed: ${response.status} ${response.statusText}`,
+    );
+  }
+  if (!response.body) {
+    clearTimeout(idleTimer);
+    signal.removeEventListener("abort", abortStream);
+    throw new Error("OpenCode event stream response has no body");
+  }
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
   onConnected?.();
 
-  for await (const streamedEvent of subscription.stream) {
-    if (signal.aborted) break;
+  try {
+    while (!signal.aborted) {
+      const { done, value } = await reader.read();
+      if (done) break;
 
-    const event = getStreamEventPayload(streamedEvent);
-    if (event) onEvent(event);
+      resetIdleTimer();
+      buffer += decoder.decode(value, { stream: true });
+      // Accept both LF and CRLF framing. Keeping an incomplete final event in
+      // the buffer lets the next network chunk finish it.
+      buffer = buffer.replace(/\r\n/g, "\n");
+
+      let boundary = buffer.indexOf("\n\n");
+      while (boundary !== -1) {
+        const block = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        const streamedEvent = parseServerSentEvent(block);
+        const event = getStreamEventPayload(streamedEvent);
+        if (event) onEvent(event);
+        boundary = buffer.indexOf("\n\n");
+      }
+    }
+  } finally {
+    clearTimeout(idleTimer);
+    signal.removeEventListener("abort", abortStream);
+    streamController.abort();
+    try {
+      await reader.cancel();
+    } catch {
+      // The fetch may already have closed or been aborted.
+    }
+    reader.releaseLock();
+  }
+}
+
+function parseServerSentEvent(block: string): unknown {
+  const data = block
+    .split("\n")
+    .filter((line) => line.startsWith("data:"))
+    .map((line) => line.replace(/^data:\s?/, ""))
+    .join("\n");
+
+  if (!data) return undefined;
+
+  try {
+    return JSON.parse(data) as unknown;
+  } catch {
+    return data;
   }
 }
 
