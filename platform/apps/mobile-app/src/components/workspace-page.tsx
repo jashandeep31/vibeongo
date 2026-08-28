@@ -65,15 +65,6 @@ export function WorkspacePage() {
     [router],
   );
 
-  const setSettledView = useCallback(
-    (nextView: WorkspaceView) => {
-      activeViewRef.current = nextView;
-      setActiveView(nextView);
-      commitView(nextView);
-    },
-    [commitView],
-  );
-
   const selectView = useCallback(
     (nextView: WorkspaceView) => {
       activeViewRef.current = nextView;
@@ -225,24 +216,12 @@ export function WorkspacePage() {
           {({ topInset }) => (
             <View style={[styles.screen, { paddingTop: topInset }]}>
               <Animated.ScrollView
-                bounces={false}
                 contentOffset={{ x: initialView === "chats" ? 0 : width, y: 0 }}
-                decelerationRate="fast"
                 horizontal
                 keyboardShouldPersistTaps="handled"
-                onMomentumScrollEnd={(event) => {
-                  const page = Math.round(
-                    event.nativeEvent.contentOffset.x / width,
-                  );
-                  setSettledView(page === 0 ? "chats" : "projects");
-                }}
                 onScroll={scrollHandler}
-                onScrollBeginDrag={(event) => {
-                  cancelAnimation(animatedScrollX);
-                  animatedScrollX.value = event.nativeEvent.contentOffset.x;
-                }}
-                pagingEnabled
                 ref={pagerRef}
+                scrollEnabled={false}
                 scrollEventThrottle={16}
                 showsHorizontalScrollIndicator={false}
                 style={styles.pager}
@@ -355,12 +334,12 @@ const styles = StyleSheet.create({
   page: {
     flex: 1,
     paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingTop: 4,
   },
   chatPage: {
     flex: 1,
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 4,
   },
   pageLabel: {
     fontSize: 16,
