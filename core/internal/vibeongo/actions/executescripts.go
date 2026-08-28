@@ -126,63 +126,23 @@ func ExecuteDevScript() error {
 	parts := re.Split(cfg.DevScript, -1)
 
 	_ = utils.KilltmuxSession("dev")
-	err = utils.StartTmuxSession("dev", "/home/ubuntu/code")
-	if err != nil {
-		return err
-	}
+	sessionStarted := false
 
 	for i, part := range parts {
 		if strings.TrimSpace(part) == "" {
 			continue
 		}
 
-		tempScriptFile, err := os.CreateTemp("", "temp-*.sh")
-		if err != nil {
-			return err
+		if !sessionStarted {
+			if err := utils.StartTmuxSession("dev", "/home/ubuntu/code", part); err != nil {
+				return err
+			}
+			sessionStarted = true
+			continue
 		}
 
-		if _, err := tempScriptFile.Write([]byte(part)); err != nil {
-			tempScriptFile.Close()
-			os.Remove(tempScriptFile.Name())
-			return err
-		}
-
-		if err := tempScriptFile.Close(); err != nil {
-			os.Remove(tempScriptFile.Name())
-			return err
-		}
-
-		if err := os.Chmod(tempScriptFile.Name(), 0o755); err != nil {
-			os.Remove(tempScriptFile.Name())
-			return err
-		}
-		createWindow := exec.Command(
-			"tmux", "new-window",
-			"-d",
-			"-P",
-			"-F", "#{pane_id}",
-			"-t", "dev:",
-			"-n", fmt.Sprintf("task-%d", i),
-			"bash", "-il",
-		)
-		output, err := createWindow.CombinedOutput()
-		if err != nil {
-			os.Remove(tempScriptFile.Name())
-			return fmt.Errorf("create tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
-		}
-
-		paneID := strings.TrimSpace(string(output))
-		runScript := fmt.Sprintf(
-			`script=%q; source "$script"; status=$?; rm -f "$script"; printf '\nDev script exited with status %%d\n' "$status"`,
-			tempScriptFile.Name(),
-		)
-		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "-l", runScript).CombinedOutput(); err != nil {
-			os.Remove(tempScriptFile.Name())
-			return fmt.Errorf("send dev script to tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
-		}
-		if output, err := exec.Command("tmux", "send-keys", "-t", paneID, "Enter").CombinedOutput(); err != nil {
-			os.Remove(tempScriptFile.Name())
-			return fmt.Errorf("start dev script in tmux window task-%d: %w: %s", i, err, strings.TrimSpace(string(output)))
+		if err := utils.RunCommandInTmuxSessionInDir("dev", "/home/ubuntu/code", part); err != nil {
+			return fmt.Errorf("run dev script in tmux window task-%d: %w", i, err)
 		}
 	}
 

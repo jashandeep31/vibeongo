@@ -49,11 +49,6 @@ func MarkTask(cmd *cobra.Command, args []string) error {
 func ExecuteTasks(cfg config.Config) error {
 	fmt.Println("Working on tasks")
 	utils.KilltmuxSession("tasks")
-	// starting the tmux session
-	err := utils.StartTmuxSession("tasks", "/home/ubuntu/code")
-	if err != nil {
-		return nil
-	}
 
 	var tmuxScript strings.Builder
 	tmuxScript.WriteString("#!/usr/bin/env bash\n")
@@ -90,8 +85,7 @@ func ExecuteTasks(cfg config.Config) error {
 		fmt.Fprintf(&tmuxScript, "vibeongo terminate\n\n")
 	}
 	fmt.Println(tmuxScript.String())
-	err = utils.RunScriptInTmuxSession("tasks", tmuxScript.String())
-	if err != nil {
+	if err := utils.StartTmuxSession("tasks", "/home/ubuntu/code", tmuxScript.String()); err != nil {
 		return err
 	}
 
