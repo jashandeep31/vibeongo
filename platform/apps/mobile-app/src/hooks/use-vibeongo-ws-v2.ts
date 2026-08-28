@@ -16,7 +16,13 @@ export type TmuxWindow = { id: string; name: string; panes: TmuxPane[] };
 export type TmuxSession = { name: string; windows: TmuxWindow[] };
 export type FavoriteDir = { name: string; path: string };
 export type VibeongoTerminalSession =
-  | { id: string; kind: "shell"; name: string; workingDirectory: string }
+  | {
+      id: string;
+      kind: "shell";
+      name: string;
+      workingDirectory: string;
+      buffer?: string;
+    }
   | {
       id: string;
       kind: "tmux";
@@ -24,6 +30,7 @@ export type VibeongoTerminalSession =
       tmuxSessionName: string;
       tmuxWindowId: string;
       tmuxWindowName: string;
+      buffer?: string;
     };
 
 type VibeongoWsV2Message = {
@@ -336,6 +343,7 @@ function parseTerminalSessions(
     if (session.kind === "shell") {
       if (typeof session.workingDirectory !== "string") return null;
       sessions.push({
+        buffer: typeof session.buffer === "string" ? session.buffer : "",
         id: session.id,
         kind: "shell",
         name: session.name,
@@ -352,6 +360,7 @@ function parseTerminalSessions(
       return null;
     }
     sessions.push({
+      buffer: typeof session.buffer === "string" ? session.buffer : "",
       id: session.id,
       kind: "tmux",
       name: session.name,

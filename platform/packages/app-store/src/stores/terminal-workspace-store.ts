@@ -23,6 +23,7 @@ export type TerminalSessionSummary =
       kind: "shell";
       name: string;
       workingDirectory: string;
+      buffer?: string;
     }
   | {
       id: string;
@@ -31,6 +32,7 @@ export type TerminalSessionSummary =
       tmuxSessionName: string;
       tmuxWindowId: string;
       tmuxWindowName: string;
+      buffer?: string;
     };
 
 export type TerminalWorkspaceSnapshot = {

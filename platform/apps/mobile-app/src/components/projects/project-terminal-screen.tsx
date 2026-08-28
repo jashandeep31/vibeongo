@@ -7,7 +7,7 @@ import {
 } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -27,6 +27,9 @@ import {
   usePageTitleScrollFade,
 } from "@/components/page-chrome";
 import { ProjectTerminalDirectoryDrawer } from "@/components/projects/project-terminal-directory-drawer";
+import ProjectTerminalDom, {
+  type ProjectTerminalDomRef,
+} from "@/components/projects/project-terminal.dom";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
@@ -36,6 +39,16 @@ import {
   killVibeongoTerminalSession,
   type TmuxSession,
 } from "@/hooks/use-vibeongo-ws-v2";
+
+const TERMINAL_PREVIEW_DOM_PROPS: import("expo/dom").DOMProps = {
+  bounces: false,
+  contentInsetAdjustmentBehavior: "never",
+  overScrollMode: "never",
+  scrollEnabled: false,
+};
+
+const TERMINAL_PREVIEW_BRIDGE_DELAY_MS = 250;
+const ignoreTerminalEvent = () => Promise.resolve();
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -306,113 +319,21 @@ export function ProjectTerminalScreen() {
                 </View>
               </Pressable>
 
-              {terminalWorkspace.terminalSessions.map((terminalSession) => {
-                const terminalId = terminalSession.id;
-                const isActive =
-                  terminalId === terminalWorkspace.activeTerminalSessionId;
-                const terminalLabel = getTerminalLabel(terminalSession);
-                const terminalAction =
-                  terminalSession.kind === "tmux" ? "Detach" : "Kill";
-                return (
-                  <Pressable
-                    accessibilityLabel={`Open ${terminalLabel}`}
-                    accessibilityRole="button"
-                    key={terminalId}
-                    onPress={() => openTerminal(terminalId)}
-                    style={({ pressed }) => [
-                      styles.terminalCard,
-                      { height: terminalCardSize, width: terminalCardSize },
-                      {
-                        backgroundColor: theme.backgroundElement,
-                        borderColor: isActive
-                          ? "rgba(16, 185, 129, 0.55)"
-                          : theme.backgroundSelected,
-                      },
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <View style={styles.terminalCardTop}>
-                      <View
-                        style={[
-                          styles.iconTile,
-                          { backgroundColor: theme.backgroundSelected },
-                        ]}
-                      >
-                        <SymbolView
-                          name={{
-                            ios: "apple.terminal",
-                            android: "terminal",
-                          }}
-                          size={17}
-                          tintColor={theme.text}
-                        />
-                      </View>
-                      <View style={styles.terminalCardActions}>
-                        {isActive ? (
-                          <View style={styles.activeBadge}>
-                            <View style={styles.activeDot} />
-                            <ThemedText style={styles.activeLabel}>
-                              Active
-                            </ThemedText>
-                          </View>
-                        ) : null}
-                        <Pressable
-                          accessibilityLabel={`${terminalAction} ${terminalLabel}`}
-                          accessibilityRole="button"
-                          disabled={Boolean(killingTerminalId)}
-                          hitSlop={8}
-                          onPress={(event) => {
-                            event.stopPropagation();
-                            setTerminalPendingKill({
-                              id: terminalId,
-                              label: terminalLabel,
-                            });
-                          }}
-                          style={({ pressed }) => [
-                            styles.killButton,
-                            { backgroundColor: theme.backgroundSelected },
-                            pressed && styles.pressed,
-                          ]}
-                        >
-                          {killingTerminalId === terminalId ? (
-                            <ActivityIndicator color="#ef4444" size="small" />
-                          ) : (
-                            <SymbolView
-                              name={{ ios: "trash", android: "delete" }}
-                              size={15}
-                              tintColor="#ef4444"
-                            />
-                          )}
-                        </Pressable>
-                      </View>
-                    </View>
-                    <View style={styles.cardFooter}>
-                      <View style={styles.cardCopy}>
-                        <ThemedText style={styles.cardTitle}>
-                          {terminalLabel}
-                        </ThemedText>
-                        <ThemedText
-                          numberOfLines={1}
-                          style={[
-                            styles.identifier,
-                            { color: theme.textSecondary },
-                          ]}
-                        >
-                          {terminalId}
-                        </ThemedText>
-                      </View>
-                      <SymbolView
-                        name={{
-                          ios: "chevron.right",
-                          android: "chevron_right",
-                        }}
-                        size={16}
-                        tintColor={theme.textSecondary}
-                      />
-                    </View>
-                  </Pressable>
-                );
-              })}
+              {terminalWorkspace.terminalSessions.map((terminalSession) => (
+                <TerminalSessionCard
+                  cardSize={terminalCardSize}
+                  isKilling={killingTerminalId === terminalSession.id}
+                  key={terminalSession.id}
+                  onDelete={() =>
+                    setTerminalPendingKill({
+                      id: terminalSession.id,
+                      label: getTerminalLabel(terminalSession),
+                    })
+                  }
+                  onOpen={() => openTerminal(terminalSession.id)}
+                  session={terminalSession}
+                />
+              ))}
             </View>
 
             <View style={styles.tmuxSection}>
@@ -483,6 +404,101 @@ export function ProjectTerminalScreen() {
         visible={terminalPendingKill !== null}
       />
     </SafeAreaView>
+  );
+}
+
+function TerminalSessionCard({
+  cardSize,
+  isKilling,
+  onDelete,
+  onOpen,
+  session,
+}: {
+  cardSize: number;
+  isKilling: boolean;
+  onDelete: () => void;
+  onOpen: () => void;
+  session: TerminalSessionSummary;
+}) {
+  const terminalRef = useRef<ProjectTerminalDomRef>(null);
+  const [terminalReady, setTerminalReady] = useState(false);
+
+  useEffect(() => {
+    if (!terminalReady) return;
+    const bridgeReadyTimer = setTimeout(() => {
+      terminalRef.current?.replace(session.buffer ?? "");
+    }, TERMINAL_PREVIEW_BRIDGE_DELAY_MS);
+    return () => clearTimeout(bridgeReadyTimer);
+  }, [session.buffer, terminalReady]);
+
+  const markTerminalReady = useCallback(async () => {
+    setTerminalReady(true);
+  }, []);
+  const terminalAction = session.kind === "tmux" ? "Detach" : "Kill";
+
+  return (
+    <Pressable
+      accessibilityLabel={`Open ${session.name}`}
+      accessibilityRole="button"
+      onPress={onOpen}
+      style={({ pressed }) => [
+        styles.terminalCard,
+        { height: cardSize, width: cardSize },
+        pressed && styles.pressed,
+      ]}
+    >
+      <View
+        accessibilityElementsHidden
+        importantForAccessibility="no-hide-descendants"
+        pointerEvents="none"
+        style={styles.terminalPreview}
+      >
+        <ProjectTerminalDom
+          dom={TERMINAL_PREVIEW_DOM_PROPS}
+          onInput={ignoreTerminalEvent}
+          onReady={markTerminalReady}
+          onResize={ignoreTerminalEvent}
+          preview
+          ref={terminalRef}
+          terminalTheme={{
+            background: "#000000",
+            cursor: "#f8f8f2",
+            foreground: "#f8f8f2",
+            selectionBackground: "#47556999",
+          }}
+        />
+      </View>
+      <View pointerEvents="none" style={styles.terminalCardShade} />
+      <Pressable
+        accessibilityLabel={`${terminalAction} ${session.name}`}
+        accessibilityRole="button"
+        disabled={isKilling}
+        hitSlop={8}
+        onPress={(event) => {
+          event.stopPropagation();
+          onDelete();
+        }}
+        style={({ pressed }) => [
+          styles.terminalCardDelete,
+          pressed && styles.pressed,
+        ]}
+      >
+        {isKilling ? (
+          <ActivityIndicator color="#f87171" size="small" />
+        ) : (
+          <SymbolView
+            name={{ ios: "trash", android: "delete" }}
+            size={13}
+            tintColor="#f87171"
+          />
+        )}
+      </Pressable>
+      <View pointerEvents="none" style={styles.terminalCardNameLayer}>
+        <ThemedText numberOfLines={1} style={styles.terminalCardName}>
+          {session.name}
+        </ThemedText>
+      </View>
+    </Pressable>
   );
 }
 
@@ -582,21 +598,6 @@ function TmuxSessionCard({
                 {window.name}
               </ThemedText>
             </View>
-            <View style={styles.panes}>
-              {window.panes.map((pane) => (
-                <View
-                  key={`${session.name}-${window.name}-${pane.name}`}
-                  style={[
-                    styles.paneBadge,
-                    { backgroundColor: theme.backgroundElement },
-                  ]}
-                >
-                  <ThemedText style={styles.paneText}>
-                    Pane {pane.name}
-                  </ThemedText>
-                </View>
-              ))}
-            </View>
           </Pressable>
         ))
       ) : (
@@ -659,28 +660,6 @@ function TerminalStateScreen({
 }
 
 const styles = StyleSheet.create({
-  activeBadge: {
-    alignItems: "center",
-    backgroundColor: "rgba(16, 185, 129, 0.12)",
-    borderRadius: 10,
-    flexDirection: "row",
-    gap: 5,
-    paddingHorizontal: 7,
-    paddingVertical: 4,
-  },
-  activeDot: {
-    backgroundColor: "#10b981",
-    borderRadius: 3,
-    height: 6,
-    width: 6,
-  },
-  activeLabel: { color: "#10b981", fontSize: 10, fontWeight: "700" },
-  cardCopy: { flex: 1, minWidth: 0 },
-  cardFooter: {
-    alignItems: "flex-end",
-    flexDirection: "row",
-    gap: 8,
-  },
   cardTitle: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
   content: {
     alignSelf: "center",
@@ -718,21 +697,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 44,
   },
-  iconTile: {
-    alignItems: "center",
-    borderRadius: 8,
-    height: 34,
-    justifyContent: "center",
-    width: 34,
-  },
-  identifier: { fontFamily: Fonts.mono, fontSize: 11, lineHeight: 16 },
-  killButton: {
-    alignItems: "center",
-    borderRadius: 8,
-    height: 30,
-    justifyContent: "center",
-    width: 30,
-  },
   newSessionCard: {
     borderRadius: 14,
     borderStyle: "dashed",
@@ -749,9 +713,6 @@ const styles = StyleSheet.create({
     width: 34,
   },
   noWindows: { fontSize: 13, padding: 16 },
-  paneBadge: { borderRadius: 6, paddingHorizontal: 9, paddingVertical: 5 },
-  panes: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
-  paneText: { fontFamily: Fonts.mono, fontSize: 11, lineHeight: 15 },
   pressed: { opacity: 0.65 },
   screen: { flex: 1 },
   sectionHeading: {
@@ -779,20 +740,53 @@ const styles = StyleSheet.create({
   stateText: { textAlign: "center" },
   statusDot: { borderRadius: 5, height: 9, marginRight: 8, width: 9 },
   terminalCard: {
+    backgroundColor: "#000000",
+    borderColor: "rgba(255, 255, 255, 0.2)",
     borderRadius: 14,
-    borderWidth: StyleSheet.hairlineWidth,
-    justifyContent: "space-between",
-    padding: 15,
+    borderWidth: 1,
+    overflow: "hidden",
   },
-  terminalCardTop: {
-    alignItems: "flex-start",
-    flexDirection: "row",
-    justifyContent: "space-between",
-  },
-  terminalCardActions: {
+  terminalCardDelete: {
     alignItems: "center",
-    flexDirection: "row",
-    gap: 6,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    borderRadius: 7,
+    height: 27,
+    justifyContent: "center",
+    position: "absolute",
+    right: 7,
+    top: 7,
+    width: 27,
+  },
+  terminalCardName: {
+    color: "#f3f4f6",
+    fontFamily: Fonts.mono,
+    fontSize: 11,
+    fontWeight: "700",
+    lineHeight: 14,
+  },
+  terminalCardNameLayer: {
+    bottom: 0,
+    left: 0,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    position: "absolute",
+    right: 0,
+  },
+  terminalCardShade: {
+    backgroundColor: "rgba(0, 0, 0, 0.4)",
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  terminalPreview: {
+    backgroundColor: "#000000",
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
   },
   terminalGrid: { flexDirection: "row", flexWrap: "wrap", gap: 12 },
   title: { flex: 1, fontSize: 14, fontWeight: "700" },

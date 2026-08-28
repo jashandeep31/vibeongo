@@ -43,8 +43,11 @@ const (
 	TerminalSessionKindTmux  TerminalSessionKind = "tmux"
 )
 
-// TerminalSessionDescriptor is the backend-owned identity published to every
-// workspace client. It contains no PTY or process implementation details.
+const terminalPreviewBufferLimit = 12_000
+
+// TerminalSessionDescriptor is the backend-owned identity and bounded output
+// preview published to every workspace client. It contains no PTY or process
+// implementation details.
 type TerminalSessionDescriptor struct {
 	ID               string              `json:"id"`
 	Name             string              `json:"name"`
@@ -53,6 +56,7 @@ type TerminalSessionDescriptor struct {
 	TmuxSessionName  string              `json:"tmuxSessionName,omitempty"`
 	TmuxWindowID     string              `json:"tmuxWindowId,omitempty"`
 	TmuxWindowName   string              `json:"tmuxWindowName,omitempty"`
+	Buffer           string              `json:"buffer,omitempty"`
 }
 
 var ErrTerminalSessionNotFound = errors.New("terminal session not found")
@@ -104,6 +108,12 @@ func (s *SessionsStore) GetTerminalSessions() []TerminalSessionDescriptor {
 }
 
 func (s *TerminalSession) descriptor() TerminalSessionDescriptor {
+	s.Mu.Lock()
+	defer s.Mu.Unlock()
+	buffer := s.Buffer
+	if len(buffer) > terminalPreviewBufferLimit {
+		buffer = buffer[len(buffer)-terminalPreviewBufferLimit:]
+	}
 	return TerminalSessionDescriptor{
 		ID:               s.ID,
 		Name:             s.Name,
@@ -112,6 +122,7 @@ func (s *TerminalSession) descriptor() TerminalSessionDescriptor {
 		TmuxSessionName:  s.TmuxSessionName,
 		TmuxWindowID:     s.TmuxWindowID,
 		TmuxWindowName:   s.TmuxWindowName,
+		Buffer:           string(buffer),
 	}
 }
 
@@ -147,7 +158,10 @@ func (s *SessionsStore) AttachTmuxTerminalSession(sessionName, windowID string) 
 
 	metadataTarget := windowTarget
 	if metadataTarget == "" {
-		metadataTarget = sessionTarget
+		// An empty window component resolves to the session's current window.
+		// display-message needs a window/pane target to populate window_id and
+		// window_name; a bare session target can leave both formats empty.
+		metadataTarget = sessionTarget + ":"
 	}
 	windowOutput, err := exec.Command(
 		"tmux", "display-message", "-p", "-t", metadataTarget,

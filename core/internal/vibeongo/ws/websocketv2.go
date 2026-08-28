@@ -164,7 +164,7 @@ func handleFavoriteDirsList(conn *websocket.Conn, writeMu *sync.Mutex, stop <-ch
 		return err
 	}
 
-	ticker := time.NewTicker(time.Second)
+	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
 	for {

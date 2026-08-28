@@ -36,10 +36,13 @@ const DEFAULT_TERMINAL_THEME: TerminalTheme = {
   selectionBackground: "#47556999",
 };
 
+const PREVIEW_SURFACE_SIZE = 500;
+
 export default function ProjectTerminalDom({
   onInput,
   onReady,
   onResize,
+  preview = false,
   ref,
   terminalTheme,
 }: {
@@ -47,11 +50,14 @@ export default function ProjectTerminalDom({
   onInput: (data: string) => Promise<void>;
   onReady: () => Promise<void>;
   onResize: (rows: number, cols: number) => Promise<void>;
+  preview?: boolean;
   ref: unknown;
   terminalTheme?: TerminalTheme;
 }) {
   const resolvedTerminalTheme = terminalTheme ?? DEFAULT_TERMINAL_THEME;
   const hostRef = useRef<HTMLDivElement>(null);
+  const surfaceRef = useRef<HTMLDivElement>(null);
+  const viewportRef = useRef<HTMLElement>(null);
   const isDrainingRef = useRef(false);
   const inputEnabledRef = useRef(false);
   const isReplayingRef = useRef(false);
@@ -174,17 +180,25 @@ export default function ProjectTerminalDom({
 
   useEffect(() => {
     const host = hostRef.current;
-    if (!host) return;
+    const surface = surfaceRef.current;
+    const viewport = viewportRef.current;
+    if (!host || !surface || !viewport) return;
 
     const terminal = new Terminal({
       allowProposedApi: false,
       convertEol: false,
-      cursorBlink: true,
+      cursorBlink: !preview,
       cursorStyle: "bar",
       fontFamily:
         'ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace',
-      fontSize: 13,
-      scrollback: 5_000,
+      ...(preview
+        ? {
+            fontSize: 12,
+            letterSpacing: 1,
+            lineHeight: 1,
+            scrollback: 500,
+          }
+        : { fontSize: 13, scrollback: 5_000 }),
       theme: terminalThemeRef.current,
     });
     const fitAddon = new FitAddon();
@@ -207,16 +221,40 @@ export default function ProjectTerminalDom({
     let lastRows = 0;
     let lastCols = 0;
     const fit = () => {
-      if (!host.clientWidth || !host.clientHeight) return;
+      if (!host.clientWidth || !host.clientHeight) {
+        return;
+      }
+      if (preview) {
+        surface.style.left = "0";
+        surface.style.top = "0";
+        surface.style.transform = "none";
+      }
       try {
         fitAddon.fit();
       } catch {
         return;
       }
+      if (preview) {
+        const scale = Math.min(
+          viewport.clientWidth / PREVIEW_SURFACE_SIZE,
+          viewport.clientHeight / PREVIEW_SURFACE_SIZE,
+        );
+        surface.style.left = `${Math.max(
+          0,
+          (viewport.clientWidth - PREVIEW_SURFACE_SIZE * scale) / 2,
+        )}px`;
+        surface.style.top = `${Math.max(
+          0,
+          (viewport.clientHeight - PREVIEW_SURFACE_SIZE * scale) / 2,
+        )}px`;
+        surface.style.transform = `scale(${scale})`;
+      }
       if (terminal.rows === lastRows && terminal.cols === lastCols) return;
       lastRows = terminal.rows;
       lastCols = terminal.cols;
-      void onResizeRef.current(terminal.rows, terminal.cols);
+      if (!preview) {
+        void onResizeRef.current(terminal.rows, terminal.cols);
+      }
     };
     const scheduleFit = () => {
       cancelAnimationFrame(fitFrame);
@@ -266,7 +304,7 @@ export default function ProjectTerminalDom({
       panLastY = null;
       panRemainder = 0;
     };
-    resizeObserver.observe(host);
+    resizeObserver.observe(preview ? viewport : host);
     window.addEventListener("resize", scheduleFit);
     host.addEventListener("pointerdown", focusTerminal);
     host.addEventListener("touchstart", startPan, {
@@ -280,7 +318,7 @@ export default function ProjectTerminalDom({
     host.addEventListener("touchend", endPan, true);
     host.addEventListener("touchcancel", endPan, true);
     scheduleFit();
-    terminal.focus();
+    if (!preview) terminal.focus();
     void onReadyRef.current();
 
     return () => {
@@ -300,7 +338,7 @@ export default function ProjectTerminalDom({
       terminalRef.current = null;
       refitTerminalRef.current = () => {};
     };
-  }, []);
+  }, [preview]);
 
   useEffect(() => {
     if (terminalRef.current) {
@@ -309,17 +347,27 @@ export default function ProjectTerminalDom({
   }, [resolvedTerminalTheme]);
 
   return (
-    <main>
+    <main className={preview ? "preview" : undefined} ref={viewportRef}>
       <style>{`
         * { box-sizing: border-box; }
-        html, body, #root, main, #terminal-host {
+        html, body, #root, main, #terminal-surface, #terminal-host {
           width: 100%;
           height: 100%;
           margin: 0;
           overflow: hidden;
           background: ${resolvedTerminalTheme.background};
         }
-        main { padding: 8px 4px 4px; }
+        main {
+          padding: ${preview ? "0" : "8px 4px 4px"};
+          position: relative;
+        }
+        #terminal-surface { position: relative; }
+        main.preview #terminal-surface {
+          height: ${PREVIEW_SURFACE_SIZE}px;
+          position: absolute;
+          transform-origin: top left;
+          width: ${PREVIEW_SURFACE_SIZE}px;
+        }
         #terminal-host .xterm,
         #terminal-host .xterm-screen,
         #terminal-host .xterm-viewport {
@@ -340,7 +388,9 @@ export default function ProjectTerminalDom({
         #terminal-host.pan-mode { cursor: grab; touch-action: none; }
         #terminal-host.pan-mode:active { cursor: grabbing; }
       `}</style>
-      <div aria-label="Terminal" id="terminal-host" ref={hostRef} />
+      <div id="terminal-surface" ref={surfaceRef}>
+        <div aria-label="Terminal" id="terminal-host" ref={hostRef} />
+      </div>
     </main>
   );
 }
