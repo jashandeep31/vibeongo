@@ -131,4 +131,78 @@ BASE_URL=http://localhost:3000
       },
     ],
   },
+  {
+    reponame: "brandmyphone-oss",
+    ownername: "jashandeep31",
+    description: "Next.js phone sticker sponsorship application.",
+    tags: ["Next.js", "TypeScript", "Sponsorship"],
+    project: {
+      name: "brandmyphone-oss",
+      description: "Next.js phone sticker sponsorship application.",
+      initialScript: "",
+      finalScript: `cd /home/ubuntu/code/brandmyphone-oss
+npm install`,
+      devScript: `cd /home/ubuntu/code/brandmyphone-oss
+npm run dev -- --hostname 0.0.0.0`,
+      config: {
+        ports: [{ port: 3000, protocol: "TCP" }],
+        packages: [
+          {
+            name: "docker",
+            config: { containers: [] },
+          },
+          {
+            name: "opencode",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+              model: "default",
+              requirePassword: false,
+            },
+          },
+          {
+            name: "codex",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "pi",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+        ],
+      },
+    },
+    files: [
+      {
+        name: ".env.local",
+        path: "/brandmyphone-oss/.env.local",
+        content: `NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_POSTHOG_KEY=
+NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
+CLOUDFLARE_API_TOKEN=
+CLOUDFLARE_ACCOUNT_ID=
+DODO_PAYMENTS_API_KEY=
+DODO_PAYMENTS_WEBHOOK_KEY=
+DODO_PAYMENTS_ENVIRONMENT=test_mode
+DODO_PRODUCT_ID=
+POSTHOG_PERSONAL_API_KEY=
+POSTHOG_PROJECT_ID=
+POSTHOG_HOST=https://us.i.posthog.com
+CRON_SECRET=
+`,
+      },
+    ],
+  },
 ] as const;
