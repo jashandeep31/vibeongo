@@ -1,5 +1,6 @@
 import {
   EMPTY_TERMINAL_WORKSPACE,
+  type TerminalSessionSummary,
   useProjectsStore,
   useSessionsStore,
   useTerminalWorkspaceStore,
@@ -30,6 +31,7 @@ import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import {
+  attachVibeongoTmuxTerminalSession,
   createVibeongoTerminalSession,
   killVibeongoTerminalSession,
   type TmuxSession,
@@ -45,6 +47,10 @@ function getLocalToken(config: unknown) {
   return typeof value === "string" ? value : "";
 }
 
+function getTerminalLabel(session: TerminalSessionSummary) {
+  return session.name;
+}
+
 export function ProjectTerminalScreen() {
   const router = useRouter();
   const theme = useTheme();
@@ -58,6 +64,7 @@ export function ProjectTerminalScreen() {
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
+  const [attachingTmuxTarget, setAttachingTmuxTarget] = useState("");
   const [directoryDrawerVisible, setDirectoryDrawerVisible] = useState(false);
   const [killingTerminalId, setKillingTerminalId] = useState("");
   const [terminalPendingKill, setTerminalPendingKill] = useState<{
@@ -97,7 +104,7 @@ export function ProjectTerminalScreen() {
   };
 
   const addTerminalSession = async (workingDirectory?: string) => {
-    if (isCreatingTerminal) return;
+    if (isCreatingTerminal || attachingTmuxTarget) return;
     setDirectoryDrawerVisible(false);
     setIsCreatingTerminal(true);
     try {
@@ -115,6 +122,34 @@ export function ProjectTerminalScreen() {
       );
     } finally {
       setIsCreatingTerminal(false);
+    }
+  };
+
+  const attachTmuxTerminal = async (
+    tmuxSessionName: string,
+    tmuxWindowId?: string,
+  ) => {
+    if (isCreatingTerminal || attachingTmuxTarget) return;
+    const target = tmuxWindowId
+      ? `${tmuxSessionName}:${tmuxWindowId}`
+      : tmuxSessionName;
+    setAttachingTmuxTarget(target);
+    try {
+      const terminalId = await attachVibeongoTmuxTerminalSession({
+        accessToken: runtime.accessToken,
+        localToken,
+        runtimeUrl,
+        tmuxSessionName,
+        tmuxWindowId,
+      });
+      openTerminal(terminalId);
+    } catch (error) {
+      Alert.alert(
+        "Could not attach to tmux",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setAttachingTmuxTarget("");
     }
   };
 
@@ -182,6 +217,9 @@ export function ProjectTerminalScreen() {
       : terminalWorkspace.status === "connecting"
         ? "#f59e0b"
         : "#ef4444";
+  const pendingTerminalSession = terminalWorkspace.terminalSessions.find(
+    (session) => session.id === terminalPendingKill?.id,
+  );
 
   return (
     <SafeAreaView
@@ -227,7 +265,7 @@ export function ProjectTerminalScreen() {
               <Pressable
                 accessibilityLabel="New terminal session"
                 accessibilityRole="button"
-                disabled={isCreatingTerminal}
+                disabled={Boolean(isCreatingTerminal || attachingTmuxTarget)}
                 onPress={() => setDirectoryDrawerVisible(true)}
                 style={({ pressed }) => [
                   styles.newSessionCard,
@@ -236,7 +274,8 @@ export function ProjectTerminalScreen() {
                     backgroundColor: theme.backgroundElement,
                     borderColor: theme.backgroundSelected,
                   },
-                  isCreatingTerminal && styles.disabled,
+                  Boolean(isCreatingTerminal || attachingTmuxTarget) &&
+                    styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
@@ -267,13 +306,16 @@ export function ProjectTerminalScreen() {
                 </View>
               </Pressable>
 
-              {terminalWorkspace.terminalSessionIds.map((terminalId, index) => {
+              {terminalWorkspace.terminalSessions.map((terminalSession) => {
+                const terminalId = terminalSession.id;
                 const isActive =
                   terminalId === terminalWorkspace.activeTerminalSessionId;
-                const terminalLabel = `Terminal ${index + 1}`;
+                const terminalLabel = getTerminalLabel(terminalSession);
+                const terminalAction =
+                  terminalSession.kind === "tmux" ? "Detach" : "Kill";
                 return (
                   <Pressable
-                    accessibilityLabel={`Open Terminal ${index + 1}`}
+                    accessibilityLabel={`Open ${terminalLabel}`}
                     accessibilityRole="button"
                     key={terminalId}
                     onPress={() => openTerminal(terminalId)}
@@ -297,7 +339,10 @@ export function ProjectTerminalScreen() {
                         ]}
                       >
                         <SymbolView
-                          name={{ ios: "apple.terminal", android: "terminal" }}
+                          name={{
+                            ios: "apple.terminal",
+                            android: "terminal",
+                          }}
                           size={17}
                           tintColor={theme.text}
                         />
@@ -312,7 +357,7 @@ export function ProjectTerminalScreen() {
                           </View>
                         ) : null}
                         <Pressable
-                          accessibilityLabel={`Kill ${terminalLabel}`}
+                          accessibilityLabel={`${terminalAction} ${terminalLabel}`}
                           accessibilityRole="button"
                           disabled={Boolean(killingTerminalId)}
                           hitSlop={8}
@@ -378,7 +423,17 @@ export function ProjectTerminalScreen() {
               {terminalWorkspace.tmuxSessions.length > 0 ? (
                 <View style={styles.tmuxList}>
                   {terminalWorkspace.tmuxSessions.map((session) => (
-                    <TmuxSessionCard key={session.name} session={session} />
+                    <TmuxSessionCard
+                      attachingTarget={attachingTmuxTarget}
+                      disabled={Boolean(
+                        isCreatingTerminal || attachingTmuxTarget,
+                      )}
+                      key={session.name}
+                      onAttach={(windowId) =>
+                        void attachTmuxTerminal(session.name, windowId)
+                      }
+                      session={session}
+                    />
                   ))}
                 </View>
               ) : (
@@ -396,7 +451,7 @@ export function ProjectTerminalScreen() {
       </PageChromeLayout>
       <ProjectTerminalDirectoryDrawer
         dirs={terminalWorkspace.favoriteDirs}
-        disabled={isCreatingTerminal}
+        disabled={Boolean(isCreatingTerminal || attachingTmuxTarget)}
         onClose={() => setDirectoryDrawerVisible(false)}
         onSelect={(workingDirectory) =>
           void addTerminalSession(workingDirectory)
@@ -404,8 +459,16 @@ export function ProjectTerminalScreen() {
         visible={directoryDrawerVisible}
       />
       <ConfirmationDrawer
-        confirmLabel="Kill terminal"
-        description="The shell and any running command in this terminal will be stopped."
+        confirmLabel={
+          pendingTerminalSession?.kind === "tmux"
+            ? "Detach terminal"
+            : "Kill terminal"
+        }
+        description={
+          pendingTerminalSession?.kind === "tmux"
+            ? "The web terminal will detach. The tmux session and its commands will keep running."
+            : "The shell and any running command in this terminal will be stopped."
+        }
         destructive
         isConfirming={Boolean(killingTerminalId)}
         onCancel={() => {
@@ -416,7 +479,7 @@ export function ProjectTerminalScreen() {
             void killTerminalSession(terminalPendingKill.id);
           }
         }}
-        title={`Kill ${terminalPendingKill?.label ?? "terminal"}?`}
+        title={`${pendingTerminalSession?.kind === "tmux" ? "Detach" : "Kill"} ${terminalPendingKill?.label ?? "terminal"}?`}
         visible={terminalPendingKill !== null}
       />
     </SafeAreaView>
@@ -443,50 +506,78 @@ function SectionHeading({ count, title }: { count: number; title: string }) {
   );
 }
 
-function TmuxSessionCard({ session }: { session: TmuxSession }) {
+function TmuxSessionCard({
+  attachingTarget,
+  disabled,
+  onAttach,
+  session,
+}: {
+  attachingTarget: string;
+  disabled: boolean;
+  onAttach: (windowId?: string) => void;
+  session: TmuxSession;
+}) {
   const theme = useTheme();
 
   return (
     <View style={[styles.tmuxCard, { borderColor: theme.backgroundSelected }]}>
-      <View
+      <Pressable
+        accessibilityLabel={`Attach to tmux session ${session.name}`}
+        accessibilityRole="button"
+        disabled={disabled}
+        onPress={() => onAttach()}
         style={[
           styles.tmuxHeader,
           {
             backgroundColor: theme.backgroundElement,
             borderBottomColor: theme.backgroundSelected,
           },
+          disabled && styles.disabled,
         ]}
       >
-        <SymbolView
-          name={{ ios: "apple.terminal", android: "terminal" }}
-          size={17}
-          tintColor={theme.textSecondary}
-        />
+        {attachingTarget === session.name ? (
+          <ActivityIndicator color={theme.textSecondary} size="small" />
+        ) : (
+          <SymbolView
+            name={{ ios: "apple.terminal", android: "terminal" }}
+            size={17}
+            tintColor={theme.textSecondary}
+          />
+        )}
         <ThemedText style={styles.tmuxName}>{session.name}</ThemedText>
         <ThemedText style={styles.windowCount} themeColor="textSecondary">
           {session.windows.length}{" "}
           {session.windows.length === 1 ? "window" : "windows"}
         </ThemedText>
-      </View>
+      </Pressable>
 
       {session.windows.length > 0 ? (
         session.windows.map((window, index) => (
-          <View
-            key={`${session.name}-${window.name}`}
+          <Pressable
+            accessibilityLabel={`Attach to ${session.name} window ${window.name}`}
+            accessibilityRole="button"
+            disabled={disabled}
+            key={`${session.name}-${window.id}`}
+            onPress={() => onAttach(window.id)}
             style={[
               styles.windowRow,
               index > 0 && {
                 borderTopColor: theme.backgroundSelected,
                 borderTopWidth: StyleSheet.hairlineWidth,
               },
+              disabled && styles.disabled,
             ]}
           >
             <View style={styles.windowNameRow}>
-              <SymbolView
-                name={{ ios: "chevron.right", android: "chevron_right" }}
-                size={15}
-                tintColor={theme.textSecondary}
-              />
+              {attachingTarget === `${session.name}:${window.id}` ? (
+                <ActivityIndicator color={theme.textSecondary} size="small" />
+              ) : (
+                <SymbolView
+                  name={{ ios: "chevron.right", android: "chevron_right" }}
+                  size={15}
+                  tintColor={theme.textSecondary}
+                />
+              )}
               <ThemedText numberOfLines={1} style={styles.windowName}>
                 {window.name}
               </ThemedText>
@@ -506,7 +597,7 @@ function TmuxSessionCard({ session }: { session: TmuxSession }) {
                 </View>
               ))}
             </View>
-          </View>
+          </Pressable>
         ))
       ) : (
         <ThemedText style={styles.noWindows} themeColor="textSecondary">

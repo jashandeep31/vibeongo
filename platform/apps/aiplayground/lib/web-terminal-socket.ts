@@ -85,10 +85,14 @@ export function createWebTerminalSocket({
   proxyToken,
   runtimeToken,
   runtimeUrl,
+  tmuxSessionName,
+  tmuxWindowId,
   workingDirectory,
 }: WebTerminalSocketTokens & {
   path: string;
   runtimeUrl: string;
+  tmuxSessionName?: string;
+  tmuxWindowId?: string;
   workingDirectory?: string;
 }) {
   const url = new URL(normalizeRuntimeUrl(runtimeUrl));
@@ -97,8 +101,19 @@ export function createWebTerminalSocket({
   url.searchParams.set("proxytoken", proxyToken);
   url.searchParams.set("vibeongoToken", runtimeToken);
   if (workingDirectory) url.searchParams.set("cwd", workingDirectory);
+  if (tmuxSessionName) url.searchParams.set("tmuxSession", tmuxSessionName);
+  if (tmuxWindowId) url.searchParams.set("tmuxWindow", tmuxWindowId);
   return new WebSocket(url);
 }
+
+type WebTerminalSessionRequest = {
+  accessToken: string;
+  localToken: string;
+  runtimeUrl: string;
+  tmuxSessionName?: string;
+  tmuxWindowId?: string;
+  workingDirectory?: string;
+};
 
 export async function createWebTerminalSession({
   accessToken,
@@ -111,6 +126,44 @@ export async function createWebTerminalSession({
   runtimeUrl: string;
   workingDirectory?: string;
 }) {
+  return requestWebTerminalSession({
+    accessToken,
+    localToken,
+    runtimeUrl,
+    workingDirectory,
+  });
+}
+
+export async function attachWebTmuxTerminalSession({
+  accessToken,
+  localToken,
+  runtimeUrl,
+  tmuxSessionName,
+  tmuxWindowId,
+}: {
+  accessToken: string;
+  localToken: string;
+  runtimeUrl: string;
+  tmuxSessionName: string;
+  tmuxWindowId?: string;
+}) {
+  return requestWebTerminalSession({
+    accessToken,
+    localToken,
+    runtimeUrl,
+    tmuxSessionName,
+    tmuxWindowId,
+  });
+}
+
+async function requestWebTerminalSession({
+  accessToken,
+  localToken,
+  runtimeUrl,
+  tmuxSessionName,
+  tmuxWindowId,
+  workingDirectory,
+}: WebTerminalSessionRequest) {
   const tokens = await requestWebTerminalSocketTokens({
     accessToken,
     localToken,
@@ -122,6 +175,8 @@ export async function createWebTerminalSession({
       ...tokens,
       path: "/v2/ws/terminal/new",
       runtimeUrl,
+      tmuxSessionName,
+      tmuxWindowId,
       workingDirectory,
     });
     let settled = false;
@@ -144,6 +199,14 @@ export async function createWebTerminalSession({
         const message = JSON.parse(event.data) as Record<string, unknown>;
         if (message.type === "session" && typeof message.id === "string") {
           finish({ id: message.id });
+        } else if (message.type === "error") {
+          finish({
+            error: new Error(
+              typeof message.error === "string"
+                ? message.error
+                : "Could not create terminal session",
+            ),
+          });
         }
       } catch {
         // Terminal output is irrelevant while creating the session.

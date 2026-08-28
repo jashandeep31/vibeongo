@@ -1,3 +1,7 @@
+import {
+  EMPTY_TERMINAL_WORKSPACE,
+  useTerminalWorkspaceStore,
+} from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -75,6 +79,14 @@ export function ProjectTerminalSessionScreen() {
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
   const terminalId = firstParam(params.terminalId);
+  const terminalWorkspace = useTerminalWorkspaceStore(
+    (store) => store.workspaces[projectSessionId] ?? EMPTY_TERMINAL_WORKSPACE,
+  );
+  const terminalSessionIndex = terminalWorkspace.terminalSessions.findIndex(
+    (session) => session.id === terminalId,
+  );
+  const terminalSession =
+    terminalWorkspace.terminalSessions[terminalSessionIndex];
   const runtime = useProjectRuntime(projectSessionId);
   const runtimeUrl = runtime.instance
     ? `https://3101-${runtime.instance.id}${runtime.instance.proxy_domain}`
@@ -325,8 +337,12 @@ export function ProjectTerminalSessionScreen() {
       : terminal.status === "connecting"
         ? "#f59e0b"
         : "#ef4444";
-  const terminalLabel =
-    terminalId.length > 12 ? `${terminalId.slice(0, 8)}…` : terminalId;
+  const terminalLabel = terminalSession
+    ? terminalSession.name
+    : terminalId.length > 12
+      ? `${terminalId.slice(0, 8)}…`
+      : terminalId;
+  const terminalAction = terminalSession?.kind === "tmux" ? "Detach" : "Kill";
 
   return (
     <SafeAreaView
@@ -336,7 +352,7 @@ export function ProjectTerminalSessionScreen() {
       <PageChromeLayout
         top={
           <PageHeader
-            accessibilityLabel={`Terminal ${terminalId}, ${terminal.status}`}
+            accessibilityLabel={`${terminalLabel}, ${terminal.status}`}
             onBack={goBack}
             onTitlePress={() => {
               Keyboard.dismiss();
@@ -350,7 +366,7 @@ export function ProjectTerminalSessionScreen() {
                 ]}
               >
                 <Pressable
-                  accessibilityLabel="Kill terminal"
+                  accessibilityLabel={`${terminalAction} terminal`}
                   accessibilityRole="button"
                   disabled={isKillingTerminal}
                   onPress={openKillConfirmation}
@@ -623,15 +639,19 @@ export function ProjectTerminalSessionScreen() {
         visible={switcherVisible}
       />
       <ConfirmationDrawer
-        confirmLabel="Kill terminal"
-        description="The shell and any running command in this terminal will be stopped."
+        confirmLabel={`${terminalAction} terminal`}
+        description={
+          terminalSession?.kind === "tmux"
+            ? "The web terminal will detach. The tmux session and its commands will keep running."
+            : "The shell and any running command in this terminal will be stopped."
+        }
         destructive
         isConfirming={isKillingTerminal}
         onCancel={() => {
           if (!isKillingTerminal) setKillConfirmationVisible(false);
         }}
         onConfirm={() => void killTerminal()}
-        title="Kill this terminal?"
+        title={`${terminalAction} this terminal?`}
         visible={killConfirmationVisible}
       />
     </SafeAreaView>

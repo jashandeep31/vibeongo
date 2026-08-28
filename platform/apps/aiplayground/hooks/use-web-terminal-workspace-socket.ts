@@ -14,9 +14,19 @@ export type WebTerminalSocketStatus =
   | "error";
 
 export type WebTmuxPane = { name: string };
-export type WebTmuxWindow = { name: string; panes: WebTmuxPane[] };
+export type WebTmuxWindow = { id: string; name: string; panes: WebTmuxPane[] };
 export type WebTmuxSession = { name: string; windows: WebTmuxWindow[] };
 export type WebFavoriteDir = { name: string; path: string };
+export type WebTerminalSession =
+  | { id: string; kind: "shell"; name: string; workingDirectory: string }
+  | {
+      id: string;
+      kind: "tmux";
+      name: string;
+      tmuxSessionName: string;
+      tmuxWindowId: string;
+      tmuxWindowName: string;
+    };
 
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
@@ -36,7 +46,11 @@ function parseTmuxSessions(value: unknown): WebTmuxSession[] | null {
     for (const windowValue of session.windows) {
       if (!windowValue || typeof windowValue !== "object") return null;
       const window = windowValue as Record<string, unknown>;
-      if (typeof window.name !== "string" || !Array.isArray(window.panes)) {
+      if (
+        typeof window.id !== "string" ||
+        typeof window.name !== "string" ||
+        !Array.isArray(window.panes)
+      ) {
         return null;
       }
 
@@ -47,7 +61,7 @@ function parseTmuxSessions(value: unknown): WebTmuxSession[] | null {
         if (typeof pane.name !== "string") return null;
         panes.push({ name: pane.name });
       }
-      windows.push({ name: window.name, panes });
+      windows.push({ id: window.id, name: window.name, panes });
     }
     sessions.push({ name: session.name, windows });
   }
@@ -74,6 +88,46 @@ function parseFavoriteDirs(value: unknown): WebFavoriteDir[] | null {
   return dirs;
 }
 
+function parseTerminalSessions(value: unknown): WebTerminalSession[] | null {
+  if (!Array.isArray(value)) return null;
+
+  const sessions: WebTerminalSession[] = [];
+  for (const sessionValue of value) {
+    if (!sessionValue || typeof sessionValue !== "object") return null;
+    const session = sessionValue as Record<string, unknown>;
+    if (typeof session.id !== "string" || typeof session.name !== "string") {
+      return null;
+    }
+    if (session.kind === "shell") {
+      if (typeof session.workingDirectory !== "string") return null;
+      sessions.push({
+        id: session.id,
+        kind: "shell",
+        name: session.name,
+        workingDirectory: session.workingDirectory,
+      });
+      continue;
+    }
+    if (
+      session.kind !== "tmux" ||
+      typeof session.tmuxSessionName !== "string" ||
+      typeof session.tmuxWindowId !== "string" ||
+      typeof session.tmuxWindowName !== "string"
+    ) {
+      return null;
+    }
+    sessions.push({
+      id: session.id,
+      kind: "tmux",
+      name: session.name,
+      tmuxSessionName: session.tmuxSessionName,
+      tmuxWindowId: session.tmuxWindowId,
+      tmuxWindowName: session.tmuxWindowName,
+    });
+  }
+  return sessions;
+}
+
 export function useWebTerminalWorkspaceSocket({
   accessToken,
   enabled,
@@ -86,7 +140,9 @@ export function useWebTerminalWorkspaceSocket({
   runtimeUrl: string;
 }) {
   const [status, setStatus] = useState<WebTerminalSocketStatus>("disconnected");
-  const [terminalSessionIds, setTerminalSessionIds] = useState<string[]>([]);
+  const [terminalSessions, setTerminalSessions] = useState<
+    WebTerminalSession[]
+  >([]);
   const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
     string | null
   >(null);
@@ -97,7 +153,7 @@ export function useWebTerminalWorkspaceSocket({
   useEffect(() => {
     if (!enabled || !runtimeUrl || !localToken || !accessToken) {
       setStatus("disconnected");
-      setTerminalSessionIds([]);
+      setTerminalSessions([]);
       setActiveTerminalSessionId(null);
       setTmuxSessions([]);
       setFavoriteDirs([]);
@@ -156,10 +212,10 @@ export function useWebTerminalWorkspaceSocket({
 
         try {
           const message = JSON.parse(event.data) as Record<string, unknown>;
-          if (message.type === "sessionIds" && Array.isArray(message.ids)) {
-            setTerminalSessionIds(
-              message.ids.filter((id): id is string => typeof id === "string"),
-            );
+          if (message.type === "terminalSessions") {
+            const sessions = parseTerminalSessions(message.sessions);
+            if (!sessions) return;
+            setTerminalSessions(sessions);
             setActiveTerminalSessionId(
               typeof message.activeId === "string" ? message.activeId : null,
             );
@@ -202,7 +258,8 @@ export function useWebTerminalWorkspaceSocket({
     activeTerminalSessionId,
     favoriteDirs,
     status,
-    terminalSessionIds,
+    terminalSessionIds: terminalSessions.map((session) => session.id),
+    terminalSessions,
     tmuxSessions,
   };
 }

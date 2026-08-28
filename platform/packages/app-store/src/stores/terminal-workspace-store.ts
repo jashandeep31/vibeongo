@@ -8,6 +8,7 @@ export type TerminalWorkspaceStatus =
 
 export type TerminalTmuxPane = { name: string };
 export type TerminalTmuxWindow = {
+  id: string;
   name: string;
   panes: TerminalTmuxPane[];
 };
@@ -16,12 +17,28 @@ export type TerminalTmuxSession = {
   windows: TerminalTmuxWindow[];
 };
 export type TerminalFavoriteDir = { name: string; path: string };
+export type TerminalSessionSummary =
+  | {
+      id: string;
+      kind: "shell";
+      name: string;
+      workingDirectory: string;
+    }
+  | {
+      id: string;
+      kind: "tmux";
+      name: string;
+      tmuxSessionName: string;
+      tmuxWindowId: string;
+      tmuxWindowName: string;
+    };
 
 export type TerminalWorkspaceSnapshot = {
   activeTerminalSessionId: string | null;
   favoriteDirs: TerminalFavoriteDir[];
   status: TerminalWorkspaceStatus;
   terminalSessionIds: string[];
+  terminalSessions: TerminalSessionSummary[];
   tmuxSessions: TerminalTmuxSession[];
   updatedAt: number | null;
 };
@@ -40,6 +57,7 @@ export const EMPTY_TERMINAL_WORKSPACE: TerminalWorkspaceSnapshot = {
   favoriteDirs: [],
   status: "disconnected",
   terminalSessionIds: [],
+  terminalSessions: [],
   tmuxSessions: [],
   updatedAt: null,
 };

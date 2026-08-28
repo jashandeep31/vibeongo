@@ -19,12 +19,19 @@ import (
 )
 
 type terminalControlMessage struct {
-	Type      string `json:"type"`
-	ID        string `json:"id,omitempty"`
-	Cols      int    `json:"cols,omitempty"`
-	Rows      int    `json:"rows,omitempty"`
-	SentAt    int64  `json:"sentAt,omitempty"`
-	HasBuffer bool   `json:"hasBuffer,omitempty"`
+	Type             string                        `json:"type"`
+	ID               string                        `json:"id,omitempty"`
+	Name             string                        `json:"name,omitempty"`
+	Kind             newstores.TerminalSessionKind `json:"kind,omitempty"`
+	WorkingDirectory string                        `json:"workingDirectory,omitempty"`
+	TmuxSessionName  string                        `json:"tmuxSessionName,omitempty"`
+	TmuxWindowID     string                        `json:"tmuxWindowId,omitempty"`
+	TmuxWindowName   string                        `json:"tmuxWindowName,omitempty"`
+	Error            string                        `json:"error,omitempty"`
+	Cols             int                           `json:"cols,omitempty"`
+	Rows             int                           `json:"rows,omitempty"`
+	SentAt           int64                         `json:"sentAt,omitempty"`
+	HasBuffer        bool                          `json:"hasBuffer,omitempty"`
 }
 
 func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
@@ -44,13 +51,26 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		}
 
 		workingDirectory := currentUser.HomeDir
+		tmuxSessionName := ""
+		tmuxWindowID := ""
 		if id == "new" {
-			workingDirectory, err = resolveTerminalWorkingDirectory(
-				currentUser.HomeDir,
-				c.QueryParam("cwd"),
-			)
-			if err != nil {
-				return c.String(http.StatusBadRequest, err.Error())
+			tmuxSessionName = strings.TrimSpace(c.QueryParam("tmuxSession"))
+			tmuxWindowID = strings.TrimSpace(c.QueryParam("tmuxWindow"))
+			if tmuxWindowID != "" && tmuxSessionName == "" {
+				return c.String(http.StatusBadRequest, "tmuxSession is required when tmuxWindow is provided")
+			}
+			if tmuxSessionName != "" {
+				if strings.TrimSpace(c.QueryParam("cwd")) != "" {
+					return c.String(http.StatusBadRequest, "cwd cannot be combined with a tmux target")
+				}
+			} else {
+				workingDirectory, err = resolveTerminalWorkingDirectory(
+					currentUser.HomeDir,
+					c.QueryParam("cwd"),
+				)
+				if err != nil {
+					return c.String(http.StatusBadRequest, err.Error())
+				}
 			}
 		}
 
@@ -64,6 +84,9 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 
 		terminalSession, err := func() (*newstores.TerminalSession, error) {
 			if id == "new" {
+				if tmuxSessionName != "" {
+					return sessionsStore.AttachTmuxTerminalSession(tmuxSessionName, tmuxWindowID)
+				}
 				terminalSession, err := sessionsStore.CreateTerminalSession(workingDirectory)
 				if err != nil {
 					return nil, err
@@ -75,7 +98,11 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 			}
 		}()
 		if err != nil {
-			return err
+			_ = writeTerminalControl(conn, &writeMu, terminalControlMessage{
+				Type:  "error",
+				Error: err.Error(),
+			})
+			return nil
 		}
 
 		ptmx := terminalSession.Ptmx
@@ -83,9 +110,15 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		defer unsubscribe()
 
 		if err := writeTerminalControl(conn, &writeMu, terminalControlMessage{
-			Type:      "session",
-			ID:        terminalSession.ID,
-			HasBuffer: len(buffer) > 0,
+			Type:             "session",
+			ID:               terminalSession.ID,
+			Name:             terminalSession.Name,
+			Kind:             terminalSession.Kind,
+			WorkingDirectory: terminalSession.WorkingDirectory,
+			TmuxSessionName:  terminalSession.TmuxSessionName,
+			TmuxWindowID:     terminalSession.TmuxWindowID,
+			TmuxWindowName:   terminalSession.TmuxWindowName,
+			HasBuffer:        len(buffer) > 0,
 		}); err != nil {
 			return nil
 		}

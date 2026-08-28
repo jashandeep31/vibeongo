@@ -10,14 +10,18 @@ import {
   Terminal as TerminalIcon,
   Trash2,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { TerminalDirectoryDialog } from "@/components/terminal-directory-dialog";
 import { WebTerminal } from "@/components/web-terminal";
 import { useWebTerminalSessionSocket } from "@/hooks/use-web-terminal-session-socket";
-import { useWebTerminalWorkspaceSocket } from "@/hooks/use-web-terminal-workspace-socket";
 import {
+  type WebTerminalSession,
+  useWebTerminalWorkspaceSocket,
+} from "@/hooks/use-web-terminal-workspace-socket";
+import {
+  attachWebTmuxTerminalSession,
   createWebTerminalSession,
   killWebTerminalSession,
 } from "@/lib/web-terminal-socket";
@@ -26,6 +30,10 @@ function getLocalToken(config: unknown) {
   if (!config || typeof config !== "object" || Array.isArray(config)) return "";
   const token = (config as Record<string, unknown>).vibeongoLocalToken;
   return typeof token === "string" ? token : "";
+}
+
+function getTerminalSessionLabel(session: WebTerminalSession) {
+  return session.name;
 }
 
 export function ProjectTerminalPage({
@@ -37,6 +45,7 @@ export function ProjectTerminalPage({
   const [selectedTerminalId, setSelectedTerminalId] = useState("");
   const [pendingTerminalId, setPendingTerminalId] = useState("");
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
+  const [attachingTmuxTarget, setAttachingTmuxTarget] = useState("");
   const [isDirectoryDialogOpen, setIsDirectoryDialogOpen] = useState(false);
   const [killingTerminalId, setKillingTerminalId] = useState("");
   const [terminalPendingKill, setTerminalPendingKill] = useState<{
@@ -103,7 +112,7 @@ export function ProjectTerminalPage({
   }, [pendingTerminalId, workspace.terminalSessionIds]);
 
   const addTerminal = async (workingDirectory?: string) => {
-    if (isCreatingTerminal) return;
+    if (isCreatingTerminal || attachingTmuxTarget) return;
     setIsDirectoryDialogOpen(false);
     setIsCreatingTerminal(true);
     setTerminalCreationError("");
@@ -120,6 +129,38 @@ export function ProjectTerminalPage({
       setTerminalCreationError("Could not create terminal. Try again.");
     } finally {
       setIsCreatingTerminal(false);
+    }
+  };
+
+  const attachTmuxTerminal = async ({
+    sessionName,
+    windowId,
+  }: {
+    sessionName: string;
+    windowId?: string;
+  }) => {
+    if (isCreatingTerminal || attachingTmuxTarget) return;
+    const targetKey = windowId ? `${sessionName}:${windowId}` : sessionName;
+    setAttachingTmuxTarget(targetKey);
+    setTerminalCreationError("");
+    try {
+      const id = await attachWebTmuxTerminalSession({
+        accessToken,
+        localToken,
+        runtimeUrl,
+        tmuxSessionName: sessionName,
+        tmuxWindowId: windowId,
+      });
+      setPendingTerminalId(id);
+      setSelectedTerminalId(id);
+    } catch (error) {
+      setTerminalCreationError(
+        error instanceof Error
+          ? error.message
+          : "Could not attach to tmux. Try again.",
+      );
+    } finally {
+      setAttachingTmuxTarget("");
     }
   };
 
@@ -142,11 +183,21 @@ export function ProjectTerminalPage({
     }
   };
 
-  const selectedTerminalLabel = useMemo(() => {
-    if (isCreatingTerminal) return "Creating terminal…";
-    const index = workspace.terminalSessionIds.indexOf(selectedTerminalId);
-    return index >= 0 ? `Terminal ${index + 1}` : "Terminal";
-  }, [isCreatingTerminal, selectedTerminalId, workspace.terminalSessionIds]);
+  const selectedTerminalIndex = workspace.terminalSessions.findIndex(
+    (session) => session.id === selectedTerminalId,
+  );
+  const selectedTerminalSession =
+    workspace.terminalSessions[selectedTerminalIndex];
+  const selectedTerminalLabel = isCreatingTerminal
+    ? "Creating terminal…"
+    : attachingTmuxTarget
+      ? "Attaching to tmux…"
+      : selectedTerminalSession
+        ? getTerminalSessionLabel(selectedTerminalSession)
+        : "Terminal";
+  const pendingTerminalSession = workspace.terminalSessions.find(
+    (session) => session.id === terminalPendingKill?.id,
+  );
 
   const isLoading = !instance && instancesQuery.isPending;
   const errorMessage = instancesQuery.isError
@@ -182,7 +233,9 @@ export function ProjectTerminalPage({
                 aria-label="New terminal session"
                 title="New terminal session"
                 disabled={
-                  isCreatingTerminal || workspace.status !== "connected"
+                  isCreatingTerminal ||
+                  Boolean(attachingTmuxTarget) ||
+                  workspace.status !== "connected"
                 }
                 onClick={() => {
                   setTerminalCreationError("");
@@ -196,12 +249,14 @@ export function ProjectTerminalPage({
                 )}
                 <span>New terminal</span>
               </Button>
-              {workspace.terminalSessionIds.map((terminalId, index) => {
-                const selected = terminalId === selectedTerminalId;
-                const terminalLabel = `Terminal ${index + 1}`;
+              {workspace.terminalSessions.map((terminalSession) => {
+                const selected = terminalSession.id === selectedTerminalId;
+                const terminalLabel = getTerminalSessionLabel(terminalSession);
+                const terminalAction =
+                  terminalSession.kind === "tmux" ? "Detach" : "Kill";
                 return (
                   <div
-                    key={terminalId}
+                    key={terminalSession.id}
                     className={`flex min-w-max shrink-0 items-center rounded-md border p-1 transition-colors md:min-w-0 md:rounded-lg ${
                       selected
                         ? "border-primary/40 bg-primary/10"
@@ -211,7 +266,7 @@ export function ProjectTerminalPage({
                     <button
                       className="flex min-w-0 flex-1 items-center gap-1.5 px-1 py-0.5 text-left md:gap-2 md:px-2 md:py-1"
                       type="button"
-                      onClick={() => setSelectedTerminalId(terminalId)}
+                      onClick={() => setSelectedTerminalId(terminalSession.id)}
                     >
                       <TerminalIcon className="size-3.5 shrink-0 md:size-4" />
                       <span className="min-w-0 flex-1">
@@ -219,26 +274,26 @@ export function ProjectTerminalPage({
                           {terminalLabel}
                         </span>
                         <span className="text-muted-foreground hidden truncate font-mono text-[11px] md:block">
-                          {terminalId}
+                          {terminalSession.id}
                         </span>
                       </span>
                     </button>
                     <Button
-                      aria-label={`Kill ${terminalLabel}`}
+                      aria-label={`${terminalAction} ${terminalLabel}`}
                       className="text-destructive hover:bg-destructive/10 hover:text-destructive"
                       disabled={Boolean(killingTerminalId)}
                       size="icon-xs"
-                      title={`Kill ${terminalLabel}`}
+                      title={`${terminalAction} ${terminalLabel}`}
                       type="button"
                       variant="ghost"
                       onClick={() =>
                         setTerminalPendingKill({
-                          id: terminalId,
+                          id: terminalSession.id,
                           label: terminalLabel,
                         })
                       }
                     >
-                      {killingTerminalId === terminalId ? (
+                      {killingTerminalId === terminalSession.id ? (
                         <LoaderCircle className="animate-spin" />
                       ) : (
                         <Trash2 />
@@ -261,28 +316,64 @@ export function ProjectTerminalPage({
             </div>
 
             {workspace.tmuxSessions.length > 0 ? (
-              <div className="hidden border-t p-3 md:block">
+              <div className="max-h-52 overflow-y-auto border-t p-3 md:max-h-64">
                 <p className="text-muted-foreground mb-2 text-xs font-semibold tracking-wide uppercase">
                   Tmux
                 </p>
                 <div className="max-h-44 space-y-1 overflow-y-auto">
                   {workspace.tmuxSessions.map((tmuxSession) => (
                     <div key={tmuxSession.name} className="text-xs">
-                      <div className="flex items-center gap-1.5 py-1 font-mono font-medium">
-                        <ChevronRight className="size-3.5" />
-                        {tmuxSession.name}
-                      </div>
+                      <button
+                        className="hover:bg-muted flex w-full items-center gap-1.5 rounded px-1 py-1 text-left font-mono font-medium disabled:opacity-50"
+                        disabled={
+                          Boolean(isCreatingTerminal || attachingTmuxTarget) ||
+                          workspace.status !== "connected"
+                        }
+                        title={`Attach to ${tmuxSession.name}`}
+                        type="button"
+                        onClick={() =>
+                          void attachTmuxTerminal({
+                            sessionName: tmuxSession.name,
+                          })
+                        }
+                      >
+                        {attachingTmuxTarget === tmuxSession.name ? (
+                          <LoaderCircle className="size-3.5 animate-spin" />
+                        ) : (
+                          <ChevronRight className="size-3.5" />
+                        )}
+                        <span className="truncate">{tmuxSession.name}</span>
+                      </button>
                       {tmuxSession.windows.length > 0 ? (
                         <ul className="mt-1 space-y-1 pl-5">
-                          {tmuxSession.windows.map((tmuxWindow, index) => (
-                            <li
-                              key={`${tmuxSession.name}:${index}:${tmuxWindow.name}`}
-                              className="text-muted-foreground flex min-w-0 items-center gap-1.5 font-mono"
-                            >
-                              <TerminalIcon className="size-3 shrink-0" />
-                              <span className="truncate" title={tmuxWindow.name}>
-                                {tmuxWindow.name}
-                              </span>
+                          {tmuxSession.windows.map((tmuxWindow) => (
+                            <li key={`${tmuxSession.name}:${tmuxWindow.id}`}>
+                              <button
+                                className="text-muted-foreground hover:bg-muted hover:text-foreground flex w-full min-w-0 items-center gap-1.5 rounded px-1 py-1 text-left font-mono disabled:opacity-50"
+                                disabled={
+                                  Boolean(
+                                    isCreatingTerminal || attachingTmuxTarget,
+                                  ) || workspace.status !== "connected"
+                                }
+                                title={`Attach to ${tmuxSession.name} › ${tmuxWindow.name}`}
+                                type="button"
+                                onClick={() =>
+                                  void attachTmuxTerminal({
+                                    sessionName: tmuxSession.name,
+                                    windowId: tmuxWindow.id,
+                                  })
+                                }
+                              >
+                                {attachingTmuxTarget ===
+                                `${tmuxSession.name}:${tmuxWindow.id}` ? (
+                                  <LoaderCircle className="size-3 animate-spin" />
+                                ) : (
+                                  <TerminalIcon className="size-3 shrink-0" />
+                                )}
+                                <span className="truncate">
+                                  {tmuxWindow.name}
+                                </span>
+                              </button>
                             </li>
                           ))}
                         </ul>
@@ -334,8 +425,16 @@ export function ProjectTerminalPage({
         open={isDirectoryDialogOpen}
       />
       <ConfirmationDialog
-        confirmText="Kill terminal"
-        description="The shell and any running command in this terminal will be stopped."
+        confirmText={
+          pendingTerminalSession?.kind === "tmux"
+            ? "Detach terminal"
+            : "Kill terminal"
+        }
+        description={
+          pendingTerminalSession?.kind === "tmux"
+            ? "The web terminal client will be detached. The tmux session and its commands will keep running."
+            : "The shell and any running command in this terminal will be stopped."
+        }
         isDestructive
         onConfirm={() => {
           if (terminalPendingKill) {
@@ -346,7 +445,9 @@ export function ProjectTerminalPage({
           if (!open && !killingTerminalId) setTerminalPendingKill(null);
         }}
         open={terminalPendingKill !== null}
-        title={`Kill ${terminalPendingKill?.label ?? "terminal"}?`}
+        title={`${
+          pendingTerminalSession?.kind === "tmux" ? "Detach" : "Kill"
+        } ${terminalPendingKill?.label ?? "terminal"}?`}
       />
     </div>
   );

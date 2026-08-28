@@ -12,6 +12,7 @@ type TmuxWindowPane struct {
 }
 
 type TmuxWindow struct {
+	ID    string           `json:"id"`
 	Name  string           `json:"name"`
 	Panes []TmuxWindowPane `json:"panes"`
 }
@@ -27,7 +28,7 @@ func GetListOfTmuxSessions() ([]TmuxSession, error) {
 		"list-panes",
 		"-a",
 		"-F",
-		"#{session_name}\t#{window_name}\t#{pane_index}",
+		"#{session_name}\t#{window_id}\t#{window_name}\t#{pane_index}",
 	)
 
 	output, err := cmd.CombinedOutput()
@@ -49,14 +50,15 @@ func GetListOfTmuxSessions() ([]TmuxSession, error) {
 			continue
 		}
 
-		parts := strings.SplitN(line, "\t", 3)
-		if len(parts) != 3 {
+		parts := strings.SplitN(line, "\t", 4)
+		if len(parts) != 4 {
 			continue
 		}
 
 		sessionName := parts[0]
-		windowName := parts[1]
-		paneName := parts[2]
+		windowID := parts[1]
+		windowName := parts[2]
+		paneName := parts[3]
 
 		session, exists := sessionMap[sessionName]
 		if !exists {
@@ -69,7 +71,7 @@ func GetListOfTmuxSessions() ([]TmuxSession, error) {
 
 		var window *TmuxWindow
 		for i := range session.Windows {
-			if session.Windows[i].Name == windowName {
+			if session.Windows[i].ID == windowID {
 				window = &session.Windows[i]
 				break
 			}
@@ -77,6 +79,7 @@ func GetListOfTmuxSessions() ([]TmuxSession, error) {
 
 		if window == nil {
 			session.Windows = append(session.Windows, TmuxWindow{
+				ID:    windowID,
 				Name:  windowName,
 				Panes: []TmuxWindowPane{},
 			})

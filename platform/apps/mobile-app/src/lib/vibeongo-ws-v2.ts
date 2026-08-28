@@ -18,12 +18,16 @@ export function createVibeongoWsV2Socket({
   accessToken,
   path,
   runtimeUrl,
+  tmuxSessionName,
+  tmuxWindowId,
   token,
   workingDirectory,
 }: {
   accessToken: string;
   path: string;
   runtimeUrl: string;
+  tmuxSessionName?: string;
+  tmuxWindowId?: string;
   token: string;
   workingDirectory?: string;
 }) {
@@ -32,6 +36,8 @@ export function createVibeongoWsV2Socket({
   url.pathname = path;
   url.searchParams.set("vibeongoToken", token);
   if (workingDirectory) url.searchParams.set("cwd", workingDirectory);
+  if (tmuxSessionName) url.searchParams.set("tmuxSession", tmuxSessionName);
+  if (tmuxWindowId) url.searchParams.set("tmuxWindow", tmuxWindowId);
 
   const NativeWebSocket =
     WebSocket as unknown as ReactNativeWebSocketConstructor;

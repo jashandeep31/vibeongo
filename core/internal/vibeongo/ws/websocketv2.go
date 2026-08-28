@@ -221,22 +221,28 @@ func appendExistingFavoriteDir(dirs []favoriteDir, name, path string) []favorite
 }
 
 func handleTerminalSessionsList(conn *websocket.Conn, writeMu *sync.Mutex, sessionsStore *newstores.SessionsStore, stop <-chan struct{}) error {
-	sendSessions := func(ids []string) error {
+	sendSessions := func(sessions []newstores.TerminalSessionDescriptor) error {
 		writeMu.Lock()
 		defer writeMu.Unlock()
+		ids := make([]string, len(sessions))
+		for i, session := range sessions {
+			ids[i] = session.ID
+		}
 
 		return conn.WriteJSON(struct {
-			Type     string   `json:"type"`
-			IDs      []string `json:"ids"`
-			ActiveID string   `json:"activeId"`
+			Type     string                                `json:"type"`
+			IDs      []string                              `json:"ids"`
+			Sessions []newstores.TerminalSessionDescriptor `json:"sessions"`
+			ActiveID string                                `json:"activeId"`
 		}{
-			Type: "sessionIds",
-			IDs:  ids,
+			Type:     "terminalSessions",
+			IDs:      ids,
+			Sessions: sessions,
 		})
 	}
 
-	previousIDs := sessionsStore.GetTerminalSessionIDs()
-	if err := sendSessions(previousIDs); err != nil {
+	previousSessions := sessionsStore.GetTerminalSessions()
+	if err := sendSessions(previousSessions); err != nil {
 		log.Println("Failed to send terminal sessions:", err)
 		return err
 	}
@@ -247,15 +253,15 @@ func handleTerminalSessionsList(conn *websocket.Conn, writeMu *sync.Mutex, sessi
 	for {
 		select {
 		case <-ticker.C:
-			currentIDs := sessionsStore.GetTerminalSessionIDs()
-			if slices.Equal(previousIDs, currentIDs) {
+			currentSessions := sessionsStore.GetTerminalSessions()
+			if slices.Equal(previousSessions, currentSessions) {
 				continue
 			}
 
-			if err := sendSessions(currentIDs); err != nil {
+			if err := sendSessions(currentSessions); err != nil {
 				return err
 			}
-			previousIDs = currentIDs
+			previousSessions = currentSessions
 		case <-stop:
 			return nil
 		}

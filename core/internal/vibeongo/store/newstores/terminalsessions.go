@@ -7,7 +7,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -15,17 +17,42 @@ import (
 )
 
 type TerminalSession struct {
-	ID          string
-	Buffer      []byte
-	Ptmx        *os.File
-	Mu          sync.Mutex
-	CreatedAt   time.Time
-	command     *exec.Cmd
-	processDone chan struct{}
-	killOnce    sync.Once
-	killErr     error
-	readerOnce  sync.Once
-	subscribers map[chan []byte]struct{}
+	ID               string
+	Name             string
+	Kind             TerminalSessionKind
+	WorkingDirectory string
+	TmuxSessionName  string
+	TmuxWindowID     string
+	TmuxWindowName   string
+	Buffer           []byte
+	Ptmx             *os.File
+	Mu               sync.Mutex
+	CreatedAt        time.Time
+	command          *exec.Cmd
+	processDone      chan struct{}
+	killOnce         sync.Once
+	killErr          error
+	readerOnce       sync.Once
+	subscribers      map[chan []byte]struct{}
+}
+
+type TerminalSessionKind string
+
+const (
+	TerminalSessionKindShell TerminalSessionKind = "shell"
+	TerminalSessionKindTmux  TerminalSessionKind = "tmux"
+)
+
+// TerminalSessionDescriptor is the backend-owned identity published to every
+// workspace client. It contains no PTY or process implementation details.
+type TerminalSessionDescriptor struct {
+	ID               string              `json:"id"`
+	Name             string              `json:"name"`
+	Kind             TerminalSessionKind `json:"kind"`
+	WorkingDirectory string              `json:"workingDirectory,omitempty"`
+	TmuxSessionName  string              `json:"tmuxSessionName,omitempty"`
+	TmuxWindowID     string              `json:"tmuxWindowId,omitempty"`
+	TmuxWindowName   string              `json:"tmuxWindowName,omitempty"`
 }
 
 var ErrTerminalSessionNotFound = errors.New("terminal session not found")
@@ -51,9 +78,9 @@ func (s *SessionsStore) GetTerminalSession(id string) (*TerminalSession, error) 
 	return nil, fmt.Errorf("%w: %s", ErrTerminalSessionNotFound, id)
 }
 
-// GetTerminalSessionIDs returns a stable snapshot of the stored terminal
-// sessions, ordered from oldest to newest.
-func (s *SessionsStore) GetTerminalSessionIDs() []string {
+// GetTerminalSessions returns backend-owned terminal identities ordered from
+// oldest to newest.
+func (s *SessionsStore) GetTerminalSessions() []TerminalSessionDescriptor {
 	s.Mu.Lock()
 	defer s.Mu.Unlock()
 
@@ -69,38 +96,179 @@ func (s *SessionsStore) GetTerminalSessionIDs() []string {
 		return sessions[i].CreatedAt.Before(sessions[j].CreatedAt)
 	})
 
-	ids := make([]string, len(sessions))
+	descriptors := make([]TerminalSessionDescriptor, len(sessions))
 	for i, session := range sessions {
-		ids[i] = session.ID
+		descriptors[i] = session.descriptor()
 	}
-	return ids
+	return descriptors
+}
+
+func (s *TerminalSession) descriptor() TerminalSessionDescriptor {
+	return TerminalSessionDescriptor{
+		ID:               s.ID,
+		Name:             s.Name,
+		Kind:             s.Kind,
+		WorkingDirectory: s.WorkingDirectory,
+		TmuxSessionName:  s.TmuxSessionName,
+		TmuxWindowID:     s.TmuxWindowID,
+		TmuxWindowName:   s.TmuxWindowName,
+	}
 }
 
 func (s *SessionsStore) CreateTerminalSession(workingDirectory string) (*TerminalSession, error) {
-	s.Mu.Lock()
-	defer s.Mu.Unlock()
 	baseCommand := exec.Command("bash")
 	baseCommand.Dir = workingDirectory
+	return s.createTerminalSession(baseCommand, TerminalSessionDescriptor{
+		Name:             filepath.Base(filepath.Clean(workingDirectory)),
+		Kind:             TerminalSessionKindShell,
+		WorkingDirectory: workingDirectory,
+	})
+}
+
+// AttachTmuxTerminalSession creates a PTY-backed web terminal client for an
+// existing tmux session. It never creates a tmux session. When windowID is
+// present, that existing window is selected before the client attaches.
+// Killing the web terminal detaches this client but does not destroy tmux.
+func (s *SessionsStore) AttachTmuxTerminalSession(sessionName, windowID string) (*TerminalSession, error) {
+	sessionTarget, windowTarget, err := tmuxTargets(sessionName, windowID)
+	if err != nil {
+		return nil, err
+	}
+
+	if output, err := exec.Command("tmux", "has-session", "-t", sessionTarget).CombinedOutput(); err != nil {
+		return nil, tmuxCommandError("find", sessionName, output, err)
+	}
+
+	if windowTarget != "" {
+		if output, err := exec.Command("tmux", "select-window", "-t", windowTarget).CombinedOutput(); err != nil {
+			return nil, tmuxCommandError("select window in", sessionName, output, err)
+		}
+	}
+
+	metadataTarget := windowTarget
+	if metadataTarget == "" {
+		metadataTarget = sessionTarget
+	}
+	windowOutput, err := exec.Command(
+		"tmux", "display-message", "-p", "-t", metadataTarget,
+		"#{window_id}\t#{window_name}",
+	).CombinedOutput()
+	if err != nil {
+		return nil, tmuxCommandError("inspect", sessionName, windowOutput, err)
+	}
+	windowParts := strings.SplitN(strings.TrimSpace(string(windowOutput)), "\t", 2)
+	if len(windowParts) != 2 || !validTmuxWindowID(windowParts[0]) || windowParts[1] == "" {
+		return nil, fmt.Errorf("inspect tmux session %q: invalid window metadata", sessionName)
+	}
+
+	return s.createTerminalSession(
+		exec.Command("tmux", "attach-session", "-t", sessionTarget),
+		TerminalSessionDescriptor{
+			Name:            fmt.Sprintf("%s › %s", strings.TrimSpace(sessionName), windowParts[1]),
+			Kind:            TerminalSessionKindTmux,
+			TmuxSessionName: strings.TrimSpace(sessionName),
+			TmuxWindowID:    windowParts[0],
+			TmuxWindowName:  windowParts[1],
+		},
+	)
+}
+
+func tmuxTargets(sessionName, windowID string) (string, string, error) {
+	sessionName = strings.TrimSpace(sessionName)
+	if sessionName == "" {
+		return "", "", errors.New("tmux session name is required")
+	}
+
+	// A leading '=' asks tmux for an exact session-name match instead of its
+	// default prefix/glob matching.
+	sessionTarget := "=" + sessionName
+	windowID = strings.TrimSpace(windowID)
+	if windowID == "" {
+		return sessionTarget, "", nil
+	}
+	if !validTmuxWindowID(windowID) {
+		return "", "", errors.New("tmux window id must have the form @<number>")
+	}
+	return sessionTarget, fmt.Sprintf("%s:%s", sessionTarget, windowID), nil
+}
+
+func validTmuxWindowID(windowID string) bool {
+	if len(windowID) < 2 || windowID[0] != '@' {
+		return false
+	}
+	for _, character := range windowID[1:] {
+		if character < '0' || character > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+func tmuxCommandError(action, sessionName string, output []byte, err error) error {
+	message := strings.TrimSpace(string(output))
+	if message == "" {
+		return fmt.Errorf("%s tmux session %q: %w", action, sessionName, err)
+	}
+	return fmt.Errorf("%s tmux session %q: %w: %s", action, sessionName, err, message)
+}
+
+func (s *SessionsStore) createTerminalSession(baseCommand *exec.Cmd, metadata TerminalSessionDescriptor) (*TerminalSession, error) {
+	if err := validateTerminalSessionMetadata(metadata); err != nil {
+		return nil, err
+	}
 	ptmx, err := pty.StartWithSize(baseCommand, &pty.Winsize{Rows: 40, Cols: 90})
 	if err != nil {
 		return nil, err
 	}
 	termSession := &TerminalSession{
-		ID:          rand.Text(),
-		Buffer:      make([]byte, 0),
-		Ptmx:        ptmx,
-		CreatedAt:   time.Now(),
-		command:     baseCommand,
-		processDone: make(chan struct{}),
-		subscribers: make(map[chan []byte]struct{}),
+		ID:               rand.Text(),
+		Name:             metadata.Name,
+		Kind:             metadata.Kind,
+		WorkingDirectory: metadata.WorkingDirectory,
+		TmuxSessionName:  metadata.TmuxSessionName,
+		TmuxWindowID:     metadata.TmuxWindowID,
+		TmuxWindowName:   metadata.TmuxWindowName,
+		Buffer:           make([]byte, 0),
+		Ptmx:             ptmx,
+		CreatedAt:        time.Now(),
+		command:          baseCommand,
+		processDone:      make(chan struct{}),
+		subscribers:      make(map[chan []byte]struct{}),
 	}
+	s.Mu.Lock()
 	s.sessions[termSession.ID] = termSession
+	s.Mu.Unlock()
 	termSession.startReader()
 	go func() {
 		_ = baseCommand.Wait()
 		close(termSession.processDone)
 	}()
 	return termSession, nil
+}
+
+func validateTerminalSessionMetadata(metadata TerminalSessionDescriptor) error {
+	if strings.TrimSpace(metadata.Name) == "" {
+		return errors.New("terminal session name is required")
+	}
+	switch metadata.Kind {
+	case TerminalSessionKindShell:
+		if strings.TrimSpace(metadata.WorkingDirectory) == "" {
+			return errors.New("shell terminal working directory is required")
+		}
+		if metadata.TmuxSessionName != "" || metadata.TmuxWindowID != "" || metadata.TmuxWindowName != "" {
+			return errors.New("shell terminal cannot contain tmux metadata")
+		}
+	case TerminalSessionKindTmux:
+		if metadata.WorkingDirectory != "" {
+			return errors.New("tmux terminal cannot contain a shell working directory")
+		}
+		if metadata.TmuxSessionName == "" || metadata.TmuxWindowID == "" || metadata.TmuxWindowName == "" {
+			return errors.New("tmux terminal metadata is incomplete")
+		}
+	default:
+		return fmt.Errorf("invalid terminal session kind %q", metadata.Kind)
+	}
+	return nil
 }
 
 // KillTerminalSession removes a terminal from the store and terminates its

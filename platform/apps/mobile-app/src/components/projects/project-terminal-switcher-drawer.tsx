@@ -20,7 +20,10 @@ import { ProjectTerminalDirectoryDrawer } from "@/components/projects/project-te
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-import { createVibeongoTerminalSession } from "@/hooks/use-vibeongo-ws-v2";
+import {
+  attachVibeongoTmuxTerminalSession,
+  createVibeongoTerminalSession,
+} from "@/hooks/use-vibeongo-ws-v2";
 
 export function ProjectTerminalSwitcherDrawer({
   accessToken,
@@ -44,6 +47,7 @@ export function ProjectTerminalSwitcherDrawer({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const [isCreating, setIsCreating] = useState(false);
+  const [attachingTmuxTarget, setAttachingTmuxTarget] = useState("");
   const [directoryDrawerVisible, setDirectoryDrawerVisible] = useState(false);
   const workspace = useTerminalWorkspaceStore(
     (store) => store.workspaces[projectSessionId] ?? EMPTY_TERMINAL_WORKSPACE,
@@ -54,7 +58,7 @@ export function ProjectTerminalSwitcherDrawer({
   }, [visible]);
 
   const createTerminal = async (workingDirectory?: string) => {
-    if (isCreating) return;
+    if (isCreating || attachingTmuxTarget) return;
     setDirectoryDrawerVisible(false);
     setIsCreating(true);
     try {
@@ -72,6 +76,33 @@ export function ProjectTerminalSwitcherDrawer({
       );
     } finally {
       setIsCreating(false);
+    }
+  };
+
+  const attachTmuxTerminal = async (
+    tmuxSessionName: string,
+    tmuxWindowId?: string,
+  ) => {
+    if (isCreating || attachingTmuxTarget) return;
+    setAttachingTmuxTarget(
+      tmuxWindowId ? `${tmuxSessionName}:${tmuxWindowId}` : tmuxSessionName,
+    );
+    try {
+      const terminalId = await attachVibeongoTmuxTerminalSession({
+        accessToken,
+        localToken,
+        runtimeUrl,
+        tmuxSessionName,
+        tmuxWindowId,
+      });
+      onSelect(terminalId);
+    } catch (error) {
+      Alert.alert(
+        "Could not attach to tmux",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setAttachingTmuxTarget("");
     }
   };
 
@@ -138,7 +169,7 @@ export function ProjectTerminalSwitcherDrawer({
               <Pressable
                 accessibilityLabel="New terminal session"
                 accessibilityRole="button"
-                disabled={isCreating}
+                disabled={Boolean(isCreating || attachingTmuxTarget)}
                 onPress={() => setDirectoryDrawerVisible(true)}
                 style={({ pressed }) => [
                   styles.newTerminal,
@@ -146,7 +177,7 @@ export function ProjectTerminalSwitcherDrawer({
                     backgroundColor: theme.backgroundElement,
                     borderColor: theme.backgroundSelected,
                   },
-                  isCreating && styles.disabled,
+                  Boolean(isCreating || attachingTmuxTarget) && styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
@@ -180,13 +211,15 @@ export function ProjectTerminalSwitcherDrawer({
               </Pressable>
 
               <View style={styles.list}>
-                {workspace.terminalSessionIds.map((terminalId, index) => {
+                {workspace.terminalSessions.map((terminalSession) => {
+                  const terminalId = terminalSession.id;
                   const selected = terminalId === currentTerminalId;
                   const active =
                     terminalId === workspace.activeTerminalSessionId;
+                  const terminalLabel = terminalSession.name;
                   return (
                     <Pressable
-                      accessibilityLabel={`Open Terminal ${index + 1}`}
+                      accessibilityLabel={`Open ${terminalLabel}`}
                       accessibilityRole="button"
                       accessibilityState={{ selected }}
                       key={terminalId}
@@ -219,7 +252,7 @@ export function ProjectTerminalSwitcherDrawer({
                       <View style={styles.rowCopy}>
                         <View style={styles.nameRow}>
                           <ThemedText style={styles.rowTitle}>
-                            Terminal {index + 1}
+                            {terminalLabel}
                           </ThemedText>
                           {active ? <View style={styles.activeDot} /> : null}
                         </View>
@@ -261,33 +294,80 @@ export function ProjectTerminalSwitcherDrawer({
                     Tmux sessions
                   </ThemedText>
                   {workspace.tmuxSessions.map((session) => (
-                    <View
-                      key={session.name}
-                      style={[
-                        styles.tmuxRow,
-                        {
-                          backgroundColor: theme.backgroundElement,
-                          borderColor: theme.backgroundSelected,
-                        },
-                      ]}
-                    >
-                      <SymbolView
-                        name={{
-                          ios: "rectangle.split.2x1",
-                          android: "view_agenda",
-                        }}
-                        size={16}
-                        tintColor={theme.textSecondary}
-                      />
-                      <ThemedText numberOfLines={1} style={styles.tmuxName}>
-                        {session.name}
-                      </ThemedText>
-                      <ThemedText
-                        style={styles.rowMeta}
-                        themeColor="textSecondary"
+                    <View key={session.name}>
+                      <Pressable
+                        accessibilityLabel={`Attach to tmux session ${session.name}`}
+                        accessibilityRole="button"
+                        disabled={Boolean(isCreating || attachingTmuxTarget)}
+                        onPress={() => void attachTmuxTerminal(session.name)}
+                        style={[
+                          styles.tmuxRow,
+                          {
+                            backgroundColor: theme.backgroundElement,
+                            borderColor: theme.backgroundSelected,
+                          },
+                        ]}
                       >
-                        {session.windows.length} windows
-                      </ThemedText>
+                        {attachingTmuxTarget === session.name ? (
+                          <ActivityIndicator
+                            color={theme.textSecondary}
+                            size="small"
+                          />
+                        ) : (
+                          <SymbolView
+                            name={{
+                              ios: "rectangle.split.2x1",
+                              android: "view_agenda",
+                            }}
+                            size={16}
+                            tintColor={theme.textSecondary}
+                          />
+                        )}
+                        <ThemedText numberOfLines={1} style={styles.tmuxName}>
+                          {session.name}
+                        </ThemedText>
+                        <ThemedText
+                          style={styles.rowMeta}
+                          themeColor="textSecondary"
+                        >
+                          {session.windows.length} windows
+                        </ThemedText>
+                      </Pressable>
+                      {session.windows.map((window) => (
+                        <Pressable
+                          accessibilityLabel={`Attach to ${session.name} window ${window.name}`}
+                          accessibilityRole="button"
+                          disabled={Boolean(isCreating || attachingTmuxTarget)}
+                          key={`${session.name}:${window.id}`}
+                          onPress={() =>
+                            void attachTmuxTerminal(session.name, window.id)
+                          }
+                          style={styles.tmuxWindowRow}
+                        >
+                          {attachingTmuxTarget ===
+                          `${session.name}:${window.id}` ? (
+                            <ActivityIndicator
+                              color={theme.textSecondary}
+                              size="small"
+                            />
+                          ) : (
+                            <SymbolView
+                              name={{
+                                ios: "chevron.right",
+                                android: "chevron_right",
+                              }}
+                              size={15}
+                              tintColor={theme.textSecondary}
+                            />
+                          )}
+                          <ThemedText
+                            numberOfLines={1}
+                            style={styles.tmuxWindowName}
+                          >
+                            {window.name}
+                          </ThemedText>
+                        </Pressable>
+                      ))}
                     </View>
                   ))}
                 </View>
@@ -298,7 +378,7 @@ export function ProjectTerminalSwitcherDrawer({
       </Modal>
       <ProjectTerminalDirectoryDrawer
         dirs={workspace.favoriteDirs}
-        disabled={isCreating}
+        disabled={Boolean(isCreating || attachingTmuxTarget)}
         onClose={() => setDirectoryDrawerVisible(false)}
         onSelect={(workingDirectory) => void createTerminal(workingDirectory)}
         visible={visible && directoryDrawerVisible}
@@ -411,4 +491,12 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   tmuxSection: { gap: 8, marginTop: 28 },
+  tmuxWindowName: { flex: 1, fontFamily: Fonts.mono, fontSize: 12 },
+  tmuxWindowRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 40,
+    paddingHorizontal: 18,
+  },
 });

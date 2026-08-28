@@ -92,6 +92,7 @@ function ProjectSessionRuntimeSync({
       favoriteDirs: terminalWorkspace.favoriteDirs,
       status: terminalWorkspace.status,
       terminalSessionIds: terminalWorkspace.terminalSessionIds,
+      terminalSessions: terminalWorkspace.terminalSessions,
       tmuxSessions: terminalWorkspace.tmuxSessions,
     });
   }, [
@@ -101,6 +102,7 @@ function ProjectSessionRuntimeSync({
     terminalWorkspace.favoriteDirs,
     terminalWorkspace.status,
     terminalWorkspace.terminalSessionIds,
+    terminalWorkspace.terminalSessions,
     terminalWorkspace.tmuxSessions,
   ]);
 
