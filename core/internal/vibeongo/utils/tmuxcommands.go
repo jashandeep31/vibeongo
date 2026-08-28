@@ -105,17 +105,12 @@ func createTemporaryScript(content string) (string, error) {
 		os.Remove(path)
 		return "", err
 	}
-	if err := os.Chmod(path, 0o755); err != nil {
-		os.Remove(path)
-		return "", err
-	}
-
 	return path, nil
 }
 
 func commandForTemporaryScript(path string, keepShellOpen bool) string {
 	command := fmt.Sprintf(
-		`script=%q; source "$script"; status=$?; rm -f "$script"; printf '\nScript exited with status %%d\n' "$status"`,
+		`script=%q; source "$script"; status=$?; printf '\nScript exited with status %%d\n' "$status"`,
 		path,
 	)
 	if keepShellOpen {
