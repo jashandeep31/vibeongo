@@ -67,7 +67,7 @@ export async function createForgejoRepo({
         description,
         name: reponame,
         object_format_name: "sha1",
-        private: true,
+        private: false,
         template: true,
         trust_model: "default",
       },

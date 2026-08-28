@@ -348,17 +348,11 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                       loading={deleteRepo.isPending}
                       onPress={() => setConfirmationTarget({ kind: "delete" })}
                     />
-                    {!isForgejo ? (
-                      <ActionButton
-                        icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-                        label="GitHub"
-                        onPress={() =>
-                          void openExternalUrl(
-                            `https://github.com/${repo.full_name}`,
-                          )
-                        }
-                      />
-                    ) : null}
+                    <ActionButton
+                      icon={{ ios: "arrow.up.right", android: "open_in_new" }}
+                      label={providerLabel}
+                      onPress={() => void openExternalUrl(repo.html_url)}
+                    />
                   </ScrollView>
 
                   {showOverview && overview ? (

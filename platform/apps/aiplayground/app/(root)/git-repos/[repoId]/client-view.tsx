@@ -543,11 +543,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
               </Button>
             </ConfirmationDialog>
             <Button variant="outline" className="rounded-xl" asChild>
-              <a
-                href={`https://github.com/${repo.full_name}`}
-                target="_blank"
-                rel="noreferrer"
-              >
+              <a href={repo.html_url} target="_blank" rel="noreferrer">
                 View repository <ArrowUpRight className="size-4" />
               </a>
             </Button>

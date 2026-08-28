@@ -1,7 +1,9 @@
 import { gitRepos } from "@repo/db";
 import type { AxiosInstance } from "axios";
 
-export type GithubRepo = typeof gitRepos.$inferSelect;
+export type GithubRepo = typeof gitRepos.$inferSelect & {
+  html_url: string;
+};
 
 export type GithubRepoIssue = {
   id: number;
