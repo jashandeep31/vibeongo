@@ -272,12 +272,21 @@ export function ProjectTerminalPage({
                         <ChevronRight className="size-3.5" />
                         {tmuxSession.name}
                       </div>
-                      <p className="text-muted-foreground pl-5">
-                        {tmuxSession.windows.length}{" "}
-                        {tmuxSession.windows.length === 1
-                          ? "window"
-                          : "windows"}
-                      </p>
+                      {tmuxSession.windows.length > 0 ? (
+                        <ul className="mt-1 space-y-1 pl-5">
+                          {tmuxSession.windows.map((tmuxWindow, index) => (
+                            <li
+                              key={`${tmuxSession.name}:${index}:${tmuxWindow.name}`}
+                              className="text-muted-foreground flex min-w-0 items-center gap-1.5 font-mono"
+                            >
+                              <TerminalIcon className="size-3 shrink-0" />
+                              <span className="truncate" title={tmuxWindow.name}>
+                                {tmuxWindow.name}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
                     </div>
                   ))}
                 </div>
