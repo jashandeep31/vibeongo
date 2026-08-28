@@ -73,6 +73,7 @@ export function ProjectChatScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const chatTransitionDistance = Math.max(windowWidth, 320);
   const scrollRef = useRef<ScrollView>(null);
+  const initiallyScrolledSessionIdRef = useRef("");
   const focusedChatIdsRef = useRef(new Set<string>());
   const chatTransitionX = useRef(new Animated.Value(0)).current;
   const isChatTransitioningRef = useRef(false);
@@ -442,11 +443,6 @@ export function ProjectChatScreen() {
     }, [opencodeSessionId, projectSessionId, sessionQuery.resync]),
   );
 
-  useEffect(() => {
-    if (!data) return;
-    requestAnimationFrame(() => scrollRef.current?.scrollToEnd());
-  }, [data?.messages.length, data?.questions.length, sessionQuery.isStreaming]);
-
   const submit = () => {
     const text = prompt.trim();
     if (
@@ -478,10 +474,6 @@ export function ProjectChatScreen() {
       {
         onError: (error) =>
           Alert.alert("Could not submit your answer", error.message),
-        onSuccess: () =>
-          requestAnimationFrame(() =>
-            scrollRef.current?.scrollToEnd({ animated: true }),
-          ),
       },
     );
   };
@@ -670,9 +662,17 @@ export function ProjectChatScreen() {
                   keyboardDismissMode="interactive"
                   keyboardShouldPersistTaps="handled"
                   onContentSizeChange={() => {
-                    if (sessionQuery.isStreaming) {
-                      scrollRef.current?.scrollToEnd({ animated: true });
-                    }
+                    if (
+                      data.session.id !== opencodeSessionId ||
+                      initiallyScrolledSessionIdRef.current ===
+                        opencodeSessionId
+                    )
+                      return;
+
+                    initiallyScrolledSessionIdRef.current = opencodeSessionId;
+                    requestAnimationFrame(() =>
+                      scrollRef.current?.scrollToEnd({ animated: false }),
+                    );
                   }}
                   ref={scrollRef}
                   showsVerticalScrollIndicator={false}
