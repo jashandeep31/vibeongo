@@ -7,6 +7,51 @@ type UserConfigurablePackage = Extract<
   { name: "opencode" | "codex" | "pi" | "fx" }
 >;
 
+const createDefaultProjectPackages = (): ProjectPackage[] => [
+  {
+    name: "docker",
+    config: { containers: [] },
+  },
+  {
+    name: "opencode",
+    config: {
+      auth_json: {},
+      use_user_config: true,
+      model: "default",
+      requirePassword: false,
+    },
+  },
+  {
+    name: "codex",
+    config: { auth_json: {}, use_user_config: true },
+  },
+  {
+    name: "pi",
+    config: { auth_json: {}, use_user_config: true },
+  },
+  {
+    name: "fx",
+    config: { auth_json: {}, use_user_config: true },
+  },
+];
+
+const addMissingProjectPackages = (
+  packages: ProjectPackage[],
+): ProjectPackage[] => {
+  const configuredPackages = new Map<ProjectPackage["name"], ProjectPackage>();
+
+  for (const projectPackage of packages) {
+    if (!configuredPackages.has(projectPackage.name)) {
+      configuredPackages.set(projectPackage.name, projectPackage);
+    }
+  }
+
+  return createDefaultProjectPackages().map(
+    (defaultPackage) =>
+      configuredPackages.get(defaultPackage.name) ?? defaultPackage,
+  );
+};
+
 const isUserConfigurablePackage = (
   projectPackage: ProjectPackage,
 ): projectPackage is UserConfigurablePackage =>
@@ -46,14 +91,16 @@ export const normalizeProjectConfigForStorage = (
   projectConfig: ProjectConfig,
 ): ProjectConfig => ({
   ...projectConfig,
-  packages: projectConfig.packages.map((projectPackage) => {
-    if (
-      !isUserConfigurablePackage(projectPackage) ||
-      !projectPackage.config.use_user_config
-    ) {
-      return projectPackage;
-    }
+  packages: addMissingProjectPackages(projectConfig.packages).map(
+    (projectPackage) => {
+      if (
+        !isUserConfigurablePackage(projectPackage) ||
+        !projectPackage.config.use_user_config
+      ) {
+        return projectPackage;
+      }
 
-    return removeEmbeddedAccountAuth(projectPackage);
-  }),
+      return removeEmbeddedAccountAuth(projectPackage);
+    },
+  ),
 });
