@@ -28,7 +28,7 @@ type AuthConfig = {
 
 export type ProjectServicesConfigValue = {
   dockerContainers: DockerContainer[];
-  opencode: AuthConfig & { model: string; requirePassword: boolean };
+  opencode: AuthConfig & { model: string };
   codex: AuthConfig;
   pi: AuthConfig;
 };
@@ -55,7 +55,6 @@ export function createDefaultProjectServicesConfig(): ProjectServicesConfigValue
       authJson: "",
       useUserConfig: true,
       model: "",
-      requirePassword: false,
     },
     codex: { authJson: "", useUserConfig: true },
     pi: { authJson: "", useUserConfig: true },
@@ -92,7 +91,6 @@ export function hydrateProjectServicesConfig(
       authJson: formatAuthJson(opencode?.config.auth_json),
       useUserConfig: opencode?.config.use_user_config ?? true,
       model: opencode?.config.model ?? "",
-      requirePassword: opencode?.config.requirePassword ?? false,
     },
     codex: {
       authJson: formatAuthJson(codex?.config.auth_json),
@@ -134,7 +132,6 @@ export function buildProjectPackages(
           : parseAuthJson(value.opencode.authJson, "OpenCode"),
         use_user_config: value.opencode.useUserConfig,
         model: value.opencode.model,
-        requirePassword: value.opencode.requirePassword,
       },
     },
     {
@@ -286,14 +283,6 @@ export function ProjectServicesConfig({
             value={value.opencode.model}
           />
         </FieldLabel>
-        <SwitchRow
-          disabled={disabled}
-          label="Require password"
-          onValueChange={(requirePassword) =>
-            update({ opencode: { ...value.opencode, requirePassword } })
-          }
-          value={value.opencode.requirePassword}
-        />
         {!value.opencode.useUserConfig ? (
           <AuthJsonField
             disabled={disabled}

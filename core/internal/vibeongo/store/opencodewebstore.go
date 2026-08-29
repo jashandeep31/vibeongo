@@ -2,6 +2,7 @@ package store
 
 import (
 	"fmt"
+	"strings"
 	"sync"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
@@ -33,12 +34,22 @@ func startWebServerLocked() error {
 	}
 
 	const projectDir = "/home/ubuntu/code"
+	if err := validateOpencodePassword(cfg.InstanceConfig.OpencodePassword); err != nil {
+		return err
+	}
 
 	// Appending password to the opencode each time
 	err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" opencode2 serve --port 4096 --hostname 0.0.0.0")
 
 	if err != nil {
 		return err
+	}
+	return nil
+}
+
+func validateOpencodePassword(password string) error {
+	if strings.TrimSpace(password) == "" {
+		return fmt.Errorf("opencode password is missing")
 	}
 	return nil
 }

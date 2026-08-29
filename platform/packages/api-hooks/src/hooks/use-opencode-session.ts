@@ -49,7 +49,7 @@ export const useOpencodeSession = ({
         accessToken,
         password,
       ),
-    enabled: !!serverUrl && !!accessToken,
+    enabled: !!serverUrl && !!accessToken && !!password,
     staleTime: hasOptimisticSession ? Infinity : 0,
   });
   const resync = useCallback(() => {

@@ -83,10 +83,6 @@ const ClientView = ({ projectId }: { projectId: string }) => {
         typeof opencodePackage?.config?.model === "string"
           ? opencodePackage.config.model
           : "",
-      requirePassword:
-        typeof opencodePackage?.config?.requirePassword === "boolean"
-          ? opencodePackage.config.requirePassword
-          : false,
     });
 
     updateCodexConfig({

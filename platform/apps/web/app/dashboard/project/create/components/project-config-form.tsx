@@ -167,10 +167,6 @@ export default function ProjectConfigForm({
         typeof opencodePackage?.config?.model === "string"
           ? opencodePackage.config.model
           : "",
-      requirePassword:
-        typeof opencodePackage?.config?.requirePassword === "boolean"
-          ? opencodePackage.config.requirePassword
-          : false,
     });
 
     updateCodexConfig({

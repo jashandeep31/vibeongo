@@ -52,8 +52,6 @@ export const buildProjectConfigPayload = (
           model: state.additionalServices.opencodeConfig.model,
           use_user_config:
             state.additionalServices.opencodeConfig.useUserConfig,
-          requirePassword:
-            state.additionalServices.opencodeConfig.requirePassword,
           auth_json: state.additionalServices.opencodeConfig.useUserConfig
             ? {}
             : parseAuthJson(

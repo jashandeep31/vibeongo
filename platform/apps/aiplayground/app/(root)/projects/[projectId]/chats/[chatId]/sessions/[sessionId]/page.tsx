@@ -50,7 +50,7 @@ export default function OpencodeSessionPage() {
     return <ChatSessionSkeleton />;
   }
 
-  if (instanceError || !serverUrl || !accessToken) {
+  if (instanceError || !serverUrl || !accessToken || !opencodePassword) {
     return (
       <StatusScreen
         icon={<TriangleAlert className="text-destructive size-5" />}

@@ -14,14 +14,12 @@ function OpencodeConfigCard() {
   const authJson = additionalServices.opencodeConfig.authJson;
   const useUserConfig = additionalServices.opencodeConfig.useUserConfig;
   const model = additionalServices.opencodeConfig.model;
-  const requirePassword = additionalServices.opencodeConfig.requirePassword;
 
   const onAuthJsonChange = (authJsonValue: string) => {
     updateOpencodeConfig({
       authJson: authJsonValue,
       useUserConfig,
       model,
-      requirePassword,
     });
   };
 
@@ -30,16 +28,6 @@ function OpencodeConfigCard() {
       authJson,
       useUserConfig,
       model: e.target.value,
-      requirePassword,
-    });
-  };
-
-  const onRequirePasswordChange = (checked: boolean) => {
-    updateOpencodeConfig({
-      authJson,
-      useUserConfig,
-      model,
-      requirePassword: checked,
     });
   };
 
@@ -48,7 +36,6 @@ function OpencodeConfigCard() {
       authJson,
       useUserConfig: checked,
       model,
-      requirePassword,
     });
   };
 
@@ -80,7 +67,7 @@ function OpencodeConfigCard() {
           </Label>
         </div>
 
-        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+        <div className="min-w-0">
           <div className="min-w-0 space-y-1.5">
             <Label htmlFor="opencode-model" className="text-xs">
               AI model
@@ -92,26 +79,6 @@ function OpencodeConfigCard() {
               placeholder="default"
               className="h-8 max-w-full min-w-0"
             />
-          </div>
-          <div className="min-w-0 space-y-1.5">
-            <Label htmlFor="opencode-require-password" className="text-xs">
-              Access
-            </Label>
-            <div className="flex h-8 min-w-0 items-center gap-2 overflow-hidden rounded-md border px-2.5">
-              <Checkbox
-                id="opencode-require-password"
-                checked={requirePassword}
-                onCheckedChange={(checked) =>
-                  onRequirePasswordChange(checked === true)
-                }
-              />
-              <Label
-                htmlFor="opencode-require-password"
-                className="text-muted-foreground min-w-0 cursor-pointer truncate text-xs"
-              >
-                Require password
-              </Label>
-            </div>
           </div>
         </div>
         {!useUserConfig ? (

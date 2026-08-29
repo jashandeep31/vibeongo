@@ -18,7 +18,6 @@ const createDefaultProjectPackages = (): ProjectPackage[] => [
       auth_json: {},
       use_user_config: true,
       model: "default",
-      requirePassword: false,
     },
   },
   {

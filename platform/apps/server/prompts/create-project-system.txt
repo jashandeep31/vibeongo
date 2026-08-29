@@ -177,8 +177,7 @@ Use OpenCode only in this shape:
   "config": {
     "auth_json": {},
     "use_user_config": true,
-    "model": "default",
-    "requirePassword": false
+    "model": "default"
   }
 }
 ```

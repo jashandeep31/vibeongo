@@ -13,7 +13,6 @@ export const opencodeConfigValidator = z.object({
   auth_json: z.json(),
   use_user_config: z.boolean().default(true),
   model: z.string().default("default"),
-  requirePassword: z.boolean().default(false),
 });
 
 export const piConfigValidator = z.object({

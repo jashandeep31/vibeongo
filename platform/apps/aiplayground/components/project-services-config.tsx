@@ -43,7 +43,6 @@ export type ProjectServicesConfigValue = {
   dockerContainers: DockerContainer[];
   opencode: AuthConfig & {
     model: string;
-    requirePassword: boolean;
   };
   codex: AuthConfig;
   pi: AuthConfig;
@@ -68,7 +67,6 @@ export function createDefaultProjectServicesConfig(): ProjectServicesConfigValue
       authJson: "",
       useUserConfig: true,
       model: "",
-      requirePassword: false,
     },
     codex: { authJson: "", useUserConfig: true },
     pi: { authJson: "", useUserConfig: true },
@@ -108,7 +106,6 @@ export function hydrateProjectServicesConfig(
       authJson: formatAuthJson(opencode?.config.auth_json),
       useUserConfig: opencode?.config.use_user_config ?? true,
       model: opencode?.config.model ?? "",
-      requirePassword: opencode?.config.requirePassword ?? false,
     },
     codex: {
       authJson: formatAuthJson(codex?.config.auth_json),
@@ -155,7 +152,6 @@ export function buildProjectPackages(
           : parseAuthJson(value.opencode.authJson, "OpenCode"),
         use_user_config: value.opencode.useUserConfig,
         model: value.opencode.model,
-        requirePassword: value.opencode.requirePassword,
       },
     },
     {
@@ -425,7 +421,7 @@ export function ProjectServicesConfig({
             update({ opencode: { ...value.opencode, useUserConfig } })
           }
         />
-        <div className="grid min-w-0 gap-3 md:grid-cols-2">
+        <div className="min-w-0">
           <div className="space-y-1.5">
             <Label htmlFor="opencode-model" className="text-xs">
               AI model
@@ -441,32 +437,6 @@ export function ProjectServicesConfig({
                 })
               }
             />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="opencode-require-password" className="text-xs">
-              Access
-            </Label>
-            <div className="flex h-9 items-center gap-2 rounded-md border px-3">
-              <Checkbox
-                id="opencode-require-password"
-                checked={value.opencode.requirePassword}
-                disabled={disabled}
-                onCheckedChange={(checked) =>
-                  update({
-                    opencode: {
-                      ...value.opencode,
-                      requirePassword: checked === true,
-                    },
-                  })
-                }
-              />
-              <Label
-                htmlFor="opencode-require-password"
-                className="text-muted-foreground cursor-pointer text-xs"
-              >
-                Require password
-              </Label>
-            </div>
           </div>
         </div>
         {!value.opencode.useUserConfig ? (

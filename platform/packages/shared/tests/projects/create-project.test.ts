@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { projectConfigValidator } from "@repo/shared";
+import { opencodeConfigValidator, projectConfigValidator } from "@repo/shared";
 import fs from "fs";
 
 const currentDir = import.meta.dirname;
@@ -37,6 +37,21 @@ const validConfig = {
 };
 
 describe("project config constraints", () => {
+  test("strips the legacy OpenCode password option", () => {
+    expect(
+      opencodeConfigValidator.parse({
+        auth_json: {},
+        use_user_config: true,
+        model: "default",
+        [["require", "Password"].join("")]: false,
+      }),
+    ).toEqual({
+      auth_json: {},
+      use_user_config: true,
+      model: "default",
+    });
+  });
+
   test.each(["", "ab", "a".repeat(21)])(
     "rejects invalid project name %j",
     (name) => {

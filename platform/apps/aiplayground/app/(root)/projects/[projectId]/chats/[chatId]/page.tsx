@@ -29,7 +29,7 @@ export default function NewOpencodeChatPage() {
   const opencodePassword = getOpencodePassword(sessionEntry?.instance?.config);
   const sessionName = sessionEntry?.session.name ?? "Session";
 
-  if (!serverUrl || !accessToken) {
+  if (!serverUrl || !accessToken || !opencodePassword) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center p-6">
         <div className="flex max-w-sm flex-col items-center gap-4 text-center">

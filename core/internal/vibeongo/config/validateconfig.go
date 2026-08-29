@@ -69,9 +69,8 @@ type GitRepoConfig struct {
 }
 
 type OpenCodeConfig struct {
-	AuthJSON        json.RawMessage `json:"auth_json"`
-	Model           string          `json:"model"`
-	RequirePassword bool            `json:"requirePassword"`
+	AuthJSON json.RawMessage `json:"auth_json"`
+	Model    string          `json:"model"`
 }
 
 type PiConfig struct {

@@ -15,7 +15,6 @@ interface AdditionalService {
     authJson: string;
     useUserConfig: boolean;
     model: string;
-    requirePassword: boolean;
   };
   codexConfig: {
     authJson: string;
@@ -78,7 +77,6 @@ interface ConfigStore {
     authJson: string;
     useUserConfig: boolean;
     model: string;
-    requirePassword: boolean;
   }) => void;
   updateCodexConfig: (codexConfig: {
     authJson: string;
@@ -163,7 +161,6 @@ export const useConfigStore = create<ConfigStore>((set) => ({
       authJson: "{}",
       useUserConfig: true,
       model: "",
-      requirePassword: false,
     },
     codexConfig: {
       authJson: "{}",
