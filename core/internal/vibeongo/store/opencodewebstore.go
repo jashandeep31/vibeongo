@@ -33,11 +33,10 @@ func startWebServerLocked() error {
 	}
 
 	const projectDir = "/home/ubuntu/code"
-	if cfg.OpenCode.RequirePassword {
-		err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" opencode web --port 4096 --hostname 0.0.0.0")
-	} else {
-		err = utils.StartTmuxSession("ops", projectDir, "opencode web --port 4096 --hostname 0.0.0.0")
-	}
+
+	// Appending password to the opencode each time
+	err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" opencode2 serve --port 4096 --hostname 0.0.0.0")
+
 	if err != nil {
 		return err
 	}
