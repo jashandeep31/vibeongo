@@ -17,7 +17,7 @@
     "tsc-watch": "^7.2.0"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "^1.18.11",
+    "@opencode-ai/sdk": "^1.18.25",
     "@repo/db": "workspace:*",
     "@repo/shared": "workspace:*",
     "axios": "^1.13.6",

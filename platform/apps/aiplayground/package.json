@@ -11,7 +11,7 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@opencode-ai/sdk": "^1.18.11",
+    "@opencode-ai/sdk": "^1.18.25",
     "@repo/api-client": "workspace:*",
     "@repo/api-hooks": "workspace:*",
     "@repo/app-store": "workspace:*",
