@@ -39,7 +39,7 @@ interface SpinUpAndSaveInstanceInput {
 
 const SANDBOX_MAX_AUTO_TERMINATE_MINUTES = 40;
 
-const getValidatedAutoTerminateAfterInMinutes = async ({
+export const getValidatedAutoTerminateAfterInMinutes = async ({
   runtime,
   terminateAfterInMinutes,
   userId,

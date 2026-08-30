@@ -9,8 +9,6 @@ import {
   instances,
   projectSessions,
   projects,
-  projectSshKeys,
-  sshKeys,
   projectDomainRouting,
   projectGitRepos,
   customQuery,
@@ -21,7 +19,6 @@ import {
   asc,
   instanceRuntimeKind,
 } from "@repo/db";
-import { spinUpAndSaveInstance } from "../../services/instances/spin-up-and-save-instance.js";
 import { z } from "zod";
 import {
   commonFilterSchema,
@@ -29,6 +26,7 @@ import {
   updateProjectSessionTaskSchema,
 } from "@repo/shared";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
+import { checkAndLaunchInstance } from "../../services/instances/check-and-queue-instance-launch.js";
 
 export const createProjectSession = catchAsync(
   async (req: Request, res: Response) => {
@@ -327,55 +325,33 @@ export const resumeProjectSession = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("User not found", 404);
-    const { id } = z.object({ id: z.string() }).parse(req.params);
+    const { id } = z.object({ id: z.uuid() }).parse(req.params);
+
     const { runtime } = z
       .object({
         runtime: z.enum(instanceRuntimeKind.enumValues),
       })
       .parse(req.body ?? {});
 
-    const rows = await db
-      .select({
-        project: projects,
-        project_session: projectSessions,
-        ssh_keys: sshKeys.value,
-      })
-      .from(projectSessions)
-      .innerJoin(projects, eq(projects.id, projectSessions.project_id))
-      .leftJoin(projectSshKeys, eq(projectSshKeys.project_id, projects.id))
-      .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
-      .where(
-        and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
-      );
-    const projectSession = rows[0]?.project_session;
-    const project = rows[0]?.project;
-    const sshKeysArray = [...rows.map((r) => r.ssh_keys)].filter(
-      (key) => key !== null,
-    );
-    if (!project) throw new AppError("Project not found", 404);
-    if (!projectSession) throw new AppError("Project session not found", 404);
-
-    const instanceId = crypto.randomUUID();
-
-    const instance = await spinUpAndSaveInstance({
-      sshKeys: sshKeysArray,
-      project,
-      userId: user.id,
-      sessionId: projectSession.id,
-      instanceId,
+    const instance = await checkAndLaunchInstance({
+      user,
+      sessionId: id,
+      spinedUpBy: "manual",
       runtime,
     });
 
-    if (!instance) throw new AppError("Failed to spin up the instance", 500);
+    if (!instance.project_id) {
+      throw new AppError("Instance project not found", 500);
+    }
 
     await db
       .update(projectDomainRouting)
       .set({
         target_instance_id: instance.id,
       })
-      .where(eq(projectDomainRouting.project_id, project.id));
+      .where(eq(projectDomainRouting.project_id, instance.project_id));
 
-    await invalidateProjectProxiesByPid(project.id);
+    await invalidateProjectProxiesByPid(instance.project_id);
 
     res.status(200).json({ message: "Successfully resumed the instance" });
   },

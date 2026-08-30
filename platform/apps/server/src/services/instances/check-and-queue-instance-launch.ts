@@ -3,56 +3,83 @@ import {
   db,
   eq,
   instanceSlots,
+  projectSessions,
   users,
   inArray,
   userTier,
-  instanceSlotInstaceCategory,
+  instanceSlotInstanceCategory,
 } from "@repo/db";
-import { includes } from "zod";
 import { tierLimits } from "../../utils/constants.js";
 import { AppError } from "../../lib/app-error.js";
+import { spinUpAndSaveInstanceV2 } from "./spin-up-and-save-instance-v2.js";
+import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
+import { InstanceRuntime } from "../../providers/types.js";
 
-export const checkAndQueueInstanceLaunch = async () => {
-  await db.transaction(async (tx) => {
-    const [user] = await tx
-      .select()
-      .from(users)
-      .where(eq(users.id, ""))
-      .for("update");
-    if (!user) throw new AppError("User not found", 404);
+// TODO:
+// 1. checkAndLaunchInstance -> for manual ones
+// 2. addTheLaunchInstanceToQueue -> for automated ones
 
+interface CheckAndLaunchInstance {
+  user: typeof users.$inferSelect;
+  sessionId: string;
+  spinedUpBy: InstanceAutoTerminateSetting;
+  runtime: InstanceRuntime;
+}
+export const checkAndLaunchInstance = async ({
+  user,
+  sessionId,
+  spinedUpBy,
+  runtime,
+}: CheckAndLaunchInstance) => {
+  return db.transaction(async (tx) => {
+    const [session] = await tx
+      .select({ projectId: projectSessions.project_id })
+      .from(projectSessions)
+      .where(
+        and(
+          eq(projectSessions.id, sessionId),
+          eq(projectSessions.user_id, user.id),
+        ),
+      )
+      .limit(1);
+
+    if (!session) {
+      throw new AppError("Project session not found", 404);
+    }
+
+    // get the instanceSlots those are already running or getting ready to run
     const activeOrQueuedInstances = await tx
       .select()
       .from(instanceSlots)
       .where(
         and(
-          eq(instanceSlots.user_id, ""),
-          inArray(instanceSlots.status, ["active", "queued"]),
+          eq(instanceSlots.user_id, user.id),
+          inArray(instanceSlots.status, ["active", "provisioning"]),
         ),
       );
 
     const eligibilty = checkUserEligibilityAccTier(
-      user?.tier,
+      user.tier,
       activeOrQueuedInstances,
-      "auto",
+      "manual",
     );
-
-    if (eligibilty.eligible === true) {
-      // run spin up and save
-      //
-      // and update the status to active
-    } else if ((eligibilty.eligible === false, eligibilty.queueForFuture)) {
-      // queue for future
-    } else {
-      // throw the error of limit reach
+    if (!eligibilty.eligible) {
+      throw new AppError("You had reaced limit please upgrade or wait", 402);
     }
+    return spinUpAndSaveInstanceV2({
+      userId: user.id,
+      projectId: session.projectId,
+      sessionId,
+      spinedUpBy,
+      runtime,
+    });
   });
 };
 
 function checkUserEligibilityAccTier(
   tier: (typeof userTier.enumValues)[number],
   slots: (typeof instanceSlots.$inferSelect)[],
-  currentCategory: (typeof instanceSlotInstaceCategory.enumValues)[number],
+  currentCategory: (typeof instanceSlotInstanceCategory.enumValues)[number],
 ): {
   eligible: boolean;
   queueForFuture: boolean;
