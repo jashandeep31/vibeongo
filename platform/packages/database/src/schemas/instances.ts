@@ -8,6 +8,8 @@ import {
   varchar,
   text,
   json,
+  integer,
+  boolean,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { projects } from "./projects.js";
@@ -89,13 +91,15 @@ export const instances = pgTable(
 
 export const instanceSlotStatus = pgEnum("instance_slot_status", [
   "queued",
+  "provisioning",
   "active",
-  "temrinated",
+  "failed",
+  "cancelled",
   "expired",
 ]);
 
-export const instanceSlotInstaceCategory = pgEnum(
-  "instance_slot_instace_category",
+export const instanceSlotInstanceCategory = pgEnum(
+  " instance_slot_instance_category",
   ["auto", "manual"],
 );
 export const instanceSlots = pgTable("instance_slots", {
@@ -104,10 +108,22 @@ export const instanceSlots = pgTable("instance_slots", {
   user_id: uuid()
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
+  instance_id: uuid().references(() => instances.id, {
+    onDelete: "set null",
+  }),
   session_id: uuid().references(() => projectSessions.id, {
     onDelete: "cascade",
   }),
-  category: instanceSlotInstaceCategory().notNull(),
+
+  priority: integer().default(0).notNull(),
+  error: text(),
+
+  category: instanceSlotInstanceCategory().notNull(),
+
+  runtime_kind: instanceRuntimeKind().notNull(),
+  instance_type_id: uuid().references(() => instanceTypes.id),
+  sandbox_type_id: uuid().references(() => sandboxTypes.id),
+  assign_domains: boolean().default(false).notNull(),
 
   status: instanceSlotStatus().notNull(),
   created_at: timestamp().defaultNow().notNull(),
