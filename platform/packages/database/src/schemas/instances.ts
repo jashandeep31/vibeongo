@@ -96,6 +96,7 @@ export const instanceSlotStatus = pgEnum("instance_slot_status", [
   "failed",
   "terminating",
   "terminated",
+  "cancelled",
   "expired",
 ]);
 
