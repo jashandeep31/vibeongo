@@ -8,6 +8,7 @@ import {
   useUpdateProjectDomainPort,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
+import { getOpencodePassword } from "@repo/api-client";
 import { useCurrentUserIp } from "@repo/api-hooks";
 import { useSessionsStore } from "@repo/app-store";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
@@ -23,6 +24,8 @@ import {
 import { Input } from "@repo/ui/components/input";
 import { Switch } from "@repo/ui/components/switch";
 import {
+  Check,
+  Copy,
   ExternalLink,
   Globe,
   Lock,
@@ -49,12 +52,17 @@ export function ProjectDomainsDialog({
   const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
   const [editingDomainId, setEditingDomainId] = useState<string | null>(null);
   const [portInput, setPortInput] = useState("");
-  const instanceId = useSessionsStore((state) =>
+  const [copiedPasswordDomainId, setCopiedPasswordDomainId] = useState<
+    string | null
+  >(null);
+  const instance = useSessionsStore((state) =>
     projectSessionId
       ? state.sessions.find((entry) => entry.session.id === projectSessionId)
-          ?.instance?.id
+          ?.instance
       : undefined,
   );
+  const instanceId = instance?.id;
+  const opencodePassword = getOpencodePassword(instance?.config);
   const { data, isPending, isError } = useGetProjectDomainsById(
     projectId,
     open || !!instanceId,
@@ -190,6 +198,19 @@ export function ProjectDomainsDialog({
       toast.error("Failed to update domain access", { id: toastId });
     } finally {
       setUpdatingDomainId(null);
+    }
+  };
+
+  const copyOpencodePassword = async (domainId: string) => {
+    if (!opencodePassword) return;
+
+    try {
+      await navigator.clipboard.writeText(opencodePassword);
+      setCopiedPasswordDomainId(domainId);
+      toast.success("OpenCode password copied");
+      window.setTimeout(() => setCopiedPasswordDomainId(null), 1_500);
+    } catch {
+      toast.error("Could not copy OpenCode password");
     }
   };
 
@@ -345,27 +366,52 @@ export function ProjectDomainsDialog({
                         key={domain.id}
                         className="hover:border-primary hover:bg-muted/50 flex min-w-0 flex-col items-stretch gap-3 rounded-lg border p-3 transition-colors sm:flex-row sm:items-center"
                       >
-                        <a
-                          href={`https://${domain.domain}`}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="flex min-w-0 flex-1 items-center gap-3"
-                        >
+                        <div className="flex min-w-0 flex-1 items-center gap-3">
                           <span className="bg-muted rounded-md p-2">
                             <Globe className="size-4" />
                           </span>
                           <span className="min-w-0 flex-1">
-                            <span className="block truncate text-sm font-medium">
-                              {domain.domain}
-                            </span>
-                            <span className="text-muted-foreground text-xs">
-                              {domain.is_editable
-                                ? "Custom service route"
-                                : "Platform-managed route"}
-                            </span>
+                            <a
+                              href={`https://${domain.domain}`}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="flex items-center gap-2"
+                            >
+                              <span className="block min-w-0 truncate text-sm font-medium">
+                                {domain.domain}
+                              </span>
+                              <ExternalLink className="text-muted-foreground size-3.5 shrink-0" />
+                            </a>
+                            {domain.is_editable ||
+                            domain.target_port !== 4096 ? (
+                              <span className="text-muted-foreground text-xs">
+                                {domain.is_editable
+                                  ? "Custom service route"
+                                  : "Platform-managed route"}
+                              </span>
+                            ) : null}
+                            {!domain.is_editable &&
+                            domain.target_port === 4096 &&
+                            opencodePassword ? (
+                              <button
+                                type="button"
+                                className="text-muted-foreground hover:text-foreground mt-1 flex w-fit items-center gap-1 text-xs transition-colors"
+                                onClick={() => {
+                                  void copyOpencodePassword(domain.id);
+                                }}
+                              >
+                                {copiedPasswordDomainId === domain.id ? (
+                                  <Check className="size-3" />
+                                ) : (
+                                  <Copy className="size-3" />
+                                )}
+                                {copiedPasswordDomainId === domain.id
+                                  ? "Password copied"
+                                  : "Copy password"}
+                              </button>
+                            ) : null}
                           </span>
-                          <ExternalLink className="text-muted-foreground size-4 shrink-0" />
-                        </a>
+                        </div>
                         <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 self-end sm:self-auto">
                           {editingDomainId === domain.id ? (
                             <form

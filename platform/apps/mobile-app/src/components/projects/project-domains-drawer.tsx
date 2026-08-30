@@ -29,9 +29,11 @@ import { useTheme } from "@/hooks/use-theme";
 
 export function ProjectDomainsButton({
   instanceId,
+  opencodePassword,
   projectId,
 }: {
   instanceId: string;
+  opencodePassword?: string;
   projectId: string;
 }) {
   const theme = useTheme();
@@ -47,6 +49,9 @@ export function ProjectDomainsButton({
   } | null>(null);
   const [portInput, setPortInput] = useState("");
   const [copiedDomainId, setCopiedDomainId] = useState<string | null>(null);
+  const [copiedPasswordDomainId, setCopiedPasswordDomainId] = useState<
+    string | null
+  >(null);
   const [updatingDomainId, setUpdatingDomainId] = useState<string | null>(null);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(projectId));
   const assignDomains = useUpdateProjectRoutingTargetInstance();
@@ -67,7 +72,10 @@ export function ProjectDomainsButton({
       const rightChangedAt = new Date(
         right.updated_at ?? right.created_at,
       ).getTime();
-      return rightChangedAt - leftChangedAt || left.domain.localeCompare(right.domain);
+      return (
+        rightChangedAt - leftChangedAt ||
+        left.domain.localeCompare(right.domain)
+      );
     },
   );
   const needsAssignment = Boolean(
@@ -253,6 +261,16 @@ export function ProjectDomainsButton({
       setCopiedDomainId(id);
       setTimeout(() => setCopiedDomainId(null), 1500);
     });
+  };
+
+  const copyOpencodePassword = (domainId: string) => {
+    if (!opencodePassword) return;
+    void Clipboard.setStringAsync(opencodePassword)
+      .then(() => {
+        setCopiedPasswordDomainId(domainId);
+        setTimeout(() => setCopiedPasswordDomainId(null), 1500);
+      })
+      .catch(() => Alert.alert("Could not copy password", "Please try again."));
   };
 
   return (
@@ -471,7 +489,10 @@ export function ProjectDomainsButton({
                           ]}
                         >
                           <SymbolView
-                            name={{ ios: "arrow.up.right", android: "open_in_new" }}
+                            name={{
+                              ios: "arrow.up.right",
+                              android: "open_in_new",
+                            }}
                             size={17}
                             tintColor={theme.textSecondary}
                           />
@@ -541,6 +562,37 @@ export function ProjectDomainsButton({
                         )}
                       </View>
                     </View>
+                    {!domain.is_editable &&
+                    domain.target_port === 4096 &&
+                    opencodePassword ? (
+                      <Pressable
+                        accessibilityLabel="Copy OpenCode password"
+                        accessibilityRole="button"
+                        onPress={() => copyOpencodePassword(domain.id)}
+                        style={({ pressed }) => [
+                          styles.passwordButton,
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <SymbolView
+                          name={
+                            copiedPasswordDomainId === domain.id
+                              ? { ios: "checkmark", android: "check" }
+                              : { ios: "doc.on.doc", android: "content_copy" }
+                          }
+                          size={14}
+                          tintColor={theme.textSecondary}
+                        />
+                        <ThemedText
+                          style={styles.passwordButtonText}
+                          themeColor="textSecondary"
+                        >
+                          {copiedPasswordDomainId === domain.id
+                            ? "Password copied"
+                            : "Copy password"}
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
                   </View>
                 ))
               ) : (
@@ -1126,6 +1178,14 @@ const styles = StyleSheet.create({
     marginTop: 7,
     paddingHorizontal: 14,
   },
+  passwordButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: 6,
+    minHeight: 28,
+  },
+  passwordButtonText: { fontSize: 12, fontWeight: "600" },
   pressed: { opacity: 0.6 },
   removeIpButton: {
     alignItems: "center",

@@ -588,6 +588,7 @@ export function ProjectChatScreen() {
                     />
                     <ProjectDomainsButton
                       instanceId={runtime.instance.id}
+                      opencodePassword={runtime.password}
                       projectId={projectId}
                     />
                     <Pressable

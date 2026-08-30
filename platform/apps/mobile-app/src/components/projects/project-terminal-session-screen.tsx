@@ -412,6 +412,7 @@ export function ProjectTerminalSessionScreen() {
                 </Pressable>
                 <ProjectDomainsButton
                   instanceId={runtime.instance.id}
+                  opencodePassword={runtime.password}
                   projectId={projectId}
                 />
               </View>

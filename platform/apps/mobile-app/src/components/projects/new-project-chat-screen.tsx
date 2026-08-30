@@ -221,6 +221,7 @@ export function NewProjectChatScreen() {
                   />
                   <ProjectDomainsButton
                     instanceId={runtime.instance.id}
+                    opencodePassword={runtime.password}
                     projectId={projectId}
                   />
                 </View>
