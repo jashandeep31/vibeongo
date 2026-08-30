@@ -81,7 +81,6 @@ type ProductDemo = {
   title: string;
   description: string;
   kind: DemoKind;
-  steps: [string, string, string];
   gif?: string;
 };
 
@@ -91,42 +90,36 @@ const productDemos: ProductDemo[] = [
     description:
       "VibeOnGo opens the repository in a clean workspace and starts the right task with project context.",
     kind: "agent",
-    steps: ["Choose issue", "Agent works", "Review fix"],
   },
   {
     title: "Open a live preview",
     description:
       "Turn any development port into a secure, shareable HTTPS URL with one click.",
     kind: "preview",
-    steps: ["Run server", "Expose port", "Open URL"],
   },
   {
     title: "Reconnect to your terminal",
     description:
       "Long-running commands stay alive in tmux when you close the browser or switch devices.",
     kind: "terminal",
-    steps: ["Start command", "Disconnect", "Reattach"],
   },
   {
     title: "Review every new PR",
     description:
       "A GitHub event launches an isolated review task and returns the findings to the pull request.",
     kind: "review",
-    steps: ["PR opens", "Agent reviews", "Comment posts"],
   },
   {
     title: "Keep working from mobile",
     description:
       "Talk to the agent, inspect its changes, answer questions, and open the terminal from your phone.",
     kind: "mobile",
-    steps: ["Open app", "Check progress", "Take action"],
   },
   {
     title: "Stop paying when work stops",
     description:
       "See the active runtime, extend it when needed, or let automatic expiration stop idle compute.",
     kind: "billing",
-    steps: ["Pick runtime", "Track usage", "Auto-stop"],
   },
 ];
 
@@ -488,18 +481,6 @@ function DemoCard({ demo, index }: { demo: ProductDemo; index: number }) {
         <p className="mt-3 text-sm leading-6 text-black/50">
           {demo.description}
         </p>
-        <div className="mt-6 flex items-center gap-1.5 overflow-hidden">
-          {demo.steps.map((step, stepIndex) => (
-            <div key={step} className="flex min-w-0 items-center gap-1.5">
-              <span className="truncate rounded-full bg-[#f2f1ed] px-2.5 py-1.5 text-[9px] font-medium text-black/50">
-                {step}
-              </span>
-              {stepIndex < demo.steps.length - 1 ? (
-                <ChevronRight className="size-3 shrink-0 text-black/20" />
-              ) : null}
-            </div>
-          ))}
-        </div>
       </div>
     </article>
   );
