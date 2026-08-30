@@ -94,7 +94,8 @@ export const instanceSlotStatus = pgEnum("instance_slot_status", [
   "provisioning",
   "active",
   "failed",
-  "cancelled",
+  "terminating",
+  "terminated",
   "expired",
 ]);
 
@@ -108,12 +109,16 @@ export const instanceSlots = pgTable("instance_slots", {
   user_id: uuid()
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
-  instance_id: uuid().references(() => instances.id, {
-    onDelete: "set null",
-  }),
-  session_id: uuid().references(() => projectSessions.id, {
-    onDelete: "cascade",
-  }),
+  instance_id: uuid()
+    .references(() => instances.id, {
+      onDelete: "set null",
+    })
+    .unique(),
+  session_id: uuid()
+    .references(() => projectSessions.id, {
+      onDelete: "cascade",
+    })
+    .notNull(),
 
   priority: integer().default(0).notNull(),
   error: text(),

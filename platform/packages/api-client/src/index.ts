@@ -2,6 +2,7 @@ import axios, { type AxiosInstance } from "axios";
 import * as chatsApi from "./services/chat-services.js";
 import * as githubReposApi from "./services/github-repo-services.js";
 import * as instancesApi from "./services/instance-services.js";
+import * as instanceSlotsApi from "./services/instance-slot-services.js";
 import * as projectMetadataApi from "./services/project-metadata-services.js";
 import * as projectsApi from "./services/project-services.js";
 import * as projectSessionsApi from "./services/project-session-services.js";
@@ -13,6 +14,11 @@ export * from "./services/opencode-services.js";
 export * from "./services/proxy-auth.js";
 export * from "./services/runtime-settings-services.js";
 export type { Chat } from "./services/chat-services.js";
+export type {
+  GetInstanceSlotsFilters,
+  GetInstanceSlotsResponse,
+  InstanceSlot,
+} from "./services/instance-slot-services.js";
 export type {
   GithubRepo,
   GithubRepoIssue,
@@ -48,6 +54,7 @@ export class MobileClient {
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
+  instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
   projects: ReturnType<typeof bindApiModule<typeof projectsApi>>;
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
@@ -66,6 +73,7 @@ export class MobileClient {
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
+    this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
     this.projects = bindApiModule(projectsApi, this.apiClient);
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
@@ -80,6 +88,7 @@ export class WebClient {
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
+  instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
   projects: ReturnType<typeof bindApiModule<typeof projectsApi>>;
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
@@ -96,6 +105,7 @@ export class WebClient {
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
+    this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
     this.projects = bindApiModule(projectsApi, this.apiClient);
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);

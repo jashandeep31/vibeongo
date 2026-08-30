@@ -9,6 +9,7 @@ export * from "./api-client-context.js";
 export * from "./hooks/use-chats.js";
 export * from "./hooks/use-github-repos.js";
 export * from "./hooks/use-instance.js";
+export * from "./hooks/use-instance-slots.js";
 export * from "./hooks/use-ip.js";
 export * from "./hooks/use-opencode-session.js";
 export * from "./hooks/use-opencode-sessions.js";

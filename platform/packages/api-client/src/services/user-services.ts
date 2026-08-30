@@ -9,7 +9,7 @@ import type { AxiosInstance } from "axios";
 
 type UserRow = typeof users.$inferSelect;
 
-export type UserMetadata = Pick<UserRow, "id" | "username"> & {
+export type UserMetadata = Pick<UserRow, "id" | "username" | "tier"> & {
   balance: (typeof userWallet.$inferSelect)["balance"];
   firstName: UserRow["first_name"];
   lastName: UserRow["last_name"];

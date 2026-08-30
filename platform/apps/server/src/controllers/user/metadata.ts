@@ -18,6 +18,7 @@ export const getUserMetadata = catchAsync(
     res.status(200).json({
       data: {
         id: user.id,
+        tier: user.tier,
         balance: userWalletRow.balance,
         username: user.username,
         firstName: user.first_name,
