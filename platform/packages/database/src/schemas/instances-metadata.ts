@@ -2,6 +2,7 @@ import {
   bigint,
   pgEnum,
   pgTable,
+  boolean,
   text,
   timestamp,
   uuid,
@@ -42,6 +43,7 @@ export const instanceTypes = pgTable("instance_types", {
   // Stored as real price * 10^7.
   price_per_hour: bigint({ mode: "number" }).notNull(),
 
+  enabled: boolean().default(true),
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

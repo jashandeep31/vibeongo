@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  and,
   db,
   eq,
   instanceRegions,
@@ -31,7 +32,12 @@ export const getInstanceTypesByRegion = catchAsync(
     const instanceTypesData = await db
       .select()
       .from(instanceTypes)
-      .where(eq(instanceTypes.region_id, getRegionId(req)));
+      .where(
+        and(
+          eq(instanceTypes.region_id, getRegionId(req)),
+          eq(instanceTypes.enabled, true),
+        ),
+      );
 
     res.status(200).json({ data: instanceTypesData });
   },
@@ -49,7 +55,12 @@ export const getSandboxTypesByRegion = catchAsync(
     const sandboxTypesData = await db
       .select()
       .from(sandboxTypes)
-      .where(eq(sandboxTypes.sandbox_region, getRegionId(req)));
+      .where(
+        and(
+          eq(sandboxTypes.sandbox_region, getRegionId(req)),
+          eq(sandboxTypes.enabled, true),
+        ),
+      );
 
     res.status(200).json({ data: sandboxTypesData });
   },

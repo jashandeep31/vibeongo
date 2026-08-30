@@ -6,6 +6,7 @@ import {
   timestamp,
   pgEnum,
   text,
+  boolean,
 } from "drizzle-orm/pg-core";
 
 export const sandboxProvidersEnums = pgEnum("sandbox_providers", [
@@ -34,6 +35,7 @@ export const sandboxTypes = pgTable("sandbox_types", {
   cpu: text(),
   ram: text(),
 
+  enabled: boolean().default(true),
   provider: sandboxProvidersEnums().notNull(),
   sandbox_region: uuid().references(() => sandboxRegions.id, {
     onDelete: "cascade",
