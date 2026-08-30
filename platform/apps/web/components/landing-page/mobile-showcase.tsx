@@ -14,7 +14,7 @@ export function MobileShowcase() {
   return (
     <section
       id="mobile"
-      className="border-y border-black/10 bg-white px-5 py-24 sm:px-8 sm:py-32"
+      className="scroll-mt-16 border-y border-black/10 bg-white px-5 py-24 sm:px-8 sm:py-32"
     >
       <div className="mx-auto grid max-w-7xl items-center gap-16 lg:grid-cols-2">
         <div className="relative mx-auto h-[560px] w-full max-w-lg">

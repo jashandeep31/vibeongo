@@ -27,7 +27,7 @@ const providers = ["AWS", "E2B", "Daytona", "Vercel"];
 
 export function BlueprintShowcase() {
   return (
-    <section id="blueprints" className="px-5 py-24 sm:px-8 sm:py-32">
+    <section id="blueprints" className="scroll-mt-16 px-5 py-24 sm:px-8 sm:py-32">
       <div className="mx-auto max-w-7xl">
         <div className="grid items-start gap-14 lg:grid-cols-[0.85fr_1.15fr] lg:gap-20">
           <div className="lg:sticky lg:top-10">

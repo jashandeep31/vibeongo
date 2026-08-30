@@ -4,7 +4,7 @@ import { GITHUB_REPOSITORY_URL } from "./links";
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-black/10 px-5 py-10 sm:px-8">
+    <footer className="border-t border-black/10 bg-[#f7f6f2] px-5 py-10 sm:px-8">
       <div className="mx-auto flex max-w-7xl flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
         <Wordmark />
         <p className="text-xs text-black/35">
