@@ -1,6 +1,6 @@
 export const tierLimits = {
   tier1: {
-    manual: 2,
+    manual: 1,
     auto: 1,
   },
   tier2: {

@@ -8,16 +8,13 @@ import {
   inArray,
   userTier,
   instanceSlotInstanceCategory,
+  projects,
 } from "@repo/db";
 import { tierLimits } from "../../utils/constants.js";
 import { AppError } from "../../lib/app-error.js";
 import { spinUpAndSaveInstanceV2 } from "./spin-up-and-save-instance-v2.js";
 import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 import { InstanceRuntime } from "../../providers/types.js";
-
-// TODO:
-// 1. checkAndLaunchInstance -> for manual ones
-// 2. addTheLaunchInstanceToQueue -> for automated ones
 
 interface CheckAndLaunchInstance {
   user: typeof users.$inferSelect;
@@ -31,7 +28,13 @@ export const checkAndLaunchInstance = async ({
   spinedUpBy,
   runtime,
 }: CheckAndLaunchInstance) => {
-  return db.transaction(async (tx) => {
+  const { session, slotId } = await db.transaction(async (tx) => {
+    await tx
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .for("update");
+
     const [session] = await tx
       .select({ projectId: projectSessions.project_id })
       .from(projectSessions)
@@ -42,10 +45,17 @@ export const checkAndLaunchInstance = async ({
         ),
       )
       .limit(1);
-
     if (!session) {
       throw new AppError("Project session not found", 404);
     }
+
+    const [project] = await tx
+      .select()
+      .from(projects)
+      .where(
+        and(eq(projects.user_id, user.id), eq(projects.id, session.projectId)),
+      );
+    if (!project) throw new AppError("Project not found ", 404);
 
     // get the instanceSlots those are already running or getting ready to run
     const activeOrQueuedInstances = await tx
@@ -66,14 +76,61 @@ export const checkAndLaunchInstance = async ({
     if (!eligibilty.eligible) {
       throw new AppError("You had reaced limit please upgrade or wait", 402);
     }
-    return spinUpAndSaveInstanceV2({
+    const [slot] = await tx
+      .insert(instanceSlots)
+      .values({
+        user_id: user.id,
+        category: "manual",
+        runtime_kind: runtime,
+        assign_domains: true,
+        session_id: sessionId,
+        instance_type_id: project.instance_type_id,
+        sandbox_type_id: project.sandbox_type_id,
+        status: "provisioning",
+      })
+      .returning({ id: instanceSlots.id });
+
+    if (!slot) {
+      throw new AppError("Failed to reserve an instance slot", 500);
+    }
+
+    return {
+      session,
+      slotId: slot.id,
+    };
+  });
+
+  try {
+    const instance = await spinUpAndSaveInstanceV2({
       userId: user.id,
       projectId: session.projectId,
       sessionId,
       spinedUpBy,
       runtime,
     });
-  });
+
+    await db
+      .update(instanceSlots)
+      .set({
+        instance_id: instance.id,
+        status: "active",
+        updated_at: new Date(),
+      })
+      .where(eq(instanceSlots.id, slotId));
+
+    return instance;
+  } catch (error) {
+    await db
+      .update(instanceSlots)
+      .set({
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+        updated_at: new Date(),
+      })
+      .where(eq(instanceSlots.id, slotId));
+
+    throw error;
+  }
 };
 
 function checkUserEligibilityAccTier(
