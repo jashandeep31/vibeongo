@@ -74,7 +74,10 @@ export const checkAndLaunchInstance = async ({
       "manual",
     );
     if (!eligibilty.eligible) {
-      throw new AppError("You had reaced limit please upgrade or wait", 402);
+      throw new AppError(
+        "Instance limit reached. Upgrade your plan or wait for a running session to stop.",
+        402,
+      );
     }
     const [slot] = await tx
       .insert(instanceSlots)

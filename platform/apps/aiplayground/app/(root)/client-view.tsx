@@ -53,6 +53,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react";
+import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -78,6 +79,16 @@ function getRunningSessionUrl(entry: SessionEntry, directory: string) {
 function getServerUrl(entry: SessionEntry) {
   if (!entry.instance || entry.state !== "running") return "";
   return `https://4096-${entry.instance.id}${entry.instance.proxy_domain}`;
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (axios.isAxiosError<{ message?: unknown }>(error)) {
+    const message = error.response?.data?.message;
+    if (typeof message === "string" && message.trim()) return message;
+  }
+
+  if (error instanceof Error && error.message.trim()) return error.message;
+  return fallback;
 }
 
 function SessionRow({
@@ -363,7 +374,8 @@ export default function ClientView() {
       { id: sessionId, runtime },
       {
         onSuccess: () => toast.success("Session is starting"),
-        onError: () => toast.error("Failed to resume session"),
+        onError: (error) =>
+          toast.error(getErrorMessage(error, "Failed to resume session")),
         onSettled: () => setResumingSessionId(null),
       },
     );
