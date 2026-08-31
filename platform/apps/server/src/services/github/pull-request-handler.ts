@@ -25,7 +25,7 @@ export const pullRequestOpenedHandler = async ({
   gitRepoId,
   prNumber,
   requestedByUserId,
-  sessionCat = "manual",
+  sessionCat = "auto",
 }: pullRequestOpenedHandlerProps): Promise<void> => {
   const [githubRepoWithUserAndProject] = await db
     .select({

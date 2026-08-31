@@ -25,7 +25,7 @@ export const issueRequestHandler = async ({
   gitRepoId,
   issueNumber,
   requestedByUserId,
-  sessionCat = "manual",
+  sessionCat = "auto",
 }: issueHandlerProps): Promise<void> => {
   const [githubRepoWithUserAndProject] = await db
     .select({
