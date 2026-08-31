@@ -11,10 +11,12 @@ import {
   asc,
   userWalletTransactions,
   projectDomainRouting,
+  projectSessions,
   projects,
   sandboxTypes,
   sandboxRegions,
   instanceSlots,
+  inArray,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
@@ -86,6 +88,29 @@ export const terminateInstanceAndChargeUsage = async ({
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
   if (!instance) throw new AppError("instance not found", 404);
 
+  const [terminatingSlot] = await db
+    .update(instanceSlots)
+    .set({
+      status: "terminating",
+      updated_at: new Date(),
+    })
+    .where(
+      and(
+        eq(instanceSlots.instance_id, instanceId),
+        eq(instanceSlots.user_id, userId),
+        inArray(instanceSlots.status, [
+          "active",
+          "provisioning",
+          "terminating",
+        ]),
+      ),
+    )
+    .returning({ id: instanceSlots.id });
+
+  if (!terminatingSlot) {
+    throw new AppError("Active instance slot not found", 404);
+  }
+
   const openrouterCharges = await getOpenRouterKeyChargesAnTerminateKey(
     instance.id,
   );
@@ -132,6 +157,22 @@ export const terminateInstanceAndChargeUsage = async ({
       .returning({ category: instanceSlots.category });
 
     if (!instanceToTerminate) return terminatedSlot;
+
+    if (instance.project_session_id) {
+      await tx
+        .update(projectSessions)
+        .set({
+          archived: true,
+          updated_at: new Date(),
+        })
+        .where(
+          and(
+            eq(projectSessions.id, instance.project_session_id),
+            eq(projectSessions.user_id, userId),
+            eq(projectSessions.category, "auto"),
+          ),
+        );
+    }
 
     // Select and lock the user wallet for update.
     const [userWalletRow] = await tx

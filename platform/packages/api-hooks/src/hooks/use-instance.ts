@@ -43,6 +43,9 @@ export const useTerminateInstance = (projectId: string, sessionId: string) => {
       });
       void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+      void queryClient.invalidateQueries({
         queryKey: ["project-session", sessionId],
       });
       void queryClient.invalidateQueries({ queryKey: ["project", projectId] });
