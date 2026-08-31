@@ -31,12 +31,14 @@ interface CheckAndLaunchInstance {
   sessionId: string;
   spinedUpBy: InstanceAutoTerminateSetting;
   runtime: InstanceRuntime;
+  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
 }
 export async function scheduleAutomatedInstanceLaunch({
   userId,
   sessionId,
   spinedUpBy,
   runtime,
+  category,
 }: CheckAndLaunchInstance) {
   const slotId = await db.transaction(async (tx) => {
     const [user] = await tx.select().from(users).where(eq(users.id, userId));
@@ -69,7 +71,7 @@ export async function scheduleAutomatedInstanceLaunch({
       .insert(instanceSlots)
       .values({
         user_id: user.id,
-        category: "auto",
+        category,
         runtime_kind: runtime,
         assign_domains: true,
         session_id: sessionId,
@@ -95,8 +97,9 @@ export const checkAndLaunchInstance = async ({
   sessionId,
   spinedUpBy,
   runtime,
+  category,
 }: CheckAndLaunchInstance) => {
-  const { session, slotId } = await db.transaction(async (tx) => {
+  const { session, slot } = await db.transaction(async (tx) => {
     const [user] = await tx
       .select()
       .from(users)
@@ -140,7 +143,7 @@ export const checkAndLaunchInstance = async ({
     const eligibilty = checkUserEligibilityAccTier(
       user.tier,
       activeOrQueuedInstances,
-      "manual",
+      category,
     );
     if (!eligibilty.eligible) {
       throw new AppError(
@@ -152,7 +155,7 @@ export const checkAndLaunchInstance = async ({
       .insert(instanceSlots)
       .values({
         user_id: user.id,
-        category: "manual",
+        category,
         runtime_kind: runtime,
         assign_domains: true,
         session_id: sessionId,
@@ -161,7 +164,10 @@ export const checkAndLaunchInstance = async ({
         status: "provisioning",
         spined_up_by: spinedUpBy,
       })
-      .returning({ id: instanceSlots.id });
+      .returning({
+        id: instanceSlots.id,
+        category: instanceSlots.category,
+      });
 
     if (!slot) {
       throw new AppError("Failed to reserve an instance slot", 500);
@@ -169,7 +175,7 @@ export const checkAndLaunchInstance = async ({
 
     return {
       session,
-      slotId: slot.id,
+      slot,
     };
   });
 
@@ -180,7 +186,7 @@ export const checkAndLaunchInstance = async ({
       sessionId,
       spinedUpBy,
       runtime,
-      category: "manual",
+      category: slot.category,
     });
 
     await db
@@ -190,7 +196,7 @@ export const checkAndLaunchInstance = async ({
         status: "active",
         updated_at: new Date(),
       })
-      .where(eq(instanceSlots.id, slotId));
+      .where(eq(instanceSlots.id, slot.id));
 
     return instance;
   } catch (error) {
@@ -201,7 +207,7 @@ export const checkAndLaunchInstance = async ({
         error: error instanceof Error ? error.message : "Unknown error",
         updated_at: new Date(),
       })
-      .where(eq(instanceSlots.id, slotId));
+      .where(eq(instanceSlots.id, slot.id));
 
     throw error;
   }

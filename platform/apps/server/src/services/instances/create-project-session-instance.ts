@@ -116,8 +116,9 @@ export const createProjectSessionInstance = async ({
   await scheduleAutomatedInstanceLaunch({
     userId: project.user_id,
     sessionId: projectSession.id,
-    spinedUpBy: "manual",
+    spinedUpBy: terminateSetting,
     runtime: runtime,
+    category: sessionCategory,
   });
   return {
     projectSession,

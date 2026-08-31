@@ -338,6 +338,7 @@ export const resumeProjectSession = catchAsync(
       sessionId: id,
       spinedUpBy: "manual",
       runtime,
+      category: "manual",
     });
 
     if (!instance.project_id) {
