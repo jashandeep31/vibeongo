@@ -210,14 +210,7 @@ function ProjectSessionRuntimeSync({
             },
             expoFetch as unknown as typeof globalThis.fetch,
           );
-        } catch (error) {
-          if (!disposed && !signal.aborted) {
-            console.error(
-              `OpenCode event stream failed for project session ${sessionId}`,
-              error,
-            );
-          }
-        }
+        } catch {}
 
         if (!disposed && !signal.aborted) {
           await new Promise((resolve) => setTimeout(resolve, 1_000));

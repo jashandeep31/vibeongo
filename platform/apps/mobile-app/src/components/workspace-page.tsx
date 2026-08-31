@@ -43,10 +43,11 @@ export function WorkspacePage() {
   const router = useRouter();
   const { view } = useLocalSearchParams<{ view?: string }>();
   const initialView: WorkspaceView = view === "chats" ? "chats" : "projects";
+  const initialScrollX = initialView === "chats" ? 0 : width;
   const pagerRef = useAnimatedRef<Animated.ScrollView>();
   const activeViewRef = useRef<WorkspaceView>(initialView);
-  const currentScrollX = useSharedValue(initialView === "chats" ? 0 : width);
-  const animatedScrollX = useSharedValue(currentScrollX.value);
+  const currentScrollX = useSharedValue(initialScrollX);
+  const animatedScrollX = useSharedValue(initialScrollX);
   const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
