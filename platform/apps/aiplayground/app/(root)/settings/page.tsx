@@ -539,6 +539,23 @@ export default function SettingsPage() {
           </div>
         )}
       </SettingsSection>
+
+      <SettingsSection
+        title="Delete account"
+        description="Request permanent deletion of your account and associated data."
+        icon={Trash2}
+      >
+        <p className="text-muted-foreground text-sm">
+          To delete your account, please email us at{" "}
+          <a
+            href="mailto:jashan.signup@gmail.com?subject=Account%20deletion%20request"
+            className="text-foreground font-medium underline underline-offset-4"
+          >
+            jashan.signup@gmail.com
+          </a>
+          .
+        </p>
+      </SettingsSection>
     </div>
   );
 }
