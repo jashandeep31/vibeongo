@@ -38,7 +38,7 @@ export async function scheduleAutomatedInstanceLaunch({
   spinedUpBy,
   runtime,
 }: CheckAndLaunchInstance) {
-  await db.transaction(async (tx) => {
+  const slotId = await db.transaction(async (tx) => {
     const [user] = await tx.select().from(users).where(eq(users.id, userId));
 
     if (!user) throw new AppError("user not found", 404);
@@ -83,8 +83,11 @@ export async function scheduleAutomatedInstanceLaunch({
     if (!slot) {
       throw new AppError("Failed to reserve an instance slot", 500);
     }
-    await addToInstanceProvisioningQueue(slot.id);
+
+    return slot.id;
   });
+
+  await addToInstanceProvisioningQueue(slotId);
 }
 
 export const checkAndLaunchInstance = async ({
@@ -240,7 +243,7 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
       .from(instanceSlots)
       .where(eq(instanceSlots.id, slotId));
     if (!slot) throw new AppError("Slot not found", 404);
-    //locking the table
+
     const [user] = await tx
       .select()
       .from(users)
@@ -251,7 +254,7 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
     const [session] = await tx
       .select()
       .from(projectSessions)
-      .where(and(eq(projectSessions.id, slot.session_id)))
+      .where(eq(projectSessions.id, slot.session_id))
       .limit(1);
     if (!session) {
       throw new AppError("Project session not found", 404);
@@ -260,7 +263,7 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
     const [project] = await tx
       .select()
       .from(projects)
-      .where(and(eq(projects.id, session.project_id)));
+      .where(eq(projects.id, session.project_id));
 
     const activeOrQueuedInstances = await tx
       .select()
@@ -278,8 +281,7 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
       "auto",
     );
     if (!eligibilty.eligible) {
-      // Returning it without updating so we can retry
-      throw new AppError("not free", 500);
+      throw new AppError("Instance limit reached", 402);
     }
 
     if (!project) throw new AppError("Project not found ", 404);
@@ -287,6 +289,7 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
       .update(instanceSlots)
       .set({
         status: "provisioning",
+        error: null,
         updated_at: new Date(),
       })
       .where(eq(instanceSlots.id, slotId))
@@ -296,17 +299,29 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
     return { user, slot: updatedSlot, project, session };
   });
 
-  let spinedUpBy = z
+  const spinedUpBy = z
     .enum(["manual", "pr", "issue"])
     .default("manual")
     .parse(slot.spined_up_by);
 
-  await spinUpAndSaveInstanceV2({
+  const instance = await spinUpAndSaveInstanceV2({
     userId: user.id,
     sessionId: session.id,
     projectId: project.id,
-    spinedUpBy: spinedUpBy,
+    spinedUpBy,
     category: slot.category,
     runtime: slot.runtime_kind,
   });
+
+  await db
+    .update(instanceSlots)
+    .set({
+      instance_id: instance.id,
+      status: "active",
+      error: null,
+      updated_at: new Date(),
+    })
+    .where(eq(instanceSlots.id, slotId));
+
+  return instance;
 }

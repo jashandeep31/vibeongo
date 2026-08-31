@@ -1,6 +1,5 @@
 import { Queue, Worker } from "bullmq";
 import { redis } from "../lib/valkey.js";
-import { instanceSlots } from "@repo/db";
 import { SpinUpInstanceFromSlot } from "../services/instances/check-and-queue-instance-launch.js";
 
 export const INSTANCE_PROVISIONING_QUEUE_NAME = "instance_provisioning";
