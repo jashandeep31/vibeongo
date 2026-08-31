@@ -218,6 +218,13 @@
       "when": 1788076328815,
       "tag": "0030_unknown_blonde_phantom",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1788169387385,
+      "tag": "0031_next_blob",
+      "breakpoints": true
     }
   ]
 }
