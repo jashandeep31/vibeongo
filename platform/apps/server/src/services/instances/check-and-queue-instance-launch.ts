@@ -17,6 +17,7 @@ import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate
 import { InstanceRuntime } from "../../providers/types.js";
 import { z } from "zod";
 import { addToInstanceProvisioningQueue } from "../../jobs/instance-provisioning-queue.js";
+import { assertUserCanAffordInstanceLaunch } from "./assert-user-can-afford-instance-launch.js";
 
 // Function to handle auto category things
 // 1. Get in data for it
@@ -128,6 +129,14 @@ export const checkAndLaunchInstance = async ({
         and(eq(projects.user_id, user.id), eq(projects.id, session.projectId)),
       );
     if (!project) throw new AppError("Project not found ", 404);
+
+    await assertUserCanAffordInstanceLaunch({
+      tx,
+      userId: user.id,
+      runtime,
+      instanceTypeId: project.instance_type_id,
+      sandboxTypeId: project.sandbox_type_id,
+    });
 
     // get the instanceSlots those are already running or getting ready to run
     const activeOrQueuedInstances = await tx
@@ -242,7 +251,7 @@ function checkUserEligibilityAccTier(
   };
 }
 
-export async function SpinUpInstanceFromSlot(slotId: string) {
+const spinUpInstanceFromSlot = async (slotId: string) => {
   const { project, slot, session, user } = await db.transaction(async (tx) => {
     const [slot] = await tx
       .select()
@@ -256,6 +265,14 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
       .where(eq(users.id, slot.user_id))
       .for("update");
     if (!user) throw new AppError("user not found", 404);
+
+    await assertUserCanAffordInstanceLaunch({
+      tx,
+      userId: user.id,
+      runtime: slot.runtime_kind,
+      instanceTypeId: slot.instance_type_id,
+      sandboxTypeId: slot.sandbox_type_id,
+    });
 
     const [session] = await tx
       .select()
@@ -330,4 +347,21 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
     .where(eq(instanceSlots.id, slotId));
 
   return instance;
+};
+
+export async function SpinUpInstanceFromSlot(slotId: string) {
+  try {
+    return await spinUpInstanceFromSlot(slotId);
+  } catch (error) {
+    await db
+      .update(instanceSlots)
+      .set({
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unknown error",
+        updated_at: new Date(),
+      })
+      .where(eq(instanceSlots.id, slotId));
+
+    return;
+  }
 }
