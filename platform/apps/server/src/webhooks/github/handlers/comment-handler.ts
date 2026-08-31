@@ -5,19 +5,14 @@ import {
   db,
   eq,
   gitRepos,
-  instanceRegions,
-  instanceTypes,
   projects,
-  projectSessions,
-  projectSessionTasks,
-  projectSshKeys,
-  sshKeys,
   users,
   userSettings,
 } from "@repo/db";
+import { createInstanceSchema } from "@repo/shared";
 import { getSessionNameAndDescriptionAgent } from "../../../ai/ai-agents/common-agents.js";
 import { createTasksForPRIssueOrCommentAgent } from "../../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
-import { spinUpAndSaveInstance } from "../../../services/instances/spin-up-and-save-instance.js";
+import { createProjectSessionInstance } from "../../../services/instances/create-project-session-instance.js";
 
 export const commentHandler = async (
   event: WebhookHandler<IssueCommentCreatedEvent>,
@@ -56,85 +51,42 @@ export const commentHandler = async (
     return;
   }
 
-  // generating the name and the description of the sessoin
-  const sessionMetadata = await getSessionNameAndDescriptionAgent(body);
-
-  const session = await db.transaction(async (tx) => {
-    // creating session in db
-    const [session] = await tx
-      .insert(projectSessions)
-      .values({
-        name: sessionMetadata.name || "New Session",
-        description: sessionMetadata.description || "",
-        user_id: user.id,
-        project_id: project.id,
-        category: "auto",
-      })
-      .returning();
-
-    if (!session) throw new Error("Internal error");
-
-    const [userSettingsRow] = await db
-      .select()
-      .from(userSettings)
-      .where(eq(userSettings.user_id, user.id));
-
-    const tasks = await createTasksForPRIssueOrCommentAgent(
+  const [sessionMetadata, tasks, userSettingsRows] = await Promise.all([
+    getSessionNameAndDescriptionAgent(body),
+    createTasksForPRIssueOrCommentAgent(
       "comment",
       `${payload.comment.url} body: ${body}`,
-    );
+    ),
+    db
+      .select()
+      .from(userSettings)
+      .where(eq(userSettings.user_id, user.id)),
+  ]);
+  const userSettingsRow = userSettingsRows[0];
 
-    await tx.insert(projectSessionTasks).values(
-      tasks.map((t, index): typeof projectSessionTasks.$inferInsert => {
-        let model = "";
-
-        if (t.agent === "pr-reviewer" && userSettingsRow?.default_pr_model) {
-          model = userSettingsRow.default_pr_model;
-        }
-        if (
-          t.agent === "issue-resolver" &&
-          userSettingsRow?.default_issue_fixer_model
-        ) {
-          model = userSettingsRow.default_issue_fixer_model;
-        }
-
-        return {
-          folder_name: repo.full_name.split("/")[1] ?? "",
-          task: t.task,
-          agent: t.agent,
-          project_session_id: session.id,
-          model,
-          done: false,
-          order_number: index,
-        };
-      }),
-    );
-    return session;
+  const input = createInstanceSchema.parse({
+    projectId: project.id,
+    sessionName: sessionMetadata.name || "New Session",
+    sessionDescription: sessionMetadata.description || "",
+    tasks: tasks.map((task) => ({
+      task: task.task,
+      agent: task.agent,
+      repoId: repo.id,
+      model:
+        task.agent === "pr-reviewer"
+          ? (userSettingsRow?.default_pr_model ?? "")
+          : task.agent === "issue-resolver"
+            ? (userSettingsRow?.default_issue_fixer_model ?? "")
+            : "",
+    })),
   });
 
-  const sshKeysArray = await db
-    .select()
-    .from(projectSshKeys)
-    .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id));
-
-  const instanceId = crypto.randomUUID();
-
-  const [regionRow] = await db
-    .select()
-    .from(instanceTypes)
-    .innerJoin(instanceRegions, eq(instanceRegions.id, instanceTypes.region_id))
-    .where(eq(instanceTypes.id, project.instance_type_id));
-  if (!regionRow || !regionRow.instance_regions) return null;
-
-  await spinUpAndSaveInstance({
-    sshKeys: sshKeysArray
-      .map((r) => r.shh_keys?.value)
-      .filter((key): key is string => Boolean(key)),
-    project,
+  await createProjectSessionInstance({
     userId: user.id,
-    sessionId: session.id,
-    instanceId,
+    input,
+    sessionCategory: "auto",
     terminate: true,
-    terminateSetting: "issue",
+    terminateSetting: payload.issue.pull_request ? "pr" : "issue",
+    runtime: "sandbox",
   });
 };
