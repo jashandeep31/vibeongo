@@ -43,6 +43,7 @@ const statusStyles: Record<
   failed: "destructive",
   terminating: "secondary",
   terminated: "outline",
+  cancelled: "outline",
   expired: "outline",
 };
 
