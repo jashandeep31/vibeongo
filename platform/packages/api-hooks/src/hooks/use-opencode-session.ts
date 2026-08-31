@@ -329,6 +329,8 @@ export const useOpencodeInventory = (
     refetchInterval: (query) =>
       query.state.data?.models.length ? false : 2_000,
     refetchOnMount: "always",
+    retry: 5,
+    retryDelay: 1_000,
     staleTime: 60_000,
   });
 

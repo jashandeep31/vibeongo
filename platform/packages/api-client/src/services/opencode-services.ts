@@ -19,6 +19,7 @@ import {
 
 const clients = new Map<string, OpencodeClient>();
 const OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
+const OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS = 5_000;
 
 export type OpencodeSessionData = {
   session: Session;
@@ -573,9 +574,15 @@ export async function getOpencodeInventory(
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const [providerResponse, agentsResponse, configResponse] = await Promise.all([
-    client.provider.list(),
-    client.app.agents(),
-    client.config.get(),
+    getOpencodeInventoryResource("providers", (signal) =>
+      client.provider.list({}, { signal }),
+    ),
+    getOpencodeInventoryResource("agents", (signal) =>
+      client.app.agents({}, { signal }),
+    ),
+    getOpencodeInventoryResource("configuration", (signal) =>
+      client.config.get({}, { signal }),
+    ),
   ]);
 
   if (providerResponse.error || !providerResponse.data) {
@@ -621,6 +628,26 @@ export async function getOpencodeInventory(
       agent: configResponse.data?.default_agent,
     },
   };
+}
+
+async function getOpencodeInventoryResource<T>(
+  resource: string,
+  request: (signal: AbortSignal) => Promise<T>,
+) {
+  const signal = AbortSignal.timeout(OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS);
+
+  try {
+    return await request(signal);
+  } catch (error) {
+    if (signal.aborted) {
+      throw new Error(
+        `OpenCode ${resource} request timed out after ${OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS / 1000}s`,
+      );
+    }
+
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Could not load OpenCode ${resource}: ${message}`);
+  }
 }
 
 export async function sendOpencodePrompt(
