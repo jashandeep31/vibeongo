@@ -63,6 +63,25 @@ type SessionActionTarget = {
   name: string;
 };
 
+function getApiError(error: unknown) {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return { message: null, status: null };
+  }
+
+  const response = (
+    error as {
+      response?: { data?: { message?: unknown }; status?: unknown };
+    }
+  ).response;
+  return {
+    message:
+      typeof response?.data?.message === "string"
+        ? response.data.message
+        : null,
+    status: typeof response?.status === "number" ? response.status : null,
+  };
+}
+
 export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const theme = useTheme();
   const router = useRouter();
@@ -185,11 +204,44 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     resumeSession.mutate(
       { id: sessionId, runtime },
       {
-        onError: () => {
-          Alert.alert(
-            "Could not resume session",
-            "Please check your connection and try again.",
-          );
+        onError: (error) => {
+          const apiError = getApiError(error);
+          if (apiError.status === 402) {
+            Toast.show({
+              type: "error",
+              text1: "Instance limit reached",
+              text2: `${apiError.message ?? "Upgrade your tier or stop a running session before launching another instance."} Tap to view limits.`,
+              onPress: () => {
+                Toast.hide();
+                router.push("/limits");
+              },
+              visibilityTime: 5000,
+            });
+            return;
+          }
+
+          if (
+            apiError.message?.toLowerCase().startsWith("insufficient balance")
+          ) {
+            Toast.show({
+              type: "error",
+              text1: "Insufficient balance",
+              text2: `${apiError.message} Tap to open your wallet.`,
+              onPress: () => {
+                Toast.hide();
+                router.push("/wallet");
+              },
+              visibilityTime: 5000,
+            });
+            return;
+          }
+
+          Toast.show({
+            type: "error",
+            text1: "Could not resume session",
+            text2:
+              apiError.message ?? "Please check your connection and try again.",
+          });
         },
         onSettled: () => setResumingSessionId(null),
       },

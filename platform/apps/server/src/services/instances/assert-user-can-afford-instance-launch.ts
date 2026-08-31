@@ -5,6 +5,7 @@ import {
   type Transaction,
   userWallet,
 } from "@repo/db";
+import { formatInternalMoney } from "@repo/shared";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import type { InstanceRuntime } from "../../providers/types.js";
@@ -32,7 +33,7 @@ export const assertUserCanAffordInstanceLaunch = async ({
     throw new AppError("User wallet not found", 404);
   }
 
-  let eightHourCost: number;
+  let twoHourCost: number;
   if (runtime === "vm") {
     if (!instanceTypeId) {
       throw new AppError("VM instance type not found", 404);
@@ -47,7 +48,7 @@ export const assertUserCanAffordInstanceLaunch = async ({
       throw new AppError("VM instance type not found", 404);
     }
 
-    eightHourCost = instanceType.pricePerHour * 8;
+    twoHourCost = instanceType.pricePerHour * 8;
   } else {
     if (!sandboxTypeId) {
       throw new AppError("Sandbox type not found", 404);
@@ -62,16 +63,16 @@ export const assertUserCanAffordInstanceLaunch = async ({
       throw new AppError("Sandbox type not found", 404);
     }
 
-    eightHourCost = sandboxType.pricePerSecond * 60 * 60 * 8;
+    twoHourCost = sandboxType.pricePerSecond * 60 * 60 * 2;
   }
 
   const requiredBalance = Math.ceil(
-    eightHourCost + eightHourCost * (env.PROFIT_PRECENTAGE / 100),
+    twoHourCost + twoHourCost * (env.PROFIT_PRECENTAGE / 100),
   );
 
   if (wallet.balance < requiredBalance) {
     throw new AppError(
-      `Insufficient balance required is ${requiredBalance} you have ${wallet.balance}`,
+      `Insufficient balance. $${formatInternalMoney(requiredBalance, 2)} is required, but your balance is $${formatInternalMoney(wallet.balance, 2)}.`,
       400,
     );
   }

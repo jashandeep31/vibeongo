@@ -30,7 +30,13 @@ type NavigationItem = {
   comingSoon?: boolean;
   title: string;
   icon: SymbolViewProps["name"];
-  href?: "/" | "/github-repos" | "/import-projects" | "/settings" | "/wallet";
+  href?:
+    | "/"
+    | "/github-repos"
+    | "/import-projects"
+    | "/limits"
+    | "/settings"
+    | "/wallet";
   workspaceView?: "chats" | "projects";
 };
 
@@ -46,9 +52,9 @@ const navigation: NavigationItem[] = [
     workspaceView: "chats",
   },
   {
-    comingSoon: true,
     title: "Limits",
     icon: { ios: "gauge.with.dots.needle.50percent", android: "speed" },
+    href: "/limits",
   },
   {
     title: "GitHub Repos",
