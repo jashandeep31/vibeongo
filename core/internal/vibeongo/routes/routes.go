@@ -16,7 +16,8 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 
 	protected := e.Group("")
 	protected.Use(middlewares.CheckLocalAuth(localToken))
-	e.GET("/opencode/inventory", handlers.OpencodeInventoryHandler)
+	// Database lock is creating issue
+	// protected.GET("/opencode/inventory", handlers.OpencodeInventoryHandler)
 	protected.POST("/ws/token", handlers.WebSocketAuthTokenHandler(tools.AuthTokenStore))
 	protected.GET("/tools-stats", handlers.ToolsStatsHandler(tools))
 	protected.GET("/stats", handlers.GetRuntimeStats)

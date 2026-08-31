@@ -16,7 +16,11 @@ var opencodeModelNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+/[A-Za-z0-9_.-
 
 func OpencodeInventoryHandler(c *echo.Context) error {
 	startTime := time.Now()
-	opencodeModelsCmd := exec.Command("opencode", "models", "--verbose")
+	opencodeModelsCmd := exec.Command(
+		"/home/ubuntu/.opencode/bin/opencode",
+		"models",
+		"--verbose",
+	)
 	opencodeModelsCmdOutput, err := opencodeModelsCmd.CombinedOutput()
 	if err != nil {
 		return fmt.Errorf("run opencode models --verbose: %w: %s", err, strings.TrimSpace(string(opencodeModelsCmdOutput)))
