@@ -4,6 +4,7 @@ import {
   db,
   desc,
   eq,
+  inArray,
   instanceSlots,
   projectSessions,
   users,
@@ -170,6 +171,29 @@ export const checkAndLaunchInstance = async ({
         and(eq(projects.user_id, user.id), eq(projects.id, session.projectId)),
       );
     if (!project) throw new AppError("Project not found ", 404);
+
+    const [existingSlot] = await tx
+      .select({ id: instanceSlots.id })
+      .from(instanceSlots)
+      .where(
+        and(
+          eq(instanceSlots.session_id, sessionId),
+          inArray(instanceSlots.status, [
+            "queued",
+            "provisioning",
+            "active",
+            "terminating",
+          ]),
+        ),
+      )
+      .limit(1);
+
+    if (existingSlot) {
+      throw new AppError(
+        "This session already has an instance running or starting.",
+        409,
+      );
+    }
 
     await assertUserCanAffordInstanceLaunch({
       tx,
