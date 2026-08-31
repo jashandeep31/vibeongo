@@ -16,18 +16,14 @@ export const workOnIssueByIssueId = catchAsync(
       })
       .parse(req.params);
 
-    const instance = await issueRequestHandler({
+    await issueRequestHandler({
       gitRepoId: id,
       issueNumber,
       requestedByUserId: user.id,
     });
-    if (!instance) throw new AppError("Failed to work on the issue", 500);
 
     res.status(200).json({
-      data: {
-        instanceId: instance.id,
-        projectId: instance.project_id,
-      },
+      data: {},
     });
   },
 );

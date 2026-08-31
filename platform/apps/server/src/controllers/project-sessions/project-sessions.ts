@@ -334,7 +334,7 @@ export const resumeProjectSession = catchAsync(
       .parse(req.body ?? {});
 
     const instance = await checkAndLaunchInstance({
-      user,
+      userId: user.id,
       sessionId: id,
       spinedUpBy: "manual",
       runtime,

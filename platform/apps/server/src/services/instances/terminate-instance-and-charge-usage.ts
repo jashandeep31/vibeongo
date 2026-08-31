@@ -14,6 +14,7 @@ import {
   projects,
   sandboxTypes,
   sandboxRegions,
+  instanceSlots,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
@@ -68,6 +69,17 @@ const calculateTotalCostWithProfit = ({
   return totalCostWithProfit < minimumCharge
     ? minimumCharge
     : Math.ceil(totalCostWithProfit);
+};
+
+// TODO: Remove this temporary helper when instance-slot lifecycle handling is centralized.
+const markInstanceSlotAsTerminated = async (instanceId: string) => {
+  await db
+    .update(instanceSlots)
+    .set({
+      status: "terminated",
+      updated_at: new Date(),
+    })
+    .where(eq(instanceSlots.instance_id, instanceId));
 };
 
 /**
@@ -204,6 +216,8 @@ export const terminateInstanceAndChargeUsage = async ({
         .where(eq(projects.id, instance.project_id));
     }
   });
+
+  await markInstanceSlotAsTerminated(instanceId);
 
   // Remove the routes and invalidate affected project proxies.
   const updatedRoutings = await db

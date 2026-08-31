@@ -16,18 +16,14 @@ export const workOnPullRequestByPrNumber = catchAsync(
       })
       .parse(req.params);
 
-    const instance = await pullRequestOpenedHandler({
+    await pullRequestOpenedHandler({
       gitRepoId: id,
       prNumber,
       requestedByUserId: user.id,
     });
 
-    if (!instance) throw new AppError("Something went wrong", 500);
     res.status(200).json({
-      data: {
-        instanceId: instance.id,
-        projectId: instance?.project_id,
-      },
+      data: {},
     });
   },
 );

@@ -15,26 +15,92 @@ import { AppError } from "../../lib/app-error.js";
 import { spinUpAndSaveInstanceV2 } from "./spin-up-and-save-instance-v2.js";
 import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 import { InstanceRuntime } from "../../providers/types.js";
+import { z } from "zod";
+import { addToInstanceProvisioningQueue } from "../../jobs/instance-provisioning-queue.js";
 
+// Function to handle auto category things
+// 1. Get in data for it
+// 2. Save a slot under auto
+// 3. if limit is there then run it instantly
+// 4. If no limit is there then queuee the task
+//5. Automate those queue tasks
+//
+//
 interface CheckAndLaunchInstance {
-  user: typeof users.$inferSelect;
+  userId: string;
   sessionId: string;
   spinedUpBy: InstanceAutoTerminateSetting;
   runtime: InstanceRuntime;
 }
+export async function scheduleAutomatedInstanceLaunch({
+  userId,
+  sessionId,
+  spinedUpBy,
+  runtime,
+}: CheckAndLaunchInstance) {
+  await db.transaction(async (tx) => {
+    const [user] = await tx.select().from(users).where(eq(users.id, userId));
+
+    if (!user) throw new AppError("user not found", 404);
+    const [session] = await tx
+      .select({ projectId: projectSessions.project_id })
+      .from(projectSessions)
+      .where(
+        and(
+          eq(projectSessions.id, sessionId),
+          eq(projectSessions.user_id, user.id),
+        ),
+      )
+      .limit(1);
+
+    if (!session) {
+      throw new AppError("Project session not found", 404);
+    }
+
+    const [project] = await tx
+      .select()
+      .from(projects)
+      .where(
+        and(eq(projects.user_id, user.id), eq(projects.id, session.projectId)),
+      );
+    if (!project) throw new AppError("Project not found ", 404);
+
+    const [slot] = await tx
+      .insert(instanceSlots)
+      .values({
+        user_id: user.id,
+        category: "auto",
+        runtime_kind: runtime,
+        assign_domains: true,
+        session_id: sessionId,
+        instance_type_id: project.instance_type_id,
+        sandbox_type_id: project.sandbox_type_id,
+        spined_up_by: spinedUpBy,
+        status: "queued",
+      })
+      .returning({ id: instanceSlots.id });
+
+    if (!slot) {
+      throw new AppError("Failed to reserve an instance slot", 500);
+    }
+    await addToInstanceProvisioningQueue(slot.id);
+  });
+}
+
 export const checkAndLaunchInstance = async ({
-  user,
+  userId,
   sessionId,
   spinedUpBy,
   runtime,
 }: CheckAndLaunchInstance) => {
   const { session, slotId } = await db.transaction(async (tx) => {
-    await tx
-      .select({ id: users.id })
+    const [user] = await tx
+      .select()
       .from(users)
-      .where(eq(users.id, user.id))
+      .where(eq(users.id, userId))
       .for("update");
 
+    if (!user) throw new AppError("user not found", 404);
     const [session] = await tx
       .select({ projectId: projectSessions.project_id })
       .from(projectSessions)
@@ -90,6 +156,7 @@ export const checkAndLaunchInstance = async ({
         instance_type_id: project.instance_type_id,
         sandbox_type_id: project.sandbox_type_id,
         status: "provisioning",
+        spined_up_by: spinedUpBy,
       })
       .returning({ id: instanceSlots.id });
 
@@ -105,11 +172,12 @@ export const checkAndLaunchInstance = async ({
 
   try {
     const instance = await spinUpAndSaveInstanceV2({
-      userId: user.id,
+      userId: userId,
       projectId: session.projectId,
       sessionId,
       spinedUpBy,
       runtime,
+      category: "manual",
     });
 
     await db
@@ -163,4 +231,82 @@ function checkUserEligibilityAccTier(
     queueForFuture:
       eligible === false && currentCategory === "auto" ? true : false,
   };
+}
+
+export async function SpinUpInstanceFromSlot(slotId: string) {
+  const { project, slot, session, user } = await db.transaction(async (tx) => {
+    const [slot] = await tx
+      .select()
+      .from(instanceSlots)
+      .where(eq(instanceSlots.id, slotId));
+    if (!slot) throw new AppError("Slot not found", 404);
+    //locking the table
+    const [user] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.id, slot.user_id))
+      .for("update");
+    if (!user) throw new AppError("user not found", 404);
+
+    const [session] = await tx
+      .select()
+      .from(projectSessions)
+      .where(and(eq(projectSessions.id, slot.session_id)))
+      .limit(1);
+    if (!session) {
+      throw new AppError("Project session not found", 404);
+    }
+
+    const [project] = await tx
+      .select()
+      .from(projects)
+      .where(and(eq(projects.id, session.project_id)));
+
+    const activeOrQueuedInstances = await tx
+      .select()
+      .from(instanceSlots)
+      .where(
+        and(
+          eq(instanceSlots.user_id, user.id),
+          inArray(instanceSlots.status, ["active", "provisioning"]),
+        ),
+      );
+
+    const eligibilty = checkUserEligibilityAccTier(
+      user.tier,
+      activeOrQueuedInstances,
+      "auto",
+    );
+    if (!eligibilty.eligible) {
+      // Returning it without updating so we can retry
+      throw new AppError("not free", 500);
+    }
+
+    if (!project) throw new AppError("Project not found ", 404);
+    const [updatedSlot] = await tx
+      .update(instanceSlots)
+      .set({
+        status: "provisioning",
+        updated_at: new Date(),
+      })
+      .where(eq(instanceSlots.id, slotId))
+      .returning();
+
+    if (!updatedSlot) throw new AppError("failed to update the state", 500);
+    return { user, slot: updatedSlot, project, session };
+  });
+
+  let spinedUpBy = z
+    .enum(["manual", "pr", "issue"])
+    .default("manual")
+    .parse(slot.spined_up_by);
+
+  await spinUpAndSaveInstanceV2({
+    userId: user.id,
+    sessionId: session.id,
+    projectId: project.id,
+    spinedUpBy: spinedUpBy,
+    category: slot.category,
+    runtime: slot.runtime_kind,
+  });
 }

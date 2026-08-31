@@ -13,7 +13,6 @@ import { createTasksForPRIssueOrCommentAgent } from "../../ai/ai-agents/create-t
 import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
 import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { createProjectSessionInstance } from "../instances/create-project-session-instance.js";
-import type { spinUpAndSaveInstanceResponse } from "../instances/spin-up-and-save-instance.js";
 
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
@@ -27,7 +26,7 @@ export const pullRequestOpenedHandler = async ({
   prNumber,
   requestedByUserId,
   sessionCat = "manual",
-}: pullRequestOpenedHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
+}: pullRequestOpenedHandlerProps): Promise<void> => {
   const [githubRepoWithUserAndProject] = await db
     .select({
       repo: gitRepos,
@@ -84,7 +83,7 @@ export const pullRequestOpenedHandler = async ({
     })),
   });
 
-  const { instance } = await createProjectSessionInstance({
+  await createProjectSessionInstance({
     userId: user.id,
     input,
     sessionCategory: sessionCat,
@@ -92,6 +91,4 @@ export const pullRequestOpenedHandler = async ({
     terminateSetting: "pr",
     runtime: "sandbox",
   });
-
-  return instance;
 };

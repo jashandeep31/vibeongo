@@ -4,6 +4,7 @@ import {
   eq,
   instanceRegions,
   instances,
+  instanceSlotInstanceCategory,
   instanceTypes,
   projects,
   projectSshKeys,
@@ -44,6 +45,7 @@ interface SpinUpAndSaveInstanceV2 {
   sessionId: string;
   runtime: InstanceRuntime;
   spinedUpBy: InstanceAutoTerminateSetting;
+  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
 }
 
 export const spinUpAndSaveInstanceV2 = async ({
@@ -52,6 +54,7 @@ export const spinUpAndSaveInstanceV2 = async ({
   projectId,
   spinedUpBy,
   runtime,
+  category,
 }: SpinUpAndSaveInstanceV2) => {
   const sessionToken = `vps_${createId()}${crypto.randomBytes(16).toString("hex")}`;
   const instanceId = crypto.randomUUID();

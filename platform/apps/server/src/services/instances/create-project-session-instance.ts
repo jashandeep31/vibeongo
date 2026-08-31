@@ -5,22 +5,17 @@ import {
   gitRepos,
   inArray,
   projectGitRepos,
-  projectDomainRouting,
   projects,
   projectSessions,
   projectSessionsCategory,
   projectSessionTasks,
-  projectSshKeys,
-  sshKeys,
   userSettings,
 } from "@repo/db";
 import { createInstanceSchema } from "@repo/shared";
-import * as crypto from "node:crypto";
 import { AppError } from "../../lib/app-error.js";
-import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
-import { spinUpAndSaveInstance } from "./spin-up-and-save-instance.js";
 import type { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 import type { InstanceRuntime } from "../../providers/types.js";
+import { scheduleAutomatedInstanceLaunch } from "./check-and-queue-instance-launch.js";
 
 type CreateInstanceInput = ReturnType<typeof createInstanceSchema.parse>;
 
@@ -41,22 +36,12 @@ export const createProjectSessionInstance = async ({
   terminateSetting?: InstanceAutoTerminateSetting;
   assign_domains?: boolean;
 }) => {
-  const rows = await db
-    .select({
-      project: projects,
-      sshKey: sshKeys,
-    })
+  const [project] = await db
+    .select()
     .from(projects)
-    .leftJoin(projectSshKeys, eq(projectSshKeys.project_id, projects.id))
-    .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
     .where(and(eq(projects.user_id, userId), eq(projects.id, input.projectId)));
 
-  const project = rows[0]?.project;
   if (!project) throw new AppError("Project not found", 404);
-
-  const sshKeysArray = rows
-    .map((row) => row.sshKey?.value)
-    .filter((key): key is string => Boolean(key));
 
   let defaultModel = "";
   if (input.tasks.some((task) => !task.model)) {
@@ -128,30 +113,13 @@ export const createProjectSessionInstance = async ({
     return session;
   });
 
-  const instance = await spinUpAndSaveInstance({
-    sshKeys: sshKeysArray,
-    project,
-    userId,
+  await scheduleAutomatedInstanceLaunch({
+    userId: project.user_id,
     sessionId: projectSession.id,
-    instanceId: crypto.randomUUID(),
-    runtime,
-    terminate,
-    terminateSetting,
+    spinedUpBy: "manual",
+    runtime: runtime,
   });
-
-  if (!instance) throw new AppError("Failed to spin up the instance", 500);
-
-  if (assign_domains) {
-    await db
-      .update(projectDomainRouting)
-      .set({ target_instance_id: instance.id })
-      .where(eq(projectDomainRouting.project_id, project.id));
-
-    await invalidateProjectProxiesByPid(project.id);
-  }
-
   return {
     projectSession,
-    instance,
   };
 };

@@ -748,19 +748,16 @@ export const createProjectSessionAgentTool = (userId: string): Tool =>
     execute: async (rawData: z.infer<typeof createProjectSessionSchema>) => {
       try {
         const input = createProjectSessionSchema.parse(rawData);
-        const { projectSession, instance } = await createProjectSessionInstance(
-          {
-            userId,
-            input,
-            runtime: input.runtime,
-            terminate: true,
-          },
-        );
+        const { projectSession } = await createProjectSessionInstance({
+          userId,
+          input,
+          runtime: input.runtime,
+          terminate: true,
+        });
 
         return {
           success: true,
           sessionId: projectSession.id,
-          instanceId: instance.id,
           message: "Project session created and instance started successfully.",
         };
       } catch (error) {

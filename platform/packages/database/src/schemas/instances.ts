@@ -130,6 +130,7 @@ export const instanceSlots = pgTable("instance_slots", {
   instance_type_id: uuid().references(() => instanceTypes.id),
   sandbox_type_id: uuid().references(() => sandboxTypes.id),
   assign_domains: boolean().default(false).notNull(),
+  spined_up_by: varchar(),
 
   status: instanceSlotStatus().notNull(),
   created_at: timestamp().defaultNow().notNull(),

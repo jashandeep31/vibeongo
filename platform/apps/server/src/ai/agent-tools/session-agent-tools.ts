@@ -12,7 +12,6 @@ import { tool, Tool } from "ai";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { createProjectSessionInstance } from "../../services/instances/create-project-session-instance.js";
-import sandbox from "bullmq/dist/esm/classes/sandbox.js";
 
 const getProjectGithubReposSchema = z.object({});
 export const getProjectGithubRepos = (
@@ -77,14 +76,16 @@ export const createProjectSessionInstanceAITool = (
           ...toolInput,
           projectId,
         });
-        const { projectSession, instance } = await createProjectSessionInstance(
-          { userId, input, terminate: true, runtime: toolInput.sandbox },
-        );
+        const { projectSession } = await createProjectSessionInstance({
+          userId,
+          input,
+          terminate: true,
+          runtime: toolInput.sandbox,
+        });
 
         return {
           success: true,
           sessionId: projectSession.id,
-          instanceId: instance.id,
           message: "Project session created and instance started successfully.",
         };
       } catch (error) {

@@ -13,7 +13,6 @@ import { createTasksForPRIssueOrCommentAgent } from "../../ai/ai-agents/create-t
 import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
 import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { createProjectSessionInstance } from "../instances/create-project-session-instance.js";
-import type { spinUpAndSaveInstanceResponse } from "../instances/spin-up-and-save-instance.js";
 
 interface issueHandlerProps {
   gitRepoId: string;
@@ -27,7 +26,7 @@ export const issueRequestHandler = async ({
   issueNumber,
   requestedByUserId,
   sessionCat = "manual",
-}: issueHandlerProps): Promise<spinUpAndSaveInstanceResponse> => {
+}: issueHandlerProps): Promise<void> => {
   const [githubRepoWithUserAndProject] = await db
     .select({
       repo: gitRepos,
@@ -82,7 +81,7 @@ export const issueRequestHandler = async ({
     })),
   });
 
-  const { instance } = await createProjectSessionInstance({
+  await createProjectSessionInstance({
     userId: user.id,
     input,
     sessionCategory: sessionCat,
@@ -90,6 +89,4 @@ export const issueRequestHandler = async ({
     terminateSetting: "issue",
     runtime: "sandbox",
   });
-
-  return instance;
 };
