@@ -25,6 +25,7 @@ import { terminateProviderInstance } from "../../providers/terminate-providers-i
 import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
 import { formatInternalMoney, INTERNAL_MONEY_SCALE } from "@repo/shared";
 import { getOpenRouterKeyChargesAnTerminateKey } from "../openrouter/index.js";
+import { dispatchQueuedInstanceLaunches } from "./check-and-queue-instance-launch.js";
 
 interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -106,7 +107,7 @@ export const terminateInstanceAndChargeUsage = async ({
     totalCostWithProfitWithoutAICharges + openrouterCharges;
 
   // Start the database transaction.
-  await db.transaction(async (tx) => {
+  const terminatedSlot = await db.transaction(async (tx) => {
     // Total cost includes network charges and normal usage charges.
     const totalCost = totalCostWithProfit;
 
@@ -121,15 +122,16 @@ export const terminateInstanceAndChargeUsage = async ({
       .where(and(eq(instances.id, instanceId), eq(instances.state, "running")))
       .returning({ id: instances.id });
 
-    await tx
+    const [terminatedSlot] = await tx
       .update(instanceSlots)
       .set({
         status: "terminated",
         updated_at: new Date(),
       })
-      .where(eq(instanceSlots.instance_id, instanceId));
+      .where(eq(instanceSlots.instance_id, instanceId))
+      .returning({ category: instanceSlots.category });
 
-    if (!instanceToTerminate) return;
+    if (!instanceToTerminate) return terminatedSlot;
 
     // Select and lock the user wallet for update.
     const [userWalletRow] = await tx
@@ -213,6 +215,8 @@ export const terminateInstanceAndChargeUsage = async ({
         })
         .where(eq(projects.id, instance.project_id));
     }
+
+    return terminatedSlot;
   });
 
   // Remove the routes and invalidate affected project proxies.
@@ -232,6 +236,21 @@ export const terminateInstanceAndChargeUsage = async ({
   for (const routing of updatedRoutings) {
     await invalidateProjectProxiesByPid(routing.project_id);
   }
+
+  if (terminatedSlot) {
+    try {
+      await dispatchQueuedInstanceLaunches({
+        userId,
+        category: terminatedSlot.category,
+      });
+    } catch (error) {
+      console.error(
+        "Could not dispatch a queued instance after termination",
+        error,
+      );
+    }
+  }
+
   return;
 };
 const terminateVmInstance = async ({

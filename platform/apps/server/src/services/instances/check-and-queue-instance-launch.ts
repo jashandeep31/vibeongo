@@ -1,12 +1,12 @@
 import {
   and,
+  asc,
   db,
+  desc,
   eq,
   instanceSlots,
   projectSessions,
   users,
-  inArray,
-  userTier,
   instanceSlotInstanceCategory,
   projects,
 } from "@repo/db";
@@ -18,15 +18,8 @@ import { InstanceRuntime } from "../../providers/types.js";
 import { z } from "zod";
 import { addToInstanceProvisioningQueue } from "../../jobs/instance-provisioning-queue.js";
 import { assertUserCanAffordInstanceLaunch } from "./assert-user-can-afford-instance-launch.js";
+import { getActiveInstanceSlotCount } from "./get-active-instance-slot-count.js";
 
-// Function to handle auto category things
-// 1. Get in data for it
-// 2. Save a slot under auto
-// 3. if limit is there then run it instantly
-// 4. If no limit is there then queuee the task
-//5. Automate those queue tasks
-//
-//
 interface CheckAndLaunchInstance {
   userId: string;
   sessionId: string;
@@ -34,6 +27,56 @@ interface CheckAndLaunchInstance {
   runtime: InstanceRuntime;
   category: (typeof instanceSlotInstanceCategory.enumValues)[number];
 }
+
+type DispatchQueuedInstanceLaunchesInput = {
+  userId: string;
+  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
+};
+
+class InstanceCapacityUnavailableError extends Error {}
+
+export async function dispatchQueuedInstanceLaunches({
+  userId,
+  category,
+}: DispatchQueuedInstanceLaunchesInput) {
+  const slotIds = await db.transaction(async (tx) => {
+    const [user] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update");
+
+    if (!user) throw new AppError("user not found", 404);
+
+    const activeSlotCount = await getActiveInstanceSlotCount({
+      tx,
+      userId: user.id,
+      category,
+    });
+
+    const availableCapacity = tierLimits[user.tier][category] - activeSlotCount;
+    if (availableCapacity <= 0) return [];
+
+    const queuedSlots = await tx
+      .select({ id: instanceSlots.id })
+      .from(instanceSlots)
+      .where(
+        and(
+          eq(instanceSlots.user_id, user.id),
+          eq(instanceSlots.category, category),
+          eq(instanceSlots.status, "queued"),
+        ),
+      )
+      .orderBy(desc(instanceSlots.priority), asc(instanceSlots.created_at))
+      .limit(availableCapacity);
+
+    return queuedSlots.map((slot) => slot.id);
+  });
+
+  await Promise.all(slotIds.map(addToInstanceProvisioningQueue));
+  return slotIds;
+}
+
 export async function scheduleAutomatedInstanceLaunch({
   userId,
   sessionId,
@@ -41,7 +84,7 @@ export async function scheduleAutomatedInstanceLaunch({
   runtime,
   category,
 }: CheckAndLaunchInstance) {
-  const slotId = await db.transaction(async (tx) => {
+  await db.transaction(async (tx) => {
     const [user] = await tx.select().from(users).where(eq(users.id, userId));
 
     if (!user) throw new AppError("user not found", 404);
@@ -86,11 +129,9 @@ export async function scheduleAutomatedInstanceLaunch({
     if (!slot) {
       throw new AppError("Failed to reserve an instance slot", 500);
     }
-
-    return slot.id;
   });
 
-  await addToInstanceProvisioningQueue(slotId);
+  await dispatchQueuedInstanceLaunches({ userId, category });
 }
 
 export const checkAndLaunchInstance = async ({
@@ -138,23 +179,12 @@ export const checkAndLaunchInstance = async ({
       sandboxTypeId: project.sandbox_type_id,
     });
 
-    // get the instanceSlots those are already running or getting ready to run
-    const activeOrQueuedInstances = await tx
-      .select()
-      .from(instanceSlots)
-      .where(
-        and(
-          eq(instanceSlots.user_id, user.id),
-          inArray(instanceSlots.status, ["active", "provisioning"]),
-        ),
-      );
-
-    const eligibilty = checkUserEligibilityAccTier(
-      user.tier,
-      activeOrQueuedInstances,
+    const activeSlotCount = await getActiveInstanceSlotCount({
+      tx,
+      userId: user.id,
       category,
-    );
-    if (!eligibilty.eligible) {
+    });
+    if (activeSlotCount >= tierLimits[user.tier][category]) {
       throw new AppError(
         "Instance limit reached. Upgrade your plan or wait for a running session to stop.",
         402,
@@ -222,35 +252,6 @@ export const checkAndLaunchInstance = async ({
   }
 };
 
-function checkUserEligibilityAccTier(
-  tier: (typeof userTier.enumValues)[number],
-  slots: (typeof instanceSlots.$inferSelect)[],
-  currentCategory: (typeof instanceSlotInstanceCategory.enumValues)[number],
-): {
-  eligible: boolean;
-  queueForFuture: boolean;
-} {
-  const limit = tierLimits[tier]?.[currentCategory];
-
-  if (limit === undefined) {
-    return {
-      eligible: false,
-      queueForFuture: false,
-    };
-  }
-
-  const currentCount = slots.filter(
-    (slot) => slot.category === currentCategory,
-  ).length;
-  const eligible = currentCount < limit;
-
-  return {
-    eligible,
-    queueForFuture:
-      eligible === false && currentCategory === "auto" ? true : false,
-  };
-}
-
 const spinUpInstanceFromSlot = async (slotId: string) => {
   const { project, slot, session, user } = await db.transaction(async (tx) => {
     const [slot] = await tx
@@ -288,23 +289,13 @@ const spinUpInstanceFromSlot = async (slotId: string) => {
       .from(projects)
       .where(eq(projects.id, session.project_id));
 
-    const activeOrQueuedInstances = await tx
-      .select()
-      .from(instanceSlots)
-      .where(
-        and(
-          eq(instanceSlots.user_id, user.id),
-          inArray(instanceSlots.status, ["active", "provisioning"]),
-        ),
-      );
-
-    const eligibilty = checkUserEligibilityAccTier(
-      user.tier,
-      activeOrQueuedInstances,
-      "auto",
-    );
-    if (!eligibilty.eligible) {
-      throw new AppError("Instance limit reached", 402);
+    const activeSlotCount = await getActiveInstanceSlotCount({
+      tx,
+      userId: user.id,
+      category: slot.category,
+    });
+    if (activeSlotCount >= tierLimits[user.tier][slot.category]) {
+      throw new InstanceCapacityUnavailableError();
     }
 
     if (!project) throw new AppError("Project not found ", 404);
@@ -353,6 +344,8 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
   try {
     return await spinUpInstanceFromSlot(slotId);
   } catch (error) {
+    if (error instanceof InstanceCapacityUnavailableError) return;
+
     await db
       .update(instanceSlots)
       .set({

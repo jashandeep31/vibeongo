@@ -12,7 +12,12 @@ export const addToInstanceProvisioningQueue = async (slotId: string) => {
   await instanceProvisioningQueue.add(
     INSTANCE_PROVISIONING_QUEUE_NAME,
     slotId,
-    { removeOnComplete: true, removeOnFail: true, attempts: 1 },
+    {
+      jobId: `provision-${slotId}`,
+      removeOnComplete: true,
+      removeOnFail: true,
+      attempts: 1,
+    },
   );
 };
 
