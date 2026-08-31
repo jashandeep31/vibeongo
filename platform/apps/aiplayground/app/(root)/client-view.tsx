@@ -1,5 +1,6 @@
 "use client";
 
+import { AutomatedSessionBadge } from "@/components/automated-session-badge";
 import {
   WorkComposer,
   type WorkComposerSubmitPayload,
@@ -162,6 +163,9 @@ function SessionRow({
                 {entry.session.name}
               </span>
             </span>
+            {entry.session.category === "auto" ? (
+              <AutomatedSessionBadge />
+            ) : null}
             <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
               <span
                 className={`size-1.5 rounded-full ${

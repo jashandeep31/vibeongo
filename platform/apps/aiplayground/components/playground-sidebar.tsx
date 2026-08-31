@@ -292,6 +292,7 @@ export function PlaygroundSidebar() {
       .map(({ session }) => ({
         id: session.id,
         name: session.name,
+        category: session.category,
         projectId: project.id,
       })),
   }));

@@ -1,5 +1,6 @@
 "use client";
 
+import { AutomatedSessionBadge } from "@/components/automated-session-badge";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import {
   ProjectSessionRuntimeDialog,
@@ -56,7 +57,7 @@ import { toast } from "sonner";
 
 type ProjectSessionNavItem = Pick<
   typeof projectSessions.$inferSelect,
-  "id" | "name"
+  "id" | "name" | "category"
 > & {
   projectId: (typeof projectSessions.$inferSelect)["project_id"];
 };
@@ -79,10 +80,12 @@ function RunningSessionButtonContent({
   sessionName,
   terminatesAt,
   needsDomainAssignment,
+  isAutomated,
 }: {
   sessionName: string;
   terminatesAt: string;
   needsDomainAssignment: boolean;
+  isAutomated: boolean;
 }) {
   const expiresAt = new Date(terminatesAt).getTime();
   const [now, setNow] = useState(() => Date.now());
@@ -143,6 +146,7 @@ function RunningSessionButtonContent({
       <span className="min-w-0 truncate" title={sessionName}>
         {sessionName}
       </span>
+      {isAutomated ? <AutomatedSessionBadge /> : null}
       {isTerminationSoon ? (
         <span
           className="ml-auto shrink-0 font-mono text-xs font-medium text-orange-500 tabular-nums"
@@ -265,6 +269,7 @@ function ProjectSessionNavItem({
                       sessionName={session.name}
                       terminatesAt={String(instance.terminates_at)}
                       needsDomainAssignment={needsDomainAssignment}
+                      isAutomated={session.category === "auto"}
                     />
                   </button>
                 </SidebarMenuSubButton>
@@ -390,6 +395,7 @@ function ProjectSessionNavItem({
             <span className="min-w-0 flex-1 truncate" title={session.name}>
               {session.name}
             </span>
+            {session.category === "auto" ? <AutomatedSessionBadge /> : null}
             {instance ? (
               <span
                 className="ml-auto size-2 shrink-0 animate-pulse rounded-full bg-amber-500"

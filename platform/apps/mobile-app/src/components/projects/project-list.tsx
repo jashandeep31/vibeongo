@@ -468,6 +468,16 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                           >
                             {session.name}
                           </ThemedText>
+                          {session.category === "auto" ? (
+                            <View
+                              accessibilityLabel="Automated session"
+                              style={styles.automatedBadge}
+                            >
+                              <ThemedText style={styles.automatedBadgeLabel}>
+                                AUTO
+                              </ThemedText>
+                            </View>
+                          ) : null}
                           <View style={styles.sessionControls}>
                             {entry.state !== "stopped" ? (
                               <View
@@ -842,6 +852,23 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
 }
 
 const styles = StyleSheet.create({
+  automatedBadge: {
+    alignItems: "center",
+    backgroundColor: "rgba(139, 92, 246, 0.12)",
+    borderColor: "rgba(139, 92, 246, 0.4)",
+    borderRadius: 8,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 20,
+    justifyContent: "center",
+    paddingHorizontal: 7,
+  },
+  automatedBadgeLabel: {
+    color: "#8b5cf6",
+    fontFamily: Fonts.mono,
+    fontSize: 9,
+    fontWeight: "700",
+    letterSpacing: 0.7,
+  },
   centeredState: {
     alignItems: "center",
     gap: 8,

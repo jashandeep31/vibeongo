@@ -86,7 +86,11 @@ export async function scheduleAutomatedInstanceLaunch({
   category,
 }: CheckAndLaunchInstance) {
   await db.transaction(async (tx) => {
-    const [user] = await tx.select().from(users).where(eq(users.id, userId));
+    const [user] = await tx
+      .select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .for("update");
 
     if (!user) throw new AppError("user not found", 404);
     const [session] = await tx
@@ -102,6 +106,29 @@ export async function scheduleAutomatedInstanceLaunch({
 
     if (!session) {
       throw new AppError("Project session not found", 404);
+    }
+
+    const [existingSlot] = await tx
+      .select({ id: instanceSlots.id })
+      .from(instanceSlots)
+      .where(
+        and(
+          eq(instanceSlots.session_id, sessionId),
+          inArray(instanceSlots.status, [
+            "queued",
+            "provisioning",
+            "active",
+            "terminating",
+          ]),
+        ),
+      )
+      .limit(1);
+
+    if (existingSlot) {
+      throw new AppError(
+        "This session already has an instance running or starting.",
+        409,
+      );
     }
 
     const [project] = await tx
