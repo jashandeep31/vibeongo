@@ -3,6 +3,7 @@ import "./lib/cron.js";
 import "./jobs/repo-overview-worker.js";
 import "./jobs/sandbox-setup-worker.js";
 import "./jobs/user-onboarding-worker.js";
+import "./jobs/instance-termination-worker.js";
 
 import { createServer } from "node:http";
 
