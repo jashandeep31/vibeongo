@@ -230,6 +230,10 @@ func (s *SessionsStore) createTerminalSession(baseCommand *exec.Cmd, metadata Te
 	if err := validateTerminalSessionMetadata(metadata); err != nil {
 		return nil, err
 	}
+	// The runtime service may not itself be attached to a terminal, so its
+	// inherited TERM can be empty or unsuitable. Advertise the capabilities
+	// provided by the xterm.js client to shells and full-screen applications.
+	baseCommand.Env = withTerminalEnvironment(baseCommand.Environ())
 	ptmx, err := pty.StartWithSize(baseCommand, &pty.Winsize{Rows: 40, Cols: 90})
 	if err != nil {
 		return nil, err
@@ -258,6 +262,22 @@ func (s *SessionsStore) createTerminalSession(baseCommand *exec.Cmd, metadata Te
 		close(termSession.processDone)
 	}()
 	return termSession, nil
+}
+
+func withTerminalEnvironment(environment []string) []string {
+	terminalEnvironment := make([]string, 0, len(environment)+2)
+	for _, entry := range environment {
+		if strings.HasPrefix(entry, "TERM=") || strings.HasPrefix(entry, "COLORTERM=") {
+			continue
+		}
+		terminalEnvironment = append(terminalEnvironment, entry)
+	}
+
+	return append(
+		terminalEnvironment,
+		"TERM=xterm-256color",
+		"COLORTERM=truecolor",
+	)
 }
 
 func validateTerminalSessionMetadata(metadata TerminalSessionDescriptor) error {
