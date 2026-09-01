@@ -3,6 +3,7 @@
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
+import { logout } from "@/services/auth-services";
 import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
 import {
   useUpdateUserSettings,
@@ -16,6 +17,7 @@ import {
   Bot,
   Check,
   KeyRound,
+  LogOut,
   Monitor,
   Moon,
   Pencil,
@@ -27,6 +29,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useRouter } from "next/navigation";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 
@@ -110,6 +113,7 @@ function SettingsSection({
 }
 
 export default function SettingsPage() {
+  const router = useRouter();
   const { theme = "system", setTheme } = useTheme();
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
@@ -134,6 +138,7 @@ export default function SettingsPage() {
     defaultManualInstanceAutoTerminateAfterMinutes: "",
   });
   const [isTerminationFormDirty, setIsTerminationFormDirty] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
     if (!userSettings || isTelegramDirty) return;
@@ -227,6 +232,19 @@ export default function SettingsPage() {
       toast.success("SSH key deleted");
     } catch {
       toast.error("Failed to delete SSH key");
+    }
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setIsLoggingOut(false);
+      toast.error("Failed to log out");
     }
   };
 
@@ -538,6 +556,22 @@ export default function SettingsPage() {
             No SSH keys configured.
           </div>
         )}
+      </SettingsSection>
+
+      <SettingsSection
+        title="Session"
+        description="Sign out of AI Playground on this device."
+        icon={LogOut}
+      >
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => void handleLogout()}
+          disabled={isLoggingOut}
+        >
+          <LogOut />
+          {isLoggingOut ? "Logging out..." : "Log out"}
+        </Button>
       </SettingsSection>
 
       <SettingsSection

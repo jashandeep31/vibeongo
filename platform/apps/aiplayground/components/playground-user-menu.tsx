@@ -2,6 +2,7 @@
 
 import { useAuthenticatedUser } from "@repo/api-hooks";
 import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
+import { logout } from "@/services/auth-services";
 import { formatInternalMoney } from "@repo/shared";
 import {
   Avatar,
@@ -24,6 +25,7 @@ import {
   useSidebar,
 } from "@repo/ui/components/sidebar-v2";
 import {
+  LogOut,
   MoreHorizontal,
   Settings,
   TriangleAlert,
@@ -31,10 +33,15 @@ import {
   WalletCards,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
 
 export function PlaygroundUserMenu() {
+  const router = useRouter();
   const { data: user, isLoading, isError } = useAuthenticatedUser();
   const { isMobile, setOpenMobile } = useSidebar();
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (isLoading) {
     return (
@@ -80,6 +87,20 @@ export function PlaygroundUserMenu() {
 
   const closeMobileSidebar = () => {
     if (isMobile) setOpenMobile(false);
+  };
+
+  const handleLogout = async () => {
+    setIsLoggingOut(true);
+
+    try {
+      await logout();
+      closeMobileSidebar();
+      router.replace("/login");
+      router.refresh();
+    } catch {
+      setIsLoggingOut(false);
+      toast.error("Failed to log out");
+    }
   };
 
   return (
@@ -179,6 +200,18 @@ export function PlaygroundUserMenu() {
                 <Settings />
                 Settings
               </Link>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              variant="destructive"
+              className="rounded-lg"
+              disabled={isLoggingOut}
+              onSelect={() => {
+                void handleLogout();
+              }}
+            >
+              <LogOut />
+              {isLoggingOut ? "Logging out..." : "Log out"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
