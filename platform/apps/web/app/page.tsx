@@ -23,9 +23,9 @@ import { BlueprintShowcase } from "@/components/landing-page/blueprint-showcase"
 import { Wordmark } from "@/components/landing-page/brand";
 import { ClosingCta } from "@/components/landing-page/closing-cta";
 import { LandingFooter } from "@/components/landing-page/landing-footer";
-import { GITHUB_REPOSITORY_URL } from "@/components/landing-page/links";
 import { MobileShowcase } from "@/components/landing-page/mobile-showcase";
 import { PricingSection } from "@/components/landing-page/pricing-section";
+import { getAppUrl } from "@/lib/app-url";
 import { isAuthenticated } from "@/lib/get-session";
 import { redirect } from "next/navigation";
 
@@ -488,9 +488,10 @@ function DemoCard({ demo, index }: { demo: ProductDemo; index: number }) {
 
 export default async function Page() {
   const authenticated = await isAuthenticated();
+  const appLoginUrl = getAppUrl("/login");
 
   if (authenticated) {
-    redirect("/dashboard");
+    redirect(getAppUrl());
   }
 
   return (
@@ -520,20 +521,20 @@ export default async function Page() {
           </div>
           <div className="hidden items-center gap-3 sm:flex">
             <Link
-              href="/login"
+              href={appLoginUrl}
               className="px-3 py-2 text-sm font-medium text-black/60 hover:text-black"
             >
               Log in
             </Link>
             <Link
-              href="/signup"
+              href={appLoginUrl}
               className="rounded-full bg-[#17181c] px-5 py-2.5 text-sm font-medium text-white transition-transform hover:scale-[1.02]"
             >
               Start building
             </Link>
           </div>
           <Link
-            href="/signup"
+            href={appLoginUrl}
             className="rounded-full bg-[#17181c] px-4 py-2 text-xs font-semibold text-white sm:hidden"
           >
             Start
@@ -559,7 +560,7 @@ export default async function Page() {
             </p>
             <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
               <Link
-                href="/signup"
+                href={appLoginUrl}
                 className="flex h-12 items-center justify-center gap-2 rounded-full bg-[#5b5cf0] px-7 text-sm font-semibold text-white shadow-[0_10px_30px_rgba(91,92,240,0.3)] transition-transform hover:-translate-y-0.5"
               >
                 Launch a workspace <ArrowRight className="size-4" />

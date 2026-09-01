@@ -1,3 +1,4 @@
+import { getAppUrl } from "@/lib/app-url";
 import { ArrowRight, Cloud, Github } from "lucide-react";
 import Link from "next/link";
 import { GITHUB_REPOSITORY_URL } from "./links";
@@ -15,7 +16,7 @@ export function ClosingCta() {
         </p>
         <div className="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
           <Link
-            href="/signup"
+            href={getAppUrl("/login")}
             className="inline-flex h-12 items-center gap-2 rounded-full bg-white px-7 text-sm font-semibold text-[#17181c] hover:bg-white/90"
           >
             Start building <ArrowRight className="size-4" />

@@ -1,11 +1,6 @@
-import { GithubAuthCard } from "@/components/github-auth-card";
+import { getAppUrl } from "@/lib/app-url";
+import { redirect } from "next/navigation";
 
-export default function page() {
-  return (
-    <GithubAuthCard
-      title="VibeOnGo signup is invite-only"
-      description="Join the waitlist and we will let you know when access is available. Existing invited users can continue with GitHub."
-      buttonLabel="Continue with GitHub"
-    />
-  );
+export default function Page() {
+  redirect(getAppUrl("/login"));
 }
