@@ -26,7 +26,7 @@ export async function createForgejoUserAccount(
     send_notify: false,
     source_id: 0,
     username: user.username,
-    visibility: "private",
+    visibility: "public",
   });
 
   if (res.status === 201) {
