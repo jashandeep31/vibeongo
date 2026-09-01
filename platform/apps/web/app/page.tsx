@@ -33,6 +33,35 @@ export const metadata: Metadata = {
   title: "VibeOnGo — Cloud workspaces for developers and agents",
   description:
     "Launch agent-ready cloud workspaces with persistent terminals, live HTTPS previews, repository automation, and mobile control.",
+  alternates: {
+    canonical: "https://vibeongo.com",
+  },
+  openGraph: {
+    type: "website",
+    locale: "en_US",
+    url: "https://vibeongo.com",
+    siteName: "VibeOnGo",
+    title: "VibeOnGo — Cloud workspaces for developers and agents",
+    description:
+      "Launch agent-ready cloud workspaces with persistent terminals, live HTTPS previews, repository automation, and mobile control.",
+    images: [
+      {
+        url: "https://vibeongo.com/assets/hero.png",
+        width: 1920,
+        height: 1338,
+        alt: "VibeOnGo cloud workspace dashboard with mobile access",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    site: "@Jashandeep31",
+    creator: "@Jashandeep31",
+    title: "VibeOnGo — Cloud workspaces for developers and agents",
+    description:
+      "Launch agent-ready cloud workspaces with persistent terminals, live HTTPS previews, repository automation, and mobile control.",
+    images: ["https://vibeongo.com/assets/hero.png"],
+  },
 };
 
 const capabilities: { icon: LucideIcon; label: string }[] = [
