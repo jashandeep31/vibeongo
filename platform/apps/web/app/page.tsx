@@ -6,7 +6,6 @@ import {
   Bot,
   Check,
   ChevronRight,
-  Code2,
   GitBranch,
   Github,
   Globe2,
@@ -19,6 +18,7 @@ import {
   Zap,
 } from "lucide-react";
 import Link from "next/link";
+import heroImage from "@/public/assets/hero.png";
 import { BlueprintShowcase } from "@/components/landing-page/blueprint-showcase";
 import { Wordmark } from "@/components/landing-page/brand";
 import { ClosingCta } from "@/components/landing-page/closing-cta";
@@ -114,6 +114,7 @@ const productDemos: ProductDemo[] = [
     description:
       "Talk to the agent, inspect its changes, answer questions, and open the terminal from your phone.",
     kind: "mobile",
+    gif: "/assets/app-preview.png",
   },
   {
     title: "Stop paying when work stops",
@@ -135,160 +136,13 @@ function StatusDot({ label }: { label: string }) {
 function WorkspacePreview() {
   return (
     <div className="relative mx-auto mt-16 max-w-6xl lg:mt-20">
-      <div className="absolute -inset-8 -z-10 rounded-[3rem] bg-[#5b5cf0]/15 blur-3xl" />
-      <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#111216] text-white shadow-[0_40px_100px_rgba(19,20,30,0.28)] sm:rounded-[1.75rem]">
-        <div className="flex h-12 items-center justify-between border-b border-white/10 px-4 sm:px-5">
-          <div className="flex items-center gap-1.5">
-            <span className="size-2.5 rounded-full bg-[#ff665a]" />
-            <span className="size-2.5 rounded-full bg-[#ffbd44]" />
-            <span className="size-2.5 rounded-full bg-[#00ca4e]" />
-          </div>
-          <StatusDot label="Workspace running" />
-          <span className="font-mono text-[10px] text-white/35">
-            vog / api-fix
-          </span>
-        </div>
-
-        <div className="grid min-h-[420px] sm:min-h-[500px] md:grid-cols-[180px_1fr]">
-          <aside className="hidden border-r border-white/10 bg-white/[0.025] p-4 md:block">
-            <p className="mb-5 text-[10px] font-semibold tracking-[0.18em] text-white/30 uppercase">
-              Workspace
-            </p>
-            {[
-              [Code2, "Agent", true],
-              [Terminal, "Terminal", false],
-              [Globe2, "Previews", false],
-              [GitBranch, "Changes", false],
-            ].map(([Icon, label, active]) => {
-              const SidebarIcon = Icon as LucideIcon;
-              return (
-                <div
-                  key={label as string}
-                  className={`mb-1 flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-xs ${
-                    active
-                      ? "bg-white/10 text-white"
-                      : "text-white/40 hover:text-white/70"
-                  }`}
-                >
-                  <SidebarIcon className="size-3.5" />
-                  {label as string}
-                </div>
-              );
-            })}
-          </aside>
-
-          <div className="grid min-w-0 grid-rows-[1fr_170px]">
-            <div className="grid gap-px bg-white/10 md:grid-cols-[1.05fr_0.95fr]">
-              <div className="bg-[#111216] p-5 sm:p-7">
-                <div className="mb-7 flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Resolve issue #148</p>
-                    <p className="mt-1 text-xs text-white/35">
-                      OpenCode · Build agent
-                    </p>
-                  </div>
-                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] text-emerald-300">
-                    Working
-                  </span>
-                </div>
-                <div className="space-y-5 text-xs leading-relaxed">
-                  <div className="flex gap-3">
-                    <span className="mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-md bg-[#5b5cf0]">
-                      <Bot className="size-3.5" />
-                    </span>
-                    <div>
-                      <p className="text-white/80">
-                        I found the failed session renewal path. I&apos;m
-                        updating the token guard and adding a regression test.
-                      </p>
-                      <div className="mt-3 rounded-lg border border-white/10 bg-white/[0.03] p-3 font-mono text-[10px] text-white/45">
-                        <p className="text-emerald-300">
-                          ✓ Read auth/session.ts
-                        </p>
-                        <p className="mt-1 text-emerald-300">
-                          ✓ Updated token guard
-                        </p>
-                        <p className="mt-1 text-[#a7a8ff]">
-                          ● Running test suite...
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="hidden bg-[#f3f2ee] p-6 text-[#17181c] md:block">
-                <div className="mb-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2 text-xs font-medium">
-                    <Globe2 className="size-3.5 text-[#5b5cf0]" />
-                    Live preview
-                  </div>
-                  <span className="font-mono text-[9px] text-black/35">
-                    3000-api-fix.vibeongo.one
-                  </span>
-                </div>
-                <div className="overflow-hidden rounded-xl border border-black/10 bg-white shadow-sm">
-                  <div className="flex h-8 items-center gap-1.5 border-b border-black/10 px-3">
-                    <span className="size-1.5 rounded-full bg-black/15" />
-                    <span className="size-1.5 rounded-full bg-black/15" />
-                    <span className="size-1.5 rounded-full bg-black/15" />
-                  </div>
-                  <div className="p-5">
-                    <div className="h-2 w-20 rounded-full bg-black/80" />
-                    <div className="mt-5 grid grid-cols-2 gap-3">
-                      <div className="h-24 rounded-lg bg-[#eae9ff]" />
-                      <div className="h-24 rounded-lg bg-[#17181c]" />
-                    </div>
-                    <div className="mt-3 h-2 w-3/4 rounded-full bg-black/10" />
-                    <div className="mt-2 h-2 w-1/2 rounded-full bg-black/10" />
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 bg-[#0b0c0f] p-4 font-mono text-[10px] leading-5 text-white/45 sm:px-6">
-              <div className="mb-2 flex items-center justify-between font-sans">
-                <span className="flex items-center gap-2 text-[10px] font-medium text-white/65">
-                  <Terminal className="size-3" /> terminal · tmux:api-fix
-                </span>
-                <span className="text-[9px] text-white/25">connected</span>
-              </div>
-              <p>
-                <span className="text-emerald-300">➜</span> pnpm test auth
-              </p>
-              <p className="text-white/30">PASS src/auth/session.test.ts</p>
-              <p>
-                <span className="text-emerald-300">✓</span> 12 tests passed in
-                1.42s
-              </p>
-              <p className="mt-1">
-                <span className="text-emerald-300">➜</span>{" "}
-                <span className="animate-pulse">_</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="absolute -right-2 -bottom-16 hidden w-[230px] rounded-[2rem] border-[6px] border-[#17181c] bg-[#f7f6f2] p-3 text-[#17181c] shadow-2xl lg:block">
-        <div className="mx-auto mb-5 h-1.5 w-16 rounded-full bg-black/15" />
-        <div className="flex items-center justify-between px-1">
-          <p className="text-xs font-semibold">Issue #148</p>
-          <span className="size-2 rounded-full bg-emerald-400" />
-        </div>
-        <div className="mt-4 rounded-xl bg-white p-3 text-[10px] leading-relaxed shadow-sm">
-          The fix is ready. All 12 tests pass and the preview has been updated.
-        </div>
-        <div className="mt-3 rounded-xl bg-[#17181c] p-3 text-[10px] text-white">
-          <p className="text-white/45">Changed files</p>
-          <p className="mt-2 text-emerald-300">
-            +42 &nbsp; <span className="text-red-300">-8</span>
-          </p>
-        </div>
-        <div className="mt-3 flex h-9 w-full items-center justify-center gap-1.5 rounded-xl bg-[#5b5cf0] text-[10px] font-semibold text-white">
-          Open workspace <ChevronRight className="size-3" />
-        </div>
-      </div>
+      <Image
+        src={heroImage}
+        alt="VibeOnGo projects dashboard showing cloud workspaces and project environments"
+        priority
+        sizes="(max-width: 1280px) 100vw, 1152px"
+        className="h-auto w-full"
+      />
     </div>
   );
 }
@@ -467,7 +321,11 @@ function DemoCard({ demo, index }: { demo: ProductDemo; index: number }) {
             alt={`${demo.title} product demonstration`}
             fill
             unoptimized
-            className="object-cover"
+            className={
+              demo.kind === "mobile"
+                ? "object-contain p-4"
+                : "object-cover"
+            }
           />
         ) : (
           <DemoPlaceholder kind={demo.kind} />
@@ -566,7 +424,9 @@ export default async function Page() {
                 Launch a workspace <ArrowRight className="size-4" />
               </Link>
               <a
-                href="#demos"
+                href="https://x.com/Jashandeep31/status/2094763753346867608"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex h-12 items-center justify-center gap-2 rounded-full border border-black/10 bg-white/60 px-7 text-sm font-semibold hover:bg-white"
               >
                 <Play className="size-3.5 fill-current" /> Watch the product
