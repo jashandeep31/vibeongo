@@ -443,7 +443,6 @@ export function OpencodeSessionChat({
   );
   const chatUrl = `/projects/${projectId}/chats/${chatId}`;
   const newChatParams = new URLSearchParams({ serverUrl });
-  const sessionUrl = `${chatUrl}/sessions/${encodeURIComponent(sessionId)}`;
   const composerControls = (
     <>
       <Button
@@ -466,7 +465,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${sessionUrl}/terminal`}>
+        <Link href={`${chatUrl}/terminal`}>
           <Terminal className="size-3.5" />
           Terminal
         </Link>
