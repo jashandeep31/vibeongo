@@ -94,7 +94,7 @@ const upsertGithubAccount = async (
       provider: githubProvider,
       status: "active",
       token,
-      verified: false,
+      verified: true,
       last_login_at: now,
     })
     .returning();
@@ -131,7 +131,7 @@ const createUserWithGithubAccount = async ({
         provider: githubProvider,
         status: "active",
         token,
-        verified: false,
+        verified: true,
         last_login_at: new Date(),
       })
       .returning();
