@@ -22,8 +22,8 @@ import {
   useTerminalWorkspaceStore,
 } from "@repo/app-store";
 import { fetch as expoFetch } from "expo/fetch";
-import { usePathname } from "expo-router";
-import { useEffect } from "react";
+import { useGlobalSearchParams, usePathname } from "expo-router";
+import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 import { useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
@@ -45,6 +45,8 @@ function ProjectSessionRuntimeSync({
   sessionId: string;
 }) {
   const queryClient = useQueryClient();
+  const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
+  activeOpencodeSessionIdRef.current = activeOpencodeSessionId;
   const updateSession = useSessionsStore((store) => store.updateSession);
   const instancesQuery = useGetInstances({
     sessionId,
@@ -111,6 +113,24 @@ function ProjectSessionRuntimeSync({
 
     let disposed = false;
     let streamController: AbortController | null = null;
+    const pendingSessionResyncs = new Set<string>();
+
+    const resyncSessionAfterMissingEvent = (opencodeSessionId: string) => {
+      if (pendingSessionResyncs.has(opencodeSessionId)) return;
+      pendingSessionResyncs.add(opencodeSessionId);
+      void queryClient
+        .invalidateQueries({
+          queryKey: [
+            "opencode",
+            "session",
+            sessionId,
+            opencodeSessionId,
+            serverUrl,
+          ],
+          exact: true,
+        })
+        .finally(() => pendingSessionResyncs.delete(opencodeSessionId));
+    };
 
     const handleEvent = (event: Event) => {
       const opencodeSessionId = getEventSessionId(event);
@@ -130,6 +150,24 @@ function ProjectSessionRuntimeSync({
       }
 
       if (!opencodeSessionId) return;
+
+      const cachedSession = queryClient.getQueryData<OpencodeSessionData>([
+        "opencode",
+        "session",
+        sessionId,
+        opencodeSessionId,
+        serverUrl,
+      ]);
+      if (
+        cachedSession &&
+        isIncrementalMessageEventMissingContext(
+          cachedSession,
+          event,
+          opencodeSessionId,
+        )
+      ) {
+        resyncSessionAfterMissingEvent(opencodeSessionId);
+      }
 
       const currentMessages = store.getChatMessages(
         sessionId,
@@ -195,13 +233,14 @@ function ProjectSessionRuntimeSync({
             handleEvent,
             () => {
               void sessionsQuery.refetch();
-              if (activeOpencodeSessionId) {
+              const activeSessionId = activeOpencodeSessionIdRef.current;
+              if (activeSessionId) {
                 void queryClient.invalidateQueries({
                   queryKey: [
                     "opencode",
                     "session",
                     sessionId,
-                    activeOpencodeSessionId,
+                    activeSessionId,
                     serverUrl,
                   ],
                   exact: true,
@@ -228,13 +267,14 @@ function ProjectSessionRuntimeSync({
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
       startStream();
-      if (activeOpencodeSessionId) {
+      const activeSessionId = activeOpencodeSessionIdRef.current;
+      if (activeSessionId) {
         void queryClient.invalidateQueries({
           queryKey: [
             "opencode",
             "session",
             sessionId,
-            activeOpencodeSessionId,
+            activeSessionId,
             serverUrl,
           ],
           exact: true,
@@ -249,7 +289,6 @@ function ProjectSessionRuntimeSync({
     };
   }, [
     accessToken,
-    activeOpencodeSessionId,
     isOpencodeRunning,
     password,
     queryClient,
@@ -388,6 +427,9 @@ function getEventSessionId(event: Event) {
 
 export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
   const pathname = usePathname();
+  const { chatId } = useGlobalSearchParams<{
+    chatId?: string | string[];
+  }>();
   const { data: projectsWithSessions } = useGetProjectsWithSessions(enabled);
   const sessions = useSessionsStore((store) => store.sessions);
   const addAllProjects = useProjectsStore((store) => store.addAllProjects);
@@ -425,11 +467,20 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
     );
   }, [addAllProjects, addAllSessions, projectsWithSessions]);
 
-  const activeChatMatch = pathname.match(
+  const legacyActiveChatMatch = pathname.match(
     /^\/projects\/[^/]+\/sessions\/([^/]+)\/chats\/([^/]+)/,
   );
-  const activeProjectSessionId = activeChatMatch?.[1] ?? "";
-  const activeOpencodeSessionId = activeChatMatch?.[2] ?? "";
+  const workspaceChatMatch = pathname.match(
+    /^\/projects\/[^/]+\/sessions\/([^/]+)\/chat$/,
+  );
+  const workspaceChatId = Array.isArray(chatId) ? (chatId[0] ?? "") : chatId;
+  const activeProjectSessionId =
+    workspaceChatMatch?.[1] ?? legacyActiveChatMatch?.[1] ?? "";
+  const activeOpencodeSessionId = workspaceChatMatch
+    ? workspaceChatId && workspaceChatId !== "new"
+      ? workspaceChatId
+      : ""
+    : (legacyActiveChatMatch?.[2] ?? "");
 
   if (!enabled) return null;
 
@@ -442,4 +493,34 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
       sessionId={session.id}
     />
   ));
+}
+
+function isIncrementalMessageEventMissingContext(
+  session: OpencodeSessionData,
+  event: Event,
+  sessionId: string,
+) {
+  if (
+    event.type === "message.part.updated" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return !session.messages.some(
+      (message) => message.info.id === event.properties.part.messageID,
+    );
+  }
+
+  if (
+    event.type === "message.part.delta" &&
+    event.properties.sessionID === sessionId
+  ) {
+    const message = session.messages.find(
+      (item) => item.info.id === event.properties.messageID,
+    );
+    return (
+      !message ||
+      !message.parts.some((part) => part.id === event.properties.partID)
+    );
+  }
+
+  return false;
 }

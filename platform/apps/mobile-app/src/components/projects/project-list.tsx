@@ -154,9 +154,9 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
       setNewChatTarget(null);
       requestAnimationFrame(() => {
         router.push({
-          pathname:
-            "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
+          pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
           params: {
+            chatId: "new",
             directory,
             projectId: target.projectId,
             projectSessionId: target.sessionId,
@@ -672,9 +672,9 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                                   onPress={() =>
                                     router.push({
                                       pathname:
-                                        "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
+                                        "/projects/[projectId]/sessions/[projectSessionId]/chat",
                                       params: {
-                                        opencodeSessionId: chat.id,
+                                        chatId: chat.id,
                                         projectId: project.id,
                                         projectSessionId: session.id,
                                       },

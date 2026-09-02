@@ -19,7 +19,6 @@ import {
   Alert,
   Easing,
   Keyboard,
-  KeyboardAvoidingView,
   PanResponder,
   Platform,
   Pressable,
@@ -28,7 +27,6 @@ import {
   useWindowDimensions,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   createChatTurns,
@@ -61,7 +59,7 @@ import {
   isInstanceExpiringSoon,
 } from "@/lib/instance-expiry";
 
-const EMPTY_SESSION_CHATS: Array<{ id: string }> = [];
+type SwipePreview = { chatId: string; offset: -1 | 1 };
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -71,21 +69,22 @@ export function ProjectChatScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
-  const chatTransitionDistance = Math.max(windowWidth, 320);
+  const chatTransitionDistance = windowWidth;
   const scrollRef = useRef<ScrollView>(null);
   const initiallyScrolledSessionIdRef = useRef("");
   const focusedChatIdsRef = useRef(new Set<string>());
   const chatTransitionX = useRef(new Animated.Value(0)).current;
   const isChatTransitioningRef = useRef(false);
   const chatTransitionEntryXRef = useRef<number | null>(null);
+  const pendingChatHandoffIdRef = useRef("");
   const params = useLocalSearchParams<{
-    opencodeSessionId?: string | string[];
+    chatId?: string | string[];
     projectId?: string | string[];
     projectSessionId?: string | string[];
   }>();
   const projectSessionId = firstParam(params.projectSessionId);
   const projectId = firstParam(params.projectId);
-  const opencodeSessionId = firstParam(params.opencodeSessionId);
+  const opencodeSessionId = firstParam(params.chatId);
   const openTerminal = useCallback(() => {
     Keyboard.dismiss();
     router.push({
@@ -96,7 +95,10 @@ export function ProjectChatScreen() {
   const storedSessionChats = useSessionChatsStore(
     (store) => store.chatsBySessionId[projectSessionId],
   );
-  const sessionChats = storedSessionChats ?? EMPTY_SESSION_CHATS;
+  const storedMessagesByChat = useSessionChatsStore(
+    (store) => store.messagesBySessionId[projectSessionId],
+  );
+  const sessionChats = storedSessionChats ?? [];
   const runtime = useProjectRuntime(projectSessionId);
   const now = useCurrentTime(Boolean(runtime.instance?.terminates_at));
   const instanceRemainingMs = getInstanceRemainingMs(
@@ -165,6 +167,7 @@ export function ProjectChatScreen() {
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const [showRawResponse, setShowRawResponse] = useState(false);
+  const [swipePreview, setSwipePreview] = useState<SwipePreview | null>(null);
   // Keep the outgoing chat mounted while the next chat is fetched. Replacing it
   // with the loading screen between the exit and entrance animations causes a
   // visible flash and makes the swipe feel like two separate transitions.
@@ -195,6 +198,14 @@ export function ProjectChatScreen() {
   const turns = useMemo(
     () => createChatTurns(visibleMessages, inventoryQuery.data?.models),
     [inventoryQuery.data?.models, visibleMessages],
+  );
+  const swipePreviewTurns = useMemo(
+    () =>
+      createChatTurns(
+        swipePreview ? (storedMessagesByChat?.[swipePreview.chatId] ?? []) : [],
+        inventoryQuery.data?.models,
+      ),
+    [inventoryQuery.data?.models, storedMessagesByChat, swipePreview],
   );
   const revertedQuestions = useMemo(
     () =>
@@ -240,19 +251,15 @@ export function ProjectChatScreen() {
   const goBack = () => router.replace("/");
 
   const openNewChat = () => {
-    router.replace({
-      pathname: "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
-      params: {
-        directory: data?.session.directory ?? "",
-        ...(selection.agent ? { agent: selection.agent } : {}),
-        ...(selection.model ? { model: selection.model } : {}),
-        ...(selection.variant ? { variant: selection.variant } : {}),
-        projectId,
-        projectSessionId,
-        returnOpencodeSessionId: opencodeSessionId,
-        returnProjectId: projectId,
-        returnProjectSessionId: projectSessionId,
-      },
+    router.setParams({
+      chatId: "new",
+      directory: data?.session.directory ?? "",
+      ...(selection.agent ? { agent: selection.agent } : {}),
+      ...(selection.model ? { model: selection.model } : {}),
+      ...(selection.variant ? { variant: selection.variant } : {}),
+      returnOpencodeSessionId: opencodeSessionId,
+      returnProjectId: projectId,
+      returnProjectSessionId: projectSessionId,
     });
   };
 
@@ -264,15 +271,18 @@ export function ProjectChatScreen() {
     ) {
       if (target.opencodeSessionId !== opencodeSessionId) {
         setAttachments([]);
-        router.setParams({ opencodeSessionId: target.opencodeSessionId });
+        router.setParams({ chatId: target.opencodeSessionId });
       }
       return;
     }
 
     router.replace({
-      pathname:
-        "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
-      params: target,
+      pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
+      params: {
+        chatId: target.opencodeSessionId,
+        projectId: target.projectId,
+        projectSessionId: target.projectSessionId,
+      },
     });
   };
 
@@ -289,19 +299,40 @@ export function ProjectChatScreen() {
     };
   }, []);
 
-  const switchRelativeChat = useCallback(
+  const getRelativeChat = useCallback(
     (offset: -1 | 1) => {
-      if (sessionChats.length < 2 || isChatTransitioningRef.current) return;
+      if (sessionChats.length < 2) return undefined;
       const currentIndex = sessionChats.findIndex(
         (chat) => chat.id === opencodeSessionId,
       );
       const baseIndex = currentIndex >= 0 ? currentIndex : 0;
-      const nextChat =
-        sessionChats[
-          (baseIndex + offset + sessionChats.length) % sessionChats.length
-        ];
+      return sessionChats[
+        (baseIndex + offset + sessionChats.length) % sessionChats.length
+      ];
+    },
+    [opencodeSessionId, sessionChats],
+  );
+
+  const showRelativeChatPreview = useCallback(
+    (offset: -1 | 1) => {
+      const nextChat = getRelativeChat(offset);
+      if (!nextChat) return;
+      setSwipePreview((current) =>
+        current?.chatId === nextChat.id && current.offset === offset
+          ? current
+          : { chatId: nextChat.id, offset },
+      );
+    },
+    [getRelativeChat],
+  );
+
+  const switchRelativeChat = useCallback(
+    (offset: -1 | 1) => {
+      if (isChatTransitioningRef.current) return;
+      const nextChat = getRelativeChat(offset);
       if (!nextChat) return;
 
+      showRelativeChatPreview(offset);
       isChatTransitioningRef.current = true;
       const exitX =
         offset === 1 ? -chatTransitionDistance : chatTransitionDistance;
@@ -314,29 +345,42 @@ export function ProjectChatScreen() {
       }).start(({ finished }) => {
         if (!finished) {
           isChatTransitioningRef.current = false;
+          setSwipePreview(null);
           return;
         }
 
         chatTransitionEntryXRef.current = -exitX;
         // This is the same screen with a different chat id. Updating the route
         // params avoids triggering a second native stack transition.
-        router.setParams({ opencodeSessionId: nextChat.id });
+        router.setParams({ chatId: nextChat.id });
       });
     },
     [
       chatTransitionX,
       chatTransitionDistance,
-      opencodeSessionId,
+      getRelativeChat,
       router,
-      sessionChats,
+      showRelativeChatPreview,
     ],
   );
 
   useEffect(() => {
     const entryX = chatTransitionEntryXRef.current;
-    if (!sessionQuery.data || entryX === null) return;
+    if (
+      !sessionQuery.data ||
+      sessionQuery.data.session.id !== opencodeSessionId ||
+      entryX === null
+    )
+      return;
 
     chatTransitionEntryXRef.current = null;
+    if (swipePreview?.chatId === opencodeSessionId) {
+      // Keep the cached preview at x=0 while the real chat mounts offscreen.
+      // Its ScrollView completes the handoff only after it is at the end.
+      pendingChatHandoffIdRef.current = opencodeSessionId;
+      return;
+    }
+
     chatTransitionX.setValue(entryX);
     requestAnimationFrame(() =>
       Animated.timing(chatTransitionX, {
@@ -348,7 +392,7 @@ export function ProjectChatScreen() {
         isChatTransitioningRef.current = false;
       }),
     );
-  }, [chatTransitionX, sessionQuery.data]);
+  }, [chatTransitionX, opencodeSessionId, sessionQuery.data, swipePreview]);
 
   const pageSwipeResponder = useMemo(
     () =>
@@ -366,23 +410,26 @@ export function ProjectChatScreen() {
           Math.abs(gesture.dx) > 8 &&
           Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
         onPanResponderGrant: () => chatTransitionX.stopAnimation(),
-        onPanResponderMove: (_, gesture) =>
+        onPanResponderMove: (_, gesture) => {
+          showRelativeChatPreview(gesture.dx < 0 ? 1 : -1);
           chatTransitionX.setValue(
             Math.max(
-              -chatTransitionDistance * 0.22,
-              Math.min(chatTransitionDistance * 0.22, gesture.dx * 0.5),
+              -chatTransitionDistance * 0.34,
+              Math.min(chatTransitionDistance * 0.34, gesture.dx * 0.72),
             ),
-          ),
+          );
+        },
         onPanResponderRelease: (_, gesture) => {
           if (gesture.dx < -42) switchRelativeChat(1);
           else if (gesture.dx > 42) switchRelativeChat(-1);
-          else
+          else {
             Animated.spring(chatTransitionX, {
               damping: 18,
               stiffness: 220,
               toValue: 0,
               useNativeDriver: true,
-            }).start();
+            }).start(() => setSwipePreview(null));
+          }
         },
         onPanResponderTerminate: () =>
           Animated.spring(chatTransitionX, {
@@ -390,7 +437,7 @@ export function ProjectChatScreen() {
             stiffness: 220,
             toValue: 0,
             useNativeDriver: true,
-          }).start(),
+          }).start(() => setSwipePreview(null)),
         onShouldBlockNativeResponder: () => true,
       }),
     [
@@ -398,6 +445,7 @@ export function ProjectChatScreen() {
       chatTransitionDistance,
       isKeyboardVisible,
       sessionChats.length,
+      showRelativeChatPreview,
       switchRelativeChat,
     ],
   );
@@ -509,15 +557,13 @@ export function ProjectChatScreen() {
 
   if (runtime.isError || !runtime.instance) {
     return (
-      <SafeAreaView
-        style={[styles.screen, { backgroundColor: theme.background }]}
-      >
+      <View style={[styles.screen, { backgroundColor: theme.background }]}>
         <ProjectChatStatus
           description="This project session is no longer running or its connection expired."
           onBack={goBack}
           title="OpenCode server unavailable"
         />
-      </SafeAreaView>
+      </View>
     );
   }
 
@@ -531,9 +577,7 @@ export function ProjectChatScreen() {
 
   if (sessionQuery.error || !data) {
     return (
-      <SafeAreaView
-        style={[styles.screen, { backgroundColor: theme.background }]}
-      >
+      <View style={[styles.screen, { backgroundColor: theme.background }]}>
         <ProjectChatStatus
           description={
             sessionQuery.error?.message ?? "OpenCode returned no chat data."
@@ -541,28 +585,14 @@ export function ProjectChatScreen() {
           onBack={goBack}
           title="Could not load chat"
         />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.screen, { backgroundColor: theme.background }]}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        enabled
-        style={styles.screen}
-      >
-        <Animated.View
-          style={[
-            styles.screen,
-            {
-              transform: [{ translateX: chatTransitionX }],
-            },
-          ]}
-          {...pageSwipeResponder.panHandlers}
-        >
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <>
+        <View style={styles.screen}>
           <PageChromeLayout
             bottom={
               <View
@@ -655,85 +685,147 @@ export function ProjectChatScreen() {
           >
             {({ topInset }) => (
               <>
-                <ScrollView
-                  contentContainerStyle={[
-                    styles.messages,
-                    { paddingTop: topInset },
-                  ]}
-                  keyboardDismissMode="interactive"
-                  keyboardShouldPersistTaps="handled"
-                  onContentSizeChange={() => {
-                    if (
-                      data.session.id !== opencodeSessionId ||
-                      initiallyScrolledSessionIdRef.current ===
-                        opencodeSessionId
-                    )
-                      return;
-
-                    initiallyScrolledSessionIdRef.current = opencodeSessionId;
-                    requestAnimationFrame(() =>
-                      scrollRef.current?.scrollToEnd({ animated: false }),
-                    );
-                  }}
-                  ref={scrollRef}
-                  showsVerticalScrollIndicator={false}
-                >
-                  {showRawResponse ? (
-                    <ScrollView horizontal showsHorizontalScrollIndicator>
-                      <ThemedText selectable style={styles.rawResponse}>
-                        {JSON.stringify(data, null, 2)}
-                      </ThemedText>
-                    </ScrollView>
-                  ) : null}
-                  {!showRawResponse &&
-                    turns.map((turn, index) => (
-                      <OpencodeChatTurn
-                        isReverting={
-                          revertSession.isPending &&
-                          revertSession.variables === turn.id
-                        }
-                        isStreaming={
-                          sessionQuery.isStreaming && index === turns.length - 1
-                        }
-                        item={turn}
-                        key={turn.id}
-                        onRevert={() =>
-                          revertSession.mutate(turn.id, {
-                            onError: (error) =>
-                              Alert.alert(
-                                "Could not revert messages",
-                                error.message,
+                <View style={styles.chatPreviewViewport}>
+                  {swipePreview ? (
+                    <Animated.View
+                      pointerEvents="none"
+                      style={[
+                        styles.adjacentChatPreview,
+                        { backgroundColor: theme.background },
+                        {
+                          transform: [
+                            {
+                              translateX: Animated.add(
+                                chatTransitionX,
+                                swipePreview.offset * chatTransitionDistance,
                               ),
-                          })
-                        }
-                        revertDisabled={
-                          sessionQuery.isStreaming ||
-                          revertSession.isPending ||
-                          restoreMessage.isPending
-                        }
-                      />
-                    ))}
-                  {!showRawResponse &&
-                  turns.length === 0 &&
-                  !activeQuestion &&
-                  !sessionQuery.isStreaming ? (
-                    <ThemedText
-                      style={[styles.emptyText, { color: theme.textSecondary }]}
+                            },
+                          ],
+                        },
+                      ]}
                     >
-                      Start the chat by describing what you want to build.
-                    </ThemedText>
+                      <AdjacentChatPreview
+                        topInset={topInset}
+                        turns={swipePreviewTurns}
+                      />
+                    </Animated.View>
                   ) : null}
-                  {!showRawResponse &&
-                  sessionQuery.isStreaming &&
-                  turns.length === 0 ? (
-                    <View style={styles.thinking}>
-                      <ActivityIndicator size="small" />
-                      <ThemedText themeColor="textSecondary">
-                        Vibeongo is working…
-                      </ThemedText>
-                    </View>
-                  ) : null}
-                </ScrollView>
+
+                  <Animated.View
+                    style={[
+                      styles.chatPreview,
+                      { backgroundColor: theme.background },
+                      { transform: [{ translateX: chatTransitionX }] },
+                    ]}
+                    {...pageSwipeResponder.panHandlers}
+                  >
+                    <ScrollView
+                      contentOffset={{ x: 0, y: 1_000_000 }}
+                      contentContainerStyle={[
+                        styles.messages,
+                        { paddingTop: topInset },
+                      ]}
+                      keyboardDismissMode="interactive"
+                      keyboardShouldPersistTaps="handled"
+                      key={opencodeSessionId}
+                      onContentSizeChange={() => {
+                        if (data.session.id !== opencodeSessionId) return;
+
+                        const isPendingHandoff =
+                          pendingChatHandoffIdRef.current === opencodeSessionId;
+                        if (
+                          !isPendingHandoff &&
+                          initiallyScrolledSessionIdRef.current ===
+                            opencodeSessionId
+                        ) {
+                          return;
+                        }
+
+                        initiallyScrolledSessionIdRef.current =
+                          opencodeSessionId;
+                        requestAnimationFrame(() => {
+                          scrollRef.current?.scrollToEnd({ animated: false });
+                          if (!isPendingHandoff) return;
+
+                          requestAnimationFrame(() => {
+                            if (
+                              pendingChatHandoffIdRef.current !==
+                              opencodeSessionId
+                            )
+                              return;
+
+                            pendingChatHandoffIdRef.current = "";
+                            chatTransitionX.setValue(0);
+                            setSwipePreview(null);
+                            isChatTransitioningRef.current = false;
+                          });
+                        });
+                      }}
+                      ref={scrollRef}
+                      showsVerticalScrollIndicator={false}
+                    >
+                      {showRawResponse ? (
+                        <ScrollView horizontal showsHorizontalScrollIndicator>
+                          <ThemedText selectable style={styles.rawResponse}>
+                            {JSON.stringify(data, null, 2)}
+                          </ThemedText>
+                        </ScrollView>
+                      ) : null}
+                      {!showRawResponse &&
+                        turns.map((turn, index) => (
+                          <OpencodeChatTurn
+                            isReverting={
+                              revertSession.isPending &&
+                              revertSession.variables === turn.id
+                            }
+                            isStreaming={
+                              sessionQuery.isStreaming &&
+                              index === turns.length - 1
+                            }
+                            item={turn}
+                            key={turn.id}
+                            onRevert={() =>
+                              revertSession.mutate(turn.id, {
+                                onError: (error) =>
+                                  Alert.alert(
+                                    "Could not revert messages",
+                                    error.message,
+                                  ),
+                              })
+                            }
+                            revertDisabled={
+                              sessionQuery.isStreaming ||
+                              revertSession.isPending ||
+                              restoreMessage.isPending
+                            }
+                          />
+                        ))}
+                      {!showRawResponse &&
+                      turns.length === 0 &&
+                      !activeQuestion &&
+                      !sessionQuery.isStreaming ? (
+                        <ThemedText
+                          style={[
+                            styles.emptyText,
+                            { color: theme.textSecondary },
+                          ]}
+                        >
+                          Start the chat by describing what you want to build.
+                        </ThemedText>
+                      ) : null}
+                      {!showRawResponse &&
+                      sessionQuery.isStreaming &&
+                      turns.length === 0 ? (
+                        <View style={styles.thinking}>
+                          <ActivityIndicator size="small" />
+                          <ThemedText themeColor="textSecondary">
+                            Vibeongo is working…
+                          </ThemedText>
+                        </View>
+                      ) : null}
+                    </ScrollView>
+                  </Animated.View>
+                </View>
 
                 <View style={styles.composerOuter}>
                   <View
@@ -812,27 +904,44 @@ export function ProjectChatScreen() {
                       value={prompt}
                     />
                   )}
-                  {sendPrompt.error ? (
+                  {sendPrompt.error || data.promptError ? (
                     <ThemedText style={styles.error}>
-                      {sendPrompt.error.message}
+                      {sendPrompt.error?.message ?? data.promptError}
                     </ThemedText>
                   ) : null}
                 </View>
               </>
             )}
           </PageChromeLayout>
-        </Animated.View>
-      </KeyboardAvoidingView>
+        </View>
+      </>
       <ProjectChatSwitcherDrawer
         current={{ opencodeSessionId, projectId, projectSessionId }}
         onClose={() => setIsChatSwitcherOpen(false)}
         onNewChat={(target) => {
           setIsChatSwitcherOpen(false);
+          if (
+            target.projectId === projectId &&
+            target.projectSessionId === projectSessionId
+          ) {
+            router.setParams({
+              chatId: "new",
+              directory: target.directory,
+              returnOpencodeSessionId: opencodeSessionId,
+              returnProjectId: projectId,
+              returnProjectSessionId: projectSessionId,
+              ...(selection.agent ? { agent: selection.agent } : {}),
+              ...(selection.model ? { model: selection.model } : {}),
+              ...(selection.variant ? { variant: selection.variant } : {}),
+            });
+            return;
+          }
+
           router.replace({
-            pathname:
-              "/projects/[projectId]/sessions/[projectSessionId]/new-chat",
+            pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
             params: {
               ...target,
+              chatId: "new",
               returnOpencodeSessionId: opencodeSessionId,
               returnProjectId: projectId,
               returnProjectSessionId: projectSessionId,
@@ -854,7 +963,50 @@ export function ProjectChatScreen() {
         onSelect={selectChat}
         visible={isChatSwitcherOpen}
       />
-    </SafeAreaView>
+    </View>
+  );
+}
+
+function AdjacentChatPreview({
+  topInset,
+  turns,
+}: {
+  topInset: number;
+  turns: ReturnType<typeof createChatTurns>;
+}) {
+  const scrollRef = useRef<ScrollView>(null);
+
+  return (
+    <ScrollView
+      contentOffset={{ x: 0, y: 1_000_000 }}
+      contentContainerStyle={[
+        styles.messages,
+        styles.adjacentMessages,
+        { paddingTop: topInset },
+      ]}
+      onContentSizeChange={() =>
+        scrollRef.current?.scrollToEnd({ animated: false })
+      }
+      ref={scrollRef}
+      showsVerticalScrollIndicator={false}
+    >
+      {turns.length ? (
+        turns.map((turn) => (
+          <OpencodeChatTurn
+            isReverting={false}
+            isStreaming={false}
+            item={turn}
+            key={turn.id}
+            onRevert={() => {}}
+            revertDisabled
+          />
+        ))
+      ) : (
+        <View style={styles.adjacentPreviewLoading}>
+          <ActivityIndicator size="small" />
+        </View>
+      )}
+    </ScrollView>
   );
 }
 
@@ -944,6 +1096,28 @@ function RevertedMessagesPanel({
 }
 
 const styles = StyleSheet.create({
+  adjacentChatPreview: {
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  adjacentMessages: {
+    flexGrow: 1,
+  },
+  adjacentPreviewLoading: {
+    alignItems: "center",
+    flex: 1,
+    justifyContent: "center",
+  },
+  chatPreview: {
+    flex: 1,
+  },
+  chatPreviewViewport: {
+    flex: 1,
+    overflow: "hidden",
+  },
   composerOuter: {
     backgroundColor: "transparent",
     bottom: 0,

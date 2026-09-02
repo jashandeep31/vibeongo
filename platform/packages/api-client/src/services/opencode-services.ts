@@ -28,6 +28,7 @@ export type OpencodeSessionData = {
   questions: QuestionRequest[];
   changes: SnapshotFileDiff[];
   optimistic?: boolean;
+  promptError?: string | undefined;
 };
 
 export function reduceOpencodeMessages(
@@ -175,7 +176,7 @@ export function reduceOpencodeSessionData(
       messages,
       ...(event.type === "message.updated" &&
       event.properties.info.role === "user"
-        ? { optimistic: false }
+        ? { optimistic: false, promptError: undefined }
         : {}),
     };
   }

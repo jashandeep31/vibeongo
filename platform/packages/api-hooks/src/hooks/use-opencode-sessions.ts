@@ -178,16 +178,34 @@ export const useStartOpencodeSession = () => {
       );
       onSessionCreated?.(session.id);
 
-      await sendOpencodePrompt(
-        chatId,
-        session.id,
-        text,
-        attachments,
-        selection,
-        serverUrl,
-        accessToken,
-        password,
-      );
+      try {
+        await sendOpencodePrompt(
+          chatId,
+          session.id,
+          text,
+          attachments,
+          selection,
+          serverUrl,
+          accessToken,
+          password,
+        );
+      } catch (error) {
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Could not send OpenCode prompt";
+        queryClient.setQueryData<OpencodeSessionData>(
+          ["opencode", "session", chatId, session.id, serverUrl],
+          (current) =>
+            current
+              ? { ...current, status: { type: "idle" }, promptError: message }
+              : current,
+        );
+        useSessionChatsStore
+          .getState()
+          .setChatStatus(chatId, session.id, { type: "idle" });
+        throw error;
+      }
       return session;
     },
     onSuccess: () => {

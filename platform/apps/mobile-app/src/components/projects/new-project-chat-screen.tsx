@@ -7,13 +7,10 @@ import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Keyboard,
-  KeyboardAvoidingView,
-  Platform,
   Pressable,
   StyleSheet,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
   OpencodeComposer,
@@ -123,11 +120,18 @@ export function NewProjectChatScreen() {
 
   const goBack = () => {
     if (returnOpencodeSessionId && returnProjectId && returnProjectSessionId) {
+      if (
+        returnProjectId === projectId &&
+        returnProjectSessionId === projectSessionId
+      ) {
+        router.setParams({ chatId: returnOpencodeSessionId });
+        return;
+      }
+
       router.replace({
-        pathname:
-          "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
+        pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
         params: {
-          opencodeSessionId: returnOpencodeSessionId,
+          chatId: returnOpencodeSessionId,
           projectId: returnProjectId,
           projectSessionId: returnProjectSessionId,
         },
@@ -158,11 +162,7 @@ export function NewProjectChatScreen() {
       attachments,
       selection,
       onSessionCreated: (opencodeSessionId) => {
-        router.replace({
-          pathname:
-            "/projects/[projectId]/sessions/[projectSessionId]/chats/[opencodeSessionId]",
-          params: { opencodeSessionId, projectId, projectSessionId },
-        });
+        router.setParams({ chatId: opencodeSessionId });
       },
     });
   };
@@ -177,27 +177,19 @@ export function NewProjectChatScreen() {
 
   if (runtime.isError || !runtime.instance) {
     return (
-      <SafeAreaView
-        style={[styles.screen, { backgroundColor: theme.background }]}
-      >
+      <View style={[styles.screen, { backgroundColor: theme.background }]}>
         <ProjectChatStatus
           description="This project session is no longer running. Resume it before creating a chat."
           onBack={goBack}
           title="OpenCode server unavailable"
         />
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView
-      style={[styles.screen, { backgroundColor: theme.background }]}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        enabled
-        style={styles.screen}
-      >
+    <View style={[styles.screen, { backgroundColor: theme.background }]}>
+      <>
         <PageChromeLayout
           bottom={
             <View
@@ -300,8 +292,8 @@ export function NewProjectChatScreen() {
             </View>
           )}
         </PageChromeLayout>
-      </KeyboardAvoidingView>
-    </SafeAreaView>
+      </>
+    </View>
   );
 }
 

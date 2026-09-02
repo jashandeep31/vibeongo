@@ -41,14 +41,19 @@ export const useOpencodeSession = ({
     true;
   const query = useQuery({
     queryKey,
-    queryFn: () =>
-      getOpencodeSessionRaw(
+    queryFn: async () => {
+      const incoming = await getOpencodeSessionRaw(
         chatId,
         sessionId,
         serverUrl,
         accessToken,
         password,
-      ),
+      );
+      return reconcileActiveOpencodeSession(
+        queryClient.getQueryData<OpencodeSessionData>(queryKey),
+        incoming,
+      );
+    },
     enabled: !!serverUrl && !!accessToken && !!password,
     staleTime: hasOptimisticSession ? Infinity : 0,
   });
@@ -62,6 +67,57 @@ export const useOpencodeSession = ({
     resync,
   };
 };
+
+function reconcileActiveOpencodeSession(
+  current: OpencodeSessionData | undefined,
+  incoming: OpencodeSessionData,
+): OpencodeSessionData {
+  if (!current || (!current.optimistic && current.status.type === "idle")) {
+    return incoming;
+  }
+
+  const incomingHasRealUserMessage = incoming.messages.some(
+    (message) =>
+      message.info.role === "user" &&
+      !message.info.id.startsWith("optimistic:"),
+  );
+  const currentMessages = incomingHasRealUserMessage
+    ? current.messages.filter(
+        (message) => !message.info.id.startsWith("optimistic:"),
+      )
+    : current.messages;
+  const currentById = new Map(
+    currentMessages.map((message) => [message.info.id, message]),
+  );
+  const mergedMessages = incoming.messages.map((message) => {
+    const newerMessage = currentById.get(message.info.id);
+    if (!newerMessage) return message;
+
+    currentById.delete(message.info.id);
+    const newerPartsById = new Map(
+      newerMessage.parts.map((part) => [part.id, part]),
+    );
+    const parts = message.parts.map((part) => {
+      const newerPart = newerPartsById.get(part.id);
+      newerPartsById.delete(part.id);
+      return newerPart ?? part;
+    });
+
+    return {
+      info: newerMessage.info,
+      parts: [...parts, ...newerPartsById.values()],
+    };
+  });
+  mergedMessages.push(...currentById.values());
+
+  return {
+    ...incoming,
+    messages: mergedMessages,
+    ...(!incomingHasRealUserMessage && current.optimistic
+      ? { optimistic: true }
+      : {}),
+  };
+}
 
 export const useSendOpencodePrompt = ({
   chatId,
