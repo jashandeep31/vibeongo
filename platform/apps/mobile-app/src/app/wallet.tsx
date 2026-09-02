@@ -1,32 +1,18 @@
-import {
-  useAddCredits,
-  useGetWallet,
-  useUserCreditGrants,
-} from "@repo/api-hooks";
+import { useGetWallet, useUserCreditGrants } from "@repo/api-hooks";
 import { formatInternalMoney } from "@repo/shared/money";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
-  KeyboardAvoidingView,
-  Linking,
-  Modal,
-  Platform,
   Pressable,
   RefreshControl,
   ScrollView,
   StyleSheet,
-  TextInput,
   View,
 } from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ThemedText } from "@/components/themed-text";
 import {
   PageChromeLayout,
@@ -36,8 +22,6 @@ import {
 import { useTheme } from "@/hooks/use-theme";
 
 const PAGE_LIMIT = 10;
-const MIN_CREDIT_AMOUNT = 5;
-const MAX_CREDIT_AMOUNT = 300;
 type WalletTab = "transactions" | "credit-grants";
 
 function formatDate(value: unknown) {
@@ -57,7 +41,6 @@ export default function WalletScreen() {
   const [activeTab, setActiveTab] = useState<WalletTab>("transactions");
   const [transactionsPage, setTransactionsPage] = useState(1);
   const [creditGrantsPage, setCreditGrantsPage] = useState(1);
-  const [showBuyCredits, setShowBuyCredits] = useState(false);
   const walletQuery = useGetWallet({
     page: transactionsPage,
     limit: PAGE_LIMIT,
@@ -162,27 +145,6 @@ export default function WalletScreen() {
                   </ThemedText>
                 </View>
               )}
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => setShowBuyCredits(true)}
-                style={({ pressed }) => [
-                  styles.buyButton,
-                  { backgroundColor: theme.text },
-                  pressed && styles.pressed,
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "plus", android: "add" }}
-                  size={18}
-                  tintColor={theme.background}
-                  weight="semibold"
-                />
-                <ThemedText
-                  style={[styles.buyButtonLabel, { color: theme.background }]}
-                >
-                  Buy credits
-                </ThemedText>
-              </Pressable>
             </View>
 
             <View
@@ -261,11 +223,6 @@ export default function WalletScreen() {
           </ScrollView>
         )}
       </PageChromeLayout>
-
-      <BuyCreditsDrawer
-        onClose={() => setShowBuyCredits(false)}
-        visible={showBuyCredits}
-      />
     </SafeAreaView>
   );
 }
@@ -514,142 +471,6 @@ function EmptyState({ icon, label }: { icon: "card" | "gift"; label: string }) {
   );
 }
 
-function BuyCreditsDrawer({
-  visible,
-  onClose,
-}: {
-  visible: boolean;
-  onClose: () => void;
-}) {
-  const theme = useTheme();
-  const insets = useSafeAreaInsets();
-  const [amount, setAmount] = useState(String(MIN_CREDIT_AMOUNT));
-  const addCredits = useAddCredits("mobile-app");
-  const parsedAmount = Number(amount);
-  const isValid =
-    Number.isInteger(parsedAmount) &&
-    parsedAmount >= MIN_CREDIT_AMOUNT &&
-    parsedAmount <= MAX_CREDIT_AMOUNT;
-
-  const close = () => {
-    if (addCredits.isPending) return;
-    setAmount(String(MIN_CREDIT_AMOUNT));
-    onClose();
-  };
-
-  const submit = async () => {
-    if (!isValid || addCredits.isPending) return;
-    try {
-      const { checkoutUrl } = await addCredits.mutateAsync(parsedAmount);
-      setAmount(String(MIN_CREDIT_AMOUNT));
-      onClose();
-      await Linking.openURL(checkoutUrl);
-    } catch {
-      Alert.alert("Could not start checkout", "Please try again.");
-    }
-  };
-
-  return (
-    <Modal
-      animationType="none"
-      onRequestClose={close}
-      statusBarTranslucent
-      transparent
-      visible={visible}
-    >
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.drawerRoot}
-      >
-        <Pressable
-          accessibilityLabel="Close buy credits"
-          accessibilityRole="button"
-          onPress={close}
-          style={styles.backdrop}
-        />
-        <BottomDrawerPanel
-          accessibilityViewIsModal
-          style={[
-            styles.drawer,
-            {
-              backgroundColor: theme.background,
-              borderColor: theme.backgroundSelected,
-              paddingBottom: Math.max(insets.bottom, 20),
-            },
-          ]}
-          visible={visible}
-        >
-          <View
-            style={[
-              styles.handle,
-              { backgroundColor: theme.backgroundSelected },
-            ]}
-          />
-          <ThemedText style={styles.drawerTitle}>Buy credits</ThemedText>
-          <ThemedText
-            style={styles.drawerDescription}
-            themeColor="textSecondary"
-          >
-            Add between ${MIN_CREDIT_AMOUNT} and ${MAX_CREDIT_AMOUNT} to your
-            wallet.
-          </ThemedText>
-          <ThemedText style={styles.inputLabel}>Amount</ThemedText>
-          <View
-            style={[
-              styles.inputWrap,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.backgroundSelected,
-              },
-            ]}
-          >
-            <ThemedText style={styles.currency}>$</ThemedText>
-            <TextInput
-              accessibilityLabel="Credit amount"
-              editable={!addCredits.isPending}
-              keyboardType="number-pad"
-              onChangeText={(value) => {
-                if (/^\d*$/.test(value)) setAmount(value);
-              }}
-              placeholderTextColor={theme.textSecondary}
-              style={[styles.input, { color: theme.text }]}
-              value={amount}
-            />
-          </View>
-          {!isValid ? (
-            <ThemedText style={styles.validation}>
-              Enter a whole amount from ${MIN_CREDIT_AMOUNT} to $
-              {MAX_CREDIT_AMOUNT}.
-            </ThemedText>
-          ) : null}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityState={{ disabled: !isValid || addCredits.isPending }}
-            disabled={!isValid || addCredits.isPending}
-            onPress={() => void submit()}
-            style={({ pressed }) => [
-              styles.continueButton,
-              { backgroundColor: theme.text },
-              (!isValid || addCredits.isPending) && styles.disabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            {addCredits.isPending ? (
-              <ActivityIndicator color={theme.background} size="small" />
-            ) : (
-              <ThemedText
-                style={[styles.continueLabel, { color: theme.background }]}
-              >
-                Continue to checkout
-              </ThemedText>
-            )}
-          </Pressable>
-        </BottomDrawerPanel>
-      </KeyboardAvoidingView>
-    </Modal>
-  );
-}
-
 const styles = StyleSheet.create({
   screen: { flex: 1 },
   header: {
@@ -692,17 +513,6 @@ const styles = StyleSheet.create({
     lineHeight: 42,
   },
   creditsLabel: { fontSize: 14 },
-  buyButton: {
-    alignItems: "center",
-    alignSelf: "flex-start",
-    borderRadius: 12,
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 20,
-    minHeight: 44,
-    paddingHorizontal: 16,
-  },
-  buyButtonLabel: { fontSize: 14, fontWeight: "700" },
   tabs: {
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
@@ -775,55 +585,4 @@ const styles = StyleSheet.create({
   retryButton: { borderRadius: 10, paddingHorizontal: 16, paddingVertical: 10 },
   retryLabel: { fontSize: 14, fontWeight: "600" },
   pressed: { opacity: 0.68 },
-  drawerRoot: { flex: 1, justifyContent: "flex-end" },
-  backdrop: {
-    backgroundColor: "rgba(0, 0, 0, 0.48)",
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  drawer: {
-    borderTopLeftRadius: 22,
-    borderTopRightRadius: 22,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    paddingHorizontal: 20,
-    paddingTop: 10,
-  },
-  handle: {
-    alignSelf: "center",
-    borderRadius: 2,
-    height: 4,
-    marginBottom: 18,
-    width: 38,
-  },
-  drawerTitle: { fontSize: 22, fontWeight: "700", letterSpacing: -0.4 },
-  drawerDescription: { fontSize: 14, lineHeight: 20, marginTop: 6 },
-  inputLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    marginBottom: 7,
-    marginTop: 22,
-  },
-  inputWrap: {
-    alignItems: "center",
-    borderRadius: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    minHeight: 50,
-    paddingHorizontal: 14,
-  },
-  currency: { fontSize: 16 },
-  input: { flex: 1, fontSize: 16, paddingHorizontal: 8, paddingVertical: 12 },
-  validation: { color: "#ef4444", fontSize: 12, lineHeight: 17, marginTop: 7 },
-  continueButton: {
-    alignItems: "center",
-    borderRadius: 12,
-    justifyContent: "center",
-    marginTop: 20,
-    minHeight: 50,
-    paddingHorizontal: 18,
-  },
-  continueLabel: { fontSize: 15, fontWeight: "700" },
 });
