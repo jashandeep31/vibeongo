@@ -2,7 +2,7 @@
   "expo": {
     "name": "VibeOnGo",
     "slug": "mobile-app",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/vibeongo-logo.png",
     "scheme": "vibeongo",
@@ -13,6 +13,7 @@
     },
     "android": {
       "package": "com.vibeongo.app",
+      "versionCode": 23,
       "adaptiveIcon": {
         "backgroundColor": "#000000",
         "foregroundImage": "./assets/images/android-icon-foreground.png",

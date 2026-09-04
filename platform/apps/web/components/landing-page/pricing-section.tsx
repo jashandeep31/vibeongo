@@ -15,7 +15,6 @@ export function PricingSection() {
     >
       <div className="mx-auto grid max-w-7xl items-end gap-12 lg:grid-cols-2">
         <div>
-          <CircleDollarSign className="size-7 text-white/80" />
           <h2 className="mt-7 text-4xl leading-tight font-semibold tracking-[-0.045em] sm:text-6xl">
             Pay for the work, not the waiting.
           </h2>
