@@ -18,6 +18,7 @@ import {
 } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
+import { ProjectFilesButton } from "@/components/projects/project-files-button";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
 import { ThemedText } from "@/components/themed-text";
 import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
@@ -207,6 +208,10 @@ export function NewProjectChatScreen() {
                     { backgroundColor: theme.backgroundElement },
                   ]}
                 >
+                  <ProjectFilesButton
+                    projectId={projectId}
+                    projectSessionId={projectSessionId}
+                  />
                   <ProjectSettingsButton
                     projectId={projectId}
                     projectSessionId={projectSessionId}

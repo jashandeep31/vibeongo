@@ -103,8 +103,15 @@ export function useUpdateRuntimeFile(connection: RuntimeFilesConnection) {
 export function useUploadRuntimeFile(connection: RuntimeFilesConnection) {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: ({ path, file }: { path: string; file: File }) =>
-      uploadRuntimeFile(connection, path, file),
+    mutationFn: ({
+      path,
+      file,
+      fileName,
+    }: {
+      path: string;
+      file: Blob;
+      fileName: string;
+    }) => uploadRuntimeFile(connection, path, file, fileName),
     onSuccess: () =>
       queryClient.invalidateQueries({
         queryKey: runtimeDirectoriesKey(connection.instanceId),

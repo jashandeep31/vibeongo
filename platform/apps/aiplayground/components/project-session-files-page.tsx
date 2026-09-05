@@ -2,7 +2,14 @@
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { FileManagementSidebar } from "@/components/file-management-sidebar";
-import type { RuntimeFileEntry } from "@repo/api-client";
+import {
+  getRuntimeChildPath,
+  getRuntimeFileBreadcrumbs,
+  getRuntimeParentPath,
+  isEditableRuntimeContentType,
+  sortRuntimeFileEntries,
+  type RuntimeFileEntry,
+} from "@repo/api-client";
 import {
   useCreateRuntimeFileEntry,
   useDeleteRuntimeFileEntry,
@@ -67,41 +74,10 @@ function getConfigValue(config: unknown, key: string) {
   return typeof value === "string" ? value : "";
 }
 
-function getParentPath(path: string) {
-  const parts = path.split("/").filter(Boolean);
-  parts.pop();
-  return parts.length ? `/${parts.join("/")}` : "/";
-}
-
-function getChildPath(directory: string, name: string) {
-  const trimmedName = name.trim();
-  const isDirectory = trimmedName.endsWith("/");
-  const segments = trimmedName.split("/").filter(Boolean);
-  if (
-    !segments.length ||
-    segments.some((part) => part === "." || part === "..")
-  ) {
-    throw new Error("Enter a valid name without . or .. path segments");
-  }
-
-  const base = directory === "/" ? "" : directory.replace(/\/$/, "");
-  return `${base}/${segments.join("/")}${isDirectory ? "/" : ""}`;
-}
-
 function decodeContent(content: string) {
   const binary = window.atob(content);
   return new TextDecoder().decode(
     Uint8Array.from(binary, (character) => character.charCodeAt(0)),
-  );
-}
-
-function isEditableContentType(contentType: string) {
-  return (
-    contentType.startsWith("text/") ||
-    contentType.includes("json") ||
-    contentType.includes("javascript") ||
-    contentType.includes("xml") ||
-    contentType.includes("yaml")
   );
 }
 
@@ -198,7 +174,7 @@ function ProjectSessionFilesContent({
     Boolean(selectedFile) && fileContent !== savedFileContent;
   const isImage = fileContentType.startsWith("image/");
   const canEdit = Boolean(
-    selectedFile && isEditableContentType(fileContentType),
+    selectedFile && isEditableRuntimeContentType(fileContentType),
   );
 
   const clearSelection = useCallback(() => {
@@ -243,7 +219,7 @@ function ProjectSessionFilesContent({
 
     const contentType = result.contentType || "application/octet-stream";
     setFileContentType(contentType);
-    if (isEditableContentType(contentType)) {
+    if (isEditableRuntimeContentType(contentType)) {
       const decoded = decodeContent(result.content);
       setFileContent(decoded);
       setSavedFileContent(decoded);
@@ -334,7 +310,7 @@ function ProjectSessionFilesContent({
     setError("");
     try {
       const isDirectory = newEntryName.trim().endsWith("/");
-      const targetPath = getChildPath(directory.path, newEntryName);
+      const targetPath = getRuntimeChildPath(directory.path, newEntryName);
       await createEntryMutation.mutateAsync(targetPath);
       toast.success(`${isDirectory ? "Folder" : "File"} created`);
       setIsCreateDialogOpen(false);
@@ -353,7 +329,11 @@ function ProjectSessionFilesContent({
     if (!directory) return;
     setError("");
     try {
-      await uploadFileMutation.mutateAsync({ path: directory.path, file });
+      await uploadFileMutation.mutateAsync({
+        path: directory.path,
+        file,
+        fileName: file.name,
+      });
       toast.success(`${file.name} uploaded`);
     } catch (requestError) {
       const message =
@@ -394,23 +374,14 @@ function ProjectSessionFilesContent({
   };
 
   const sortedEntries = useMemo(
-    () =>
-      [...(directory?.entries ?? [])].sort((left, right) => {
-        if (left.type !== right.type) {
-          return left.type === "directory" ? -1 : 1;
-        }
-        return left.name.localeCompare(right.name);
-      }),
+    () => sortRuntimeFileEntries(directory?.entries ?? []),
     [directory?.entries],
   );
 
-  const breadcrumbs = useMemo(() => {
-    const parts = directory?.path.split("/").filter(Boolean) ?? [];
-    return parts.map((label, index) => ({
-      label,
-      path: `/${parts.slice(0, index + 1).join("/")}`,
-    }));
-  }, [directory?.path]);
+  const breadcrumbs = useMemo(
+    () => getRuntimeFileBreadcrumbs(directory?.path),
+    [directory?.path],
+  );
 
   const directoryPanel = (
     <div className="flex h-full min-h-0 flex-col">
@@ -421,9 +392,12 @@ function ProjectSessionFilesContent({
           aria-label="Go back one folder"
           title="Go back one folder"
           disabled={isDirectoryLoading || directory?.path === "/"}
-          onClick={() => openDirectory(getParentPath(directory?.path ?? "/"))}
+          onClick={() =>
+            openDirectory(getRuntimeParentPath(directory?.path ?? "/"))
+          }
         >
-          {openingDirectoryPath === getParentPath(directory?.path ?? "/") ? (
+          {openingDirectoryPath ===
+          getRuntimeParentPath(directory?.path ?? "/") ? (
             <Loader2 className="size-4 animate-spin" />
           ) : (
             <ArrowLeft className="size-4" />

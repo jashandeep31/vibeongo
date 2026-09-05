@@ -7,6 +7,7 @@ export type RuntimeFileConnection = {
   runtimeUrl: string;
   localToken: string;
   accessToken: string;
+  fetch?: typeof globalThis.fetch;
 };
 
 export type RuntimeFileEntry = {
@@ -25,6 +26,61 @@ export type RuntimeFile = {
   contentType: string;
   name: string;
 };
+
+export type RuntimeFileBreadcrumb = {
+  label: string;
+  path: string;
+};
+
+export function getRuntimeParentPath(path: string) {
+  const parts = path.split("/").filter(Boolean);
+  parts.pop();
+  return parts.length ? `/${parts.join("/")}` : "/";
+}
+
+export function getRuntimeChildPath(directory: string, name: string) {
+  const trimmedName = name.trim();
+  const isDirectory = trimmedName.endsWith("/");
+  const segments = trimmedName.split("/").filter(Boolean);
+  if (
+    !segments.length ||
+    segments.some((part) => part === "." || part === "..")
+  ) {
+    throw new Error("Enter a valid name without . or .. path segments");
+  }
+
+  const base = directory === "/" ? "" : directory.replace(/\/$/, "");
+  return `${base}/${segments.join("/")}${isDirectory ? "/" : ""}`;
+}
+
+export function getRuntimeFileBreadcrumbs(
+  path?: string,
+): RuntimeFileBreadcrumb[] {
+  const parts = path?.split("/").filter(Boolean) ?? [];
+  return parts.map((label, index) => ({
+    label,
+    path: `/${parts.slice(0, index + 1).join("/")}`,
+  }));
+}
+
+export function isEditableRuntimeContentType(contentType: string) {
+  return (
+    contentType.startsWith("text/") ||
+    contentType.includes("json") ||
+    contentType.includes("javascript") ||
+    contentType.includes("xml") ||
+    contentType.includes("yaml")
+  );
+}
+
+export function sortRuntimeFileEntries(entries: RuntimeFileEntry[]) {
+  return [...entries].sort((left, right) => {
+    if (left.type !== right.type) {
+      return left.type === "directory" ? -1 : 1;
+    }
+    return left.name.localeCompare(right.name);
+  });
+}
 
 function normalizeRuntimeUrl(runtimeUrl: string) {
   const url = new URL(runtimeUrl);
@@ -67,6 +123,10 @@ function createFormData(values: Record<string, string>) {
   return formData;
 }
 
+function getRuntimeFetch(connection: RuntimeFileConnection) {
+  return connection.fetch ?? globalThis.fetch;
+}
+
 export async function getRuntimeDirectory(
   connection: RuntimeFileConnection,
   path?: string,
@@ -74,7 +134,7 @@ export async function getRuntimeDirectory(
   const url = new URL(`${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/list`);
   if (path) url.searchParams.set("path", path);
 
-  const response = await fetch(url, {
+  const response = await getRuntimeFetch(connection)(url, {
     headers: getHeaders(connection),
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
@@ -90,7 +150,7 @@ export async function getRuntimeFile(
   const url = new URL(`${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/get`);
   url.searchParams.set("path", path);
 
-  const response = await fetch(url, {
+  const response = await getRuntimeFetch(connection)(url, {
     headers: getHeaders(connection),
     cache: "no-store",
     signal: AbortSignal.timeout(10_000),
@@ -114,7 +174,7 @@ export async function createRuntimeFileEntry(
   connection: RuntimeFileConnection,
   path: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await getRuntimeFetch(connection)(
     `${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/create`,
     {
       method: "POST",
@@ -131,7 +191,7 @@ export async function updateRuntimeFile(
   path: string,
   content: string,
 ): Promise<void> {
-  const response = await fetch(
+  const response = await getRuntimeFetch(connection)(
     `${normalizeRuntimeUrl(connection.runtimeUrl)}/fs`,
     {
       method: "PUT",
@@ -146,13 +206,14 @@ export async function updateRuntimeFile(
 export async function uploadRuntimeFile(
   connection: RuntimeFileConnection,
   path: string,
-  file: File,
+  file: Blob,
+  fileName: string,
 ): Promise<RuntimeFileEntry> {
   const formData = new FormData();
   formData.set("path", path);
-  formData.set("file", file);
+  formData.set("file", file, fileName);
 
-  const response = await fetch(
+  const response = await getRuntimeFetch(connection)(
     `${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/upload`,
     {
       method: "POST",
@@ -172,7 +233,7 @@ export async function deleteRuntimeFileEntry(
   const url = new URL(`${normalizeRuntimeUrl(connection.runtimeUrl)}/fs`);
   url.searchParams.set("path", path);
 
-  const response = await fetch(url, {
+  const response = await getRuntimeFetch(connection)(url, {
     method: "DELETE",
     headers: getHeaders(connection),
     signal: AbortSignal.timeout(10_000),
