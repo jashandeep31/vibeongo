@@ -35,7 +35,7 @@ func Start() error {
 	//NOTE: testing purposes remove this in the production
 	go func() {
 		// time.Sleep(10 * time.Second)
-		tools.OpenCode.StartWebServer()
+		// tools.OpenCode.StartWebServer()
 	}()
 
 	// Allow requests from every origin. Echo reflects requested headers for
