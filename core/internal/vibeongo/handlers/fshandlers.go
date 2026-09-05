@@ -139,18 +139,36 @@ func UploadFile(c *echo.Context) error {
 }
 
 func DeleteFileOrFolder(c *echo.Context) error {
-	pathToSource := c.QueryParam("path")
-	if pathToSource == "" {
-		return echo.NewHTTPError(http.StatusBadRequest, "Path is not can't be empty")
+	pathToSource := filepath.Clean(c.QueryParam("path"))
+	if pathToSource == "." {
+		return echo.NewHTTPError(http.StatusBadRequest, "path cannot be empty")
 	}
-	err := os.Remove(pathToSource)
+	if pathToSource == string(filepath.Separator) {
+		return echo.NewHTTPError(http.StatusBadRequest, "filesystem root cannot be deleted")
+	}
+
+	info, err := os.Lstat(pathToSource)
+	if os.IsNotExist(err) {
+		return echo.NewHTTPError(http.StatusNotFound, "file or folder not found")
+	}
 	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, "Failed to delete the source")
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if info.IsDir() {
+		err = os.RemoveAll(pathToSource)
+	} else {
+		err = os.Remove(pathToSource)
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, struct {
 		Message string `json:"message"`
+		Path    string `json:"path"`
 	}{
-		Message: "Source is removed",
+		Message: "File or folder deleted",
+		Path:    pathToSource,
 	})
 }
