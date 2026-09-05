@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/user"
 	"path/filepath"
+	"strings"
 
 	"github.com/labstack/echo/v5"
 )
@@ -170,5 +171,80 @@ func DeleteFileOrFolder(c *echo.Context) error {
 	}{
 		Message: "File or folder deleted",
 		Path:    pathToSource,
+	})
+}
+
+func CreateFileOrFolder(c *echo.Context) error {
+	targetPath := strings.TrimSpace(c.FormValue("path"))
+	if targetPath == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "path is required")
+	}
+
+	isFolder := strings.HasSuffix(targetPath, string(filepath.Separator))
+	targetPath = filepath.Clean(targetPath)
+
+	if _, err := os.Stat(targetPath); err == nil {
+		return echo.NewHTTPError(http.StatusConflict, "file or folder already exists")
+	} else if !os.IsNotExist(err) {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if isFolder {
+		if err := os.MkdirAll(targetPath, 0755); err != nil {
+			return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+		}
+
+		return c.JSON(http.StatusCreated, struct {
+			Message string `json:"message"`
+		}{
+			Message: "Folder is created",
+		})
+	}
+
+	if err := os.MkdirAll(filepath.Dir(targetPath), 0755); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	file, err := os.Create(targetPath)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	if err := file.Close(); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, struct {
+		Message string `json:"message"`
+	}{
+		Message: "File is created",
+	})
+}
+
+func UpdateFileContent(c *echo.Context) error {
+	content := c.FormValue("content")
+	path := strings.TrimSpace(c.FormValue("path"))
+
+	if path == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "path is required")
+	}
+
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC, 0)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
+
+	if _, err := file.WriteString(content); err != nil {
+		file.Close()
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	if err := file.Close(); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusOK, struct {
+		Message string `json:"message"`
+	}{
+		Message: "Updated the file",
 	})
 }

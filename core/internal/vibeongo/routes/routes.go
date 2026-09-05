@@ -17,6 +17,8 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	e.GET("/fs/file", handlers.GetFileContent)
 	e.POST("/fs/upload", handlers.UploadFile)
 	e.DELETE("/fs", handlers.DeleteFileOrFolder)
+	e.PUT("/fs", handlers.UpdateFileContent)
+	e.POST("/fs/create", handlers.CreateFileOrFolder)
 
 	protected := e.Group("")
 	protected.Use(middlewares.CheckLocalAuth(localToken))
