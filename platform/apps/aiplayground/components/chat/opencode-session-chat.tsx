@@ -29,6 +29,7 @@ import {
   MessagesSquare,
   Plus,
   RefreshCw,
+  Settings2,
   Terminal,
   Undo2,
 } from "lucide-react";
@@ -470,12 +471,39 @@ export function OpencodeSessionChat({
           Terminal
         </Link>
       </Button>
+      <Button
+        asChild
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
+      >
+        <Link href={`${chatUrl}/sessions/${sessionId}/settings`}>
+          <Settings2 className="size-3.5" />
+          Settings
+        </Link>
+      </Button>
     </>
   );
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
       <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="bg-background/90 shadow-sm backdrop-blur"
+        >
+          <Link
+            href={`${chatUrl}/sessions/${sessionId}/settings`}
+            aria-label="Runtime settings"
+            title="Runtime settings"
+          >
+            <Settings2 />
+          </Link>
+        </Button>
         <Button
           type="button"
           variant="outline"
