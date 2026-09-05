@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"io"
 	"net/http"
 	"os"
 	"os/user"
@@ -34,20 +35,23 @@ type FileEntity struct {
 	Type FileType `json:"type"`
 }
 
+// Currently even serve the .hidden files and folders
+// in future make it as per need
+
 type FileListResponse struct {
 	Path    string       `json:"path"`
 	Entries []FileEntity `json:"entries"`
 }
 
-func GetListOfDirsAndFiles(e *echo.Context) error {
-	requestPath := e.QueryParam("path")
+func GetListOfDirsAndFiles(c *echo.Context) error {
+	requestPath := c.QueryParam("path")
 	if requestPath == "" {
 		requestPath = fmt.Sprintf("/home/%s/code", currentUser.Username)
 	}
 
 	entries, err := os.ReadDir(requestPath)
 	if err != nil {
-		return e.JSON(500, map[string]string{
+		return c.JSON(500, map[string]string{
 			"error": err.Error(),
 		})
 	}
@@ -66,29 +70,70 @@ func GetListOfDirsAndFiles(e *echo.Context) error {
 		})
 	}
 
-	return e.JSON(200, FileListResponse{
+	return c.JSON(200, FileListResponse{
 		Path:    requestPath,
 		Entries: files,
 	})
 }
 
-func GetFileContent(e *echo.Context) error {
-	requestFilepath := e.QueryParam("path")
+func GetFileContent(c *echo.Context) error {
+	requestFilepath := c.QueryParam("path")
 	if requestFilepath == "" {
 		return echo.NewHTTPError(http.StatusBadRequest, "filepath is not valid")
 	}
 
-	filebytes, err := os.ReadFile(requestFilepath)
+	filename := filepath.Base(requestFilepath)
+	content, err := os.ReadFile(requestFilepath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "file not found")
 	}
 
-	return e.JSON(http.StatusOK, struct {
-		Content []byte `json:"content"`
-		Name    string `json:"string"`
-	}{
-		Name:    filepath.Base(requestFilepath),
-		Content: filebytes,
-	})
+	contentSample := content
+	if len(contentSample) > 512 {
+		contentSample = contentSample[:512]
+	}
+	contentType := http.DetectContentType(contentSample)
 
+	return c.JSON(http.StatusOK, struct {
+		Content     []byte `json:"content"`
+		Name        string `json:"string"`
+		ContentType string `json:"contentType"`
+	}{
+		Name:        filename,
+		Content:     content,
+		ContentType: contentType,
+	})
+}
+
+func UploadFile(c *echo.Context) error {
+	uploadToPath := c.FormValue("path")
+	if uploadToPath == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "upload path is required")
+	}
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "File not found or not valid")
+	}
+	src, err := file.Open()
+	if err != nil {
+		return err
+	}
+	defer src.Close()
+	dstPath := filepath.Join(uploadToPath, filepath.Base(file.Filename))
+	dst, err := os.Create(dstPath)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+	defer dst.Close()
+
+	if _, err := io.Copy(dst, src); err != nil {
+		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
+	}
+
+	return c.JSON(http.StatusCreated, FileEntity{
+		Name: file.Filename,
+		Path: dstPath,
+		Type: FileTypeFile,
+	})
 }

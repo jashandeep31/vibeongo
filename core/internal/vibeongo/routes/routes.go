@@ -15,6 +15,7 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	e.GET("/v2/ws/terminal/:id", ws.TerminalWebSocket(tools), middlewares.CheckVibeongoWebSocketAuth(tools.AuthTokenStore))
 	e.GET("/fs/list", handlers.GetListOfDirsAndFiles)
 	e.GET("/fs/file", handlers.GetFileContent)
+	e.POST("/fs/upload", handlers.UploadFile)
 
 	protected := e.Group("")
 	protected.Use(middlewares.CheckLocalAuth(localToken))
