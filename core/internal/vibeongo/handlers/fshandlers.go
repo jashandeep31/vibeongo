@@ -137,3 +137,20 @@ func UploadFile(c *echo.Context) error {
 		Type: FileTypeFile,
 	})
 }
+
+func DeleteFileOrFolder(c *echo.Context) error {
+	pathToSource := c.QueryParam("path")
+	if pathToSource == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "Path is not can't be empty")
+	}
+	err := os.Remove(pathToSource)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "Failed to delete the source")
+	}
+
+	return c.JSON(http.StatusOK, struct {
+		Message string `json:"message"`
+	}{
+		Message: "Source is removed",
+	})
+}
