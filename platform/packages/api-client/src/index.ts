@@ -12,6 +12,7 @@ import * as walletApi from "./services/wallet-services.js";
 
 export * from "./services/opencode-services.js";
 export * from "./services/proxy-auth.js";
+export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
 export type { Chat } from "./services/chat-services.js";
 export type {

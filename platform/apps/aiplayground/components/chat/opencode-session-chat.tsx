@@ -25,6 +25,7 @@ import {
   ArrowDown,
   Braces,
   ChevronRight,
+  FolderOpen,
   Loader2,
   MessagesSquare,
   Plus,
@@ -466,6 +467,18 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
+        <Link href={`${chatUrl}/sessions/${sessionId}/files`}>
+          <FolderOpen className="size-3.5" />
+          Files
+        </Link>
+      </Button>
+      <Button
+        asChild
+        type="button"
+        variant="secondary"
+        size="sm"
+        className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
+      >
         <Link href={`${chatUrl}/terminal`}>
           <Terminal className="size-3.5" />
           Terminal
@@ -489,6 +502,21 @@ export function OpencodeSessionChat({
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
       <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="bg-background/90 shadow-sm backdrop-blur"
+        >
+          <Link
+            href={`${chatUrl}/sessions/${sessionId}/files`}
+            aria-label="Open files"
+            title="Open files"
+          >
+            <FolderOpen />
+          </Link>
+        </Button>
         <Button
           asChild
           type="button"

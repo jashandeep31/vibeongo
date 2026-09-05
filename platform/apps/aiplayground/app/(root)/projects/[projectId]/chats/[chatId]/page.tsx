@@ -4,7 +4,7 @@ import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import { Button } from "@repo/ui/components/button";
-import { ArrowLeft, TriangleAlert } from "lucide-react";
+import { ArrowLeft, FolderOpen, Settings2, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
@@ -59,6 +59,36 @@ export default function NewOpencodeChatPage() {
   return (
     <div className="relative flex min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
       <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="bg-background/90 shadow-sm backdrop-blur"
+        >
+          <Link
+            href={`${chatUrl}/files`}
+            aria-label="Open files"
+            title="Open files"
+          >
+            <FolderOpen />
+          </Link>
+        </Button>
+        <Button
+          asChild
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="bg-background/90 shadow-sm backdrop-blur"
+        >
+          <Link
+            href={`${chatUrl}/settings`}
+            aria-label="Runtime settings"
+            title="Runtime settings"
+          >
+            <Settings2 />
+          </Link>
+        </Button>
         <RuntimePulseMenu projectSessionId={chatId} />
         <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
       </div>

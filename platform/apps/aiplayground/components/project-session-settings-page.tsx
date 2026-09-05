@@ -30,6 +30,7 @@ import {
   Check,
   Copy,
   Cpu,
+  FolderOpen,
   HardDrive,
   Network,
   RefreshCw,
@@ -93,7 +94,7 @@ export function ProjectSessionSettingsPage({
 }: {
   projectId: string;
   projectSessionId: string;
-  sessionId: string;
+  sessionId?: string;
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState<"ip" | "ssh" | null>(null);
@@ -153,7 +154,10 @@ export function ProjectSessionSettingsPage({
     return () => window.clearInterval(interval);
   }, [instance]);
 
-  const chatUrl = `/projects/${projectId}/chats/${projectSessionId}/sessions/${sessionId}`;
+  const projectChatUrl = `/projects/${projectId}/chats/${projectSessionId}`;
+  const chatUrl = sessionId
+    ? `${projectChatUrl}/sessions/${sessionId}`
+    : projectChatUrl;
   const terminalUrl = `/projects/${projectId}/chats/${projectSessionId}/terminal`;
   const cpuPercent = normalizePercent(runtimeStats.data?.cpu_percent);
   const memoryPercent = normalizePercent(runtimeStats.data?.used_percent);
@@ -234,6 +238,11 @@ export function ProjectSessionSettingsPage({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
+            <Button asChild variant="outline" size="sm">
+              <Link href={`${chatUrl}/files`}>
+                <FolderOpen /> Files
+              </Link>
+            </Button>
             <Button asChild variant="outline" size="sm">
               <Link href={terminalUrl}>
                 <Terminal /> Terminal
