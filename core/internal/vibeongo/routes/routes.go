@@ -13,12 +13,6 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	e.GET("/ws", ws.WebSocket(tools), middlewares.CheckLocalWebSocketAuth(localToken))
 	e.GET("/v2/ws", ws.WebSocketV2(tools), middlewares.CheckVibeongoWebSocketAuth(tools.AuthTokenStore))
 	e.GET("/v2/ws/terminal/:id", ws.TerminalWebSocket(tools), middlewares.CheckVibeongoWebSocketAuth(tools.AuthTokenStore))
-	e.PUT("/fs", handlers.UpdateFileContent)
-	e.DELETE("/fs", handlers.DeleteFileOrFolder)
-	e.GET("/fs/list", handlers.GetListOfDirsAndFiles)
-	e.GET("/fs/get", handlers.GetFileContent)
-	e.POST("/fs/upload", handlers.UploadFile)
-	e.POST("/fs/create", handlers.CreateFileOrFolder)
 
 	protected := e.Group("")
 	protected.Use(middlewares.CheckLocalAuth(localToken))
@@ -31,4 +25,11 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	protected.POST("/restart-dev-script", handlers.RestartDevScriptHandler)
 	protected.GET("/terminate-after-done", handlers.GetTerminateAfterDone)
 	protected.POST("/terminate-after-done/disable", handlers.DisableTerminateAfterDone)
+
+	protected.PUT("/fs", handlers.UpdateFileContent)
+	protected.DELETE("/fs", handlers.DeleteFileOrFolder)
+	protected.GET("/fs/list", handlers.GetListOfDirsAndFiles)
+	protected.GET("/fs/get", handlers.GetFileContent)
+	protected.POST("/fs/upload", handlers.UploadFile)
+	protected.POST("/fs/create", handlers.CreateFileOrFolder)
 }
