@@ -1,15 +1,20 @@
 package handlers
 
 import (
+	"bufio"
 	"fmt"
 	"io"
+	"log"
+	"maps"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/labstack/echo/v5"
+	"github.com/sahilm/fuzzy"
 )
 
 var currentUser *user.User
@@ -247,4 +252,54 @@ func UpdateFileContent(c *echo.Context) error {
 	}{
 		Message: "Updated the file",
 	})
+}
+
+func TestFuzzySearch() {
+
+	basePath := fmt.Sprintf("/home/%s/code", currentUser.Username)
+	filesToSearch := ProcessEachDir(basePath, make(map[string]struct{}))
+	fmt.Println(`----------------ignoredFiles-===================`)
+	// fmt.Println(filesToSearch)
+
+	filtered := fuzzy.Find("server/index.ts", slices.Collect(maps.Keys(filesToSearch)))
+	fmt.Println(filtered)
+
+}
+
+func ProcessGitignorefile(pathToDir string) map[string]struct{} {
+	gitIngorefile, err := os.Open(pathToDir + "/.gitignore")
+	ignoredFiles := make(map[string]struct{})
+	if err != nil {
+		return make(map[string]struct{})
+	}
+	defer gitIngorefile.Close()
+	scanner := bufio.NewScanner(gitIngorefile)
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		ignoredFiles[line] = struct{}{}
+	}
+	return ignoredFiles
+}
+
+func ProcessEachDir(dirPath string, toignore map[string]struct{}) map[string]string {
+	entries, err := os.ReadDir(dirPath)
+	filteredFiles := make(map[string]string)
+	if err != nil {
+		log.Fatalf("failed to get  enteries %v", err)
+	}
+	maps.Copy(toignore, ProcessGitignorefile(dirPath))
+	for _, entry := range entries {
+		if _, ok := toignore[entry.Name()]; ok {
+			fmt.Println(entry.Name(), "ignoredFiles")
+			continue
+		}
+		if entry.IsDir() {
+			newfilesList := ProcessEachDir(dirPath+"/"+entry.Name(), toignore)
+			maps.Copy(filteredFiles, newfilesList)
+		} else {
+			filteredFiles[dirPath+"/"+entry.Name()] = entry.Name()
+		}
+	}
+	return filteredFiles
 }

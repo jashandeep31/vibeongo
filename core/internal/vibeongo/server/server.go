@@ -1,9 +1,8 @@
 package server
 
 import (
-	"time"
-
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/handlers"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
 	"github.com/labstack/echo/v5"
@@ -12,6 +11,7 @@ import (
 
 // Start starts the application.
 func Start() error {
+	handlers.TestFuzzySearch()
 	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
@@ -36,8 +36,8 @@ func Start() error {
 	//
 	//NOTE: testing purposes remove this in the production
 	go func() {
-		time.Sleep(10 * time.Second)
-		tools.OpenCode.StartWebServer()
+		// time.Sleep(10 * time.Second)
+		// tools.OpenCode.StartWebServer()
 	}()
 
 	// Allow requests from every origin. Echo reflects requested headers for
