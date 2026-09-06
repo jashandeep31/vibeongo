@@ -57,6 +57,7 @@ import {
   Trash2,
   TriangleAlert,
   Upload,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -263,6 +264,8 @@ function ProjectSessionFilesContent({
   const openDirectory = (path: string) => {
     if (!confirmDiscard()) return;
 
+    setSearchInput("");
+    setSearchQuery("");
     setError("");
     setOpeningDirectoryPath(path);
     if (requestedDirectoryPath === path) {
@@ -568,13 +571,26 @@ function ProjectSessionFilesContent({
                 <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
               )}
               <Input
-                className="h-8 pl-8 text-sm"
+                className="h-8 pr-8 pl-8 text-sm"
                 aria-label="Search files"
                 placeholder="Search files…"
                 spellCheck={false}
                 value={searchInput}
                 onChange={(event) => setSearchInput(event.target.value)}
               />
+              {searchInput ? (
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-0.5"
+                  aria-label="Clear file search"
+                  onClick={() => {
+                    setSearchInput("");
+                    setSearchQuery("");
+                  }}
+                >
+                  <X className="size-4" />
+                </button>
+              ) : null}
             </div>
             <SidebarTrigger
               type="button"

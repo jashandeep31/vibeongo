@@ -11,6 +11,7 @@ import {
   useDeleteRuntimeFileEntry,
   useRuntimeDirectory,
   useRuntimeFile,
+  useRuntimeFileSearch,
   useUpdateRuntimeFile,
   useUploadRuntimeFile,
   type RuntimeFilesConnection,
@@ -93,7 +94,8 @@ export function ProjectFilesScreen() {
     ],
   );
   const [requestedPath, setRequestedPath] = useState<string | undefined>();
-  const [pathInput, setPathInput] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [openingDirectoryPath, setOpeningDirectoryPath] = useState("");
   const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<RuntimeFileEntry | null>(
@@ -109,6 +111,11 @@ export function ProjectFilesScreen() {
 
   const directoryQuery = useRuntimeDirectory(connection, requestedPath);
   const directory = directoryQuery.data ?? null;
+  const searchQueryResult = useRuntimeFileSearch(
+    connection,
+    searchQuery,
+    directory?.path,
+  );
   const fileQuery = useRuntimeFile(connection, selectedFile?.path);
   const createEntryMutation = useCreateRuntimeFileEntry(connection);
   const updateFileMutation = useUpdateRuntimeFile(connection);
@@ -124,6 +131,9 @@ export function ProjectFilesScreen() {
     () => sortRuntimeFileEntries(directory?.entries ?? []),
     [directory?.entries],
   );
+  const visibleEntries = searchQuery
+    ? (searchQueryResult.data?.entries ?? [])
+    : sortedEntries;
   const breadcrumbs = useMemo(
     () => getRuntimeFileBreadcrumbs(directory?.path),
     [directory?.path],
@@ -180,9 +190,13 @@ export function ProjectFilesScreen() {
   useEffect(() => {
     const path = directoryQuery.data?.path;
     if (!path || directoryQuery.isPlaceholderData) return;
-    setPathInput(path);
     setOpeningDirectoryPath("");
   }, [directoryQuery.data?.path, directoryQuery.isPlaceholderData]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => setSearchQuery(searchInput.trim()), 300);
+    return () => clearTimeout(timeout);
+  }, [searchInput]);
 
   useEffect(() => {
     if (!directoryQuery.isFetching) setOpeningDirectoryPath("");
@@ -191,6 +205,10 @@ export function ProjectFilesScreen() {
   useEffect(() => {
     if (directoryQuery.error) setError(directoryQuery.error.message);
   }, [directoryQuery.error]);
+
+  useEffect(() => {
+    if (searchQueryResult.error) setError(searchQueryResult.error.message);
+  }, [searchQueryResult.error]);
 
   useEffect(() => {
     const result = fileQuery.data;
@@ -214,6 +232,8 @@ export function ProjectFilesScreen() {
 
   const openDirectory = (path: string) => {
     afterDiscard(() => {
+      setSearchInput("");
+      setSearchQuery("");
       setError("");
       clearSelection();
       setOpeningDirectoryPath(path);
@@ -225,7 +245,8 @@ export function ProjectFilesScreen() {
   const refreshFromPull = async () => {
     setIsPullRefreshing(true);
     try {
-      await directoryQuery.refetch();
+      if (searchQuery) await searchQueryResult.refetch();
+      else await directoryQuery.refetch();
     } finally {
       setIsPullRefreshing(false);
     }
@@ -337,10 +358,20 @@ export function ProjectFilesScreen() {
     >
       <HeaderAction
         accessibilityLabel="Refresh files"
-        disabled={!directory || directoryQuery.isFetching}
+        disabled={
+          !directory ||
+          directoryQuery.isFetching ||
+          searchQueryResult.isFetching
+        }
         icon={{ ios: "arrow.clockwise", android: "refresh" }}
-        loading={directoryQuery.isFetching && !openingDirectoryPath}
-        onPress={() => void directoryQuery.refetch()}
+        loading={
+          searchQueryResult.isFetching ||
+          (directoryQuery.isFetching && !openingDirectoryPath)
+        }
+        onPress={() => {
+          if (searchQuery) void searchQueryResult.refetch();
+          else void directoryQuery.refetch();
+        }}
       />
       <HeaderAction
         accessibilityLabel="Create file or folder"
@@ -437,15 +468,27 @@ export function ProjectFilesScreen() {
             ) : (
               <View style={styles.directoryView}>
                 <View style={styles.pathRow}>
+                  {searchQueryResult.isFetching ? (
+                    <ActivityIndicator
+                      color={theme.textSecondary}
+                      size="small"
+                      style={styles.searchIcon}
+                    />
+                  ) : (
+                    <SymbolView
+                      name={{ ios: "magnifyingglass", android: "search" }}
+                      size={17}
+                      style={styles.searchIcon}
+                      tintColor={theme.textSecondary}
+                    />
+                  )}
                   <TextInput
                     autoCapitalize="none"
                     autoCorrect={false}
-                    editable={!directoryQuery.isFetching}
-                    onChangeText={setPathInput}
-                    onSubmitEditing={() => openDirectory(pathInput.trim())}
-                    placeholder="Directory path"
+                    onChangeText={setSearchInput}
+                    placeholder="Search files…"
                     placeholderTextColor={theme.textSecondary}
-                    returnKeyType="go"
+                    returnKeyType="search"
                     style={[
                       styles.pathInput,
                       {
@@ -453,25 +496,29 @@ export function ProjectFilesScreen() {
                         color: theme.text,
                       },
                     ]}
-                    value={pathInput}
+                    value={searchInput}
                   />
-                  <Pressable
-                    accessibilityLabel="Open directory path"
-                    accessibilityRole="button"
-                    disabled={!pathInput.trim() || directoryQuery.isFetching}
-                    onPress={() => openDirectory(pathInput.trim())}
-                    style={({ pressed }) => [
-                      styles.openButton,
-                      { backgroundColor: theme.text },
-                      (!pathInput.trim() || directoryQuery.isFetching) &&
-                        styles.disabled,
-                      pressed && styles.pressed,
-                    ]}
-                  >
-                    <ThemedText style={{ color: theme.background }}>
-                      Open
-                    </ThemedText>
-                  </Pressable>
+                  {searchInput ? (
+                    <Pressable
+                      accessibilityLabel="Clear file search"
+                      accessibilityRole="button"
+                      hitSlop={8}
+                      onPress={() => {
+                        setSearchInput("");
+                        setSearchQuery("");
+                      }}
+                      style={({ pressed }) => [
+                        styles.clearSearchButton,
+                        pressed && styles.pressed,
+                      ]}
+                    >
+                      <SymbolView
+                        name={{ ios: "xmark.circle.fill", android: "cancel" }}
+                        size={18}
+                        tintColor={theme.textSecondary}
+                      />
+                    </Pressable>
+                  ) : null}
                 </View>
 
                 <View
@@ -544,9 +591,9 @@ export function ProjectFilesScreen() {
 
                 <FlatList
                   contentContainerStyle={
-                    sortedEntries.length ? styles.list : styles.emptyList
+                    visibleEntries.length ? styles.list : styles.emptyList
                   }
-                  data={sortedEntries}
+                  data={visibleEntries}
                   keyExtractor={(entry) => entry.path}
                   refreshControl={
                     <RefreshControl
@@ -566,6 +613,11 @@ export function ProjectFilesScreen() {
                         deleteEntryMutation.variables === item.path
                       }
                       entry={item}
+                      displayName={
+                        searchQuery && directory
+                          ? item.path.replace(`${directory.path}/`, "")
+                          : item.name
+                      }
                       opening={openingDirectoryPath === item.path}
                       onDelete={() => setDeleteCandidate(item)}
                       onOpen={() =>
@@ -576,12 +628,21 @@ export function ProjectFilesScreen() {
                     />
                   )}
                   ListEmptyComponent={
-                    directoryQuery.isFetching && !directory ? (
+                    (directoryQuery.isFetching && !directory) ||
+                    searchQueryResult.isFetching ? (
                       <ScreenState label="Loading files…" loading />
+                    ) : searchQueryResult.isError ? (
+                      <ScreenState label="Could not search files." />
                     ) : directoryQuery.isError ? (
                       <ScreenState label="Could not load files." />
                     ) : (
-                      <ScreenState label="This folder is empty." />
+                      <ScreenState
+                        label={
+                          searchQuery
+                            ? "No files found."
+                            : "This folder is empty."
+                        }
+                      />
                     )
                   }
                 />
@@ -673,6 +734,7 @@ function BreadcrumbSeparator({ label }: { label?: string }) {
 function FileRow({
   disabled,
   deleting,
+  displayName,
   entry,
   opening,
   onDelete,
@@ -680,6 +742,7 @@ function FileRow({
 }: {
   disabled: boolean;
   deleting: boolean;
+  displayName: string;
   entry: RuntimeFileEntry;
   opening: boolean;
   onDelete: () => void;
@@ -717,8 +780,12 @@ function FileRow({
             }
           />
         )}
-        <ThemedText numberOfLines={1} style={styles.fileName}>
-          {entry.name}
+        <ThemedText
+          ellipsizeMode={displayName === entry.name ? "tail" : "head"}
+          numberOfLines={1}
+          style={styles.fileName}
+        >
+          {displayName}
         </ThemedText>
       </Pressable>
       <Pressable
@@ -844,6 +911,15 @@ const styles = StyleSheet.create({
     maxWidth: 140,
   },
   breadcrumbs: { alignItems: "center", gap: 7, paddingRight: 14 },
+  clearSearchButton: {
+    alignItems: "center",
+    height: 42,
+    justifyContent: "center",
+    position: "absolute",
+    right: 16,
+    width: 34,
+    zIndex: 1,
+  },
   deleteButton: {
     alignItems: "center",
     height: 44,
@@ -896,29 +972,24 @@ const styles = StyleSheet.create({
   image: { height: "100%", width: "100%" },
   imageViewer: { backgroundColor: "#09090b", flex: 1, padding: 16 },
   list: { paddingBottom: 24 },
-  openButton: {
-    alignItems: "center",
-    borderRadius: 10,
-    height: 42,
-    justifyContent: "center",
-    paddingHorizontal: 14,
-  },
   pathInput: {
     borderRadius: 10,
     flex: 1,
     fontFamily: Fonts.mono,
     fontSize: 12,
     height: 42,
-    paddingHorizontal: 12,
+    paddingLeft: 40,
+    paddingRight: 42,
   },
   pathRow: {
+    alignItems: "center",
     flexDirection: "row",
-    gap: 8,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   pressed: { opacity: 0.68 },
   screen: { flex: 1 },
+  searchIcon: { left: 24, position: "absolute", zIndex: 1 },
   state: {
     alignItems: "center",
     flex: 1,
