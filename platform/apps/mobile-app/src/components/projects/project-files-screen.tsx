@@ -95,6 +95,7 @@ export function ProjectFilesScreen() {
   const [requestedPath, setRequestedPath] = useState<string | undefined>();
   const [pathInput, setPathInput] = useState("");
   const [openingDirectoryPath, setOpeningDirectoryPath] = useState("");
+  const [isPullRefreshing, setIsPullRefreshing] = useState(false);
   const [selectedFile, setSelectedFile] = useState<RuntimeFileEntry | null>(
     null,
   );
@@ -219,6 +220,15 @@ export function ProjectFilesScreen() {
       if (requestedPath === path) void directoryQuery.refetch();
       else setRequestedPath(path);
     });
+  };
+
+  const refreshFromPull = async () => {
+    setIsPullRefreshing(true);
+    try {
+      await directoryQuery.refetch();
+    } finally {
+      setIsPullRefreshing(false);
+    }
   };
 
   const openFile = (entry: RuntimeFileEntry) => {
@@ -540,10 +550,8 @@ export function ProjectFilesScreen() {
                   keyExtractor={(entry) => entry.path}
                   refreshControl={
                     <RefreshControl
-                      refreshing={
-                        directoryQuery.isFetching && !openingDirectoryPath
-                      }
-                      onRefresh={() => void directoryQuery.refetch()}
+                      refreshing={isPullRefreshing}
+                      onRefresh={() => void refreshFromPull()}
                       tintColor={theme.textSecondary}
                     />
                   }

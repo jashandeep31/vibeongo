@@ -440,6 +440,7 @@ function PromptSelectors({
         ) : null}
       </ScrollView>
       <SelectionSheet
+        onBack={picker === "model" ? () => setPicker("provider") : undefined}
         onChoose={choose}
         onClose={() => setPicker(null)}
         options={options}
@@ -515,6 +516,7 @@ function SelectorPill({
 }
 
 function SelectionSheet({
+  onBack,
   onChoose,
   onClose,
   options,
@@ -522,6 +524,7 @@ function SelectionSheet({
   title,
   visible,
 }: {
+  onBack?: () => void;
   onChoose: (id: string) => void;
   onClose: () => void;
   options: PickerOption[];
@@ -562,7 +565,25 @@ function SelectionSheet({
             { borderBottomColor: theme.backgroundSelected },
           ]}
         >
-          <ThemedText style={styles.sheetTitle}>{title}</ThemedText>
+          {onBack ? (
+            <Pressable
+              accessibilityLabel="Back to providers"
+              accessibilityRole="button"
+              onPress={onBack}
+              style={styles.closeButton}
+            >
+              <SymbolView
+                name={{ ios: "chevron.left", android: "arrow_back" }}
+                size={19}
+                tintColor={theme.textSecondary}
+              />
+            </Pressable>
+          ) : null}
+          <ThemedText
+            style={[styles.sheetTitle, !onBack && styles.sheetTitleWithoutBack]}
+          >
+            {title}
+          </ThemedText>
           <Pressable
             accessibilityLabel="Close"
             accessibilityRole="button"
@@ -803,12 +824,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
     minHeight: 64,
-    paddingLeft: 32,
+    paddingLeft: 16,
     paddingRight: 16,
   },
   sheetTitle: {
     flex: 1,
     fontSize: 18,
     fontWeight: "700",
+  },
+  sheetTitleWithoutBack: {
+    marginLeft: 16,
   },
 });
