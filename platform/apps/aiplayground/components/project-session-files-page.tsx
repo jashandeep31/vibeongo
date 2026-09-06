@@ -1,7 +1,6 @@
 "use client";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { FileManagementSidebar } from "@/components/file-management-sidebar";
 import {
   getRuntimeChildPath,
   getRuntimeFileBreadcrumbs,
@@ -34,11 +33,6 @@ import {
   DialogTitle,
 } from "@repo/ui/components/dialog";
 import { Input } from "@repo/ui/components/input";
-import {
-  SidebarProvider,
-  SidebarTrigger,
-  useSidebar,
-} from "@repo/ui/components/sidebar-v2";
 import { Textarea } from "@repo/ui/components/textarea";
 import {
   ArrowLeft,
@@ -90,11 +84,7 @@ type ProjectSessionFilesPageProps = {
 };
 
 export function ProjectSessionFilesPage(props: ProjectSessionFilesPageProps) {
-  return (
-    <SidebarProvider defaultOpen={false} className="min-h-0!">
-      <ProjectSessionFilesContent {...props} />
-    </SidebarProvider>
-  );
+  return <ProjectSessionFilesContent {...props} />;
 }
 
 function ProjectSessionFilesContent({
@@ -102,7 +92,6 @@ function ProjectSessionFilesContent({
   projectSessionId,
   sessionId,
 }: ProjectSessionFilesPageProps) {
-  const { isMobile, setOpenMobile } = useSidebar();
   const [requestedDirectoryPath, setRequestedDirectoryPath] = useState<
     string | undefined
   >();
@@ -283,7 +272,6 @@ function ProjectSessionFilesContent({
     setFileContent("");
     setSavedFileContent("");
     setFileContentType("");
-    if (isMobile) setOpenMobile(false);
   };
 
   const saveFile = useCallback(async () => {
@@ -556,13 +544,10 @@ function ProjectSessionFilesContent({
 
   return (
     <>
-      {isMobile ? (
-        <FileManagementSidebar currentPath={directory?.path}>
-          {directoryPanel}
-        </FileManagementSidebar>
-      ) : null}
       <div className="bg-background text-foreground flex h-svh min-h-0 w-full flex-col">
-        <div className="flex shrink-0 flex-col gap-2 border-b px-4 py-2 md:flex-row md:items-center md:px-6">
+        <div
+          className={`${selectedFile ? "hidden" : "flex"} shrink-0 flex-col gap-2 border-b px-4 py-2 md:flex md:flex-row md:items-center md:px-6`}
+        >
           <div className="flex min-w-0 flex-1 items-center gap-2">
             <div className="relative min-w-0 flex-1">
               {isSearchLoading ? (
@@ -592,13 +577,6 @@ function ProjectSessionFilesContent({
                 </button>
               ) : null}
             </div>
-            <SidebarTrigger
-              type="button"
-              className="md:hidden"
-              variant="outline"
-              aria-label="Open file browser"
-              title="Open file browser"
-            />
           </div>
           <div className="flex items-center gap-1.5">
             <Button
@@ -658,11 +636,44 @@ function ProjectSessionFilesContent({
         ) : null}
 
         <main className="grid min-h-0 flex-1 grid-cols-1 grid-rows-1 md:grid-cols-[20rem_minmax(0,1fr)]">
-          <aside className="bg-muted/10 hidden min-h-0 flex-col overflow-hidden border-r md:flex">
+          <aside
+            className={`bg-muted/10 min-h-0 flex-col overflow-hidden border-r ${
+              selectedFile ? "hidden md:flex" : "flex"
+            }`}
+          >
             {directoryPanel}
           </aside>
 
-          <section className="flex min-h-0 min-w-0 flex-col overflow-hidden">
+          <section
+            className={`min-h-0 min-w-0 flex-col overflow-hidden ${
+              selectedFile ? "flex" : "hidden md:flex"
+            }`}
+          >
+            {selectedFile ? (
+              <div className="flex h-12 shrink-0 items-center gap-2 border-b px-2 md:hidden">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Back to files"
+                  onClick={() => {
+                    if (!confirmDiscard()) return;
+                    clearSelection();
+                  }}
+                >
+                  <ArrowLeft />
+                </Button>
+                <span className="min-w-0 flex-1 truncate text-sm font-medium">
+                  {selectedFile.name}
+                </span>
+                {hasUnsavedChanges ? (
+                  <span
+                    className="size-2 shrink-0 rounded-full bg-amber-500"
+                    title="Unsaved changes"
+                  />
+                ) : null}
+              </div>
+            ) : null}
             <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b px-3">
               <div className="flex min-w-0 items-center gap-2">
                 <FileCode2 className="text-muted-foreground size-4 shrink-0" />
@@ -671,14 +682,14 @@ function ProjectSessionFilesContent({
                 </span>
                 {hasUnsavedChanges ? (
                   <span
-                    className="size-2 shrink-0 rounded-full bg-amber-500"
+                    className="hidden size-2 shrink-0 rounded-full bg-amber-500 md:block"
                     title="Unsaved changes"
                   />
                 ) : null}
                 {fileContentType ? (
                   <Badge
                     variant="secondary"
-                    className="hidden font-mono sm:flex"
+                    className="hidden font-mono md:flex"
                   >
                     {fileContentType}
                   </Badge>
