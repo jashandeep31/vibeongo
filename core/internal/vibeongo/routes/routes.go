@@ -30,6 +30,7 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	protected.DELETE("/fs", handlers.DeleteFileOrFolder)
 	protected.GET("/fs/list", handlers.GetListOfDirsAndFiles)
 	protected.GET("/fs/get", handlers.GetFileContent)
+	protected.GET("/fs/search", handlers.SearchFiles)
 	protected.POST("/fs/upload", handlers.UploadFile)
 	protected.POST("/fs/create", handlers.CreateFileOrFolder)
 }

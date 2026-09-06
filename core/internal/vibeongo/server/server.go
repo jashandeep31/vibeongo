@@ -2,7 +2,6 @@ package server
 
 import (
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
-	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/handlers"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
 	"github.com/labstack/echo/v5"
@@ -11,7 +10,6 @@ import (
 
 // Start starts the application.
 func Start() error {
-	handlers.TestFuzzySearch()
 	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err

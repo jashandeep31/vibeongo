@@ -1,18 +1,17 @@
 package handlers
 
 import (
-	"bufio"
 	"fmt"
 	"io"
-	"log"
-	"maps"
+	"io/fs"
 	"net/http"
 	"os"
 	"os/user"
 	"path/filepath"
-	"slices"
+	"sort"
 	"strings"
 
+	"github.com/git-pkgs/gitignore"
 	"github.com/labstack/echo/v5"
 	"github.com/sahilm/fuzzy"
 )
@@ -254,52 +253,75 @@ func UpdateFileContent(c *echo.Context) error {
 	})
 }
 
-func TestFuzzySearch() {
+// SearchFiles searches file paths below the requested directory while
+// respecting the gitignore files found in that directory tree.
+func SearchFiles(c *echo.Context) error {
+	query := strings.TrimSpace(c.QueryParam("query"))
+	if query == "" {
+		return echo.NewHTTPError(http.StatusBadRequest, "search query is required")
+	}
 
-	basePath := fmt.Sprintf("/home/%s/code", currentUser.Username)
-	filesToSearch := ProcessEachDir(basePath, make(map[string]struct{}))
-	fmt.Println(`----------------ignoredFiles-===================`)
-	// fmt.Println(filesToSearch)
+	basePath := strings.TrimSpace(c.QueryParam("path"))
+	if basePath == "" {
+		basePath = fmt.Sprintf("/home/%s/code", currentUser.Username)
+	}
+	basePath = filepath.Clean(basePath)
 
-	filtered := fuzzy.Find("server/index.ts", slices.Collect(maps.Keys(filesToSearch)))
-	fmt.Println(filtered)
+	entries, err := searchFileEntries(basePath, query)
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
+	}
 
+	return c.JSON(http.StatusOK, FileListResponse{
+		Path:    basePath,
+		Entries: entries,
+	})
 }
 
-func ProcessGitignorefile(pathToDir string) map[string]struct{} {
-	gitIngorefile, err := os.Open(pathToDir + "/.gitignore")
-	ignoredFiles := make(map[string]struct{})
+func searchFileEntries(basePath, query string) ([]FileEntity, error) {
+	paths, err := ProcessEachDir(basePath)
 	if err != nil {
-		return make(map[string]struct{})
+		return nil, err
 	}
-	defer gitIngorefile.Close()
-	scanner := bufio.NewScanner(gitIngorefile)
 
-	for scanner.Scan() {
-		line := scanner.Text()
-		ignoredFiles[line] = struct{}{}
-	}
-	return ignoredFiles
-}
-
-func ProcessEachDir(dirPath string, toignore map[string]struct{}) map[string]string {
-	entries, err := os.ReadDir(dirPath)
-	filteredFiles := make(map[string]string)
-	if err != nil {
-		log.Fatalf("failed to get  enteries %v", err)
-	}
-	maps.Copy(toignore, ProcessGitignorefile(dirPath))
-	for _, entry := range entries {
-		if _, ok := toignore[entry.Name()]; ok {
-			fmt.Println(entry.Name(), "ignoredFiles")
-			continue
+	relativePaths := make([]string, 0, len(paths))
+	for fullPath := range paths {
+		relativePath, err := filepath.Rel(basePath, fullPath)
+		if err != nil {
+			return nil, err
 		}
+		relativePaths = append(relativePaths, filepath.ToSlash(relativePath))
+	}
+	// This makes results with equal fuzzy scores deterministic.
+	sort.Strings(relativePaths)
+
+	matches := fuzzy.Find(query, relativePaths)
+	entries := make([]FileEntity, 0, len(matches))
+	for _, match := range matches {
+		fullPath := filepath.Join(basePath, filepath.FromSlash(match.Str))
+		entries = append(entries, FileEntity{
+			Name: paths[fullPath],
+			Path: fullPath,
+			Type: FileTypeFile,
+		})
+	}
+
+	return entries, nil
+}
+
+func ProcessEachDir(dirPath string) (map[string]string, error) {
+	files := make(map[string]string)
+	err := gitignore.Walk(dirPath, func(path string, entry fs.DirEntry) error {
 		if entry.IsDir() {
-			newfilesList := ProcessEachDir(dirPath+"/"+entry.Name(), toignore)
-			maps.Copy(filteredFiles, newfilesList)
-		} else {
-			filteredFiles[dirPath+"/"+entry.Name()] = entry.Name()
+			return nil
 		}
+		fullPath := filepath.Join(dirPath, filepath.FromSlash(path))
+		files[fullPath] = entry.Name()
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
-	return filteredFiles
+
+	return files, nil
 }
