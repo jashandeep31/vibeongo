@@ -1,3 +1,4 @@
+import { getOpencodeUserMessage } from "@repo/api-client";
 import type {
   OpencodeModelOption,
   OpencodePromptSelection,
@@ -24,6 +25,7 @@ export type ChatContent =
 export type ChatTurn = {
   id: string;
   question: string;
+  files: Array<{ id: string; path: string }>;
   images: Array<{ id: string; url: string; name: string }>;
   summaryDiffs: SnapshotFileDiff[];
   content: ChatContent[];
@@ -73,7 +75,10 @@ export function getSessionPromptSelection(
 export function getMessageText(parts: SessionPart[]) {
   return parts
     .flatMap((part) =>
-      part.type === "text" && !part.ignored && part.text.trim()
+      part.type === "text" &&
+      !part.ignored &&
+      !part.synthetic &&
+      part.text.trim()
         ? [part.text]
         : [],
     )
@@ -95,16 +100,14 @@ export function createChatTurns(
   models: OpencodeModelOption[] = [],
 ) {
   const modelsById = new Map(
-    models.map((model) => [
-      `${model.providerID}/${model.modelID}`,
-      model,
-    ]),
+    models.map((model) => [`${model.providerID}/${model.modelID}`, model]),
   );
   const turns: ChatTurn[] = messages
     .filter((message) => message.info.role === "user")
     .map((message) => ({
       id: message.info.id,
-      question: getMessageText(message.parts),
+      question: getOpencodeUserMessage(message.parts).text,
+      files: getOpencodeUserMessage(message.parts).files,
       images: message.parts.flatMap((part) =>
         part.type === "file" && part.mime.startsWith("image/")
           ? [

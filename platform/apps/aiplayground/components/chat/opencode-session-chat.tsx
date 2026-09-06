@@ -14,10 +14,12 @@ import {
   useRestoreRevertedOpencodeMessage,
   useSendOpencodePrompt,
 } from "@repo/api-hooks";
-import type {
-  OpencodePromptSelection,
-  OpencodeSessionData,
-  QuestionAnswer,
+import {
+  findOpencodeFiles,
+  getOpencodeUserMessage,
+  type OpencodePromptSelection,
+  type OpencodeSessionData,
+  type QuestionAnswer,
 } from "@repo/api-client";
 import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Button } from "@repo/ui/components/button";
@@ -45,7 +47,7 @@ function getPartText(parts: SessionMessages[number]["parts"], type: "text") {
   return parts
     .flatMap((part) => {
       if (type === "text" && part.type === "text") {
-        return part.ignored ? [] : [part.text];
+        return part.ignored || part.synthetic ? [] : [part.text];
       }
 
       return [];
@@ -68,7 +70,8 @@ function createChatTurns(messages: SessionMessages) {
     .filter((message) => message.info.role === "user")
     .map((message) => ({
       id: message.info.id,
-      question: getPartText(message.parts, "text"),
+      question: getOpencodeUserMessage(message.parts).text,
+      files: getOpencodeUserMessage(message.parts).files,
       images: message.parts.flatMap((part) =>
         part.type === "file" && part.mime.startsWith("image/")
           ? [
@@ -384,6 +387,18 @@ export function OpencodeSessionChat({
 
   const updateSelection = (nextSelection: OpencodePromptSelection) =>
     setSelection(nextSelection);
+  const searchFiles = useCallback(
+    (query: string) =>
+      findOpencodeFiles(
+        chatId,
+        serverUrl,
+        accessToken,
+        query,
+        rawResponse.session.directory,
+        password,
+      ),
+    [accessToken, chatId, password, rawResponse.session.directory, serverUrl],
+  );
 
   const updateScrollButtonVisibility = useCallback(() => {
     const scrollArea = scrollAreaRef.current;
@@ -675,13 +690,15 @@ export function OpencodeSessionChat({
               inventory={inventory}
               selection={effectiveSelection}
               onSelectionChange={updateSelection}
-              onSubmit={(question, files) =>
+              onSubmit={(question, files, fileReferences) =>
                 sendPrompt.mutate({
                   text: question,
                   files,
+                  fileReferences,
                   selection: effectiveSelection,
                 })
               }
+              searchFiles={searchFiles}
               onSubmitSuccess={() => scrollToBottom("smooth")}
               autoFocus
               focusOnTyping

@@ -1,4 +1,9 @@
-import type { OpencodePromptSelection, QuestionAnswer } from "@repo/api-client";
+import {
+  findOpencodeFiles,
+  type OpencodeFileReference,
+  type OpencodePromptSelection,
+  type QuestionAnswer,
+} from "@repo/api-client";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
@@ -164,6 +169,9 @@ export function ProjectChatScreen() {
   );
   const [prompt, setPrompt] = useState("");
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
+    [],
+  );
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
@@ -175,6 +183,24 @@ export function ProjectChatScreen() {
   const displayedDataRef = useRef(sessionQuery.data);
   if (sessionQuery.data) displayedDataRef.current = sessionQuery.data;
   const data = sessionQuery.data ?? displayedDataRef.current;
+  const searchFiles = useCallback(
+    (query: string) =>
+      findOpencodeFiles(
+        projectSessionId,
+        runtime.serverUrl,
+        runtime.accessToken,
+        query,
+        data?.session.directory,
+        runtime.password,
+      ),
+    [
+      data?.session.directory,
+      projectSessionId,
+      runtime.accessToken,
+      runtime.password,
+      runtime.serverUrl,
+    ],
+  );
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const sessionSelection = useMemo(
     () => getSessionPromptSelection(data),
@@ -501,14 +527,23 @@ export function ProjectChatScreen() {
     )
       return;
     const submittedAttachments = attachments;
+    const submittedFileReferences = fileReferences;
     setPrompt("");
     setAttachments([]);
+    setFileReferences([]);
     sendPrompt.mutate(
-      { text, files: [], attachments: submittedAttachments, selection },
+      {
+        text,
+        files: [],
+        attachments: submittedAttachments,
+        fileReferences: submittedFileReferences,
+        selection,
+      },
       {
         onError: () => {
           setPrompt(text);
           setAttachments(submittedAttachments);
+          setFileReferences(submittedFileReferences);
         },
       },
     );
@@ -874,11 +909,13 @@ export function ProjectChatScreen() {
                     <OpencodeComposer
                       accessibilityLabel="Follow-up prompt"
                       attachments={attachments}
+                      fileReferences={fileReferences}
                       inventory={inventoryQuery.data}
                       isStopping={abortSession.isPending}
                       isSubmitting={sendPrompt.isPending}
                       onChangeSelection={setSelection}
                       onChangeAttachments={setAttachments}
+                      onChangeFileReferences={setFileReferences}
                       onChangeText={setPrompt}
                       onNewChat={openNewChat}
                       onOpenTerminal={openTerminal}
@@ -904,6 +941,7 @@ export function ProjectChatScreen() {
                           : "Ask a follow-up…"
                       }
                       selection={selection}
+                      searchFiles={searchFiles}
                       showRawResponse={showRawResponse}
                       submitDisabled={sessionQuery.isStreaming}
                       value={prompt}

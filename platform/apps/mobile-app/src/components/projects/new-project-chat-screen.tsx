@@ -1,4 +1,8 @@
-import type { OpencodePromptSelection } from "@repo/api-client";
+import {
+  findOpencodeFiles,
+  type OpencodeFileReference,
+  type OpencodePromptSelection,
+} from "@repo/api-client";
 import { useOpencodeInventory, useStartOpencodeSession } from "@repo/api-hooks";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -93,11 +97,32 @@ export function NewProjectChatScreen() {
   const startSession = useStartOpencodeSession();
   const [prompt, setPrompt] = useState("");
   const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
+    [],
+  );
   const [selection, setSelection] = useState<OpencodePromptSelection>(() => ({
     agent: inheritedAgent || undefined,
     model: inheritedModel || undefined,
     variant: inheritedVariant || undefined,
   }));
+  const searchFiles = useCallback(
+    (query: string) =>
+      findOpencodeFiles(
+        projectSessionId,
+        runtime.serverUrl,
+        runtime.accessToken,
+        query,
+        directory || undefined,
+        runtime.password,
+      ),
+    [
+      directory,
+      projectSessionId,
+      runtime.accessToken,
+      runtime.password,
+      runtime.serverUrl,
+    ],
+  );
 
   useEffect(() => {
     const inventory = inventoryQuery.data;
@@ -161,6 +186,7 @@ export function NewProjectChatScreen() {
       text,
       files: [],
       attachments,
+      fileReferences,
       selection,
       onSessionCreated: (opencodeSessionId) => {
         router.setParams({ chatId: opencodeSessionId });
@@ -280,13 +306,16 @@ export function NewProjectChatScreen() {
                 autoFocus
                 inventory={inventoryQuery.data}
                 isSubmitting={startSession.isPending}
+                fileReferences={fileReferences}
                 onChangeSelection={setSelection}
                 onChangeAttachments={setAttachments}
+                onChangeFileReferences={setFileReferences}
                 onChangeText={setPrompt}
                 onOpenTerminal={openTerminal}
                 onSubmit={submit}
                 placeholder="Describe the task…"
                 selection={selection}
+                searchFiles={searchFiles}
                 value={prompt}
               />
               {startSession.error ? (

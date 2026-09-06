@@ -31,6 +31,27 @@ export type OpencodeSessionData = {
   promptError?: string | undefined;
 };
 
+// File references are expanded into synthetic Read context by OpenCode.
+// That context belongs to the model, not the displayed user question.
+export function getOpencodeUserMessage(parts: Part[]) {
+  let text = parts
+    .flatMap((part) =>
+      part.type === "text" && !part.ignored && !part.synthetic
+        ? [part.text]
+        : [],
+    )
+    .join("\n\n");
+  const files = parts.flatMap((part) => {
+    if (part.type !== "file" || part.mime.startsWith("image/")) return [];
+    const path =
+      part.source?.type === "file"
+        ? part.source.path
+        : (part.filename ?? part.url);
+    return [{ id: part.id, path }];
+  });
+  return { text: text.trim(), files };
+}
+
 export function reduceOpencodeMessages(
   messages: OpencodeSessionData["messages"],
   event: Event,
@@ -218,6 +239,11 @@ export type UploadAttachment = {
   mimeType: string;
   sizeBytes: number;
   dataUrl: string;
+};
+
+export type OpencodeFileReference = {
+  mention: string;
+  path: string;
 };
 
 export type OpencodeModelOption = {
@@ -631,6 +657,33 @@ export async function getOpencodeInventory(
   };
 }
 
+export async function findOpencodeFiles(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  query: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const result = await client.find.files({
+    query,
+    type: "file",
+    limit: 30,
+    ...(directory ? { directory } : {}),
+  });
+  if (result.error || !result.data) {
+    throw new Error("Could not search OpenCode files");
+  }
+  return result.data;
+}
+
 async function getOpencodeInventoryResource<T>(
   resource: string,
   request: (signal: AbortSignal) => Promise<T>,
@@ -656,6 +709,7 @@ export async function sendOpencodePrompt(
   sessionId: string,
   text: string,
   attachments: UploadAttachment[],
+  fileReferences: OpencodeFileReference[],
   selection: OpencodePromptSelection,
   serverUrl: string,
   accessToken: string,
@@ -679,6 +733,30 @@ export async function sendOpencodePrompt(
   );
   const parts: Array<TextPartInput | FilePartInput> = [
     ...(text ? [{ type: "text" as const, text }] : []),
+    ...fileReferences.map((reference) => {
+      const start = text.indexOf(reference.mention);
+      const absolutePath = reference.path.startsWith("/")
+        ? reference.path
+        : `${session.directory.replace(/\/$/, "")}/${reference.path}`;
+      return {
+        type: "file" as const,
+        mime: "text/plain",
+        filename: reference.path.split("/").pop() ?? reference.path,
+        url: `file://${absolutePath
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/")}`,
+        source: {
+          type: "file" as const,
+          path: reference.path,
+          text: {
+            value: reference.mention,
+            start: Math.max(0, start),
+            end: Math.max(0, start) + reference.mention.length,
+          },
+        },
+      };
+    }),
     ...attachments.map((attachment) => ({
       type: "file" as const,
       mime: attachment.mimeType,

@@ -1,6 +1,7 @@
 "use client";
 
 import type {
+  OpencodeFileReference,
   OpencodeInventory,
   OpencodePromptSelection,
 } from "@repo/api-client";
@@ -18,7 +19,15 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@repo/ui/components/popover";
-import { ArrowUp, ChevronsUpDown, Plus, Square, X } from "lucide-react";
+import {
+  ArrowUp,
+  ChevronsUpDown,
+  File,
+  Loader2,
+  Plus,
+  Square,
+  X,
+} from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -36,7 +45,11 @@ type LocalAttachment = {
 };
 
 type PromptInputProps = {
-  onSubmit: (question: string, attachments: File[]) => void;
+  onSubmit: (
+    question: string,
+    attachments: File[],
+    fileReferences: OpencodeFileReference[],
+  ) => void;
   disabled?: boolean;
   submitDisabled?: boolean;
   isStreaming?: boolean;
@@ -49,7 +62,17 @@ type PromptInputProps = {
   autoFocus?: boolean;
   focusOnTyping?: boolean;
   trailingControl?: ReactNode;
+  searchFiles?: (query: string) => Promise<string[]>;
 };
+
+type ActiveFileMention = { end: number; query: string; start: number };
+
+function getActiveFileMention(value: string, cursor: number) {
+  const match = value.slice(0, cursor).match(/(?:^|\s)@([^\s@]*)$/);
+  if (!match) return null;
+  const query = match[1] ?? "";
+  return { end: cursor, query, start: cursor - query.length - 1 };
+}
 
 export function PromptInput({
   onSubmit,
@@ -65,12 +88,22 @@ export function PromptInput({
   autoFocus = false,
   focusOnTyping = false,
   trailingControl,
+  searchFiles,
 }: PromptInputProps) {
   const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [isVariantPickerOpen, setIsVariantPickerOpen] = useState(false);
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
+  const [activeFileMention, setActiveFileMention] =
+    useState<ActiveFileMention | null>(null);
+  const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
+    [],
+  );
+  const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
+  const [isSearchingFiles, setIsSearchingFiles] = useState(false);
+  const [highlightedFileIndex, setHighlightedFileIndex] = useState(0);
+  const activeFileQuery = activeFileMention?.query;
   const attachmentsRef = useRef<LocalAttachment[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,6 +173,35 @@ export function PromptInput({
     return () => window.removeEventListener("keydown", focusPromptOnTyping);
   }, [disabled, focusOnTyping]);
 
+  useEffect(() => {
+    if (!searchFiles || activeFileQuery === undefined) {
+      setFileSuggestions([]);
+      setIsSearchingFiles(false);
+      return;
+    }
+
+    let active = true;
+    setIsSearchingFiles(true);
+    setHighlightedFileIndex(0);
+    const timeout = window.setTimeout(() => {
+      void searchFiles(activeFileQuery)
+        .then((paths) => {
+          if (active) setFileSuggestions(paths);
+        })
+        .catch(() => {
+          if (active) setFileSuggestions([]);
+        })
+        .finally(() => {
+          if (active) setIsSearchingFiles(false);
+        });
+    }, 300);
+
+    return () => {
+      active = false;
+      window.clearTimeout(timeout);
+    };
+  }, [activeFileQuery, searchFiles]);
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitDisabled) return;
@@ -148,6 +210,9 @@ export function PromptInput({
     onSubmit(
       trimmedQuestion,
       attachments.map((attachment) => attachment.file),
+      fileReferences.filter((reference) =>
+        trimmedQuestion.includes(reference.mention),
+      ),
     );
     if (textareaRef.current) {
       textareaRef.current.value = "";
@@ -155,6 +220,8 @@ export function PromptInput({
       textareaRef.current.style.overflowY = "hidden";
     }
     setHasQuestion(false);
+    setActiveFileMention(null);
+    setFileReferences([]);
     attachments.forEach((attachment) => {
       URL.revokeObjectURL(attachment.previewUrl);
     });
@@ -189,6 +256,28 @@ export function PromptInput({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (activeFileMention && fileSuggestions.length > 0) {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        setHighlightedFileIndex(
+          (current) =>
+            (current + direction + fileSuggestions.length) %
+            fileSuggestions.length,
+        );
+        return;
+      }
+      if (event.key === "Enter" && !event.nativeEvent.isComposing) {
+        event.preventDefault();
+        const path = fileSuggestions[highlightedFileIndex];
+        if (path) chooseFile(path);
+        return;
+      }
+    }
+    if (event.key === "Escape" && activeFileMention) {
+      setActiveFileMention(null);
+      return;
+    }
     if (event.key !== "Enter" || event.nativeEvent.isComposing) return;
 
     if (event.metaKey || event.ctrlKey) {
@@ -215,6 +304,27 @@ export function PromptInput({
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
     textarea.style.overflowY =
       textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  const chooseFile = (path: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !activeFileMention) return;
+    const mention = `@${path}`;
+    textarea.setRangeText(
+      `${mention} `,
+      activeFileMention.start,
+      activeFileMention.end,
+      "end",
+    );
+    setHasQuestion(textarea.value.trim().length > 0);
+    setFileReferences((current) => [
+      ...current.filter((reference) => reference.path !== path),
+      { mention, path },
+    ]);
+    setActiveFileMention(null);
+    setFileSuggestions([]);
+    resizeTextarea(textarea);
+    textarea.focus();
   };
 
   return (
@@ -437,6 +547,38 @@ export function PromptInput({
         tabIndex={-1}
         onChange={handleFiles}
       />
+      {activeFileMention && searchFiles ? (
+        <div className="bg-popover text-popover-foreground max-h-64 overflow-y-auto rounded-xl border p-1 shadow-lg">
+          {isSearchingFiles ? (
+            <div className="text-muted-foreground flex h-12 items-center justify-center gap-2 text-sm">
+              <Loader2 className="size-4 animate-spin" /> Searching files…
+            </div>
+          ) : fileSuggestions.length ? (
+            fileSuggestions.map((path, index) => (
+              <button
+                key={path}
+                type="button"
+                className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+                  index === highlightedFileIndex
+                    ? "bg-accent"
+                    : "hover:bg-accent"
+                }`}
+                onMouseDown={(event) => event.preventDefault()}
+                onClick={() => chooseFile(path)}
+              >
+                <File className="text-muted-foreground size-4 shrink-0" />
+                <span className="min-w-0 truncate font-mono text-xs [direction:rtl]">
+                  {path}
+                </span>
+              </button>
+            ))
+          ) : (
+            <div className="text-muted-foreground flex h-12 items-center justify-center text-sm">
+              No files found.
+            </div>
+          )}
+        </div>
+      ) : null}
       <div className="flex items-end gap-2">
         <Button
           type="button"
@@ -459,8 +601,27 @@ export function PromptInput({
             disabled={disabled}
             onChange={(event) => {
               setHasQuestion(event.target.value.trim().length > 0);
+              setActiveFileMention(
+                getActiveFileMention(
+                  event.target.value,
+                  event.target.selectionStart,
+                ),
+              );
+              setFileReferences((current) =>
+                current.filter((reference) =>
+                  event.target.value.includes(reference.mention),
+                ),
+              );
               resizeTextarea(event.target);
             }}
+            onClick={(event) =>
+              setActiveFileMention(
+                getActiveFileMention(
+                  event.currentTarget.value,
+                  event.currentTarget.selectionStart,
+                ),
+              )
+            }
             onKeyDown={handleKeyDown}
             className="placeholder:text-muted-foreground min-h-10 min-w-0 flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-4 py-2 text-base leading-6 outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
           />

@@ -1,8 +1,10 @@
 import type {
+  OpencodeFileReference,
   OpencodeInventory,
   OpencodePromptSelection,
   UploadAttachment,
 } from "@repo/api-client";
+import { BlurTargetView, BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { SymbolView } from "expo-symbols";
@@ -22,10 +24,20 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import { Fonts } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
 
 type PickerKind = "provider" | "model" | "agent" | "variant";
 type PickerOption = { id: string; title: string; subtitle?: string };
+type ActiveFileMention = { end: number; query: string; start: number };
+
+function getActiveFileMention(value: string, cursor: number) {
+  const match = value.slice(0, cursor).match(/(?:^|\s)@([^\s@]*)$/);
+  if (!match) return null;
+  const query = match[1] ?? "";
+  return { end: cursor, query, start: cursor - query.length - 1 };
+}
 
 export type ComposerImageAttachment = UploadAttachment & {
   id: string;
@@ -41,13 +53,16 @@ type OpencodeComposerProps = {
   inventory?: OpencodeInventory;
   isStopping?: boolean;
   isSubmitting?: boolean;
+  fileReferences?: OpencodeFileReference[];
   onChangeSelection: (selection: OpencodePromptSelection) => void;
   onChangeAttachments?: (attachments: ComposerImageAttachment[]) => void;
+  onChangeFileReferences?: (references: OpencodeFileReference[]) => void;
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
   onToggleRaw?: () => void;
   onStop?: () => void;
+  searchFiles?: (query: string) => Promise<string[]>;
   onSubmit: () => void;
   placeholder: string;
   selection: OpencodePromptSelection;
@@ -60,16 +75,19 @@ export function OpencodeComposer({
   attachments = [],
   autoFocus,
   disabled,
+  fileReferences = [],
   inventory,
   isStopping,
   isSubmitting,
   onChangeSelection,
   onChangeAttachments,
+  onChangeFileReferences,
   onChangeText,
   onNewChat,
   onOpenTerminal,
   onToggleRaw,
   onStop,
+  searchFiles,
   onSubmit,
   placeholder,
   selection,
@@ -78,8 +96,14 @@ export function OpencodeComposer({
   value,
 }: OpencodeComposerProps) {
   const theme = useTheme();
+  const isDark = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
+  const blurTargetRef = useRef<View>(null);
   const [isMultiline, setIsMultiline] = useState(false);
+  const [selectionEnd, setSelectionEnd] = useState(value.length);
+  const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
+  const [isSearchingFiles, setIsSearchingFiles] = useState(false);
+  const activeFileMention = getActiveFileMention(value, selectionEnd);
   const submitDisabled =
     disabled ||
     submitDisabledProp ||
@@ -145,6 +169,58 @@ export function OpencodeComposer({
     }
   };
 
+  useEffect(() => {
+    if (!searchFiles || !activeFileMention) {
+      setFileSuggestions([]);
+      setIsSearchingFiles(false);
+      return;
+    }
+
+    let active = true;
+    setIsSearchingFiles(true);
+    const timeout = setTimeout(() => {
+      void searchFiles(activeFileMention.query)
+        .then((paths) => {
+          if (active) setFileSuggestions(paths);
+        })
+        .catch(() => {
+          if (active) setFileSuggestions([]);
+        })
+        .finally(() => {
+          if (active) setIsSearchingFiles(false);
+        });
+    }, 300);
+
+    return () => {
+      active = false;
+      clearTimeout(timeout);
+    };
+  }, [activeFileMention?.query, searchFiles]);
+
+  const changeText = (nextValue: string) => {
+    onChangeText(nextValue);
+    onChangeFileReferences?.(
+      fileReferences.filter((reference) =>
+        nextValue.includes(reference.mention),
+      ),
+    );
+  };
+
+  const chooseFile = (path: string) => {
+    if (!activeFileMention) return;
+    const mention = `@${path}`;
+    const nextValue = `${value.slice(0, activeFileMention.start)}${mention} ${value.slice(activeFileMention.end)}`;
+    const nextCursor = activeFileMention.start + mention.length + 1;
+    onChangeText(nextValue);
+    onChangeFileReferences?.([
+      ...fileReferences.filter((reference) => reference.path !== path),
+      { mention, path },
+    ]);
+    setSelectionEnd(nextCursor);
+    setFileSuggestions([]);
+    requestAnimationFrame(() => inputRef.current?.focus());
+  };
+
   return (
     <View style={styles.composerArea}>
       {attachments.length ? (
@@ -186,16 +262,96 @@ export function OpencodeComposer({
           ))}
         </ScrollView>
       ) : null}
-      <PromptSelectors
-        disabled={disabled}
-        inventory={inventory}
-        onChange={onChangeSelection}
-        onNewChat={onNewChat}
-        onOpenTerminal={onOpenTerminal}
-        onToggleRaw={onToggleRaw}
-        selection={selection}
-        showRawResponse={showRawResponse}
-      />
+      <BlurTargetView ref={blurTargetRef} style={styles.blurTarget}>
+        <PromptSelectors
+          disabled={disabled}
+          inventory={inventory}
+          onChange={onChangeSelection}
+          onNewChat={onNewChat}
+          onOpenTerminal={onOpenTerminal}
+          onToggleRaw={onToggleRaw}
+          selection={selection}
+          showRawResponse={showRawResponse}
+        />
+      </BlurTargetView>
+      {activeFileMention && searchFiles ? (
+        <View
+          style={[
+            styles.fileSuggestions,
+            { borderColor: theme.backgroundSelected },
+          ]}
+        >
+          <BlurView
+            blurMethod="dimezisBlurViewSdk31Plus"
+            blurTarget={blurTargetRef}
+            blurReductionFactor={2}
+            intensity={70}
+            pointerEvents="none"
+            style={StyleSheet.absoluteFill}
+            tint={
+              isDark ? "systemChromeMaterialDark" : "systemChromeMaterialLight"
+            }
+          />
+          <View
+            pointerEvents="none"
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                backgroundColor: isDark
+                  ? "rgba(36,37,40,0.72)"
+                  : "rgba(255,255,255,0.72)",
+              },
+            ]}
+          />
+          {isSearchingFiles ? (
+            <View style={styles.fileSuggestionState}>
+              <ActivityIndicator size="small" />
+              <ThemedText
+                style={{ fontFamily: Fonts.mono, fontSize: 11 }}
+                themeColor="textSecondary"
+              >
+                Searching files…
+              </ThemedText>
+            </View>
+          ) : fileSuggestions.length ? (
+            <FlatList
+              data={fileSuggestions.slice(0, 4)}
+              keyboardShouldPersistTaps="handled"
+              keyExtractor={(path) => path}
+              renderItem={({ item: path }) => (
+                <Pressable
+                  accessibilityLabel={`Mention ${path}`}
+                  accessibilityRole="button"
+                  onPress={() => chooseFile(path)}
+                  style={({ pressed }) => [
+                    styles.fileSuggestion,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "doc", android: "description" }}
+                    size={14}
+                    tintColor={theme.textSecondary}
+                  />
+                  <ThemedText
+                    ellipsizeMode="head"
+                    numberOfLines={1}
+                    style={styles.fileSuggestionPath}
+                  >
+                    {path}
+                  </ThemedText>
+                </Pressable>
+              )}
+            />
+          ) : (
+            <View style={styles.fileSuggestionState}>
+              <ThemedText themeColor="textSecondary">
+                No files found.
+              </ThemedText>
+            </View>
+          )}
+        </View>
+      ) : null}
       <View style={styles.promptRow}>
         {onChangeAttachments ? (
           <Pressable
@@ -238,7 +394,10 @@ export function OpencodeComposer({
             onContentSizeChange={(event) =>
               setIsMultiline(event.nativeEvent.contentSize.height > 42)
             }
-            onChangeText={onChangeText}
+            onChangeText={changeText}
+            onSelectionChange={(event) =>
+              setSelectionEnd(event.nativeEvent.selection.end)
+            }
             onSubmitEditing={submit}
             placeholder={placeholder}
             placeholderTextColor={theme.textSecondary}
@@ -691,6 +850,7 @@ const styles = StyleSheet.create({
     maxWidth: "100%",
     width: "100%",
   },
+  blurTarget: { width: "100%" },
   closeButton: {
     alignItems: "center",
     height: 44,
@@ -711,6 +871,7 @@ const styles = StyleSheet.create({
     gap: 8,
     maxWidth: "100%",
     minWidth: 0,
+    position: "relative",
     width: "100%",
   },
   disabled: {
@@ -720,6 +881,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     paddingVertical: 48,
     textAlign: "center",
+  },
+  fileSuggestion: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 36,
+    paddingHorizontal: 10,
+  },
+  fileSuggestionPath: {
+    flex: 1,
+    fontFamily: Fonts.mono,
+    fontSize: 11,
+    lineHeight: 15,
+  },
+  fileSuggestions: {
+    bottom: 58,
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    left: 0,
+    maxHeight: 148,
+    overflow: "hidden",
+    position: "absolute",
+    right: 0,
+    width: "100%",
+    zIndex: 20,
+  },
+  fileSuggestionState: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    justifyContent: "center",
+    minHeight: 40,
+    paddingHorizontal: 10,
   },
   input: {
     flex: 1,

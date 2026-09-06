@@ -6,6 +6,7 @@ import {
   getOpencodeSessions,
   sendOpencodePrompt,
   type OpencodeSessionData,
+  type OpencodeFileReference,
   type OpencodePromptSelection,
   type UploadAttachment,
 } from "@repo/api-client";
@@ -68,6 +69,7 @@ export const useStartOpencodeSession = () => {
       text,
       files,
       attachments: directAttachments = [],
+      fileReferences = [],
       selection,
       onSessionCreated,
     }: {
@@ -79,6 +81,7 @@ export const useStartOpencodeSession = () => {
       text: string;
       files: File[];
       attachments?: UploadAttachment[];
+      fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
       onSessionCreated?: (sessionId: string) => void;
     }) => {
@@ -167,6 +170,26 @@ export const useStartOpencodeSession = () => {
                 filename: attachment.name,
                 url: attachment.dataUrl,
               })),
+              ...fileReferences.map((reference, index) => ({
+                id: `${optimisticMessageId}:file:${index}`,
+                sessionID: session.id,
+                messageID: optimisticMessageId,
+                type: "file" as const,
+                mime: "text/plain",
+                filename: reference.path.split("/").pop() ?? reference.path,
+                url: reference.path,
+                source: {
+                  type: "file" as const,
+                  path: reference.path,
+                  text: {
+                    value: reference.mention,
+                    start: Math.max(0, text.indexOf(reference.mention)),
+                    end:
+                      Math.max(0, text.indexOf(reference.mention)) +
+                      reference.mention.length,
+                  },
+                },
+              })),
             ],
           },
         ],
@@ -184,6 +207,7 @@ export const useStartOpencodeSession = () => {
           session.id,
           text,
           attachments,
+          fileReferences,
           selection,
           serverUrl,
           accessToken,

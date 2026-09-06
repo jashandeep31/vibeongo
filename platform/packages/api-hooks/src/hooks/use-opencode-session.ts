@@ -11,6 +11,7 @@ import {
   unrevertOpencodeSession,
   type OpencodeSessionData,
   type OpencodePromptSelection,
+  type OpencodeFileReference,
   type QuestionAnswer,
   type UploadAttachment,
 } from "@repo/api-client";
@@ -141,11 +142,13 @@ export const useSendOpencodePrompt = ({
       text,
       files,
       attachments: directAttachments = [],
+      fileReferences = [],
       selection,
     }: {
       text: string;
       files: File[];
       attachments?: UploadAttachment[];
+      fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
     }) => {
       const fileAttachments: UploadAttachment[] = await Promise.all(
@@ -163,6 +166,7 @@ export const useSendOpencodePrompt = ({
         sessionId,
         text,
         [...directAttachments, ...fileAttachments],
+        fileReferences,
         selection,
         serverUrl,
         accessToken,

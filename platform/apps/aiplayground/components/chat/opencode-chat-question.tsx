@@ -19,6 +19,7 @@ import { useState } from "react";
 export type OpencodeChatTurn = {
   id: string;
   question: string;
+  files: Array<{ id: string; path: string }>;
   images: Array<{ id: string; url: string; name: string }>;
   summaryDiffs: SnapshotFileDiff[];
   content: Array<
