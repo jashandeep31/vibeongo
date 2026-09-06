@@ -143,6 +143,26 @@ export async function getRuntimeDirectory(
   return response.json() as Promise<RuntimeDirectory>;
 }
 
+export async function searchRuntimeFiles(
+  connection: RuntimeFileConnection,
+  query: string,
+  path?: string,
+): Promise<RuntimeDirectory> {
+  const url = new URL(
+    `${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/search`,
+  );
+  url.searchParams.set("query", query);
+  if (path) url.searchParams.set("path", path);
+
+  const response = await getRuntimeFetch(connection)(url, {
+    headers: getHeaders(connection),
+    cache: "no-store",
+    signal: AbortSignal.timeout(10_000),
+  });
+  await assertResponse(response, "Could not search files");
+  return response.json() as Promise<RuntimeDirectory>;
+}
+
 export async function getRuntimeFile(
   connection: RuntimeFileConnection,
   path: string,

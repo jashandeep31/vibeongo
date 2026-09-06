@@ -3,6 +3,7 @@ import {
   deleteRuntimeFileEntry,
   getRuntimeDirectory,
   getRuntimeFile,
+  searchRuntimeFiles,
   updateRuntimeFile,
   uploadRuntimeFile,
   type RuntimeFileConnection,
@@ -41,6 +42,31 @@ const runtimeFileKey = (instanceId: string, path: string) => [
   path,
 ];
 
+const runtimeFileSearchKey = (
+  instanceId: string,
+  query: string,
+  path?: string,
+) => [...runtimeFilesKey(instanceId), "search", path ?? "default", query];
+
+const runtimeFileSearchesKey = (instanceId: string) => [
+  ...runtimeFilesKey(instanceId),
+  "search",
+];
+
+function invalidateRuntimeListings(
+  queryClient: ReturnType<typeof useQueryClient>,
+  instanceId: string,
+) {
+  return Promise.all([
+    queryClient.invalidateQueries({
+      queryKey: runtimeDirectoriesKey(instanceId),
+    }),
+    queryClient.invalidateQueries({
+      queryKey: runtimeFileSearchesKey(instanceId),
+    }),
+  ]);
+}
+
 function hasConnection(connection: RuntimeFilesConnection) {
   return Boolean(
     connection.instanceId &&
@@ -77,14 +103,27 @@ export function useRuntimeFile(
   });
 }
 
+export function useRuntimeFileSearch(
+  connection: RuntimeFilesConnection,
+  query: string,
+  path?: string,
+) {
+  return useQuery({
+    queryKey: runtimeFileSearchKey(connection.instanceId, query, path),
+    queryFn: () => searchRuntimeFiles(connection, query, path),
+    enabled: hasConnection(connection) && Boolean(query),
+    placeholderData: keepPreviousData,
+    retry: false,
+    refetchOnWindowFocus: false,
+  });
+}
+
 export function useCreateRuntimeFileEntry(connection: RuntimeFilesConnection) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (path: string) => createRuntimeFileEntry(connection, path),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: runtimeDirectoriesKey(connection.instanceId),
-      }),
+      invalidateRuntimeListings(queryClient, connection.instanceId),
   });
 }
 
@@ -113,9 +152,7 @@ export function useUploadRuntimeFile(connection: RuntimeFilesConnection) {
       fileName: string;
     }) => uploadRuntimeFile(connection, path, file, fileName),
     onSuccess: () =>
-      queryClient.invalidateQueries({
-        queryKey: runtimeDirectoriesKey(connection.instanceId),
-      }),
+      invalidateRuntimeListings(queryClient, connection.instanceId),
   });
 }
 
@@ -127,9 +164,7 @@ export function useDeleteRuntimeFileEntry(connection: RuntimeFilesConnection) {
       queryClient.removeQueries({
         queryKey: runtimeFileKey(connection.instanceId, path),
       });
-      return queryClient.invalidateQueries({
-        queryKey: runtimeDirectoriesKey(connection.instanceId),
-      });
+      return invalidateRuntimeListings(queryClient, connection.instanceId);
     },
   });
 }

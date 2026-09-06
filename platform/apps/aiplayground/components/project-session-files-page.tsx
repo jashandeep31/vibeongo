@@ -16,6 +16,7 @@ import {
   useGetInstances,
   useRuntimeDirectory,
   useRuntimeFile,
+  useRuntimeFileSearch,
   useUpdateRuntimeFile,
   useUploadRuntimeFile,
   type RuntimeFilesConnection,
@@ -48,11 +49,11 @@ import {
   File,
   FileCode2,
   Folder,
-  FolderOpen,
   Loader2,
   Plus,
   RefreshCw,
   Save,
+  Search,
   Trash2,
   TriangleAlert,
   Upload,
@@ -104,7 +105,8 @@ function ProjectSessionFilesContent({
   const [requestedDirectoryPath, setRequestedDirectoryPath] = useState<
     string | undefined
   >();
-  const [pathInput, setPathInput] = useState("");
+  const [searchInput, setSearchInput] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState<RuntimeFileEntry | null>(
     null,
   );
@@ -153,12 +155,18 @@ function ProjectSessionFilesContent({
     requestedDirectoryPath,
   );
   const directory = directoryQuery.data ?? null;
+  const searchQueryResult = useRuntimeFileSearch(
+    connection,
+    searchQuery,
+    directory?.path,
+  );
   const fileQuery = useRuntimeFile(connection, selectedFile?.path);
   const createEntryMutation = useCreateRuntimeFileEntry(connection);
   const updateFileMutation = useUpdateRuntimeFile(connection);
   const uploadFileMutation = useUploadRuntimeFile(connection);
   const deleteEntryMutation = useDeleteRuntimeFileEntry(connection);
   const isDirectoryLoading = directoryQuery.isFetching;
+  const isSearchLoading = searchQueryResult.isFetching;
   const isFileLoading = fileQuery.isFetching;
   const isSaving = updateFileMutation.isPending;
   const isUploading = uploadFileMutation.isPending;
@@ -193,7 +201,6 @@ function ProjectSessionFilesContent({
     const path = directoryQuery.data?.path;
     if (!path || directoryQuery.isPlaceholderData) return;
 
-    setPathInput(path);
     setOpeningDirectoryPath("");
     if (loadedDirectoryPathRef.current !== path) {
       loadedDirectoryPathRef.current = path;
@@ -210,8 +217,20 @@ function ProjectSessionFilesContent({
   }, [directoryQuery.isFetching]);
 
   useEffect(() => {
+    const timeout = window.setTimeout(
+      () => setSearchQuery(searchInput.trim()),
+      300,
+    );
+    return () => window.clearTimeout(timeout);
+  }, [searchInput]);
+
+  useEffect(() => {
     if (directoryQuery.error) setError(directoryQuery.error.message);
   }, [directoryQuery.error]);
+
+  useEffect(() => {
+    if (searchQueryResult.error) setError(searchQueryResult.error.message);
+  }, [searchQueryResult.error]);
 
   useEffect(() => {
     const result = fileQuery.data;
@@ -377,6 +396,9 @@ function ProjectSessionFilesContent({
     () => sortRuntimeFileEntries(directory?.entries ?? []),
     [directory?.entries],
   );
+  const visibleEntries = searchQuery
+    ? (searchQueryResult.data?.entries ?? [])
+    : sortedEntries;
 
   const breadcrumbs = useMemo(
     () => getRuntimeFileBreadcrumbs(directory?.path),
@@ -438,7 +460,7 @@ function ProjectSessionFilesContent({
           </div>
         ) : (
           <div className="space-y-0.5">
-            {sortedEntries.map((entry) => {
+            {visibleEntries.map((entry) => {
               const selected = selectedFile?.path === entry.path;
               const deleting = deletingPath === entry.path;
               const opening = openingDirectoryPath === entry.path;
@@ -468,8 +490,15 @@ function ProjectSessionFilesContent({
                     ) : (
                       <File className="text-muted-foreground size-4 shrink-0" />
                     )}
-                    <span className="truncate font-mono text-xs">
-                      {entry.name}
+                    <span
+                      className={`truncate font-mono text-xs ${
+                        searchQuery ? "text-left [direction:rtl]" : ""
+                      }`}
+                      title={searchQuery ? entry.path : undefined}
+                    >
+                      {searchQuery && directory
+                        ? entry.path.replace(`${directory.path}/`, "")
+                        : entry.name}
                     </span>
                   </button>
                   <Button
@@ -490,9 +519,11 @@ function ProjectSessionFilesContent({
                 </div>
               );
             })}
-            {!isDirectoryLoading && sortedEntries.length === 0 ? (
+            {!isDirectoryLoading &&
+            !isSearchLoading &&
+            visibleEntries.length === 0 ? (
               <p className="text-muted-foreground px-3 py-10 text-center text-sm">
-                This folder is empty.
+                {searchQuery ? "No files found." : "This folder is empty."}
               </p>
             ) : null}
           </div>
@@ -529,34 +560,22 @@ function ProjectSessionFilesContent({
       ) : null}
       <div className="bg-background text-foreground flex h-svh min-h-0 w-full flex-col">
         <div className="flex shrink-0 flex-col gap-2 border-b px-4 py-2 md:flex-row md:items-center md:px-6">
-          <form
-            className="flex min-w-0 flex-1 items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              openDirectory(pathInput.trim());
-            }}
-          >
+          <div className="flex min-w-0 flex-1 items-center gap-2">
             <div className="relative min-w-0 flex-1">
-              <FolderOpen className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+              {isSearchLoading ? (
+                <Loader2 className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2 animate-spin" />
+              ) : (
+                <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
+              )}
               <Input
-                className="h-8 pl-8 font-mono text-xs"
-                aria-label="Directory path"
+                className="h-8 pl-8 text-sm"
+                aria-label="Search files"
+                placeholder="Search files…"
                 spellCheck={false}
-                value={pathInput}
-                onChange={(event) => setPathInput(event.target.value)}
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
               />
             </div>
-            <Button
-              type="submit"
-              variant="outline"
-              size="sm"
-              disabled={isDirectoryLoading}
-            >
-              {isDirectoryLoading && !openingDirectoryPath ? (
-                <Loader2 className="animate-spin" />
-              ) : null}
-              Open
-            </Button>
             <SidebarTrigger
               type="button"
               className="md:hidden"
@@ -564,7 +583,7 @@ function ProjectSessionFilesContent({
               aria-label="Open file browser"
               title="Open file browser"
             />
-          </form>
+          </div>
           <div className="flex items-center gap-1.5">
             <Button
               type="button"
