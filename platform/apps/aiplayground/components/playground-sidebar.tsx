@@ -67,7 +67,7 @@ const navigation = [
   },
   {
     title: "Demo Projects",
-    url: "/import-projects",
+    url: "/demo-projects",
     icon: Import,
   },
   {

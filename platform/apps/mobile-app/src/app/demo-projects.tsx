@@ -23,7 +23,7 @@ import {
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
-export default function ImportProjectsScreen() {
+export default function DemoProjectsScreen() {
   const router = useRouter();
   const theme = useTheme();
   const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
@@ -63,20 +63,13 @@ export default function ImportProjectsScreen() {
         top={
           <PageHeader
             onBack={() => router.back()}
-            title="Import projects"
+            title="Demo Projects"
             titleOpacity={titleOpacity}
           />
         }
       >
         {({ topInset }) => (
           <View style={[styles.screen, { paddingTop: topInset }]}>
-            <View style={styles.intro}>
-              <ThemedText style={styles.title}>Demo projects</ThemedText>
-              <ThemedText style={styles.description} themeColor="textSecondary">
-                Pick a project to add to your workspace.
-              </ThemedText>
-            </View>
-
             {demosQuery.isPending ? (
               <View style={styles.centeredState}>
                 <ActivityIndicator color={theme.textSecondary} />
@@ -241,10 +234,7 @@ const styles = StyleSheet.create({
     width: 36,
   },
   headerTitle: { fontSize: 17, fontWeight: "700" },
-  intro: { paddingBottom: 24, paddingHorizontal: 20, paddingTop: 18 },
-  title: { fontSize: 24, fontWeight: "700", lineHeight: 30 },
-  description: { fontSize: 14, lineHeight: 22, marginTop: 5 },
-  content: { paddingBottom: 48, paddingHorizontal: 20 },
+  content: { paddingBottom: 48, paddingHorizontal: 20, paddingTop: 18 },
   centeredState: {
     alignItems: "center",
     gap: 8,

@@ -48,10 +48,6 @@ export default function TemplatesScreen() {
       >
         {({ topInset }) => (
           <View style={[styles.screen, { paddingTop: topInset }]}>
-            <View style={styles.intro}>
-              <ThemedText style={styles.title}>Project templates</ThemedText>
-            </View>
-
             {templatesQuery.isPending ? (
               <View style={styles.centeredState}>
                 <ActivityIndicator color={theme.textSecondary} />
@@ -183,9 +179,7 @@ export default function TemplatesScreen() {
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  intro: { paddingBottom: 24, paddingHorizontal: 20, paddingTop: 18 },
-  title: { fontSize: 24, fontWeight: "700", lineHeight: 30 },
-  content: { paddingBottom: 48, paddingHorizontal: 20 },
+  content: { paddingBottom: 48, paddingHorizontal: 20, paddingTop: 18 },
   centeredState: {
     alignItems: "center",
     gap: 10,

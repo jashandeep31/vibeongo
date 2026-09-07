@@ -82,7 +82,7 @@ const staticNavigation = [
   },
   {
     title: "Demo Projects",
-    url: "/import-projects",
+    url: "/demo-projects",
     icon: Import,
     keywords: "import demo projects templates",
   },

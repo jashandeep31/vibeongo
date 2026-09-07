@@ -33,7 +33,7 @@ type NavigationItem = {
   href?:
     | "/"
     | "/github-repos"
-    | "/import-projects"
+    | "/demo-projects"
     | "/templates"
     | "/limits"
     | "/settings"
@@ -63,9 +63,9 @@ const navigation: NavigationItem[] = [
     href: "/github-repos",
   },
   {
-    title: "Import",
+    title: "Demo Projects",
     icon: { ios: "square.and.arrow.down", android: "download" },
-    href: "/import-projects",
+    href: "/demo-projects",
   },
   {
     title: "Templates",
