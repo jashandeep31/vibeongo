@@ -70,32 +70,48 @@ export const projectConfigValidator = z.object({
       }),
     ),
 
-    packages: z.array(
-      z.discriminatedUnion("name", [
-        z.object({
-          name: z.literal("docker"),
-          config: dockerConfigValidator,
-        }),
+    packages: z
+      .array(
+        z.discriminatedUnion("name", [
+          z.object({
+            name: z.literal("docker"),
+            config: dockerConfigValidator,
+          }),
 
-        z.object({
-          name: z.literal("opencode"),
-          config: opencodeConfigValidator,
-        }),
+          z.object({
+            name: z.literal("opencode"),
+            config: opencodeConfigValidator,
+          }),
 
-        z.object({
-          name: z.literal("codex"),
-          config: codexConfigValidator,
-        }),
-        z.object({
-          name: z.literal("pi"),
-          config: piConfigValidator,
-        }),
-        z.object({
-          name: z.literal("fx"),
-          config: fxConfigValidator,
-        }),
+          z.object({
+            name: z.literal("codex"),
+            config: codexConfigValidator,
+          }),
+          z.object({
+            name: z.literal("pi"),
+            config: piConfigValidator,
+          }),
+          z.object({
+            name: z.literal("fx"),
+            config: fxConfigValidator,
+          }),
+        ]),
+      )
+      .default([
+        { name: "docker", config: { containers: [] } },
+        {
+          name: "opencode",
+          config: { auth_json: {}, use_user_config: true, model: "default" },
+        },
+        {
+          name: "codex",
+          config: { auth_json: {}, use_user_config: true },
+        },
+        {
+          name: "pi",
+          config: { auth_json: {}, use_user_config: true },
+        },
       ]),
-    ),
   }),
 });
 

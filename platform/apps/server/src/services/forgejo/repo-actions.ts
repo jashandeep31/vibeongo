@@ -1,4 +1,3 @@
-import { users } from "@repo/db";
 import { forgejoAPIClient } from "./user-actions.js";
 import axios from "axios";
 import crypto from "crypto";

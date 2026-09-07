@@ -1,5 +1,9 @@
 import { Router } from "express";
 import { createProject } from "../controllers/project/create-project.js";
+import {
+  createProjectFromTemplate,
+  getProjectTemplates,
+} from "../controllers/project/create-project-from-template.js";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   deleteProjectById,
@@ -33,6 +37,12 @@ routes
   .route("/")
   .post(checkAuthorization(["all"]), createProject)
   .get(checkAuthorization(["all"]), getProjects);
+routes
+  .route("/from-template")
+  .post(checkAuthorization(["all"]), createProjectFromTemplate);
+routes
+  .route("/templates")
+  .get(checkAuthorization(["all"]), getProjectTemplates);
 routes
   .route("/with-sessions")
   .get(checkAuthorization(["all"]), getProjectsWithSessions);
