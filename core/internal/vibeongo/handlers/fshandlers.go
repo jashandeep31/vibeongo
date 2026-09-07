@@ -125,7 +125,15 @@ func UploadFile(c *echo.Context) error {
 		return err
 	}
 	defer src.Close()
-	dstPath := filepath.Join(uploadToPath, filepath.Base(file.Filename))
+	fileName := strings.TrimSpace(c.FormValue("fileName"))
+	if fileName == "" {
+		fileName = file.Filename
+	}
+	fileName = filepath.Base(fileName)
+	if fileName == "." || fileName == ".." || fileName == string(filepath.Separator) {
+		return echo.NewHTTPError(http.StatusBadRequest, "file name is not valid")
+	}
+	dstPath := filepath.Join(uploadToPath, fileName)
 	dst, err := os.Create(dstPath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
@@ -137,7 +145,7 @@ func UploadFile(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusCreated, FileEntity{
-		Name: file.Filename,
+		Name: fileName,
 		Path: dstPath,
 		Type: FileTypeFile,
 	})

@@ -231,6 +231,7 @@ export async function uploadRuntimeFile(
 ): Promise<RuntimeFileEntry> {
   const formData = new FormData();
   formData.set("path", path);
+  formData.set("fileName", fileName);
   formData.set("file", file, fileName);
 
   const response = await getRuntimeFetch(connection)(
