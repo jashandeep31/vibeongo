@@ -13,7 +13,6 @@ import {
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
-import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
 import { DaytonaClient } from "../../providers/client/daytona-client.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
@@ -31,10 +30,16 @@ const instanceUrlRegex =
 export const getTargetHostByDomain = catchAsync(
   async (req: Request, res: Response) => {
     if (!req.headers.authorization) {
-      throw new AppError("authorization token is required ", 401);
+      res.status(401).json({
+        message: "authorization token is required",
+      });
+      return;
     }
     if (req.headers.authorization !== env.PROXY_SERVER_TOKEN) {
-      throw new AppError("authorization token is not valid ", 401);
+      res.status(401).json({
+        message: "authorization token is not valid",
+      });
+      return;
     }
 
     const { domain } = z
@@ -107,7 +112,10 @@ async function handleInstanceProxyUrl({
 async function handleCustomProxyUrl(domain: string, res: Response) {
   const subdomain = domain.split(".")[0];
 
-  if (!subdomain) throw new AppError("Domain is not valid", 400);
+  if (!subdomain) {
+    res.status(400).json({ message: "Domain is not valid" });
+    return;
+  }
 
   const result = await db
     .select()
@@ -176,7 +184,8 @@ function collectAllowedIps(
 
 async function sendProxyResponse(res: Response, options: ProxyResponseOptions) {
   if (!options.provider) {
-    throw new AppError("Instance provider not found", 404);
+    res.status(404).json({ message: "Instance provider not found" });
+    return;
   }
 
   const target = await getProxyTargetUrl({
