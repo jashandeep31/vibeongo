@@ -1,6 +1,6 @@
 import type { QuestionAnswer, QuestionRequest } from "@repo/api-client";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Dimensions,
@@ -20,7 +20,7 @@ import { ThemedText } from "@/components/themed-text";
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { useTheme } from "@/hooks/use-theme";
 
-export function OpencodeQuestionPrompt({
+function OpencodeQuestionPromptComponent({
   request,
   isSubmitting,
   isDismissing,
@@ -178,13 +178,13 @@ export function OpencodeQuestionPrompt({
           ]}
         >
           <View style={styles.handle} />
-          <QuestionContent />
+          {renderQuestionContent()}
         </BottomDrawerPanel>
       </KeyboardAvoidingView>
     </Modal>
   );
 
-  function QuestionContent() {
+  function renderQuestionContent() {
     if (!question) return null;
     return (
       <>
@@ -411,6 +411,8 @@ export function OpencodeQuestionPrompt({
     );
   }
 }
+
+export const OpencodeQuestionPrompt = memo(OpencodeQuestionPromptComponent);
 
 const styles = StyleSheet.create({
   actionButton: {

@@ -48,11 +48,16 @@ export function ConfirmationDrawer({
     setSecondsRemaining(confirmDelaySeconds);
     if (confirmDelaySeconds === 0) return;
 
+    const deadline = Date.now() + confirmDelaySeconds * 1000;
     const interval = setInterval(() => {
-      setSecondsRemaining((current) => Math.max(0, current - 1));
+      const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+      setSecondsRemaining(remaining);
+      if (remaining === 0) clearInterval(interval);
     }, 1000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+    };
   }, [confirmDelaySeconds, visible]);
 
   const isConfirmDisabled = secondsRemaining > 0 || isConfirming;

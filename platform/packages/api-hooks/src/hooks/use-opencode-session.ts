@@ -17,7 +17,12 @@ import {
   type UploadAttachment,
 } from "@repo/api-client";
 import { useSessionChatsStore } from "@repo/app-store";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  type UseQueryOptions,
+} from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
 
 export const useOpencodeSession = ({
@@ -27,6 +32,9 @@ export const useOpencodeSession = ({
   accessToken,
   password,
   messageLimit,
+  select,
+  refetchOnMount,
+  notifyOnChangeProps,
 }: {
   chatId: string;
   sessionId: string;
@@ -34,6 +42,9 @@ export const useOpencodeSession = ({
   accessToken: string;
   password?: string;
   messageLimit?: number;
+  select?: (data: OpencodeSessionData) => OpencodeSessionData;
+  refetchOnMount?: boolean;
+  notifyOnChangeProps?: UseQueryOptions<OpencodeSessionData>["notifyOnChangeProps"];
 }) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -61,6 +72,9 @@ export const useOpencodeSession = ({
     },
     enabled: !!serverUrl && !!accessToken && !!password,
     staleTime: hasOptimisticSession ? Infinity : 0,
+    ...(select ? { select } : {}),
+    ...(refetchOnMount === undefined ? {} : { refetchOnMount }),
+    ...(notifyOnChangeProps === undefined ? {} : { notifyOnChangeProps }),
   });
   const resync = useCallback(() => {
     return queryClient.invalidateQueries({ queryKey, exact: true });

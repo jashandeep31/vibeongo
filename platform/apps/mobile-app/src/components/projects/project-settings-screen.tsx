@@ -98,7 +98,6 @@ export function ProjectSettingsScreen() {
       "Project",
   );
   const runtime = useProjectRuntime(projectSessionId);
-  const now = useCurrentTime(Boolean(runtime.instance));
   const runtimeInstanceId = runtime.instance?.id ?? "";
   const updateInstanceTime = useUpdateInstanceTime(projectSessionId);
   const [extendTimeOpen, setExtendTimeOpen] = useState(false);
@@ -140,10 +139,6 @@ export function ProjectSettingsScreen() {
     : "";
   const cpuPercent = normalizePercent(runtimeSocket.stats?.cpu_percent);
   const memoryPercent = normalizePercent(runtimeSocket.stats?.used_percent);
-  const remainingTime = formatInstanceTimeRemaining(
-    getInstanceRemainingMs(runtime.instance?.terminates_at, now),
-  );
-  const uptime = formatUptime(runtime.instance?.started_at, now);
   const statusColor =
     runtimeSocket.status === "connected"
       ? "#10b981"
@@ -301,9 +296,9 @@ export function ProjectSettingsScreen() {
                     >
                       Terminates in
                     </ThemedText>
-                    <ThemedText style={styles.countdownValue}>
-                      {remainingTime}
-                    </ThemedText>
+                    <LiveRemainingTime
+                      terminatesAt={runtime.instance.terminates_at}
+                    />
                   </View>
 
                   <View style={styles.timeMetrics}>
@@ -317,7 +312,7 @@ export function ProjectSettingsScreen() {
                         { backgroundColor: theme.backgroundSelected },
                       ]}
                     />
-                    <TimeMetric label="Uptime" value={uptime} />
+                    <LiveUptime startedAt={runtime.instance.started_at} />
                   </View>
 
                   <Pressable
@@ -617,6 +612,28 @@ function TimeMetric({ label, value }: { label: string; value: string }) {
       </ThemedText>
     </View>
   );
+}
+
+function LiveRemainingTime({
+  terminatesAt,
+}: {
+  terminatesAt: Date | string | null | undefined;
+}) {
+  const now = useCurrentTime(Boolean(terminatesAt));
+  return (
+    <ThemedText style={styles.countdownValue}>
+      {formatInstanceTimeRemaining(getInstanceRemainingMs(terminatesAt, now))}
+    </ThemedText>
+  );
+}
+
+function LiveUptime({
+  startedAt,
+}: {
+  startedAt: Date | string | null | undefined;
+}) {
+  const now = useCurrentTime(Boolean(startedAt));
+  return <TimeMetric label="Uptime" value={formatUptime(startedAt, now)} />;
 }
 
 function RuntimeStat({

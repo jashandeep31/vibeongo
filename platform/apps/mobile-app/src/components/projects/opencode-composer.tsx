@@ -8,7 +8,7 @@ import { BlurTargetView, BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
 import { SymbolView } from "expo-symbols";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -69,6 +69,65 @@ type OpencodeComposerProps = {
   showRawResponse?: boolean;
   value: string;
 };
+
+export type ComposerDraft = {
+  attachments: ComposerImageAttachment[];
+  fileReferences: OpencodeFileReference[];
+  text: string;
+};
+
+type OpencodeComposerControllerProps = Omit<
+  OpencodeComposerProps,
+  | "attachments"
+  | "fileReferences"
+  | "onChangeAttachments"
+  | "onChangeFileReferences"
+  | "onChangeText"
+  | "onSubmit"
+  | "value"
+> & {
+  onSubmit: (draft: ComposerDraft, restore: () => void) => void;
+};
+
+function OpencodeComposerControllerComponent({
+  onSubmit,
+  ...props
+}: OpencodeComposerControllerProps) {
+  const [text, setText] = useState("");
+  const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
+    [],
+  );
+
+  const submit = () => {
+    const draft = { attachments, fileReferences, text: text.trim() };
+    setText("");
+    setAttachments([]);
+    setFileReferences([]);
+    onSubmit(draft, () => {
+      setText(draft.text);
+      setAttachments(draft.attachments);
+      setFileReferences(draft.fileReferences);
+    });
+  };
+
+  return (
+    <OpencodeComposer
+      {...props}
+      attachments={attachments}
+      fileReferences={fileReferences}
+      onChangeAttachments={setAttachments}
+      onChangeFileReferences={setFileReferences}
+      onChangeText={setText}
+      onSubmit={submit}
+      value={text}
+    />
+  );
+}
+
+export const OpencodeComposerController = memo(
+  OpencodeComposerControllerComponent,
+);
 
 export function OpencodeComposer({
   accessibilityLabel,
@@ -438,7 +497,7 @@ export function OpencodeComposer({
   );
 }
 
-function PromptSelectors({
+const PromptSelectors = memo(function PromptSelectors({
   disabled,
   inventory,
   onChange,
@@ -625,7 +684,7 @@ function PromptSelectors({
       />
     </>
   );
-}
+});
 
 function SelectorPill({
   disabled,

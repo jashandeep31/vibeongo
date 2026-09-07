@@ -1,6 +1,5 @@
 import {
   findOpencodeFiles,
-  type OpencodeFileReference,
   type OpencodePromptSelection,
 } from "@repo/api-client";
 import { useOpencodeInventory, useStartOpencodeSession } from "@repo/api-hooks";
@@ -17,8 +16,8 @@ import {
 } from "react-native";
 
 import {
-  OpencodeComposer,
-  type ComposerImageAttachment,
+  type ComposerDraft,
+  OpencodeComposerController,
 } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
@@ -28,14 +27,12 @@ import { ThemedText } from "@/components/themed-text";
 import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
 import { PAGE_CHROME } from "@/constants/page-chrome";
 import { Fonts } from "@/constants/theme";
-import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import {
-  formatInstanceTimeRemaining,
-  getInstanceRemainingMs,
-  isInstanceExpiringSoon,
-} from "@/lib/instance-expiry";
+  InstanceExpiryCountdown,
+  useInstanceExpiryWarning,
+} from "@/components/projects/instance-expiry-countdown";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -82,12 +79,9 @@ export function NewProjectChatScreen() {
         ?.session.name ?? "Session",
   );
   const runtime = useProjectRuntime(projectSessionId);
-  const now = useCurrentTime(Boolean(runtime.instance?.terminates_at));
-  const instanceRemainingMs = getInstanceRemainingMs(
+  const isInstanceExpiring = useInstanceExpiryWarning(
     runtime.instance?.terminates_at,
-    now,
   );
-  const isInstanceExpiring = isInstanceExpiringSoon(instanceRemainingMs);
   const inventoryQuery = useOpencodeInventory(
     projectSessionId,
     runtime.serverUrl,
@@ -95,11 +89,6 @@ export function NewProjectChatScreen() {
     runtime.password,
   );
   const startSession = useStartOpencodeSession();
-  const [prompt, setPrompt] = useState("");
-  const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
-  const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
-    [],
-  );
   const [selection, setSelection] = useState<OpencodePromptSelection>(() => ({
     agent: inheritedAgent || undefined,
     model: inheritedModel || undefined,
@@ -168,8 +157,8 @@ export function NewProjectChatScreen() {
     router.replace("/");
   };
 
-  const submit = () => {
-    const text = prompt.trim();
+  const submit = (draft: ComposerDraft, restore: () => void) => {
+    const { attachments, fileReferences, text } = draft;
     if (
       (!text && attachments.length === 0) ||
       startSession.isPending ||
@@ -177,21 +166,24 @@ export function NewProjectChatScreen() {
     )
       return;
 
-    startSession.mutate({
-      chatId: projectSessionId,
-      serverUrl: runtime.serverUrl,
-      accessToken: runtime.accessToken,
-      password: runtime.password,
-      directory,
-      text,
-      files: [],
-      attachments,
-      fileReferences,
-      selection,
-      onSessionCreated: (opencodeSessionId) => {
-        router.setParams({ chatId: opencodeSessionId });
+    startSession.mutate(
+      {
+        chatId: projectSessionId,
+        serverUrl: runtime.serverUrl,
+        accessToken: runtime.accessToken,
+        password: runtime.password,
+        directory,
+        text,
+        files: [],
+        attachments,
+        fileReferences,
+        selection,
+        onSessionCreated: (opencodeSessionId) => {
+          router.setParams({ chatId: opencodeSessionId });
+        },
       },
-    });
+      { onError: restore },
+    );
   };
 
   if (runtime.isPending) {
@@ -261,9 +253,10 @@ export function NewProjectChatScreen() {
               }
               titleTrailing={
                 isInstanceExpiring ? (
-                  <ThemedText style={styles.headerCountdown}>
-                    {formatInstanceTimeRemaining(instanceRemainingMs)}
-                  </ThemedText>
+                  <InstanceExpiryCountdown
+                    style={styles.headerCountdown}
+                    terminatesAt={runtime.instance?.terminates_at}
+                  />
                 ) : (
                   <ThemedText
                     numberOfLines={1}
@@ -300,23 +293,17 @@ export function NewProjectChatScreen() {
                   {directory}
                 </ThemedText>
               </View>
-              <OpencodeComposer
+              <OpencodeComposerController
                 accessibilityLabel="First prompt"
-                attachments={attachments}
                 autoFocus
                 inventory={inventoryQuery.data}
                 isSubmitting={startSession.isPending}
-                fileReferences={fileReferences}
                 onChangeSelection={setSelection}
-                onChangeAttachments={setAttachments}
-                onChangeFileReferences={setFileReferences}
-                onChangeText={setPrompt}
                 onOpenTerminal={openTerminal}
                 onSubmit={submit}
                 placeholder="Describe the task…"
                 selection={selection}
                 searchFiles={searchFiles}
-                value={prompt}
               />
               {startSession.error ? (
                 <ThemedText style={styles.error}>

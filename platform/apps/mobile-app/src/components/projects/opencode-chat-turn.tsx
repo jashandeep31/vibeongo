@@ -1,30 +1,32 @@
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
-import { memo, useState } from "react";
+import { createContext, memo, useContext, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import {
   isEditTool,
+  type ChatContent,
   type ChatTurn,
+  type SnapshotFileDiff,
 } from "@/components/projects/opencode-chat-turns";
 import { OpencodeFileDiff } from "@/components/projects/opencode-file-diff";
 import { OpencodeToolCall } from "@/components/projects/opencode-tool-call";
 import { useTheme } from "@/hooks/use-theme";
 
+export const ChatRevertDisabledContext = createContext(false);
+
 function OpencodeChatTurnComponent({
   item,
   isStreaming,
   isReverting,
-  revertDisabled,
   onRevert,
 }: {
   item: ChatTurn;
   isStreaming: boolean;
   isReverting: boolean;
-  revertDisabled: boolean;
   onRevert: (id: string) => void;
 }) {
   const theme = useTheme();
@@ -83,12 +85,10 @@ function OpencodeChatTurnComponent({
                 onPress={() => void copy("question", item.question)}
               />
             ) : null}
-            <IconButton
-              disabled={revertDisabled || isReverting}
-              label="Revert from this question"
-              loading={isReverting}
-              name="arrow.uturn.backward"
-              onPress={() => onRevert(item.id)}
+            <RevertButton
+              id={item.id}
+              isReverting={isReverting}
+              onRevert={onRevert}
             />
           </View>
         </View>
@@ -96,60 +96,16 @@ function OpencodeChatTurnComponent({
 
       <View style={styles.response}>
         {item.content.map((content) => {
-          if (content.type === "text") {
-            return <NativeMarkdown content={content.text} key={content.id} />;
-          }
-          if (content.type === "tools") {
-            return (
-              <OpencodeToolCall
-                key={content.id}
-                summaryDiffs={
-                  content.id === firstEditGroupId
-                    ? item.summaryDiffs
-                    : undefined
-                }
-                tools={content.tools}
-              />
-            );
-          }
-          if (content.type === "error") {
-            return (
-              <View
-                key={content.id}
-                style={[
-                  styles.errorCard,
-                  {
-                    borderColor: "#ef4444",
-                    backgroundColor: "rgba(239,68,68,0.08)",
-                  },
-                ]}
-              >
-                <SymbolView
-                  name={{
-                    ios: "exclamationmark.circle",
-                    android: "error_outline",
-                  }}
-                  size={18}
-                  tintColor="#ef4444"
-                />
-                <View style={styles.errorBody}>
-                  <ThemedText style={styles.errorTitle}>
-                    {content.title}
-                    {content.statusCode ? ` (${content.statusCode})` : ""}
-                  </ThemedText>
-                  <ThemedText style={styles.errorMessage}>
-                    {content.message}
-                  </ThemedText>
-                </View>
-              </View>
-            );
-          }
-          return isStreaming && content.active ? (
-            <View key={content.id} style={styles.thinking}>
-              <ActivityIndicator size="small" />
-              <ThemedText themeColor="textSecondary">Thinking…</ThemedText>
-            </View>
-          ) : null;
+          return (
+            <ChatContentBlock
+              content={content}
+              isStreaming={isStreaming}
+              key={content.id}
+              summaryDiffs={
+                content.id === firstEditGroupId ? item.summaryDiffs : undefined
+              }
+            />
+          );
         })}
 
         {!firstEditGroupId
@@ -208,10 +164,90 @@ export const OpencodeChatTurn = memo(
   (previous, next) =>
     previous.isStreaming === next.isStreaming &&
     previous.isReverting === next.isReverting &&
-    previous.revertDisabled === next.revertDisabled &&
     previous.onRevert === next.onRevert &&
     previous.item === next.item,
 );
+
+const ChatContentBlock = memo(
+  function ChatContentBlock({
+    content,
+    isStreaming,
+    summaryDiffs,
+  }: {
+    content: ChatContent;
+    isStreaming: boolean;
+    summaryDiffs?: SnapshotFileDiff[];
+  }) {
+    if (content.type === "text") {
+      return <NativeMarkdown content={content.text} />;
+    }
+    if (content.type === "tools") {
+      return (
+        <OpencodeToolCall summaryDiffs={summaryDiffs} tools={content.tools} />
+      );
+    }
+    if (content.type === "error") {
+      return (
+        <View
+          style={[
+            styles.errorCard,
+            {
+              borderColor: "#ef4444",
+              backgroundColor: "rgba(239,68,68,0.08)",
+            },
+          ]}
+        >
+          <SymbolView
+            name={{ ios: "exclamationmark.circle", android: "error_outline" }}
+            size={18}
+            tintColor="#ef4444"
+          />
+          <View style={styles.errorBody}>
+            <ThemedText style={styles.errorTitle}>
+              {content.title}
+              {content.statusCode ? ` (${content.statusCode})` : ""}
+            </ThemedText>
+            <ThemedText style={styles.errorMessage}>
+              {content.message}
+            </ThemedText>
+          </View>
+        </View>
+      );
+    }
+    return isStreaming && content.active ? (
+      <View style={styles.thinking}>
+        <ActivityIndicator size="small" />
+        <ThemedText themeColor="textSecondary">Thinking…</ThemedText>
+      </View>
+    ) : null;
+  },
+  (previous, next) =>
+    previous.content === next.content &&
+    previous.summaryDiffs === next.summaryDiffs &&
+    (next.content.type !== "thinking" ||
+      previous.isStreaming === next.isStreaming),
+);
+
+function RevertButton({
+  id,
+  isReverting,
+  onRevert,
+}: {
+  id: string;
+  isReverting: boolean;
+  onRevert: (id: string) => void;
+}) {
+  const globallyDisabled = useContext(ChatRevertDisabledContext);
+  return (
+    <IconButton
+      disabled={globallyDisabled || isReverting}
+      label="Revert from this question"
+      loading={isReverting}
+      name="arrow.uturn.backward"
+      onPress={() => onRevert(id)}
+    />
+  );
+}
 
 function IconButton({
   disabled,

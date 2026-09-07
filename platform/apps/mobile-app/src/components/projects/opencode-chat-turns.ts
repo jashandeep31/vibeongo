@@ -218,6 +218,7 @@ export function createChatTurns(
 export function createChatTurnSelector() {
   let cache = new Map<string, { messages: SessionMessage[]; turn: ChatTurn }>();
   let previousModels: OpencodeModelOption[] | undefined;
+  let previousTurns: ChatTurn[] = [];
   return (messages: SessionMessage[], models?: OpencodeModelOption[]) => {
     if (models !== previousModels) cache.clear();
     previousModels = models;
@@ -242,11 +243,39 @@ export function createChatTurnSelector() {
         sources.every((source, index) => source === old.messages[index])
           ? old.turn
           : createChatTurns(sources, models)[0]!;
+      if (
+        old &&
+        turn !== old.turn &&
+        sources.length === old.messages.length &&
+        sources.every(
+          (source, index) =>
+            source.parts === old.messages[index]?.parts &&
+            (source.info.role !== "assistant" ||
+              old.messages[index]?.info.role !== "assistant" ||
+              source.info.error === old.messages[index]?.info.error),
+        )
+      ) {
+        // Completion updates assistant metadata (model, provider, duration)
+        // without changing its rendered parts. Preserve the expensive content
+        // tree so only the footer needs to update.
+        turn.content = old.turn.content;
+        turn.files = old.turn.files;
+        turn.images = old.turn.images;
+        turn.question = old.turn.question;
+        turn.summaryDiffs = old.turn.summaryDiffs;
+      }
       next.set(id, { messages: sources, turn });
       turns.push(turn);
     }
     cache = next;
-    return turns;
+    if (
+      turns.length === previousTurns.length &&
+      turns.every((turn, index) => turn === previousTurns[index])
+    ) {
+      return previousTurns;
+    }
+    previousTurns = turns;
+    return previousTurns;
   };
 }
 

@@ -23,6 +23,7 @@ function RootNavigator() {
         <Stack
           screenOptions={{
             contentStyle: { backgroundColor: theme.background },
+            freezeOnBlur: true,
             headerShown: false,
           }}
         />

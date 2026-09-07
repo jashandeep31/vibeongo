@@ -6,6 +6,7 @@ import type {
   SessionStatus as OpencodeSessionStatus,
 } from "@opencode-ai/sdk/v2/client";
 import { create } from "zustand";
+import { shallow } from "zustand/shallow";
 
 interface ProjectsStore {
   projects: (typeof projects.$inferSelect)[];
@@ -198,6 +199,11 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
       const existingChatIndex = sessionChats.findIndex(
         (existingChat) => existingChat.id === chat.id,
       );
+      if (
+        existingChatIndex >= 0 &&
+        shallow(sessionChats[existingChatIndex], chat)
+      )
+        return state;
       const nextSessionChats = [...sessionChats];
 
       if (existingChatIndex === -1) {
@@ -279,35 +285,47 @@ export const useSessionChatsStore = create<SessionChatsStore>((set, get) => ({
       };
     }),
   setChatStatus: (projectSessionId, chatId, status) =>
-    set((state) => ({
-      statusesBySessionId: {
-        ...state.statusesBySessionId,
-        [projectSessionId]: {
-          ...state.statusesBySessionId[projectSessionId],
-          [chatId]: status,
+    set((state) => {
+      const previous = state.statusesBySessionId[projectSessionId]?.[chatId];
+      if (shallow(previous, status)) return state;
+      return {
+        statusesBySessionId: {
+          ...state.statusesBySessionId,
+          [projectSessionId]: {
+            ...state.statusesBySessionId[projectSessionId],
+            [chatId]: status,
+          },
         },
-      },
-    })),
+      };
+    }),
   setChatUnread: (projectSessionId, chatId, unread) =>
-    set((state) => ({
-      unreadBySessionId: {
-        ...state.unreadBySessionId,
-        [projectSessionId]: {
-          ...state.unreadBySessionId[projectSessionId],
-          [chatId]: unread,
+    set((state) => {
+      const previous = state.unreadBySessionId[projectSessionId]?.[chatId];
+      if (previous === unread) return state;
+      return {
+        unreadBySessionId: {
+          ...state.unreadBySessionId,
+          [projectSessionId]: {
+            ...state.unreadBySessionId[projectSessionId],
+            [chatId]: unread,
+          },
         },
-      },
-    })),
+      };
+    }),
   setChatAttention: (projectSessionId, chatId, attention) =>
-    set((state) => ({
-      attentionBySessionId: {
-        ...state.attentionBySessionId,
-        [projectSessionId]: {
-          ...state.attentionBySessionId[projectSessionId],
-          [chatId]: attention,
+    set((state) => {
+      const previous = state.attentionBySessionId[projectSessionId]?.[chatId];
+      if (previous === attention) return state;
+      return {
+        attentionBySessionId: {
+          ...state.attentionBySessionId,
+          [projectSessionId]: {
+            ...state.attentionBySessionId[projectSessionId],
+            [chatId]: attention,
+          },
         },
-      },
-    })),
+      };
+    }),
   deleteSessionChat: (projectSessionId, chatId) =>
     set((state) => {
       const projectSessionMessages = {

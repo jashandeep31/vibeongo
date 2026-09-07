@@ -15,9 +15,10 @@ import {
 } from "@repo/app-store";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  AppState,
   Alert,
   type GestureResponderEvent,
   Pressable,
@@ -38,9 +39,9 @@ import {
   type SessionRuntime,
 } from "@/components/projects/session-runtime-drawer";
 import { Fonts } from "@/constants/theme";
-import { useCurrentTime } from "@/hooks/use-current-time";
 import { useTheme } from "@/hooks/use-theme";
 import {
+  INSTANCE_EXPIRY_WARNING_MS,
   formatInstanceTimeRemaining,
   getInstanceRemainingMs,
   isInstanceExpiringSoon,
@@ -140,10 +141,6 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     { state: "running", limit: 100 },
     Boolean(projectsQuery.data),
   );
-  const hasRunningInstances = sessions.some(
-    (entry) => entry.state === "running" && entry.instance,
-  );
-  const now = useCurrentTime(hasRunningInstances);
 
   const openNewChat = useCallback(
     (directory: string) => {
@@ -441,12 +438,6 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                     const isStartingNewChat =
                       newChatTarget?.sessionId === session.id &&
                       repositoriesQuery.isFetching;
-                    const remainingMs = getInstanceRemainingMs(
-                      runningInstance?.terminates_at,
-                      now,
-                    );
-                    const isExpiringSoon =
-                      isRunning && isInstanceExpiringSoon(remainingMs);
 
                     return (
                       <View key={session.id}>
@@ -624,26 +615,11 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                           </View>
                         </View>
 
-                        {isExpiringSoon ? (
-                          <View
-                            accessibilityLabel={`${session.name} ends in ${formatInstanceTimeRemaining(remainingMs)}`}
-                            style={styles.expiryWarning}
-                          >
-                            <SymbolView
-                              name={{
-                                ios: "exclamationmark.triangle.fill",
-                                android: "warning",
-                              }}
-                              size={14}
-                              tintColor="#f59e0b"
-                            />
-                            <ThemedText style={styles.expiryWarningLabel}>
-                              Session ends soon
-                            </ThemedText>
-                            <ThemedText style={styles.expiryCountdown}>
-                              {formatInstanceTimeRemaining(remainingMs)}
-                            </ThemedText>
-                          </View>
+                        {isRunning && runningInstance?.terminates_at ? (
+                          <SessionExpiryWarning
+                            sessionName={session.name}
+                            terminatesAt={runningInstance.terminates_at}
+                          />
                         ) : null}
 
                         {isRunning ? (
@@ -850,6 +826,61 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     </>
   );
 }
+
+// Keep the ticking clock out of the project list and its controls/chat rows.
+const SessionExpiryWarning = memo(function SessionExpiryWarning({
+  sessionName,
+  terminatesAt,
+}: {
+  sessionName: string;
+  terminatesAt: Parameters<typeof getInstanceRemainingMs>[0];
+}) {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const update = () => {
+      clearTimeout(timer);
+      const current = Date.now();
+      setNow(current);
+      const remaining = getInstanceRemainingMs(terminatesAt, current);
+      if (remaining === null || remaining <= 0) return;
+      // Wake when the warning becomes visible; only then tick each second.
+      const delay = remaining > INSTANCE_EXPIRY_WARNING_MS
+        ? remaining - INSTANCE_EXPIRY_WARNING_MS
+        : Math.min(1000, remaining);
+      timer = setTimeout(update, Math.min(delay, 2_147_483_647));
+    };
+    update();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") update();
+      else clearTimeout(timer);
+    });
+    return () => {
+      clearTimeout(timer);
+      subscription.remove();
+    };
+  }, [terminatesAt]);
+  const remainingMs = getInstanceRemainingMs(terminatesAt, now);
+  if (!isInstanceExpiringSoon(remainingMs)) return null;
+
+  const remaining = formatInstanceTimeRemaining(remainingMs);
+  return (
+    <View
+      accessibilityLabel={`${sessionName} ends in ${remaining}`}
+      style={styles.expiryWarning}
+    >
+      <SymbolView
+        name={{ ios: "exclamationmark.triangle.fill", android: "warning" }}
+        size={14}
+        tintColor="#f59e0b"
+      />
+      <ThemedText style={styles.expiryWarningLabel}>
+        Session ends soon
+      </ThemedText>
+      <ThemedText style={styles.expiryCountdown}>{remaining}</ThemedText>
+    </View>
+  );
+});
 
 const styles = StyleSheet.create({
   automatedBadge: {
