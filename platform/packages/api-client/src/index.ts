@@ -29,6 +29,7 @@ export type {
   GithubRepoWithPullRequests,
 } from "./services/github-repo-services.js";
 export type {
+  CreateProjectFromTemplateInput,
   DemoProject,
   ImportDemoProjectInput,
   Project,
@@ -36,6 +37,7 @@ export type {
   ProjectDomains,
   ProjectFile,
   ProjectGithubRepo,
+  ProjectTemplate,
   ProjectWithSessions,
 } from "./services/project-services.js";
 export type { UserConfigValue } from "./services/user-services.js";

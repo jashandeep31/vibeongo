@@ -35,6 +35,21 @@ export type ImportDemoProjectInput = Pick<
   "ownername" | "reponame"
 >;
 
+export type ProjectTemplate = {
+  id: string;
+  name: string;
+  description?: string;
+  config: z.infer<typeof projectConfigValidator>["config"];
+};
+
+export type CreateProjectFromTemplateInput = {
+  templateId: ProjectTemplate["id"];
+  projectName: string;
+  regionId: string;
+  instanceTypeId: string;
+  sandboxTypeId: string;
+};
+
 export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
   proxy_domains: (typeof proxyDomains.$inferSelect)[];
   allowed_ips: (typeof routingAllowedIps.$inferSelect)[];
@@ -119,6 +134,15 @@ export const getDemoProjects =
     return response.data.data;
   };
 
+export const getProjectTemplates =
+  (apiClient: AxiosInstance) => async (): Promise<ProjectTemplate[]> => {
+    const response = await apiClient.get(`/api/v1/projects/templates`, {
+      withCredentials: true,
+    });
+
+    return response.data.data;
+  };
+
 export const importDemoProjects =
   (apiClient: AxiosInstance) =>
   async (demo?: ImportDemoProjectInput): Promise<{ message: string }> => {
@@ -137,6 +161,20 @@ export const createProject =
     const response = await apiClient.post(`/api/v1/projects`, projectData, {
       withCredentials: true,
     });
+
+    return response.data;
+  };
+
+export const createProjectFromTemplate =
+  (apiClient: AxiosInstance) =>
+  async (
+    input: CreateProjectFromTemplateInput,
+  ): Promise<CreateProjectResponse> => {
+    const response = await apiClient.post(
+      `/api/v1/projects/from-template`,
+      input,
+      { withCredentials: true },
+    );
 
     return response.data;
   };

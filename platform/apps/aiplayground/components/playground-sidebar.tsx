@@ -37,6 +37,7 @@ import {
   House,
   Import,
   Loader2,
+  LayoutTemplate,
   Settings,
   SquarePen,
   Trash2,
@@ -68,6 +69,11 @@ const navigation = [
     title: "Demo Projects",
     url: "/import-projects",
     icon: Import,
+  },
+  {
+    title: "Templates",
+    url: "/templates",
+    icon: LayoutTemplate,
   },
   {
     title: "Wallet",

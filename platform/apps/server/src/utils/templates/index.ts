@@ -1,4 +1,8 @@
-import type { projectConfigValidator, z } from "@repo/shared";
+import type {
+  dockerConfigValidator,
+  projectConfigValidator,
+  z,
+} from "@repo/shared";
 
 type TemplateProjectConfig = Omit<
   z.input<typeof projectConfigValidator>,
@@ -14,6 +18,7 @@ export interface ProjectTemplate {
   ownername: string;
   reponame: string;
   project: TemplateProjectConfig;
+  dockerContainers?: z.input<typeof dockerConfigValidator>["containers"];
   envFiles: { path: string; content: string }[];
 }
 
@@ -25,8 +30,8 @@ export const projectTemplates: Record<
     ownername: "jashandeep31",
     reponame: "next-js-project",
     project: {
-      name: "todo-nextjs",
-      description: "A preconfigured Next.js todo application.",
+      name: "basic-nextjs-project",
+      description: "A bare-minimum Next.js app with PostgreSQL ready to use.",
       initialScript: "",
       finalScript: `cd /home/ubuntu/code/${repoName}
 npm install`,
@@ -36,6 +41,32 @@ npm run dev`,
         ports: [{ port: 3000, protocol: "TCP" }],
       },
     },
-    envFiles: [],
+    dockerContainers: [
+      {
+        name: "postgres",
+        dockercomposecode: `services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: app
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  postgres_data:`,
+      },
+    ],
+    envFiles: [
+      {
+        path: `/${repoName}/.env`,
+        content:
+          "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app\n",
+      },
+    ],
   }),
 };

@@ -10,7 +10,10 @@ import {
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
 import { ensureForgejoUserAccount } from "../../services/forgejo/user-actions.js";
-import { projectTemplates } from "../../utils/templates/index.js";
+import {
+  projectTemplates,
+  type ProjectTemplate,
+} from "../../utils/templates/index.js";
 import {
   adjectives,
   colors,
@@ -25,7 +28,7 @@ export const getProjectTemplates = (_req: Request, res: Response) => {
         id,
         name: template.project.name,
         description: template.project.description,
-        config: template.project.config,
+        config: resolveTemplateProjectConfig(template),
       };
     },
   );
@@ -100,6 +103,7 @@ export const createProjectFromTemplate = catchAsync(
       {
         ...template.project,
         name: projectName,
+        config: resolveTemplateProjectConfig(template),
         provider: "aws",
         regionId,
         instanceTypeId,
@@ -142,6 +146,28 @@ export const createProjectFromTemplate = catchAsync(
     });
   },
 );
+
+const resolveTemplateProjectConfig = (template: ProjectTemplate) => {
+  const config = projectConfigValidator.shape.config.parse(
+    template.project.config,
+  );
+  if (!template.dockerContainers) return config;
+
+  return {
+    ...config,
+    packages: config.packages.map((projectPackage) =>
+      projectPackage.name === "docker"
+        ? {
+            ...projectPackage,
+            config: {
+              ...projectPackage.config,
+              containers: template.dockerContainers ?? [],
+            },
+          }
+        : projectPackage,
+    ),
+  };
+};
 
 const slugifyRepoName = (projectName: string) => {
   const repoName = projectName

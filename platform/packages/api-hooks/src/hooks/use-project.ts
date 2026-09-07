@@ -26,6 +26,21 @@ export const useCreateProject = () => {
   });
 };
 
+export const useCreateProjectFromTemplate = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: client.projects.createProjectFromTemplate,
+    onSuccess: ({ data: project }) => {
+      useProjectsStore.getState().addProject(project);
+      void queryClient.invalidateQueries({ queryKey: ["github-repos"] });
+      return queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+  });
+};
+
 export const useUpdateProject = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();
@@ -80,6 +95,15 @@ export const useGetDemoProjects = (enabled = true) => {
   return useQuery({
     queryKey: ["projects", "demos"],
     queryFn: client.projects.getDemoProjects,
+    enabled,
+  });
+};
+
+export const useGetProjectTemplates = (enabled = true) => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["projects", "templates"],
+    queryFn: client.projects.getProjectTemplates,
     enabled,
   });
 };

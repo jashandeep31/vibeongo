@@ -24,17 +24,14 @@ export default function ClientView() {
   return (
     <div className="mx-auto w-full max-w-7xl px-5 py-10 md:px-10 md:py-14">
       <header>
-        <h1 className="text-3xl font-semibold tracking-tight md:text-4xl">
+        <h1 className="text-3xl font-semibold tracking-tight">
           Import a demo project
         </h1>
-        <p className="text-muted-foreground mt-3 text-sm">
-          Choose a project to use as your starting point.
-        </p>
       </header>
 
       <section
         aria-label="Demo projects"
-        className="mt-8 divide-y divide-border"
+        className="divide-border mt-8 divide-y"
       >
         {isPending ? (
           <div className="text-muted-foreground flex items-center gap-2 py-8 text-sm">
