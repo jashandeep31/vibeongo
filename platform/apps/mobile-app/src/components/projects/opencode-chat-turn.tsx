@@ -1,7 +1,7 @@
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
-import { useState } from "react";
+import { memo, useState } from "react";
 import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 
 import { NativeMarkdown } from "@/components/native-markdown";
@@ -14,7 +14,7 @@ import { OpencodeFileDiff } from "@/components/projects/opencode-file-diff";
 import { OpencodeToolCall } from "@/components/projects/opencode-tool-call";
 import { useTheme } from "@/hooks/use-theme";
 
-export function OpencodeChatTurn({
+function OpencodeChatTurnComponent({
   item,
   isStreaming,
   isReverting,
@@ -25,7 +25,7 @@ export function OpencodeChatTurn({
   isStreaming: boolean;
   isReverting: boolean;
   revertDisabled: boolean;
-  onRevert: () => void;
+  onRevert: (id: string) => void;
 }) {
   const theme = useTheme();
   const [copied, setCopied] = useState<"question" | "answer" | null>(null);
@@ -88,7 +88,7 @@ export function OpencodeChatTurn({
               label="Revert from this question"
               loading={isReverting}
               name="arrow.uturn.backward"
-              onPress={onRevert}
+              onPress={() => onRevert(item.id)}
             />
           </View>
         </View>
@@ -200,6 +200,18 @@ export function OpencodeChatTurn({
     </View>
   );
 }
+
+// Streaming events replace the session object on every token. Keep completed
+// turns off the render path unless their actual display data changed.
+export const OpencodeChatTurn = memo(
+  OpencodeChatTurnComponent,
+  (previous, next) =>
+    previous.isStreaming === next.isStreaming &&
+    previous.isReverting === next.isReverting &&
+    previous.revertDisabled === next.revertDisabled &&
+    previous.onRevert === next.onRevert &&
+    previous.item === next.item,
+);
 
 function IconButton({
   disabled,

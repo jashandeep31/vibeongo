@@ -214,6 +214,42 @@ export function createChatTurns(
   return turns;
 }
 
+// Cache by immutable source messages, so a token only rebuilds its own turn.
+export function createChatTurnSelector() {
+  let cache = new Map<string, { messages: SessionMessage[]; turn: ChatTurn }>();
+  let previousModels: OpencodeModelOption[] | undefined;
+  return (messages: SessionMessage[], models?: OpencodeModelOption[]) => {
+    if (models !== previousModels) cache.clear();
+    previousModels = models;
+    const groups = new Map<string, SessionMessage[]>();
+    for (const message of messages) {
+      if (message.info.role === "user") groups.set(message.info.id, [message]);
+    }
+    for (const message of messages) {
+      if (message.info.role === "assistant")
+        groups.get(message.info.parentID)?.push(message);
+    }
+    const next = new Map<
+      string,
+      { messages: SessionMessage[]; turn: ChatTurn }
+    >();
+    const turns: ChatTurn[] = [];
+    for (const [id, sources] of groups) {
+      const old = cache.get(id);
+      const turn =
+        old &&
+        old.messages.length === sources.length &&
+        sources.every((source, index) => source === old.messages[index])
+          ? old.turn
+          : createChatTurns(sources, models)[0]!;
+      next.set(id, { messages: sources, turn });
+      turns.push(turn);
+    }
+    cache = next;
+    return turns;
+  };
+}
+
 export function isEditTool(tool: ToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }

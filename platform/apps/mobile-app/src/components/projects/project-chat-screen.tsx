@@ -23,6 +23,7 @@ import {
   Animated,
   Alert,
   Easing,
+  FlatList,
   Keyboard,
   PanResponder,
   Platform,
@@ -35,6 +36,7 @@ import {
 
 import {
   createChatTurns,
+  createChatTurnSelector,
   getRevertedMessageLabel,
   getSessionPromptSelection,
 } from "@/components/projects/opencode-chat-turns";
@@ -76,7 +78,8 @@ export function ProjectChatScreen() {
   const router = useRouter();
   const { width: windowWidth } = useWindowDimensions();
   const chatTransitionDistance = windowWidth;
-  const scrollRef = useRef<ScrollView>(null);
+  const scrollRef =
+    useRef<FlatList<ReturnType<typeof createChatTurns>[number]>>(null);
   const initiallyScrolledSessionIdRef = useRef("");
   const focusedChatIdsRef = useRef(new Set<string>());
   const chatTransitionX = useRef(new Animated.Value(0)).current;
@@ -118,6 +121,7 @@ export function ProjectChatScreen() {
     serverUrl: runtime.serverUrl,
     accessToken: runtime.accessToken,
     password: runtime.password,
+    messageLimit: 24,
   });
   const sendPrompt = useSendOpencodePrompt({
     chatId: projectSessionId,
@@ -161,6 +165,15 @@ export function ProjectChatScreen() {
     accessToken: runtime.accessToken,
     password: runtime.password,
   });
+  const revertTurn = useCallback(
+    (id: string) => {
+      revertSession.mutate(id, {
+        onError: (error) =>
+          Alert.alert("Could not revert messages", error.message),
+      });
+    },
+    [revertSession.mutate],
+  );
   const inventoryQuery = useOpencodeInventory(
     projectSessionId,
     runtime.serverUrl,
@@ -222,9 +235,13 @@ export function ProjectChatScreen() {
           revertedMessages: messages.slice(revertIndex),
         };
   }, [data?.messages, data?.session.revert?.messageID]);
+  const selectTurns = useMemo(
+    () => createChatTurnSelector(),
+    [opencodeSessionId],
+  );
   const turns = useMemo(
-    () => createChatTurns(visibleMessages, inventoryQuery.data?.models),
-    [inventoryQuery.data?.models, visibleMessages],
+    () => selectTurns(visibleMessages, inventoryQuery.data?.models),
+    [inventoryQuery.data?.models, visibleMessages, selectTurns],
   );
   const swipePreviewTurns = useMemo(
     () =>
@@ -487,11 +504,15 @@ export function ProjectChatScreen() {
     if (!sessionQuery.data) return;
     const store = useSessionChatsStore.getState();
     store.upsertSessionChat(projectSessionId, sessionQuery.data.session);
-    store.setChatMessages(
-      projectSessionId,
-      opencodeSessionId,
-      sessionQuery.data.messages,
-    );
+    if (
+      store.getChatMessages(projectSessionId, opencodeSessionId) !==
+      sessionQuery.data.messages
+    )
+      store.setChatMessages(
+        projectSessionId,
+        opencodeSessionId,
+        sessionQuery.data.messages,
+      );
     store.setChatStatus(
       projectSessionId,
       opencodeSessionId,
@@ -759,60 +780,130 @@ export function ProjectChatScreen() {
                     ]}
                     {...pageSwipeResponder.panHandlers}
                   >
-                    <ScrollView
-                      contentOffset={{ x: 0, y: 1_000_000 }}
-                      contentContainerStyle={[
-                        styles.messages,
-                        { paddingTop: topInset },
-                      ]}
-                      keyboardDismissMode="interactive"
-                      keyboardShouldPersistTaps="handled"
-                      key={opencodeSessionId}
-                      onContentSizeChange={() => {
-                        if (data.session.id !== opencodeSessionId) return;
-
-                        const isPendingHandoff =
-                          pendingChatHandoffIdRef.current === opencodeSessionId;
-                        if (
-                          !isPendingHandoff &&
-                          initiallyScrolledSessionIdRef.current ===
-                            opencodeSessionId
-                        ) {
-                          return;
+                    {showRawResponse ? (
+                      <ScrollView
+                        contentContainerStyle={[
+                          styles.messages,
+                          { paddingTop: topInset },
+                        ]}
+                        horizontal
+                        showsHorizontalScrollIndicator
+                      >
+                        <ThemedText selectable style={styles.rawResponse}>
+                          {JSON.stringify(data, null, 2)}
+                        </ThemedText>
+                      </ScrollView>
+                    ) : (
+                      <FlatList
+                        contentOffset={{ x: 0, y: 1_000_000 }}
+                        contentContainerStyle={[
+                          styles.messages,
+                          { paddingTop: topInset },
+                        ]}
+                        data={turns}
+                        initialNumToRender={6}
+                        keyboardDismissMode="interactive"
+                        keyboardShouldPersistTaps="handled"
+                        key={opencodeSessionId}
+                        keyExtractor={(turn) => turn.id}
+                        ListEmptyComponent={
+                          !activeQuestion && !sessionQuery.isStreaming ? (
+                            <ThemedText
+                              style={[
+                                styles.emptyText,
+                                { color: theme.textSecondary },
+                              ]}
+                            >
+                              Start the chat by describing what you want to
+                              build.
+                            </ThemedText>
+                          ) : sessionQuery.isStreaming ? (
+                            <View style={styles.thinking}>
+                              <ActivityIndicator size="small" />
+                              <ThemedText themeColor="textSecondary">
+                                Vibeongo is working…
+                              </ThemedText>
+                            </View>
+                          ) : null
                         }
+                        ListHeaderComponent={
+                          sessionQuery.hasOlderMessages ? (
+                            <Pressable
+                              accessibilityLabel="Load earlier messages"
+                              accessibilityRole="button"
+                              disabled={sessionQuery.isLoadingOlder}
+                              onPress={() =>
+                                void sessionQuery
+                                  .loadOlder()
+                                  .catch((error: unknown) =>
+                                    Alert.alert(
+                                      "Could not load earlier messages",
+                                      error instanceof Error
+                                        ? error.message
+                                        : "Please try again.",
+                                    ),
+                                  )
+                              }
+                              style={({ pressed }) => [
+                                styles.loadEarlierButton,
+                                {
+                                  backgroundColor: theme.backgroundElement,
+                                  borderColor: theme.backgroundSelected,
+                                },
+                                pressed && styles.pressed,
+                              ]}
+                            >
+                              {sessionQuery.isLoadingOlder ? (
+                                <ActivityIndicator size="small" />
+                              ) : (
+                                <ThemedText style={styles.loadEarlierText}>
+                                  Load earlier messages
+                                </ThemedText>
+                              )}
+                            </Pressable>
+                          ) : null
+                        }
+                        maintainVisibleContentPosition={{
+                          minIndexForVisible: 0,
+                        }}
+                        maxToRenderPerBatch={5}
+                        onContentSizeChange={() => {
+                          if (data.session.id !== opencodeSessionId) return;
 
-                        initiallyScrolledSessionIdRef.current =
-                          opencodeSessionId;
-                        requestAnimationFrame(() => {
-                          scrollRef.current?.scrollToEnd({ animated: false });
-                          if (!isPendingHandoff) return;
-
-                          requestAnimationFrame(() => {
-                            if (
-                              pendingChatHandoffIdRef.current !==
+                          const isPendingHandoff =
+                            pendingChatHandoffIdRef.current ===
+                            opencodeSessionId;
+                          if (
+                            !isPendingHandoff &&
+                            initiallyScrolledSessionIdRef.current ===
                               opencodeSessionId
-                            )
-                              return;
+                          ) {
+                            return;
+                          }
 
-                            pendingChatHandoffIdRef.current = "";
-                            chatTransitionX.setValue(0);
-                            setSwipePreview(null);
-                            isChatTransitioningRef.current = false;
+                          initiallyScrolledSessionIdRef.current =
+                            opencodeSessionId;
+                          requestAnimationFrame(() => {
+                            scrollRef.current?.scrollToEnd({ animated: false });
+                            if (!isPendingHandoff) return;
+
+                            requestAnimationFrame(() => {
+                              if (
+                                pendingChatHandoffIdRef.current !==
+                                opencodeSessionId
+                              )
+                                return;
+
+                              pendingChatHandoffIdRef.current = "";
+                              chatTransitionX.setValue(0);
+                              setSwipePreview(null);
+                              isChatTransitioningRef.current = false;
+                            });
                           });
-                        });
-                      }}
-                      ref={scrollRef}
-                      showsVerticalScrollIndicator={false}
-                    >
-                      {showRawResponse ? (
-                        <ScrollView horizontal showsHorizontalScrollIndicator>
-                          <ThemedText selectable style={styles.rawResponse}>
-                            {JSON.stringify(data, null, 2)}
-                          </ThemedText>
-                        </ScrollView>
-                      ) : null}
-                      {!showRawResponse &&
-                        turns.map((turn, index) => (
+                        }}
+                        ref={scrollRef}
+                        removeClippedSubviews={Platform.OS === "android"}
+                        renderItem={({ item: turn, index }) => (
                           <OpencodeChatTurn
                             isReverting={
                               revertSession.isPending &&
@@ -823,47 +914,18 @@ export function ProjectChatScreen() {
                               index === turns.length - 1
                             }
                             item={turn}
-                            key={turn.id}
-                            onRevert={() =>
-                              revertSession.mutate(turn.id, {
-                                onError: (error) =>
-                                  Alert.alert(
-                                    "Could not revert messages",
-                                    error.message,
-                                  ),
-                              })
-                            }
+                            onRevert={revertTurn}
                             revertDisabled={
                               sessionQuery.isStreaming ||
                               revertSession.isPending ||
                               restoreMessage.isPending
                             }
                           />
-                        ))}
-                      {!showRawResponse &&
-                      turns.length === 0 &&
-                      !activeQuestion &&
-                      !sessionQuery.isStreaming ? (
-                        <ThemedText
-                          style={[
-                            styles.emptyText,
-                            { color: theme.textSecondary },
-                          ]}
-                        >
-                          Start the chat by describing what you want to build.
-                        </ThemedText>
-                      ) : null}
-                      {!showRawResponse &&
-                      sessionQuery.isStreaming &&
-                      turns.length === 0 ? (
-                        <View style={styles.thinking}>
-                          <ActivityIndicator size="small" />
-                          <ThemedText themeColor="textSecondary">
-                            Vibeongo is working…
-                          </ThemedText>
-                        </View>
-                      ) : null}
-                    </ScrollView>
+                        )}
+                        showsVerticalScrollIndicator={false}
+                        windowSize={5}
+                      />
+                    )}
                   </Animated.View>
                 </View>
 
@@ -1245,6 +1307,20 @@ const styles = StyleSheet.create({
     alignItems: "center",
     flex: 1,
     justifyContent: "center",
+  },
+  loadEarlierButton: {
+    alignItems: "center",
+    alignSelf: "center",
+    borderRadius: 16,
+    borderWidth: StyleSheet.hairlineWidth,
+    justifyContent: "center",
+    minHeight: 32,
+    minWidth: 160,
+    paddingHorizontal: 14,
+  },
+  loadEarlierText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   messages: {
     gap: 28,

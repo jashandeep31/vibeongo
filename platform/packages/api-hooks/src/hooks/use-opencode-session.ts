@@ -4,6 +4,7 @@ import {
   abortOpencodeSession,
   answerOpencodeQuestion,
   getOpencodeInventory,
+  getOpencodeSessionMessages,
   getOpencodeSessionRaw,
   rejectOpencodeQuestion,
   revertOpencodeSession,
@@ -17,7 +18,7 @@ import {
 } from "@repo/api-client";
 import { useSessionChatsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 export const useOpencodeSession = ({
   chatId,
@@ -25,12 +26,14 @@ export const useOpencodeSession = ({
   serverUrl,
   accessToken,
   password,
+  messageLimit,
 }: {
   chatId: string;
   sessionId: string;
   serverUrl: string;
   accessToken: string;
   password?: string;
+  messageLimit?: number;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -49,6 +52,7 @@ export const useOpencodeSession = ({
         serverUrl,
         accessToken,
         password,
+        messageLimit,
       );
       return reconcileActiveOpencodeSession(
         queryClient.getQueryData<OpencodeSessionData>(queryKey),
@@ -61,11 +65,98 @@ export const useOpencodeSession = ({
   const resync = useCallback(() => {
     return queryClient.invalidateQueries({ queryKey, exact: true });
   }, [queryClient, queryKey]);
+  const loadingOlderRef = useRef(false);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  const loadOlder = useCallback(async () => {
+    const current = queryClient.getQueryData<OpencodeSessionData>(queryKey);
+    const before = current?.messagePage?.oldestMessageId;
+    if (
+      !messageLimit ||
+      !current?.messagePage?.hasOlder ||
+      !before ||
+      loadingOlderRef.current
+    ) {
+      return;
+    }
+
+    loadingOlderRef.current = true;
+    setIsLoadingOlder(true);
+    try {
+      let older = await getOpencodeSessionMessages(
+        chatId,
+        current.session,
+        serverUrl,
+        accessToken,
+        password,
+        { before, limit: messageLimit },
+      );
+      let pageLimit = messageLimit;
+      // Older servers may ignore `before`. Request a larger latest window
+      // once, then fail visibly if the server still cannot advance history.
+      const knownIds = new Set(
+        current.messages.map((message) => message.info.id),
+      );
+      if (
+        older.length > 0 &&
+        older.every((message) => knownIds.has(message.info.id))
+      ) {
+        pageLimit = current.messages.length + messageLimit;
+        older = await getOpencodeSessionMessages(
+          chatId,
+          current.session,
+          serverUrl,
+          accessToken,
+          password,
+          { limit: pageLimit },
+        );
+        if (
+          older.length >= messageLimit &&
+          older.every((message) => knownIds.has(message.info.id))
+        ) {
+          throw new Error(
+            "The server returned the same history page. Update the project's OpenCode server and try again.",
+          );
+        }
+      }
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (latest) => {
+        if (!latest) return latest;
+        const existingIds = new Set(
+          latest.messages.map((message) => message.info.id),
+        );
+        const uniqueOlder = older.filter(
+          (message) => !existingIds.has(message.info.id),
+        );
+        const messages = [...uniqueOlder, ...latest.messages];
+        return {
+          ...latest,
+          messages,
+          messagePage: {
+            hasOlder: older.length >= pageLimit && uniqueOlder.length > 0,
+            oldestMessageId: messages[0]?.info.id,
+          },
+        };
+      });
+    } finally {
+      loadingOlderRef.current = false;
+      setIsLoadingOlder(false);
+    }
+  }, [
+    accessToken,
+    chatId,
+    messageLimit,
+    password,
+    queryClient,
+    queryKey,
+    serverUrl,
+  ]);
 
   return {
     ...query,
     isStreaming: query.data ? query.data.status.type !== "idle" : false,
     resync,
+    loadOlder,
+    isLoadingOlder,
+    hasOlderMessages: query.data?.messagePage?.hasOlder === true,
   };
 };
 
@@ -73,7 +164,7 @@ function reconcileActiveOpencodeSession(
   current: OpencodeSessionData | undefined,
   incoming: OpencodeSessionData,
 ): OpencodeSessionData {
-  if (!current || (!current.optimistic && current.status.type === "idle")) {
+  if (!current) {
     return incoming;
   }
 
@@ -87,33 +178,35 @@ function reconcileActiveOpencodeSession(
         (message) => !message.info.id.startsWith("optimistic:"),
       )
     : current.messages;
-  const currentById = new Map(
-    currentMessages.map((message) => [message.info.id, message]),
+  const incomingById = new Map(
+    incoming.messages.map((message) => [message.info.id, message]),
   );
-  const mergedMessages = incoming.messages.map((message) => {
-    const newerMessage = currentById.get(message.info.id);
-    if (!newerMessage) return message;
+  const mergedMessages = currentMessages.map((message) => {
+    const incomingMessage = incomingById.get(message.info.id);
+    if (!incomingMessage) return message;
 
-    currentById.delete(message.info.id);
-    const newerPartsById = new Map(
-      newerMessage.parts.map((part) => [part.id, part]),
+    incomingById.delete(message.info.id);
+    const currentPartsById = new Map(
+      message.parts.map((part) => [part.id, part]),
     );
-    const parts = message.parts.map((part) => {
-      const newerPart = newerPartsById.get(part.id);
-      newerPartsById.delete(part.id);
-      return newerPart ?? part;
+    const parts = incomingMessage.parts.map((part) => {
+      const currentPart = currentPartsById.get(part.id);
+      currentPartsById.delete(part.id);
+      return current.status.type === "idle" ? part : (currentPart ?? part);
     });
 
     return {
-      info: newerMessage.info,
-      parts: [...parts, ...newerPartsById.values()],
+      info:
+        current.status.type === "idle" ? incomingMessage.info : message.info,
+      parts: [...parts, ...currentPartsById.values()],
     };
   });
-  mergedMessages.push(...currentById.values());
+  mergedMessages.push(...incomingById.values());
 
   return {
     ...incoming,
     messages: mergedMessages,
+    messagePage: current.messagePage ?? incoming.messagePage,
     ...(!incomingHasRealUserMessage && current.optimistic
       ? { optimistic: true }
       : {}),

@@ -173,11 +173,12 @@ function ProjectSessionRuntimeSync({
         sessionId,
         opencodeSessionId,
       );
-      const nextMessages = reduceOpencodeMessages(
-        currentMessages,
-        event,
-        opencodeSessionId,
-      );
+      const reducedSession = cachedSession
+        ? reduceOpencodeSessionData(cachedSession, event, opencodeSessionId)
+        : undefined;
+      const nextMessages = reducedSession
+        ? reducedSession.messages
+        : reduceOpencodeMessages(currentMessages, event, opencodeSessionId);
       if (nextMessages !== currentMessages) {
         store.setChatMessages(sessionId, opencodeSessionId, nextMessages);
       }
@@ -187,9 +188,11 @@ function ProjectSessionRuntimeSync({
           queryKey: ["opencode", "session", sessionId, opencodeSessionId],
         },
         (current) =>
-          current
-            ? reduceOpencodeSessionData(current, event, opencodeSessionId)
-            : current,
+          current === cachedSession && reducedSession
+            ? reducedSession
+            : current
+              ? reduceOpencodeSessionData(current, event, opencodeSessionId)
+              : current,
       );
 
       if (event.type === "session.status") {

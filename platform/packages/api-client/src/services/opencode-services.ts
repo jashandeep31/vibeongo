@@ -29,6 +29,10 @@ export type OpencodeSessionData = {
   changes: SnapshotFileDiff[];
   optimistic?: boolean;
   promptError?: string | undefined;
+  messagePage?: {
+    hasOlder: boolean;
+    oldestMessageId: string | undefined;
+  } | undefined;
 };
 
 // File references are expanded into synthetic Read context by OpenCode.
@@ -394,6 +398,7 @@ export async function getOpencodeSessionRaw(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  messageLimit = 100,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -416,7 +421,7 @@ export async function getOpencodeSessionRaw(
       client.session.messages({
         sessionID: sessionId,
         directory: session.directory,
-        limit: 100,
+        limit: messageLimit,
       }),
       client.question.list({ directory: session.directory }),
       client.session.diff({
@@ -439,14 +444,19 @@ export async function getOpencodeSessionRaw(
     throw new Error("Could not load OpenCode session status");
   }
 
+  const messages = messagesResult.data ?? [];
   return {
     session,
     status: statusesResult.data?.[sessionId] ?? { type: "idle" },
-    messages: messagesResult.data ?? [],
+    messages,
     questions: (questionsResult.data ?? []).filter(
       (question) => question.sessionID === sessionId,
     ),
     changes: changesResult.data ?? [],
+    messagePage: {
+      hasOlder: messages.length === messageLimit,
+      oldestMessageId: messages[0]?.info.id,
+    },
   };
 }
 
@@ -456,6 +466,7 @@ export async function getOpencodeSessionMessages(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  options?: { before?: string; limit?: number },
 ) {
   const client = getOpencodeClient(
     chatId,
@@ -467,7 +478,8 @@ export async function getOpencodeSessionMessages(
   const result = await client.session.messages({
     sessionID: session.id,
     directory: session.directory,
-    limit: 100,
+    limit: options?.limit ?? 100,
+    ...(options?.before ? { before: options.before } : {}),
   });
 
   if (result.error) {
