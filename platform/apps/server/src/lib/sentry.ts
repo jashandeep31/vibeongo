@@ -1,4 +1,7 @@
 import * as Sentry from "@sentry/node";
+import { ZodError } from "zod";
+
+import { AppError } from "./app-error.js";
 import { env } from "./env.js";
 
 Sentry.init({
@@ -10,4 +13,10 @@ Sentry.init({
   // Setting this option to true will send default PII data to Sentry.
   // For example, automatic IP address collection on events
   sendDefaultPii: true,
+  beforeSend(event, hint) {
+    const error = hint.originalException;
+    if (error instanceof ZodError) return null;
+    if (error instanceof AppError && !error.reportToSentry) return null;
+    return event;
+  },
 });
