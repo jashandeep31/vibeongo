@@ -1,6 +1,6 @@
 "use client";
 
-import { ImportProjectTemplateDialog } from "@/components/dialogs/import-project-template-dialog";
+import { CreateProjectFromTemplateDialog } from "@/components/dialogs/create-project-from-template-dialog";
 import { useGetProjectTemplates } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { ArrowRight, Loader2 } from "lucide-react";
@@ -58,10 +58,7 @@ export default function ClientView() {
                     {[services, ports].filter(Boolean).join(" · ")}
                   </p>
                 </div>
-                <ImportProjectTemplateDialog
-                  templateId={template.id}
-                  defaultProjectName={template.name}
-                >
+                <CreateProjectFromTemplateDialog templateId={template.id}>
                   <Button
                     type="button"
                     size="sm"
@@ -69,9 +66,9 @@ export default function ClientView() {
                     className="shrink-0"
                   >
                     <ArrowRight />
-                    Import
+                    Create project
                   </Button>
-                </ImportProjectTemplateDialog>
+                </CreateProjectFromTemplateDialog>
               </article>
             );
           })

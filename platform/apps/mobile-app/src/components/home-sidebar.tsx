@@ -34,6 +34,7 @@ type NavigationItem = {
     | "/"
     | "/github-repos"
     | "/import-projects"
+    | "/templates"
     | "/limits"
     | "/settings"
     | "/wallet";
@@ -65,6 +66,11 @@ const navigation: NavigationItem[] = [
     title: "Import",
     icon: { ios: "square.and.arrow.down", android: "download" },
     href: "/import-projects",
+  },
+  {
+    title: "Templates",
+    icon: { ios: "square.grid.2x2", android: "grid_view" },
+    href: "/templates",
   },
   {
     title: "Wallet",

@@ -80,13 +80,11 @@ function SelectField({
   );
 }
 
-export function ImportProjectTemplateDialog({
+export function CreateProjectFromTemplateDialog({
   templateId,
-  defaultProjectName,
   children,
 }: {
   templateId: string;
-  defaultProjectName: string;
   children: ReactNode;
 }) {
   const router = useRouter();
@@ -94,7 +92,7 @@ export function ImportProjectTemplateDialog({
   const instanceRegionsQuery = useInstanceRegions();
   const sandboxRegionsQuery = useSandboxRegions();
   const [open, setOpen] = useState(false);
-  const [projectName, setProjectName] = useState(defaultProjectName);
+  const [projectName, setProjectName] = useState("");
   const [regionId, setRegionId] = useState("");
   const [instanceTypeId, setInstanceTypeId] = useState("");
   const [sandboxProvider, setSandboxProvider] = useState("");
@@ -149,7 +147,7 @@ export function ImportProjectTemplateDialog({
     setOpen(nextOpen);
     setError(null);
     if (!nextOpen) {
-      setProjectName(defaultProjectName);
+      setProjectName("");
       setRegionId("");
       setInstanceTypeId("");
       setSandboxProvider("");
