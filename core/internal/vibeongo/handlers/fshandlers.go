@@ -195,8 +195,11 @@ func CreateFileOrFolder(c *echo.Context) error {
 	isFolder := strings.HasSuffix(targetPath, string(filepath.Separator))
 	targetPath = filepath.Clean(targetPath)
 
-	if _, err := os.Stat(targetPath); err == nil {
-		return echo.NewHTTPError(http.StatusConflict, "file or folder already exists")
+	if info, err := os.Stat(targetPath); err == nil {
+		if info.IsDir() {
+			return echo.NewHTTPError(http.StatusConflict, "directory already exists")
+		}
+		return echo.NewHTTPError(http.StatusConflict, "file already exists")
 	} else if !os.IsNotExist(err) {
 		return echo.NewHTTPError(http.StatusInternalServerError, err.Error())
 	}
