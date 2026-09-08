@@ -53,6 +53,17 @@ type ForkForgejoRepoResult =
       error: string;
     };
 
+type GenerateForgejoRepoResult =
+  | {
+      status: "ok";
+      repo: ForkedForgejoRepo;
+    }
+  | {
+      status: "error";
+      error: string;
+      statusCode?: number;
+    };
+
 export async function createForgejoRepo({
   username,
   reponame,
@@ -218,6 +229,96 @@ export async function forkRepoToForgejo({
           `/admin/users/${forkFor}/tokens/${tokenId}`,
         );
       } catch (error: unknown) {
+        console.error(`Failed to delete temporary Forgejo token ${tokenName}`);
+      }
+    }
+  }
+}
+
+export async function generateRepoFromForgejoTemplate({
+  templateOwner,
+  templateRepo,
+  generateFor,
+  newRepoName,
+}: {
+  templateOwner: string;
+  templateRepo: string;
+  generateFor: string;
+  newRepoName: string;
+}): Promise<GenerateForgejoRepoResult> {
+  const tokenName = `temp-token-${crypto.randomBytes(4).toString("hex")}`;
+  let tokenId: number | null = null;
+
+  try {
+    const tokenResponse = await forgejoAPIClient.post(
+      `/admin/users/${generateFor}/tokens`,
+      {
+        name: tokenName,
+        scopes: ["write:repository", "read:repository"],
+      },
+    );
+
+    tokenId = tokenResponse.data.id;
+    const token = tokenResponse.data.sha1;
+    if (!token) throw new AppError("Failed to create token", 500);
+
+    const response = await forgejoAPIClient.post<ForgejoForkResponse>(
+      `/repos/${templateOwner}/${templateRepo}/generate`,
+      {
+        git_content: true,
+        name: newRepoName,
+        owner: generateFor,
+        private: false,
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      },
+    );
+
+    if (response.status !== 201) {
+      return {
+        status: "error",
+        error: `Unexpected Forgejo response status: ${response.status}`,
+        statusCode: response.status,
+      };
+    }
+
+    return {
+      status: "ok",
+      repo: {
+        owner: response.data.owner.login,
+        name: response.data.name,
+        url: response.data.url,
+        full_name: response.data.full_name,
+      },
+    };
+  } catch (error: unknown) {
+    if (axios.isAxiosError<{ message?: string }>(error)) {
+      return {
+        status: "error",
+        error: error.response?.data?.message ?? error.message,
+        ...(error.response?.status !== undefined
+          ? { statusCode: error.response.status }
+          : {}),
+      };
+    }
+
+    return {
+      status: "error",
+      error:
+        error instanceof Error
+          ? error.message
+          : "Failed to generate repository from template",
+    };
+  } finally {
+    if (tokenId !== null) {
+      try {
+        await forgejoAPIClient.delete(
+          `/admin/users/${generateFor}/tokens/${tokenId}`,
+        );
+      } catch {
         console.error(`Failed to delete temporary Forgejo token ${tokenName}`);
       }
     }

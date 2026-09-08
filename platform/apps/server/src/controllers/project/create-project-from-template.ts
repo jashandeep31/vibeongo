@@ -6,7 +6,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { createProjectWithConfigAndUserIdService } from "../../services/project/create-project-service.js";
 import {
-  forkRepoToForgejo,
+  generateRepoFromForgejoTemplate,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
 import { ensureForgejoUserAccount } from "../../services/forgejo/user-actions.js";
@@ -14,11 +14,6 @@ import {
   projectTemplates,
   type ProjectTemplate,
 } from "../../utils/templates/index.js";
-import {
-  adjectives,
-  colors,
-  uniqueNamesGenerator,
-} from "unique-names-generator";
 
 export const getProjectTemplates = (_req: Request, res: Response) => {
   const templates = Object.entries(projectTemplates).map(
@@ -198,24 +193,40 @@ const createUserForgejoRepoForProject = async ({
   sourceRepoOwnerName: string;
   sourceRepoName: string;
 }) => {
-  const existingRepo = await getForgejoRepo({ username, reponame: repoName });
-  const newRepoName = existingRepo
-    ? `${repoName}-${uniqueNamesGenerator({ dictionaries: [adjectives, colors] })}`
-    : repoName;
+  for (let suffix = 1; suffix <= 100; suffix += 1) {
+    const newRepoName = suffix === 1 ? repoName : `${repoName}-${suffix}`;
+    const existingRepo = await getForgejoRepo({
+      username,
+      reponame: newRepoName,
+    });
+    if (existingRepo) continue;
 
-  const forkedRepo = await forkRepoToForgejo({
-    sourceRepoOwnername: sourceRepoOwnerName,
-    sourceReponame: sourceRepoName,
-    forkFor: username,
-    newReponame: newRepoName,
-  });
+    const generatedRepo = await generateRepoFromForgejoTemplate({
+      templateOwner: sourceRepoOwnerName,
+      templateRepo: sourceRepoName,
+      generateFor: username,
+      newRepoName,
+    });
 
-  if (forkedRepo.status !== "ok") {
-    throw new AppError(`Failed to create repository: ${forkedRepo.error}`, 500);
+    if (generatedRepo.status === "ok") {
+      return {
+        name: generatedRepo.repo.name,
+        fullName: generatedRepo.repo.full_name,
+      };
+    }
+
+    // Another request may claim this name between the existence check and
+    // repository generation. Try the next deterministic suffix on conflict.
+    if (generatedRepo.statusCode === 409) continue;
+
+    throw new AppError(
+      `Failed to create repository from template: ${generatedRepo.error}`,
+      500,
+    );
   }
 
-  return {
-    name: forkedRepo.repo.name,
-    fullName: forkedRepo.repo.full_name,
-  };
+  throw new AppError(
+    "Failed to create repository: too many repositories use this project name",
+    409,
+  );
 };
