@@ -117,13 +117,13 @@ export const createProjectFromTemplate = catchAsync(
     if (template.envFiles.length > 0) {
       await db.transaction(async (tx) => {
         for (const file of template.envFiles) {
-          const name = file.path.split("/").filter(Boolean).at(-1);
-          if (!name)
-            throw new AppError("Template contains an invalid file path", 500);
-
           const [projectFile] = await tx
             .insert(projectFiles)
-            .values({ project_id: project.id, name, path: file.path })
+            .values({
+              project_id: project.id,
+              name: file.name,
+              path: file.path,
+            })
             .returning({ id: projectFiles.id });
           if (!projectFile)
             throw new AppError("Failed to create a template file", 500);

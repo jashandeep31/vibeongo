@@ -121,7 +121,7 @@ volumes:
     files: [
       {
         name: ".env",
-        path: "/vibeongo-url-shortner/.env",
+        path: "/vibeongo-url-shortner",
         content: `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/url_shortner
 PORT=3000
 BASE_URL=http://localhost:3000
@@ -184,7 +184,7 @@ npm run dev -- --hostname 0.0.0.0`,
     files: [
       {
         name: ".env.local",
-        path: "/brandmyphone-oss/.env.local",
+        path: "/brandmyphone-oss",
         content: `NEXT_PUBLIC_SITE_URL=http://localhost:3000
 NEXT_PUBLIC_POSTHOG_KEY=
 NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
