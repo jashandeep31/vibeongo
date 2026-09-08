@@ -254,7 +254,7 @@ export async function generateRepoFromForgejoTemplate({
       `/admin/users/${generateFor}/tokens`,
       {
         name: tokenName,
-        scopes: ["write:repository", "read:repository"],
+        scopes: ["write:repository", "read:repository", "write:user"],
       },
     );
 
