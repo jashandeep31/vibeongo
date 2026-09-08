@@ -22,10 +22,6 @@ export const instanceTerminationWorker = new Worker<
   },
 );
 
-instanceTerminationWorker.on("ready", () => {
-  console.log("Instance termination worker is ready");
-});
-
 instanceTerminationWorker.on("completed", (job) => {
   console.log(`Instance termination job ${job.id ?? "unknown"} completed`);
 });

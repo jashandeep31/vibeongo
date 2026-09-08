@@ -30,10 +30,6 @@ export const userOnboardingWorker = new Worker<UserOnboardingJobData>(
   },
 );
 
-userOnboardingWorker.on("ready", () => {
-  console.log("User onboarding worker is ready");
-});
-
 userOnboardingWorker.on("completed", (job) => {
   console.log(`User onboarding job ${job.id ?? "unknown"} completed`);
 });

@@ -77,10 +77,6 @@ export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
   },
 );
 
-gitRepoOverviewWorker.on("ready", () => {
-  console.log("GitHub repository overview worker is ready");
-});
-
 gitRepoOverviewWorker.on("error", (error) => {
   console.error("GitHub repository overview worker error", error);
 });

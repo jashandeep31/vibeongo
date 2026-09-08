@@ -123,10 +123,6 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
   },
 );
 
-sandboxSetupWorker.on("ready", () => {
-  console.log("Sandbox setup worker is ready");
-});
-
 sandboxSetupWorker.on("error", (error) => {
   console.error("Sandbox setup worker error", error);
 });
