@@ -17,6 +17,7 @@ type ProjectActionsMenuProps = {
   onClose: () => void;
   onDelete: (project: Project) => void;
   onEdit: (project: Project) => void;
+  onEditEnvironment: (project: Project) => void;
   onNewSession: (project: Project) => void;
   project: Project | null;
 };
@@ -26,13 +27,14 @@ export function ProjectActionsMenu({
   onClose,
   onDelete,
   onEdit,
+  onEditEnvironment,
   onNewSession,
   project,
 }: ProjectActionsMenuProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const menuTop = Math.max(insets.top + 8, Math.min(anchorY - 8, height - 190));
+  const menuTop = Math.max(insets.top + 8, Math.min(anchorY - 8, height - 235));
 
   return (
     <Modal
@@ -72,6 +74,16 @@ export function ProjectActionsMenu({
             label="Edit project"
             onPress={() => {
               if (project) onEdit(project);
+            }}
+          />
+          <MenuItem
+            icon={{
+              ios: "doc.badge.gearshape",
+              android: "settings_applications",
+            }}
+            label="Edit environment"
+            onPress={() => {
+              if (project) onEditEnvironment(project);
             }}
           />
           <View

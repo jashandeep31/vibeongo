@@ -767,6 +767,13 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
             params: { projectId: project.id },
           });
         }}
+        onEditEnvironment={(project) => {
+          setProjectMenu(null);
+          router.push({
+            pathname: "/projects/[projectId]/env",
+            params: { projectId: project.id },
+          });
+        }}
         onNewSession={(project) => {
           setProjectMenu(null);
           setNewSessionProject(project);
