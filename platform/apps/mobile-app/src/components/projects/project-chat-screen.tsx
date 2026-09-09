@@ -127,7 +127,7 @@ export function ProjectChatScreen() {
     serverUrl: runtime.serverUrl,
     accessToken: runtime.accessToken,
     password: runtime.password,
-    messageLimit: 24,
+    messageLimit: 25,
     select: selectChatShellData,
     notifyOnChangeProps: ["data", "error", "isPending"],
   });
@@ -987,7 +987,7 @@ const ChatTimeline = memo(function ChatTimeline({
     serverUrl,
     accessToken,
     password,
-    messageLimit: 24,
+    messageLimit: 25,
     refetchOnMount: false,
   });
   const data = sessionQuery.data;

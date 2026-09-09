@@ -421,7 +421,7 @@ export async function getOpencodeSessionRaw(
       client.session.messages({
         sessionID: sessionId,
         directory: session.directory,
-        limit: messageLimit,
+        limit: messageLimit + 1,
       }),
       client.question.list({ directory: session.directory }),
       client.session.diff({
@@ -444,7 +444,11 @@ export async function getOpencodeSessionRaw(
     throw new Error("Could not load OpenCode session status");
   }
 
-  const messages = messagesResult.data ?? [];
+  const fetchedMessages = messagesResult.data ?? [];
+  const hasOlderMessages = fetchedMessages.length > messageLimit;
+  const messages = hasOlderMessages
+    ? fetchedMessages.slice(-messageLimit)
+    : fetchedMessages;
   return {
     session,
     status: statusesResult.data?.[sessionId] ?? { type: "idle" },
@@ -454,7 +458,7 @@ export async function getOpencodeSessionRaw(
     ),
     changes: changesResult.data ?? [],
     messagePage: {
-      hasOlder: messages.length === messageLimit,
+      hasOlder: hasOlderMessages,
       oldestMessageId: messages[0]?.info.id,
     },
   };

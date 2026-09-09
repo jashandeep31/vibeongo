@@ -96,25 +96,42 @@ export const useOpencodeSession = ({
     loadingOlderRef.current = true;
     setIsLoadingOlder(true);
     try {
-      let older = await getOpencodeSessionMessages(
-        chatId,
-        current.session,
-        serverUrl,
-        accessToken,
-        password,
-        { before, limit: messageLimit },
-      );
-      let pageLimit = messageLimit;
+      const requestedPageSize = messageLimit + 1;
+      let pageLimit = requestedPageSize;
+      let older;
+      try {
+        older = await getOpencodeSessionMessages(
+          chatId,
+          current.session,
+          serverUrl,
+          accessToken,
+          password,
+          { before, limit: requestedPageSize },
+        );
+      } catch {
+        // Older OpenCode servers reject the `before` query parameter. Fall
+        // back to requesting a larger latest-message window instead.
+        pageLimit = current.messages.length + requestedPageSize;
+        older = await getOpencodeSessionMessages(
+          chatId,
+          current.session,
+          serverUrl,
+          accessToken,
+          password,
+          { limit: pageLimit },
+        );
+      }
       // Older servers may ignore `before`. Request a larger latest window
       // once, then fail visibly if the server still cannot advance history.
       const knownIds = new Set(
         current.messages.map((message) => message.info.id),
       );
       if (
+        pageLimit === requestedPageSize &&
         older.length > 0 &&
         older.every((message) => knownIds.has(message.info.id))
       ) {
-        pageLimit = current.messages.length + messageLimit;
+        pageLimit = current.messages.length + requestedPageSize;
         older = await getOpencodeSessionMessages(
           chatId,
           current.session,
@@ -124,7 +141,7 @@ export const useOpencodeSession = ({
           { limit: pageLimit },
         );
         if (
-          older.length >= messageLimit &&
+          older.length >= requestedPageSize &&
           older.every((message) => knownIds.has(message.info.id))
         ) {
           throw new Error(
@@ -140,12 +157,16 @@ export const useOpencodeSession = ({
         const uniqueOlder = older.filter(
           (message) => !existingIds.has(message.info.id),
         );
-        const messages = [...uniqueOlder, ...latest.messages];
+        const hasOlder = uniqueOlder.length > messageLimit;
+        const page = hasOlder
+          ? uniqueOlder.slice(-messageLimit)
+          : uniqueOlder;
+        const messages = [...page, ...latest.messages];
         return {
           ...latest,
           messages,
           messagePage: {
-            hasOlder: older.length >= pageLimit && uniqueOlder.length > 0,
+            hasOlder,
             oldestMessageId: messages[0]?.info.id,
           },
         };
