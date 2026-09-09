@@ -15,13 +15,14 @@ import {
   useSendOpencodePrompt,
 } from "@repo/api-hooks";
 import {
+  createOpencodeChatTurns,
   findOpencodeFiles,
-  getOpencodeUserMessage,
+  getRevertedMessageLabel,
+  getSessionPromptSelection,
   type OpencodePromptSelection,
   type OpencodeSessionData,
   type QuestionAnswer,
 } from "@repo/api-client";
-import type { AssistantMessage, ToolPart } from "@opencode-ai/sdk/v2/client";
 import { Button } from "@repo/ui/components/button";
 import {
   ArrowDown,
@@ -41,194 +42,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
 type SessionMessages = OpencodeSessionData["messages"];
-type ChatError = NonNullable<AssistantMessage["error"]>;
-
-function getPartText(parts: SessionMessages[number]["parts"], type: "text") {
-  return parts
-    .flatMap((part) => {
-      if (type === "text" && part.type === "text") {
-        return part.ignored || part.synthetic ? [] : [part.text];
-      }
-
-      return [];
-    })
-    .join("\n\n");
-}
-
-function getRevertedMessageLabel(parts: SessionMessages[number]["parts"]) {
-  const text = getPartText(parts, "text").trim();
-  if (text) return text;
-
-  const attachmentCount = parts.filter((part) => part.type === "file").length;
-  if (attachmentCount === 1) return "[attachment]";
-  if (attachmentCount > 1) return `[${attachmentCount} attachments]`;
-  return "Empty message";
-}
-
-function createChatTurns(messages: SessionMessages) {
-  const turns = messages
-    .filter((message) => message.info.role === "user")
-    .map((message) => ({
-      id: message.info.id,
-      question: getOpencodeUserMessage(message.parts).text,
-      files: getOpencodeUserMessage(message.parts).files,
-      images: message.parts.flatMap((part) =>
-        part.type === "file" && part.mime.startsWith("image/")
-          ? [
-              {
-                id: part.id,
-                url: part.url,
-                name: part.filename ?? "Attached image",
-              },
-            ]
-          : [],
-      ),
-      summaryDiffs:
-        typeof message.info.summary === "object" && message.info.summary
-          ? message.info.summary.diffs
-          : [],
-      content: [] as Array<
-        | { id: string; type: "text"; text: string }
-        | { id: string; type: "tools"; tools: ToolPart[] }
-        | { id: string; type: "thinking"; active: boolean }
-        | {
-            id: string;
-            type: "error";
-            title: string;
-            message: string;
-            statusCode?: number;
-          }
-      >,
-      agent: undefined as string | undefined,
-      model: undefined as string | undefined,
-      durationMs: undefined as number | undefined,
-    }));
-  const turnsByMessageId = new Map(turns.map((turn) => [turn.id, turn]));
-  const latestTodoByTurnId = new Map<string, ToolPart>();
-
-  for (const message of messages) {
-    if (message.info.role !== "assistant") continue;
-
-    const turn = turnsByMessageId.get(message.info.parentID);
-    if (!turn) continue;
-
-    for (const part of message.parts) {
-      if (part.type === "reasoning") {
-        if (!part.time?.end) {
-          turn.content.push({
-            id: part.id,
-            type: "thinking",
-            active: true,
-          });
-        }
-      }
-
-      if (part.type === "text" && !part.ignored && part.text.trim()) {
-        turn.content.push({ id: part.id, type: "text", text: part.text });
-      }
-
-      if (part.type === "tool") {
-        if (part.tool === "todowrite") {
-          latestTodoByTurnId.set(turn.id, part);
-          continue;
-        }
-
-        if (
-          part.tool === "question" &&
-          (part.state.status === "pending" || part.state.status === "running")
-        ) {
-          continue;
-        }
-
-        const previousContent = turn.content.at(-1);
-        if (
-          (part.tool === "glob" || part.tool === "read") &&
-          previousContent?.type === "tools" &&
-          previousContent.tools.every(
-            (tool) => tool.tool === "glob" || tool.tool === "read",
-          )
-        ) {
-          previousContent.tools.push(part);
-        } else if (
-          isEditTool(part) &&
-          previousContent?.type === "tools" &&
-          previousContent.tools.every((tool) => isEditTool(tool))
-        ) {
-          previousContent.tools.push(part);
-        } else {
-          turn.content.push({ id: part.id, type: "tools", tools: [part] });
-        }
-      }
-    }
-
-    if (message.info.error) {
-      turn.content.push({
-        id: `${message.info.id}-error`,
-        type: "error",
-        ...getChatError(message.info.error),
-      });
-    }
-
-    turn.agent = message.info.agent;
-    turn.model = message.info.modelID;
-    turn.durationMs = message.info.time.completed
-      ? message.info.time.completed - message.info.time.created
-      : undefined;
-  }
-
-  for (const turn of turns) {
-    const latestTodo = latestTodoByTurnId.get(turn.id);
-    if (!latestTodo) continue;
-
-    turn.content.push({
-      id: `${latestTodo.id}:todo-tracker`,
-      type: "tools",
-      tools: [latestTodo],
-    });
-  }
-
-  return turns;
-}
-
-function isEditTool(tool: ToolPart) {
-  return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
-}
-
-function getChatError(error: ChatError) {
-  const message =
-    "message" in error.data && typeof error.data.message === "string"
-      ? error.data.message
-      : "OpenCode could not complete this request.";
-  const statusCode =
-    "statusCode" in error.data && typeof error.data.statusCode === "number"
-      ? error.data.statusCode
-      : undefined;
-
-  return {
-    title: getChatErrorTitle(error.name),
-    message,
-    statusCode,
-  };
-}
-
-function getChatErrorTitle(name: ChatError["name"]) {
-  switch (name) {
-    case "ProviderAuthError":
-      return "Provider authentication failed";
-    case "ContextOverflowError":
-      return "Context limit exceeded";
-    case "ContentFilterError":
-      return "Response blocked";
-    case "MessageOutputLengthError":
-      return "Response was too long";
-    case "MessageAbortedError":
-      return "Request was stopped";
-    case "StructuredOutputError":
-      return "Invalid structured response";
-    default:
-      return "OpenCode request failed";
-  }
-}
 
 export function OpencodeSessionChat({
   projectId,
@@ -241,6 +54,9 @@ export function OpencodeSessionChat({
   rawResponse,
   isStreaming,
   isRefreshing,
+  hasOlderMessages,
+  isLoadingOlder,
+  onLoadOlder,
   onRefresh,
 }: {
   projectId: string;
@@ -253,8 +69,17 @@ export function OpencodeSessionChat({
   rawResponse: OpencodeSessionData;
   isStreaming: boolean;
   isRefreshing: boolean;
+  hasOlderMessages: boolean;
+  isLoadingOlder: boolean;
+  onLoadOlder: () => Promise<void>;
   onRefresh: () => void;
 }) {
+  const { data: inventory } = useOpencodeInventory(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+  );
   const revertMessageId = rawResponse.session.revert?.messageID;
   const { visibleMessages, revertedMessages } = useMemo(() => {
     if (!revertMessageId) {
@@ -274,8 +99,8 @@ export function OpencodeSessionChat({
     };
   }, [messages, revertMessageId]);
   const turns = useMemo(
-    () => createChatTurns(visibleMessages),
-    [visibleMessages],
+    () => createOpencodeChatTurns(visibleMessages, inventory?.models),
+    [inventory?.models, visibleMessages],
   );
   const revertedQuestions = useMemo(
     () =>
@@ -330,26 +155,9 @@ export function OpencodeSessionChat({
     accessToken,
     password,
   });
-  const { data: inventory } = useOpencodeInventory(
-    chatId,
-    serverUrl,
-    accessToken,
-    password,
-  );
-  const sessionModelProviderId = rawResponse.session.model?.providerID;
-  const sessionModelId = rawResponse.session.model?.id;
-  const sessionModelVariant = rawResponse.session.model?.variant;
-  const sessionAgent = rawResponse.session.agent;
   const sessionSelection = useMemo(
-    () => ({
-      model:
-        sessionModelProviderId && sessionModelId
-          ? `${sessionModelProviderId}/${sessionModelId}`
-          : undefined,
-      variant: sessionModelVariant,
-      agent: sessionAgent,
-    }),
-    [sessionAgent, sessionModelId, sessionModelProviderId, sessionModelVariant],
+    () => getSessionPromptSelection(rawResponse),
+    [rawResponse],
   );
   const [selection, setSelection] =
     useState<OpencodePromptSelection>(sessionSelection);
@@ -358,6 +166,8 @@ export function OpencodeSessionChat({
   const [composerHeight, setComposerHeight] = useState(200);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
+  const latestContentKey = `${turns.at(-1)?.id ?? ""}:${activeQuestion?.id ?? ""}`;
+  const previousLatestContentKeyRef = useRef("");
   const effectiveSelection: OpencodePromptSelection = {
     model:
       selection.model ?? sessionSelection.model ?? inventory?.models[0]?.id,
@@ -417,9 +227,34 @@ export function OpencodeSessionChat({
     });
   }, []);
 
+  const loadEarlierMessages = useCallback(async () => {
+    const scrollArea = scrollAreaRef.current;
+    const previousHeight = scrollArea?.scrollHeight ?? 0;
+    const previousTop = scrollArea?.scrollTop ?? 0;
+    try {
+      await onLoadOlder();
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          if (!scrollArea) return;
+          scrollArea.scrollTop =
+            previousTop + scrollArea.scrollHeight - previousHeight;
+        }),
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Could not load earlier messages",
+      );
+    }
+  }, [onLoadOlder]);
+
   useEffect(() => {
-    scrollToBottom();
-  }, [rawResponse.questions.length, scrollToBottom, turns.length]);
+    if (previousLatestContentKeyRef.current !== latestContentKey) {
+      previousLatestContentKeyRef.current = latestContentKey;
+      scrollToBottom();
+    }
+  }, [latestContentKey, scrollToBottom]);
 
   const submitQuestionAnswer = (
     requestId: string,
@@ -572,6 +407,21 @@ export function OpencodeSessionChat({
           style={{ paddingBottom: composerHeight + 32 }}
         >
           <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+            {hasOlderMessages ? (
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={isLoadingOlder}
+                  onClick={() => void loadEarlierMessages()}
+                >
+                  {isLoadingOlder ? (
+                    <Loader2 className="animate-spin" />
+                  ) : null}
+                  Load earlier messages
+                </Button>
+              </div>
+            ) : null}
             {showRawResponse ? (
               <pre className="w-full text-xs break-words whitespace-pre-wrap">
                 {JSON.stringify(rawResponse, null, 2)}

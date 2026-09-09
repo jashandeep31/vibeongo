@@ -4,7 +4,10 @@ import { OpencodeSessionChat } from "@/components/chat/opencode-session-chat";
 import { useGetInstances } from "@repo/api-hooks";
 import { useOpencodeSession } from "@repo/api-hooks";
 import { useSessionsStore } from "@repo/app-store";
-import { getOpencodePassword } from "@repo/api-client";
+import {
+  getOpencodePassword,
+  OPENCODE_MESSAGE_PAGE_SIZE,
+} from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { TriangleAlert } from "lucide-react";
@@ -37,13 +40,23 @@ export default function OpencodeSessionPage() {
   const opencodePassword = getOpencodePassword(
     instance?.config ?? storedInstance?.config,
   );
-  const { data, error, isFetching, isPending, isStreaming, resync } =
-    useOpencodeSession({
+  const {
+    data,
+    error,
+    hasOlderMessages,
+    isFetching,
+    isLoadingOlder,
+    isPending,
+    isStreaming,
+    loadOlder,
+    resync,
+  } = useOpencodeSession({
       chatId,
       sessionId,
       serverUrl,
       accessToken,
       password: opencodePassword,
+      messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
     });
 
   if (isInstancePending) {
@@ -88,6 +101,9 @@ export default function OpencodeSessionPage() {
       rawResponse={data}
       isStreaming={isStreaming}
       isRefreshing={isFetching}
+      hasOlderMessages={hasOlderMessages}
+      isLoadingOlder={isLoadingOlder}
+      onLoadOlder={loadOlder}
       onRefresh={() => void resync()}
     />
   );

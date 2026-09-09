@@ -1,5 +1,6 @@
 import {
   findOpencodeFiles,
+  OPENCODE_MESSAGE_PAGE_SIZE,
   type OpencodePromptSelection,
   type QuestionAnswer,
   type OpencodeSessionData,
@@ -127,7 +128,7 @@ export function ProjectChatScreen() {
     serverUrl: runtime.serverUrl,
     accessToken: runtime.accessToken,
     password: runtime.password,
-    messageLimit: 25,
+    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
     select: selectChatShellData,
     notifyOnChangeProps: ["data", "error", "isPending"],
   });
@@ -987,7 +988,7 @@ const ChatTimeline = memo(function ChatTimeline({
     serverUrl,
     accessToken,
     password,
-    messageLimit: 25,
+    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
     refetchOnMount: false,
   });
   const data = sessionQuery.data;
