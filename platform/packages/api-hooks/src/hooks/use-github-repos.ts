@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "../api-client-context.js";
+import type { GitRepoActivityType } from "@repo/api-client";
 
 export const useGithubRepos = () => {
   const client = useApiClient();
@@ -46,6 +47,22 @@ export const useGithubRepoPullRequests = (id: string) => {
   return useQuery({
     queryKey: ["github-repo", id, "pull-requests"],
     queryFn: () => client.githubRepos.getGithubRepoPullRequests(id),
+  });
+};
+
+export const useGitRepoActivity = (
+  id: string,
+  type: GitRepoActivityType,
+  options: { page?: number; count?: number; enabled?: boolean } = {},
+) => {
+  const client = useApiClient();
+  const { page = 1, count = 20, enabled = true } = options;
+
+  return useQuery({
+    queryKey: ["git-repo", id, "activity", type, page, count],
+    queryFn: () =>
+      client.githubRepos.getGitRepoActivity({ id, type, page, count }),
+    enabled,
   });
 };
 

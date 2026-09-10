@@ -11,6 +11,7 @@ import {
 import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.js";
 import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-pullrequest.js";
 import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/git-repo-overview.js";
+import { getGitRepoPrOrIssues } from "../controllers/git-repo/get-pr-or-issues.js";
 
 const routes: Router = Router();
 routes
@@ -21,6 +22,10 @@ routes
 routes
   .route("/forgejo")
   .post(checkAuthorization(["all"]), createForgejoRepoController);
+
+routes
+  .route("/:id/activity")
+  .get(checkAuthorization(["all"]), getGitRepoPrOrIssues);
 
 routes
   .route("/:id")

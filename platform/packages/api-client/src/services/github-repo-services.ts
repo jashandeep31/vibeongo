@@ -65,6 +65,24 @@ export type CreateForgejoRepoInput = {
   reponame: string;
 };
 
+export type GitRepoActivityType = "pr" | "issue";
+
+export type GetGitRepoActivityInput = {
+  id: string;
+  type: GitRepoActivityType;
+  page?: number;
+  count?: number;
+};
+
+export type GitRepoActivityResponse = {
+  data: GithubRepoIssue[] | GithubRepoPullRequest[];
+  pagination: {
+    page: number;
+    count: number;
+    hasMore: boolean;
+  };
+};
+
 export const createForgejoRepo =
   (apiClient: AxiosInstance) =>
   async (input: CreateForgejoRepoInput): Promise<{ message: string }> => {
@@ -114,6 +132,22 @@ export const getGithubRepoPullRequests =
     });
 
     return response.data.data;
+  };
+
+export const getGitRepoActivity =
+  (apiClient: AxiosInstance) =>
+  async ({
+    id,
+    type,
+    page = 1,
+    count = 20,
+  }: GetGitRepoActivityInput): Promise<GitRepoActivityResponse> => {
+    const response = await apiClient.get(`/api/v1/git-repos/${id}/activity`, {
+      withCredentials: true,
+      params: { type, page, count },
+    });
+
+    return response.data;
   };
 
 export const updateGithubRepoAutomation =

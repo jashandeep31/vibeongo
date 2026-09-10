@@ -6,6 +6,7 @@ import {
   useDeleteGithubRepo,
   useGenerateFixForIssue,
   useGenerateReviewForPullRequest,
+  useGitRepoActivity,
   useGithubRepoIssues,
   useGithubRepoPullRequests,
   useScheduleGithubRepoOverview,
@@ -114,10 +115,12 @@ function PullRequestCard({
   repoId,
   pullRequest,
   canAutomate,
+  providerName,
 }: {
   repoId: string;
   pullRequest: GithubRepoPullRequest;
   canAutomate: boolean;
+  providerName: "GitHub" | "Forgejo";
 }) {
   const generateReview = useGenerateReviewForPullRequest(
     repoId,
@@ -190,7 +193,7 @@ function PullRequestCard({
               )}
               <Button variant="ghost" size="sm" asChild>
                 <a href={pullRequest.html_url} target="_blank" rel="noreferrer">
-                  Open on GitHub <ArrowUpRight className="size-4" />
+                  Open on {providerName} <ArrowUpRight className="size-4" />
                 </a>
               </Button>
             </div>
@@ -220,10 +223,12 @@ function IssueCard({
   repoId,
   issue,
   canAutomate,
+  providerName,
 }: {
   repoId: string;
   issue: GithubRepoIssue;
   canAutomate: boolean;
+  providerName: "GitHub" | "Forgejo";
 }) {
   const generateFix = useGenerateFixForIssue(repoId, issue.number);
 
@@ -287,7 +292,7 @@ function IssueCard({
               )}
               <Button variant="ghost" size="sm" asChild>
                 <a href={issue.html_url} target="_blank" rel="noreferrer">
-                  Open on GitHub <ArrowUpRight className="size-4" />
+                  Open on {providerName} <ArrowUpRight className="size-4" />
                 </a>
               </Button>
             </div>
@@ -351,8 +356,31 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   const pullRequestsQuery = useGithubRepoPullRequests(repoId);
   const repo = pullRequestsQuery.data ?? issuesQuery.data;
   const isForgejo = repo?.type === "forgejo";
-  const issues = issuesQuery.data?.issues ?? [];
-  const pullRequests = pullRequestsQuery.data?.pull_requests ?? [];
+  const forgejoIssuesQuery = useGitRepoActivity(repoId, "issue", {
+    enabled: isForgejo,
+  });
+  const forgejoPullRequestsQuery = useGitRepoActivity(repoId, "pr", {
+    enabled: isForgejo,
+  });
+  const issues = isForgejo
+    ? ((forgejoIssuesQuery.data?.data ?? []) as GithubRepoIssue[])
+    : (issuesQuery.data?.issues ?? []);
+  const pullRequests = isForgejo
+    ? ((forgejoPullRequestsQuery.data?.data ?? []) as GithubRepoPullRequest[])
+    : (pullRequestsQuery.data?.pull_requests ?? []);
+  const issuesPending = isForgejo
+    ? forgejoIssuesQuery.isPending
+    : issuesQuery.isPending;
+  const pullRequestsPending = isForgejo
+    ? forgejoPullRequestsQuery.isPending
+    : pullRequestsQuery.isPending;
+  const issuesError = isForgejo
+    ? forgejoIssuesQuery.isError
+    : issuesQuery.isError;
+  const pullRequestsError = isForgejo
+    ? forgejoPullRequestsQuery.isError
+    : pullRequestsQuery.isError;
+  const providerName = isForgejo ? "Forgejo" : "GitHub";
   const openIssues = issues.filter((issue) => issue.state === "open").length;
   const openPullRequests = pullRequests.filter(
     (pullRequest) => pullRequest.state === "open",
@@ -393,7 +421,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
     }
   };
 
-  if (issuesQuery.isError && pullRequestsQuery.isError) {
+  if (issuesError && pullRequestsError) {
     return (
       <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10">
         <Button variant="ghost" size="sm" asChild>
@@ -592,7 +620,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-7 items-center justify-center gap-2 rounded-full px-4 font-normal transition-colors aria-pressed:shadow-sm"
           >
             <GitPullRequest className="size-4" /> Pull requests
-            {!pullRequestsQuery.isPending ? (
+            {!pullRequestsPending ? (
               <span>{openPullRequests}</span>
             ) : null}
           </TabsTrigger>
@@ -602,14 +630,14 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-7 items-center justify-center gap-2 rounded-full px-4 font-normal transition-colors aria-pressed:shadow-sm"
           >
             <CircleDot className="size-4" /> Issues
-            {!issuesQuery.isPending ? <span>{openIssues}</span> : null}
+            {!issuesPending ? <span>{openIssues}</span> : null}
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="pull-requests">
-          {pullRequestsQuery.isPending ? (
+          {pullRequestsPending ? (
             <ActivitySkeleton />
-          ) : pullRequestsQuery.isError ? (
+          ) : pullRequestsError ? (
             <Empty className="min-h-64 border">
               <EmptyHeader>
                 <EmptyTitle>Pull requests could not be loaded</EmptyTitle>
@@ -625,7 +653,10 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                   key={pullRequest.id}
                   repoId={repoId}
                   pullRequest={pullRequest}
-                  canAutomate={Boolean(repo?.default_project_id)}
+                  canAutomate={
+                    !isForgejo && Boolean(repo?.default_project_id)
+                  }
+                  providerName={providerName}
                 />
               ))}
             </div>
@@ -635,9 +666,9 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
         </TabsContent>
 
         <TabsContent value="issues">
-          {issuesQuery.isPending ? (
+          {issuesPending ? (
             <ActivitySkeleton />
-          ) : issuesQuery.isError ? (
+          ) : issuesError ? (
             <Empty className="min-h-64 border">
               <EmptyHeader>
                 <EmptyTitle>Issues could not be loaded</EmptyTitle>
@@ -653,7 +684,10 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                   key={issue.id}
                   repoId={repoId}
                   issue={issue}
-                  canAutomate={Boolean(repo?.default_project_id)}
+                  canAutomate={
+                    !isForgejo && Boolean(repo?.default_project_id)
+                  }
+                  providerName={providerName}
                 />
               ))}
             </div>

@@ -28,6 +28,9 @@ export type {
   GithubRepoPullRequest,
   GithubRepoWithIssues,
   GithubRepoWithPullRequests,
+  GetGitRepoActivityInput,
+  GitRepoActivityResponse,
+  GitRepoActivityType,
 } from "./services/github-repo-services.js";
 export type {
   CreateProjectFromTemplateInput,
