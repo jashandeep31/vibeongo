@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
 import { db, eq, userWallet } from "@repo/db";
+import { env } from "../../lib/env.js";
 
 export const getUserMetadata = catchAsync(
   async (req: Request, res: Response) => {
@@ -21,6 +22,10 @@ export const getUserMetadata = catchAsync(
         tier: user.tier,
         balance: userWalletRow.balance,
         username: user.username,
+        forgejo_username: user.forgejo_username,
+        forgejo_profile_link: user.forgejo_username
+          ? `${env.FORGEJO_URL}/${user.forgejo_username}`
+          : null,
         firstName: user.first_name,
         lastName: user.last_name,
       },

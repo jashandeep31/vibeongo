@@ -7,6 +7,7 @@ import { useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Linking,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -155,10 +156,39 @@ export default function ProfileScreen() {
                     },
                   ]}
                 >
-                  <ProfileField label="Username" value={`@${user.username}`} />
+                  <ProfileField label="Full name" value={fullName || "—"} />
+                  <ProfileField
+                    label="GitHub username"
+                    value={`@${user.username}`}
+                  />
+                  <ProfileField
+                    label="Forgejo username"
+                    value={
+                      user.forgejo_username
+                        ? `@${user.forgejo_username}`
+                        : "Not available"
+                    }
+                  />
+                  <ProfileField
+                    label="Forgejo profile"
+                    value={
+                      user.forgejo_profile_link
+                        ? "Open Forgejo profile"
+                        : "Not available"
+                    }
+                    onPress={
+                      user.forgejo_profile_link
+                        ? () => void Linking.openURL(user.forgejo_profile_link!)
+                        : undefined
+                    }
+                  />
+                  <ProfileField
+                    label="Tier"
+                    value={user.tier.replace("tier", "Tier ")}
+                  />
                   <ProfileField
                     label="Balance"
-                    value={`$${formatInternalMoney(user.balance)}`}
+                    value={`$${formatInternalMoney(user.balance, 2)} credits`}
                   />
                 </View>
               </>
@@ -196,15 +226,31 @@ export default function ProfileScreen() {
   );
 }
 
-function ProfileField({ label, value }: { label: string; value: string }) {
+function ProfileField({
+  label,
+  value,
+  onPress,
+}: {
+  label: string;
+  value: string;
+  onPress?: () => void;
+}) {
   return (
     <View style={styles.field}>
       <ThemedText style={styles.fieldLabel} themeColor="textSecondary">
         {label}
       </ThemedText>
-      <ThemedText selectable style={styles.fieldValue}>
-        {value}
-      </ThemedText>
+      {onPress ? (
+        <Pressable accessibilityRole="link" onPress={onPress}>
+          <ThemedText selectable style={[styles.fieldValue, styles.link]}>
+            {value}
+          </ThemedText>
+        </Pressable>
+      ) : (
+        <ThemedText selectable style={styles.fieldValue}>
+          {value}
+        </ThemedText>
+      )}
     </View>
   );
 }
@@ -287,6 +333,9 @@ const styles = StyleSheet.create({
   fieldValue: {
     fontSize: 15,
     lineHeight: 21,
+  },
+  link: {
+    textDecorationLine: "underline",
   },
   signOut: {
     alignItems: "center",
