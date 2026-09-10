@@ -21,7 +21,17 @@ export const userOnboardingWorker = new Worker<UserOnboardingJobData>(
       throw new Error(`Onboarding user ${job.data.userId} was not found`);
     }
 
-    await ensureForgejoUserAccount(user);
+    const forgejoUser = await ensureForgejoUserAccount(user);
+
+    await db
+      .update(users)
+      .set({
+        forgejo_id: forgejoUser.id,
+        forgejo_username: forgejoUser.username,
+        updated_at: new Date(),
+      })
+      .where(eq(users.id, user.id));
+
     await addDemoProjectsToUserProfile(user);
   },
   {

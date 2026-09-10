@@ -28,7 +28,7 @@ export const users = pgTable("users", {
 
   // forjego_data
   forgejo_username: varchar(),
-  forgejo_id: integer(),
+  forgejo_id: integer().unique(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

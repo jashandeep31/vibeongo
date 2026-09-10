@@ -13,22 +13,28 @@ export default async function test() {
   //
   //
   const user = await getForgejoUser("jashandeep31");
-  console.log(user?.username);
+  if (user) {
+    console.log(user?.username);
+  }
 
-  // const allusers = await db.select().from(users);
+  const allusers = await db.select().from(users);
 
-  // for (const user of allusers) {
-  //   if (user.forgejo_id && user.forgejo_username) {
-  //     continue;
-  //   }
-  //
-  //   const forgejoUser = await getForgejoUser(user.username);
-  //
-  //   if (forgejoUser) {
-  //     await db.update(users).set({
-  //       forgejo_username: forgejoUser.username,
-  //       forgejo_id: forgejoUser.id,
-  //     }).where(eq(users.id , user.id);
-  //   }
-  // }
+  for (const user of allusers) {
+    console.log(user.forgejo_username, user.forgejo_id);
+    // if (user.forgejo_id && user.forgejo_username) {
+    //   continue;
+    // }
+    //
+    // const forgejoUser = await getForgejoUser(user.username);
+    //
+    // if (forgejoUser) {
+    //   await db
+    //     .update(users)
+    //     .set({
+    //       forgejo_username: forgejoUser.username,
+    //       forgejo_id: forgejoUser.id,
+    //     })
+    //     .where(eq(users.id, user.id));
+    // }
+  }
 }

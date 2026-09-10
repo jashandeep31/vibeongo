@@ -39,11 +39,11 @@ export interface ForgejoUser {
 
 export async function createForgejoUserAccount(
   user: typeof users.$inferSelect,
-): Promise<{
-  status: "ok" | "error";
-  user: any;
-}> {
-  const res = await forgejoAPIClient.post("/admin/users", {
+): Promise<
+  | { status: "ok"; user: ForgejoUser }
+  | { status: "error"; user: null }
+> {
+  const res = await forgejoAPIClient.post<ForgejoUser>("/admin/users", {
     created_at: new Date(),
     email: user.email,
     full_name: user.first_name ? user.first_name : user.username,
@@ -88,16 +88,21 @@ export async function getForgejoUser(
 
 export async function ensureForgejoUserAccount(
   user: typeof users.$inferSelect,
-): Promise<void> {
-  if (await getForgejoUser(user.username)) return;
+): Promise<ForgejoUser> {
+  const existingUser = await getForgejoUser(user.username);
+  if (existingUser) return existingUser;
 
   try {
-    await createForgejoUserAccount(user);
+    const result = await createForgejoUserAccount(user);
+    if (result.status === "ok") return result.user;
   } catch (error: unknown) {
     // A retry or concurrent job may have created the account after our check.
-    if (await getForgejoUser(user.username)) return;
+    const concurrentlyCreatedUser = await getForgejoUser(user.username);
+    if (concurrentlyCreatedUser) return concurrentlyCreatedUser;
     throw error;
   }
+
+  throw new Error(`Failed to create Forgejo user ${user.username}`);
 }
 
 export async function getAllForgejoUsers(login_name?: string) {
