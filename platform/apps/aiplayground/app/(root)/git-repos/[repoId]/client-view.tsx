@@ -30,7 +30,6 @@ import {
 } from "@repo/ui/components/tabs";
 import axios from "axios";
 import {
-  ArrowLeft,
   ArrowUpRight,
   ChevronDown,
   CircleDot,
@@ -81,12 +80,10 @@ function PullRequestCard({
   repoId,
   pullRequest,
   canAutomate,
-  providerName,
 }: {
   repoId: string;
   pullRequest: GitRepoPullRequest;
   canAutomate: boolean;
-  providerName: "GitHub" | "Forgejo";
 }) {
   const generateReview = useGenerateReviewForPullRequest(
     repoId,
@@ -140,15 +137,12 @@ function PullRequestCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <a
-                href={pullRequest.html_url}
-                target="_blank"
-                rel="noreferrer"
-                title={`Open on ${providerName}`}
+              <Link
+                href={`/git-repos/${repoId}/pull-requests/${pullRequest.number}`}
                 className="truncate font-medium hover:underline"
               >
                 {pullRequest.title}
-              </a>
+              </Link>
               {pullRequest.draft ? <Badge variant="outline">Draft</Badge> : null}
             </div>
             <p className="text-muted-foreground mt-1 text-xs">
@@ -181,12 +175,10 @@ function IssueCard({
   repoId,
   issue,
   canAutomate,
-  providerName,
 }: {
   repoId: string;
   issue: GitRepoIssue;
   canAutomate: boolean;
-  providerName: "GitHub" | "Forgejo";
 }) {
   const generateFix = useGenerateFixForIssue(repoId, issue.number);
 
@@ -230,15 +222,12 @@ function IssueCard({
         <div className="flex items-start justify-between gap-3">
           <div className="min-w-0">
             <div className="flex min-w-0 flex-wrap items-center gap-2">
-              <a
-                href={issue.html_url}
-                target="_blank"
-                rel="noreferrer"
-                title={`Open on ${providerName}`}
+              <Link
+                href={`/git-repos/${repoId}/issues/${issue.number}`}
                 className="truncate font-medium hover:underline"
               >
                 {issue.title}
-              </a>
+              </Link>
               {issue.labels.map((label, index) => (
                 <Badge
                   key={`${label.id ?? label.name ?? "label"}-${index}`}
@@ -309,7 +298,6 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   const pullRequestsPending = pullRequestsQuery.isPending;
   const issuesError = issuesQuery.isError;
   const pullRequestsError = pullRequestsQuery.isError;
-  const providerName = isForgejo ? "Forgejo" : "GitHub";
   const openIssues = issues.filter((issue) => issue.state === "open").length;
   const openPullRequests = pullRequests.filter(
     (pullRequest) => pullRequest.state === "open",
@@ -353,12 +341,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   if (repoQuery.isError || (issuesError && pullRequestsError)) {
     return (
       <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10">
-        <Button variant="ghost" size="sm" asChild>
-          <Link href="/git-repos">
-            <ArrowLeft /> Repositories
-          </Link>
-        </Button>
-        <Empty className="mt-8 min-h-72 border">
+        <Empty className="min-h-72 border">
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Github />
@@ -373,13 +356,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-6 md:px-10 md:py-8">
-      <Button variant="ghost" size="sm" asChild className="-ml-3">
-        <Link href="/git-repos">
-          <ArrowLeft className="size-4" /> Repositories
-        </Link>
-      </Button>
-
-      <div className="mt-3 flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between">
+      <div className="flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           {repo ? (
             <>
@@ -591,7 +568,6 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                   canAutomate={
                     !isForgejo && Boolean(repo?.default_project_id)
                   }
-                  providerName={providerName}
                 />
               ))}
             </div>
@@ -622,7 +598,6 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                   canAutomate={
                     !isForgejo && Boolean(repo?.default_project_id)
                   }
-                  providerName={providerName}
                 />
               ))}
             </div>

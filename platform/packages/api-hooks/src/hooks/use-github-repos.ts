@@ -58,6 +58,20 @@ export const useGitRepoActivity = <T extends GitRepoActivityType>(
   });
 };
 
+export const useGitRepoActivityDetails = <T extends GitRepoActivityType>(
+  id: string,
+  type: T,
+  number: number,
+) => {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ["git-repo", id, "activity", type, number],
+    queryFn: () =>
+      client.githubRepos.getGitRepoActivityDetails({ id, type, number }),
+  });
+};
+
 export const useUpdateGithubRepoAutomation = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();

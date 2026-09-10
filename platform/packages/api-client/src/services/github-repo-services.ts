@@ -75,6 +75,14 @@ export type GitRepoActivityResponse<T extends GitRepoActivityType> = {
   };
 };
 
+export type GetGitRepoActivityDetailsInput<
+  T extends GitRepoActivityType,
+> = {
+  id: string;
+  type: T;
+  number: number;
+};
+
 export const createForgejoRepo =
   (apiClient: AxiosInstance) =>
   async (input: CreateForgejoRepoInput): Promise<{ message: string }> => {
@@ -128,6 +136,23 @@ export const getGitRepoActivity =
     });
 
     return response.data;
+  };
+
+export const getGitRepoActivityDetails =
+  (apiClient: AxiosInstance) =>
+  async <T extends GitRepoActivityType>({
+    id,
+    type,
+    number,
+  }: GetGitRepoActivityDetailsInput<T>): Promise<
+    T extends "issue" ? GitRepoIssue : GitRepoPullRequest
+  > => {
+    const response = await apiClient.get(
+      `/api/v1/git-repos/${id}/activity/${type}/${number}`,
+      { withCredentials: true },
+    );
+
+    return response.data.data;
   };
 
 export const updateGithubRepoAutomation =

@@ -7,7 +7,6 @@ import {
   useGitRepoById,
   useScheduleGithubRepoOverview,
 } from "@repo/api-hooks";
-import { Image } from "expo-image";
 import { useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import * as WebBrowser from "expo-web-browser";
@@ -31,7 +30,6 @@ import {
   PageHeader,
   usePageTitleScrollFade,
 } from "@/components/page-chrome";
-import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 type ResourceTab = "pull-requests" | "issues";
@@ -453,15 +451,28 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                     ) : pullRequests.length === 0 ? (
                       <ResourceState label="No pull requests found" />
                     ) : (
-                      <View style={styles.resources}>
+                      <View
+                        style={[
+                          styles.resources,
+                          { borderColor: theme.backgroundSelected },
+                        ]}
+                      >
                         {pullRequests.map((pullRequest) => (
                           <PullRequestRow
                             canAutomate={
                               !isForgejo && Boolean(repo.default_project_id)
                             }
                             key={pullRequest.id}
-                            onOpen={() =>
-                              void openExternalUrl(pullRequest.html_url)
+                            onView={() =>
+                              router.push({
+                                pathname:
+                                  "/github-repos/[repoId]/[activityType]/[number]",
+                                params: {
+                                  repoId,
+                                  activityType: "pull-requests",
+                                  number: pullRequest.number.toString(),
+                                },
+                              })
                             }
                             onReview={() =>
                               setConfirmationTarget({
@@ -469,7 +480,6 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                                 number: pullRequest.number,
                               })
                             }
-                            providerLabel={providerLabel}
                             pullRequest={pullRequest}
                           />
                         ))}
@@ -486,7 +496,12 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                   ) : issues.length === 0 ? (
                     <ResourceState label="No issues found" />
                   ) : (
-                    <View style={styles.resources}>
+                    <View
+                      style={[
+                        styles.resources,
+                        { borderColor: theme.backgroundSelected },
+                      ]}
+                    >
                       {issues.map((issue) => (
                         <IssueRow
                           canAutomate={
@@ -500,8 +515,17 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                               number: issue.number,
                             })
                           }
-                          onOpen={() => void openExternalUrl(issue.html_url)}
-                          providerLabel={providerLabel}
+                          onView={() =>
+                            router.push({
+                              pathname:
+                                "/github-repos/[repoId]/[activityType]/[number]",
+                              params: {
+                                repoId,
+                                activityType: "issues",
+                                number: issue.number.toString(),
+                              },
+                            })
+                          }
                         />
                       ))}
                     </View>
@@ -632,73 +656,50 @@ function TabButton({
 
 function PullRequestRow({
   canAutomate,
-  onOpen,
   onReview,
-  providerLabel,
+  onView,
   pullRequest,
 }: {
   canAutomate: boolean;
-  onOpen: () => void;
   onReview: () => void;
-  providerLabel: string;
+  onView: () => void;
   pullRequest: GitRepoPullRequest;
 }) {
   const theme = useTheme();
+  const merged = Boolean(pullRequest.merged_at);
+  const statusColor = merged
+    ? "#7c3aed"
+    : pullRequest.state === "open"
+      ? "#059669"
+      : theme.textSecondary;
   return (
-    <View style={[styles.resource, { borderColor: theme.backgroundSelected }]}>
-      <ResourceAuthor
-        avatarUrl={pullRequest.user?.avatar_url}
-        login={pullRequest.user?.login}
+    <View style={[styles.resource, { borderColor: theme.backgroundSelected }]}> 
+      <SymbolView
+        name={{ ios: "arrow.triangle.pull", android: "call_merge" }}
+        size={17}
+        tintColor={statusColor}
       />
       <View style={styles.resourceBody}>
-        <View style={styles.resourceBadges}>
-          <StatusBadge
-            merged={Boolean(pullRequest.merged_at)}
-            state={pullRequest.state}
-          />
+        <View style={styles.resourceHeading}>
+          <Pressable accessibilityRole="link" onPress={onView} style={styles.resourceTitleLink}>
+            <ThemedText numberOfLines={2} style={styles.resourceTitle}>
+              {pullRequest.title}
+            </ThemedText>
+          </Pressable>
           {pullRequest.draft ? <SmallBadge label="Draft" /> : null}
-          <ThemedText style={styles.number} themeColor="textSecondary">
-            #{pullRequest.number}
-          </ThemedText>
+          {canAutomate ? (
+            <Pressable accessibilityLabel="Review with AI" accessibilityRole="button" onPress={onReview} hitSlop={8}>
+              <SymbolView
+                name={{ ios: "sparkles", android: "auto_awesome" }}
+                size={17}
+                tintColor={theme.textSecondary}
+              />
+            </Pressable>
+          ) : null}
         </View>
-        <ThemedText style={styles.resourceTitle}>
-          {pullRequest.title}
+        <ThemedText style={styles.metaText} themeColor="textSecondary">
+          #{pullRequest.number} opened {formatDate(pullRequest.created_at)} by {pullRequest.user?.login ?? "unknown"}
         </ThemedText>
-        <View style={styles.metadata}>
-          <ThemedText style={styles.metaText} themeColor="textSecondary">
-            {pullRequest.user?.login ?? "Unknown author"}
-          </ThemedText>
-          <ThemedText style={styles.metaText} themeColor="textSecondary">
-            {formatDate(pullRequest.created_at)}
-          </ThemedText>
-        </View>
-        <View style={styles.branch}>
-          <SymbolView
-            name={{ ios: "arrow.triangle.branch", android: "account_tree" }}
-            size={14}
-            tintColor={theme.textSecondary}
-          />
-          <ThemedText
-            numberOfLines={1}
-            style={styles.branchText}
-            themeColor="textSecondary"
-          >
-            {pullRequest.head.ref} → {pullRequest.base.ref}
-          </ThemedText>
-        </View>
-        <View style={styles.resourceActions}>
-          <ResourceButton
-            disabled={!canAutomate}
-            icon={{ ios: "sparkles", android: "auto_awesome" }}
-            label="Review"
-            onPress={onReview}
-          />
-          <ResourceButton
-            icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-            label={providerLabel}
-            onPress={onOpen}
-          />
-        </View>
       </View>
     </View>
   );
@@ -708,105 +709,47 @@ function IssueRow({
   canAutomate,
   issue,
   onFix,
-  onOpen,
-  providerLabel,
+  onView,
 }: {
   canAutomate: boolean;
   issue: GitRepoIssue;
   onFix: () => void;
-  onOpen: () => void;
-  providerLabel: string;
+  onView: () => void;
 }) {
   const theme = useTheme();
   return (
-    <View style={[styles.resource, { borderColor: theme.backgroundSelected }]}>
-      <ResourceAuthor
-        avatarUrl={issue.user?.avatar_url}
-        login={issue.user?.login}
+    <View style={[styles.resource, { borderColor: theme.backgroundSelected }]}> 
+      <SymbolView
+        name={{ ios: "smallcircle.filled.circle", android: "adjust" }}
+        size={17}
+        tintColor={issue.state === "open" ? "#059669" : theme.textSecondary}
       />
       <View style={styles.resourceBody}>
-        <View style={styles.resourceBadges}>
-          <StatusBadge state={issue.state} />
-          <ThemedText style={styles.number} themeColor="textSecondary">
-            #{issue.number}
-          </ThemedText>
-        </View>
-        <ThemedText style={styles.resourceTitle}>{issue.title}</ThemedText>
-        {issue.labels.length > 0 ? (
-          <View style={styles.labels}>
+        <View style={styles.resourceHeading}>
+          <Pressable accessibilityRole="link" onPress={onView} style={styles.resourceTitleLink}>
+            <ThemedText numberOfLines={2} style={styles.resourceTitle}>{issue.title}</ThemedText>
+          </Pressable>
             {issue.labels.map((label, index) => (
               <SmallBadge
                 key={`${label.id ?? label.name ?? "label"}-${index}`}
                 label={label.name ?? "Label"}
               />
             ))}
-          </View>
-        ) : null}
-        <View style={styles.metadata}>
-          <ThemedText style={styles.metaText} themeColor="textSecondary">
-            {issue.user?.login ?? "Unknown author"}
-          </ThemedText>
-          <ThemedText style={styles.metaText} themeColor="textSecondary">
-            {formatDate(issue.created_at)}
-          </ThemedText>
-          <ThemedText style={styles.metaText} themeColor="textSecondary">
-            {issue.comments} comments
-          </ThemedText>
+          {canAutomate ? (
+            <Pressable accessibilityLabel="Fix with AI" accessibilityRole="button" onPress={onFix} hitSlop={8}>
+              <SymbolView
+                name={{ ios: "wand.and.stars", android: "auto_fix_high" }}
+                size={17}
+                tintColor={theme.textSecondary}
+              />
+            </Pressable>
+          ) : null}
         </View>
-        <View style={styles.resourceActions}>
-          <ResourceButton
-            disabled={!canAutomate}
-            icon={{ ios: "wand.and.stars", android: "auto_fix_high" }}
-            label="Generate fix"
-            onPress={onFix}
-          />
-          <ResourceButton
-            icon={{ ios: "arrow.up.right", android: "open_in_new" }}
-            label={providerLabel}
-            onPress={onOpen}
-          />
-        </View>
+        <ThemedText style={styles.metaText} themeColor="textSecondary">
+          #{issue.number} opened {formatDate(issue.created_at)} by {issue.user?.login ?? "unknown"}
+          {issue.comments > 0 ? ` · ${issue.comments} comments` : ""}
+        </ThemedText>
       </View>
-    </View>
-  );
-}
-
-function ResourceAuthor({
-  avatarUrl,
-  login,
-}: {
-  avatarUrl?: string;
-  login?: string;
-}) {
-  const theme = useTheme();
-  return (
-    <View style={[styles.avatar, { backgroundColor: theme.backgroundElement }]}>
-      <ThemedText style={styles.avatarFallback} themeColor="textSecondary">
-        {login?.slice(0, 2).toUpperCase() ?? "GH"}
-      </ThemedText>
-      {avatarUrl ? (
-        <Image
-          source={avatarUrl}
-          style={StyleSheet.absoluteFill}
-          transition={120}
-        />
-      ) : null}
-    </View>
-  );
-}
-
-function StatusBadge({
-  state,
-  merged = false,
-}: {
-  state: string;
-  merged?: boolean;
-}) {
-  const label = merged ? "Merged" : state === "open" ? "Open" : "Closed";
-  const color = merged ? "#7c3aed" : state === "open" ? "#059669" : "#6b7280";
-  return (
-    <View style={[styles.statusBadge, { backgroundColor: `${color}1A` }]}>
-      <ThemedText style={[styles.statusText, { color }]}>{label}</ThemedText>
     </View>
   );
 }
@@ -824,36 +767,6 @@ function SmallBadge({ label }: { label: string }) {
   );
 }
 
-function ResourceButton({
-  disabled = false,
-  icon,
-  label,
-  onPress,
-}: {
-  disabled?: boolean;
-  icon: React.ComponentProps<typeof SymbolView>["name"];
-  label: string;
-  onPress: () => void;
-}) {
-  const theme = useTheme();
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.resourceButton,
-        { backgroundColor: theme.backgroundElement },
-        disabled && styles.disabled,
-        pressed && styles.pressed,
-      ]}
-    >
-      <SymbolView name={icon} size={15} tintColor={theme.text} />
-      <ThemedText style={styles.resourceButtonText}>{label}</ThemedText>
-    </Pressable>
-  );
-}
 
 function RepositoryDetailSkeleton() {
   const theme = useTheme();
@@ -886,7 +799,10 @@ function ActivityListSkeleton() {
   const theme = useTheme();
   const fill = { backgroundColor: theme.backgroundElement };
   return (
-    <View accessibilityLabel="Loading activity" style={styles.resources}>
+    <View
+      accessibilityLabel="Loading activity"
+      style={[styles.resources, { borderColor: theme.backgroundSelected }]}
+    >
       {[0, 1, 2].map((item) => (
         <View
           key={item}
@@ -895,15 +811,10 @@ function ActivityListSkeleton() {
             { borderColor: theme.backgroundSelected },
           ]}
         >
-          <View style={[styles.skeletonAvatar, fill]} />
+          <View style={[styles.skeletonStatus, fill]} />
           <View style={styles.skeletonResourceCopy}>
-            <View style={[styles.skeletonBadge, fill]} />
             <View style={[styles.skeletonResourceTitle, fill]} />
             <View style={[styles.skeletonMeta, fill]} />
-            <View style={styles.skeletonResourceActions}>
-              <View style={[styles.skeletonResourceButton, fill]} />
-              <View style={[styles.skeletonResourceButton, fill]} />
-            </View>
           </View>
         </View>
       ))}
@@ -964,17 +875,6 @@ const styles = StyleSheet.create({
   },
   actionLabel: { fontSize: 12, fontWeight: "700" },
   actions: { gap: 8, paddingVertical: 20 },
-  avatar: {
-    alignItems: "center",
-    borderRadius: 18,
-    height: 36,
-    justifyContent: "center",
-    overflow: "hidden",
-    width: 36,
-  },
-  avatarFallback: { fontSize: 11, fontWeight: "700" },
-  branch: { alignItems: "center", flexDirection: "row", gap: 6, marginTop: 10 },
-  branchText: { flex: 1, fontFamily: Fonts.mono, fontSize: 11 },
   content: { padding: 20, paddingBottom: 44 },
   disabled: { opacity: 0.4 },
   header: {
@@ -1000,10 +900,7 @@ const styles = StyleSheet.create({
   },
   identity: { alignItems: "center", flexDirection: "row", gap: 11 },
   identityCopy: { flex: 1, minWidth: 0 },
-  labels: { flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 11 },
-  metadata: { flexDirection: "row", flexWrap: "wrap", gap: 12, marginTop: 12 },
-  metaText: { fontSize: 11 },
-  number: { fontSize: 11, fontWeight: "600" },
+  metaText: { fontSize: 11, lineHeight: 16, marginTop: 4 },
   overview: {
     borderRadius: 13,
     borderWidth: StyleSheet.hairlineWidth,
@@ -1022,40 +919,30 @@ const styles = StyleSheet.create({
   },
   repoName: { fontSize: 23, fontWeight: "700", letterSpacing: -0.5 },
   resource: {
-    borderRadius: 15,
-    borderWidth: StyleSheet.hairlineWidth,
+    alignItems: "flex-start",
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: 11,
-    padding: 14,
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
-  resourceActions: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 8,
-    marginTop: 14,
-  },
-  resourceBadges: {
+  resourceHeading: {
     alignItems: "center",
     flexDirection: "row",
     flexWrap: "wrap",
-    gap: 7,
+    gap: 6,
   },
   resourceBody: { flex: 1, minWidth: 0 },
-  resourceButton: {
-    alignItems: "center",
-    borderRadius: 9,
-    flexDirection: "row",
-    gap: 6,
-    minHeight: 36,
-    paddingHorizontal: 11,
+  resourceTitleLink: { flex: 1, minWidth: 160 },
+  resources: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
   },
-  resourceButtonText: { fontSize: 12, fontWeight: "700" },
-  resources: { gap: 11 },
   resourceTitle: {
     fontSize: 15,
     fontWeight: "700",
     lineHeight: 21,
-    marginTop: 8,
   },
   screen: { flex: 1 },
   smallBadge: {
@@ -1068,8 +955,6 @@ const styles = StyleSheet.create({
   smallBadgeText: { fontSize: 10 },
   skeletonAction: { borderRadius: 11, height: 39, width: 116 },
   skeletonActions: { flexDirection: "row", gap: 8, paddingVertical: 20 },
-  skeletonAvatar: { borderRadius: 18, height: 36, width: 36 },
-  skeletonBadge: { borderRadius: 8, height: 20, width: 66 },
   skeletonIdentity: { alignItems: "center", flexDirection: "row", gap: 11 },
   skeletonIdentityCopy: { flex: 1, gap: 7 },
   skeletonMeta: { borderRadius: 5, height: 10, width: "62%" },
@@ -1077,17 +962,16 @@ const styles = StyleSheet.create({
   skeletonOwner: { borderRadius: 5, height: 11, width: "38%" },
   skeletonRepoIcon: { borderRadius: 12, height: 44, width: 44 },
   skeletonResource: {
-    borderRadius: 15,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: StyleSheet.hairlineWidth,
     flexDirection: "row",
-    gap: 11,
-    minHeight: 166,
-    padding: 14,
+    gap: 10,
+    minHeight: 62,
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
-  skeletonResourceActions: { flexDirection: "row", gap: 8, marginTop: 4 },
-  skeletonResourceButton: { borderRadius: 9, height: 36, width: 92 },
-  skeletonResourceCopy: { flex: 1, gap: 12 },
+  skeletonResourceCopy: { flex: 1, gap: 8 },
   skeletonResourceTitle: { borderRadius: 6, height: 17, width: "88%" },
+  skeletonStatus: { borderRadius: 9, height: 18, width: 18 },
   skeletonTabs: {
     borderRadius: 20,
     height: 42,
@@ -1114,8 +998,6 @@ const styles = StyleSheet.create({
     marginTop: 9,
     textAlign: "center",
   },
-  statusBadge: { borderRadius: 10, paddingHorizontal: 8, paddingVertical: 4 },
-  statusText: { fontSize: 10, fontWeight: "700" },
   tab: {
     alignItems: "center",
     borderRadius: 16,

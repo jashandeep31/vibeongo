@@ -12,6 +12,7 @@ import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.j
 import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-pullrequest.js";
 import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/git-repo-overview.js";
 import { getGitRepoPrOrIssues } from "../controllers/git-repo/get-pr-or-issues.js";
+import { getGitRepoPrOrIssueDetails } from "../controllers/git-repo/get-pr-or-issue-details.js";
 
 const routes: Router = Router();
 routes
@@ -26,6 +27,10 @@ routes
 routes
   .route("/:id/activity")
   .get(checkAuthorization(["all"]), getGitRepoPrOrIssues);
+
+routes
+  .route("/:id/activity/:type/:number")
+  .get(checkAuthorization(["all"]), getGitRepoPrOrIssueDetails);
 
 routes
   .route("/:id")

@@ -1,3 +1,4 @@
+import axios from "axios";
 import { forgejoAPIClient } from "./user-actions.js";
 
 export type ForgejoPrOrIssueType = "pr" | "issue";
@@ -44,6 +45,13 @@ export interface GetForgejoPrOrIssuesInput {
   count?: number;
 }
 
+export interface GetForgejoPrOrIssueInput {
+  owner: string;
+  repo: string;
+  type: ForgejoPrOrIssueType;
+  number: number;
+}
+
 /**
  * Returns a page of pull requests or issues from a Forgejo repository.
  * `count` is sent to Forgejo as the API's `limit` query parameter.
@@ -64,14 +72,33 @@ export async function getForgejoPrOrIssues({
   }
 
   const endpoint = type === "pr" ? "pulls" : "issues";
-  const response = await forgejoAPIClient.get<ForgejoPrOrIssue[]>(
-    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${endpoint}`,
-    {
-      params: {
-        page,
-        limit: count,
+  try {
+    const response = await forgejoAPIClient.get<ForgejoPrOrIssue[]>(
+      `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${endpoint}`,
+      {
+        params: {
+          page,
+          limit: count,
+        },
       },
-    },
+    );
+
+    return response.data;
+  } catch (error: unknown) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) return [];
+    throw error;
+  }
+}
+
+export async function getForgejoPrOrIssue({
+  owner,
+  repo,
+  type,
+  number,
+}: GetForgejoPrOrIssueInput): Promise<ForgejoPrOrIssue> {
+  const endpoint = type === "pr" ? "pulls" : "issues";
+  const response = await forgejoAPIClient.get<ForgejoPrOrIssue>(
+    `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/${endpoint}/${number}`,
   );
 
   return response.data;

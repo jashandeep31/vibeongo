@@ -27,6 +27,7 @@ export type {
   GitRepoIssue,
   GitRepoPullRequest,
   GetGitRepoActivityInput,
+  GetGitRepoActivityDetailsInput,
   GitRepoActivityResponse,
   GitRepoActivityType,
 } from "./services/github-repo-services.js";
