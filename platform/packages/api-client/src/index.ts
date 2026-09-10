@@ -24,10 +24,8 @@ export type {
 } from "./services/instance-slot-services.js";
 export type {
   GithubRepo,
-  GithubRepoIssue,
-  GithubRepoPullRequest,
-  GithubRepoWithIssues,
-  GithubRepoWithPullRequests,
+  GitRepoIssue,
+  GitRepoPullRequest,
   GetGitRepoActivityInput,
   GitRepoActivityResponse,
   GitRepoActivityType,

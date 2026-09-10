@@ -7,20 +7,13 @@ import {
   useGenerateFixForIssue,
   useGenerateReviewForPullRequest,
   useGitRepoActivity,
-  useGithubRepoIssues,
-  useGithubRepoPullRequests,
+  useGitRepoById,
   useScheduleGithubRepoOverview,
 } from "@repo/api-hooks";
-import type { GithubRepoIssue, GithubRepoPullRequest } from "@repo/api-client";
-import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
-} from "@repo/ui/components/avatar";
+import type { GitRepoIssue, GitRepoPullRequest } from "@repo/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
-import { Card, CardContent } from "@repo/ui/components/card";
 import {
   Empty,
   EmptyDescription,
@@ -70,44 +63,17 @@ const formatDate = (value: string) =>
 
 function ActivitySkeleton() {
   return (
-    <div className="space-y-3">
+    <div className="overflow-hidden rounded-lg border">
       {[1, 2, 3].map((item) => (
-        <Card key={item} className="py-5">
-          <CardContent className="flex gap-4">
-            <Skeleton className="size-9 shrink-0 rounded-full" />
-            <div className="w-full space-y-3">
-              <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-1/3" />
-            </div>
-          </CardContent>
-        </Card>
+        <div key={item} className="flex gap-3 border-b px-4 py-3 last:border-0">
+          <Skeleton className="mt-0.5 size-4 shrink-0 rounded-full" />
+          <div className="w-full space-y-2">
+            <Skeleton className="h-5 w-2/3" />
+            <Skeleton className="h-4 w-1/3" />
+          </div>
+        </div>
       ))}
     </div>
-  );
-}
-
-function StatusBadge({ state, merged }: { state: string; merged?: boolean }) {
-  const label = merged ? "Merged" : state === "open" ? "Open" : "Closed";
-  const tone = merged
-    ? "bg-violet-500/10 text-violet-700 dark:text-violet-300"
-    : state === "open"
-      ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300"
-      : "bg-muted text-muted-foreground";
-
-  return <Badge className={`border-0 font-medium ${tone}`}>{label}</Badge>;
-}
-
-function Author({ user }: { user?: { login: string; avatar_url: string } }) {
-  return (
-    <Avatar className="mt-0.5 size-9">
-      {user?.avatar_url ? (
-        <AvatarImage src={user.avatar_url} alt={user.login} />
-      ) : null}
-      <AvatarFallback>
-        {user?.login?.slice(0, 2).toUpperCase() ?? "GH"}
-      </AvatarFallback>
-    </Avatar>
   );
 }
 
@@ -118,7 +84,7 @@ function PullRequestCard({
   providerName,
 }: {
   repoId: string;
-  pullRequest: GithubRepoPullRequest;
+  pullRequest: GitRepoPullRequest;
   canAutomate: boolean;
   providerName: "GitHub" | "Forgejo";
 }) {
@@ -142,80 +108,72 @@ function PullRequestCard({
 
   const reviewButton = (
     <Button
-      size="sm"
-      className="cursor-pointer disabled:cursor-not-allowed"
-      disabled={!canAutomate || generateReview.isPending}
+      size="icon-sm"
+      variant="ghost"
+      className="shrink-0 cursor-pointer"
+      disabled={generateReview.isPending}
+      aria-label={`Review pull request #${pullRequest.number}`}
+      title="Review with AI"
     >
       {generateReview.isPending ? (
         <Loader2 className="animate-spin" />
       ) : (
         <Sparkles />
       )}
-      Review
     </Button>
   );
 
+  const isMerged = Boolean(pullRequest.merged_at);
+  const statusLabel = isMerged
+    ? "Merged"
+    : pullRequest.state === "open"
+      ? "Open"
+      : "Closed";
+
   return (
-    <Card className="py-5 transition-shadow hover:shadow-md">
-      <CardContent className="flex min-w-0 gap-4">
-        <Author user={pullRequest.user} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge
-                  state={pullRequest.state}
-                  merged={Boolean(pullRequest.merged_at)}
-                />
-                {pullRequest.draft ? (
-                  <Badge variant="outline">Draft</Badge>
-                ) : null}
-                <span className="text-muted-foreground text-xs font-medium">
-                  #{pullRequest.number}
-                </span>
-              </div>
-              <h2 className="mt-2 text-base leading-6 font-semibold">
+    <div className="hover:bg-muted/30 flex min-w-0 gap-3 border-b px-4 py-3 last:border-b-0">
+      <GitPullRequest
+        className={`mt-1 size-4 shrink-0 ${isMerged ? "text-violet-500" : pullRequest.state === "open" ? "text-emerald-500" : "text-muted-foreground"}`}
+        aria-label={statusLabel}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <a
+                href={pullRequest.html_url}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open on ${providerName}`}
+                className="truncate font-medium hover:underline"
+              >
                 {pullRequest.title}
-              </h2>
+              </a>
+              {pullRequest.draft ? <Badge variant="outline">Draft</Badge> : null}
             </div>
-            <div className="flex shrink-0 items-center gap-1 self-start">
-              {canAutomate ? (
-                <ConfirmationDialog
-                  title="Review pull request"
-                  description={`Start an AI review for pull request #${pullRequest.number}?`}
-                  confirmText="Start review"
-                  onConfirm={() => void handleReview()}
-                >
-                  {reviewButton}
-                </ConfirmationDialog>
-              ) : (
-                reviewButton
-              )}
-              <Button variant="ghost" size="sm" asChild>
-                <a href={pullRequest.html_url} target="_blank" rel="noreferrer">
-                  Open on {providerName} <ArrowUpRight className="size-4" />
-                </a>
-              </Button>
-            </div>
-          </div>
-          {pullRequest.body ? (
-            <p className="text-muted-foreground mt-2 line-clamp-2 text-sm leading-6">
-              {pullRequest.body}
+            <p className="text-muted-foreground mt-1 text-xs">
+              #{pullRequest.number} opened {formatDate(pullRequest.created_at)} by {pullRequest.user?.login ?? "unknown"}
+              {pullRequest.head.ref && pullRequest.base.ref ? (
+                <span className="ml-3 inline-flex items-center gap-1">
+                  <GitBranch className="size-3" />
+                  {pullRequest.head.ref} → {pullRequest.base.ref}
+                </span>
+              ) : null}
             </p>
-          ) : null}
-          <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-            <span>{pullRequest.user?.login ?? "Unknown author"}</span>
-            <span>{formatDate(pullRequest.created_at)}</span>
-            <span className="inline-flex min-w-0 items-center gap-1.5">
-              <GitBranch className="size-3.5 shrink-0" />
-              <span className="max-w-36 truncate">{pullRequest.head.ref}</span>
-              <span>→</span>
-              <span className="max-w-36 truncate">{pullRequest.base.ref}</span>
-            </span>
           </div>
+          {canAutomate ? (
+            <ConfirmationDialog
+              title="Review pull request"
+              description={`Start an AI review for pull request #${pullRequest.number}?`}
+              confirmText="Start review"
+              onConfirm={() => void handleReview()}
+            >
+              {reviewButton}
+            </ConfirmationDialog>
+          ) : null}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -226,7 +184,7 @@ function IssueCard({
   providerName,
 }: {
   repoId: string;
-  issue: GithubRepoIssue;
+  issue: GitRepoIssue;
   canAutomate: boolean;
   providerName: "GitHub" | "Forgejo";
 }) {
@@ -247,84 +205,72 @@ function IssueCard({
 
   const generateFixButton = (
     <Button
-      size="sm"
-      className="cursor-pointer disabled:cursor-not-allowed"
-      disabled={!canAutomate || generateFix.isPending}
+      size="icon-sm"
+      variant="ghost"
+      className="shrink-0 cursor-pointer"
+      disabled={generateFix.isPending}
+      aria-label={`Generate a fix for issue #${issue.number}`}
+      title="Generate fix with AI"
     >
       {generateFix.isPending ? (
         <Loader2 className="animate-spin" />
       ) : (
         <WandSparkles />
       )}
-      Generate fix
     </Button>
   );
 
   return (
-    <Card className="py-5 transition-shadow hover:shadow-md">
-      <CardContent className="flex min-w-0 gap-4">
-        <Author user={issue.user} />
-        <div className="min-w-0 flex-1">
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-            <div className="min-w-0">
-              <div className="flex flex-wrap items-center gap-2">
-                <StatusBadge state={issue.state} />
-                <span className="text-muted-foreground text-xs font-medium">
-                  #{issue.number}
-                </span>
-              </div>
-              <h2 className="mt-2 text-base leading-6 font-semibold">
+    <div className="hover:bg-muted/30 flex min-w-0 gap-3 border-b px-4 py-3 last:border-b-0">
+      <CircleDot
+        className={`mt-1 size-4 shrink-0 ${issue.state === "open" ? "text-emerald-500" : "text-muted-foreground"}`}
+        aria-label={issue.state === "open" ? "Open" : "Closed"}
+      />
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
+              <a
+                href={issue.html_url}
+                target="_blank"
+                rel="noreferrer"
+                title={`Open on ${providerName}`}
+                className="truncate font-medium hover:underline"
+              >
                 {issue.title}
-              </h2>
-            </div>
-            <div className="flex shrink-0 items-center gap-1 self-start">
-              {canAutomate ? (
-                <ConfirmationDialog
-                  title="Generate issue fix"
-                  description={`Start an AI fix for issue #${issue.number}?`}
-                  confirmText="Generate fix"
-                  onConfirm={() => void handleGenerateFix()}
-                >
-                  {generateFixButton}
-                </ConfirmationDialog>
-              ) : (
-                generateFixButton
-              )}
-              <Button variant="ghost" size="sm" asChild>
-                <a href={issue.html_url} target="_blank" rel="noreferrer">
-                  Open on {providerName} <ArrowUpRight className="size-4" />
-                </a>
-              </Button>
-            </div>
-          </div>
-          {issue.body ? (
-            <p className="text-muted-foreground mt-2 line-clamp-2 text-sm leading-6">
-              {issue.body}
-            </p>
-          ) : null}
-          {issue.labels.length > 0 ? (
-            <div className="mt-3 flex flex-wrap gap-1.5">
+              </a>
               {issue.labels.map((label, index) => (
                 <Badge
                   key={`${label.id ?? label.name ?? "label"}-${index}`}
                   variant="outline"
-                  className="max-w-48 truncate font-normal"
+                  className="max-w-40 truncate px-1.5 py-0 font-normal"
                 >
                   {label.name ?? "Label"}
                 </Badge>
               ))}
             </div>
-          ) : null}
-          <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs">
-            <span>{issue.user?.login ?? "Unknown author"}</span>
-            <span>{formatDate(issue.created_at)}</span>
-            <span className="inline-flex items-center gap-1.5">
-              <MessageSquare className="size-3.5" /> {issue.comments}
-            </span>
+            <p className="text-muted-foreground mt-1 flex flex-wrap items-center gap-x-3 text-xs">
+              <span>#{issue.number} opened {formatDate(issue.created_at)} by {issue.user?.login ?? "unknown"}</span>
+              {issue.comments > 0 ? (
+                <span className="inline-flex items-center gap-1">
+                  <MessageSquare className="size-3" /> {issue.comments}
+                </span>
+              ) : null}
+            </p>
           </div>
+          {canAutomate ? (
+            <ConfirmationDialog
+              title="Generate issue fix"
+              description={`Start an AI fix for issue #${issue.number}?`}
+              confirmText="Generate fix"
+              onConfirm={() => void handleGenerateFix()}
+            >
+              {generateFixButton}
+            </ConfirmationDialog>
+          ) : null}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
 
@@ -352,34 +298,17 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   >("pull-requests");
   const scheduleOverview = useScheduleGithubRepoOverview();
   const deleteRepo = useDeleteGithubRepo();
-  const issuesQuery = useGithubRepoIssues(repoId);
-  const pullRequestsQuery = useGithubRepoPullRequests(repoId);
-  const repo = pullRequestsQuery.data ?? issuesQuery.data;
+  const repoQuery = useGitRepoById(repoId);
+  const issuesQuery = useGitRepoActivity(repoId, "issue");
+  const pullRequestsQuery = useGitRepoActivity(repoId, "pr");
+  const repo = repoQuery.data;
   const isForgejo = repo?.type === "forgejo";
-  const forgejoIssuesQuery = useGitRepoActivity(repoId, "issue", {
-    enabled: isForgejo,
-  });
-  const forgejoPullRequestsQuery = useGitRepoActivity(repoId, "pr", {
-    enabled: isForgejo,
-  });
-  const issues = isForgejo
-    ? ((forgejoIssuesQuery.data?.data ?? []) as GithubRepoIssue[])
-    : (issuesQuery.data?.issues ?? []);
-  const pullRequests = isForgejo
-    ? ((forgejoPullRequestsQuery.data?.data ?? []) as GithubRepoPullRequest[])
-    : (pullRequestsQuery.data?.pull_requests ?? []);
-  const issuesPending = isForgejo
-    ? forgejoIssuesQuery.isPending
-    : issuesQuery.isPending;
-  const pullRequestsPending = isForgejo
-    ? forgejoPullRequestsQuery.isPending
-    : pullRequestsQuery.isPending;
-  const issuesError = isForgejo
-    ? forgejoIssuesQuery.isError
-    : issuesQuery.isError;
-  const pullRequestsError = isForgejo
-    ? forgejoPullRequestsQuery.isError
-    : pullRequestsQuery.isError;
+  const issues = issuesQuery.data?.data ?? [];
+  const pullRequests = pullRequestsQuery.data?.data ?? [];
+  const issuesPending = issuesQuery.isPending;
+  const pullRequestsPending = pullRequestsQuery.isPending;
+  const issuesError = issuesQuery.isError;
+  const pullRequestsError = pullRequestsQuery.isError;
   const providerName = isForgejo ? "Forgejo" : "GitHub";
   const openIssues = issues.filter((issue) => issue.state === "open").length;
   const openPullRequests = pullRequests.filter(
@@ -421,7 +350,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
     }
   };
 
-  if (issuesError && pullRequestsError) {
+  if (repoQuery.isError || (issuesError && pullRequestsError)) {
     return (
       <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10">
         <Button variant="ghost" size="sm" asChild>
@@ -443,49 +372,51 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
   }
 
   return (
-    <div className="mx-auto w-full max-w-6xl px-5 py-10 md:px-10 md:py-14">
+    <div className="mx-auto w-full max-w-6xl px-5 py-6 md:px-10 md:py-8">
       <Button variant="ghost" size="sm" asChild className="-ml-3">
         <Link href="/git-repos">
           <ArrowLeft className="size-4" /> Repositories
         </Link>
       </Button>
 
-      <div className="mt-6 flex flex-col gap-5 border-b pb-8 sm:flex-row sm:items-start sm:justify-between">
+      <div className="mt-3 flex flex-col gap-4 border-b pb-5 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0">
           {repo ? (
             <>
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="bg-foreground text-background flex size-11 items-center justify-center rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="bg-foreground text-background flex size-9 shrink-0 items-center justify-center rounded-lg">
                   {isForgejo ? (
-                    <GitFork className="size-5" />
+                    <GitFork className="size-4" />
                   ) : (
-                    <Github className="size-5" />
+                    <Github className="size-4" />
                   )}
                 </div>
                 <div className="min-w-0">
-                  <p className="text-muted-foreground text-sm">
+                  <p className="text-muted-foreground text-xs">
                     {repo.repo_owner_username}
                   </p>
-                  <h1 className="truncate text-2xl font-semibold tracking-tight md:text-3xl">
+                  <h1 className="truncate text-xl font-semibold tracking-tight md:text-2xl">
                     {repo.full_name.split("/").at(-1)}
                   </h1>
+                  <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                    <Badge variant="secondary" className="h-5 gap-1 px-1.5 text-xs font-normal">
+                      {isForgejo ? (
+                        <GitFork className="size-3" />
+                      ) : (
+                        <Github className="size-3" />
+                      )}
+                      {isForgejo ? "Forgejo" : "GitHub"}
+                    </Badge>
+                    <Badge variant="outline" className="h-5 gap-1 px-1.5 text-xs font-normal">
+                      {repo.public ? (
+                        <ShieldCheck className="size-3" />
+                      ) : (
+                        <LockKeyhole className="size-3" />
+                      )}
+                      {repo.public ? "Public" : "Private"}
+                    </Badge>
+                  </div>
                 </div>
-                <Badge variant="secondary" className="gap-1 font-normal">
-                  {isForgejo ? (
-                    <GitFork className="size-3" />
-                  ) : (
-                    <Github className="size-3" />
-                  )}
-                  {isForgejo ? "Forgejo" : "GitHub"}
-                </Badge>
-                <Badge variant="outline" className="gap-1 font-normal">
-                  {repo.public ? (
-                    <ShieldCheck className="size-3" />
-                  ) : (
-                    <LockKeyhole className="size-3" />
-                  )}
-                  {repo.public ? "Public" : "Private"}
-                </Badge>
               </div>
             </>
           ) : (
@@ -500,7 +431,8 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             {repo.overview ? (
               <Button
                 variant="ghost"
-                className="rounded-xl"
+                size="sm"
+                className="rounded-lg"
                 aria-expanded={showOverview}
                 onClick={() => setShowOverview((visible) => !visible)}
               >
@@ -519,7 +451,8 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
               >
                 <Button
                   variant="outline"
-                  className="cursor-pointer rounded-xl"
+                  size="sm"
+                  className="cursor-pointer rounded-lg"
                   disabled={scheduleOverview.isPending}
                 >
                   {scheduleOverview.isPending ? (
@@ -533,7 +466,8 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             ) : (
               <Button
                 variant="outline"
-                className="cursor-pointer rounded-xl"
+                size="sm"
+                className="cursor-pointer rounded-lg"
                 disabled={scheduleOverview.isPending}
                 onClick={() => void handleScheduleOverview()}
               >
@@ -546,7 +480,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
               </Button>
             )}
             <GithubAutomationSettingsDialog repo={repo}>
-              <Button variant="outline" className="rounded-xl">
+              <Button variant="outline" size="sm" className="rounded-lg">
                 <Settings /> Settings
               </Button>
             </GithubAutomationSettingsDialog>
@@ -559,7 +493,8 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
             >
               <Button
                 variant="outline"
-                className="text-destructive hover:bg-destructive/10 hover:text-destructive rounded-xl"
+                size="sm"
+                className="text-destructive hover:bg-destructive/10 hover:text-destructive rounded-lg"
                 disabled={deleteRepo.isPending}
               >
                 {deleteRepo.isPending ? (
@@ -570,7 +505,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
                 Delete
               </Button>
             </ConfirmationDialog>
-            <Button variant="outline" className="rounded-xl" asChild>
+            <Button variant="outline" size="sm" className="rounded-lg" asChild>
               <a href={repo.html_url} target="_blank" rel="noreferrer">
                 View repository <ArrowUpRight className="size-4" />
               </a>
@@ -580,13 +515,13 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
       </div>
 
       {showOverview && repo?.overview ? (
-        <div className="text-muted-foreground bg-muted/20 mt-6 max-h-64 overflow-y-auto rounded-xl border p-5 text-sm leading-6 whitespace-pre-wrap">
+        <div className="text-muted-foreground bg-muted/20 mt-4 max-h-48 overflow-y-auto rounded-lg border p-4 text-sm leading-6 whitespace-pre-wrap">
           {repo.overview}
         </div>
       ) : null}
 
-      {repo && !repo.default_project_id ? (
-        <Alert className="mt-6">
+      {repo && !isForgejo && !repo.default_project_id ? (
+        <Alert className="mt-4">
           <TriangleAlert />
           <AlertTitle>Default project required</AlertTitle>
           <AlertDescription className="flex flex-wrap items-center gap-x-1">
@@ -611,7 +546,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
         onValueChange={(value) =>
           setActiveResource(value as "pull-requests" | "issues")
         }
-        className="mt-8 w-full flex-col gap-6"
+        className="mt-5 w-full flex-col gap-4"
       >
         <TabsList className="bg-muted/60 h-auto self-start rounded-full border p-1 shadow-sm dark:border-white/10 dark:bg-white/5">
           <TabsTrigger
@@ -647,7 +582,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
               </EmptyHeader>
             </Empty>
           ) : pullRequests.length > 0 ? (
-            <div className="space-y-3">
+            <div className="overflow-hidden rounded-lg border">
               {pullRequests.map((pullRequest) => (
                 <PullRequestCard
                   key={pullRequest.id}
@@ -678,7 +613,7 @@ export default function GithubRepoActivityView({ repoId }: { repoId: string }) {
               </EmptyHeader>
             </Empty>
           ) : issues.length > 0 ? (
-            <div className="space-y-3">
+            <div className="overflow-hidden rounded-lg border">
               {issues.map((issue) => (
                 <IssueCard
                   key={issue.id}

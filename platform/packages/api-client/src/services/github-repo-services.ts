@@ -5,7 +5,7 @@ export type GithubRepo = typeof gitRepos.$inferSelect & {
   html_url: string;
 };
 
-export type GithubRepoIssue = {
+export type GitRepoIssue = {
   id: number;
   number: number;
   html_url: string;
@@ -27,7 +27,7 @@ export type GithubRepoIssue = {
   }[];
 };
 
-export type GithubRepoPullRequest = {
+export type GitRepoPullRequest = {
   id: number;
   number: number;
   html_url: string;
@@ -53,29 +53,21 @@ export type GithubRepoPullRequest = {
   };
 };
 
-export type GithubRepoWithIssues = GithubRepo & {
-  issues: GithubRepoIssue[];
-};
-
-export type GithubRepoWithPullRequests = GithubRepo & {
-  pull_requests: GithubRepoPullRequest[];
-};
-
 export type CreateForgejoRepoInput = {
   reponame: string;
 };
 
 export type GitRepoActivityType = "pr" | "issue";
 
-export type GetGitRepoActivityInput = {
+export type GetGitRepoActivityInput<T extends GitRepoActivityType> = {
   id: string;
-  type: GitRepoActivityType;
+  type: T;
   page?: number;
   count?: number;
 };
 
-export type GitRepoActivityResponse = {
-  data: GithubRepoIssue[] | GithubRepoPullRequest[];
+export type GitRepoActivityResponse<T extends GitRepoActivityType> = {
+  data: T extends "issue" ? GitRepoIssue[] : GitRepoPullRequest[];
   pagination: {
     page: number;
     count: number;
@@ -112,23 +104,11 @@ export const deleteGithubRepo =
     return response.data;
   };
 
-export const getGithubRepoIssues =
+export const getGitRepoById =
   (apiClient: AxiosInstance) =>
-  async (id: string): Promise<GithubRepoWithIssues> => {
+  async (id: string): Promise<GithubRepo> => {
     const response = await apiClient.get(`/api/v1/git-repos/${id}`, {
       withCredentials: true,
-      params: { include: "issues" },
-    });
-
-    return response.data.data;
-  };
-
-export const getGithubRepoPullRequests =
-  (apiClient: AxiosInstance) =>
-  async (id: string): Promise<GithubRepoWithPullRequests> => {
-    const response = await apiClient.get(`/api/v1/git-repos/${id}`, {
-      withCredentials: true,
-      params: { include: "pull_requests" },
     });
 
     return response.data.data;
@@ -136,12 +116,12 @@ export const getGithubRepoPullRequests =
 
 export const getGitRepoActivity =
   (apiClient: AxiosInstance) =>
-  async ({
+  async <T extends GitRepoActivityType>({
     id,
     type,
     page = 1,
     count = 20,
-  }: GetGitRepoActivityInput): Promise<GitRepoActivityResponse> => {
+  }: GetGitRepoActivityInput<T>): Promise<GitRepoActivityResponse<T>> => {
     const response = await apiClient.get(`/api/v1/git-repos/${id}/activity`, {
       withCredentials: true,
       params: { type, page, count },

@@ -7,6 +7,7 @@ export type GithubRepoIssue =
 
 export const getGithubRepoIssues = async (
   repo: typeof gitRepos.$inferSelect,
+  pagination: { page?: number; count?: number } = {},
 ): Promise<GithubRepoIssue[]> => {
   const installationOctokit = await octokitApp.getInstallationOctokit(
     repo.installation_id,
@@ -17,6 +18,8 @@ export const getGithubRepoIssues = async (
     {
       owner: repo.repo_owner_username,
       repo: repo.full_name.split("/")[1]!,
+      page: pagination.page,
+      per_page: pagination.count,
     },
   );
 

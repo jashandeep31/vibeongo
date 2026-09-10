@@ -4,65 +4,12 @@ import { Request, Response } from "express";
 import { getRepoAccessDetails } from "../../github-app-functions/get-repo-access-details.js";
 import { db, gitRepos, eq, and, projects, desc } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
-import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
-import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
 import {
   createForgejoRepo,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
 import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
 import { withGitRepoHtmlUrl } from "../../services/github/git-repo-url.js";
-
-type GithubRepoIssueResponse = {
-  url: string;
-  html_url: string;
-  id: number;
-  number: number;
-  repository_url: string;
-  title: string;
-  state: string;
-  body: string | null;
-  comments: number;
-  created_at: string;
-  updated_at: string;
-  closed_at: string | null;
-  user?: {
-    login: string;
-    avatar_url: string;
-  };
-  labels: {
-    id?: number;
-    name: string | null;
-    color: string | null;
-  }[];
-};
-
-type GithubRepoPullRequestResponse = {
-  url: string;
-  html_url: string;
-  id: number;
-  number: number;
-  title: string;
-  state: string;
-  body: string | null;
-  draft: boolean;
-  created_at: string;
-  updated_at: string;
-  closed_at: string | null;
-  merged_at: string | null;
-  user?: {
-    login: string;
-    avatar_url: string;
-  };
-  head: {
-    ref: string;
-    sha: string;
-  };
-  base: {
-    ref: string;
-    sha: string;
-  };
-};
 
 export const getUserGitRepos = catchAsync(
   async (req: Request, res: Response) => {
@@ -79,7 +26,7 @@ export const getUserGitRepos = catchAsync(
   },
 );
 
-export const getGithubRepoById = catchAsync(
+export const getGitRepoById = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authnatication is required", 400);
@@ -90,12 +37,6 @@ export const getGithubRepoById = catchAsync(
       })
       .parse(req.params);
 
-    const { include } = z
-      .object({
-        include: z.enum(["issues", "pull_requests"]).optional().nullable(),
-      })
-      .parse(req.query);
-
     const [githubRepo] = await db
       .select()
       .from(gitRepos)
@@ -103,99 +44,8 @@ export const getGithubRepoById = catchAsync(
 
     if (!githubRepo) throw new AppError("Repo not found", 404);
 
-    if (githubRepo.type === "forgejo") {
-      res.status(200).json({
-        data: {
-          ...withGitRepoHtmlUrl(githubRepo),
-          issues: [],
-          pull_requests: [],
-        },
-      });
-      return;
-    }
-
-    let issues: GithubRepoIssueResponse[] = [];
-    let pull_requests: GithubRepoPullRequestResponse[] = [];
-    if (include === "issues") {
-      const rawIssues = await getGithubRepoIssues(githubRepo);
-      issues = rawIssues.map((issue) => {
-        return {
-          url: issue.url,
-          html_url: issue.html_url,
-          id: issue.id,
-          number: issue.number,
-          repository_url: issue.repository_url,
-          title: issue.title,
-          state: issue.state,
-          body: issue.body ?? null,
-          comments: issue.comments,
-          created_at: issue.created_at,
-          updated_at: issue.updated_at,
-          closed_at: issue.closed_at,
-          labels: (issue.labels ?? []).map((label) => {
-            if (typeof label === "string") {
-              return {
-                name: label,
-                color: null,
-              };
-            }
-
-            return {
-              ...(label.id === undefined ? {} : { id: label.id }),
-              name: label.name ?? null,
-              color: label.color ?? null,
-            };
-          }),
-          ...(issue.user && {
-            user: {
-              login: issue.user.login,
-              avatar_url: issue.user.avatar_url,
-            },
-          }),
-        };
-      });
-    }
-
-    if (include === "pull_requests") {
-      const rawPullRequests = await getGithubRepoPullRequests(githubRepo);
-      pull_requests = rawPullRequests.map((pullRequest) => {
-        return {
-          url: pullRequest.url,
-          html_url: pullRequest.html_url,
-          id: pullRequest.id,
-          number: pullRequest.number,
-          title: pullRequest.title,
-          state: pullRequest.state,
-          body: pullRequest.body ?? null,
-          draft: pullRequest.draft ?? false,
-          created_at: pullRequest.created_at,
-          updated_at: pullRequest.updated_at,
-          closed_at: pullRequest.closed_at,
-          merged_at: pullRequest.merged_at,
-          head: {
-            ref: pullRequest.head.ref,
-            sha: pullRequest.head.sha,
-          },
-          base: {
-            ref: pullRequest.base.ref,
-            sha: pullRequest.base.sha,
-          },
-          ...(pullRequest.user && {
-            user: {
-              login: pullRequest.user.login,
-              avatar_url: pullRequest.user.avatar_url,
-            },
-          }),
-        };
-      });
-    }
-
     res.status(200).json({
-      data: {
-        ...withGitRepoHtmlUrl(githubRepo),
-        issues,
-        pull_requests,
-      },
+      data: withGitRepoHtmlUrl(githubRepo),
     });
   },
 );

@@ -4,6 +4,8 @@ import { Request, Response } from "express";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { getForgejoPrOrIssues } from "../../services/forgejo/pr-or-issue-actions.js";
+import { getGithubRepoIssues } from "../../github-app-functions/get-github-repo-issues.js";
+import { getGithubRepoPullRequests } from "../../github-app-functions/get-github-repo-pull-requests.js";
 
 const activityQuerySchema = z.object({
   type: z.enum(["pr", "issue"]),
@@ -27,13 +29,89 @@ export const getGitRepoPrOrIssues = catchAsync(
 
     if (!repo) throw new AppError("Repo not found", 404);
 
-    // This endpoint is provider-neutral. GitHub support can be added here
-    // without changing the public route or its response shape.
+    if (repo.type === "github") {
+      if (type === "issue") {
+        const issues = await getGithubRepoIssues(repo, { page, count });
+        const data = issues.map((issue) => ({
+          id: issue.id,
+          number: issue.number,
+          html_url: issue.html_url,
+          title: issue.title,
+          state: issue.state,
+          body: issue.body ?? null,
+          comments: issue.comments,
+          created_at: issue.created_at,
+          updated_at: issue.updated_at,
+          closed_at: issue.closed_at,
+          labels: (issue.labels ?? []).map((label) =>
+            typeof label === "string"
+              ? { name: label, color: null }
+              : {
+                  ...(label.id === undefined ? {} : { id: label.id }),
+                  name: label.name ?? null,
+                  color: label.color ?? null,
+                },
+          ),
+          ...(issue.user
+            ? {
+                user: {
+                  login: issue.user.login,
+                  avatar_url: issue.user.avatar_url,
+                },
+              }
+            : {}),
+        }));
+
+        res.status(200).json({
+          data,
+          pagination: { page, count, hasMore: data.length === count },
+        });
+        return;
+      }
+
+      const pullRequests = await getGithubRepoPullRequests(repo, {
+        page,
+        count,
+      });
+      const data = pullRequests.map((pullRequest) => ({
+        id: pullRequest.id,
+        number: pullRequest.number,
+        html_url: pullRequest.html_url,
+        title: pullRequest.title,
+        state: pullRequest.state,
+        body: pullRequest.body ?? null,
+        draft: pullRequest.draft ?? false,
+        created_at: pullRequest.created_at,
+        updated_at: pullRequest.updated_at,
+        closed_at: pullRequest.closed_at,
+        merged_at: pullRequest.merged_at,
+        head: {
+          ref: pullRequest.head.ref,
+          sha: pullRequest.head.sha,
+        },
+        base: {
+          ref: pullRequest.base.ref,
+          sha: pullRequest.base.sha,
+        },
+        ...(pullRequest.user
+          ? {
+              user: {
+                login: pullRequest.user.login,
+                avatar_url: pullRequest.user.avatar_url,
+              },
+            }
+          : {}),
+      }));
+
+      res.status(200).json({
+        data,
+        pagination: { page, count, hasMore: data.length === count },
+      });
+      return;
+    }
+
     if (repo.type !== "forgejo") {
-      throw new AppError(
-        "Pull requests and issues are not supported for this provider yet",
-        501,
-      );
+      throw new AppError("Repository provider is not supported", 501);
     }
 
     const repoName = repo.full_name.split("/").slice(1).join("/");

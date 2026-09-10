@@ -1,10 +1,10 @@
-import type { GithubRepoIssue, GithubRepoPullRequest } from "@repo/api-client";
+import type { GitRepoIssue, GitRepoPullRequest } from "@repo/api-client";
 import {
   useDeleteGithubRepo,
   useGenerateFixForIssue,
   useGenerateReviewForPullRequest,
-  useGithubRepoIssues,
-  useGithubRepoPullRequests,
+  useGitRepoActivity,
+  useGitRepoById,
   useScheduleGithubRepoOverview,
 } from "@repo/api-hooks";
 import { Image } from "expo-image";
@@ -71,8 +71,9 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [confirmationTarget, setConfirmationTarget] =
     useState<ConfirmationTarget | null>(null);
-  const issuesQuery = useGithubRepoIssues(repoId);
-  const pullRequestsQuery = useGithubRepoPullRequests(repoId);
+  const repoQuery = useGitRepoById(repoId);
+  const issuesQuery = useGitRepoActivity(repoId, "issue");
+  const pullRequestsQuery = useGitRepoActivity(repoId, "pr");
   const scheduleOverview = useScheduleGithubRepoOverview();
   const deleteRepo = useDeleteGithubRepo();
   const generateReview = useGenerateReviewForPullRequest(
@@ -83,18 +84,20 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
     repoId,
     confirmationTarget?.kind === "fix" ? confirmationTarget.number : 0,
   );
-  const repo = pullRequestsQuery.data ?? issuesQuery.data;
+  const repo = repoQuery.data;
   const isForgejo = repo?.type === "forgejo";
   const providerLabel = isForgejo ? "Forgejo" : "GitHub";
   const overview = repo?.overview.trim() ?? "";
-  const issues = issuesQuery.data?.issues ?? [];
-  const pullRequests = pullRequestsQuery.data?.pull_requests ?? [];
+  const issues = issuesQuery.data?.data ?? [];
+  const pullRequests = pullRequestsQuery.data?.data ?? [];
   const openIssues = issues.filter((issue) => issue.state === "open").length;
   const openPullRequests = pullRequests.filter(
     (pullRequest) => pullRequest.state === "open",
   ).length;
   const isRefreshing =
-    issuesQuery.isRefetching || pullRequestsQuery.isRefetching;
+    repoQuery.isRefetching ||
+    issuesQuery.isRefetching ||
+    pullRequestsQuery.isRefetching;
   const isConfirming =
     scheduleOverview.isPending ||
     deleteRepo.isPending ||
@@ -102,7 +105,11 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
     generateFix.isPending;
 
   const refresh = () => {
-    void Promise.all([issuesQuery.refetch(), pullRequestsQuery.refetch()]);
+    void Promise.all([
+      repoQuery.refetch(),
+      issuesQuery.refetch(),
+      pullRequestsQuery.refetch(),
+    ]);
   };
 
   const openExternalUrl = async (url: string) => {
@@ -196,7 +203,8 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
         }
       >
         {({ topInset }) =>
-          issuesQuery.isError && pullRequestsQuery.isError ? (
+          repoQuery.isError ||
+          (issuesQuery.isError && pullRequestsQuery.isError) ? (
             <View style={[styles.screen, { paddingTop: topInset }]}>
               <ResourceState
                 actionLabel="Try again"
@@ -378,7 +386,7 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                     </View>
                   ) : null}
 
-                  {!repo.default_project_id ? (
+                  {!isForgejo && !repo.default_project_id ? (
                     <Pressable
                       accessibilityRole="button"
                       onPress={() => setSettingsOpen(true)}
@@ -448,7 +456,9 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                       <View style={styles.resources}>
                         {pullRequests.map((pullRequest) => (
                           <PullRequestRow
-                            canAutomate={Boolean(repo.default_project_id)}
+                            canAutomate={
+                              !isForgejo && Boolean(repo.default_project_id)
+                            }
                             key={pullRequest.id}
                             onOpen={() =>
                               void openExternalUrl(pullRequest.html_url)
@@ -479,7 +489,9 @@ export function GithubRepoActivityScreen({ repoId }: { repoId: string }) {
                     <View style={styles.resources}>
                       {issues.map((issue) => (
                         <IssueRow
-                          canAutomate={Boolean(repo.default_project_id)}
+                          canAutomate={
+                            !isForgejo && Boolean(repo.default_project_id)
+                          }
                           issue={issue}
                           key={issue.id}
                           onFix={() =>
@@ -629,7 +641,7 @@ function PullRequestRow({
   onOpen: () => void;
   onReview: () => void;
   providerLabel: string;
-  pullRequest: GithubRepoPullRequest;
+  pullRequest: GitRepoPullRequest;
 }) {
   const theme = useTheme();
   return (
@@ -700,7 +712,7 @@ function IssueRow({
   providerLabel,
 }: {
   canAutomate: boolean;
-  issue: GithubRepoIssue;
+  issue: GitRepoIssue;
   onFix: () => void;
   onOpen: () => void;
   providerLabel: string;

@@ -28,31 +28,23 @@ export const useDeleteGithubRepo = () => {
   return useMutation({
     mutationFn: client.githubRepos.deleteGithubRepo,
     onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: ["github-repo", id] });
+      queryClient.removeQueries({ queryKey: ["git-repo", id] });
       return queryClient.invalidateQueries({ queryKey: ["github-repos"] });
     },
   });
 };
 
-export const useGithubRepoIssues = (id: string) => {
+export const useGitRepoById = (id: string) => {
   const client = useApiClient();
   return useQuery({
-    queryKey: ["github-repo", id, "issues"],
-    queryFn: () => client.githubRepos.getGithubRepoIssues(id),
+    queryKey: ["git-repo", id],
+    queryFn: () => client.githubRepos.getGitRepoById(id),
   });
 };
 
-export const useGithubRepoPullRequests = (id: string) => {
-  const client = useApiClient();
-  return useQuery({
-    queryKey: ["github-repo", id, "pull-requests"],
-    queryFn: () => client.githubRepos.getGithubRepoPullRequests(id),
-  });
-};
-
-export const useGitRepoActivity = (
+export const useGitRepoActivity = <T extends GitRepoActivityType>(
   id: string,
-  type: GitRepoActivityType,
+  type: T,
   options: { page?: number; count?: number; enabled?: boolean } = {},
 ) => {
   const client = useApiClient();
@@ -76,7 +68,7 @@ export const useUpdateGithubRepoAutomation = () => {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["github-repos"] }),
         queryClient.invalidateQueries({
-          queryKey: ["github-repo", variables.id],
+          queryKey: ["git-repo", variables.id],
         }),
       ]),
   });

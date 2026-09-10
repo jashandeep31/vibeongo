@@ -5,7 +5,7 @@ import {
   getUserGitRepos,
   deleteGithubRepo,
   updateGithubRepoById,
-  getGithubRepoById,
+  getGitRepoById,
   createForgejoRepoController,
 } from "../controllers/github-repo/git-repo-controller.js";
 import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.js";
@@ -29,7 +29,7 @@ routes
 
 routes
   .route("/:id")
-  .get(checkAuthorization(["all"]), getGithubRepoById)
+  .get(checkAuthorization(["all"]), getGitRepoById)
   .delete(checkAuthorization(["all"]), deleteGithubRepo)
   .post(checkAuthorization(["all"]), updateGithubRepoById);
 
