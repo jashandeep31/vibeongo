@@ -10,6 +10,7 @@ import {
   createForgejoRepo,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
+import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
 import { withGitRepoHtmlUrl } from "../../services/github/git-repo-url.js";
 
 type GithubRepoIssueResponse = {
@@ -340,6 +341,8 @@ export const createForgejoRepoController = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("authorization is required", 401);
+    if (!user.forgejo_username)
+      throw new AppError(FORGEJO_ACCOUNT_REQUIRED_MESSAGE, 409);
 
     const { reponame } = z
       .object({
@@ -348,13 +351,13 @@ export const createForgejoRepoController = catchAsync(
       .parse(req.body);
 
     let forgejoRepo = await getForgejoRepo({
-      username: user.username,
+      username: user.forgejo_username,
       reponame,
     });
 
     if (!forgejoRepo) {
       const createdRepo = await createForgejoRepo({
-        username: user.username,
+        username: user.forgejo_username,
         reponame,
       });
 
@@ -369,7 +372,7 @@ export const createForgejoRepoController = catchAsync(
       type: "forgejo",
       installation_id: forgejoRepo.id,
       full_name: forgejoRepo.full_name,
-      repo_owner_username: user.username,
+      repo_owner_username: user.forgejo_username,
       setup_script: ``,
       public: !forgejoRepo.private,
       user_id: user.id,

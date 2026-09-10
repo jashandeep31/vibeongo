@@ -2,7 +2,6 @@ import { db, eq, users } from "@repo/db";
 import { Worker } from "bullmq";
 import { redis } from "../lib/valkey.js";
 import { ensureForgejoUserAccount } from "../services/forgejo/user-actions.js";
-import { addDemoProjectsToUserProfile } from "../services/users/add-demo-projects.js";
 import {
   USER_ONBOARDING_QUEUE_NAME,
   type UserOnboardingJobData,
@@ -31,8 +30,6 @@ export const userOnboardingWorker = new Worker<UserOnboardingJobData>(
         updated_at: new Date(),
       })
       .where(eq(users.id, user.id));
-
-    await addDemoProjectsToUserProfile(user);
   },
   {
     connection: redis.duplicate({ maxRetriesPerRequest: null }) as any,

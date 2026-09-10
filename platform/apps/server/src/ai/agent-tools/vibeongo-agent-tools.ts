@@ -31,6 +31,7 @@ import { getDecryptedProjectConfig } from "../../services/project/project-config
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 import { createForgejoRepo } from "../../services/forgejo/repo-actions.js";
+import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
 import { getGitRepoHtmlUrl } from "../../services/github/git-repo-url.js";
 
 export const getUserReposListAgentTool = (userId: string): Tool =>
@@ -305,7 +306,10 @@ export const createForgejoRepositoryAgentTool = (userId: string): Tool =>
       description,
     }: z.infer<typeof createForgejoRepositorySchema>) => {
       const [user] = await db
-        .select({ username: users.username })
+        .select({
+          username: users.username,
+          forgejo_username: users.forgejo_username,
+        })
         .from(users)
         .where(eq(users.id, userId));
 
@@ -313,8 +317,15 @@ export const createForgejoRepositoryAgentTool = (userId: string): Tool =>
         return { status: "error", error: "User not found" };
       }
 
+      if (!user.forgejo_username) {
+        return {
+          status: "error",
+          error: FORGEJO_ACCOUNT_REQUIRED_MESSAGE,
+        };
+      }
+
       const result = await createForgejoRepo({
-        username: user.username,
+        username: user.forgejo_username,
         reponame,
         ...(description !== undefined ? { description } : {}),
       });
@@ -330,7 +341,7 @@ export const createForgejoRepositoryAgentTool = (userId: string): Tool =>
             type: "forgejo",
             installation_id: result.repo.id,
             full_name: result.repo.full_name,
-            repo_owner_username: user.username,
+            repo_owner_username: user.forgejo_username,
             setup_script: "",
             public: !result.repo.private,
             user_id: userId,

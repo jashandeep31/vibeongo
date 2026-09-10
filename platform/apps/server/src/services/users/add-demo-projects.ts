@@ -159,9 +159,11 @@ export const createDemoProjectForUser = async ({
 
 const ensureGitRepoForUser = async ({
   user,
+  forgejoUsername,
   fullName,
 }: {
   user: typeof users.$inferSelect;
+  forgejoUsername: string;
   fullName: string;
 }) => {
   const findRepo = async () => {
@@ -184,7 +186,7 @@ const ensureGitRepoForUser = async ({
       type: "forgejo",
       installation_id: 0,
       full_name: fullName,
-      repo_owner_username: user.username,
+      repo_owner_username: forgejoUsername,
       setup_script: "",
       public: true,
       user_id: user.id,
@@ -199,16 +201,18 @@ const ensureGitRepoForUser = async ({
 
 const addDemoProjectToUserProfileUnchecked = async (
   user: typeof users.$inferSelect,
+  forgejoUsername: string,
   repo: DemoRepo,
 ) => {
   const forkedRepo = await ensureRepoForkToForgejo({
     sourceRepoOwnername: repo.ownername,
     sourceReponame: repo.reponame,
-    forkFor: user.username,
+    forkFor: forgejoUsername,
   });
 
   const repoRow = await ensureGitRepoForUser({
     user,
+    forgejoUsername,
     fullName: forkedRepo.full_name,
   });
 
@@ -227,16 +231,20 @@ export const addDemoProjectToUserProfile = async (
   user: typeof users.$inferSelect,
   repo: DemoRepo,
 ) => {
-  await ensureForgejoUserAccount(user);
-  await addDemoProjectToUserProfileUnchecked(user, repo);
+  const forgejoUser = await ensureForgejoUserAccount(user);
+  await addDemoProjectToUserProfileUnchecked(user, forgejoUser.username, repo);
 };
 
 export const addDemoProjectsToUserProfile = async (
   user: typeof users.$inferSelect,
 ) => {
-  await ensureForgejoUserAccount(user);
+  const forgejoUser = await ensureForgejoUserAccount(user);
 
   for (const repo of demoReposToFork) {
-    await addDemoProjectToUserProfileUnchecked(user, repo);
+    await addDemoProjectToUserProfileUnchecked(
+      user,
+      forgejoUser.username,
+      repo,
+    );
   }
 };
