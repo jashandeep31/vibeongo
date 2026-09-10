@@ -67,3 +67,15 @@ export const gitRepoMembers = pgTable(
   },
   (t) => [unique().on(t.username, t.repo_id)],
 );
+
+export const forgejoAccessToken = pgTable("forgejo-access-token", {
+  id: uuid().primaryKey().defaultRandom(),
+  token_id: varchar(),
+  user: uuid().references(() => users.id, { onDelete: "cascade" }),
+
+  revoked_at: timestamp(),
+  expires_at: timestamp().notNull(),
+  revoked: boolean().default(false).notNull(),
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow(),
+});

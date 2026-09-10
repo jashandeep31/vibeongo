@@ -9,6 +9,34 @@ export const forgejoAPIClient = axios.create({
     Authorization: `Bearer ${env.FORGEJO_TOKEN}`,
   },
 });
+
+export interface ForgejoUser {
+  id: number;
+  login: string;
+  login_name: string;
+  source_id: number;
+  full_name: string;
+  email: string;
+  avatar_url: string;
+  html_url: string;
+  language: string;
+  is_admin: boolean;
+  last_login: string;
+  created: string;
+  restricted: boolean;
+  active: boolean;
+  prohibit_login: boolean;
+  location: string;
+  pronouns: string;
+  website: string;
+  description: string;
+  visibility: string;
+  followers_count: number;
+  following_count: number;
+  starred_repos_count: number;
+  username: string;
+}
+
 export async function createForgejoUserAccount(
   user: typeof users.$inferSelect,
 ): Promise<{
@@ -44,9 +72,9 @@ export async function createForgejoUserAccount(
 
 export async function getForgejoUser(
   username: string,
-): Promise<unknown | null> {
+): Promise<ForgejoUser | null> {
   try {
-    const res = await forgejoAPIClient.get(
+    const res = await forgejoAPIClient.get<ForgejoUser>(
       `/users/${encodeURIComponent(username)}`,
     );
     return res.data;
