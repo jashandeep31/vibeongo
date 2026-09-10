@@ -1,11 +1,12 @@
 import * as Linking from "expo-linking";
 import { memo, type ReactNode, useMemo } from "react";
-import { Alert, ScrollView, StyleSheet, Text } from "react-native";
+import { Alert, StyleSheet, Text } from "react-native";
 import Markdown, {
   type ASTNode,
   type RenderRules,
 } from "react-native-markdown-display";
 
+import { NativeCodeBlock } from "@/components/native-code-block";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -26,25 +27,24 @@ function confirmAndOpenLink(url: string) {
   return false;
 }
 
+type CodeAstNode = ASTNode & { sourceInfo?: string };
+
 const codeRule = (
   node: ASTNode,
   _children: ReactNode[],
   _parents: ASTNode[],
-  styles: Record<string, object>,
-) => (
-  <ScrollView
-    contentContainerStyle={styles.codeScrollContent}
-    horizontal
-    key={node.key}
-    nestedScrollEnabled
-    showsHorizontalScrollIndicator
-    style={styles.codeScroll}
-  >
-    <Text selectable style={styles.fence}>
-      {node.content.replace(/\n$/, "")}
-    </Text>
-  </ScrollView>
-);
+  _styles: Record<string, object>,
+) => {
+  const codeNode = node as CodeAstNode;
+  const language = codeNode.sourceInfo?.trim().split(/\s+/, 1)[0];
+  return (
+    <NativeCodeBlock
+      code={node.content.replace(/\n$/, "")}
+      key={node.key}
+      language={language}
+    />
+  );
+};
 
 const rules: RenderRules = {
   code_block: codeRule,
@@ -104,24 +104,7 @@ export const NativeMarkdown = memo(function NativeMarkdown({
           paddingHorizontal: 5,
           paddingVertical: 2,
         },
-        codeScroll: {
-          backgroundColor: theme.backgroundElement,
-          borderColor: theme.backgroundSelected,
-          borderRadius: 12,
-          borderWidth: StyleSheet.hairlineWidth,
-          marginBottom: 16,
-          maxWidth: "100%",
-        },
-        codeScrollContent: { minWidth: "100%" },
         em: { fontStyle: "italic" },
-        fence: {
-          backgroundColor: theme.backgroundElement,
-          color: theme.text,
-          fontFamily: Fonts.mono,
-          fontSize: 13,
-          lineHeight: 20,
-          padding: 16,
-        },
         heading1: {
           color: theme.text,
           fontSize: 27,
