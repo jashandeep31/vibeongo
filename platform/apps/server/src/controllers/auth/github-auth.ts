@@ -167,7 +167,11 @@ export const githubAuthCallbackController = catchAsync(
       throw new Error("Account is not active");
     }
 
-    if (isNewUser) {
+    if (
+      isNewUser ||
+      user.forgejo_id === null ||
+      user.forgejo_username === null
+    ) {
       try {
         await addUserOnboardingJob({ userId: user.id });
       } catch (error: unknown) {
