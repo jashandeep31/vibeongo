@@ -178,7 +178,6 @@ export function ProjectChatScreen() {
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const isKeyboardVisibleRef = useRef(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
-  const [showRawResponse, setShowRawResponse] = useState(false);
   const [swipePreview, setSwipePreview] = useState<SwipePreview | null>(null);
   const previewMessages = useSessionChatsStore((store) =>
     swipePreview
@@ -530,10 +529,6 @@ export function ProjectChatScreen() {
     [rejectQuestion.mutate],
   );
 
-  const toggleRawResponse = useCallback(
-    () => setShowRawResponse((visible) => !visible),
-    [],
-  );
   const refreshManually = useCallback(async () => {
     if (isManuallyRefreshing) return;
 
@@ -669,7 +664,6 @@ export function ProjectChatScreen() {
                       password={runtime.password}
                       models={inventoryQuery.data?.models}
                       topInset={topInset}
-                      showRawResponse={showRawResponse}
                       isReverting={revertSession.isPending}
                       revertingId={revertSession.variables}
                       isRestoring={restoreMessage.isPending}
@@ -688,7 +682,7 @@ export function ProjectChatScreen() {
                       { backgroundColor: theme.background },
                     ]}
                   />
-                  {!showRawResponse && revertedQuestions.length > 0 ? (
+                  {revertedQuestions.length > 0 ? (
                     <RevertedMessagesPanel
                       chatId={projectSessionId}
                       messages={revertedQuestions}
@@ -732,10 +726,8 @@ export function ProjectChatScreen() {
                       key={opencodeSessionId}
                       onNewChat={openNewChat}
                       onOpenTerminal={openTerminal}
-                      onToggleRaw={toggleRawResponse}
                       selection={selection}
                       searchFiles={searchFiles}
-                      showRawResponse={showRawResponse}
                     />
                   )}
                 </View>
@@ -804,14 +796,12 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   onChangeSelection,
   onNewChat,
   onOpenTerminal,
-  onToggleRaw,
   password,
   promptError,
   searchFiles,
   selection,
   serverUrl,
   sessionId,
-  showRawResponse,
 }: {
   accessToken: string;
   accessibilityLabel: string;
@@ -820,14 +810,12 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   onChangeSelection: (selection: OpencodePromptSelection) => void;
   onNewChat: () => void;
   onOpenTerminal: () => void;
-  onToggleRaw: () => void;
   password?: string;
   promptError?: string;
   searchFiles: (query: string) => Promise<string[]>;
   selection: OpencodePromptSelection;
   serverUrl: string;
   sessionId: string;
-  showRawResponse: boolean;
 }) {
   const isStreaming = useSessionChatsStore(
     (store) =>
@@ -886,7 +874,6 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         onChangeSelection={onChangeSelection}
         onNewChat={onNewChat}
         onOpenTerminal={onOpenTerminal}
-        onToggleRaw={onToggleRaw}
         onStop={isStreaming ? stopStreaming : undefined}
         onSubmit={submit}
         placeholder={
@@ -894,7 +881,6 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         }
         selection={selection}
         searchFiles={searchFiles}
-        showRawResponse={showRawResponse}
         submitDisabled={isStreaming}
       />
       {sendPrompt.error || promptError ? (
@@ -955,7 +941,6 @@ const ChatTimeline = memo(function ChatTimeline({
   password,
   models,
   topInset,
-  showRawResponse,
   isReverting,
   revertingId,
   isRestoring,
@@ -970,7 +955,6 @@ const ChatTimeline = memo(function ChatTimeline({
   password?: string;
   models?: OpencodeModelOption[];
   topInset: number;
-  showRawResponse: boolean;
   isReverting: boolean;
   revertingId?: string;
   isRestoring: boolean;
@@ -1036,130 +1020,118 @@ const ChatTimeline = memo(function ChatTimeline({
   if (!data) return null;
   return (
     <>
-      {showRawResponse ? (
-        <ScrollView
+      <ChatRevertDisabledContext.Provider
+        value={sessionQuery.isStreaming || isReverting || isRestoring}
+      >
+        <FlatList
+          contentOffset={{ x: 0, y: 1_000_000 }}
           contentContainerStyle={[styles.messages, { paddingTop: topInset }]}
-          horizontal
-          showsHorizontalScrollIndicator
-        >
-          <ThemedText selectable style={styles.rawResponse}>
-            {JSON.stringify(data, null, 2)}
-          </ThemedText>
-        </ScrollView>
-      ) : (
-        <ChatRevertDisabledContext.Provider
-          value={sessionQuery.isStreaming || isReverting || isRestoring}
-        >
-          <FlatList
-            contentOffset={{ x: 0, y: 1_000_000 }}
-            contentContainerStyle={[styles.messages, { paddingTop: topInset }]}
-            data={turns}
-            initialNumToRender={6}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            key={opencodeSessionId}
-            keyExtractor={(turn) => turn.id}
-            ListEmptyComponent={
-              !activeQuestion && !sessionQuery.isStreaming ? (
-                <ThemedText
-                  style={[styles.emptyText, { color: theme.textSecondary }]}
-                >
-                  Start the chat by describing what you want to build.
+          data={turns}
+          initialNumToRender={6}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          key={opencodeSessionId}
+          keyExtractor={(turn) => turn.id}
+          ListEmptyComponent={
+            !activeQuestion && !sessionQuery.isStreaming ? (
+              <ThemedText
+                style={[styles.emptyText, { color: theme.textSecondary }]}
+              >
+                Start the chat by describing what you want to build.
+              </ThemedText>
+            ) : sessionQuery.isStreaming ? (
+              <View style={styles.thinking}>
+                <ActivityIndicator size="small" />
+                <ThemedText themeColor="textSecondary">
+                  Vibeongo is working…
                 </ThemedText>
-              ) : sessionQuery.isStreaming ? (
-                <View style={styles.thinking}>
-                  <ActivityIndicator size="small" />
-                  <ThemedText themeColor="textSecondary">
-                    Vibeongo is working…
-                  </ThemedText>
-                </View>
-              ) : null
-            }
-            ListHeaderComponent={
-              sessionQuery.hasOlderMessages ? (
-                <Pressable
-                  accessibilityLabel="Load earlier messages"
-                  accessibilityRole="button"
-                  disabled={sessionQuery.isLoadingOlder}
-                  onPress={() =>
-                    void sessionQuery
-                      .loadOlder()
-                      .catch((error: unknown) =>
-                        Alert.alert(
-                          "Could not load earlier messages",
-                          error instanceof Error
-                            ? error.message
-                            : "Please try again.",
-                        ),
-                      )
-                  }
-                  style={({ pressed }) => [
-                    styles.loadEarlierButton,
-                    {
-                      backgroundColor: theme.backgroundElement,
-                      borderColor: theme.backgroundSelected,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  {sessionQuery.isLoadingOlder ? (
-                    <ActivityIndicator size="small" />
-                  ) : (
-                    <ThemedText style={styles.loadEarlierText}>
-                      Load earlier messages
-                    </ThemedText>
-                  )}
-                </Pressable>
-              ) : null
-            }
-            maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
-            }}
-            maxToRenderPerBatch={5}
-            onContentSizeChange={() => {
-              if (data.session.id !== opencodeSessionId) return;
-
-              const isPendingHandoff =
-                pendingChatHandoffIdRef.current === opencodeSessionId;
-              if (
-                !isPendingHandoff &&
-                initiallyScrolledSessionIdRef.current === opencodeSessionId
-              ) {
-                return;
-              }
-
-              initiallyScrolledSessionIdRef.current = opencodeSessionId;
-              requestAnimationFrame(() => {
-                scrollRef.current?.scrollToEnd({
-                  animated: false,
-                });
-                if (!isPendingHandoff) return;
-
-                requestAnimationFrame(() => {
-                  if (pendingChatHandoffIdRef.current !== opencodeSessionId)
-                    return;
-
-                  onHandoffComplete();
-                });
-              });
-            }}
-            ref={scrollRef}
-            removeClippedSubviews={Platform.OS === "android"}
-            renderItem={({ item: turn, index }) => (
-              <OpencodeChatTurn
-                isReverting={isReverting && revertingId === turn.id}
-                isStreaming={
-                  sessionQuery.isStreaming && index === turns.length - 1
+              </View>
+            ) : null
+          }
+          ListHeaderComponent={
+            sessionQuery.hasOlderMessages ? (
+              <Pressable
+                accessibilityLabel="Load earlier messages"
+                accessibilityRole="button"
+                disabled={sessionQuery.isLoadingOlder}
+                onPress={() =>
+                  void sessionQuery
+                    .loadOlder()
+                    .catch((error: unknown) =>
+                      Alert.alert(
+                        "Could not load earlier messages",
+                        error instanceof Error
+                          ? error.message
+                          : "Please try again.",
+                      ),
+                    )
                 }
-                item={turn}
-                onRevert={onRevert}
-              />
-            )}
-            showsVerticalScrollIndicator={false}
-            windowSize={5}
-          />
-        </ChatRevertDisabledContext.Provider>
-      )}
+                style={({ pressed }) => [
+                  styles.loadEarlierButton,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.backgroundSelected,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                {sessionQuery.isLoadingOlder ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <ThemedText style={styles.loadEarlierText}>
+                    Load earlier messages
+                  </ThemedText>
+                )}
+              </Pressable>
+            ) : null
+          }
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+          }}
+          maxToRenderPerBatch={5}
+          onContentSizeChange={() => {
+            if (data.session.id !== opencodeSessionId) return;
+
+            const isPendingHandoff =
+              pendingChatHandoffIdRef.current === opencodeSessionId;
+            if (
+              !isPendingHandoff &&
+              initiallyScrolledSessionIdRef.current === opencodeSessionId
+            ) {
+              return;
+            }
+
+            initiallyScrolledSessionIdRef.current = opencodeSessionId;
+            requestAnimationFrame(() => {
+              scrollRef.current?.scrollToEnd({
+                animated: false,
+              });
+              if (!isPendingHandoff) return;
+
+              requestAnimationFrame(() => {
+                if (pendingChatHandoffIdRef.current !== opencodeSessionId)
+                  return;
+
+                onHandoffComplete();
+              });
+            });
+          }}
+          ref={scrollRef}
+          removeClippedSubviews={Platform.OS === "android"}
+          renderItem={({ item: turn, index }) => (
+            <OpencodeChatTurn
+              isReverting={isReverting && revertingId === turn.id}
+              isStreaming={
+                sessionQuery.isStreaming && index === turns.length - 1
+              }
+              item={turn}
+              onRevert={onRevert}
+            />
+          )}
+          showsVerticalScrollIndicator={false}
+          windowSize={5}
+        />
+      </ChatRevertDisabledContext.Provider>
     </>
   );
 });
@@ -1540,12 +1512,6 @@ const styles = StyleSheet.create({
     paddingBottom: 150,
     paddingHorizontal: 18,
     paddingTop: 24,
-  },
-  rawResponse: {
-    fontFamily: Platform.select({ ios: "ui-monospace", default: "monospace" }),
-    fontSize: 11,
-    lineHeight: 17,
-    minWidth: 500,
   },
   restoreButton: {
     alignItems: "center",

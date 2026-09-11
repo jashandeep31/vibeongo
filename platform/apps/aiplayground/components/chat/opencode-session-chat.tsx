@@ -26,11 +26,9 @@ import {
 import { Button } from "@repo/ui/components/button";
 import {
   ArrowDown,
-  Braces,
   ChevronRight,
   FolderOpen,
   Loader2,
-  MessagesSquare,
   Plus,
   RefreshCw,
   Settings2,
@@ -162,7 +160,6 @@ export function OpencodeSessionChat({
   const [selection, setSelection] =
     useState<OpencodePromptSelection>(sessionSelection);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [showRawResponse, setShowRawResponse] = useState(false);
   const [composerHeight, setComposerHeight] = useState(200);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -277,22 +274,6 @@ export function OpencodeSessionChat({
     });
   };
 
-  const rawResponseControl = (
-    <Button
-      type="button"
-      variant="secondary"
-      size="sm"
-      onClick={() => setShowRawResponse((visible) => !visible)}
-      className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
-    >
-      {showRawResponse ? (
-        <MessagesSquare className="size-3.5" />
-      ) : (
-        <Braces className="size-3.5" />
-      )}
-      {showRawResponse ? "Rendered chat" : "Raw response"}
-    </Button>
-  );
   const chatUrl = `/projects/${projectId}/chats/${chatId}`;
   const newChatParams = new URLSearchParams({ serverUrl });
   const composerControls = (
@@ -309,7 +290,6 @@ export function OpencodeSessionChat({
           New chat
         </Link>
       </Button>
-      {rawResponseControl}
       <Button
         asChild
         type="button"
@@ -415,55 +395,43 @@ export function OpencodeSessionChat({
                   disabled={isLoadingOlder}
                   onClick={() => void loadEarlierMessages()}
                 >
-                  {isLoadingOlder ? (
-                    <Loader2 className="animate-spin" />
-                  ) : null}
+                  {isLoadingOlder ? <Loader2 className="animate-spin" /> : null}
                   Load earlier messages
                 </Button>
               </div>
             ) : null}
-            {showRawResponse ? (
-              <pre className="w-full text-xs break-words whitespace-pre-wrap">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            ) : null}
-            {!showRawResponse &&
-            turns.length === 0 &&
+            {turns.length === 0 &&
             revertedQuestions.length === 0 &&
             !activeQuestion ? (
               <div className="text-muted-foreground flex min-h-[45vh] items-center justify-center text-sm">
                 Start the chat by describing what you want to build.
               </div>
             ) : null}
-            {!showRawResponse &&
-              turns.map((turn, index) => (
-                <OpencodeChatQuestion
-                  key={turn.id}
-                  item={turn}
-                  isStreaming={isStreaming && index === turns.length - 1}
-                  isReverting={
-                    revertSession.isPending &&
-                    revertSession.variables === turn.id
-                  }
-                  revertDisabled={
-                    isStreaming ||
-                    revertSession.isPending ||
-                    restoreMessage.isPending
-                  }
-                  onRevert={() =>
-                    revertSession.mutate(turn.id, {
-                      onSuccess: () => toast.success("Messages rolled back"),
-                      onError: (error) =>
-                        toast.error(
-                          error.message || "Could not revert messages",
-                        ),
-                    })
-                  }
-                  reserveBottomSpace={
-                    index === turns.length - 1 && !activeQuestion
-                  }
-                />
-              ))}
+            {turns.map((turn, index) => (
+              <OpencodeChatQuestion
+                key={turn.id}
+                item={turn}
+                isStreaming={isStreaming && index === turns.length - 1}
+                isReverting={
+                  revertSession.isPending && revertSession.variables === turn.id
+                }
+                revertDisabled={
+                  isStreaming ||
+                  revertSession.isPending ||
+                  restoreMessage.isPending
+                }
+                onRevert={() =>
+                  revertSession.mutate(turn.id, {
+                    onSuccess: () => toast.success("Messages rolled back"),
+                    onError: (error) =>
+                      toast.error(error.message || "Could not revert messages"),
+                  })
+                }
+                reserveBottomSpace={
+                  index === turns.length - 1 && !activeQuestion
+                }
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -493,7 +461,7 @@ export function OpencodeSessionChat({
           className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)] backdrop-blur-xl"
         />
         <div className="relative mx-auto w-full max-w-4xl">
-          {!showRawResponse && revertedQuestions.length > 0 ? (
+          {revertedQuestions.length > 0 ? (
             <div className="mb-2">
               <RevertedMessagesPanel
                 messages={revertedQuestions}
@@ -515,17 +483,14 @@ export function OpencodeSessionChat({
             </div>
           ) : null}
           {activeQuestion ? (
-            <>
-              <div className="mb-3 flex justify-end">{rawResponseControl}</div>
-              <OpencodeQuestionPrompt
-                key={activeQuestion.id}
-                request={activeQuestion}
-                isSubmitting={answerQuestion.isPending}
-                isDismissing={rejectQuestion.isPending}
-                onSubmit={submitQuestionAnswer}
-                onDismiss={dismissQuestion}
-              />
-            </>
+            <OpencodeQuestionPrompt
+              key={activeQuestion.id}
+              request={activeQuestion}
+              isSubmitting={answerQuestion.isPending}
+              isDismissing={rejectQuestion.isPending}
+              onSubmit={submitQuestionAnswer}
+              onDismiss={dismissQuestion}
+            />
           ) : (
             <PromptInput
               submitDisabled={sendPrompt.isPending || isStreaming}

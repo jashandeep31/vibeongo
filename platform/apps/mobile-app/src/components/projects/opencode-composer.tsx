@@ -60,13 +60,11 @@ type OpencodeComposerProps = {
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
-  onToggleRaw?: () => void;
   onStop?: () => void;
   searchFiles?: (query: string) => Promise<string[]>;
   onSubmit: () => void;
   placeholder: string;
   selection: OpencodePromptSelection;
-  showRawResponse?: boolean;
   value: string;
 };
 
@@ -144,13 +142,11 @@ export function OpencodeComposer({
   onChangeText,
   onNewChat,
   onOpenTerminal,
-  onToggleRaw,
   onStop,
   searchFiles,
   onSubmit,
   placeholder,
   selection,
-  showRawResponse,
   submitDisabled: submitDisabledProp,
   value,
 }: OpencodeComposerProps) {
@@ -328,9 +324,7 @@ export function OpencodeComposer({
           onChange={onChangeSelection}
           onNewChat={onNewChat}
           onOpenTerminal={onOpenTerminal}
-          onToggleRaw={onToggleRaw}
           selection={selection}
-          showRawResponse={showRawResponse}
         />
       </BlurTargetView>
       {activeFileMention && searchFiles ? (
@@ -503,18 +497,14 @@ const PromptSelectors = memo(function PromptSelectors({
   onChange,
   onNewChat,
   onOpenTerminal,
-  onToggleRaw,
   selection,
-  showRawResponse,
 }: {
   disabled?: boolean;
   inventory?: OpencodeInventory;
   onChange: (selection: OpencodePromptSelection) => void;
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
-  onToggleRaw?: () => void;
   selection: OpencodePromptSelection;
-  showRawResponse?: boolean;
 }) {
   const theme = useTheme();
   const [picker, setPicker] = useState<PickerKind | null>(null);
@@ -634,16 +624,6 @@ const PromptSelectors = memo(function PromptSelectors({
             icon={{ ios: "plus", android: "add" }}
             label="New chat"
             onPress={onNewChat}
-            showChevron={false}
-          />
-        ) : null}
-        {onToggleRaw ? (
-          <SelectorPill
-            disabled={disabled}
-            icon={{ ios: "curlybraces", android: "code" }}
-            label="Raw"
-            onPress={onToggleRaw}
-            selected={showRawResponse}
             showChevron={false}
           />
         ) : null}
