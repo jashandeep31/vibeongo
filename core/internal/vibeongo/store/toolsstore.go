@@ -1,6 +1,8 @@
 package store
 
-import "github.com/jashandeep31/vibeongo/core/internal/vibeongo/store/newstores"
+import (
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store/newstores"
+)
 
 type Tools struct {
 	OpenCode             *OpencodeWeb

@@ -49,6 +49,8 @@ func NewCommand() *cobra.Command {
 	rootCmd.AddCommand(ConfigCmd())
 	// print all the domains which point which port
 	rootCmd.AddCommand(GetDomainCmd())
+	// mcp server command
+	rootCmd.AddCommand(McpCommand())
 
 	// setting up the session as per the overview file
 	// rootCmd.AddCommand(InitializeSessionFromOverviewCmd())
@@ -61,7 +63,7 @@ func NewCommand() *cobra.Command {
 // Execute runs the Vibeongo CLI and exits the process if a command fails.
 func Execute() {
 	if err := NewCommand().Execute(); err != nil {
-		fmt.Println(err)
+		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
 }
