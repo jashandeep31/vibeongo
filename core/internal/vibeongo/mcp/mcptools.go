@@ -39,6 +39,33 @@ func raisePR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput, 
 		)
 	}
 
+	switch repo.Type {
+	case config.GitRepoTypeGitHub:
+		return raiseGitHubPR(ctx, req, input, *repo)
+	case config.GitRepoTypeForgejo:
+		return raiseForgejoPR(ctx, req, input, *repo)
+	default:
+		return nil, nil, fmt.Errorf(
+			"unsupported repository type %q for repo %q",
+			repo.Type,
+			input.RepoName,
+		)
+	}
+}
+
+func raiseGitHubPR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput, repo config.GitRepoConfig) (
+	*mcp.CallToolResult, any, error,
+) {
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: "PR is created"},
+		},
+	}, nil, nil
+}
+
+func raiseForgejoPR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput, repo config.GitRepoConfig) (
+	*mcp.CallToolResult, any, error,
+) {
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: "PR is created"},
