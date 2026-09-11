@@ -109,9 +109,12 @@ function getServerUrl(
 
 export function PlaygroundCommandBox() {
   const router = useRouter();
-  const params = useParams<{ projectId?: string; chatId?: string }>();
+  const params = useParams<{
+    projectId?: string;
+    projectSessionId?: string;
+  }>();
   const routeProjectId = params.projectId;
-  const routeProjectSessionId = params.chatId;
+  const routeProjectSessionId = params.projectSessionId;
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const chatsBySessionId = useSessionChatsStore(
@@ -263,7 +266,7 @@ export function PlaygroundCommandBox() {
   ) => {
     const searchParams = new URLSearchParams({ serverUrl });
     router.push(
-      `/projects/${encodeURIComponent(targetProjectId)}/chats/${encodeURIComponent(projectSessionId)}/sessions/${encodeURIComponent(opencodeSessionId)}?${searchParams.toString()}`,
+      `/projects/${encodeURIComponent(targetProjectId)}/sessions/${encodeURIComponent(projectSessionId)}/chats/${encodeURIComponent(opencodeSessionId)}?${searchParams.toString()}`,
     );
     setOpen(false);
   };
@@ -285,7 +288,7 @@ export function PlaygroundCommandBox() {
 
     const searchParams = new URLSearchParams({ serverUrl, directory });
     router.push(
-      `/projects/${encodeURIComponent(repoDialogSession.session.project_id)}/chats/${encodeURIComponent(repoDialogSession.session.id)}?${searchParams.toString()}`,
+      `/projects/${encodeURIComponent(repoDialogSession.session.project_id)}/sessions/${encodeURIComponent(repoDialogSession.session.id)}?${searchParams.toString()}`,
     );
     setRepoDialogSessionId(null);
     setOpen(false);

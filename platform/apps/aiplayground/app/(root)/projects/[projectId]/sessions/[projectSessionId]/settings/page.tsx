@@ -2,13 +2,13 @@ import { ProjectSessionSettingsPage } from "@/components/project-session-setting
 
 export default async function ProjectSettingsRoute({
   params,
-}: PageProps<"/projects/[projectId]/chats/[chatId]/settings">) {
-  const { projectId, chatId } = await params;
+}: PageProps<"/projects/[projectId]/sessions/[projectSessionId]/settings">) {
+  const { projectId, projectSessionId } = await params;
 
   return (
     <ProjectSessionSettingsPage
       projectId={projectId}
-      projectSessionId={chatId}
+      projectSessionId={projectSessionId}
     />
   );
 }

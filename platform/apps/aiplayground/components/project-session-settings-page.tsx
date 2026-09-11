@@ -154,11 +154,11 @@ export function ProjectSessionSettingsPage({
     return () => window.clearInterval(interval);
   }, [instance]);
 
-  const projectChatUrl = `/projects/${projectId}/chats/${projectSessionId}`;
+  const projectChatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
   const chatUrl = sessionId
-    ? `${projectChatUrl}/sessions/${sessionId}`
+    ? `${projectChatUrl}/chats/${sessionId}`
     : projectChatUrl;
-  const terminalUrl = `/projects/${projectId}/chats/${projectSessionId}/terminal`;
+  const terminalUrl = `/projects/${projectId}/sessions/${projectSessionId}/terminal`;
   const cpuPercent = normalizePercent(runtimeStats.data?.cpu_percent);
   const memoryPercent = normalizePercent(runtimeStats.data?.used_percent);
   const terminatesAt = instance

@@ -11,9 +11,9 @@ import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { getOpencodePassword } from "@repo/api-client";
 
 export default function NewOpencodeChatPage() {
-  const { projectId, chatId } = useParams<{
+  const { projectId, projectSessionId } = useParams<{
     projectId: string;
-    chatId: string;
+    projectSessionId: string;
   }>();
   const searchParams = useSearchParams();
   const serverUrl = searchParams.get("serverUrl");
@@ -23,7 +23,7 @@ export default function NewOpencodeChatPage() {
       "Project",
   );
   const sessionEntry = useSessionsStore((store) =>
-    store.sessions.find((entry) => entry.session.id === chatId),
+    store.sessions.find((entry) => entry.session.id === projectSessionId),
   );
   const accessToken = sessionEntry?.instance?.access_token ?? "";
   const opencodePassword = getOpencodePassword(sessionEntry?.instance?.config);
@@ -54,7 +54,7 @@ export default function NewOpencodeChatPage() {
     );
   }
 
-  const chatUrl = `/projects/${projectId}/chats/${chatId}`;
+  const chatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
 
   return (
     <div className="relative flex min-h-0 w-full min-w-0 flex-1 overflow-x-hidden">
@@ -89,11 +89,14 @@ export default function NewOpencodeChatPage() {
             <Settings2 />
           </Link>
         </Button>
-        <RuntimePulseMenu projectSessionId={chatId} />
-        <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
+        <RuntimePulseMenu projectSessionId={projectSessionId} />
+        <ProjectDomainsDialog
+          projectId={projectId}
+          projectSessionId={projectSessionId}
+        />
       </div>
       <NewOpencodeChat
-        chatId={chatId}
+        chatId={projectSessionId}
         chatUrl={chatUrl}
         serverUrl={serverUrl}
         accessToken={accessToken}

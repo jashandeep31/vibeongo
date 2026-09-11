@@ -15,22 +15,27 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 
 export default function OpencodeSessionPage() {
-  const { projectId, chatId, sessionId } = useParams<{
+  const { projectId, projectSessionId, opencodeSessionId } = useParams<{
     projectId: string;
-    chatId: string;
-    sessionId: string;
+    projectSessionId: string;
+    opencodeSessionId: string;
   }>();
   const searchParams = useSearchParams();
   const requestedServerUrl = searchParams.get("serverUrl") ?? "";
   const storedInstance = useSessionsStore(
     (store) =>
-      store.sessions.find((entry) => entry.session.id === chatId)?.instance,
+      store.sessions.find((entry) => entry.session.id === projectSessionId)
+        ?.instance,
   );
   const {
     data: instancesData,
     error: instanceError,
     isPending: isInstancePending,
-  } = useGetInstances({ sessionId: chatId, state: "running", limit: 1 });
+  } = useGetInstances({
+    sessionId: projectSessionId,
+    state: "running",
+    limit: 1,
+  });
   const instance = instancesData?.data[0];
   const serverUrl =
     requestedServerUrl ||
@@ -51,13 +56,13 @@ export default function OpencodeSessionPage() {
     loadOlder,
     resync,
   } = useOpencodeSession({
-      chatId,
-      sessionId,
-      serverUrl,
-      accessToken,
-      password: opencodePassword,
-      messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
-    });
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl,
+    accessToken,
+    password: opencodePassword,
+    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
+  });
 
   if (isInstancePending) {
     return <ChatSessionSkeleton />;
@@ -92,8 +97,8 @@ export default function OpencodeSessionPage() {
   return (
     <OpencodeSessionChat
       projectId={projectId}
-      chatId={chatId}
-      sessionId={sessionId}
+      chatId={projectSessionId}
+      sessionId={opencodeSessionId}
       serverUrl={serverUrl}
       accessToken={accessToken}
       password={opencodePassword}

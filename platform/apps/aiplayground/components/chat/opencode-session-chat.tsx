@@ -274,7 +274,7 @@ export function OpencodeSessionChat({
     });
   };
 
-  const chatUrl = `/projects/${projectId}/chats/${chatId}`;
+  const sessionUrl = `/projects/${projectId}/sessions/${chatId}`;
   const newChatParams = new URLSearchParams({ serverUrl });
   const composerControls = (
     <>
@@ -285,7 +285,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}?${newChatParams.toString()}`}>
+        <Link href={`${sessionUrl}?${newChatParams.toString()}`}>
           <Plus className="size-3.5" />
           New chat
         </Link>
@@ -297,7 +297,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}/sessions/${sessionId}/files`}>
+        <Link href={`${sessionUrl}/chats/${sessionId}/files`}>
           <FolderOpen className="size-3.5" />
           Files
         </Link>
@@ -309,7 +309,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}/terminal`}>
+        <Link href={`${sessionUrl}/terminal`}>
           <Terminal className="size-3.5" />
           Terminal
         </Link>
@@ -321,7 +321,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}/sessions/${sessionId}/settings`}>
+        <Link href={`${sessionUrl}/chats/${sessionId}/settings`}>
           <Settings2 className="size-3.5" />
           Settings
         </Link>
@@ -340,7 +340,7 @@ export function OpencodeSessionChat({
           className="bg-background/90 shadow-sm backdrop-blur"
         >
           <Link
-            href={`${chatUrl}/sessions/${sessionId}/files`}
+            href={`${sessionUrl}/chats/${sessionId}/files`}
             aria-label="Open files"
             title="Open files"
           >
@@ -355,7 +355,7 @@ export function OpencodeSessionChat({
           className="bg-background/90 shadow-sm backdrop-blur"
         >
           <Link
-            href={`${chatUrl}/sessions/${sessionId}/settings`}
+            href={`${sessionUrl}/chats/${sessionId}/settings`}
             aria-label="Runtime settings"
             title="Runtime settings"
           >

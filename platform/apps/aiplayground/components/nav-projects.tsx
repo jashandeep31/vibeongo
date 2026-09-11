@@ -221,7 +221,7 @@ function ProjectSessionNavItem({
     sessionEntry?.state === "running" && opencodeDomain
       ? `https://${opencodeDomain}`
       : "";
-  const chatUrl = `/projects/${session.projectId}/chats/${session.id}`;
+  const sessionUrl = `/projects/${session.projectId}/sessions/${session.id}`;
 
   const {
     data: githubRepos,
@@ -236,7 +236,7 @@ function ProjectSessionNavItem({
   const handleRepoSelect = (directory: string) => {
     setIsRepoDialogOpen(false);
     const params = new URLSearchParams({ serverUrl, directory });
-    router.push(`${chatUrl}?${params.toString()}`);
+    router.push(`${sessionUrl}?${params.toString()}`);
     onNavigate();
   };
 
@@ -274,6 +274,21 @@ function ProjectSessionNavItem({
                   </button>
                 </SidebarMenuSubButton>
               </CollapsibleTrigger>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon-xs"
+                className="text-muted-foreground shrink-0"
+              >
+                <Link
+                  href={`${sessionUrl}/terminal`}
+                  onClick={onNavigate}
+                  aria-label={`Open terminal for ${session.name}`}
+                  title="Open terminal"
+                >
+                  <Terminal />
+                </Link>
+              </Button>
               <InstanceControlsDropdown
                 instance={instance}
                 projectId={session.projectId}
@@ -287,7 +302,7 @@ function ProjectSessionNavItem({
               <SidebarMenuSub className="mr-0 ml-4">
                 {(opencodeSessions ?? []).map((opencodeSession) => {
                   const params = new URLSearchParams({ serverUrl });
-                  const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+                  const url = `${sessionUrl}/chats/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
                   const isProcessing =
                     opencodeStatuses?.[opencodeSession.id]?.type !== "idle" &&
                     opencodeStatuses?.[opencodeSession.id] !== undefined;
@@ -342,18 +357,6 @@ function ProjectSessionNavItem({
                     </SidebarMenuSubItem>
                   );
                 })}
-                <SidebarMenuSubItem>
-                  <SidebarMenuSubButton
-                    asChild
-                    size="sm"
-                    isActive={pathname === `${chatUrl}/terminal`}
-                  >
-                    <Link href={`${chatUrl}/terminal`} onClick={onNavigate}>
-                      <Terminal />
-                      <span>Terminal</span>
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton asChild size="sm">
                     <button

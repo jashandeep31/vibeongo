@@ -25,14 +25,17 @@ import { useEffect, useRef } from "react";
 
 function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   const queryClient = useQueryClient();
-  const routeParams = useParams<{ chatId?: string; sessionId?: string }>();
+  const routeParams = useParams<{
+    projectSessionId?: string;
+    opencodeSessionId?: string;
+  }>();
   const activeChatRef = useRef({
-    projectSessionId: routeParams.chatId,
-    opencodeSessionId: routeParams.sessionId,
+    projectSessionId: routeParams.projectSessionId,
+    opencodeSessionId: routeParams.opencodeSessionId,
   });
   activeChatRef.current = {
-    projectSessionId: routeParams.chatId,
-    opencodeSessionId: routeParams.sessionId,
+    projectSessionId: routeParams.projectSessionId,
+    opencodeSessionId: routeParams.opencodeSessionId,
   };
   const statusEventVersionsRef = useRef(new Map<string, number>());
   const handledCompletedAnswersRef = useRef(new Set<string>());
@@ -83,12 +86,16 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   );
 
   useEffect(() => {
-    if (routeParams.chatId !== sessionId || !routeParams.sessionId) return;
+    if (
+      routeParams.projectSessionId !== sessionId ||
+      !routeParams.opencodeSessionId
+    )
+      return;
 
     useSessionChatsStore
       .getState()
-      .setChatUnread(sessionId, routeParams.sessionId, false);
-  }, [routeParams.chatId, routeParams.sessionId, sessionId]);
+      .setChatUnread(sessionId, routeParams.opencodeSessionId, false);
+  }, [routeParams.opencodeSessionId, routeParams.projectSessionId, sessionId]);
 
   useEffect(() => {
     if (!isOpencodeRunning || !serverUrl || !accessToken || !opencodeSessions) {
@@ -325,12 +332,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
             () => {
               void refreshStatuses();
               void queryClient.invalidateQueries({
-                queryKey: [
-                  "opencode",
-                  "chat-sessions",
-                  sessionId,
-                  serverUrl,
-                ],
+                queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],
                 exact: true,
               });
               resyncActiveChat();

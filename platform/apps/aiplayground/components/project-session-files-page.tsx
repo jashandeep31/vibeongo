@@ -164,9 +164,9 @@ function ProjectSessionFilesContent({
   const deletingPath = deleteEntryMutation.isPending
     ? (deleteEntryMutation.variables ?? "")
     : "";
-  const projectChatUrl = `/projects/${projectId}/chats/${projectSessionId}`;
+  const projectChatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
   const chatUrl = sessionId
-    ? `${projectChatUrl}/sessions/${sessionId}`
+    ? `${projectChatUrl}/chats/${sessionId}`
     : projectChatUrl;
   const hasUnsavedChanges =
     Boolean(selectedFile) && fileContent !== savedFileContent;

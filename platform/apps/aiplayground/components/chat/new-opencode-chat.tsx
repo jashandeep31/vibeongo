@@ -60,7 +60,7 @@ export function NewOpencodeChat({
       onSessionCreated: (sessionId) => {
         const params = new URLSearchParams({ serverUrl });
         router.replace(
-          `${chatUrl}/sessions/${encodeURIComponent(sessionId)}?${params.toString()}`,
+          `${chatUrl}/chats/${encodeURIComponent(sessionId)}?${params.toString()}`,
         );
       },
     });
