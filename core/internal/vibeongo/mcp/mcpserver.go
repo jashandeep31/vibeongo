@@ -37,8 +37,13 @@ func MCPCommand() error {
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "raise-pr",
-		Description: "Raise a PR ",
+		Description: "Raise a pull request in a configured repository",
 	}, withConfig(raisePR))
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "raise-issue",
+		Description: "Raise an issue in a configured repository",
+	}, withConfig(raiseIssue))
 
 	// starting the server
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
