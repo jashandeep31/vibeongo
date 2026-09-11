@@ -135,13 +135,13 @@ function NavChats({
 
   return (
     <>
-      <SidebarGroup className="px-2 py-3">
+      <SidebarGroup className="px-1.5 py-2">
         <SidebarGroupContent>
-          <SidebarMenu className="mb-1 gap-1">
+          <SidebarMenu className="mb-0.5 gap-0.5">
             <SidebarMenuItem>
               <SidebarMenuButton
                 asChild
-                className="h-9 rounded-xl px-3 text-sm font-normal"
+                className="h-8 rounded-lg px-2 text-xs font-normal [&_svg]:size-3.5"
               >
                 <Link
                   href="/?view=chats"
@@ -157,30 +157,30 @@ function NavChats({
             </SidebarMenuItem>
           </SidebarMenu>
           {isPending ? (
-            <div className="text-muted-foreground flex items-center gap-2 px-3 py-4 text-sm">
-              <Loader2 className="size-4 animate-spin" />
+            <div className="text-muted-foreground flex items-center gap-1.5 px-2 py-2.5 text-xs">
+              <Loader2 className="size-3.5 animate-spin" />
               Loading chats…
             </div>
           ) : isError ? (
-            <p className="text-muted-foreground px-3 py-4 text-sm">
+            <p className="text-muted-foreground px-2 py-2.5 text-xs">
               Could not load chats.
             </p>
           ) : chats.length === 0 ? (
-            <p className="text-muted-foreground px-3 py-4 text-sm">
+            <p className="text-muted-foreground px-2 py-2.5 text-xs">
               No chats yet.
             </p>
           ) : (
-            <SidebarMenu className="gap-1">
+            <SidebarMenu className="gap-0.5">
               {chats.map((chat) => {
                 const url = `/chat/${chat.id}`;
 
                 return (
                   <SidebarMenuItem key={chat.id}>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-0.5">
                       <SidebarMenuButton
                         asChild
                         isActive={pathname === url}
-                        className="h-9 min-w-0 flex-1 rounded-xl px-3 text-sm font-normal"
+                        className="h-8 min-w-0 flex-1 rounded-lg px-2 text-xs font-normal [&_svg]:size-3.5"
                       >
                         <Link href={url} onClick={closeMobileSidebar}>
                           <BotMessageSquare />
@@ -195,7 +195,7 @@ function NavChats({
                             type="button"
                             variant="ghost"
                             size="icon-sm"
-                            className="shrink-0"
+                            className="size-7 shrink-0 [&_svg]:size-3.5"
                             aria-label={`Actions for ${chat.name}`}
                             title={`Actions for ${chat.name}`}
                             disabled={
@@ -305,14 +305,14 @@ export function PlaygroundSidebar() {
 
   return (
     <Sidebar className="bg-background">
-      <SidebarContent className="bg-background">
-        <SidebarGroup className="px-2 pt-4 pb-1">
+      <SidebarContent className="bg-background text-xs [&_[data-sidebar=menu]]:gap-0.5 [&_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=menu-button]]:rounded-lg [&_[data-sidebar=menu-button]]:px-2 [&_[data-sidebar=menu-button]]:text-xs [&_[data-sidebar=menu-sub-button]]:h-7 [&_[data-sidebar=menu-sub-button]]:text-xs [&_[data-sidebar=menu-sub]]:my-0.5 [&_[data-sidebar=menu-sub]]:ml-3 [&_[data-sidebar=menu-sub]]:px-1.5 [&_[data-sidebar=group]]:px-1.5 [&_[data-sidebar=group]]:py-2 [&_svg]:size-3.5">
+        <SidebarGroup className="px-1.5 pt-2.5 pb-0.5">
           <SidebarGroupContent>
             <NavMain items={navigationItems} />
           </SidebarGroupContent>
         </SidebarGroup>
         <div
-          className="bg-muted/60 mx-4 mt-3 inline-flex self-start rounded-full border p-1 shadow-sm dark:border-white/10 dark:bg-white/5"
+          className="bg-muted/60 mx-2.5 mt-1.5 inline-flex self-start rounded-full border p-0.5 shadow-sm dark:border-white/10 dark:bg-white/5"
           aria-label="Sidebar view"
           role="group"
         >
@@ -320,7 +320,7 @@ export function PlaygroundSidebar() {
             type="button"
             aria-pressed={activeView === "chats"}
             onClick={() => setActiveView("chats")}
-            className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-7 items-center justify-center rounded-full px-4 text-sm transition-colors aria-pressed:shadow-sm"
+            className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-6 items-center justify-center rounded-full px-3 text-xs transition-colors aria-pressed:shadow-sm"
           >
             Chats
           </button>
@@ -328,7 +328,7 @@ export function PlaygroundSidebar() {
             type="button"
             aria-pressed={activeView === "projects"}
             onClick={() => setActiveView("projects")}
-            className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-7 items-center justify-center rounded-full px-4 text-sm transition-colors aria-pressed:shadow-sm"
+            className="text-muted-foreground aria-pressed:bg-primary aria-pressed:text-primary-foreground flex h-6 items-center justify-center rounded-full px-3 text-xs transition-colors aria-pressed:shadow-sm"
           >
             Projects
           </button>
@@ -343,7 +343,7 @@ export function PlaygroundSidebar() {
           <NavProjects projects={projects} />
         )}
       </SidebarContent>
-      <SidebarFooter className="border-sidebar-border border-t p-2">
+      <SidebarFooter className="border-sidebar-border border-t p-1.5 [&_[data-sidebar=menu-button]]:h-10 [&_[data-sidebar=menu-button]]:rounded-lg [&_[data-sidebar=menu-button]]:px-2 [&_[data-sidebar=menu-button]]:text-xs [&_svg]:size-3.5">
         <PlaygroundUserMenu />
       </SidebarFooter>
     </Sidebar>

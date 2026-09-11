@@ -21,7 +21,7 @@ export default async function PlaygroundLayout({
   return (
     <WebSocketProvider>
       <SidebarProvider
-        style={{ "--sidebar-width": "22rem" } as React.CSSProperties}
+        style={{ "--sidebar-width": "18rem" } as React.CSSProperties}
       >
         <PlaygroundStoreSync />
         <PlaygroundCommandBox />
