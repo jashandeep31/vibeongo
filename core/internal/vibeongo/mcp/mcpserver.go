@@ -4,7 +4,9 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/actions"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
@@ -13,6 +15,18 @@ type withConfigHandler[In any] func(ctx context.Context, req *mcp.CallToolReques
 	*mcp.CallToolResult, any, error,
 )
 
+func repositoryCredentialsNeedRenewal(cfg config.Config, now time.Time) bool {
+	for _, repo := range cfg.Repos {
+		if repo.Type != config.GitRepoTypeGitHub {
+			continue
+		}
+		if repo.ExpiresAt == nil || !now.Before(*repo.ExpiresAt) {
+			return true
+		}
+	}
+	return false
+}
+
 func withConfig[In any](h withConfigHandler[In]) mcp.ToolHandlerFor[In, any] {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input In) (
 		*mcp.CallToolResult, any, error,
@@ -20,6 +34,12 @@ func withConfig[In any](h withConfigHandler[In]) mcp.ToolHandlerFor[In, any] {
 		cfg, err := config.LoadAndValidate()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to load config: %w", err)
+		}
+		if repositoryCredentialsNeedRenewal(cfg, time.Now()) {
+			cfg, err = actions.RenewRepoCredentials()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to renew expired repository credentials: %w", err)
+			}
 		}
 		return h(ctx, req, input, cfg)
 	}
