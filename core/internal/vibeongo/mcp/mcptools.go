@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/url"
+	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -24,6 +26,11 @@ type raiseIssueInput struct {
 	RepoName string `json:"reponame"`
 	Title    string `json:"title"`
 	Body     string `json:"body"`
+}
+
+type gitCommandInput struct {
+	RepoName string   `json:"reponame"`
+	Args     []string `json:"args"`
 }
 
 type createdItemResponse struct {
@@ -257,6 +264,112 @@ func raiseIssue(ctx context.Context, req *mcp.CallToolRequest, input raiseIssueI
 		repo.FullName,
 		createdItemURL(*repo, "issue", created.Number, created.HTMLURL),
 	)
+
+	return &mcp.CallToolResult{
+		Content: []mcp.Content{
+			&mcp.TextContent{Text: message},
+		},
+	}, nil, nil
+}
+
+func runGitCommand(ctx context.Context, req *mcp.CallToolRequest, input gitCommandInput, cfg config.Config) (
+	*mcp.CallToolResult, any, error,
+) {
+	validRepos := make([]string, 0, len(cfg.Repos))
+	var repo *config.GitRepoConfig
+	for _, r := range cfg.Repos {
+		validRepos = append(validRepos, r.RepoName)
+		if r.RepoName == input.RepoName {
+			repo = &r
+		}
+	}
+	if repo == nil {
+		return nil, nil, fmt.Errorf(
+			"repo %q not found; available repos: %s",
+			input.RepoName,
+			strings.Join(validRepos, ", "),
+		)
+	}
+	if len(input.Args) == 0 {
+		return nil, nil, fmt.Errorf("git command arguments are required")
+	}
+
+	allowedOperations := map[string]bool{
+		"add":      true,
+		"branch":   true,
+		"checkout": true,
+		"commit":   true,
+		"diff":     true,
+		"fetch":    true,
+		"log":      true,
+		"pull":     true,
+		"push":     true,
+		"restore":  true,
+		"show":     true,
+		"status":   true,
+		"switch":   true,
+	}
+	operation := input.Args[0]
+	if !allowedOperations[operation] {
+		return nil, nil, fmt.Errorf("git operation %q is not allowed", operation)
+	}
+
+	workspaceRoot := filepath.Clean("/home/ubuntu/code")
+	repoDir := filepath.Clean(filepath.Join(workspaceRoot, repo.FolderName))
+	relativeRepoDir, err := filepath.Rel(workspaceRoot, repoDir)
+	if err != nil || relativeRepoDir == "." || relativeRepoDir == ".." ||
+		strings.HasPrefix(relativeRepoDir, ".."+string(filepath.Separator)) {
+		return nil, nil, fmt.Errorf("invalid repository folder %q", repo.FolderName)
+	}
+
+	gitArgs := append([]string(nil), input.Args...)
+	cleanURL := strings.TrimRight(repo.ProviderURL, "/") + "/" +
+		strings.TrimLeft(repo.FullName, "/") + ".git"
+	authenticatedURL := ""
+	if operation == "fetch" || operation == "pull" || operation == "push" {
+		originIndex := -1
+		for i := 1; i < len(gitArgs); i++ {
+			if gitArgs[i] == "origin" {
+				originIndex = i
+				break
+			}
+		}
+		if originIndex == -1 {
+			return nil, nil, fmt.Errorf("authenticated git %s requires the origin remote argument", operation)
+		}
+		if repo.GitUsername == "" || repo.AccessToken == "" {
+			return nil, nil, fmt.Errorf("git credentials are missing for repo %q", repo.RepoName)
+		}
+
+		parsedURL, err := url.Parse(cleanURL)
+		if err != nil {
+			return nil, nil, fmt.Errorf("invalid repository URL: %w", err)
+		}
+		parsedURL.User = url.UserPassword(repo.GitUsername, repo.AccessToken)
+		authenticatedURL = parsedURL.String()
+		gitArgs[originIndex] = authenticatedURL
+		gitArgs = append([]string{"-c", "core.hooksPath=/dev/null"}, gitArgs...)
+	}
+
+	command := exec.CommandContext(ctx, "git", gitArgs...)
+	command.Dir = repoDir
+	output, commandErr := command.CombinedOutput()
+	message := string(output)
+	if authenticatedURL != "" {
+		message = strings.ReplaceAll(message, authenticatedURL, cleanURL)
+	}
+	message = strings.ReplaceAll(message, repo.AccessToken, "[REDACTED]")
+	message = strings.TrimSpace(message)
+
+	if commandErr != nil {
+		if message == "" {
+			return nil, nil, fmt.Errorf("git %s failed: %w", operation, commandErr)
+		}
+		return nil, nil, fmt.Errorf("git %s failed: %w: %s", operation, commandErr, message)
+	}
+	if message == "" {
+		message = fmt.Sprintf("git %s completed successfully in %s", operation, repo.FullName)
+	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{

@@ -45,6 +45,11 @@ func MCPCommand() error {
 		Description: "Raise an issue in a configured repository",
 	}, withConfig(raiseIssue))
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "git-command",
+		Description: "Run an allowed Git command in a configured repository, using its token for authenticated remote operations",
+	}, withConfig(runGitCommand))
+
 	// starting the server
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
