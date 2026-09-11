@@ -88,11 +88,17 @@ type repositoryItem struct {
 }
 
 func findConfiguredRepo(cfg config.Config, repoName string) (*config.GitRepoConfig, error) {
+	repoName = strings.Trim(strings.TrimSpace(repoName), "/")
+	if repoName == "" {
+		return nil, fmt.Errorf("repository name is required")
+	}
+
 	validRepos := make([]string, 0, len(cfg.Repos))
 	for i := range cfg.Repos {
 		repo := &cfg.Repos[i]
-		validRepos = append(validRepos, repo.RepoName)
-		if repo.RepoName == repoName {
+		validRepos = append(validRepos, fmt.Sprintf("%s (%s)", repo.RepoName, repo.FullName))
+		if strings.EqualFold(strings.Trim(repo.RepoName, "/"), repoName) ||
+			strings.EqualFold(strings.Trim(repo.FullName, "/"), repoName) {
 			return repo, nil
 		}
 	}

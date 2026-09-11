@@ -56,22 +56,9 @@ func createdItemURL(repo config.GitRepoConfig, itemType string, number int, apiU
 func raisePR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput, cfg config.Config) (
 	*mcp.CallToolResult, any, error,
 ) {
-
-	validRepos := make([]string, 0, len(cfg.Repos))
-	var repo *config.GitRepoConfig
-	for _, r := range cfg.Repos {
-		validRepos = append(validRepos, r.RepoName)
-		if r.RepoName == input.RepoName {
-			repo = &r
-		}
-	}
-
-	if repo == nil {
-		return nil, nil, fmt.Errorf(
-			"repo %q not found; available repos: %s",
-			input.RepoName,
-			strings.Join(validRepos, ", "),
-		)
+	repo, err := findConfiguredRepo(cfg, input.RepoName)
+	if err != nil {
+		return nil, nil, err
 	}
 
 	switch repo.Type {
@@ -196,21 +183,9 @@ func raiseForgejoPR(ctx context.Context, req *mcp.CallToolRequest, input raisePR
 func raiseIssue(ctx context.Context, req *mcp.CallToolRequest, input raiseIssueInput, cfg config.Config) (
 	*mcp.CallToolResult, any, error,
 ) {
-	validRepos := make([]string, 0, len(cfg.Repos))
-	var repo *config.GitRepoConfig
-	for _, r := range cfg.Repos {
-		validRepos = append(validRepos, r.RepoName)
-		if r.RepoName == input.RepoName {
-			repo = &r
-		}
-	}
-
-	if repo == nil {
-		return nil, nil, fmt.Errorf(
-			"repo %q not found; available repos: %s",
-			input.RepoName,
-			strings.Join(validRepos, ", "),
-		)
+	repo, err := findConfiguredRepo(cfg, input.RepoName)
+	if err != nil {
+		return nil, nil, err
 	}
 	if strings.TrimSpace(input.Title) == "" {
 		return nil, nil, fmt.Errorf("issue title is required")
@@ -274,20 +249,9 @@ func raiseIssue(ctx context.Context, req *mcp.CallToolRequest, input raiseIssueI
 func runGitCommand(ctx context.Context, req *mcp.CallToolRequest, input gitCommandInput, cfg config.Config) (
 	*mcp.CallToolResult, any, error,
 ) {
-	validRepos := make([]string, 0, len(cfg.Repos))
-	var repo *config.GitRepoConfig
-	for _, r := range cfg.Repos {
-		validRepos = append(validRepos, r.RepoName)
-		if r.RepoName == input.RepoName {
-			repo = &r
-		}
-	}
-	if repo == nil {
-		return nil, nil, fmt.Errorf(
-			"repo %q not found; available repos: %s",
-			input.RepoName,
-			strings.Join(validRepos, ", "),
-		)
+	repo, err := findConfiguredRepo(cfg, input.RepoName)
+	if err != nil {
+		return nil, nil, err
 	}
 	if len(input.Args) == 0 {
 		return nil, nil, fmt.Errorf("git command arguments are required")
