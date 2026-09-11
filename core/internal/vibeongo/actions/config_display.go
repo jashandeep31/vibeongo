@@ -17,7 +17,7 @@ func FormatConfigSummary(cfg config.Config) string {
 		b.WriteString(" token: ")
 		b.WriteString(repo.AccessToken)
 		b.WriteString("\nclone URL: ")
-		b.WriteString(repo.HTTPURL)
+		b.WriteString(gitCloneURL(repo))
 		b.WriteString(" username: ")
 		b.WriteString(repo.GitUsername)
 	}

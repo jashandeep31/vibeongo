@@ -5,9 +5,12 @@ import { env } from "../lib/env.js";
 
 export type GitRepoCredentials = {
   access_token: string;
-  http_url: string;
+  provider_url: string;
   git_username: string;
 };
+
+export const getGitCloneUrl = (providerUrl: string, fullName: string): string =>
+  `${providerUrl.replace(/\/+$/, "")}/${fullName.replace(/^\/+/, "")}.git`;
 
 export const getGitRepoCredentials = async (
   repo: typeof gitRepos.$inferSelect,
@@ -28,7 +31,7 @@ export const getGitRepoCredentials = async (
     );
     return {
       access_token: data.token,
-      http_url: `https://github.com/${repo.full_name}.git`,
+      provider_url: "https://github.com",
       git_username: "x-access-token",
     };
   }
@@ -40,7 +43,7 @@ export const getGitRepoCredentials = async (
 
   return {
     access_token: accessToken,
-    http_url: `${env.FORGEJO_URL.replace(/\/$/, "")}/${repo.full_name}.git`,
+    provider_url: env.FORGEJO_URL.replace(/\/+$/, ""),
     git_username: repo.repo_owner_username,
   };
 };

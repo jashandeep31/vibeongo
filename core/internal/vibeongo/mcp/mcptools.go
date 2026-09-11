@@ -66,6 +66,8 @@ func raiseGitHubPR(ctx context.Context, req *mcp.CallToolRequest, input raisePRI
 func raiseForgejoPR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput, repo config.GitRepoConfig) (
 	*mcp.CallToolResult, any, error,
 ) {
+	// apiClient := httpclient.Client{}
+
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: "PR is created"},
