@@ -5,6 +5,7 @@ export type ProjectReadyGitRepo = {
   type: "github" | "forgejo";
   full_name: string;
   access_token: string;
+  expires_at: string | null;
   provider_url: string;
   git_username: string;
   public: boolean;

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Config struct {
@@ -70,6 +71,7 @@ type GitRepoConfig struct {
 	FullName    string      `json:"full_name"`
 	RepoName    string      `json:"repo_name"`
 	AccessToken string      `json:"access_token"`
+	ExpiresAt   *time.Time  `json:"expires_at"`
 	ProviderURL string      `json:"provider_url"`
 	GitUsername string      `json:"git_username"`
 	FolderName  string      `json:"folder_name"`

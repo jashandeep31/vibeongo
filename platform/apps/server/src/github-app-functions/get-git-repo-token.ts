@@ -5,9 +5,12 @@ import { env } from "../lib/env.js";
 
 export type GitRepoCredentials = {
   access_token: string;
+  expires_at: string | null;
   provider_url: string;
   git_username: string;
 };
+
+const GITHUB_TOKEN_EXPIRY_SAFETY_WINDOW_MS = 5 * 60 * 1000;
 
 export const getGitCloneUrl = (providerUrl: string, fullName: string): string =>
   `${providerUrl.replace(/\/+$/, "")}/${fullName.replace(/^\/+/, "")}.git`;
@@ -31,6 +34,10 @@ export const getGitRepoCredentials = async (
     );
     return {
       access_token: data.token,
+      expires_at: new Date(
+        new Date(data.expires_at).getTime() -
+          GITHUB_TOKEN_EXPIRY_SAFETY_WINDOW_MS,
+      ).toISOString(),
       provider_url: "https://github.com",
       git_username: "x-access-token",
     };
@@ -43,6 +50,7 @@ export const getGitRepoCredentials = async (
 
   return {
     access_token: accessToken,
+    expires_at: null,
     provider_url: env.FORGEJO_URL.replace(/\/+$/, ""),
     git_username: repo.repo_owner_username,
   };
