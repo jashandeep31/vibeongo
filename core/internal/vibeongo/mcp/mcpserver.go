@@ -28,18 +28,27 @@ func repositoryCredentialsNeedRenewal(cfg config.Config, now time.Time) bool {
 }
 
 func withConfig[In any](h withConfigHandler[In]) mcp.ToolHandlerFor[In, any] {
+	return withLoadedConfig(func(ctx context.Context, req *mcp.CallToolRequest, input In, cfg config.Config) (
+		*mcp.CallToolResult, any, error,
+	) {
+		var err error
+		if repositoryCredentialsNeedRenewal(cfg, time.Now()) {
+			cfg, err = actions.RenewRepoCredentials()
+			if err != nil {
+				return nil, nil, fmt.Errorf("failed to renew expired repository credentials: %w", err)
+			}
+		}
+		return h(ctx, req, input, cfg)
+	})
+}
+
+func withLoadedConfig[In any](h withConfigHandler[In]) mcp.ToolHandlerFor[In, any] {
 	return func(ctx context.Context, req *mcp.CallToolRequest, input In) (
 		*mcp.CallToolResult, any, error,
 	) {
 		cfg, err := config.LoadAndValidate()
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to load config: %w", err)
-		}
-		if repositoryCredentialsNeedRenewal(cfg, time.Now()) {
-			cfg, err = actions.RenewRepoCredentials()
-			if err != nil {
-				return nil, nil, fmt.Errorf("failed to renew expired repository credentials: %w", err)
-			}
 		}
 		return h(ctx, req, input, cfg)
 	}
@@ -89,6 +98,11 @@ func MCPCommand() error {
 		Name:        "provider-api-post",
 		Description: "Send an authenticated JSON POST request to a GitHub or Forgejo API URL for a configured repository. Provide reponame, the complete API URL, and an optional JSON body. The URL must use the repository's exact provider API origin and begin with its configured /repos/{owner}/{repo} path; credentials, fragments, traversal paths, other hosts, and other repositories are rejected. The tool attaches the repository-scoped token internally, does not follow redirects, and returns normalized JSON containing status and response data. POST requests may change repository state, so use this tool only when the requested provider operation is intended.",
 	}, withConfig(providerAPIPost))
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "get-runtime-domains",
+		Description: "List the proxy domains assigned to the current runtime session. Returns JSON containing each domain, its target port, stable identifier, and whether it is editable. Use this read-only tool to discover which local application ports are externally reachable and to include the correct runtime URLs in development or testing context.",
+	}, withLoadedConfig(getRuntimeDomains))
 
 	// starting the server
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
