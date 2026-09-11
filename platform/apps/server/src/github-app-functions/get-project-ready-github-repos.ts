@@ -21,6 +21,7 @@ export const getConfigReadyGitRepos = async (
       return {
         full_name: repo.full_name,
         ...credentials,
+        repo_name: repo.full_name.split("/")[1],
         public: repo.public,
         folder_name,
         setup_script: repo.setup_script,

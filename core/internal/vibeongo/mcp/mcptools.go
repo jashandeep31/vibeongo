@@ -2,8 +2,11 @@ package mcp
 
 import (
 	"context"
+	"fmt"
 	"strconv"
+	"strings"
 
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -15,9 +18,26 @@ type raisePRInput struct {
 	Base     string `json:"base"`
 }
 
-func raisePR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput) (
+func raisePR(ctx context.Context, req *mcp.CallToolRequest, input raisePRInput, cfg config.Config) (
 	*mcp.CallToolResult, any, error,
 ) {
+
+	validRepos := make([]string, 0, len(cfg.Repos))
+	var repo *config.GitRepoConfig
+	for _, r := range cfg.Repos {
+		validRepos = append(validRepos, r.RepoName)
+		if r.RepoName == input.RepoName {
+			repo = &r
+		}
+	}
+
+	if repo == nil {
+		return nil, nil, fmt.Errorf(
+			"repo %q not found; available repos: %s",
+			input.RepoName,
+			strings.Join(validRepos, ", "),
+		)
+	}
 
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
