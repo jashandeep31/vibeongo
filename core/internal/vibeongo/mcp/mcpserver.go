@@ -45,6 +45,16 @@ func MCPCommand() error {
 		Description: "Run an allowed Git operation inside a configured workspace repository. Provide the repository name and Git arguments as an array, for example [\"status\", \"--short\"] or [\"push\", \"origin\", \"HEAD:feature-branch\"]. Supported operations are add, branch, checkout, commit, diff, fetch, log, pull, push, restore, show, status, and switch. For fetch, pull, and push, include the origin argument; the tool temporarily authenticates with the repository-scoped token, does not persist the credential, and redacts it from returned output.",
 	}, withConfig(runGitCommand))
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "list-repository-items",
+		Description: "List either pull requests or issues from a configured GitHub or Forgejo repository. Provide reponame and type as pr or issue. Optionally set state to open, closed, or all, page to a positive page number, and count from 1 to 50. Defaults are open, page 1, and 20 results. Returns normalized JSON containing full web URLs and pagination metadata.",
+	}, withConfig(listRepositoryItems))
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "get-repository-item",
+		Description: "Get one pull request or issue from a configured GitHub or Forgejo repository. Provide reponame, type as pr or issue, and the positive PR or issue number. Returns normalized JSON with its title, body, state, full web URL, author, timestamps, and type-specific metadata.",
+	}, withConfig(getRepositoryItem))
+
 	// starting the server
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
