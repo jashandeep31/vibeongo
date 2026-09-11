@@ -31,23 +31,18 @@ func MCPCommand() error {
 	}, nil)
 
 	mcp.AddTool(server, &mcp.Tool{
-		Name:        "Sum of 2 number",
-		Description: "return the sum of 2 numbers",
-	}, sumOf2)
-
-	mcp.AddTool(server, &mcp.Tool{
 		Name:        "raise-pr",
-		Description: "Raise a pull request in a configured repository",
+		Description: "Create a pull request in a configured GitHub or Forgejo repository. Provide the repository name, PR title and body, source branch in head, and destination branch in base. The tool uses the repository-scoped credential from the workspace configuration and returns the created pull request number and full web URL.",
 	}, withConfig(raisePR))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "raise-issue",
-		Description: "Raise an issue in a configured repository",
+		Description: "Create an issue in a configured GitHub or Forgejo repository. Provide the repository name, a non-empty issue title, and an optional Markdown body. The tool uses the repository-scoped credential from the workspace configuration and returns the created issue number and full web URL.",
 	}, withConfig(raiseIssue))
 
 	mcp.AddTool(server, &mcp.Tool{
 		Name:        "git-command",
-		Description: "Run an allowed Git command in a configured repository, using its token for authenticated remote operations",
+		Description: "Run an allowed Git operation inside a configured workspace repository. Provide the repository name and Git arguments as an array, for example [\"status\", \"--short\"] or [\"push\", \"origin\", \"HEAD:feature-branch\"]. Supported operations are add, branch, checkout, commit, diff, fetch, log, pull, push, restore, show, status, and switch. For fetch, pull, and push, include the origin argument; the tool temporarily authenticates with the repository-scoped token, does not persist the credential, and redacts it from returned output.",
 	}, withConfig(runGitCommand))
 
 	// starting the server

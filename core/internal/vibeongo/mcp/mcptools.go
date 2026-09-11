@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
@@ -374,19 +373,6 @@ func runGitCommand(ctx context.Context, req *mcp.CallToolRequest, input gitComma
 	return &mcp.CallToolResult{
 		Content: []mcp.Content{
 			&mcp.TextContent{Text: message},
-		},
-	}, nil, nil
-}
-
-func sumOf2(ctx context.Context, req *mcp.CallToolRequest, input struct {
-	Num1 int `json:"num1"`
-	Num2 int `json:"num2"`
-}) (
-	*mcp.CallToolResult, any, error,
-) {
-	return &mcp.CallToolResult{
-		Content: []mcp.Content{
-			&mcp.TextContent{Text: strconv.Itoa(input.Num1 + input.Num2)},
 		},
 	}, nil, nil
 }
