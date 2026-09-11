@@ -36,6 +36,7 @@ import {
   Github,
   House,
   Import,
+  KeyRound,
   Loader2,
   LayoutTemplate,
   Settings,
@@ -64,6 +65,11 @@ const navigation = [
     title: "Git Repos",
     url: "/git-repos",
     icon: Github,
+  },
+  {
+    title: "Access Tokens",
+    url: "/access-tokens",
+    icon: KeyRound,
   },
   {
     title: "Demo Projects",
@@ -305,7 +311,7 @@ export function PlaygroundSidebar() {
 
   return (
     <Sidebar className="bg-background">
-      <SidebarContent className="bg-background text-xs [&_[data-sidebar=menu]]:gap-0.5 [&_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=menu-button]]:rounded-lg [&_[data-sidebar=menu-button]]:px-2 [&_[data-sidebar=menu-button]]:text-xs [&_[data-sidebar=menu-sub-button]]:h-7 [&_[data-sidebar=menu-sub-button]]:text-xs [&_[data-sidebar=menu-sub]]:my-0.5 [&_[data-sidebar=menu-sub]]:ml-3 [&_[data-sidebar=menu-sub]]:px-1.5 [&_[data-sidebar=group]]:px-1.5 [&_[data-sidebar=group]]:py-2 [&_svg]:size-3.5">
+      <SidebarContent className="bg-background text-xs [&_[data-sidebar=group]]:px-1.5 [&_[data-sidebar=group]]:py-2 [&_[data-sidebar=menu-button]]:h-8 [&_[data-sidebar=menu-button]]:rounded-lg [&_[data-sidebar=menu-button]]:px-2 [&_[data-sidebar=menu-button]]:text-xs [&_[data-sidebar=menu-sub-button]]:h-7 [&_[data-sidebar=menu-sub-button]]:text-xs [&_[data-sidebar=menu-sub]]:my-0.5 [&_[data-sidebar=menu-sub]]:ml-3 [&_[data-sidebar=menu-sub]]:px-1.5 [&_[data-sidebar=menu]]:gap-0.5 [&_svg]:size-3.5">
         <SidebarGroup className="px-1.5 pt-2.5 pb-0.5">
           <SidebarGroupContent>
             <NavMain items={navigationItems} />
