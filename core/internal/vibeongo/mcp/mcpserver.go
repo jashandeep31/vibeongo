@@ -55,6 +55,11 @@ func MCPCommand() error {
 		Description: "Get one pull request or issue from a configured GitHub or Forgejo repository. Provide reponame, type as pr or issue, and the positive PR or issue number. Returns normalized JSON with its title, body, state, full web URL, author, timestamps, and type-specific metadata.",
 	}, withConfig(getRepositoryItem))
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "comment-repository-item",
+		Description: "Comment on an issue or pull request, or submit a pull request review, in a configured GitHub or Forgejo repository. Provide reponame, type as pr or issue, number, and action as comment, review, approve, or request_changes. Timeline comments require a Markdown body. PR reviews may include commit_id and single-line inline comments with path, positive line, LEFT or RIGHT side, and Markdown body; suggestion code blocks are passed through unchanged. Review actions are not valid for issues. Returns normalized JSON with the full comment or review URL.",
+	}, withConfig(commentRepositoryItem))
+
 	// starting the server
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
