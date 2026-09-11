@@ -60,6 +60,16 @@ func MCPCommand() error {
 		Description: "Comment on an issue or pull request, or submit a pull request review, in a configured GitHub or Forgejo repository. Provide reponame, type as pr or issue, number, and action as comment, review, approve, or request_changes. Timeline comments require a Markdown body. PR reviews may include commit_id and single-line inline comments with path, positive line, LEFT or RIGHT side, and Markdown body; suggestion code blocks are passed through unchanged. Review actions are not valid for issues. Returns normalized JSON with the full comment or review URL.",
 	}, withConfig(commentRepositoryItem))
 
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "provider-api-get",
+		Description: "Send an authenticated GET request to a GitHub or Forgejo API URL for a configured repository. Provide reponame and the complete API URL. The URL must use the repository's exact provider API origin and begin with its configured /repos/{owner}/{repo} path; credentials, fragments, traversal paths, other hosts, and other repositories are rejected. The tool attaches the repository-scoped token internally and returns normalized JSON containing status and response data.",
+	}, withConfig(providerAPIGet))
+
+	mcp.AddTool(server, &mcp.Tool{
+		Name:        "provider-api-post",
+		Description: "Send an authenticated JSON POST request to a GitHub or Forgejo API URL for a configured repository. Provide reponame, the complete API URL, and an optional JSON body. The URL must use the repository's exact provider API origin and begin with its configured /repos/{owner}/{repo} path; credentials, fragments, traversal paths, other hosts, and other repositories are rejected. The tool attaches the repository-scoped token internally, does not follow redirects, and returns normalized JSON containing status and response data. POST requests may change repository state, so use this tool only when the requested provider operation is intended.",
+	}, withConfig(providerAPIPost))
+
 	// starting the server
 	if err := server.Run(context.Background(), &mcp.StdioTransport{}); err != nil {
 		log.Fatal(err)
