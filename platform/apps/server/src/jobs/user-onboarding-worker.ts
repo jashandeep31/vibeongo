@@ -26,7 +26,6 @@ export const userOnboardingWorker = new Worker<UserOnboardingJobData>(
       .update(users)
       .set({
         forgejo_id: forgejoUser.id,
-        forgejo_username: forgejoUser.username,
         updated_at: new Date(),
       })
       .where(eq(users.id, user.id));

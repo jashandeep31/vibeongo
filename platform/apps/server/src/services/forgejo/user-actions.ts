@@ -2,7 +2,6 @@ import axios from "axios";
 import { env } from "../../lib/env.js";
 import { users } from "@repo/db";
 import crypto from "crypto";
-import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
 import { AppError } from "../../lib/app-error.js";
 
 export const forgejoAPIClient = axios.create({
@@ -106,10 +105,17 @@ export async function getForgejoUser(
 export async function ensureForgejoUserAccount(
   user: typeof users.$inferSelect,
 ): Promise<ForgejoUser> {
-  if (!user.forgejo_username) {
-    throw new AppError(FORGEJO_ACCOUNT_REQUIRED_MESSAGE, 409);
+  if (user.forgejo_id !== null) {
+    const existingUser = await getForgejoUserById(user.forgejo_id);
+    if (existingUser) return existingUser;
+
+    throw new AppError(
+      `Forgejo user ${user.forgejo_id} was not found`,
+      502,
+    );
   }
-  const existingUser = await getForgejoUser(user.forgejo_username);
+
+  const existingUser = await getForgejoUser(user.username);
   if (existingUser) return existingUser;
 
   try {
@@ -117,9 +123,7 @@ export async function ensureForgejoUserAccount(
     if (result.status === "ok") return result.user;
   } catch (error: unknown) {
     // A retry or concurrent job may have created the account after our check.
-    const concurrentlyCreatedUser = await getForgejoUser(
-      user.forgejo_username,
-    );
+    const concurrentlyCreatedUser = await getForgejoUser(user.username);
     if (concurrentlyCreatedUser) return concurrentlyCreatedUser;
     throw error;
   }

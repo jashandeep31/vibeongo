@@ -71,7 +71,7 @@ export async function createForgejoRepo({
 }: CreateForgejoRepo): Promise<CreateForgejoRepoResult> {
   try {
     const res = await forgejoAPIClient.post<ForgejoRepo>(
-      `/admin/users/${username}/repos`,
+      `/admin/users/${encodeURIComponent(username)}/repos`,
       {
         default_branch: "main",
         description,
@@ -112,7 +112,7 @@ export async function getForgejoRepo({
 }): Promise<ForgejoRepo | null> {
   try {
     const res = await forgejoAPIClient.get<ForgejoRepo>(
-      `/repos/${username}/${reponame}`,
+      `/repos/${encodeURIComponent(username)}/${encodeURIComponent(reponame)}`,
     );
     return res.data;
   } catch (error: unknown) {
@@ -130,22 +130,25 @@ export async function getForgejoRepoAccessToken({
   username: string;
   reponame: string;
 }): Promise<{ accessToken: string; tokenId: number }> {
-  const res = await forgejoAPIClient.post(`/admin/users/${username}/tokens`, {
-    username: username,
-    name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
-    repositories: [
-      {
-        name: reponame,
-        owner: username,
-      },
-    ],
-    scopes: [
-      "read:issue",
-      "write:issue",
-      "read:repository",
-      "write:repository",
-    ],
-  });
+  const res = await forgejoAPIClient.post(
+    `/admin/users/${encodeURIComponent(username)}/tokens`,
+    {
+      username: username,
+      name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
+      repositories: [
+        {
+          name: reponame,
+          owner: username,
+        },
+      ],
+      scopes: [
+        "read:issue",
+        "write:issue",
+        "read:repository",
+        "write:repository",
+      ],
+    },
+  );
   return {
     accessToken: res.data.sha1 as string,
     tokenId: res.data.id as number,
@@ -169,7 +172,7 @@ export async function forkRepoToForgejo({
   let tokenId: number | null = null;
   try {
     const tokenResponse = await forgejoAPIClient.post(
-      `/admin/users/${forkFor}/tokens`,
+      `/admin/users/${encodeURIComponent(forkFor)}/tokens`,
       {
         name: tokenName,
         scopes: ["write:repository", "read:repository"],
@@ -182,7 +185,7 @@ export async function forkRepoToForgejo({
     if (!token) throw new AppError("Failed to create token", 500);
 
     const res = await forgejoAPIClient.post<ForgejoForkResponse>(
-      `/repos/${sourceRepoOwnername}/${sourceReponame}/forks`,
+      `/repos/${encodeURIComponent(sourceRepoOwnername)}/${encodeURIComponent(sourceReponame)}/forks`,
       {
         ...(newReponame ? { name: newReponame } : {}),
         ...(newRepoOrganizationName
@@ -229,7 +232,7 @@ export async function forkRepoToForgejo({
     if (tokenId !== null) {
       try {
         await forgejoAPIClient.delete(
-          `/admin/users/${forkFor}/tokens/${tokenId}`,
+          `/admin/users/${encodeURIComponent(forkFor)}/tokens/${tokenId}`,
         );
       } catch (error: unknown) {
         console.error(`Failed to delete temporary Forgejo token ${tokenName}`);
@@ -254,7 +257,7 @@ export async function generateRepoFromForgejoTemplate({
 
   try {
     const tokenResponse = await forgejoAPIClient.post(
-      `/admin/users/${generateFor}/tokens`,
+      `/admin/users/${encodeURIComponent(generateFor)}/tokens`,
       {
         name: tokenName,
         scopes: ["write:repository", "read:repository", "write:user"],
@@ -266,7 +269,7 @@ export async function generateRepoFromForgejoTemplate({
     if (!token) throw new AppError("Failed to create token", 500);
 
     const response = await forgejoAPIClient.post<ForgejoForkResponse>(
-      `/repos/${templateOwner}/${templateRepo}/generate`,
+      `/repos/${encodeURIComponent(templateOwner)}/${encodeURIComponent(templateRepo)}/generate`,
       {
         git_content: true,
         name: newRepoName,
@@ -319,7 +322,7 @@ export async function generateRepoFromForgejoTemplate({
     if (tokenId !== null) {
       try {
         await forgejoAPIClient.delete(
-          `/admin/users/${generateFor}/tokens/${tokenId}`,
+          `/admin/users/${encodeURIComponent(generateFor)}/tokens/${tokenId}`,
         );
       } catch {
         console.error(`Failed to delete temporary Forgejo token ${tokenName}`);

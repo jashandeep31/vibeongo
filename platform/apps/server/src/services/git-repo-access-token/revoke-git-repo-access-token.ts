@@ -47,7 +47,6 @@ export async function revokeGitRepoAccessToken({
     if (!row.token.provider_token_id) {
       throw new AppError("Forgejo token identifier is missing", 409);
     }
-
     try {
       await forgejoAPIClient.delete(
         `/admin/users/${encodeURIComponent(row.repo_owner_username)}/tokens/${encodeURIComponent(row.token.provider_token_id)}`,

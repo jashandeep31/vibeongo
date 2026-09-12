@@ -11,7 +11,7 @@ type UserRow = typeof users.$inferSelect;
 
 export type UserMetadata = Pick<UserRow, "id" | "username" | "tier"> & {
   balance: (typeof userWallet.$inferSelect)["balance"];
-  forgejo_username: UserRow["forgejo_username"];
+  forgejo_username: string | null;
   forgejo_profile_link: string | null;
   firstName: UserRow["first_name"];
   lastName: UserRow["last_name"];

@@ -9,12 +9,12 @@ import {
   generateRepoFromForgejoTemplate,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
-import { ensureForgejoUserAccount } from "../../services/forgejo/user-actions.js";
 import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
 import {
   projectTemplates,
   type ProjectTemplate,
 } from "../../utils/templates/index.js";
+import { getCachedForgejoUsername } from "../../cache/forgejo-username-cache.js";
 
 export const getProjectTemplates = (_req: Request, res: Response) => {
   const templates = Object.entries(projectTemplates).map(
@@ -36,8 +36,10 @@ export const createProjectFromTemplate = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authentication is required", 401);
-    if (!user.forgejo_username)
+    if (user.forgejo_id === null)
       throw new AppError(FORGEJO_ACCOUNT_REQUIRED_MESSAGE, 409);
+
+    const forgejoUsername = await getCachedForgejoUsername(user.forgejo_id);
 
     const { templateId, projectName, regionId, instanceTypeId, sandboxTypeId } =
       z
@@ -53,12 +55,11 @@ export const createProjectFromTemplate = catchAsync(
     const createTemplate = projectTemplates[templateId];
     if (!createTemplate) throw new AppError("Template not found", 404);
 
-    await ensureForgejoUserAccount(user);
     const repoName = slugifyRepoName(projectName);
     let template = createTemplate(repoName);
 
     const createdRepo = await createUserForgejoRepoForProject({
-      username: user.forgejo_username,
+      username: forgejoUsername,
       repoName,
       sourceRepoName: template.reponame,
       sourceRepoOwnerName: template.ownername,
@@ -86,7 +87,7 @@ export const createProjectFromTemplate = catchAsync(
         type: "forgejo",
         installation_id: 0,
         full_name: createdRepo.fullName,
-        repo_owner_username: user.forgejo_username,
+        repo_owner_username: forgejoUsername,
         public: true,
         setup_script: "",
       })
