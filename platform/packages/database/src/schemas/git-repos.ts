@@ -80,14 +80,23 @@ export const gitRepoAccessTokens = pgTable("git_repo_access_tokens", {
 
   instance_id: uuid().references(() => instances.id, { onDelete: "set null" }),
 
+  repo_id: uuid()
+    .references(() => gitRepos.id, { onDelete: "cascade" })
+    .notNull(),
+
   provider: gitProvider().notNull(),
 
   // Provider-side identifier, when available.
   provider_token_id: varchar(),
 
+  // GitHub requires the token itself to revoke an installation access token.
+  // These fields remain null for providers that support revocation by token ID.
+  encrypted_token: text(),
+  token_iv: varchar(),
+  token_tag: text(),
+
   expires_at: timestamp().notNull(),
   revoked_at: timestamp(),
-  revoked: boolean().default(false).notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

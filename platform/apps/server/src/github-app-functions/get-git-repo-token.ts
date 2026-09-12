@@ -1,7 +1,8 @@
-import { gitRepos } from "@repo/db";
+import { db, gitRepoAccessTokens, gitRepos } from "@repo/db";
 import { octokitApp } from "../webhooks/github/index.js";
 import { getForgejoRepoAccessToken } from "../services/forgejo/repo-actions.js";
 import { env } from "../lib/env.js";
+import { encryptData } from "../lib/encryption-decryption.js";
 
 export type GitRepoCredentials = {
   access_token: string;
@@ -11,12 +12,18 @@ export type GitRepoCredentials = {
 };
 
 const GITHUB_TOKEN_EXPIRY_SAFETY_WINDOW_MS = 5 * 60 * 1000;
+const FORGEJO_TOKEN_EXPIRY_MS = 60 * 60 * 1000;
+
+export type GitRepoCredentialContext = {
+  instanceId?: string;
+};
 
 export const getGitCloneUrl = (providerUrl: string, fullName: string): string =>
   `${providerUrl.replace(/\/+$/, "")}/${fullName.replace(/^\/+/, "")}.git`;
 
 export const getGitRepoCredentials = async (
   repo: typeof gitRepos.$inferSelect,
+  context: GitRepoCredentialContext = {},
 ): Promise<GitRepoCredentials> => {
   if (repo.type === "github") {
     const { data } = await octokitApp.octokit.request(
@@ -32,6 +39,19 @@ export const getGitRepoCredentials = async (
         },
       },
     );
+    const encryptedToken = encryptData(data.token);
+
+    await db.insert(gitRepoAccessTokens).values({
+      user_id: repo.user_id,
+      instance_id: context.instanceId,
+      repo_id: repo.id,
+      provider: "github",
+      encrypted_token: encryptedToken.encryptedData,
+      token_iv: encryptedToken.iv,
+      token_tag: encryptedToken.tag,
+      expires_at: new Date(data.expires_at),
+    });
+
     return {
       access_token: data.token,
       expires_at: new Date(
@@ -43,14 +63,24 @@ export const getGitRepoCredentials = async (
     };
   }
 
-  const accessToken = await getForgejoRepoAccessToken({
+  const { accessToken, tokenId } = await getForgejoRepoAccessToken({
     username: repo.repo_owner_username,
     reponame: repo.full_name.split("/").pop()!,
+  });
+  const expiresAt = new Date(Date.now() + FORGEJO_TOKEN_EXPIRY_MS);
+
+  await db.insert(gitRepoAccessTokens).values({
+    user_id: repo.user_id,
+    instance_id: context.instanceId,
+    repo_id: repo.id,
+    provider: "forgejo",
+    provider_token_id: String(tokenId),
+    expires_at: expiresAt,
   });
 
   return {
     access_token: accessToken,
-    expires_at: null,
+    expires_at: expiresAt.toISOString(),
     provider_url: env.FORGEJO_URL.replace(/\/+$/, ""),
     git_username: repo.repo_owner_username,
   };

@@ -1,5 +1,8 @@
 import { gitRepos } from "@repo/db";
-import { getGitRepoCredentials } from "./get-git-repo-token.js";
+import {
+  getGitRepoCredentials,
+  type GitRepoCredentialContext,
+} from "./get-git-repo-token.js";
 
 export type ProjectReadyGitRepo = {
   type: "github" | "forgejo";
@@ -15,11 +18,12 @@ export type ProjectReadyGitRepo = {
 
 export const getConfigReadyGitRepos = async (
   repos: (typeof gitRepos.$inferSelect)[],
+  context: GitRepoCredentialContext = {},
 ): Promise<ProjectReadyGitRepo[]> => {
   return Promise.all(
     repos.map(async (repo) => {
       const folder_name = repo.full_name.split("/").pop()!;
-      const credentials = await getGitRepoCredentials(repo);
+      const credentials = await getGitRepoCredentials(repo, context);
       return {
         type: repo.type ?? "github",
         full_name: repo.full_name,

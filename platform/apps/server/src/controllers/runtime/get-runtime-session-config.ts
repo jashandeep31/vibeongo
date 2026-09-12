@@ -94,7 +94,7 @@ export const getRuntimeSessionConfig = catchAsync(
       initialScript: project.initial_script,
       finalScript: project.final_script,
       devScript: project.dev_script,
-      repos: await getConfigReadyGitRepos(validRepos),
+      repos: await getConfigReadyGitRepos(validRepos, { instanceId }),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
         id: t.id,

@@ -129,7 +129,7 @@ export async function getForgejoRepoAccessToken({
 }: {
   username: string;
   reponame: string;
-}): Promise<string> {
+}): Promise<{ accessToken: string; tokenId: number }> {
   const res = await forgejoAPIClient.post(`/admin/users/${username}/tokens`, {
     username: username,
     name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
@@ -146,7 +146,10 @@ export async function getForgejoRepoAccessToken({
       "write:repository",
     ],
   });
-  return res.data.sha1 as string;
+  return {
+    accessToken: res.data.sha1 as string,
+    tokenId: res.data.id as number,
+  };
 }
 
 export async function forkRepoToForgejo({
