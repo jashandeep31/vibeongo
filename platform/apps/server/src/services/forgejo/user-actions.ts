@@ -39,6 +39,22 @@ export interface ForgejoUser {
   username: string;
 }
 
+interface ForgejoUserSearchResponse {
+  ok: boolean;
+  data: ForgejoUser[];
+}
+
+export async function getForgejoUserById(
+  forgejoId: number,
+): Promise<ForgejoUser | null> {
+  const response = await forgejoAPIClient.get<ForgejoUserSearchResponse>(
+    "/users/search",
+    { params: { uid: forgejoId } },
+  );
+
+  return response.data.data.find((user) => user.id === forgejoId) ?? null;
+}
+
 export async function createForgejoUserAccount(
   user: typeof users.$inferSelect,
 ): Promise<
