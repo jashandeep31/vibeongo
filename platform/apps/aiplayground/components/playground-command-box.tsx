@@ -37,6 +37,8 @@ import {
   Github,
   House,
   Import,
+  KeyRound,
+  LayoutTemplate,
   Loader2,
   MessageSquarePlus,
   Play,
@@ -81,10 +83,22 @@ const staticNavigation = [
     keywords: "git repos repositories github",
   },
   {
+    title: "Access Tokens",
+    url: "/access-tokens",
+    icon: KeyRound,
+    keywords: "git access tokens credentials github forgejo",
+  },
+  {
     title: "Demo Projects",
     url: "/demo-projects",
     icon: Import,
     keywords: "import demo projects templates",
+  },
+  {
+    title: "Templates",
+    url: "/templates",
+    icon: LayoutTemplate,
+    keywords: "templates project templates",
   },
   {
     title: "Wallet",
