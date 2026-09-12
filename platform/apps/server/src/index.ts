@@ -4,6 +4,7 @@ import "./jobs/repo-overview-worker.js";
 import "./jobs/sandbox-setup-worker.js";
 import "./jobs/user-onboarding-worker.js";
 import "./jobs/instance-termination-worker.js";
+import "./jobs/git-repo-access-token-revocation-worker.js";
 
 import { createServer } from "node:http";
 

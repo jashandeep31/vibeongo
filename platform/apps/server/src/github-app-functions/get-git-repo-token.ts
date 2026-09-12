@@ -3,6 +3,7 @@ import { octokitApp } from "../webhooks/github/index.js";
 import { getForgejoRepoAccessToken } from "../services/forgejo/repo-actions.js";
 import { env } from "../lib/env.js";
 import { encryptData } from "../lib/encryption-decryption.js";
+import { addGitRepoAccessTokenRevocationJob } from "../jobs/git-repo-access-token-revocation.js";
 
 export type GitRepoCredentials = {
   access_token: string;
@@ -41,16 +42,34 @@ export const getGitRepoCredentials = async (
     );
     const encryptedToken = encryptData(data.token);
 
-    await db.insert(gitRepoAccessTokens).values({
-      user_id: repo.user_id,
-      instance_id: context.instanceId,
-      repo_id: repo.id,
-      provider: "github",
-      encrypted_token: encryptedToken.encryptedData,
-      token_iv: encryptedToken.iv,
-      token_tag: encryptedToken.tag,
-      expires_at: new Date(data.expires_at),
-    });
+    const expiresAt = new Date(data.expires_at);
+    const [tokenRow] = await db
+      .insert(gitRepoAccessTokens)
+      .values({
+        user_id: repo.user_id,
+        instance_id: context.instanceId,
+        repo_id: repo.id,
+        provider: "github",
+        encrypted_token: encryptedToken.encryptedData,
+        token_iv: encryptedToken.iv,
+        token_tag: encryptedToken.tag,
+        expires_at: expiresAt,
+      })
+      .returning({ id: gitRepoAccessTokens.id });
+
+    if (tokenRow) {
+      try {
+        await addGitRepoAccessTokenRevocationJob({
+          tokenId: tokenRow.id,
+          expiresAt,
+        });
+      } catch (error) {
+        console.error(
+          `Could not schedule GitHub token ${tokenRow.id} for cleanup`,
+          error,
+        );
+      }
+    }
 
     return {
       access_token: data.token,
@@ -69,14 +88,31 @@ export const getGitRepoCredentials = async (
   });
   const expiresAt = new Date(Date.now() + FORGEJO_TOKEN_EXPIRY_MS);
 
-  await db.insert(gitRepoAccessTokens).values({
-    user_id: repo.user_id,
-    instance_id: context.instanceId,
-    repo_id: repo.id,
-    provider: "forgejo",
-    provider_token_id: String(tokenId),
-    expires_at: expiresAt,
-  });
+  const [tokenRow] = await db
+    .insert(gitRepoAccessTokens)
+    .values({
+      user_id: repo.user_id,
+      instance_id: context.instanceId,
+      repo_id: repo.id,
+      provider: "forgejo",
+      provider_token_id: String(tokenId),
+      expires_at: expiresAt,
+    })
+    .returning({ id: gitRepoAccessTokens.id });
+
+  if (tokenRow) {
+    try {
+      await addGitRepoAccessTokenRevocationJob({
+        tokenId: tokenRow.id,
+        expiresAt,
+      });
+    } catch (error) {
+      console.error(
+        `Could not schedule Forgejo token ${tokenRow.id} for revocation`,
+        error,
+      );
+    }
+  }
 
   return {
     access_token: accessToken,

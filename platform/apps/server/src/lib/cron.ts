@@ -1,6 +1,17 @@
-import { and, db, eq, instances, lt, sql } from "@repo/db";
+import {
+  and,
+  db,
+  eq,
+  gitRepoAccessTokens,
+  instances,
+  isNull,
+  lt,
+  lte,
+  sql,
+} from "@repo/db";
 import cron from "node-cron";
 import { terminateInstanceAndChargeUsage } from "../services/instances/terminate-instance-and-charge-usage.js";
+import { addGitRepoAccessTokenRevocationJob } from "../jobs/git-repo-access-token-revocation.js";
 
 cron.schedule(
   "*/2 * * * *",
@@ -48,6 +59,43 @@ cron.schedule(
   },
   {
     name: "terminate-expired-instances",
+    noOverlap: true,
+  },
+);
+
+cron.schedule(
+  "* * * * *",
+  async () => {
+    let rows: Array<{ id: string }>;
+    try {
+      rows = await db
+        .select({ id: gitRepoAccessTokens.id })
+        .from(gitRepoAccessTokens)
+        .where(
+          and(
+            lte(gitRepoAccessTokens.expires_at, sql`NOW()`),
+            isNull(gitRepoAccessTokens.revoked_at),
+          ),
+        )
+        .limit(500);
+    } catch (error) {
+      console.error("Could not load expired Git access tokens", error);
+      return;
+    }
+
+    for (const row of rows) {
+      try {
+        await addGitRepoAccessTokenRevocationJob({ tokenId: row.id });
+      } catch (error) {
+        console.error(
+          `Could not queue expired Git access token ${row.id}`,
+          error,
+        );
+      }
+    }
+  },
+  {
+    name: "revoke-expired-git-access-tokens",
     noOverlap: true,
   },
 );
