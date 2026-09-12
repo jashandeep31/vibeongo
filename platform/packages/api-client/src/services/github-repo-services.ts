@@ -136,6 +136,17 @@ export const getGitRepoAccessTokens =
     return response.data;
   };
 
+export const revokeGitRepoAccessToken =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.delete(
+      `/api/v1/git-repos/access-tokens/${id}`,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
 export const deleteGithubRepo =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<{ message: string }> => {

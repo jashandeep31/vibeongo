@@ -23,6 +23,17 @@ export const useGitRepoAccessTokens = (
   });
 };
 
+export const useRevokeGitRepoAccessToken = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.githubRepos.revokeGitRepoAccessToken,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["git-repo-access-tokens"] }),
+  });
+};
+
 export const useCreateForgejoRepo = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();

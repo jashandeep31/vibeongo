@@ -12,8 +12,12 @@ import {
   TableRow,
 } from "@repo/ui/components/table";
 import { ChevronLeft, ChevronRight, Github } from "lucide-react";
-import { useGitRepoAccessTokens } from "@repo/api-hooks";
+import {
+  useGitRepoAccessTokens,
+  useRevokeGitRepoAccessToken,
+} from "@repo/api-hooks";
 import { useState } from "react";
+import { toast } from "sonner";
 
 type GitProvider = "github" | "forgejo";
 
@@ -27,8 +31,16 @@ const PAGE_LIMIT = 10;
 export default function AccessTokensPage() {
   const [page, setPage] = useState(1);
   const tokensQuery = useGitRepoAccessTokens({ page, limit: PAGE_LIMIT });
+  const revokeTokenMutation = useRevokeGitRepoAccessToken();
   const tokens = tokensQuery.data?.data ?? [];
   const currentPage = tokensQuery.data?.page ?? page;
+
+  const revokeToken = (id: string) => {
+    revokeTokenMutation.mutate(id, {
+      onSuccess: ({ message }) => toast.success(message),
+      onError: () => toast.error("Failed to revoke Git access token."),
+    });
+  };
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -47,13 +59,14 @@ export default function AccessTokensPage() {
                 <TableHead>Created</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {tokensQuery.isLoading ? (
                 Array.from({ length: 3 }, (_, index) => (
                   <TableRow key={index}>
-                    {Array.from({ length: 6 }, (_, cell) => (
+                    {Array.from({ length: 7 }, (_, cell) => (
                       <TableCell key={cell}>
                         <Skeleton className="h-5 w-24" />
                       </TableCell>
@@ -63,7 +76,7 @@ export default function AccessTokensPage() {
               ) : tokensQuery.isError ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-muted-foreground h-24 text-center"
                   >
                     Failed to load access tokens.
@@ -72,7 +85,7 @@ export default function AccessTokensPage() {
               ) : tokens.length === 0 ? (
                 <TableRow>
                   <TableCell
-                    colSpan={6}
+                    colSpan={7}
                     className="text-muted-foreground h-24 text-center"
                   >
                     No Git access tokens found.
@@ -119,6 +132,27 @@ export default function AccessTokensPage() {
                         >
                           {isExpired ? "Expired" : "Active"}
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive h-7"
+                          disabled={
+                            token.revoked_at !== null ||
+                            (revokeTokenMutation.isPending &&
+                              revokeTokenMutation.variables === token.id)
+                          }
+                          onClick={() => revokeToken(token.id)}
+                        >
+                          {revokeTokenMutation.isPending &&
+                          revokeTokenMutation.variables === token.id
+                            ? "Revoking…"
+                            : token.revoked_at
+                              ? "Revoked"
+                              : "Revoke"}
+                        </Button>
                       </TableCell>
                     </TableRow>
                   );

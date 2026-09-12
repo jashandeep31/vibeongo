@@ -13,7 +13,10 @@ import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-
 import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/git-repo-overview.js";
 import { getGitRepoPrOrIssues } from "../controllers/git-repo/get-pr-or-issues.js";
 import { getGitRepoPrOrIssueDetails } from "../controllers/git-repo/get-pr-or-issue-details.js";
-import { getUserGitRepoAccessTokens } from "../controllers/git-repo/access-token-controller.js";
+import {
+  getUserGitRepoAccessTokens,
+  revokeUserGitRepoAccessToken,
+} from "../controllers/git-repo/access-token-controller.js";
 
 const routes: Router = Router();
 routes
@@ -28,6 +31,10 @@ routes
 routes
   .route("/access-tokens")
   .get(checkAuthorization(["all"]), getUserGitRepoAccessTokens);
+
+routes
+  .route("/access-tokens/:id")
+  .delete(checkAuthorization(["all"]), revokeUserGitRepoAccessToken);
 
 routes
   .route("/:id/activity")
