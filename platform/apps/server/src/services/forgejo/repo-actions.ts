@@ -103,11 +103,13 @@ export async function createForgejoRepo({
     const res = await forgejoAPIClient.post<ForgejoRepo>(
       `/admin/users/${encodeURIComponent(username)}/repos`,
       {
+        auto_init: true,
         default_branch: "main",
         description,
         name: reponame,
         object_format_name: "sha1",
         private: false,
+        readme: "Default",
         template: true,
         trust_model: "default",
       },
