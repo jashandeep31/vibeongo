@@ -35,6 +35,7 @@ export const useOpencodeSession = ({
   select,
   refetchOnMount,
   notifyOnChangeProps,
+  gcTime,
 }: {
   chatId: string;
   sessionId: string;
@@ -45,6 +46,7 @@ export const useOpencodeSession = ({
   select?: (data: OpencodeSessionData) => OpencodeSessionData;
   refetchOnMount?: boolean;
   notifyOnChangeProps?: UseQueryOptions<OpencodeSessionData>["notifyOnChangeProps"];
+  gcTime?: number;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -72,6 +74,7 @@ export const useOpencodeSession = ({
     },
     enabled: !!serverUrl && !!accessToken && !!password,
     staleTime: hasOptimisticSession ? Infinity : 0,
+    ...(gcTime === undefined ? {} : { gcTime }),
     ...(select ? { select } : {}),
     ...(refetchOnMount === undefined ? {} : { refetchOnMount }),
     ...(notifyOnChangeProps === undefined ? {} : { notifyOnChangeProps }),
@@ -158,9 +161,7 @@ export const useOpencodeSession = ({
           (message) => !existingIds.has(message.info.id),
         );
         const hasOlder = uniqueOlder.length > messageLimit;
-        const page = hasOlder
-          ? uniqueOlder.slice(-messageLimit)
-          : uniqueOlder;
+        const page = hasOlder ? uniqueOlder.slice(-messageLimit) : uniqueOlder;
         const messages = [...page, ...latest.messages];
         return {
           ...latest,

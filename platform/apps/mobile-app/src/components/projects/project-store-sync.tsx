@@ -9,7 +9,6 @@ import {
   getOpencodePassword,
   getOpencodeQuestions,
   getOpencodeSessionStatuses,
-  reduceOpencodeMessages,
   reduceOpencodeSessionData,
   streamOpencodeEvents,
   type Event,
@@ -114,6 +113,11 @@ function ProjectSessionRuntimeSync({
     let disposed = false;
     let streamController: AbortController | null = null;
     const pendingSessionResyncs = new Set<string>();
+    const pendingMessageEvents = new Map<string, Event[]>();
+    const pendingMessageTimers = new Map<
+      string,
+      ReturnType<typeof setTimeout>
+    >();
 
     const resyncSessionAfterMissingEvent = (opencodeSessionId: string) => {
       if (pendingSessionResyncs.has(opencodeSessionId)) return;
@@ -132,7 +136,74 @@ function ProjectSessionRuntimeSync({
         .finally(() => pendingSessionResyncs.delete(opencodeSessionId));
     };
 
-    const handleEvent = (event: Event) => {
+    const applyQueryEvents = (opencodeSessionId: string, events: Event[]) => {
+      if (events.length === 0) return;
+      const exactQueryKey = [
+        "opencode",
+        "session",
+        sessionId,
+        opencodeSessionId,
+        serverUrl,
+      ];
+      const cachedSession =
+        queryClient.getQueryData<OpencodeSessionData>(exactQueryKey);
+      let reducedSession = cachedSession;
+
+      for (const event of events) {
+        if (
+          reducedSession &&
+          isIncrementalMessageEventMissingContext(
+            reducedSession,
+            event,
+            opencodeSessionId,
+          )
+        ) {
+          resyncSessionAfterMissingEvent(opencodeSessionId);
+        }
+        if (reducedSession) {
+          reducedSession = reduceOpencodeSessionData(
+            reducedSession,
+            event,
+            opencodeSessionId,
+          );
+        }
+      }
+
+      queryClient.setQueriesData<OpencodeSessionData>(
+        {
+          queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+        },
+        (current) => {
+          if (current === cachedSession && reducedSession) {
+            return reducedSession;
+          }
+          return events.reduce(
+            (next, event) =>
+              next
+                ? reduceOpencodeSessionData(next, event, opencodeSessionId)
+                : next,
+            current,
+          );
+        },
+      );
+    };
+
+    const flushMessageEvents = (opencodeSessionId: string) => {
+      const timer = pendingMessageTimers.get(opencodeSessionId);
+      if (timer) clearTimeout(timer);
+      pendingMessageTimers.delete(opencodeSessionId);
+      const events = pendingMessageEvents.get(opencodeSessionId) ?? [];
+      pendingMessageEvents.delete(opencodeSessionId);
+      applyQueryEvents(opencodeSessionId, events);
+    };
+
+    const flushAllMessageEvents = () => {
+      for (const opencodeSessionId of pendingMessageEvents.keys()) {
+        flushMessageEvents(opencodeSessionId);
+      }
+    };
+
+    const handleImmediateEvent = (event: Event) => {
       const opencodeSessionId = getEventSessionId(event);
       const store = useSessionChatsStore.getState();
 
@@ -150,50 +221,8 @@ function ProjectSessionRuntimeSync({
       }
 
       if (!opencodeSessionId) return;
-
-      const cachedSession = queryClient.getQueryData<OpencodeSessionData>([
-        "opencode",
-        "session",
-        sessionId,
-        opencodeSessionId,
-        serverUrl,
-      ]);
-      if (
-        cachedSession &&
-        isIncrementalMessageEventMissingContext(
-          cachedSession,
-          event,
-          opencodeSessionId,
-        )
-      ) {
-        resyncSessionAfterMissingEvent(opencodeSessionId);
-      }
-
-      const currentMessages = store.getChatMessages(
-        sessionId,
-        opencodeSessionId,
-      );
-      const reducedSession = cachedSession
-        ? reduceOpencodeSessionData(cachedSession, event, opencodeSessionId)
-        : undefined;
-      const nextMessages = reducedSession
-        ? reducedSession.messages
-        : reduceOpencodeMessages(currentMessages, event, opencodeSessionId);
-      if (nextMessages !== currentMessages) {
-        store.setChatMessages(sessionId, opencodeSessionId, nextMessages);
-      }
-
-      queryClient.setQueriesData<OpencodeSessionData>(
-        {
-          queryKey: ["opencode", "session", sessionId, opencodeSessionId],
-        },
-        (current) =>
-          current === cachedSession && reducedSession
-            ? reducedSession
-            : current
-              ? reduceOpencodeSessionData(current, event, opencodeSessionId)
-              : current,
-      );
+      flushMessageEvents(opencodeSessionId);
+      applyQueryEvents(opencodeSessionId, [event]);
 
       if (event.type === "session.status") {
         store.setChatStatus(
@@ -222,6 +251,26 @@ function ProjectSessionRuntimeSync({
           queryKey: ["opencode", "session", sessionId, opencodeSessionId],
         });
       }
+    };
+
+    const handleEvent = (event: Event) => {
+      const opencodeSessionId = getEventSessionId(event);
+      const isMessageChunk =
+        event.type === "message.part.delta" ||
+        event.type === "message.part.updated";
+      if (!opencodeSessionId || !isMessageChunk) {
+        handleImmediateEvent(event);
+        return;
+      }
+
+      const pending = pendingMessageEvents.get(opencodeSessionId) ?? [];
+      pending.push(event);
+      pendingMessageEvents.set(opencodeSessionId, pending);
+      if (pendingMessageTimers.has(opencodeSessionId)) return;
+      pendingMessageTimers.set(
+        opencodeSessionId,
+        setTimeout(() => flushMessageEvents(opencodeSessionId), 50),
+      );
     };
 
     const connect = async (signal: AbortSignal) => {
@@ -253,6 +302,7 @@ function ProjectSessionRuntimeSync({
             expoFetch as unknown as typeof globalThis.fetch,
           );
         } catch {}
+        flushAllMessageEvents();
 
         if (!disposed && !signal.aborted) {
           await new Promise((resolve) => setTimeout(resolve, 1_000));
@@ -289,6 +339,7 @@ function ProjectSessionRuntimeSync({
       disposed = true;
       subscription.remove();
       streamController?.abort();
+      flushAllMessageEvents();
     };
   }, [
     accessToken,
