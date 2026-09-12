@@ -4,6 +4,7 @@ import {
   eq,
   gitRepoAccessTokens,
   instances,
+  instanceSlots,
   isNull,
   lt,
   lte,
@@ -59,6 +60,44 @@ cron.schedule(
   },
   {
     name: "terminate-expired-instances",
+    noOverlap: true,
+  },
+);
+
+cron.schedule(
+  "* * * * *",
+  async () => {
+    try {
+      const recoveredSlots = await db
+        .update(instanceSlots)
+        .set({
+          status: "failed",
+          error: "Provisioning timed out before an instance was attached",
+          updated_at: new Date(),
+        })
+        .where(
+          and(
+            eq(instanceSlots.status, "provisioning"),
+            isNull(instanceSlots.instance_id),
+            lt(
+              sql`COALESCE(${instanceSlots.updated_at}, ${instanceSlots.created_at})`,
+              sql`NOW() - INTERVAL '10 minutes'`,
+            ),
+          ),
+        )
+        .returning({ id: instanceSlots.id });
+
+      if (recoveredSlots.length > 0) {
+        console.log(
+          `Marked ${recoveredSlots.length} stale provisioning slot(s) as failed`,
+        );
+      }
+    } catch (error) {
+      console.error("Could not recover stale provisioning slots", error);
+    }
+  },
+  {
+    name: "recover-stale-provisioning-slots",
     noOverlap: true,
   },
 );
