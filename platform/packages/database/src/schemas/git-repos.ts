@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { projects } from "./projects.js";
+import { instances } from "./instances.js";
 
 export const gitRepoType = pgEnum("git_repo_type", ["github", "forgejo"]);
 
@@ -68,14 +69,26 @@ export const gitRepoMembers = pgTable(
   (t) => [unique().on(t.username, t.repo_id)],
 );
 
-export const forgejoAccessToken = pgTable("forgejo-access-token", {
-  id: uuid().primaryKey().defaultRandom(),
-  token_id: varchar(),
-  user: uuid().references(() => users.id, { onDelete: "cascade" }),
+export const gitProvider = pgEnum("git_provider", ["github", "forgejo"]);
 
-  revoked_at: timestamp(),
+export const gitRepoAccessTokens = pgTable("git_repo_access_tokens", {
+  id: uuid().primaryKey().defaultRandom(),
+
+  user_id: uuid()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+
+  instance_id: uuid().references(() => instances.id, { onDelete: "set null" }),
+
+  provider: gitProvider().notNull(),
+
+  // Provider-side identifier, when available.
+  provider_token_id: varchar(),
+
   expires_at: timestamp().notNull(),
+  revoked_at: timestamp(),
   revoked: boolean().default(false).notNull(),
+
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
