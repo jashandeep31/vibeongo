@@ -16,7 +16,7 @@ export const gitRepoAccessTokenRevocationWorker = new Worker<
   async (job) => {
     await revokeGitRepoAccessToken({
       tokenId: job.data.tokenId,
-      reason: "expired",
+      reason: job.data.reason,
     });
   },
   {

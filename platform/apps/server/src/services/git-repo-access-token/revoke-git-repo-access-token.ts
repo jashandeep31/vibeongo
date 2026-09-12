@@ -5,7 +5,10 @@ import { decryptData } from "../../lib/encryption-decryption.js";
 import { forgejoAPIClient } from "../forgejo/user-actions.js";
 import { octokitApp } from "../../webhooks/github/index.js";
 
-export type GitRepoAccessTokenRevocationReason = "manual" | "expired";
+export type GitRepoAccessTokenRevocationReason =
+  | "manual"
+  | "expired"
+  | "instance-terminated";
 
 export async function revokeGitRepoAccessToken({
   tokenId,
@@ -54,7 +57,7 @@ export async function revokeGitRepoAccessToken({
         throw error;
       }
     }
-  } else if (reason === "manual" && !isExpired) {
+  } else if (reason !== "expired" && !isExpired) {
     if (
       !row.token.encrypted_token ||
       !row.token.token_iv ||

@@ -1,5 +1,6 @@
 import { Queue } from "bullmq";
 import { redis } from "../lib/valkey.js";
+import type { GitRepoAccessTokenRevocationReason } from "../services/git-repo-access-token/revoke-git-repo-access-token.js";
 
 export const GIT_REPO_ACCESS_TOKEN_REVOCATION_QUEUE_NAME =
   "git-repo-access-token-revocation";
@@ -8,6 +9,7 @@ export const GIT_REPO_ACCESS_TOKEN_REVOCATION_JOB_NAME =
 
 export type GitRepoAccessTokenRevocationJobData = {
   tokenId: string;
+  reason: Exclude<GitRepoAccessTokenRevocationReason, "manual">;
 };
 
 const gitRepoAccessTokenRevocationQueue = new Queue<
@@ -24,13 +26,14 @@ gitRepoAccessTokenRevocationQueue.on("error", (error) => {
 
 export const addGitRepoAccessTokenRevocationJob = async ({
   tokenId,
+  reason,
   expiresAt,
 }: GitRepoAccessTokenRevocationJobData & { expiresAt?: Date }) => {
   return await gitRepoAccessTokenRevocationQueue.add(
     GIT_REPO_ACCESS_TOKEN_REVOCATION_JOB_NAME,
-    { tokenId },
+    { tokenId, reason },
     {
-      jobId: `revoke-git-repo-access-token-${tokenId}`,
+      jobId: `revoke-git-repo-access-token-${tokenId}-${reason}`,
       delay: expiresAt ? Math.max(0, expiresAt.getTime() - Date.now()) : 0,
       attempts: 5,
       backoff: {

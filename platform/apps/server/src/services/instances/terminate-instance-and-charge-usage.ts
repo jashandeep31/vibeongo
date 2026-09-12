@@ -17,6 +17,8 @@ import {
   sandboxRegions,
   instanceSlots,
   inArray,
+  gitRepoAccessTokens,
+  isNull,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
@@ -28,6 +30,7 @@ import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-ou
 import { formatInternalMoney, INTERNAL_MONEY_SCALE } from "@repo/shared";
 import { getOpenRouterKeyChargesAnTerminateKey } from "../openrouter/index.js";
 import { dispatchQueuedInstanceLaunches } from "./check-and-queue-instance-launch.js";
+import { addGitRepoAccessTokenRevocationJob } from "../../jobs/git-repo-access-token-revocation.js";
 
 interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -260,6 +263,8 @@ export const terminateInstanceAndChargeUsage = async ({
     return terminatedSlot;
   });
 
+  await queueInstanceGitTokenRevocations(instanceId);
+
   // Remove the routes and invalidate affected project proxies.
   const updatedRoutings = await db
     .update(projectDomainRouting)
@@ -293,6 +298,42 @@ export const terminateInstanceAndChargeUsage = async ({
   }
 
   return;
+};
+
+const queueInstanceGitTokenRevocations = async (instanceId: string) => {
+  let tokens: Array<{ id: string }>;
+
+  try {
+    tokens = await db
+      .select({ id: gitRepoAccessTokens.id })
+      .from(gitRepoAccessTokens)
+      .where(
+        and(
+          eq(gitRepoAccessTokens.instance_id, instanceId),
+          isNull(gitRepoAccessTokens.revoked_at),
+        ),
+      );
+  } catch (error) {
+    console.error(
+      `Could not load Git access tokens for terminated instance ${instanceId}`,
+      error,
+    );
+    return;
+  }
+
+  for (const token of tokens) {
+    try {
+      await addGitRepoAccessTokenRevocationJob({
+        tokenId: token.id,
+        reason: "instance-terminated",
+      });
+    } catch (error) {
+      console.error(
+        `Could not queue Git access token ${token.id} after instance termination`,
+        error,
+      );
+    }
+  }
 };
 const terminateVmInstance = async ({
   instance,

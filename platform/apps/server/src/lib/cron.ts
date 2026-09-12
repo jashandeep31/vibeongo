@@ -85,7 +85,10 @@ cron.schedule(
 
     for (const row of rows) {
       try {
-        await addGitRepoAccessTokenRevocationJob({ tokenId: row.id });
+        await addGitRepoAccessTokenRevocationJob({
+          tokenId: row.id,
+          reason: "expired",
+        });
       } catch (error) {
         console.error(
           `Could not queue expired Git access token ${row.id}`,

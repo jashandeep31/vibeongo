@@ -61,6 +61,7 @@ export const getGitRepoCredentials = async (
       try {
         await addGitRepoAccessTokenRevocationJob({
           tokenId: tokenRow.id,
+          reason: "expired",
           expiresAt,
         });
       } catch (error) {
@@ -104,6 +105,7 @@ export const getGitRepoCredentials = async (
     try {
       await addGitRepoAccessTokenRevocationJob({
         tokenId: tokenRow.id,
+        reason: "expired",
         expiresAt,
       });
     } catch (error) {
