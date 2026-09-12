@@ -6,6 +6,7 @@ import { db, gitRepos, eq, and, projects, desc } from "@repo/db";
 import { createGithubRepoSchema, z } from "@repo/shared";
 import {
   createForgejoRepo,
+  ensureForgejoMainBranchProtection,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
 import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
@@ -219,6 +220,11 @@ export const createForgejoRepoController = catchAsync(
       }
 
       forgejoRepo = createdRepo.repo;
+    } else {
+      await ensureForgejoMainBranchProtection({
+        owner: forgejoUsername,
+        repo: forgejoRepo.name,
+      });
     }
 
     await db.insert(gitRepos).values({

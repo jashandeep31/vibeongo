@@ -64,6 +64,36 @@ type GenerateForgejoRepoResult =
       statusCode?: number;
     };
 
+const MAIN_BRANCH_PROTECTION = {
+  rule_name: "main",
+  enable_push: false,
+  enable_push_whitelist: false,
+  enable_merge_whitelist: false,
+  apply_to_admins: true,
+  required_approvals: 0,
+};
+
+export async function ensureForgejoMainBranchProtection({
+  owner,
+  repo,
+}: {
+  owner: string;
+  repo: string;
+}): Promise<void> {
+  const basePath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branch_protections`;
+
+  try {
+    await forgejoAPIClient.get(`${basePath}/main`);
+    await forgejoAPIClient.patch(`${basePath}/main`, MAIN_BRANCH_PROTECTION);
+  } catch (error: unknown) {
+    if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+      throw error;
+    }
+
+    await forgejoAPIClient.post(basePath, MAIN_BRANCH_PROTECTION);
+  }
+}
+
 export async function createForgejoRepo({
   username,
   reponame,
@@ -82,6 +112,11 @@ export async function createForgejoRepo({
         trust_model: "default",
       },
     );
+
+    await ensureForgejoMainBranchProtection({
+      owner: username,
+      repo: res.data.name,
+    });
 
     return {
       status: "ok",
@@ -206,6 +241,11 @@ export async function forkRepoToForgejo({
       };
     }
 
+    await ensureForgejoMainBranchProtection({
+      owner: res.data.owner.login,
+      repo: res.data.name,
+    });
+
     return {
       status: "ok",
       repo: {
@@ -291,6 +331,11 @@ export async function generateRepoFromForgejoTemplate({
       };
     }
 
+    await ensureForgejoMainBranchProtection({
+      owner: response.data.owner.login,
+      repo: response.data.name,
+    });
+
     return {
       status: "ok",
       repo: {
@@ -366,7 +411,13 @@ export async function ensureRepoForkToForgejo({
     username: forkFor,
     reponame: targetReponame,
   });
-  if (existingRepo) return toForkedRepo(existingRepo, forkFor);
+  if (existingRepo) {
+    await ensureForgejoMainBranchProtection({
+      owner: forkFor,
+      repo: existingRepo.name,
+    });
+    return toForkedRepo(existingRepo, forkFor);
+  }
 
   const forkedRepo = await forkRepoToForgejo({
     sourceRepoOwnername,
@@ -378,7 +429,13 @@ export async function ensureRepoForkToForgejo({
 
   // Forgejo may report a conflict while an earlier asynchronous fork finishes.
   const repoAfterFork = await waitForForgejoRepo(forkFor, targetReponame);
-  if (repoAfterFork) return toForkedRepo(repoAfterFork, forkFor);
+  if (repoAfterFork) {
+    await ensureForgejoMainBranchProtection({
+      owner: forkFor,
+      repo: repoAfterFork.name,
+    });
+    return toForkedRepo(repoAfterFork, forkFor);
+  }
 
   throw new Error(`Failed to fork demo repository: ${forkedRepo.error}`);
 }
