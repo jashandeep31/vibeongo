@@ -42,12 +42,21 @@ const getUserByEmail = async (email: string): Promise<User | undefined> => {
   return user;
 };
 
-const parseName = (name?: string) => {
-  const [firstName = "unknown", ...remainingNameParts] =
-    name?.trim().split(/\s+/).filter(Boolean) ?? [];
+const isKnownValue = (value?: string): value is string =>
+  Boolean(value?.trim()) && value?.trim().toLowerCase() !== "unknown";
+
+const parseName = (name: string | undefined, username: string, email: string) => {
+  const nameParts = isKnownValue(name)
+    ? name.trim().split(/\s+/)
+    : [];
+  const [firstName, ...remainingNameParts] = nameParts;
+  const emailName = email.split("@")[0]?.trim();
 
   return {
-    firstName,
+    firstName:
+      firstName ??
+      (isKnownValue(username) ? username.trim() : undefined) ??
+      (isKnownValue(emailName) ? emailName : "unknown"),
     lastName: remainingNameParts.join(" ") || undefined,
   };
 };
@@ -109,7 +118,7 @@ const createUserWithGithubAccount = async ({
   token,
   username,
 }: CreateUserInput): Promise<UserWithAccount> => {
-  const { firstName, lastName } = parseName(name);
+  const { firstName, lastName } = parseName(name, username, email);
 
   const userWithAccount = await db.transaction(async (tx) => {
     const [user] = await tx
