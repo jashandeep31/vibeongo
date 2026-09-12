@@ -2,6 +2,7 @@
 
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
+import { Skeleton } from "@repo/ui/components/skeleton";
 import {
   Table,
   TableBody,
@@ -10,56 +11,24 @@ import {
   TableHeader,
   TableRow,
 } from "@repo/ui/components/table";
-import { Github } from "lucide-react";
+import { ChevronLeft, ChevronRight, Github } from "lucide-react";
+import { useGitRepoAccessTokens } from "@repo/api-hooks";
 import { useState } from "react";
-import { toast } from "sonner";
 
 type GitProvider = "github" | "forgejo";
-
-type SampleAccessToken = {
-  id: string;
-  provider: GitProvider;
-  providerTokenId: string;
-  instanceId: string;
-  createdAt: Date;
-  expiresAt: Date;
-};
-
-const sampleTokens: SampleAccessToken[] = [
-  {
-    id: "token_01JGH7W9M2",
-    provider: "github",
-    providerTokenId: "ghs_••••••••7K2P",
-    instanceId: "instance_01JGH7Q8YD",
-    createdAt: new Date("2026-09-11T10:30:00+05:30"),
-    expiresAt: new Date("2026-09-11T18:30:00+05:30"),
-  },
-  {
-    id: "token_01JGH8A4NX",
-    provider: "forgejo",
-    providerTokenId: "fgj_••••••••3M8R",
-    instanceId: "instance_01JGH7Q8YD",
-    createdAt: new Date("2026-09-11T10:31:00+05:30"),
-    expiresAt: new Date("2026-09-12T10:31:00+05:30"),
-  },
-];
 
 const dateFormatter = new Intl.DateTimeFormat(undefined, {
   dateStyle: "medium",
   timeStyle: "short",
 });
 
-export default function AccessTokensPage() {
-  const [expiredTokenIds, setExpiredTokenIds] = useState<Set<string>>(
-    () => new Set(),
-  );
+const PAGE_LIMIT = 10;
 
-  const expireToken = (token: SampleAccessToken) => {
-    setExpiredTokenIds((current) => new Set(current).add(token.id));
-    toast.success(
-      `${providerName(token.provider)} token expired (sample only)`,
-    );
-  };
+export default function AccessTokensPage() {
+  const [page, setPage] = useState(1);
+  const tokensQuery = useGitRepoAccessTokens({ page, limit: PAGE_LIMIT });
+  const tokens = tokensQuery.data?.data ?? [];
+  const currentPage = tokensQuery.data?.page ?? page;
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
@@ -78,68 +47,111 @@ export default function AccessTokensPage() {
                 <TableHead>Created</TableHead>
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead className="text-right">Action</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sampleTokens.map((token) => {
-                const isExpired = expiredTokenIds.has(token.id);
-
-                return (
-                  <TableRow key={token.id}>
-                    <TableCell>
-                      <span className="flex items-center gap-2 font-medium">
-                        <ProviderIcon provider={token.provider} />
-                        {providerName(token.provider)}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="font-mono text-xs">
-                        {token.providerTokenId}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-muted-foreground font-mono text-xs">
-                        {token.instanceId}
-                      </span>
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {dateFormatter.format(token.createdAt)}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground text-xs">
-                      {isExpired
-                        ? "Just now"
-                        : dateFormatter.format(token.expiresAt)}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant={isExpired ? "outline" : "secondary"}
-                        className={
-                          isExpired
-                            ? "text-muted-foreground"
-                            : "text-emerald-600 dark:text-emerald-400"
-                        }
-                      >
-                        {isExpired ? "Expired" : "Active"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right">
-                      <Button
-                        type="button"
-                        variant="ghost"
-                        size="sm"
-                        className="text-destructive hover:text-destructive h-7"
-                        disabled={isExpired}
-                        onClick={() => expireToken(token)}
-                      >
-                        Expire now
-                      </Button>
-                    </TableCell>
+              {tokensQuery.isLoading ? (
+                Array.from({ length: 3 }, (_, index) => (
+                  <TableRow key={index}>
+                    {Array.from({ length: 6 }, (_, cell) => (
+                      <TableCell key={cell}>
+                        <Skeleton className="h-5 w-24" />
+                      </TableCell>
+                    ))}
                   </TableRow>
-                );
-              })}
+                ))
+              ) : tokensQuery.isError ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="text-muted-foreground h-24 text-center"
+                  >
+                    Failed to load access tokens.
+                  </TableCell>
+                </TableRow>
+              ) : tokens.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={6}
+                    className="text-muted-foreground h-24 text-center"
+                  >
+                    No Git access tokens found.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                tokens.map((token) => {
+                  const isExpired =
+                    token.revoked_at !== null ||
+                    new Date(token.expires_at).getTime() <= Date.now();
+
+                  return (
+                    <TableRow key={token.id}>
+                      <TableCell>
+                        <span className="flex items-center gap-2 font-medium">
+                          <ProviderIcon provider={token.provider} />
+                          {providerName(token.provider)}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="font-mono text-xs">
+                          {token.provider_token_id ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="text-muted-foreground font-mono text-xs">
+                          {token.instance_id ?? "—"}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {dateFormatter.format(new Date(token.created_at))}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-xs">
+                        {dateFormatter.format(new Date(token.expires_at))}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={isExpired ? "outline" : "secondary"}
+                          className={
+                            isExpired
+                              ? "text-muted-foreground"
+                              : "text-emerald-600 dark:text-emerald-400"
+                          }
+                        >
+                          {isExpired ? "Expired" : "Active"}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
             </TableBody>
           </Table>
+        </div>
+
+        <div className="flex items-center justify-end gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Previous page"
+            disabled={tokensQuery.isFetching || currentPage <= 1}
+            onClick={() => setPage(Math.max(1, currentPage - 1))}
+          >
+            <ChevronLeft />
+          </Button>
+          <span className="text-muted-foreground min-w-16 text-center text-sm">
+            Page {currentPage}
+          </span>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Next page"
+            disabled={tokensQuery.isFetching || !tokensQuery.data?.hasNext}
+            onClick={() => setPage(currentPage + 1)}
+          >
+            <ChevronRight />
+          </Button>
         </div>
       </main>
     </div>

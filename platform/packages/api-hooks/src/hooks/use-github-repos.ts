@@ -1,12 +1,25 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "../api-client-context.js";
-import type { GitRepoActivityType } from "@repo/api-client";
+import type {
+  GetGitRepoAccessTokensParams,
+  GitRepoActivityType,
+} from "@repo/api-client";
 
 export const useGithubRepos = () => {
   const client = useApiClient();
   return useQuery({
     queryKey: ["github-repos"],
     queryFn: client.githubRepos.getGithubRepos,
+  });
+};
+
+export const useGitRepoAccessTokens = (
+  params: GetGitRepoAccessTokensParams = {},
+) => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["git-repo-access-tokens", params],
+    queryFn: () => client.githubRepos.getGitRepoAccessTokens(params),
   });
 };
 

@@ -59,6 +59,29 @@ export type CreateForgejoRepoInput = {
 
 export type GitRepoActivityType = "pr" | "issue";
 
+export type GitRepoAccessToken = {
+  id: string;
+  instance_id: string | null;
+  repo_id: string;
+  provider: "github" | "forgejo";
+  provider_token_id: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type GetGitRepoAccessTokensParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetGitRepoAccessTokensResponse = {
+  data: GitRepoAccessToken[];
+  page: number;
+  hasNext: boolean;
+};
+
 export type GetGitRepoActivityInput<T extends GitRepoActivityType> = {
   id: string;
   type: T;
@@ -75,9 +98,7 @@ export type GitRepoActivityResponse<T extends GitRepoActivityType> = {
   };
 };
 
-export type GetGitRepoActivityDetailsInput<
-  T extends GitRepoActivityType,
-> = {
+export type GetGitRepoActivityDetailsInput<T extends GitRepoActivityType> = {
   id: string;
   type: T;
   number: number;
@@ -100,6 +121,19 @@ export const getGithubRepos =
     });
 
     return response.data.data;
+  };
+
+export const getGitRepoAccessTokens =
+  (apiClient: AxiosInstance) =>
+  async (
+    params: GetGitRepoAccessTokensParams = {},
+  ): Promise<GetGitRepoAccessTokensResponse> => {
+    const response = await apiClient.get(`/api/v1/git-repos/access-tokens`, {
+      withCredentials: true,
+      params,
+    });
+
+    return response.data;
   };
 
 export const deleteGithubRepo =

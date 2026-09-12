@@ -30,6 +30,9 @@ export type {
   GetGitRepoActivityDetailsInput,
   GitRepoActivityResponse,
   GitRepoActivityType,
+  GitRepoAccessToken,
+  GetGitRepoAccessTokensParams,
+  GetGitRepoAccessTokensResponse,
 } from "./services/github-repo-services.js";
 export type {
   CreateProjectFromTemplateInput,
