@@ -39,9 +39,11 @@ function getConfigValue(config: unknown, key: string) {
 function ProjectSessionRuntimeSync({
   activeOpencodeSessionId,
   sessionId,
+  workspaceEnabled,
 }: {
   activeOpencodeSessionId: string;
   sessionId: string;
+  workspaceEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
   const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
@@ -63,7 +65,7 @@ function ProjectSessionRuntimeSync({
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
   const terminalWorkspace = useVibeongoWsV2({
     accessToken,
-    enabled: Boolean(instance && localToken && accessToken),
+    enabled: Boolean(workspaceEnabled && instance && localToken && accessToken),
     localToken,
     runtimeUrl,
   });
@@ -535,6 +537,9 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
       ? workspaceChatId
       : ""
     : (legacyActiveChatMatch?.[2] ?? "");
+  const terminalWorkspaceMatch = pathname.match(
+    /^\/projects\/[^/]+\/sessions\/([^/]+)\/terminal(?:\/|$)/,
+  );
 
   if (!enabled) return null;
 
@@ -545,6 +550,7 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
       }
       key={session.id}
       sessionId={session.id}
+      workspaceEnabled={terminalWorkspaceMatch?.[1] === session.id}
     />
   ));
 }

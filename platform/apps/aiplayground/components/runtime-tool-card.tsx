@@ -1,6 +1,6 @@
 "use client";
 
-import type { RuntimeControlMessage } from "@/hooks/use-runtime-control-socket";
+import type { RuntimeControlMessage } from "@/hooks/use-web-terminal-workspace-socket";
 import { Button } from "@repo/ui/components/button";
 import {
   Card,

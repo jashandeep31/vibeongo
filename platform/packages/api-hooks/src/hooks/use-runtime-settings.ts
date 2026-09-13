@@ -1,6 +1,5 @@
 import {
   disableTerminateAfterDone,
-  getRuntimeStats,
   getTerminateAfterDoneStatus,
   restartDevScript,
 } from "@repo/api-client";
@@ -32,26 +31,6 @@ export function useTerminateAfterDoneStatus(
       connection.accessToken,
     ),
     retry: false,
-  });
-}
-
-export function useRuntimeStats(
-  connection: RuntimeSettingsConnection,
-  enabled: boolean,
-) {
-  return useQuery({
-    queryKey: ["runtime", connection.instanceId, "stats"],
-    queryFn: () => getRuntimeStats(connection),
-    enabled:
-      enabled &&
-      Boolean(
-        connection.instanceId &&
-        connection.runtimeUrl &&
-        connection.localToken &&
-        connection.accessToken,
-      ),
-    retry: false,
-    refetchInterval: 2_000,
   });
 }
 

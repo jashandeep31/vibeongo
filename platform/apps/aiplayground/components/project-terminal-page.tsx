@@ -13,13 +13,11 @@ import {
 import { useEffect, useState } from "react";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { TerminalDirectoryDialog } from "@/components/terminal-directory-dialog";
 import { WebTerminal } from "@/components/web-terminal";
 import { useWebTerminalSessionSocket } from "@/hooks/use-web-terminal-session-socket";
-import {
-  type WebTerminalSession,
-  useWebTerminalWorkspaceSocket,
-} from "@/hooks/use-web-terminal-workspace-socket";
+import { type WebTerminalSession } from "@/hooks/use-web-terminal-workspace-socket";
 import {
   attachWebTmuxTerminalSession,
   createWebTerminalSession,
@@ -68,12 +66,7 @@ export function ProjectTerminalPage({
   const accessToken = instance?.access_token ?? "";
   const socketsEnabled = Boolean(runtimeUrl && localToken && accessToken);
 
-  const workspace = useWebTerminalWorkspaceSocket({
-    accessToken,
-    enabled: socketsEnabled,
-    localToken,
-    runtimeUrl,
-  });
+  const workspace = useRuntimeSession();
   const terminal = useWebTerminalSessionSocket({
     accessToken,
     enabled: socketsEnabled && Boolean(selectedTerminalId),

@@ -1,10 +1,10 @@
 "use client";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import {
   useDisableTerminateAfterDone,
-  useRuntimeStats,
   useTerminateAfterDoneStatus,
 } from "@repo/api-hooks";
 import { useSessionsStore } from "@repo/app-store";
@@ -115,7 +115,7 @@ export function RuntimePulseMenu({
   };
   const terminateStatus = useTerminateAfterDoneStatus(connection);
   const disableTerminate = useDisableTerminateAfterDone(connection);
-  const runtimeStats = useRuntimeStats(connection, isOpen);
+  const runtime = useRuntimeSession();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,8 +129,8 @@ export function RuntimePulseMenu({
   }
 
   const terminateAfterDone = terminateStatus.data?.terminate;
-  const cpuPercent = normalizePercent(runtimeStats.data?.cpu_percent);
-  const memoryPercent = normalizePercent(runtimeStats.data?.used_percent);
+  const cpuPercent = normalizePercent(runtime.stats?.cpu_percent);
+  const memoryPercent = normalizePercent(runtime.stats?.used_percent);
   const sshCommand = instance.public_ip
     ? `ssh ubuntu@${instance.public_ip}`
     : null;
@@ -165,8 +165,21 @@ export function RuntimePulseMenu({
         <DropdownMenuContent align="end" className="w-80">
           <DropdownMenuLabel className="flex items-center justify-between px-3 py-2">
             <span>Runtime controls</span>
-            <span className="flex items-center gap-1.5 text-xs font-normal text-emerald-600 dark:text-emerald-400">
-              <span className="size-1.5 rounded-full bg-current" /> Live
+            <span
+              className={`flex items-center gap-1.5 text-xs font-normal ${
+                runtime.status === "connected"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : runtime.status === "connecting"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground"
+              }`}
+            >
+              <span className="size-1.5 rounded-full bg-current" />
+              {runtime.status === "connected"
+                ? "Live"
+                : runtime.status === "connecting"
+                  ? "Connecting"
+                  : "Offline"}
             </span>
           </DropdownMenuLabel>
 

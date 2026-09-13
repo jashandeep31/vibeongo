@@ -1,5 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import {
+  createVibeongoWsV2Socket,
+  requestVibeongoWsV2Token,
+} from "@/lib/vibeongo-ws-v2";
+
 type RuntimeSocketStatus =
   | "connecting"
   | "connected"
@@ -27,24 +32,8 @@ export type RuntimeSocketMessage = {
 type RuntimeTool = "codex" | "opencode";
 type RuntimeToolMessages = Partial<Record<RuntimeTool, RuntimeSocketMessage>>;
 
-type ReactNativeWebSocketConstructor = new (
-  url: string,
-  protocols?: string[],
-  options?: { headers?: Record<string, string> },
-) => WebSocket;
-
 const INITIAL_RECONNECT_DELAY_MS = 1_000;
 const MAX_RECONNECT_DELAY_MS = 30_000;
-
-function getRuntimeSocketUrl(runtimeUrl: string, localToken: string) {
-  const url = new URL(runtimeUrl);
-  url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-  url.pathname = "/ws";
-  url.search = "";
-  url.searchParams.set("token", localToken);
-  url.hash = "";
-  return url.toString();
-}
 
 function isRuntimeStats(value: unknown): value is RuntimeSocketStats {
   if (!value || typeof value !== "object" || Array.isArray(value)) return false;
@@ -106,28 +95,30 @@ export function useVibeongoRuntimeSocket({
       reconnectAttemptRef.current += 1;
       reconnectTimer = setTimeout(() => {
         reconnectTimer = null;
-        connect();
+        void connect();
       }, delay);
     };
 
-    const connect = () => {
+    const connect = async () => {
       if (!active) return;
       setStatus("connecting");
 
       try {
-        const NativeWebSocket =
-          WebSocket as unknown as ReactNativeWebSocketConstructor;
-        socket = new NativeWebSocket(
-          getRuntimeSocketUrl(runtimeUrl, localToken),
-          [],
-          {
-            headers: {
-              "X-Vibeongo-Proxy-Authorization": `Bearer ${accessToken}`,
-            },
-          },
-        );
+        const token = await requestVibeongoWsV2Token({
+          accessToken,
+          localToken,
+          runtimeUrl,
+        });
+        if (!active) return;
+        socket = createVibeongoWsV2Socket({
+          accessToken,
+          path: "/v2/ws",
+          runtimeUrl,
+          token,
+        });
         socketRef.current = socket;
       } catch {
+        if (!active) return;
         setStatus("error");
         scheduleReconnect();
         return;
@@ -138,7 +129,9 @@ export function useVibeongoRuntimeSocket({
         if (!active || socket !== currentSocket) return;
         reconnectAttemptRef.current = 0;
         setStatus("connected");
-        currentSocket.send(JSON.stringify({ type: "clientReady" }));
+        currentSocket.send(
+          JSON.stringify({ type: "subscribe", topics: ["stats", "logs"] }),
+        );
       };
       currentSocket.onmessage = (event) => {
         if (!active || typeof event.data !== "string") return;
@@ -193,7 +186,7 @@ export function useVibeongoRuntimeSocket({
     setLogs("");
     setLastMessage(null);
     setToolMessages({});
-    connect();
+    void connect();
 
     return () => {
       active = false;
