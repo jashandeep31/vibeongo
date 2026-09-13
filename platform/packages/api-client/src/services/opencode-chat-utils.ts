@@ -1,4 +1,4 @@
-import type { ToolPart } from "@opencode-ai/sdk/v2/client";
+import type { ToolPart } from "./opencode-types.js";
 
 import { getOpencodeUserMessage } from "./opencode-services.js";
 import type {

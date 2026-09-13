@@ -1,7 +1,7 @@
 "use client";
 
 import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
-import type { SnapshotFileDiff, ToolPart } from "@opencode-ai/sdk/v2/client";
+import type { SnapshotFileDiff, ToolPart } from "@repo/api-client";
 import {
   Check,
   ChevronRight,

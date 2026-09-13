@@ -1,6 +1,6 @@
 "use client";
 
-import type { SnapshotFileDiff } from "@opencode-ai/sdk/v2/client";
+import type { SnapshotFileDiff } from "@repo/api-client";
 import { cn } from "@repo/ui/lib/utils";
 import { ChevronRight, FileCode2 } from "lucide-react";
 

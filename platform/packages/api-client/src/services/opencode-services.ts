@@ -1,24 +1,26 @@
 import {
-  createOpencodeClient,
-  type Event,
-  type Message,
-  type OpencodeClient,
-  type Part,
-  type QuestionAnswer,
-  type QuestionRequest,
-  type Session,
-  type SessionInputAdmitted,
-  type SessionMessage,
-  type SessionStatus,
-  type SessionV2Info,
-  type SnapshotFileDiff,
-} from "@opencode-ai/sdk/v2/client";
+  OpenCode,
+  type OpenCodeClient,
+  type SessionInfo,
+  type SessionMessageInfo,
+} from "@opencode/client";
+import type {
+  Event,
+  Message,
+  Part,
+  QuestionAnswer,
+  QuestionRequest,
+  Session,
+  SessionInputAdmitted,
+  SessionStatus,
+  SnapshotFileDiff,
+} from "./opencode-types.js";
 import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
 } from "./proxy-auth.js";
 
-const clients = new Map<string, OpencodeClient>();
+const clients = new Map<string, OpenCodeClient>();
 const queuedStreamMessages = new Map<
   string,
   { sessionID: string; text: string }
@@ -37,6 +39,7 @@ export type OpencodeSessionData = {
   messagePage?:
     | {
         hasOlder: boolean;
+        cursor?: string;
         oldestMessageId: string | undefined;
       }
     | undefined;
@@ -616,13 +619,10 @@ export async function getOpencodeSessions(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const result = await client.v2.session.list({ limit: 100, order: "desc" });
-  if (result.error) {
-    throw new Error("Could not load OpenCode sessions");
-  }
+  const result = await client.session.list({ limit: 100, order: "desc" });
 
   const sessionsById = new Map<string, Session>();
-  for (const session of result.data?.data ?? []) {
+  for (const session of result.data) {
     sessionsById.set(session.id, normalizeV2Session(session));
   }
 
@@ -638,16 +638,12 @@ export async function getOpencodeProjectDirectories(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const result = await client.v2.location.get();
-
-  if (result.error || !result.data) {
-    throw new Error("Could not load OpenCode location");
-  }
+  const result = await client.location.get();
 
   return [
     {
-      id: result.data.project.id,
-      worktree: result.data.directory,
+      id: result.project.id,
+      worktree: result.directory,
       sandboxes: [],
     },
   ];
@@ -678,40 +674,46 @@ export async function getOpencodeSessionRaw(
     session.directory,
   );
   const [messagesResult, questions, activeResult] = await Promise.all([
-    client.v2.session.messages({
+    client.message.list({
       sessionID: sessionId,
-      limit: messageLimit + 1,
+      limit: messageLimit,
       order: "desc",
     }),
     getOpencodeSessionForms(serverUrl, accessToken, password, sessionId),
-    client.v2.session.active(),
+    client.session.active(),
   ]);
 
-  if (messagesResult.error) {
-    throw new Error("Could not load OpenCode messages");
-  }
-  if (activeResult.error) {
-    throw new Error("Could not load OpenCode session status");
+  const rawMessages = [...messagesResult.data];
+  let nextCursor = messagesResult.cursor.next ?? undefined;
+  // Match the official app: avoid rendering an orphaned leading assistant
+  // response when a page boundary splits it from its user prompt.
+  for (
+    let page = 1;
+    page < 3 && nextCursor && leadingV2TurnNeedsParent(rawMessages);
+    page += 1
+  ) {
+    const response = await client.message.list({
+      sessionID: sessionId,
+      limit: messageLimit,
+      cursor: nextCursor,
+    });
+    rawMessages.push(...response.data);
+    nextCursor = response.cursor.next ?? undefined;
   }
 
-  const fetchedMessages = normalizeV2Messages(
-    session,
-    [...(messagesResult.data?.data ?? [])].reverse(),
-  );
-  const hasOlderMessages = fetchedMessages.length > messageLimit;
-  const messages = hasOlderMessages
-    ? fetchedMessages.slice(-messageLimit)
-    : fetchedMessages;
+  const fetchedMessages = normalizeV2Messages(session, rawMessages.reverse());
+  const messages = fetchedMessages;
   return {
     session,
-    status: activeResult.data?.data[sessionId]
+    status: activeResult[sessionId]
       ? { type: "busy" as const }
       : { type: "idle" as const },
     messages,
     questions,
     changes: [],
     messagePage: {
-      hasOlder: hasOlderMessages,
+      hasOlder: Boolean(nextCursor),
+      ...(nextCursor ? { cursor: nextCursor } : {}),
       oldestMessageId: messages[0]?.info.id,
     },
   };
@@ -723,7 +725,27 @@ export async function getOpencodeSessionMessages(
   serverUrl: string,
   accessToken: string,
   password?: string,
-  options?: { before?: string; limit?: number },
+  options?: { cursor?: string; limit?: number },
+) {
+  return (
+    await getOpencodeSessionMessagePage(
+      chatId,
+      session,
+      serverUrl,
+      accessToken,
+      password,
+      options,
+    )
+  ).messages;
+}
+
+export async function getOpencodeSessionMessagePage(
+  chatId: string,
+  session: Session,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+  options?: { cursor?: string; limit?: number },
 ) {
   const client = getOpencodeClient(
     chatId,
@@ -732,19 +754,17 @@ export async function getOpencodeSessionMessages(
     password,
     session.directory,
   );
-  const result = await client.v2.session.messages({
+  const result = await client.message.list({
     sessionID: session.id,
     limit: options?.limit ?? 100,
     order: "desc",
+    ...(options?.cursor ? { cursor: options.cursor } : {}),
   });
 
-  if (result.error) {
-    throw new Error(
-      `Could not load messages for OpenCode session ${session.id}`,
-    );
-  }
-
-  return normalizeV2Messages(session, [...(result.data?.data ?? [])].reverse());
+  return {
+    messages: normalizeV2Messages(session, [...result.data].reverse()),
+    cursor: result.cursor.next ?? undefined,
+  };
 }
 
 export async function getOpencodeSessionStatuses(
@@ -755,11 +775,7 @@ export async function getOpencodeSessionStatuses(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const result = await client.v2.session.active();
-  if (result.error || !result.data) {
-    throw new Error("Could not load OpenCode session statuses");
-  }
-  const active = result.data.data;
+  const active = await client.session.active();
   return Object.fromEntries(
     sessions.map((session) => [
       session.id,
@@ -854,15 +870,11 @@ export async function createOpencodeSession(
     password,
     selectedDirectory,
   );
-  const result = await client.v2.session.create({
+  const result = await client.session.create({
     location: { directory: selectedDirectory },
   });
 
-  if (result.error || !result.data?.data) {
-    throw new Error("Could not create OpenCode session");
-  }
-
-  return normalizeV2Session(result.data.data);
+  return normalizeV2Session(result);
 }
 
 export async function getOpencodeInventory(
@@ -874,33 +886,21 @@ export async function getOpencodeInventory(
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const [providerResponse, modelsResponse, agentsResponse] = await Promise.all([
     getOpencodeInventoryResource("providers", (signal) =>
-      client.v2.provider.list({}, { signal }),
+      client.provider.list({}, { signal }),
     ),
     getOpencodeInventoryResource("models", (signal) =>
-      client.v2.model.list({}, { signal }),
+      client.model.list({}, { signal }),
     ),
     getOpencodeInventoryResource("agents", (signal) =>
-      client.v2.agent.list({}, { signal }),
+      client.agent.list({}, { signal }),
     ),
   ]);
 
-  if (providerResponse.error || !providerResponse.data?.data) {
-    throw new Error("Could not load OpenCode providers");
-  }
-  if (modelsResponse.error || !modelsResponse.data?.data) {
-    throw new Error("Could not load OpenCode models");
-  }
-  if (agentsResponse.error || !agentsResponse.data?.data) {
-    throw new Error("Could not load OpenCode agents");
-  }
-
   const providers = new Map(
-    providerResponse.data.data.map((provider) => [provider.id, provider]),
+    providerResponse.data.map((provider) => [provider.id, provider]),
   );
-  const models = modelsResponse.data.data
-    .filter(
-      (model) => model.enabled && !providers.get(model.providerID)?.disabled,
-    )
+  const models = modelsResponse.data
+    .filter((model) => model.enabled)
     .map((model) => ({
       id: `${model.providerID}/${model.id}`,
       providerID: model.providerID,
@@ -910,7 +910,7 @@ export async function getOpencodeInventory(
       variants: model.variants.map((variant) => variant.id),
     }));
   const hiddenAgentNames = new Set(["compaction", "title", "summary"]);
-  const agents = agentsResponse.data.data
+  const agents = agentsResponse.data
     .filter(
       (agent) => agent.mode === "primary" && !hiddenAgentNames.has(agent.id),
     )
@@ -946,16 +946,13 @@ export async function findOpencodeFiles(
     password,
     directory,
   );
-  const result = await client.v2.fs.find({
+  const result = await client.file.find({
     query,
     type: "file",
-    limit: "30",
+    limit: 30,
     ...(directory ? { location: { directory } } : {}),
   });
-  if (result.error || !result.data?.data) {
-    throw new Error("Could not search OpenCode files");
-  }
-  return result.data.data.map((entry) => entry.path);
+  return result.data.map((entry) => entry.path);
 }
 
 async function getOpencodeInventoryResource<T>(
@@ -1031,7 +1028,7 @@ export async function sendOpencodePrompt(
   ];
   const model = parseModelSelection(selection.model);
   if (model) {
-    await client.v2.session.switchModel({
+    await client.session.switchModel({
       sessionID: sessionId,
       model: {
         id: model.modelID,
@@ -1041,7 +1038,7 @@ export async function sendOpencodePrompt(
     });
   }
   if (selection.agent) {
-    await client.v2.session.switchAgent({
+    await client.session.switchAgent({
       sessionID: sessionId,
       agent: selection.agent,
     });
@@ -1082,7 +1079,7 @@ export async function queueOpencodePrompt(
   );
   const model = parseModelSelection(selection.model);
   if (model) {
-    await client.v2.session.switchModel({
+    await client.session.switchModel({
       sessionID: sessionId,
       model: {
         id: model.modelID,
@@ -1092,7 +1089,7 @@ export async function queueOpencodePrompt(
     });
   }
   if (selection.agent) {
-    await client.v2.session.switchAgent({
+    await client.session.switchAgent({
       sessionID: sessionId,
       agent: selection.agent,
     });
@@ -1241,11 +1238,7 @@ export async function abortOpencodeSession(
     password,
     session.directory,
   );
-  const result = await client.v2.session.interrupt({ sessionID: sessionId });
-
-  if (result.error) {
-    throw new Error("Could not stop the OpenCode session");
-  }
+  await client.session.interrupt({ sessionID: sessionId });
 }
 
 export async function revertOpencodeSession(
@@ -1272,15 +1265,11 @@ export async function revertOpencodeSession(
     password,
     session.directory,
   );
-  const result = await client.v2.session.revert.stage({
+  await client.session.revert.stage({
     sessionID: sessionId,
     messageID: messageId,
     files: true,
   });
-
-  if (result.error) {
-    throw new Error("Could not revert the OpenCode session");
-  }
 
   return session;
 }
@@ -1308,11 +1297,7 @@ export async function unrevertOpencodeSession(
     password,
     session.directory,
   );
-  const result = await client.v2.session.revert.clear({ sessionID: sessionId });
-
-  if (result.error) {
-    throw new Error("Could not restore the reverted messages");
-  }
+  await client.session.revert.clear({ sessionID: sessionId });
 
   return session;
 }
@@ -1534,22 +1519,24 @@ async function findOpencodeSession(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const v2Result = await client.v2.session.get(
-    { sessionID: sessionId },
-    { throwOnError: false },
-  );
-  if (v2Result.data?.data) return normalizeV2Session(v2Result.data.data);
-  if (v2Result.response.status !== 404) {
-    throw new Error("Could not load OpenCode session", {
-      cause: v2Result.error,
-    });
+  try {
+    return normalizeV2Session(
+      await client.session.get({ sessionID: sessionId }),
+    );
+  } catch (error) {
+    if (
+      error &&
+      typeof error === "object" &&
+      "_tag" in error &&
+      error._tag === "SessionNotFoundError"
+    ) {
+      return undefined;
+    }
+    throw new Error("Could not load OpenCode session", { cause: error });
   }
-
-  // Keep the compatibility lookup for sessions created by older servers.
-  return undefined;
 }
 
-function normalizeV2Session(session: SessionV2Info): Session {
+function normalizeV2Session(session: SessionInfo): Session {
   return {
     id: session.id,
     slug: session.id,
@@ -1570,7 +1557,7 @@ function normalizeV2Session(session: SessionV2Info): Session {
   };
 }
 
-function normalizeV2Messages(session: Session, messages: SessionMessage[]) {
+function normalizeV2Messages(session: Session, messages: SessionMessageInfo[]) {
   const normalized: Array<{ info: Message; parts: Part[] }> = [];
   let currentUserMessageId: string | undefined;
 
@@ -1583,9 +1570,21 @@ function normalizeV2Messages(session: Session, messages: SessionMessage[]) {
   return normalized;
 }
 
+function leadingV2TurnNeedsParent(messagesDescending: SessionMessageInfo[]) {
+  const messages = messagesDescending.toReversed();
+  const assistant = messages.findIndex(
+    (message) => message.type === "assistant",
+  );
+  if (assistant === -1) return false;
+  const boundary = messages.findIndex(
+    (message) => message.type === "user" || message.type === "shell",
+  );
+  return boundary === -1 || assistant < boundary;
+}
+
 function normalizeV2Message(
   session: Session,
-  message: SessionMessage,
+  message: SessionMessageInfo,
   parentID?: string,
 ): { info: Message; parts: Part[] } | undefined {
   if (message.type === "user") {
@@ -1617,7 +1616,10 @@ function normalizeV2Message(
           type: "file",
           mime: "application/octet-stream",
           ...(file.name ? { filename: file.name } : {}),
-          url: file.uri,
+          url:
+            file.source.type === "uri"
+              ? file.source.uri
+              : `data:${file.mime};base64,${file.data}`,
         }),
       ),
     ];
@@ -1647,7 +1649,8 @@ function normalizeV2Message(
     ...(message.finish ? { finish: message.finish } : {}),
   } as Message;
   const parts = message.content.map((content, index): Part => {
-    const contentId = content.id ?? `${message.id}:content:${index}`;
+    const contentId =
+      content.type === "tool" ? content.id : `${message.id}:content:${index}`;
     if (content.type === "text") {
       return {
         id: contentId,
@@ -1685,7 +1688,7 @@ function normalizeV2Message(
 
 function normalizeV2ToolState(
   state: Extract<
-    SessionMessage,
+    SessionMessageInfo,
     { type: "assistant" }
   >["content"][number] extends infer Content
     ? Content extends { type: "tool"; state: infer ToolState }
@@ -1694,7 +1697,7 @@ function normalizeV2ToolState(
     : never,
   created: number,
 ) {
-  if (state.status === "pending") {
+  if (state.status === "streaming") {
     return { status: "pending" as const, input: {}, raw: state.input };
   }
   if (state.status === "running") {
@@ -1712,13 +1715,32 @@ function normalizeV2ToolState(
       time: { start: created, end: created },
     };
   }
+  const text = state.content
+    .filter((item) => item.type === "text")
+    .map((item) => item.text)
+    .join("\n");
   return {
     status: "completed" as const,
     input: state.input,
-    output: JSON.stringify(state.result ?? state.structured),
+    output: text,
     title: "Completed",
     metadata: {},
     time: { start: created, end: created },
+    attachments: state.content.flatMap((item, index) =>
+      item.type === "file"
+        ? [
+            {
+              id: `tool-file:${index}`,
+              sessionID: "",
+              messageID: "",
+              type: "file" as const,
+              mime: item.mime,
+              ...(item.name ? { filename: item.name } : {}),
+              url: item.uri,
+            },
+          ]
+        : [],
+    ),
   };
 }
 
@@ -1734,10 +1756,9 @@ function getOpencodeClient(
   const existingClient = clients.get(cacheKey);
   if (existingClient) return existingClient;
 
-  const client = createOpencodeClient({
+  const client = OpenCode.make({
     baseUrl: normalizedServerUrl,
     headers: getOpencodeHeaders(accessToken, password),
-    throwOnError: true,
   });
   clients.set(cacheKey, client);
   return client;

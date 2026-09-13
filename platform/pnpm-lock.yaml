@@ -29,9 +29,6 @@ importers:
 
   apps/aiplayground:
     dependencies:
-      '@opencode-ai/sdk':
-        specifier: ^1.18.25
-        version: 1.18.25
       '@opencode/client':
         specifier: ^2.0.3
         version: 2.0.3(effect@4.0.0-rc.112)
@@ -529,9 +526,9 @@ importers:
 
   packages/api-client:
     dependencies:
-      '@opencode-ai/sdk':
-        specifier: ^1.18.25
-        version: 1.18.25
+      '@opencode/client':
+        specifier: ^2.0.3
+        version: 2.0.3(effect@4.0.0-rc.112)
       '@repo/db':
         specifier: workspace:*
         version: link:../database
@@ -579,9 +576,9 @@ importers:
 
   packages/app-store:
     dependencies:
-      '@opencode-ai/sdk':
-        specifier: ^1.18.25
-        version: 1.18.25
+      '@repo/api-client':
+        specifier: workspace:*
+        version: link:../api-client
       '@repo/db':
         specifier: workspace:*
         version: link:../database
@@ -3007,9 +3004,6 @@ packages:
   '@octokit/webhooks@14.2.0':
     resolution: {integrity: sha512-da6KbdNCV5sr1/txD896V+6W0iamFWrvVl8cHkBSPT+YlvmT3DwXa4jxZnQc+gnuTEqSWbBeoSZYTayXH9wXcw==}
     engines: {node: '>= 20'}
-
-  '@opencode-ai/sdk@1.18.25':
-    resolution: {integrity: sha512-GwgwhW+vE8FWSDw730SjzqNhsWXB0uJjbFOiqFkmM+USFuG13HuTlGe6SR2ixt+WXxoD6FV1hILWqsXyqej9hQ==}
 
   '@opencode/client@2.0.3':
     resolution: {integrity: sha512-b+LcpMI131fXnGqf+O+9Y33H4XmwAkQibfYvtpEOROftkTpkcMj3R7WW/wGl2VTBNTZECAk2Yd+TACTzzAwk0A==}
@@ -13204,10 +13198,6 @@ snapshots:
       '@octokit/openapi-webhooks-types': 12.1.0
       '@octokit/request-error': 7.1.0
       '@octokit/webhooks-methods': 6.0.0
-
-  '@opencode-ai/sdk@1.18.25':
-    dependencies:
-      cross-spawn: 7.0.6
 
   '@opencode/client@2.0.3(effect@4.0.0-rc.112)':
     dependencies:

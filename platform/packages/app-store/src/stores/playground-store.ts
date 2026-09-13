@@ -4,7 +4,7 @@ import type {
   Part as OpencodePart,
   Session as OpencodeSession,
   SessionStatus as OpencodeSessionStatus,
-} from "@opencode-ai/sdk/v2/client";
+} from "@repo/api-client";
 import { create } from "zustand";
 import { shallow } from "zustand/shallow";
 

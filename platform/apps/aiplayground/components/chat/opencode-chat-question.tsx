@@ -3,7 +3,7 @@
 import MarkdownRenderer from "@/components/markdown-renderer";
 import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
-import type { SnapshotFileDiff, ToolPart } from "@opencode-ai/sdk/v2/client";
+import type { SnapshotFileDiff, ToolPart } from "@repo/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { cn } from "@repo/ui/lib/utils";
 import {
