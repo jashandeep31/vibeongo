@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@opencode-ai/sdk": "^1.18.25",
+    "@opencode/client": "^2.0.3",
     "@repo/api-client": "workspace:*",
     "@repo/api-hooks": "workspace:*",
     "@repo/app-store": "workspace:*",

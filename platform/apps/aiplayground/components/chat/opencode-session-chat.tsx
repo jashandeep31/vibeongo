@@ -9,6 +9,8 @@ import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useOpencodeInventory,
+  useOpencodeQueuedPrompts,
+  useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
   useRevertOpencodeSession,
   useRestoreRevertedOpencodeMessage,
@@ -34,6 +36,7 @@ import {
   Settings2,
   Terminal,
   Undo2,
+  ListTodo,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -113,6 +116,19 @@ export function OpencodeSessionChat({
   const activeQuestion = rawResponse.questions[0];
   const sendPrompt = useSendOpencodePrompt({
     chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const queuePrompt = useQueueOpencodePrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const { data: queuedPrompts = [] } = useOpencodeQueuedPrompts({
     sessionId,
     serverUrl,
     accessToken,
@@ -492,33 +508,70 @@ export function OpencodeSessionChat({
               onDismiss={dismissQuestion}
             />
           ) : (
-            <PromptInput
-              submitDisabled={sendPrompt.isPending || isStreaming}
-              isStreaming={isStreaming}
-              isStopping={abortSession.isPending}
-              onStop={() =>
-                abortSession.mutate(undefined, {
-                  onError: (error) =>
-                    toast.error(error.message || "Could not stop OpenCode"),
-                })
-              }
-              inventory={inventory}
-              selection={effectiveSelection}
-              onSelectionChange={updateSelection}
-              onSubmit={(question, files, fileReferences) =>
-                sendPrompt.mutate({
-                  text: question,
-                  files,
-                  fileReferences,
-                  selection: effectiveSelection,
-                })
-              }
-              searchFiles={searchFiles}
-              onSubmitSuccess={() => scrollToBottom("smooth")}
-              autoFocus
-              focusOnTyping
-              trailingControl={composerControls}
-            />
+            <>
+              {queuedPrompts.length ? (
+                <div className="bg-card mb-2 rounded-2xl border px-4 py-3 shadow-sm">
+                  <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-medium">
+                    <ListTodo className="size-4" />
+                    Queued messages ({queuedPrompts.length})
+                  </div>
+                  <div className="flex flex-col gap-1.5">
+                    {queuedPrompts.map((item, index) => (
+                      <div
+                        key={item.id}
+                        className="flex min-w-0 items-center gap-2 text-sm"
+                      >
+                        <span className="text-muted-foreground shrink-0">
+                          {index + 1}.
+                        </span>
+                        <span className="truncate">
+                          {item.prompt.text || "Attachment"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+              <PromptInput
+                submitDisabled={sendPrompt.isPending || queuePrompt.isPending}
+                isStreaming={isStreaming}
+                queueWhenStreaming
+                isStopping={abortSession.isPending}
+                onStop={() =>
+                  abortSession.mutate(undefined, {
+                    onError: (error) =>
+                      toast.error(error.message || "Could not stop OpenCode"),
+                  })
+                }
+                inventory={inventory}
+                selection={effectiveSelection}
+                onSelectionChange={updateSelection}
+                onSubmit={(question, files, fileReferences) => {
+                  const input = {
+                    text: question,
+                    files,
+                    fileReferences,
+                    selection: effectiveSelection,
+                  };
+                  if (isStreaming) {
+                    queuePrompt.mutate(input, {
+                      onError: (error) =>
+                        toast.error(error.message || "Could not queue message"),
+                    });
+                  } else {
+                    sendPrompt.mutate(input, {
+                      onError: (error) =>
+                        toast.error(error.message || "Could not send message"),
+                    });
+                  }
+                }}
+                searchFiles={searchFiles}
+                onSubmitSuccess={() => scrollToBottom("smooth")}
+                autoFocus
+                focusOnTyping
+                trailingControl={composerControls}
+              />
+            </>
           )}
         </div>
       </div>

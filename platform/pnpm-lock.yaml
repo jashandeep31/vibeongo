@@ -32,6 +32,9 @@ importers:
       '@opencode-ai/sdk':
         specifier: ^1.18.25
         version: 1.18.25
+      '@opencode/client':
+        specifier: ^2.0.3
+        version: 2.0.3(effect@4.0.0-rc.112)
       '@repo/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -3007,6 +3010,23 @@ packages:
 
   '@opencode-ai/sdk@1.18.25':
     resolution: {integrity: sha512-GwgwhW+vE8FWSDw730SjzqNhsWXB0uJjbFOiqFkmM+USFuG13HuTlGe6SR2ixt+WXxoD6FV1hILWqsXyqej9hQ==}
+
+  '@opencode/client@2.0.3':
+    resolution: {integrity: sha512-b+LcpMI131fXnGqf+O+9Y33H4XmwAkQibfYvtpEOROftkTpkcMj3R7WW/wGl2VTBNTZECAk2Yd+TACTzzAwk0A==}
+    peerDependencies:
+      effect: 4.0.0-rc.112
+      solid-js: '>=1.9.0'
+    peerDependenciesMeta:
+      effect:
+        optional: true
+      solid-js:
+        optional: true
+
+  '@opencode/protocol@2.0.3':
+    resolution: {integrity: sha512-DNHbkLDTuAyMsmVdnjuKulcfoDbllW2dxt4W19r2aJEYvswJpEO9168CSK6Sjbx1FOh/B9yL7SQgoDRMd4K5Vw==}
+
+  '@opencode/schema@2.0.3':
+    resolution: {integrity: sha512-thPeBbqw4+SkZ/0LOuqfahSRGuWogRa/wwfIVyiQYsoE0vzLx8XUpHQ+FSUWkdz6llDtP0+ZsyBqXUMpXmPgbg==}
 
   '@opentelemetry/api-logs@0.214.0':
     resolution: {integrity: sha512-40lSJeqYO8Uz2Yj7u94/SJWE/wONa7rmMKjI1ZcIjgf3MHNHv1OZUCrCETGuaRF62d5pQD1wKIW+L4lmSMTzZA==}
@@ -6414,6 +6434,9 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
+  effect@4.0.0-rc.112:
+    resolution: {integrity: sha512-wXxwuh1Ywnv4cPRM3Wfa0vDwuOHnZ1TsTgHJkG9XgzND6inhBH9n1vBxhg3iIXOia/OrpmvVmd3lrD4vq6bF3A==}
+
   electron-to-chromium@1.5.392:
     resolution: {integrity: sha512-1yQq3VQCZRwsnYc67Oc+1fge6Lwtn0hzi6zmEVkB61Zx21kTbwJAW4dFLadl5Rc1tKhG/kSpYXnfiAhu0f0a1g==}
 
@@ -7016,6 +7039,10 @@ packages:
 
   extend@3.0.2:
     resolution: {integrity: sha512-fjquC59cD7CyW6urNXK0FBufkZcoiGG80wTuPujX590cB5Ttln20E2UB4S/WARVqhXffZl2LNgS+gQdPIIim/g==}
+
+  fast-check@4.10.0:
+    resolution: {integrity: sha512-hhqQL+IJllZi3aM4TKvmCj3bywLEcycNTTLZeLhA9ttMxBrCqM07q7Di4kl+j9EWSTXvJH1+EpIgsDbF/+8H5Q==}
+    engines: {node: '>=12.17.0'}
 
   fast-content-type-parse@3.0.0:
     resolution: {integrity: sha512-ZvLdcY8P+N8mGQJahJV5G4U88CSvT1rP8ApL6uETe88MBXrBHAkZlSEySdUlyztF7ccb+Znos3TFqaepHxdhBg==}
@@ -8519,6 +8546,9 @@ packages:
   msgpackr@2.0.4:
     resolution: {integrity: sha512-o1C5KRmuRt+apqMr1HuGSqWStZoRBUpEsCsl15uM9VdAF1qHLtvMOU2En747EnTyEl6c4pzPewRMFF31s1CNbA==}
 
+  msgpackr@2.1.0:
+    resolution: {integrity: sha512-p/pBCVO63CsvvpkomUnNNag6+n38rULuDA6HHe70o2gtC8ODI52foF/4ko2qQcp6OiErJXTmrZeXmsGGHsIQNQ==}
+
   multitars@1.0.1:
     resolution: {integrity: sha512-Do9rHaSDfQ2Fk5Dpg2RjQ4M48Ol7rSq1gvKn/dXJYnhKEm8RRjjUvyiGDDEhJqb0hJPGjRaTB1kx6beqKO/i6Q==}
 
@@ -9054,6 +9084,9 @@ packages:
   punycode@2.3.1:
     resolution: {integrity: sha512-vYt7UD1U9Wg6138shLtLOvdAu+8DsC/ilFtEVHcH+wydcSpNE20AfSOduf6MkRFahL5FY7X1oU7nKVZFtfq8Fg==}
     engines: {node: '>=6'}
+
+  pure-rand@8.4.2:
+    resolution: {integrity: sha512-vvuOGgcuPJAirlHvuQw1TrOiw7ptaIXXmIbNuiNOY6lNGJJH49PQ1Kj4nd783nPdQhQdicgOjVI2yI/9BD6/Ng==}
 
   qs@6.14.2:
     resolution: {integrity: sha512-V/yCWTTF7VJ9hIh18Ugr2zhJMP01MY7c5kh4J870L7imm6/DIzBsNLTXzMwUA3yZ5b/KBqLx8Kp3uRvd7xSe3Q==}
@@ -13176,6 +13209,23 @@ snapshots:
     dependencies:
       cross-spawn: 7.0.6
 
+  '@opencode/client@2.0.3(effect@4.0.0-rc.112)':
+    dependencies:
+      '@opencode/protocol': 2.0.3
+      '@opencode/schema': 2.0.3
+    optionalDependencies:
+      effect: 4.0.0-rc.112
+
+  '@opencode/protocol@2.0.3':
+    dependencies:
+      '@opencode/schema': 2.0.3
+      effect: 4.0.0-rc.112
+
+  '@opencode/schema@2.0.3':
+    dependencies:
+      '@standard-schema/spec': 1.1.0
+      effect: 4.0.0-rc.112
+
   '@opentelemetry/api-logs@0.214.0':
     dependencies:
       '@opentelemetry/api': 1.9.1
@@ -17035,6 +17085,11 @@ snapshots:
 
   ee-first@1.1.1: {}
 
+  effect@4.0.0-rc.112:
+    dependencies:
+      fast-check: 4.10.0
+      msgpackr: 2.1.0
+
   electron-to-chromium@1.5.392: {}
 
   electron-to-chromium@1.5.405: {}
@@ -18017,6 +18072,10 @@ snapshots:
       - supports-color
 
   extend@3.0.2: {}
+
+  fast-check@4.10.0:
+    dependencies:
+      pure-rand: 8.4.2
 
   fast-content-type-parse@3.0.0: {}
 
@@ -19934,6 +19993,10 @@ snapshots:
     optionalDependencies:
       msgpackr-extract: 3.0.4
 
+  msgpackr@2.1.0:
+    optionalDependencies:
+      msgpackr-extract: 3.0.4
+
   multitars@1.0.1: {}
 
   nanoid@3.3.11: {}
@@ -20437,6 +20500,8 @@ snapshots:
       event-stream: 3.3.4
 
   punycode@2.3.1: {}
+
+  pure-rand@8.4.2: {}
 
   qs@6.14.2:
     dependencies:

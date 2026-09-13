@@ -4,11 +4,13 @@ import {
   abortOpencodeSession,
   answerOpencodeQuestion,
   getOpencodeInventory,
+  getOpencodeQueuedPrompts,
   getOpencodeSessionMessages,
   getOpencodeSessionRaw,
   rejectOpencodeQuestion,
   revertOpencodeSession,
   sendOpencodePrompt,
+  queueOpencodePrompt,
   unrevertOpencodeSession,
   type OpencodeSessionData,
   type OpencodePromptSelection,
@@ -302,6 +304,77 @@ export const useSendOpencodePrompt = ({
         password,
       );
     },
+  });
+};
+
+export const useOpencodeQueuedPrompts = ({
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "queue", sessionId, serverUrl],
+    queryFn: () =>
+      getOpencodeQueuedPrompts(sessionId, serverUrl, accessToken, password),
+    enabled: !!sessionId && !!serverUrl && !!accessToken && !!password,
+    refetchInterval: 1_000,
+  });
+
+export const useQueueOpencodePrompt = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  return useMutation({
+    mutationFn: async ({
+      text,
+      files,
+      fileReferences = [],
+      selection,
+    }: {
+      text: string;
+      files: File[];
+      fileReferences?: OpencodeFileReference[];
+      selection: OpencodePromptSelection;
+    }) => {
+      const attachments: UploadAttachment[] = await Promise.all(
+        files.map(async (file) => ({
+          type: "image" as const,
+          name: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          dataUrl: await fileToDataUrl(file),
+        })),
+      );
+      return queueOpencodePrompt(
+        chatId,
+        sessionId,
+        text,
+        attachments,
+        fileReferences,
+        selection,
+        serverUrl,
+        accessToken,
+        password,
+      );
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
 

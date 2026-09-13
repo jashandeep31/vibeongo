@@ -24,6 +24,7 @@ import {
   ChevronsUpDown,
   File,
   Loader2,
+  ListPlus,
   Plus,
   Square,
   X,
@@ -54,6 +55,7 @@ type PromptInputProps = {
   submitDisabled?: boolean;
   isStreaming?: boolean;
   isStopping?: boolean;
+  queueWhenStreaming?: boolean;
   onStop?: () => void;
   onSubmitSuccess?: () => void;
   inventory?: OpencodeInventory;
@@ -80,6 +82,7 @@ export function PromptInput({
   submitDisabled = false,
   isStreaming = false,
   isStopping = false,
+  queueWhenStreaming = false,
   onStop,
   onSubmitSuccess,
   inventory,
@@ -627,17 +630,32 @@ export function PromptInput({
           />
 
           {isStreaming ? (
-            <Button
-              type="button"
-              size="icon"
-              disabled={isStopping}
-              className="size-10 shrink-0 rounded-full"
-              aria-label={isStopping ? "Stopping response" : "Stop response"}
-              title={isStopping ? "Stopping…" : "Stop response"}
-              onClick={onStop}
-            >
-              <Square className="size-4 fill-current" />
-            </Button>
+            <>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                disabled={isStopping}
+                className="size-10 shrink-0 rounded-full"
+                aria-label={isStopping ? "Stopping response" : "Stop response"}
+                title={isStopping ? "Stopping…" : "Stop response"}
+                onClick={onStop}
+              >
+                <Square className="size-4 fill-current" />
+              </Button>
+              {queueWhenStreaming ? (
+                <Button
+                  type="submit"
+                  size="icon"
+                  disabled={isSubmitDisabled}
+                  className="size-10 shrink-0 rounded-full"
+                  aria-label="Queue message"
+                  title="Queue message"
+                >
+                  <ListPlus className="size-5" />
+                </Button>
+              ) : null}
+            </>
           ) : (
             <Button
               type="submit"

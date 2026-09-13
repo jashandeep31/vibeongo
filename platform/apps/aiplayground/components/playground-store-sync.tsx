@@ -212,6 +212,31 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
     const handleEvent = (event: Event) => {
       const opencodeSessionId = getEventSessionId(event);
       const chatsStore = useSessionChatsStore.getState();
+      const eventType = (event as { type: string }).type;
+
+      if (eventType === "session.renamed" && opencodeSessionId) {
+        const title = (event.properties as unknown as { title?: unknown })
+          .title;
+        if (typeof title === "string") {
+          chatsStore.setSessionChats(
+            sessionId,
+            chatsStore
+              .getSessionChats(sessionId)
+              .map((chat) =>
+                chat.id === opencodeSessionId ? { ...chat, title } : chat,
+              ),
+          );
+          queryClient.setQueriesData<OpencodeSessionData>(
+            {
+              queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+            },
+            (current) =>
+              current
+                ? { ...current, session: { ...current.session, title } }
+                : current,
+          );
+        }
+      }
 
       if (
         opencodeSessionId &&
@@ -230,10 +255,13 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
         event.type === "session.created" ||
         event.type === "session.updated"
       ) {
-        if (event.properties.info.parentID) {
-          chatsStore.deleteSessionChat(sessionId, event.properties.info.id);
-        } else {
-          chatsStore.upsertSessionChat(sessionId, event.properties.info);
+        const info = event.properties.info;
+        if (info) {
+          if (info.parentID) {
+            chatsStore.deleteSessionChat(sessionId, info.id);
+          } else {
+            chatsStore.upsertSessionChat(sessionId, info);
+          }
         }
       } else if (event.type === "session.deleted") {
         chatsStore.deleteSessionChat(sessionId, event.properties.sessionID);
