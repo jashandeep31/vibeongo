@@ -1,6 +1,6 @@
 "use client";
 
-import { PromptInput } from "@/components/chat/prompt-input";
+import { OpencodeComposer } from "@/components/chat/opencode-composer";
 import { useOpencodeInventory } from "@repo/api-hooks";
 import { useStartOpencodeSession } from "@repo/api-hooks";
 import { useUserSettings } from "@repo/api-hooks";
@@ -95,7 +95,7 @@ export function NewOpencodeChat({
           <ChevronRight className="text-muted-foreground size-5 shrink-0" />
           <span className="shrink-0">New chat</span>
         </h1>
-        <PromptInput
+        <OpencodeComposer
           onSubmit={handleSubmit}
           disabled={startSession.isPending}
           inventory={inventory}

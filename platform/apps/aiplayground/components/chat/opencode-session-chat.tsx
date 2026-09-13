@@ -2,7 +2,7 @@
 
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
-import { PromptInput } from "@/components/chat/prompt-input";
+import { OpencodeComposer } from "@/components/chat/opencode-composer";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import {
@@ -780,7 +780,7 @@ export function OpencodeSessionChat({
                   </div>
                 </div>
               ) : null}
-              <PromptInput
+              <OpencodeComposer
                 submitDisabled={sendPrompt.isPending || queuePrompt.isPending}
                 isStreaming={isStreaming}
                 queueWhenStreaming

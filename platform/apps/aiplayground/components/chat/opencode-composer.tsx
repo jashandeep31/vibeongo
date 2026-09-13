@@ -38,6 +38,8 @@ import {
   useRef,
   useState,
   type ChangeEvent,
+  type ClipboardEvent,
+  type DragEvent,
   type FormEvent,
   type KeyboardEvent,
   type ReactNode,
@@ -49,7 +51,7 @@ type LocalAttachment = {
   previewUrl: string;
 };
 
-type PromptInputProps = {
+type OpencodeComposerProps = {
   onSubmit: (
     question: string,
     attachments: File[],
@@ -81,7 +83,7 @@ function getActiveFileMention(value: string, cursor: number) {
   return { end: cursor, query, start: cursor - query.length - 1 };
 }
 
-export function PromptInput({
+export function OpencodeComposer({
   onSubmit,
   disabled = false,
   submitDisabled = false,
@@ -98,7 +100,7 @@ export function PromptInput({
   trailingControl,
   searchFiles,
   providerConnection,
-}: PromptInputProps) {
+}: OpencodeComposerProps) {
   const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
@@ -113,6 +115,7 @@ export function PromptInput({
   const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
   const [isSearchingFiles, setIsSearchingFiles] = useState(false);
   const [highlightedFileIndex, setHighlightedFileIndex] = useState(0);
+  const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
   const activeFileQuery = activeFileMention?.query;
   const attachmentsRef = useRef<LocalAttachment[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
@@ -239,20 +242,36 @@ export function PromptInput({
     onSubmitSuccess?.();
   };
 
-  const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files ?? []).filter((file) =>
-      file.type.startsWith("image/"),
-    );
+  const addAttachments = (files: File[]) => {
+    const images = files.filter((file) => file.type.startsWith("image/"));
+    if (!images.length) return;
 
     setAttachments((current) => [
       ...current,
-      ...files.map((file) => ({
+      ...images.map((file) => ({
         id: crypto.randomUUID(),
         file,
         previewUrl: URL.createObjectURL(file),
       })),
     ]);
+  };
+
+  const handleFiles = (event: ChangeEvent<HTMLInputElement>) => {
+    addAttachments(Array.from(event.target.files ?? []));
     event.target.value = "";
+  };
+
+  const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    const files = Array.from(event.clipboardData.files);
+    if (!files.some((file) => file.type.startsWith("image/"))) return;
+    event.preventDefault();
+    addAttachments(files);
+  };
+
+  const handleDrop = (event: DragEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setIsDraggingAttachment(false);
+    addAttachments(Array.from(event.dataTransfer.files));
   };
 
   const removeAttachment = (id: string) => {
@@ -341,7 +360,18 @@ export function PromptInput({
     <form
       ref={formRef}
       onSubmit={handleSubmit}
-      className="relative flex w-full flex-col gap-3"
+      onDragOver={(event) => {
+        event.preventDefault();
+        if (!disabled) setIsDraggingAttachment(true);
+      }}
+      onDragLeave={(event) => {
+        if (event.currentTarget === event.target)
+          setIsDraggingAttachment(false);
+      }}
+      onDrop={handleDrop}
+      className={`relative flex w-full flex-col gap-3 rounded-[28px] ${
+        isDraggingAttachment ? "ring-primary/50 ring-2" : ""
+      }`}
     >
       <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {inventory?.models.length || providerConnection ? (
@@ -653,6 +683,7 @@ export function PromptInput({
               )
             }
             onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
             className="placeholder:text-muted-foreground min-h-10 min-w-0 flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-4 py-2 text-base leading-6 outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
           />
 
