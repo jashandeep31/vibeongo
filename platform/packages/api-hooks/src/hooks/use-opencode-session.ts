@@ -4,6 +4,7 @@ import {
   abortOpencodeSession,
   answerOpencodeQuestion,
   cancelOpencodeQueuedPrompt,
+  editOpencodeQueuedPrompt,
   getOpencodeInventory,
   getOpencodeQueuedPrompts,
   getOpencodeSessionMessagePage,
@@ -455,6 +456,42 @@ export const useReorderOpencodeQueuedPrompts = ({
       reorderOpencodeQueuedPrompts(
         queuedPrompts,
         inboxIds,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+};
+
+export const useEditOpencodeQueuedPrompt = ({
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  return useMutation({
+    mutationFn: ({
+      queuedPrompts,
+      inboxId,
+      text,
+    }: {
+      queuedPrompts: OpencodeQueuedPrompt[];
+      inboxId: string;
+      text: string;
+    }) =>
+      editOpencodeQueuedPrompt(
+        queuedPrompts,
+        inboxId,
+        text,
         sessionId,
         serverUrl,
         accessToken,

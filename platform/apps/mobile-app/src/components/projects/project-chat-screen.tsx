@@ -11,6 +11,7 @@ import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useCancelOpencodeQueuedPrompt,
+  useEditOpencodeQueuedPrompt,
   useOpencodeInventory,
   useOpencodeQueuedPrompts,
   useOpencodeSession,
@@ -39,6 +40,7 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 
@@ -841,6 +843,9 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
     string | undefined
   >();
+  const [editingQueuedPrompt, setEditingQueuedPrompt] = useState<
+    { id: string; text: string } | undefined
+  >();
   const queuedDragOffset = useRef(new Animated.Value(0)).current;
   const queuedDragStartY = useRef<number | undefined>(undefined);
   const cancelQueuedPrompt = useCancelOpencodeQueuedPrompt({
@@ -852,6 +857,12 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   });
   const steerQueuedPrompt = useSteerOpencodeQueuedPrompt({
     chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const editQueuedPrompt = useEditOpencodeQueuedPrompt({
     sessionId,
     serverUrl,
     accessToken,
@@ -1020,12 +1031,99 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
                       ))}
                     </View>
                   </View>
-                  <ThemedText
-                    numberOfLines={1}
-                    style={[styles.queuedPrompt, { flex: 1 }]}
-                  >
-                    {item.prompt.text || "Attachment"}
-                  </ThemedText>
+                  {editingQueuedPrompt?.id === item.id ? (
+                    <TextInput
+                      autoFocus
+                      multiline
+                      onChangeText={(text) =>
+                        setEditingQueuedPrompt({ id: item.id, text })
+                      }
+                      style={[
+                        styles.queuedPromptInput,
+                        {
+                          color: theme.text,
+                          borderColor: theme.backgroundSelected,
+                        },
+                      ]}
+                      value={editingQueuedPrompt.text}
+                    />
+                  ) : (
+                    <ThemedText
+                      numberOfLines={1}
+                      style={[styles.queuedPrompt, { flex: 1 }]}
+                    >
+                      {item.prompt.text || "Attachment"}
+                    </ThemedText>
+                  )}
+                  {editingQueuedPrompt?.id === item.id ? (
+                    <>
+                      <Pressable
+                        accessibilityLabel="Save queued message"
+                        accessibilityRole="button"
+                        disabled={editQueuedPrompt.isPending}
+                        onPress={() =>
+                          editQueuedPrompt.mutate(
+                            {
+                              inboxId: item.id,
+                              queuedPrompts: displayedQueuedPrompts,
+                              text: editingQueuedPrompt.text,
+                            },
+                            {
+                              onError: (error) =>
+                                Alert.alert(
+                                  "Could not edit message",
+                                  error.message,
+                                ),
+                              onSuccess: () =>
+                                setEditingQueuedPrompt(undefined),
+                            },
+                          )
+                        }
+                        style={styles.queuedPromptAction}
+                      >
+                        <SymbolView
+                          name={{ ios: "checkmark", android: "check" }}
+                          size={14}
+                          tintColor={theme.textSecondary}
+                        />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel="Cancel editing queued message"
+                        accessibilityRole="button"
+                        onPress={() => setEditingQueuedPrompt(undefined)}
+                        style={styles.queuedPromptAction}
+                      >
+                        <SymbolView
+                          name={{ ios: "xmark", android: "close" }}
+                          size={14}
+                          tintColor={theme.textSecondary}
+                        />
+                      </Pressable>
+                    </>
+                  ) : (
+                    <Pressable
+                      accessibilityLabel="Edit queued message"
+                      accessibilityRole="button"
+                      disabled={
+                        cancelQueuedPrompt.isPending ||
+                        steerQueuedPrompt.isPending ||
+                        reorderQueuedPrompts.isPending
+                      }
+                      onPress={() =>
+                        setEditingQueuedPrompt({
+                          id: item.id,
+                          text: item.prompt.text,
+                        })
+                      }
+                      style={styles.queuedPromptAction}
+                    >
+                      <SymbolView
+                        name={{ ios: "pencil", android: "edit" }}
+                        size={14}
+                        tintColor={theme.textSecondary}
+                      />
+                    </Pressable>
+                  )}
                   <Pressable
                     accessibilityLabel={
                       isStreaming
@@ -1793,6 +1891,14 @@ const styles = StyleSheet.create({
     paddingVertical: 2,
   },
   queuedPromptDragHandle: { padding: 4 },
+  queuedPromptInput: {
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    fontSize: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
   queuedPromptDragDot: {
     borderRadius: 1,
     height: 2,

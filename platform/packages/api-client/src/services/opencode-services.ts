@@ -1461,6 +1461,38 @@ export async function reorderOpencodeQueuedPrompts(
   }
 }
 
+export async function editOpencodeQueuedPrompt(
+  queuedPrompts: OpencodeQueuedPrompt[],
+  inboxId: string,
+  text: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const changedIndex = queuedPrompts.findIndex((item) => item.id === inboxId);
+  if (changedIndex < 0) throw new Error("Queued prompt is no longer available");
+  const edited = queuedPrompts.map((item) =>
+    item.id === inboxId ? { ...item, prompt: { ...item.prompt, text } } : item,
+  );
+  for (const item of edited.slice(changedIndex)) {
+    await postV2Prompt(serverUrl, accessToken, password, sessionId, {
+      ...item.prompt,
+      delivery: "queue",
+      resume: false,
+    });
+  }
+  for (const item of queuedPrompts.slice(changedIndex)) {
+    await cancelOpencodeQueuedPrompt(
+      sessionId,
+      item.id,
+      serverUrl,
+      accessToken,
+      password,
+    );
+  }
+}
+
 function normalizeQueuedPrompt(value: unknown): OpencodeQueuedPrompt[] {
   if (!value || typeof value !== "object") return [];
   const item = value as Record<string, unknown>;

@@ -9,6 +9,7 @@ import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useCancelOpencodeQueuedPrompt,
+  useEditOpencodeQueuedPrompt,
   useOpencodeInventory,
   useOpencodeQueuedPrompts,
   useQueueOpencodePrompt,
@@ -32,17 +33,20 @@ import { Button } from "@repo/ui/components/button";
 import {
   ArrowDown,
   ChevronRight,
+  Check,
   FolderOpen,
   GripVertical,
   Loader2,
   ListTodo,
   Plus,
+  Pencil,
   RefreshCw,
   Send,
   Settings2,
   Terminal,
   Trash2,
   Undo2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -146,6 +150,9 @@ export function OpencodeSessionChat({
   const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
     string | undefined
   >();
+  const [editingQueuedPrompt, setEditingQueuedPrompt] = useState<
+    { id: string; text: string } | undefined
+  >();
   const cancelQueuedPrompt = useCancelOpencodeQueuedPrompt({
     chatId,
     sessionId,
@@ -155,6 +162,12 @@ export function OpencodeSessionChat({
   });
   const steerQueuedPrompt = useSteerOpencodeQueuedPrompt({
     chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const editQueuedPrompt = useEditOpencodeQueuedPrompt({
     sessionId,
     serverUrl,
     accessToken,
@@ -612,10 +625,86 @@ export function OpencodeSessionChat({
                           >
                             <GripVertical />
                           </Button>
-                          <span className="min-w-0 flex-1 truncate">
-                            {item.prompt.text || "Attachment"}
-                          </span>
+                          {editingQueuedPrompt?.id === item.id ? (
+                            <input
+                              className="border-input min-w-0 flex-1 rounded-md border bg-transparent px-2 py-1 text-sm"
+                              value={editingQueuedPrompt.text}
+                              onChange={(event) =>
+                                setEditingQueuedPrompt({
+                                  id: item.id,
+                                  text: event.target.value,
+                                })
+                              }
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="min-w-0 flex-1 truncate">
+                              {item.prompt.text || "Attachment"}
+                            </span>
+                          )}
                           <div className="flex shrink-0 items-center gap-1">
+                            {editingQueuedPrompt?.id === item.id ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  aria-label="Save queued message"
+                                  disabled={editQueuedPrompt.isPending}
+                                  onClick={() =>
+                                    editQueuedPrompt.mutate(
+                                      {
+                                        inboxId: item.id,
+                                        queuedPrompts: displayedQueuedPrompts,
+                                        text: editingQueuedPrompt.text,
+                                      },
+                                      {
+                                        onError: (error) =>
+                                          toast.error(
+                                            error.message ||
+                                              "Could not edit queued message",
+                                          ),
+                                        onSuccess: () =>
+                                          setEditingQueuedPrompt(undefined),
+                                      },
+                                    )
+                                  }
+                                >
+                                  <Check />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  aria-label="Cancel editing queued message"
+                                  onClick={() =>
+                                    setEditingQueuedPrompt(undefined)
+                                  }
+                                >
+                                  <X />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                aria-label="Edit queued message"
+                                disabled={
+                                  cancelQueuedPrompt.isPending ||
+                                  steerQueuedPrompt.isPending ||
+                                  reorderQueuedPrompts.isPending
+                                }
+                                onClick={() =>
+                                  setEditingQueuedPrompt({
+                                    id: item.id,
+                                    text: item.prompt.text,
+                                  })
+                                }
+                              >
+                                <Pencil />
+                              </Button>
+                            )}
                             <Button
                               type="button"
                               variant="ghost"
