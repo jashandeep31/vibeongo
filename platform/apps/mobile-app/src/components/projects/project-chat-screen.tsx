@@ -698,6 +698,10 @@ export function ProjectChatScreen() {
                       accessibilityLabel="Follow-up prompt"
                       chatId={projectSessionId}
                       inventory={inventoryQuery.data}
+                      directory={data.session.directory}
+                      onProviderConnected={async () => {
+                        await inventoryQuery.refetch();
+                      }}
                       password={runtime.password}
                       promptError={data.promptError}
                       serverUrl={runtime.serverUrl}
@@ -774,9 +778,11 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   accessibilityLabel,
   chatId,
   inventory,
+  directory,
   onChangeSelection,
   onNewChat,
   onOpenTerminal,
+  onProviderConnected,
   password,
   promptError,
   searchFiles,
@@ -789,9 +795,11 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   accessibilityLabel: string;
   chatId: string;
   inventory?: OpencodeInventory;
+  directory: string;
   onChangeSelection: (selection: OpencodePromptSelection) => void;
   onNewChat: () => void;
   onOpenTerminal: () => void;
+  onProviderConnected: () => Promise<void>;
   password?: string;
   promptError?: string;
   searchFiles: (query: string) => Promise<string[]>;
@@ -911,6 +919,14 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         onStop={isStreaming ? stopStreaming : undefined}
         onSubmit={submit}
         placeholder={isStreaming ? "Type " : "Ask a follow-up…"}
+        providerConnection={{
+          accessToken,
+          chatId,
+          directory,
+          onConnected: onProviderConnected,
+          password,
+          serverUrl,
+        }}
         selection={selection}
         searchFiles={searchFiles}
         disabled={disabled}

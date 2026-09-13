@@ -1020,6 +1020,122 @@ export async function findOpencodeFiles(
   return result.data.map((entry) => entry.path);
 }
 
+export type OpencodeProviderConnectMethod =
+  | { id?: string; label: string; type: "key" }
+  | { id: string; label: string; type: "oauth" };
+
+export type OpencodeProviderIntegration = {
+  connected: boolean;
+  id: string;
+  methods: OpencodeProviderConnectMethod[];
+  name: string;
+};
+
+export async function getOpencodeProviderIntegrations(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const result = await client.integration.list({
+    ...(directory ? { location: { directory } } : {}),
+  });
+  return result.data.map((integration) => ({
+    id: integration.id,
+    name: integration.name,
+    connected: integration.connections.length > 0,
+    methods: integration.methods.flatMap<OpencodeProviderConnectMethod>(
+      (method) => {
+        if (method.type === "key") {
+          return [{ type: "key" as const, label: method.label ?? "API key" }];
+        }
+        if (method.type === "oauth") {
+          return [
+            { type: "oauth" as const, id: method.id, label: method.label },
+          ];
+        }
+        return [];
+      },
+    ),
+  }));
+}
+
+export async function connectOpencodeProviderKey(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  providerId: string,
+  key: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.integration.connect.key({
+    integrationID: providerId,
+    key,
+    ...(directory ? { location: { directory } } : {}),
+  });
+}
+
+export async function startOpencodeProviderOauth(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  providerId: string,
+  methodId: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  return (
+    await client.integration.oauth.connect({
+      integrationID: providerId,
+      methodID: methodId,
+      ...(directory ? { location: { directory } } : {}),
+    })
+  ).data;
+}
+
+export async function getOpencodeProviderOauthStatus(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  providerId: string,
+  attemptId: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  return (
+    await client.integration.oauth.status({
+      integrationID: providerId,
+      attemptID: attemptId,
+      ...(directory ? { location: { directory } } : {}),
+    })
+  ).data;
+}
+
+export async function completeOpencodeProviderOauth(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  providerId: string,
+  attemptId: string,
+  code: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.integration.oauth.complete({
+    integrationID: providerId,
+    attemptID: attemptId,
+    code,
+    ...(directory ? { location: { directory } } : {}),
+  });
+}
+
 async function getOpencodeInventoryResource<T>(
   resource: string,
   request: (signal: AbortSignal) => Promise<T>,

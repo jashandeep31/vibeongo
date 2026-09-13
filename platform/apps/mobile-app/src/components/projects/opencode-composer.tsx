@@ -24,6 +24,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import {
+  OpencodeProviderConnectSheet,
+  type OpencodeProviderConnection,
+} from "@/components/projects/opencode-provider-connect-sheet";
 import { Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
@@ -31,6 +35,7 @@ import { useTheme } from "@/hooks/use-theme";
 type PickerKind = "provider" | "model" | "agent" | "variant";
 type PickerOption = { id: string; title: string; subtitle?: string };
 type ActiveFileMention = { end: number; query: string; start: number };
+const CONNECT_PROVIDER_OPTION = "__connect_provider__";
 
 function getActiveFileMention(value: string, cursor: number) {
   const match = value.slice(0, cursor).match(/(?:^|\s)@([^\s@]*)$/);
@@ -61,6 +66,7 @@ type OpencodeComposerProps = {
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
   onStop?: () => void;
+  providerConnection?: OpencodeProviderConnection;
   searchFiles?: (query: string) => Promise<string[]>;
   onSubmit: () => void;
   placeholder: string;
@@ -143,6 +149,7 @@ export function OpencodeComposer({
   onNewChat,
   onOpenTerminal,
   onStop,
+  providerConnection,
   searchFiles,
   onSubmit,
   placeholder,
@@ -332,6 +339,7 @@ export function OpencodeComposer({
           onChange={onChangeSelection}
           onNewChat={onNewChat}
           onOpenTerminal={onOpenTerminal}
+          providerConnection={providerConnection}
           selection={selection}
         />
       </BlurTargetView>
@@ -525,6 +533,7 @@ const PromptSelectors = memo(function PromptSelectors({
   onChange,
   onNewChat,
   onOpenTerminal,
+  providerConnection,
   selection,
 }: {
   disabled?: boolean;
@@ -532,10 +541,12 @@ const PromptSelectors = memo(function PromptSelectors({
   onChange: (selection: OpencodePromptSelection) => void;
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
+  providerConnection?: OpencodeProviderConnection;
   selection: OpencodePromptSelection;
 }) {
   const theme = useTheme();
   const [picker, setPicker] = useState<PickerKind | null>(null);
+  const [providerConnectOpen, setProviderConnectOpen] = useState(false);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
   );
@@ -557,10 +568,20 @@ const PromptSelectors = memo(function PromptSelectors({
   );
   const options = useMemo<PickerOption[]>(() => {
     if (picker === "provider") {
-      return providers.map((provider) => ({
-        id: provider.id,
-        title: provider.name,
-      }));
+      return [
+        ...providers.map((provider) => ({
+          id: provider.id,
+          title: provider.name,
+        })),
+        ...(providerConnection
+          ? [
+              {
+                id: CONNECT_PROVIDER_OPTION,
+                title: "Connect provider",
+              },
+            ]
+          : []),
+      ];
     }
     if (picker === "model") {
       return (inventory?.models ?? [])
@@ -588,10 +609,22 @@ const PromptSelectors = memo(function PromptSelectors({
       ];
     }
     return [];
-  }, [inventory, picker, providers, selectedModel, selectedProviderID]);
+  }, [
+    inventory,
+    picker,
+    providerConnection,
+    providers,
+    selectedModel,
+    selectedProviderID,
+  ]);
 
   const choose = (id: string) => {
     if (picker === "provider") {
+      if (id === CONNECT_PROVIDER_OPTION) {
+        setPicker(null);
+        setProviderConnectOpen(true);
+        return;
+      }
       const providerModel = inventory?.models.find(
         (model) => model.providerID === id,
       );
@@ -623,7 +656,7 @@ const PromptSelectors = memo(function PromptSelectors({
         style={styles.pillsScroller}
       >
         <SelectorPill
-          disabled={disabled || !providers.length}
+          disabled={disabled || (!providers.length && !providerConnection)}
           icon={{ ios: "brain", android: "psychology" }}
           label={
             selectedModel?.name ??
@@ -690,6 +723,13 @@ const PromptSelectors = memo(function PromptSelectors({
         }
         visible={picker !== null}
       />
+      {providerConnection ? (
+        <OpencodeProviderConnectSheet
+          connection={providerConnection}
+          onClose={() => setProviderConnectOpen(false)}
+          visible={providerConnectOpen}
+        />
+      ) : null}
     </>
   );
 });

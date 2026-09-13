@@ -321,6 +321,16 @@ export function NewProjectChatScreen() {
                 onOpenTerminal={openTerminal}
                 onSubmit={submit}
                 placeholder="Describe the task…"
+                providerConnection={{
+                  accessToken: runtime.accessToken,
+                  chatId: projectSessionId,
+                  directory: resolvedDirectory,
+                  onConnected: async () => {
+                    await inventoryQuery.refetch();
+                  },
+                  password: runtime.password,
+                  serverUrl: runtime.serverUrl,
+                }}
                 selection={selection}
                 searchFiles={searchFiles}
               />
