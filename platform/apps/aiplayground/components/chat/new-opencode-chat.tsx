@@ -3,6 +3,7 @@
 import { PromptInput } from "@/components/chat/prompt-input";
 import { useOpencodeInventory } from "@repo/api-hooks";
 import { useStartOpencodeSession } from "@repo/api-hooks";
+import { useUserSettings } from "@repo/api-hooks";
 import type { OpencodePromptSelection } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { ChevronRight, Terminal } from "lucide-react";
@@ -37,9 +38,16 @@ export function NewOpencodeChat({
     accessToken,
     password,
   );
+  const { data: userSettings } = useUserSettings();
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
+  const configuredDefaultModel = userSettings?.default_model ?? undefined;
+  const defaultModel = inventory?.models.some(
+    (model) => model.id === configuredDefaultModel,
+  )
+    ? configuredDefaultModel
+    : inventory?.models[0]?.id;
   const effectiveSelection: OpencodePromptSelection = {
-    model: selection.model ?? inventory?.models[0]?.id,
+    model: selection.model ?? defaultModel,
     variant: selection.variant,
     agent:
       selection.agent ??
