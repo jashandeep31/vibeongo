@@ -1,5 +1,9 @@
 "use client";
 
+import {
+  OpencodeProviderConnectDialog,
+  type OpencodeWebProviderConnection,
+} from "@/components/chat/opencode-provider-connect-dialog";
 import type {
   OpencodeFileReference,
   OpencodeInventory,
@@ -65,6 +69,7 @@ type PromptInputProps = {
   focusOnTyping?: boolean;
   trailingControl?: ReactNode;
   searchFiles?: (query: string) => Promise<string[]>;
+  providerConnection?: OpencodeWebProviderConnection;
 };
 
 type ActiveFileMention = { end: number; query: string; start: number };
@@ -92,12 +97,14 @@ export function PromptInput({
   focusOnTyping = false,
   trailingControl,
   searchFiles,
+  providerConnection,
 }: PromptInputProps) {
   const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [isVariantPickerOpen, setIsVariantPickerOpen] = useState(false);
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
+  const [isProviderConnectOpen, setIsProviderConnectOpen] = useState(false);
   const [activeFileMention, setActiveFileMention] =
     useState<ActiveFileMention | null>(null);
   const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
@@ -337,7 +344,7 @@ export function PromptInput({
       className="relative flex w-full flex-col gap-3"
     >
       <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
-        {inventory?.models.length ? (
+        {inventory?.models.length || providerConnection ? (
           <Popover open={isModelPickerOpen} onOpenChange={setIsModelPickerOpen}>
             <PopoverTrigger asChild>
               <Button
@@ -365,7 +372,7 @@ export function PromptInput({
                 <CommandList className="max-h-72">
                   <CommandEmpty>No models found.</CommandEmpty>
                   <CommandGroup>
-                    {inventory.models.map((model) => (
+                    {(inventory?.models ?? []).map((model) => (
                       <CommandItem
                         key={model.id}
                         value={`${model.name} ${model.providerName} ${model.id}`}
@@ -392,6 +399,19 @@ export function PromptInput({
                   </CommandGroup>
                 </CommandList>
               </Command>
+              {providerConnection ? (
+                <button
+                  className="hover:bg-muted flex min-h-12 w-full items-center gap-2 border-t px-4 text-left text-sm font-medium"
+                  onClick={() => {
+                    setIsModelPickerOpen(false);
+                    window.setTimeout(() => setIsProviderConnectOpen(true), 0);
+                  }}
+                  type="button"
+                >
+                  <Plus className="size-4" />
+                  Connect provider
+                </button>
+              ) : null}
             </PopoverContent>
           </Popover>
         ) : null}
@@ -517,6 +537,13 @@ export function PromptInput({
           </div>
         ) : null}
       </div>
+      {providerConnection ? (
+        <OpencodeProviderConnectDialog
+          connection={providerConnection}
+          onOpenChange={setIsProviderConnectOpen}
+          open={isProviderConnectOpen}
+        />
+      ) : null}
 
       {attachments.length > 0 ? (
         <div className="flex flex-wrap gap-3 px-1">

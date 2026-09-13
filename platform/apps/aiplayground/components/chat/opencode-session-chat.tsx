@@ -75,12 +75,13 @@ export function OpencodeSessionChat({
   onLoadOlder: () => Promise<void>;
   onRefresh: () => void;
 }) {
-  const { data: inventory } = useOpencodeInventory(
+  const inventoryQuery = useOpencodeInventory(
     chatId,
     serverUrl,
     accessToken,
     password,
   );
+  const inventory = inventoryQuery.data;
   const revertMessageId = rawResponse.session.revert?.messageID;
   const { visibleMessages, revertedMessages } = useMemo(() => {
     if (!revertMessageId) {
@@ -544,6 +545,16 @@ export function OpencodeSessionChat({
                   })
                 }
                 inventory={inventory}
+                providerConnection={{
+                  accessToken,
+                  chatId,
+                  directory: rawResponse.session.directory,
+                  onConnected: async () => {
+                    await inventoryQuery.refetch();
+                  },
+                  password,
+                  serverUrl,
+                }}
                 selection={effectiveSelection}
                 onSelectionChange={updateSelection}
                 onSubmit={(question, files, fileReferences) => {

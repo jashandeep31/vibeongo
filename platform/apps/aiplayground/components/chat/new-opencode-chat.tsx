@@ -32,12 +32,13 @@ export function NewOpencodeChat({
 }) {
   const router = useRouter();
   const startSession = useStartOpencodeSession();
-  const { data: inventory } = useOpencodeInventory(
+  const inventoryQuery = useOpencodeInventory(
     chatId,
     serverUrl,
     accessToken,
     password,
   );
+  const inventory = inventoryQuery.data;
   const { data: userSettings } = useUserSettings();
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const configuredDefaultModel = userSettings?.default_model ?? undefined;
@@ -98,6 +99,16 @@ export function NewOpencodeChat({
           onSubmit={handleSubmit}
           disabled={startSession.isPending}
           inventory={inventory}
+          providerConnection={{
+            accessToken,
+            chatId,
+            directory,
+            onConnected: async () => {
+              await inventoryQuery.refetch();
+            },
+            password,
+            serverUrl,
+          }}
           selection={effectiveSelection}
           onSelectionChange={setSelection}
           autoFocus
