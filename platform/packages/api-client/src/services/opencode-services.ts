@@ -1920,7 +1920,7 @@ function normalizeV2Message(
           sessionID: session.id,
           messageID: message.id,
           type: "file",
-          mime: "application/octet-stream",
+          mime: file.mime,
           ...(file.name ? { filename: file.name } : {}),
           url:
             file.source.type === "uri"
