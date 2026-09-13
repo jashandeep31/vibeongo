@@ -7,7 +7,7 @@ import type {
   OpencodeSessionData,
 } from "./opencode-services.js";
 
-export const OPENCODE_MESSAGE_PAGE_SIZE = 25;
+export const OPENCODE_MESSAGE_PAGE_SIZE = 26;
 
 export type SessionMessage = OpencodeSessionData["messages"][number];
 export type SessionPart = SessionMessage["parts"][number];

@@ -164,7 +164,6 @@ export function OpencodeComposer({
     submitDisabledProp ||
     isSubmitting ||
     (!value.trim() && attachments.length === 0);
-  const actionDisabled = onStop ? isStopping : submitDisabled;
   const submit = () => {
     if (submitDisabled) return;
     inputRef.current?.blur();
@@ -459,27 +458,47 @@ export function OpencodeComposer({
             textAlignVertical="top"
             value={value}
           />
+          {onStop ? (
+            <Pressable
+              accessibilityLabel="Stop response"
+              accessibilityRole="button"
+              disabled={isStopping}
+              onPress={onStop}
+              style={({ pressed }) => [
+                styles.sendButton,
+                styles.stopButton,
+                isStopping && styles.disabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              {isStopping ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <SymbolView
+                  name={{ ios: "stop.fill", android: "stop" }}
+                  size={17}
+                  tintColor="#ffffff"
+                />
+              )}
+            </Pressable>
+          ) : null}
           <Pressable
-            accessibilityLabel={onStop ? "Stop response" : "Send prompt"}
+            accessibilityLabel={onStop ? "Queue task" : "Send prompt"}
             accessibilityRole="button"
-            disabled={actionDisabled}
-            onPress={onStop ?? submit}
+            disabled={submitDisabled}
+            onPress={submit}
             style={({ pressed }) => [
               styles.sendButton,
               { backgroundColor: theme.text },
-              actionDisabled && styles.disabled,
+              submitDisabled && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
-            {isSubmitting || isStopping ? (
+            {isSubmitting ? (
               <ActivityIndicator color={theme.background} size="small" />
             ) : (
               <SymbolView
-                name={
-                  onStop
-                    ? { ios: "stop.fill", android: "stop" }
-                    : { ios: "arrow.up", android: "arrow_upward" }
-                }
+                name={{ ios: "arrow.up", android: "arrow_upward" }}
                 size={17}
                 tintColor={theme.background}
               />
@@ -1048,6 +1067,9 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: "center",
     width: 36,
+  },
+  stopButton: {
+    backgroundColor: "#dc2626",
   },
   sheet: {
     flex: 1,

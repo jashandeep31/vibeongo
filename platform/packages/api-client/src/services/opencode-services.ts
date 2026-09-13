@@ -170,6 +170,29 @@ export function reduceOpencodeMessages(
       const parentID = messages.findLast(
         (message) => message.info.role === "user",
       )?.info.id;
+      const existing = messages.find(
+        (message) => message.info.id === native.assistantMessageID,
+      );
+      if (existing?.info.role === "assistant") {
+        return messages.map((message) =>
+          message.info.id === native.assistantMessageID &&
+          message.info.role === "assistant"
+            ? {
+                ...message,
+                info: {
+                  ...message.info,
+                  agent:
+                    typeof native.agent === "string"
+                      ? native.agent
+                      : message.info.agent,
+                  modelID: model?.id ?? message.info.modelID,
+                  providerID: model?.providerID ?? message.info.providerID,
+                  ...(model?.variant ? { variant: model.variant } : {}),
+                },
+              }
+            : message,
+        );
+      }
       return [
         ...messages,
         {
@@ -210,25 +233,27 @@ export function reduceOpencodeMessages(
         message.info.id === native.assistantMessageID
           ? {
               ...message,
-              parts: [
-                ...message.parts,
-                partType === "reasoning"
-                  ? {
-                      id: partID,
-                      sessionID: sessionId,
-                      messageID: native.assistantMessageID as string,
-                      type: "reasoning" as const,
-                      text: "",
-                      time: { start: Date.now() },
-                    }
-                  : {
-                      id: partID,
-                      sessionID: sessionId,
-                      messageID: native.assistantMessageID as string,
-                      type: "text" as const,
-                      text: "",
-                    },
-              ],
+              parts: message.parts.some((part) => part.id === partID)
+                ? message.parts
+                : [
+                    ...message.parts,
+                    partType === "reasoning"
+                      ? {
+                          id: partID,
+                          sessionID: sessionId,
+                          messageID: native.assistantMessageID as string,
+                          type: "reasoning" as const,
+                          text: "",
+                          time: { start: Date.now() },
+                        }
+                      : {
+                          id: partID,
+                          sessionID: sessionId,
+                          messageID: native.assistantMessageID as string,
+                          type: "text" as const,
+                          text: "",
+                        },
+                  ],
             }
           : message,
       );
@@ -703,6 +728,14 @@ export async function getOpencodeSessionRaw(
 
   const fetchedMessages = normalizeV2Messages(session, rawMessages.reverse());
   const messages = fetchedMessages;
+  const hasOlder = nextCursor
+    ? await opencodeCursorContainsUserMessage(
+        client,
+        sessionId,
+        nextCursor,
+        messageLimit,
+      )
+    : false;
   return {
     session,
     status: activeResult[sessionId]
@@ -712,8 +745,8 @@ export async function getOpencodeSessionRaw(
     questions,
     changes: [],
     messagePage: {
-      hasOlder: Boolean(nextCursor),
-      ...(nextCursor ? { cursor: nextCursor } : {}),
+      hasOlder,
+      ...(hasOlder && nextCursor ? { cursor: nextCursor } : {}),
       oldestMessageId: messages[0]?.info.id,
     },
   };
@@ -754,17 +787,49 @@ export async function getOpencodeSessionMessagePage(
     password,
     session.directory,
   );
-  const result = await client.message.list({
-    sessionID: session.id,
-    limit: options?.limit ?? 100,
-    order: "desc",
-    ...(options?.cursor ? { cursor: options.cursor } : {}),
-  });
+  const rawMessages: SessionMessageInfo[] = [];
+  let cursor = options?.cursor;
+  do {
+    const result = await client.message.list({
+      sessionID: session.id,
+      limit: options?.limit ?? 100,
+      ...(cursor ? { cursor } : { order: "desc" as const }),
+    });
+    rawMessages.push(...result.data);
+    cursor = result.cursor.next ?? undefined;
+  } while (cursor && !rawMessages.some((message) => message.type === "user"));
+  const nextCursor =
+    cursor &&
+    (await opencodeCursorContainsUserMessage(
+      client,
+      session.id,
+      cursor,
+      options?.limit ?? 100,
+    ))
+      ? cursor
+      : undefined;
 
   return {
-    messages: normalizeV2Messages(session, [...result.data].reverse()),
-    cursor: result.cursor.next ?? undefined,
+    messages: normalizeV2Messages(session, rawMessages.reverse()),
+    cursor: nextCursor,
   };
+}
+
+async function opencodeCursorContainsUserMessage(
+  client: OpenCodeClient,
+  sessionID: string,
+  initialCursor: string,
+  limit: number,
+) {
+  let cursor: string | undefined = initialCursor;
+  const visited = new Set<string>();
+  while (cursor && !visited.has(cursor)) {
+    visited.add(cursor);
+    const result = await client.message.list({ sessionID, limit, cursor });
+    if (result.data.some((message) => message.type === "user")) return true;
+    cursor = result.cursor.next ?? undefined;
+  }
+  return false;
 }
 
 export async function getOpencodeSessionStatuses(
@@ -1650,7 +1715,9 @@ function normalizeV2Message(
   } as Message;
   const parts = message.content.map((content, index): Part => {
     const contentId =
-      content.type === "tool" ? content.id : `${message.id}:content:${index}`;
+      content.type === "tool"
+        ? content.id
+        : `${message.id}:${content.type}:${index}`;
     if (content.type === "text") {
       return {
         id: contentId,

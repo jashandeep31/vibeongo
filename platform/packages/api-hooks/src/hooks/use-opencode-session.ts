@@ -165,11 +165,12 @@ function reconcileActiveOpencodeSession(
       message.info.role === "user" &&
       !message.info.id.startsWith("optimistic:"),
   );
-  const currentMessages = incomingHasRealUserMessage
+  const retainedMessages = incomingHasRealUserMessage
     ? current.messages.filter(
         (message) => !message.info.id.startsWith("optimistic:"),
       )
     : current.messages;
+  const currentMessages = dedupeOpencodeMessages(retainedMessages);
   const incomingById = new Map(
     incoming.messages.map((message) => [message.info.id, message]),
   );
@@ -190,19 +191,45 @@ function reconcileActiveOpencodeSession(
     return {
       info:
         current.status.type === "idle" ? incomingMessage.info : message.info,
-      parts: [...parts, ...currentPartsById.values()],
+      parts:
+        current.status.type === "idle"
+          ? parts
+          : dedupeOpencodeParts([...parts, ...currentPartsById.values()]),
     };
   });
   mergedMessages.push(...incomingById.values());
 
   return {
     ...incoming,
-    messages: mergedMessages,
+    messages: dedupeOpencodeMessages(mergedMessages),
     messagePage: current.messagePage ?? incoming.messagePage,
     ...(!incomingHasRealUserMessage && current.optimistic
       ? { optimistic: true }
       : {}),
   };
+}
+
+function dedupeOpencodeMessages(messages: OpencodeSessionData["messages"]) {
+  const byId = new Map<string, OpencodeSessionData["messages"][number]>();
+  for (const message of messages) {
+    const existing = byId.get(message.info.id);
+    byId.set(
+      message.info.id,
+      existing
+        ? {
+            info: message.info,
+            parts: dedupeOpencodeParts([...existing.parts, ...message.parts]),
+          }
+        : message,
+    );
+  }
+  return [...byId.values()];
+}
+
+function dedupeOpencodeParts(
+  parts: OpencodeSessionData["messages"][number]["parts"],
+) {
+  return [...new Map(parts.map((part) => [part.id, part])).values()];
 }
 
 export const useSendOpencodePrompt = ({
@@ -299,11 +326,13 @@ export const useQueueOpencodePrompt = ({
     mutationFn: async ({
       text,
       files,
+      attachments: directAttachments = [],
       fileReferences = [],
       selection,
     }: {
       text: string;
       files: File[];
+      attachments?: UploadAttachment[];
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
     }) => {
@@ -320,7 +349,7 @@ export const useQueueOpencodePrompt = ({
         chatId,
         sessionId,
         text,
-        attachments,
+        [...directAttachments, ...attachments],
         fileReferences,
         selection,
         serverUrl,

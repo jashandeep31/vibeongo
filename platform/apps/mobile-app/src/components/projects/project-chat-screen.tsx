@@ -11,7 +11,9 @@ import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useOpencodeInventory,
+  useOpencodeQueuedPrompts,
   useOpencodeSession,
+  useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
   useRestoreRevertedOpencodeMessage,
   useRevertOpencodeSession,
@@ -817,6 +819,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   serverUrl: string;
   sessionId: string;
 }) {
+  const theme = useTheme();
   const isStreaming = useSessionChatsStore(
     (store) =>
       store.statusesBySessionId[chatId]?.[sessionId]?.type !== "idle" &&
@@ -824,6 +827,19 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   );
   const sendPrompt = useSendOpencodePrompt({
     chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const queuePrompt = useQueueOpencodePrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const { data: queuedPrompts = [] } = useOpencodeQueuedPrompts({
     sessionId,
     serverUrl,
     accessToken,
@@ -842,21 +858,35 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
       if (
         (!text && attachments.length === 0) ||
         sendPrompt.isPending ||
-        isStreaming
+        queuePrompt.isPending
       )
         return;
-      sendPrompt.mutate(
-        {
-          text,
-          files: [],
-          attachments,
-          fileReferences,
-          selection,
-        },
-        { onError: restore },
-      );
+      const input = {
+        text,
+        files: [],
+        attachments,
+        fileReferences,
+        selection,
+      };
+      if (isStreaming) {
+        queuePrompt.mutate(input, {
+          onError: (error) => {
+            restore();
+            Alert.alert("Could not queue message", error.message);
+          },
+        });
+        return;
+      }
+      sendPrompt.mutate(input, { onError: restore });
     },
-    [isStreaming, selection, sendPrompt.isPending, sendPrompt.mutate],
+    [
+      isStreaming,
+      queuePrompt.isPending,
+      queuePrompt.mutate,
+      selection,
+      sendPrompt.isPending,
+      sendPrompt.mutate,
+    ],
   );
   const stopStreaming = useCallback(() => {
     abortSession.mutate(undefined, {
@@ -866,23 +896,45 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
 
   return (
     <>
+      {queuedPrompts.length ? (
+        <View
+          style={[
+            styles.queuedPrompts,
+            {
+              backgroundColor: theme.backgroundElement,
+              borderColor: theme.backgroundSelected,
+            },
+          ]}
+        >
+          <ThemedText style={styles.queuedPromptsTitle}>
+            Queued messages ({queuedPrompts.length})
+          </ThemedText>
+          {queuedPrompts.map((item, index) => (
+            <ThemedText
+              key={item.id}
+              numberOfLines={1}
+              style={styles.queuedPrompt}
+            >
+              {index + 1}. {item.prompt.text || "Attachment"}
+            </ThemedText>
+          ))}
+        </View>
+      ) : null}
       <OpencodeComposerController
         accessibilityLabel={accessibilityLabel}
         inventory={inventory}
         isStopping={abortSession.isPending}
-        isSubmitting={sendPrompt.isPending}
+        isSubmitting={sendPrompt.isPending || queuePrompt.isPending}
         onChangeSelection={onChangeSelection}
         onNewChat={onNewChat}
         onOpenTerminal={onOpenTerminal}
         onStop={isStreaming ? stopStreaming : undefined}
         onSubmit={submit}
-        placeholder={
-          isStreaming ? "Write your next message…" : "Ask a follow-up…"
-        }
+        placeholder={isStreaming ? "Type " : "Ask a follow-up…"}
         selection={selection}
         searchFiles={searchFiles}
         disabled={disabled}
-        submitDisabled={disabled || isStreaming}
+        submitDisabled={disabled}
       />
       {sendPrompt.error || promptError ? (
         <ThemedText style={styles.error}>
@@ -1525,6 +1577,21 @@ const styles = StyleSheet.create({
     paddingBottom: 150,
     paddingHorizontal: 18,
     paddingTop: 24,
+  },
+  queuedPrompt: {
+    fontSize: 12,
+  },
+  queuedPrompts: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  queuedPromptsTitle: {
+    fontSize: 12,
+    fontWeight: "700",
+    marginBottom: 2,
   },
   restoreButton: {
     alignItems: "center",
