@@ -8,13 +8,16 @@ import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
+  useCancelOpencodeQueuedPrompt,
   useOpencodeInventory,
   useOpencodeQueuedPrompts,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReorderOpencodeQueuedPrompts,
   useRevertOpencodeSession,
   useRestoreRevertedOpencodeMessage,
   useSendOpencodePrompt,
+  useSteerOpencodeQueuedPrompt,
 } from "@repo/api-hooks";
 import {
   createOpencodeChatTurns,
@@ -30,13 +33,16 @@ import {
   ArrowDown,
   ChevronRight,
   FolderOpen,
+  GripVertical,
   Loader2,
+  ListTodo,
   Plus,
   RefreshCw,
+  Send,
   Settings2,
   Terminal,
+  Trash2,
   Undo2,
-  ListTodo,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -137,6 +143,56 @@ export function OpencodeSessionChat({
   });
   const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
     useState(false);
+  const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
+    string | undefined
+  >();
+  const cancelQueuedPrompt = useCancelOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const steerQueuedPrompt = useSteerOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const reorderQueuedPrompts = useReorderOpencodeQueuedPrompts({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const moveQueuedPrompt = (source: number, destination: number) => {
+    if (
+      source === destination ||
+      source < 0 ||
+      destination < 0 ||
+      source >= displayedQueuedPrompts.length ||
+      destination >= displayedQueuedPrompts.length
+    )
+      return;
+    const inboxIds = displayedQueuedPrompts.map((item) => item.id);
+    const [moved] = inboxIds.splice(source, 1);
+    inboxIds.splice(destination, 0, moved!);
+    reorderQueuedPrompts.mutate(
+      { inboxIds, queuedPrompts: displayedQueuedPrompts },
+      {
+        onError: (error) =>
+          toast.error(error.message || "Could not reorder queued messages"),
+      },
+    );
+  };
+  const displayedQueuedPrompts = reorderQueuedPrompts.isPending
+    ? reorderQueuedPrompts.variables.inboxIds.flatMap((id) =>
+        reorderQueuedPrompts.variables.queuedPrompts.filter(
+          (item) => item.id === id,
+        ),
+      )
+    : queuedPrompts;
   const answerQuestion = useAnswerOpencodeQuestion({
     chatId,
     sessionId,
@@ -519,17 +575,96 @@ export function OpencodeSessionChat({
                       id="queued-prompts"
                       className="mb-2 flex flex-col gap-1.5"
                     >
-                      {queuedPrompts.map((item, index) => (
+                      {displayedQueuedPrompts.map((item, index) => (
                         <div
                           key={item.id}
-                          className="flex min-w-0 items-center gap-2 text-sm"
+                          data-queue-prompt-row
+                          className="flex min-w-0 items-center gap-2 rounded-md text-sm"
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => {
+                            const source = displayedQueuedPrompts.findIndex(
+                              (entry) => entry.id === draggedQueuedPromptId,
+                            );
+                            moveQueuedPrompt(source, index);
+                            setDraggedQueuedPromptId(undefined);
+                          }}
                         >
-                          <span className="text-muted-foreground shrink-0">
-                            {index + 1}.
-                          </span>
-                          <span className="truncate">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            draggable={!reorderQueuedPrompts.isPending}
+                            aria-label="Drag to reorder queued message"
+                            disabled={reorderQueuedPrompts.isPending}
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              const row = event.currentTarget.closest(
+                                "[data-queue-prompt-row]",
+                              );
+                              if (row instanceof HTMLElement) {
+                                event.dataTransfer.setDragImage(row, 16, 16);
+                              }
+                              setDraggedQueuedPromptId(item.id);
+                            }}
+                            onDragEnd={() =>
+                              setDraggedQueuedPromptId(undefined)
+                            }
+                          >
+                            <GripVertical />
+                          </Button>
+                          <span className="min-w-0 flex-1 truncate">
                             {item.prompt.text || "Attachment"}
                           </span>
+                          <div className="flex shrink-0 items-center gap-1">
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              aria-label={
+                                isStreaming
+                                  ? "Steer queued message"
+                                  : "Send queued message"
+                              }
+                              disabled={
+                                cancelQueuedPrompt.isPending ||
+                                steerQueuedPrompt.isPending ||
+                                reorderQueuedPrompts.isPending
+                              }
+                              onClick={() =>
+                                steerQueuedPrompt.mutate(item.id, {
+                                  onError: (error) =>
+                                    toast.error(
+                                      error.message ||
+                                        "Could not steer queued message",
+                                    ),
+                                })
+                              }
+                            >
+                              <Send />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              aria-label="Remove queued message"
+                              disabled={
+                                cancelQueuedPrompt.isPending ||
+                                steerQueuedPrompt.isPending ||
+                                reorderQueuedPrompts.isPending
+                              }
+                              onClick={() =>
+                                cancelQueuedPrompt.mutate(item.id, {
+                                  onError: (error) =>
+                                    toast.error(
+                                      error.message ||
+                                        "Could not remove queued message",
+                                    ),
+                                })
+                              }
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>

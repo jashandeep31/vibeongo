@@ -10,14 +10,17 @@ import {
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
+  useCancelOpencodeQueuedPrompt,
   useOpencodeInventory,
   useOpencodeQueuedPrompts,
   useOpencodeSession,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReorderOpencodeQueuedPrompts,
   useRestoreRevertedOpencodeMessage,
   useRevertOpencodeSession,
   useSendOpencodePrompt,
+  useSteerOpencodeQueuedPrompt,
 } from "@repo/api-hooks";
 import { useSessionChatsStore } from "@repo/app-store";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -835,6 +838,58 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   });
   const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
     useState(false);
+  const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
+    string | undefined
+  >();
+  const queuedDragOffset = useRef(new Animated.Value(0)).current;
+  const queuedDragStartY = useRef<number | undefined>(undefined);
+  const cancelQueuedPrompt = useCancelOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const steerQueuedPrompt = useSteerOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const reorderQueuedPrompts = useReorderOpencodeQueuedPrompts({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const moveQueuedPrompt = (source: number, destination: number) => {
+    if (
+      source === destination ||
+      source < 0 ||
+      destination < 0 ||
+      source >= displayedQueuedPrompts.length ||
+      destination >= displayedQueuedPrompts.length
+    )
+      return;
+    const inboxIds = displayedQueuedPrompts.map((item) => item.id);
+    const [moved] = inboxIds.splice(source, 1);
+    inboxIds.splice(destination, 0, moved!);
+    reorderQueuedPrompts.mutate(
+      { inboxIds, queuedPrompts: displayedQueuedPrompts },
+      {
+        onError: (error) =>
+          Alert.alert("Could not reorder messages", error.message),
+      },
+    );
+  };
+  const displayedQueuedPrompts = reorderQueuedPrompts.isPending
+    ? reorderQueuedPrompts.variables.inboxIds.flatMap((id) =>
+        reorderQueuedPrompts.variables.queuedPrompts.filter(
+          (item) => item.id === id,
+        ),
+      )
+    : queuedPrompts;
   const abortSession = useAbortOpencodeSession({
     chatId,
     sessionId,
@@ -897,14 +952,138 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
           ]}
         >
           {areQueuedPromptsExpanded
-            ? queuedPrompts.map((item, index) => (
-                <ThemedText
+            ? displayedQueuedPrompts.map((item, index) => (
+                <Animated.View
                   key={item.id}
-                  numberOfLines={1}
-                  style={styles.queuedPrompt}
+                  style={[
+                    styles.queuedPromptRow,
+                    draggedQueuedPromptId === item.id
+                      ? {
+                          opacity: 0.8,
+                          transform: [{ translateY: queuedDragOffset }],
+                        }
+                      : undefined,
+                  ]}
                 >
-                  {index + 1}. {item.prompt.text || "Attachment"}
-                </ThemedText>
+                  <View
+                    accessible
+                    accessibilityLabel="Drag to reorder queued message"
+                    accessibilityRole="adjustable"
+                    onMoveShouldSetResponder={() =>
+                      !reorderQueuedPrompts.isPending
+                    }
+                    onResponderGrant={(event) => {
+                      queuedDragStartY.current = event.nativeEvent.pageY;
+                      queuedDragOffset.setValue(0);
+                      setDraggedQueuedPromptId(item.id);
+                    }}
+                    onResponderMove={(event) => {
+                      const startY = queuedDragStartY.current;
+                      if (startY === undefined) return;
+                      queuedDragOffset.setValue(
+                        event.nativeEvent.pageY - startY,
+                      );
+                    }}
+                    onResponderRelease={(event) => {
+                      const startY = queuedDragStartY.current;
+                      queuedDragStartY.current = undefined;
+                      if (startY === undefined) return;
+                      const offset = Math.round(
+                        (event.nativeEvent.pageY - startY) / 32,
+                      );
+                      moveQueuedPrompt(
+                        index,
+                        Math.max(
+                          0,
+                          Math.min(
+                            displayedQueuedPrompts.length - 1,
+                            index + offset,
+                          ),
+                        ),
+                      );
+                      Animated.spring(queuedDragOffset, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                      }).start(() => setDraggedQueuedPromptId(undefined));
+                    }}
+                    style={styles.queuedPromptDragHandle}
+                  >
+                    <View style={styles.queuedPromptDragDots}>
+                      {Array.from({ length: 6 }).map((_, dotIndex) => (
+                        <View
+                          key={dotIndex}
+                          style={[
+                            styles.queuedPromptDragDot,
+                            { backgroundColor: theme.textSecondary },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                  <ThemedText
+                    numberOfLines={1}
+                    style={[styles.queuedPrompt, { flex: 1 }]}
+                  >
+                    {item.prompt.text || "Attachment"}
+                  </ThemedText>
+                  <Pressable
+                    accessibilityLabel={
+                      isStreaming
+                        ? "Steer queued message"
+                        : "Send queued message"
+                    }
+                    accessibilityRole="button"
+                    disabled={
+                      cancelQueuedPrompt.isPending ||
+                      steerQueuedPrompt.isPending ||
+                      reorderQueuedPrompts.isPending
+                    }
+                    onPress={() =>
+                      steerQueuedPrompt.mutate(item.id, {
+                        onError: (error) =>
+                          Alert.alert("Could not steer message", error.message),
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.queuedPromptAction,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "paperplane.fill", android: "send" }}
+                      size={14}
+                      tintColor={theme.textSecondary}
+                    />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Remove queued message"
+                    accessibilityRole="button"
+                    disabled={
+                      cancelQueuedPrompt.isPending ||
+                      steerQueuedPrompt.isPending ||
+                      reorderQueuedPrompts.isPending
+                    }
+                    onPress={() =>
+                      cancelQueuedPrompt.mutate(item.id, {
+                        onError: (error) =>
+                          Alert.alert(
+                            "Could not remove message",
+                            error.message,
+                          ),
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.queuedPromptAction,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "trash", android: "delete" }}
+                      size={14}
+                      tintColor={theme.textSecondary}
+                    />
+                  </Pressable>
+                </Animated.View>
               ))
             : null}
           <Pressable
@@ -1608,6 +1787,27 @@ const styles = StyleSheet.create({
   },
   queuedPrompt: {
     fontSize: 12,
+  },
+  queuedPromptAction: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  queuedPromptDragHandle: { padding: 4 },
+  queuedPromptDragDot: {
+    borderRadius: 1,
+    height: 2,
+    width: 2,
+  },
+  queuedPromptDragDots: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 2,
+    width: 8,
+  },
+  queuedPromptRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
   },
   queuedPrompts: {
     borderRadius: 12,

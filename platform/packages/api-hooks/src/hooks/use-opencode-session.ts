@@ -3,6 +3,7 @@
 import {
   abortOpencodeSession,
   answerOpencodeQuestion,
+  cancelOpencodeQueuedPrompt,
   getOpencodeInventory,
   getOpencodeQueuedPrompts,
   getOpencodeSessionMessagePage,
@@ -10,9 +11,12 @@ import {
   rejectOpencodeQuestion,
   revertOpencodeSession,
   sendOpencodePrompt,
+  steerOpencodeQueuedPrompt,
   queueOpencodePrompt,
+  reorderOpencodeQueuedPrompts,
   unrevertOpencodeSession,
   type OpencodeSessionData,
+  type OpencodeQueuedPrompt,
   type OpencodePromptSelection,
   type OpencodeFileReference,
   type QuestionAnswer,
@@ -357,6 +361,105 @@ export const useQueueOpencodePrompt = ({
         password,
       );
     },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+};
+
+export const useCancelOpencodeQueuedPrompt = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
+  const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+  return useMutation({
+    mutationFn: (inboxId: string) =>
+      cancelOpencodeQueuedPrompt(
+        sessionId,
+        inboxId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+      ]),
+  });
+};
+
+export const useSteerOpencodeQueuedPrompt = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
+  const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+  return useMutation({
+    mutationFn: (inboxId: string) =>
+      steerOpencodeQueuedPrompt(
+        sessionId,
+        inboxId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+      ]),
+  });
+};
+
+export const useReorderOpencodeQueuedPrompts = ({
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  return useMutation({
+    mutationFn: ({
+      queuedPrompts,
+      inboxIds,
+    }: {
+      queuedPrompts: OpencodeQueuedPrompt[];
+      inboxIds: string[];
+    }) =>
+      reorderOpencodeQueuedPrompts(
+        queuedPrompts,
+        inboxIds,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
     onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };

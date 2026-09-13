@@ -574,7 +574,11 @@ export type OpencodePromptSelection = {
 export type OpencodeQueuedPrompt = {
   id: string;
   sessionID: string;
-  prompt: SessionInputAdmitted["prompt"];
+  prompt: SessionInputAdmitted["prompt"] & {
+    agents?: unknown[];
+    metadata?: Record<string, unknown>;
+    skills?: unknown[];
+  };
   delivery: "queue";
   timeCreated: number;
 };
@@ -1319,6 +1323,10 @@ async function postV2Prompt(
       name?: string;
       source?: { text: string; start: number; end: number };
     }>;
+    agents?: unknown[];
+    metadata?: Record<string, unknown>;
+    resume?: boolean;
+    skills?: unknown[];
     delivery: "steer" | "queue";
   },
 ) {
@@ -1366,6 +1374,91 @@ export async function getOpencodeQueuedPrompts(
   const body = (await response.json()) as { data?: unknown };
   if (!Array.isArray(body.data)) return [];
   return body.data.flatMap(normalizeQueuedPrompt);
+}
+
+export async function cancelOpencodeQueuedPrompt(
+  sessionId: string,
+  inboxId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const response = await fetch(
+    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(inboxId)}`,
+    {
+      method: "DELETE",
+      headers: getOpencodeHeaders(accessToken, password),
+    },
+  );
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(
+      detail || `Could not remove queued OpenCode prompt: ${response.status}`,
+    );
+  }
+}
+
+export async function steerOpencodeQueuedPrompt(
+  sessionId: string,
+  inboxId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const response = await fetch(
+    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(inboxId)}/steer`,
+    {
+      method: "POST",
+      headers: getOpencodeHeaders(accessToken, password),
+    },
+  );
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(
+      detail || `Could not steer queued OpenCode prompt: ${response.status}`,
+    );
+  }
+}
+
+export async function reorderOpencodeQueuedPrompts(
+  queuedPrompts: OpencodeQueuedPrompt[],
+  inboxIds: string[],
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const ordered = inboxIds.flatMap((id) =>
+    queuedPrompts.filter((item) => item.id === id),
+  );
+  if (ordered.length !== queuedPrompts.length) {
+    throw new Error("Queued prompts changed before they could be reordered");
+  }
+
+  const changedIndex = ordered.findIndex(
+    (item, index) => item.id !== queuedPrompts[index]?.id,
+  );
+  if (changedIndex < 0) return;
+
+  // Queue admission order determines delivery order, so these requests must
+  // remain sequential. Every replacement is admitted before any original is
+  // removed to avoid losing a prompt when admission fails.
+  for (const item of ordered.slice(changedIndex)) {
+    await postV2Prompt(serverUrl, accessToken, password, sessionId, {
+      ...item.prompt,
+      delivery: "queue",
+      resume: false,
+    });
+  }
+  for (const item of queuedPrompts.slice(changedIndex)) {
+    await cancelOpencodeQueuedPrompt(
+      sessionId,
+      item.id,
+      serverUrl,
+      accessToken,
+      password,
+    );
+  }
 }
 
 function normalizeQueuedPrompt(value: unknown): OpencodeQueuedPrompt[] {
