@@ -135,6 +135,8 @@ export function OpencodeSessionChat({
     accessToken,
     password,
   });
+  const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
+    useState(false);
   const answerQuestion = useAnswerOpencodeQuestion({
     chatId,
     sessionId,
@@ -512,24 +514,45 @@ export function OpencodeSessionChat({
             <>
               {queuedPrompts.length ? (
                 <div className="bg-card mb-2 rounded-2xl border px-4 py-3 shadow-sm">
-                  <div className="text-muted-foreground mb-2 flex items-center gap-2 text-xs font-medium">
+                  {areQueuedPromptsExpanded ? (
+                    <div
+                      id="queued-prompts"
+                      className="mb-2 flex flex-col gap-1.5"
+                    >
+                      {queuedPrompts.map((item, index) => (
+                        <div
+                          key={item.id}
+                          className="flex min-w-0 items-center gap-2 text-sm"
+                        >
+                          <span className="text-muted-foreground shrink-0">
+                            {index + 1}.
+                          </span>
+                          <span className="truncate">
+                            {item.prompt.text || "Attachment"}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
                     <ListTodo className="size-4" />
                     Queued messages ({queuedPrompts.length})
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    {queuedPrompts.map((item, index) => (
-                      <div
-                        key={item.id}
-                        className="flex min-w-0 items-center gap-2 text-sm"
-                      >
-                        <span className="text-muted-foreground shrink-0">
-                          {index + 1}.
-                        </span>
-                        <span className="truncate">
-                          {item.prompt.text || "Attachment"}
-                        </span>
-                      </div>
-                    ))}
+                    <button
+                      type="button"
+                      className="hover:text-foreground ml-auto flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors"
+                      aria-expanded={areQueuedPromptsExpanded}
+                      aria-controls="queued-prompts"
+                      onClick={() =>
+                        setAreQueuedPromptsExpanded((expanded) => !expanded)
+                      }
+                    >
+                      {areQueuedPromptsExpanded ? "Hide" : "Show"}
+                      <ChevronRight
+                        className={`size-3.5 transition-transform ${
+                          areQueuedPromptsExpanded ? "rotate-90" : "-rotate-90"
+                        }`}
+                      />
+                    </button>
                   </div>
                 </div>
               ) : null}

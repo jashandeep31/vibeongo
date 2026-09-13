@@ -833,6 +833,8 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
     accessToken,
     password,
   });
+  const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
+    useState(false);
   const abortSession = useAbortOpencodeSession({
     chatId,
     sessionId,
@@ -894,18 +896,48 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
             },
           ]}
         >
-          <ThemedText style={styles.queuedPromptsTitle}>
-            Queued messages ({queuedPrompts.length})
-          </ThemedText>
-          {queuedPrompts.map((item, index) => (
-            <ThemedText
-              key={item.id}
-              numberOfLines={1}
-              style={styles.queuedPrompt}
-            >
-              {index + 1}. {item.prompt.text || "Attachment"}
+          {areQueuedPromptsExpanded
+            ? queuedPrompts.map((item, index) => (
+                <ThemedText
+                  key={item.id}
+                  numberOfLines={1}
+                  style={styles.queuedPrompt}
+                >
+                  {index + 1}. {item.prompt.text || "Attachment"}
+                </ThemedText>
+              ))
+            : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: areQueuedPromptsExpanded }}
+            onPress={() => setAreQueuedPromptsExpanded((expanded) => !expanded)}
+            style={({ pressed }) => [
+              styles.queuedPromptsHeader,
+              pressed && styles.pressed,
+            ]}
+          >
+            <ThemedText style={styles.queuedPromptsTitle}>
+              Queued messages ({queuedPrompts.length})
             </ThemedText>
-          ))}
+            <ThemedText
+              style={[
+                styles.queuedPromptsToggle,
+                { color: theme.textSecondary },
+              ]}
+            >
+              {areQueuedPromptsExpanded ? "Hide" : "Show"}
+            </ThemedText>
+            <SymbolView
+              name={{
+                ios: areQueuedPromptsExpanded ? "chevron.down" : "chevron.up",
+                android: areQueuedPromptsExpanded
+                  ? "expand_more"
+                  : "keyboard_arrow_up",
+              }}
+              size={14}
+              tintColor={theme.textSecondary}
+            />
+          </Pressable>
         </View>
       ) : null}
       <OpencodeComposerController
@@ -1584,10 +1616,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 10,
   },
+  queuedPromptsHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
   queuedPromptsTitle: {
+    flex: 1,
     fontSize: 12,
     fontWeight: "700",
-    marginBottom: 2,
+  },
+  queuedPromptsToggle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginRight: 4,
   },
   restoreButton: {
     alignItems: "center",
