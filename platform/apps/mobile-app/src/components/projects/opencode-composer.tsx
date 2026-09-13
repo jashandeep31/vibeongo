@@ -252,6 +252,15 @@ export function OpencodeComposer({
   }, [activeFileMention?.query, searchFiles]);
 
   const changeText = (nextValue: string) => {
+    setSelectionEnd((currentCursor) => {
+      if (currentCursor === value.length) return nextValue.length;
+
+      const lengthDelta = nextValue.length - value.length;
+      return Math.max(
+        0,
+        Math.min(nextValue.length, currentCursor + lengthDelta),
+      );
+    });
     onChangeText(nextValue);
     onChangeFileReferences?.(
       fileReferences.filter((reference) =>

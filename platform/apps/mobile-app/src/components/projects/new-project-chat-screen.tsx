@@ -2,7 +2,12 @@ import {
   findOpencodeFiles,
   type OpencodePromptSelection,
 } from "@repo/api-client";
-import { useOpencodeInventory, useStartOpencodeSession } from "@repo/api-hooks";
+import {
+  useOpencodeInventory,
+  useOpencodeProjectDirectories,
+  useStartOpencodeSession,
+  useUserSettings,
+} from "@repo/api-hooks";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -88,6 +93,14 @@ export function NewProjectChatScreen() {
     runtime.accessToken,
     runtime.password,
   );
+  const directoriesQuery = useOpencodeProjectDirectories(
+    projectSessionId,
+    runtime.serverUrl,
+    runtime.accessToken,
+    runtime.password,
+  );
+  const resolvedDirectory = directory || directoriesQuery.data?.[0]?.worktree;
+  const { data: userSettings } = useUserSettings();
   const startSession = useStartOpencodeSession();
   const [selection, setSelection] = useState<OpencodePromptSelection>(() => ({
     agent: inheritedAgent || undefined,
@@ -101,12 +114,12 @@ export function NewProjectChatScreen() {
         runtime.serverUrl,
         runtime.accessToken,
         query,
-        directory || undefined,
+        resolvedDirectory,
         runtime.password,
       ),
     [
-      directory,
       projectSessionId,
+      resolvedDirectory,
       runtime.accessToken,
       runtime.password,
       runtime.serverUrl,
@@ -116,13 +129,19 @@ export function NewProjectChatScreen() {
   useEffect(() => {
     const inventory = inventoryQuery.data;
     if (!inventory) return;
+    const configuredDefaultModel = userSettings?.default_model ?? undefined;
+    const defaultModel = inventory.models.some(
+      (model) => model.id === configuredDefaultModel,
+    )
+      ? configuredDefaultModel
+      : (inventory.defaultSelection.model ?? inventory.models[0]?.id);
     setSelection((current) => ({
       ...current,
       model:
         current.model &&
         inventory.models.some((model) => model.id === current.model)
           ? current.model
-          : (inventory.defaultSelection.model ?? inventory.models[0]?.id),
+          : defaultModel,
       agent:
         current.agent &&
         inventory.agents.some((agent) => agent.id === current.agent)
@@ -131,7 +150,7 @@ export function NewProjectChatScreen() {
             inventory.agents.find((agent) => agent.mode === "primary")?.id ??
             inventory.agents[0]?.id),
     }));
-  }, [inventoryQuery.data]);
+  }, [inventoryQuery.data, userSettings?.default_model]);
 
   const goBack = () => {
     if (returnOpencodeSessionId && returnProjectId && returnProjectSessionId) {
@@ -172,7 +191,7 @@ export function NewProjectChatScreen() {
         serverUrl: runtime.serverUrl,
         accessToken: runtime.accessToken,
         password: runtime.password,
-        directory,
+        directory: resolvedDirectory,
         text,
         files: [],
         attachments,
@@ -290,7 +309,7 @@ export function NewProjectChatScreen() {
                   What should we work on?
                 </ThemedText>
                 <ThemedText style={styles.directory} themeColor="textSecondary">
-                  {directory}
+                  {resolvedDirectory}
                 </ThemedText>
               </View>
               <OpencodeComposerController

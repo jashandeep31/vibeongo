@@ -244,26 +244,6 @@ export function ProjectChatScreen() {
     sessionSelection.variant,
   ]);
 
-  useEffect(() => {
-    const inventory = inventoryQuery.data;
-    if (!inventory) return;
-    setSelection((current) => ({
-      ...current,
-      model:
-        current.model &&
-        inventory.models.some((model) => model.id === current.model)
-          ? current.model
-          : (inventory.defaultSelection.model ?? inventory.models[0]?.id),
-      agent:
-        current.agent &&
-        inventory.agents.some((agent) => agent.id === current.agent)
-          ? current.agent
-          : (inventory.defaultSelection.agent ??
-            inventory.agents.find((agent) => agent.mode === "primary")?.id ??
-            inventory.agents[0]?.id),
-    }));
-  }, [inventoryQuery.data]);
-
   const goBack = useCallback(() => router.replace("/"), [router]);
 
   const openNewChat = useCallback(() => {
