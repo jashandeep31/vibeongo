@@ -26,8 +26,8 @@ export const createGithubRepoOverviewWithAI = catchAsync(
     const [overviewJob] = await db
       .insert(gitRepoOverviewJobs)
       .values({
-        repoId,
-        userId: user.id,
+        repo_id: repoId,
+        user_id: user.id,
       })
       .returning({ id: gitRepoOverviewJobs.id });
 

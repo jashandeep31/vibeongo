@@ -1,6 +1,6 @@
 import {
   instanceRuntimeKind,
-  instanceSlotInstanceCategory,
+  instanceSlotCategory,
   instanceSlots,
   instanceSlotStatus,
   userTier,
@@ -13,7 +13,7 @@ export type GetInstanceSlotsFilters = {
   page?: number;
   limit?: number;
   status?: (typeof instanceSlotStatus.enumValues)[number] | "all";
-  category?: (typeof instanceSlotInstanceCategory.enumValues)[number] | "all";
+  category?: (typeof instanceSlotCategory.enumValues)[number] | "all";
   runtime?: (typeof instanceRuntimeKind.enumValues)[number] | "all";
   sessionId?: string;
 };

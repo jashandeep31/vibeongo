@@ -34,7 +34,7 @@ export const users = pgTable("users", {
 });
 
 export const accountProviders = pgEnum("account_providers", ["github"]);
-export const acountStatus = pgEnum("account_status", [
+export const accountStatus = pgEnum("account_status", [
   "active",
   "banned",
   "deleted",
@@ -45,7 +45,7 @@ export const accounts = pgTable("accounts", {
   user_id: uuid().references(() => users.id),
 
   provider: accountProviders().notNull(),
-  status: acountStatus().notNull().default("active"),
+  status: accountStatus().notNull().default("active"),
   verified: boolean().notNull().default(true),
   token: varchar({ length: 255 }).notNull(),
 

@@ -151,7 +151,7 @@ export const getInstanceCatalogAgentTool = (): Tool =>
               ram: sandboxTypes.ram,
               provider: sandboxTypes.provider,
               sandbox_region: sandboxTypes.sandbox_region,
-              price_per_seconds: sandboxTypes.price_per_seconds,
+              price_per_second: sandboxTypes.price_per_second,
             })
             .from(sandboxTypes)
             .orderBy(asc(sandboxTypes.name)),

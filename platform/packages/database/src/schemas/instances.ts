@@ -100,7 +100,8 @@ export const instanceSlotStatus = pgEnum("instance_slot_status", [
   "expired",
 ]);
 
-export const instanceSlotInstanceCategory = pgEnum(
+// Keep the deployed enum name until a database migration can rename it.
+export const instanceSlotCategory = pgEnum(
   " instance_slot_instance_category",
   ["auto", "manual"],
 );
@@ -124,13 +125,13 @@ export const instanceSlots = pgTable("instance_slots", {
   priority: integer().default(0).notNull(),
   error: text(),
 
-  category: instanceSlotInstanceCategory().notNull(),
+  category: instanceSlotCategory().notNull(),
 
   runtime_kind: instanceRuntimeKind().notNull(),
   instance_type_id: uuid().references(() => instanceTypes.id),
   sandbox_type_id: uuid().references(() => sandboxTypes.id),
   assign_domains: boolean().default(false).notNull(),
-  spined_up_by: varchar(),
+  spun_up_by: varchar("spined_up_by"),
 
   status: instanceSlotStatus().notNull(),
   created_at: timestamp().defaultNow().notNull(),

@@ -8,10 +8,10 @@ export const gitRepoOverviewJobsStatusEnum = pgEnum(
 );
 export const gitRepoOverviewJobs = pgTable("git_repo_overview_jobs", {
   id: uuid().primaryKey().defaultRandom(),
-  repoId: uuid()
+  repo_id: uuid("repoId")
     .references(() => gitRepos.id, { onDelete: "cascade" })
     .notNull(),
-  userId: uuid()
+  user_id: uuid("userId")
     .references(() => users.id, { onDelete: "cascade" })
     .notNull(),
 

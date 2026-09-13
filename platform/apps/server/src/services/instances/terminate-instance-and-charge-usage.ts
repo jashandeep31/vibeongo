@@ -430,7 +430,7 @@ const terminateSandboxInstance = async ({
   const MIN_CHARGE = Math.ceil(0.0001 * INTERNAL_MONEY_SCALE);
 
   // Step 1: convert stored price back to a real $/second value
-  const pricePerSecond = sandbox.price_per_seconds / INTERNAL_MONEY_SCALE;
+  const pricePerSecond = sandbox.price_per_second / INTERNAL_MONEY_SCALE;
 
   // Step 2: all math in real dollars, no scaling yet
   const costEachMin = pricePerSecond * 60;

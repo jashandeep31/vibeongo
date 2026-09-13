@@ -5,7 +5,7 @@ import {
   desc,
   eq,
   instanceRuntimeKind,
-  instanceSlotInstanceCategory,
+  instanceSlotCategory,
   instanceSlots,
   instanceSlotStatus,
 } from "@repo/db";
@@ -18,7 +18,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 const instanceSlotFiltersSchema = commonFilterSchema.extend({
   status: z.enum([...instanceSlotStatus.enumValues, "all"]).default("all"),
   category: z
-    .enum([...instanceSlotInstanceCategory.enumValues, "all"])
+    .enum([...instanceSlotCategory.enumValues, "all"])
     .default("all"),
   runtime: z.enum([...instanceRuntimeKind.enumValues, "all"]).default("all"),
   session_id: z.uuid().optional(),

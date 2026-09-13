@@ -2,7 +2,7 @@ import {
   and,
   eq,
   inArray,
-  instanceSlotInstanceCategory,
+  instanceSlotCategory,
   instanceSlots,
   sql,
   type Transaction,
@@ -15,7 +15,7 @@ export const getActiveInstanceSlotCount = async ({
 }: {
   tx: Transaction;
   userId: string;
-  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
+  category: (typeof instanceSlotCategory.enumValues)[number];
 }) => {
   const [result] = await tx
     .select({ count: sql<number>`count(*)::int` })
