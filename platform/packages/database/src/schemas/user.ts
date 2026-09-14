@@ -42,9 +42,10 @@ export const accountStatus = pgEnum("account_status", [
 
 export const accounts = pgTable("accounts", {
   id: uuid().unique().defaultRandom(),
-  user_id: uuid().references(() => users.id),
+  user_id: uuid().references(() => users.id).notNull().unique(),
 
   provider: accountProviders().notNull(),
+  provider_account_id: varchar({ length: 255 }).notNull().unique(),
   status: accountStatus().notNull().default("active"),
   verified: boolean().notNull().default(true),
   token: varchar({ length: 255 }).notNull(),
