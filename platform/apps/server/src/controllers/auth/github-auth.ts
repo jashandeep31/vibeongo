@@ -25,6 +25,7 @@ function getWebApp(clientId: unknown): WebApp {
 }
 
 const githubProfileSchema = z.object({
+  id: z.number().int().positive(),
   email: z.string().nullable().optional(),
   name: z.string().nullable().optional(),
   login: z.string().nullable().optional(),
@@ -156,6 +157,7 @@ export const githubAuthCallbackController = catchAsync(
     const user_agent = req.headers["user-agent"];
     const { user, account, isNewUser } = await createOrGetUser({
       email,
+      providerAccountId: profile.id.toString(),
       name: profile.name ?? undefined,
       token: accessToken,
       username: profile.login,

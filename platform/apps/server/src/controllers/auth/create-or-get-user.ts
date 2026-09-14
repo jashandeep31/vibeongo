@@ -10,6 +10,7 @@ import {
 } from "@repo/db";
 interface CreateUserInput {
   email: string;
+  providerAccountId: string;
   name?: string | undefined;
   token: string;
   username: string;
@@ -32,14 +33,22 @@ interface CreateOrGetUserResult extends UserWithAccount {
 const githubProvider: typeof accounts.$inferInsert.provider = "github";
 const internalError = "Something went wrong on our side";
 
-const getUserByEmail = async (email: string): Promise<User | undefined> => {
-  const [user] = await db
-    .select()
-    .from(users)
-    .where(eq(users.email, email))
+const getUserByGithubAccountId = async (
+  providerAccountId: string,
+): Promise<User | undefined> => {
+  const [result] = await db
+    .select({ user: users })
+    .from(accounts)
+    .innerJoin(users, eq(accounts.user_id, users.id))
+    .where(
+      and(
+        eq(accounts.provider, githubProvider),
+        eq(accounts.provider_account_id, providerAccountId),
+      ),
+    )
     .limit(1);
 
-  return user;
+  return result?.user;
 };
 
 const isKnownValue = (value?: string): value is string =>
@@ -64,6 +73,7 @@ const parseName = (name: string | undefined, username: string, email: string) =>
 const upsertGithubAccount = async (
   userId: string,
   token: string,
+  providerAccountId: string,
 ): Promise<Account> => {
   const [existingAccount] = await db
     .select()
@@ -81,6 +91,7 @@ const upsertGithubAccount = async (
       .set({
         status: "active",
         token,
+        provider_account_id: providerAccountId,
         last_login_at: now,
         updated_at: now,
       })
@@ -101,6 +112,7 @@ const upsertGithubAccount = async (
     .values({
       user_id: userId,
       provider: githubProvider,
+      provider_account_id: providerAccountId,
       status: "active",
       token,
       verified: true,
@@ -116,6 +128,7 @@ const createUserWithGithubAccount = async ({
   email,
   name,
   token,
+  providerAccountId,
   username,
 }: CreateUserInput): Promise<UserWithAccount> => {
   const { firstName, lastName } = parseName(name, username, email);
@@ -138,6 +151,7 @@ const createUserWithGithubAccount = async ({
       .values({
         user_id: user.id,
         provider: githubProvider,
+        provider_account_id: providerAccountId,
         status: "active",
         token,
         verified: true,
@@ -162,7 +176,9 @@ const createUserWithGithubAccount = async ({
 export const createOrGetUser = async (
   input: CreateUserInput,
 ): Promise<CreateOrGetUserResult> => {
-  const existingUser = await getUserByEmail(input.email);
+  const existingUser = await getUserByGithubAccountId(
+    input.providerAccountId,
+  );
   const isNewUser = !existingUser;
 
   const ip = input.ip ? input.ip.toString() : "unknown";
@@ -171,7 +187,11 @@ export const createOrGetUser = async (
   let userWithAccount: UserWithAccount;
 
   if (existingUser) {
-    const account = await upsertGithubAccount(existingUser.id, input.token);
+    const account = await upsertGithubAccount(
+      existingUser.id,
+      input.token,
+      input.providerAccountId,
+    );
     userWithAccount = {
       user: existingUser,
       account,
