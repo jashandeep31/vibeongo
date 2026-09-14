@@ -10,9 +10,9 @@ import {
 } from "../controllers/github-repo/git-repo-controller.js";
 import { workOnIssueByIssueId } from "../controllers/github-repo/work-on-issue.js";
 import { workOnPullRequestByPrNumber } from "../controllers/github-repo/work-on-pullrequest.js";
-import { createGithubRepoOverviewWithAI } from "../controllers/github-repo/git-repo-overview.js";
 import { getGitRepoPrOrIssues } from "../controllers/git-repo/get-pr-or-issues.js";
 import { getGitRepoPrOrIssueDetails } from "../controllers/git-repo/get-pr-or-issue-details.js";
+import { AppError } from "../lib/app-error.js";
 import {
   getUserGitRepoAccessTokens,
   revokeUserGitRepoAccessToken,
@@ -59,5 +59,13 @@ routes
 
 routes
   .route("/:id/schedule-overview")
-  .post(checkAuthorization(["all"]), createGithubRepoOverviewWithAI);
+  .post(
+    checkAuthorization(["all"]),
+    (_req, _res, next) =>
+      next(
+        new AppError("Repository overview feature is currently disabled", 503, {
+          reportToSentry: false,
+        }),
+      ),
+  );
 export const gitRepoRoutes = routes;
