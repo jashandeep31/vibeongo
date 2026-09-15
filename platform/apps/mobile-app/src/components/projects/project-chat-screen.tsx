@@ -46,7 +46,7 @@ import {
 
 import {
   createChatTurnCache,
-  createChatTimelineSelector,
+  createChatTurnSelector,
   getRevertedMessageLabel,
   getSessionPromptSelection,
 } from "@/components/projects/opencode-chat-turns";
@@ -75,6 +75,7 @@ import { useInstanceExpiryWarning } from "@/components/projects/instance-expiry-
 
 type SwipePreview = { chatId: string; offset: -1 | 1 };
 const CHAT_CACHE_TIME = 30 * 60 * 1_000;
+const ignoreChatRevert = () => {};
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -1296,6 +1297,113 @@ function sameItems<T>(previous: T[], next: T[]) {
   );
 }
 
+function getVisibleMessages(data: OpencodeSessionData) {
+  const revertMessageId = data.session.revert?.messageID;
+  if (!revertMessageId) return data.messages;
+
+  const revertIndex = data.messages.findIndex(
+    (message) => message.info.id === revertMessageId,
+  );
+  return revertIndex < 0 ? data.messages : data.messages.slice(0, revertIndex);
+}
+
+function getCompletedMessages(data: OpencodeSessionData) {
+  const messages = getVisibleMessages(data);
+  if (data.status.type === "idle") return messages;
+
+  const activeUserMessage = messages.findLast(
+    (message) => message.info.role === "user",
+  );
+  if (!activeUserMessage) return messages;
+
+  return messages.filter(
+    (message) =>
+      message.info.id !== activeUserMessage.info.id &&
+      !(
+        message.info.role === "assistant" &&
+        message.info.parentID === activeUserMessage.info.id
+      ),
+  );
+}
+
+function createCompletedTimelineDataSelector() {
+  let previous: OpencodeSessionData | undefined;
+
+  return (data: OpencodeSessionData): OpencodeSessionData => {
+    const messages = getCompletedMessages(data);
+    if (
+      previous &&
+      previous.session.id === data.session.id &&
+      previous.session.title === data.session.title &&
+      previous.session.directory === data.session.directory &&
+      previous.session.agent === data.session.agent &&
+      previous.session.revert?.messageID === data.session.revert?.messageID &&
+      previous.status.type === data.status.type &&
+      previous.messagePage?.hasOlder === data.messagePage?.hasOlder &&
+      previous.messagePage?.cursor === data.messagePage?.cursor &&
+      sameItems(previous.messages, messages) &&
+      sameItems(previous.questions, data.questions)
+    ) {
+      return previous;
+    }
+
+    previous = { ...data, messages };
+    return previous;
+  };
+}
+
+const ActiveChatTurnHeader = memo(function ActiveChatTurnHeader({
+  accessToken,
+  isReverting,
+  models,
+  onRevert,
+  opencodeSessionId,
+  password,
+  projectSessionId,
+  revertingId,
+  serverUrl,
+}: {
+  accessToken: string;
+  isReverting: boolean;
+  models?: OpencodeModelOption[];
+  onRevert: (id: string) => void;
+  opencodeSessionId: string;
+  password?: string;
+  projectSessionId: string;
+  revertingId?: string;
+  serverUrl: string;
+}) {
+  const sessionQuery = useOpencodeSession({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl,
+    accessToken,
+    password,
+    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
+    refetchOnMount: false,
+    gcTime: CHAT_CACHE_TIME,
+  });
+  const selectTurns = useMemo(() => createChatTurnSelector(), []);
+  const turns = useMemo(
+    () =>
+      selectTurns(
+        sessionQuery.data ? getVisibleMessages(sessionQuery.data) : [],
+        models,
+      ),
+    [models, selectTurns, sessionQuery.data],
+  );
+  const activeTurn = sessionQuery.isStreaming ? turns.at(-1) : undefined;
+
+  return activeTurn ? (
+    <OpencodeChatTurn
+      isReverting={isReverting && revertingId === activeTurn.id}
+      isStreaming
+      item={activeTurn}
+      onRevert={onRevert}
+    />
+  ) : null;
+});
+
 const ChatTimeline = memo(function ChatTimeline({
   turnCache,
   projectSessionId,
@@ -1324,6 +1432,10 @@ const ChatTimeline = memo(function ChatTimeline({
   onRevert: (id: string) => void;
 }) {
   const theme = useTheme();
+  const selectCompletedData = useMemo(
+    () => createCompletedTimelineDataSelector(),
+    [],
+  );
   const sessionQuery = useOpencodeSession({
     chatId: projectSessionId,
     sessionId: opencodeSessionId,
@@ -1331,6 +1443,8 @@ const ChatTimeline = memo(function ChatTimeline({
     accessToken,
     password,
     messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
+    select: selectCompletedData,
+    notifyOnChangeProps: ["data", "error"],
     refetchOnMount: false,
     gcTime: CHAT_CACHE_TIME,
   });
@@ -1343,22 +1457,9 @@ const ChatTimeline = memo(function ChatTimeline({
       ),
     [turnCache, projectSessionId, serverUrl, opencodeSessionId],
   );
-  const turns = useMemo(() => {
-    const messages = data?.messages ?? [];
-    const revertIndex = data?.session.revert?.messageID
-      ? messages.findIndex(
-          (message) => message.info.id === data.session.revert?.messageID,
-        )
-      : -1;
-    return selectTurns(
-      revertIndex < 0 ? messages : messages.slice(0, revertIndex),
-      models,
-    );
-  }, [data?.messages, data?.session.revert?.messageID, models, selectTurns]);
-  const selectTimeline = useMemo(() => createChatTimelineSelector(), []);
-  const { activeTurn, completedTurns } = selectTimeline(
-    turns,
-    sessionQuery.isStreaming,
+  const completedTurns = useMemo(
+    () => selectTurns(data?.messages ?? [], models),
+    [data?.messages, models, selectTurns],
   );
   useEffect(() => {
     if (!sessionQuery.data) return;
@@ -1409,17 +1510,22 @@ const ChatTimeline = memo(function ChatTimeline({
           key={opencodeSessionId}
           keyExtractor={(turn) => turn.id}
           ListHeaderComponent={
-            activeTurn ? (
-              <OpencodeChatTurn
-                isReverting={isReverting && revertingId === activeTurn.id}
-                isStreaming
-                item={activeTurn}
+            sessionQuery.isStreaming ? (
+              <ActiveChatTurnHeader
+                accessToken={accessToken}
+                isReverting={isReverting}
+                models={models}
                 onRevert={onRevert}
+                opencodeSessionId={opencodeSessionId}
+                password={password}
+                projectSessionId={projectSessionId}
+                revertingId={revertingId}
+                serverUrl={serverUrl}
               />
             ) : null
           }
           ListEmptyComponent={
-            !activeTurn && !activeQuestion && !sessionQuery.isStreaming ? (
+            !activeQuestion && !sessionQuery.isStreaming ? (
               <ThemedText
                 style={[styles.emptyText, { color: theme.textSecondary }]}
               >
@@ -1523,6 +1629,17 @@ function AdjacentChatPreview({
     );
   }, [models, selectTurns, sessionQuery.data]);
   const reversedTurns = useMemo(() => [...turns].reverse(), [turns]);
+  const renderTurn = useCallback(
+    ({ item }: { item: (typeof turns)[number] }) => (
+      <OpencodeChatTurn
+        isReverting={false}
+        isStreaming={false}
+        item={item}
+        onRevert={ignoreChatRevert}
+      />
+    ),
+    [],
+  );
   return (
     <FlatList
       inverted
@@ -1535,14 +1652,8 @@ function AdjacentChatPreview({
         { paddingTop: 150, paddingBottom: topInset },
       ]}
       keyExtractor={(turn) => turn.id}
-      renderItem={({ item }) => (
-        <OpencodeChatTurn
-          isReverting={false}
-          isStreaming={false}
-          item={item}
-          onRevert={() => {}}
-        />
-      )}
+      removeClippedSubviews={Platform.OS === "android"}
+      renderItem={renderTurn}
       ListEmptyComponent={
         <View style={styles.adjacentPreviewLoading}>
           <ActivityIndicator size="small" />
