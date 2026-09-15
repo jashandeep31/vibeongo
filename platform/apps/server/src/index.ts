@@ -37,6 +37,7 @@ import { userRoutes } from "./routes/user-routes.js";
 import test from "./test.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
+import { findWebSession } from "./lib/auth-session.js";
 
 const app = express();
 
@@ -163,6 +164,17 @@ ws.on("connection", async (socket, req) => {
   const token = getWebSocketToken(req);
   if (!token) {
     socket.close(4401, "Authentication required");
+    return;
+  }
+
+  const session = await findWebSession(token);
+  if (session) {
+    socket.userId = session.user_id;
+    try {
+      await SocketHandler(socket);
+    } catch (e) {
+      console.log(`WebSocket handler failed: ${e}`);
+    }
     return;
   }
 

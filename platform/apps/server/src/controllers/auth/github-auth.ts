@@ -14,8 +14,11 @@ import {
   consumePendingMobileAuthorization,
 } from "../../cache/oauth-cache.js";
 import { addUserOnboardingJob } from "../../jobs/user-onboarding.js";
+import {
+  createWebSession,
+  webSessionMaxAgeMs,
+} from "../../lib/auth-session.js";
 
-const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 const mobileCallbackUri = "vibeongo://auth/callback";
 
 type WebApp = "legacy" | "next";
@@ -209,12 +212,17 @@ export const githubAuthCallbackController = catchAsync(
       return;
     }
 
-    const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    const token =
+      state === "web:next"
+        ? await createWebSession({
+            userId: user.id,
+            ...(ip ? { ipAddress: ip.toString() } : {}),
+            ...(user_agent ? { userAgent: user_agent.toString() } : {}),
+          })
+        : jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: "30d" });
     res.cookie("session", token, {
       ...sessionCookieOptions,
-      maxAge: sessionMaxAgeMs,
+      maxAge: webSessionMaxAgeMs,
     });
     res.redirect(webRedirectUrl ?? env.FRONTEND_URL);
   },
