@@ -27,6 +27,8 @@ export class VercelSandboxClient {
       },
       ports: [3101, 4096, 3000, 8000],
       timeout: terminatedAfterInMinutes * 60 * 1000,
+
+      signal: AbortSignal.timeout(30_000),
     });
     await addSandboxSetupJob({
       provider: "vercel",
