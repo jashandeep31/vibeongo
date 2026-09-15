@@ -27,7 +27,8 @@ export const awsInstanceTypesSeed = awsRegionsSeed.map((region) => ({
 export const sandboxRegionsSeed = [
   { provider: "e2b", name: "US", slug: "us" },
   { provider: "daytona", name: "US", slug: "us" },
-  { provider: "vercel", name: "US", slug: "us" },
+  { provider: "vercel", name: "ap-south-1", slug: "bom1" },
+  { provider: "vercel", name: "us-east-1", slug: "iad1" },
 ] as const;
 
 export const sandboxTypesSeed = sandboxRegionsSeed.map((region) => ({
