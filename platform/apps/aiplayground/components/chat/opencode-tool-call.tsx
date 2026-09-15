@@ -63,10 +63,7 @@ export function OpencodeToolCall({
 
   const isEditGroup = tools.every((tool) => isEditTool(tool));
   if (isEditGroup) {
-    const toolDiffs = tools.flatMap((tool) => {
-      const diff = getToolDiff(tool);
-      return diff ? [diff] : [];
-    });
+    const toolDiffs = tools.flatMap(getToolDiffs);
     const diffs = toolDiffs.length > 0 ? toolDiffs : summaryDiffs;
 
     return (
@@ -254,7 +251,7 @@ function ExplorationResult({ tool }: { tool: ToolPart }) {
     );
   }
 
-  const path = getStringInput(tool, "filePath").replace(/\/+$/, "");
+  const path = getToolFile(tool).replace(/\/+$/, "");
   const name = path.split("/").filter(Boolean).at(-1) ?? "Unknown file";
 
   return (
@@ -298,7 +295,7 @@ function CompletedQuestions({ tool }: { tool: ToolPart }) {
 function ToolResult({ tool }: { tool: ToolPart }) {
   const state = tool.state;
 
-  if (tool.tool === "bash") {
+  if (isShellTool(tool)) {
     const command = getStringInput(tool, "command");
     const result =
       state.status === "completed"
@@ -338,38 +335,65 @@ function ToolResult({ tool }: { tool: ToolPart }) {
 }
 
 function getToolName(tool: ToolPart) {
-  if (tool.tool === "bash") return "Shell";
+  if (isShellTool(tool)) return "Shell";
 
   const title = "title" in tool.state ? tool.state.title : undefined;
-  return title || `${tool.tool.charAt(0).toUpperCase()}${tool.tool.slice(1)}`;
+  return title && title !== "Completed"
+    ? title
+    : `${tool.tool.charAt(0).toUpperCase()}${tool.tool.slice(1)}`;
 }
 
 function isEditTool(tool: ToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }
 
-function getToolDiff(tool: ToolPart): SnapshotFileDiff | undefined {
+function isShellTool(tool: ToolPart) {
+  return (
+    tool.tool === "bash" ||
+    tool.tool === "shell" ||
+    typeof tool.state.input.command === "string"
+  );
+}
+
+function getToolDiffs(tool: ToolPart): SnapshotFileDiff[] {
   const metadata =
     "metadata" in tool.state && tool.state.metadata
       ? tool.state.metadata
       : undefined;
+  const files = metadata?.files;
+  if (Array.isArray(files)) {
+    const diffs = files.filter(isSnapshotFileDiff).map((diff) => ({
+      ...diff,
+      file: diff.file ?? getToolFile(tool),
+    }));
+    if (diffs.length > 0) return diffs;
+  }
+
   const fileDiff = metadata?.filediff ?? metadata?.fileDiff;
 
   const patch = typeof metadata?.diff === "string" ? metadata.diff : undefined;
   if (isSnapshotFileDiff(fileDiff)) {
-    return { ...fileDiff, patch: fileDiff.patch ?? patch };
+    return [
+      {
+        ...fileDiff,
+        file: fileDiff.file ?? getToolFile(tool),
+        patch: fileDiff.patch ?? patch,
+      },
+    ];
   }
 
-  if (!patch) return undefined;
+  if (!patch) return [];
 
   const stats = countPatchChanges(patch);
-  return {
-    file: getToolFile(tool),
-    patch,
-    additions: stats.additions,
-    deletions: stats.deletions,
-    status: "modified",
-  };
+  return [
+    {
+      file: getToolFile(tool),
+      patch,
+      additions: stats.additions,
+      deletions: stats.deletions,
+      status: "modified",
+    },
+  ];
 }
 
 function isSnapshotFileDiff(value: unknown): value is SnapshotFileDiff {
@@ -384,13 +408,22 @@ function isSnapshotFileDiff(value: unknown): value is SnapshotFileDiff {
 }
 
 function getToolFile(tool: ToolPart) {
-  for (const key of ["filePath", "path", "file"]) {
+  for (const key of ["filePath", "file_path", "filepath", "path", "file"]) {
     const value = tool.state.input[key];
     if (typeof value === "string" && value) return value;
   }
 
-  const title = "title" in tool.state ? tool.state.title : undefined;
-  return typeof title === "string" && title ? title : "Unknown file";
+  const metadata =
+    "metadata" in tool.state && tool.state.metadata
+      ? tool.state.metadata
+      : undefined;
+  const files = metadata?.files;
+  if (Array.isArray(files)) {
+    const file = files.find(isSnapshotFileDiff)?.file;
+    if (file) return file;
+  }
+
+  return "Unknown file";
 }
 
 function countPatchChanges(patch: string) {

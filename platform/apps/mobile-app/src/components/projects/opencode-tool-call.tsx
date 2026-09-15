@@ -63,10 +63,7 @@ export function OpencodeToolCall({
   }
 
   if (tools.every(isEditTool)) {
-    const toolDiffs = tools.flatMap((tool) => {
-      const diff = getToolDiff(tool);
-      return diff ? [diff] : [];
-    });
+    const toolDiffs = tools.flatMap(getToolDiffs);
     const diffs = toolDiffs.length > 0 ? toolDiffs : summaryDiffs;
     return (
       <View style={styles.group}>
@@ -349,7 +346,7 @@ function ExplorationGroup({ tools }: { tools: ToolPart[] }) {
 
 function ExplorationResult({ tool }: { tool: ToolPart }) {
   const theme = useTheme();
-  const path = getStringInput(tool, "filePath").replace(/\/+$/, "");
+  const path = getToolFile(tool).replace(/\/+$/, "");
   const value =
     tool.tool === "glob"
       ? `pattern=${getStringInput(tool, "pattern")}`
@@ -372,7 +369,8 @@ function ExplorationResult({ tool }: { tool: ToolPart }) {
 function GenericTool({ tool }: { tool: ToolPart }) {
   const theme = useTheme();
   const state = tool.state;
-  const command = tool.tool === "bash" ? getStringInput(tool, "command") : "";
+  const shell = isShellTool(tool);
+  const command = shell ? getStringInput(tool, "command") : "";
   const result =
     state.status === "completed"
       ? state.output
@@ -401,7 +399,7 @@ function GenericTool({ tool }: { tool: ToolPart }) {
             state.status === "error" && styles.errorText,
           ]}
         >
-          {tool.tool === "bash"
+          {shell
             ? `${command ? `$ ${command}\n\n` : ""}${result}`
             : `${JSON.stringify(state.input, null, 2)}${
                 state.status === "completed"
@@ -417,26 +415,50 @@ function GenericTool({ tool }: { tool: ToolPart }) {
 }
 
 function getToolName(tool: ToolPart) {
-  if (tool.tool === "bash") return "Shell";
+  if (isShellTool(tool)) return "Shell";
   const title = "title" in tool.state ? tool.state.title : undefined;
-  return typeof title === "string" && title
+  return typeof title === "string" && title && title !== "Completed"
     ? title
     : `${tool.tool.charAt(0).toUpperCase()}${tool.tool.slice(1)}`;
 }
 
-function getToolDiff(tool: ToolPart): SnapshotFileDiff | undefined {
+function isShellTool(tool: ToolPart) {
+  return (
+    tool.tool === "bash" ||
+    tool.tool === "shell" ||
+    typeof tool.state.input.command === "string"
+  );
+}
+
+function getToolDiffs(tool: ToolPart): SnapshotFileDiff[] {
   const metadata = "metadata" in tool.state ? tool.state.metadata : undefined;
+  const files = metadata?.files;
+  if (Array.isArray(files)) {
+    const diffs = files.filter(isSnapshotFileDiff).map((diff) => ({
+      ...diff,
+      file: diff.file ?? getToolFile(tool),
+    }));
+    if (diffs.length > 0) return diffs;
+  }
+
   const fileDiff = metadata?.filediff ?? metadata?.fileDiff;
   const patch = typeof metadata?.diff === "string" ? metadata.diff : undefined;
   if (isSnapshotFileDiff(fileDiff)) {
-    return { ...fileDiff, patch: fileDiff.patch ?? patch };
+    return [
+      {
+        ...fileDiff,
+        file: fileDiff.file ?? getToolFile(tool),
+        patch: fileDiff.patch ?? patch,
+      },
+    ];
   }
 
-  const inputPatch = getStringInput(tool, "patch");
+  const inputPatch =
+    getStringInput(tool, "patch") || getStringInput(tool, "patchText");
   const diffPatch = patch ?? inputPatch;
-  if (!diffPatch) return undefined;
+  if (!diffPatch) return [];
   const counts = countPatchChanges(diffPatch);
-  return { file: getToolFile(tool), patch: diffPatch, ...counts };
+  return [{ file: getToolFile(tool), patch: diffPatch, ...counts }];
 }
 
 function isSnapshotFileDiff(value: unknown): value is SnapshotFileDiff {
@@ -451,13 +473,19 @@ function isSnapshotFileDiff(value: unknown): value is SnapshotFileDiff {
 }
 
 function getToolFile(tool: ToolPart) {
-  for (const key of ["filePath", "path", "file"]) {
+  for (const key of ["filePath", "file_path", "filepath", "path", "file"]) {
     const value = tool.state.input[key];
     if (typeof value === "string" && value) return value;
   }
-  return "title" in tool.state && typeof tool.state.title === "string"
-    ? tool.state.title
-    : "Unknown file";
+
+  const metadata = "metadata" in tool.state ? tool.state.metadata : undefined;
+  const files = metadata?.files;
+  if (Array.isArray(files)) {
+    const file = files.find(isSnapshotFileDiff)?.file;
+    if (file) return file;
+  }
+
+  return "Unknown file";
 }
 
 function countPatchChanges(patch: string) {

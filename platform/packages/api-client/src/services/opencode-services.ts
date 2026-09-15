@@ -2036,7 +2036,11 @@ function normalizeV2Message(
       type: "tool",
       callID: contentId,
       tool: content.name,
-      state: normalizeV2ToolState(content.state, content.time.created),
+      state: normalizeV2ToolState(
+        content.state,
+        content.time.created,
+        content.name,
+      ),
     } as Part;
   });
   return { info, parts };
@@ -2052,6 +2056,7 @@ function normalizeV2ToolState(
       : never
     : never,
   created: number,
+  toolName: string,
 ) {
   if (state.status === "streaming") {
     return { status: "pending" as const, input: {}, raw: state.input };
@@ -2060,6 +2065,7 @@ function normalizeV2ToolState(
     return {
       status: "running" as const,
       input: state.input,
+      metadata: state.metadata,
       time: { start: created },
     };
   }
@@ -2068,6 +2074,7 @@ function normalizeV2ToolState(
       status: "error" as const,
       input: state.input,
       error: state.error.message,
+      metadata: state.metadata,
       time: { start: created, end: created },
     };
   }
@@ -2079,8 +2086,11 @@ function normalizeV2ToolState(
     status: "completed" as const,
     input: state.input,
     output: text,
-    title: "Completed",
-    metadata: {},
+    title:
+      toolName === "shell" || toolName === "bash"
+        ? "Shell"
+        : `${toolName.charAt(0).toUpperCase()}${toolName.slice(1)}`,
+    metadata: state.metadata ?? {},
     time: { start: created, end: created },
     attachments: state.content.flatMap((item, index) =>
       item.type === "file"
