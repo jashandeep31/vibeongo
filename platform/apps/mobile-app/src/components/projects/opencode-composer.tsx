@@ -24,6 +24,10 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
+import {
+  OpencodeProviderConnectSheet,
+  type OpencodeProviderConnection,
+} from "@/components/projects/opencode-provider-connect-sheet";
 import { Fonts } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
@@ -31,6 +35,7 @@ import { useTheme } from "@/hooks/use-theme";
 type PickerKind = "provider" | "model" | "agent" | "variant";
 type PickerOption = { id: string; title: string; subtitle?: string };
 type ActiveFileMention = { end: number; query: string; start: number };
+const CONNECT_PROVIDER_OPTION = "__connect_provider__";
 
 function getActiveFileMention(value: string, cursor: number) {
   const match = value.slice(0, cursor).match(/(?:^|\s)@([^\s@]*)$/);
@@ -60,13 +65,12 @@ type OpencodeComposerProps = {
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
-  onToggleRaw?: () => void;
   onStop?: () => void;
+  providerConnection?: OpencodeProviderConnection;
   searchFiles?: (query: string) => Promise<string[]>;
   onSubmit: () => void;
   placeholder: string;
   selection: OpencodePromptSelection;
-  showRawResponse?: boolean;
   value: string;
 };
 
@@ -144,13 +148,12 @@ export function OpencodeComposer({
   onChangeText,
   onNewChat,
   onOpenTerminal,
-  onToggleRaw,
   onStop,
+  providerConnection,
   searchFiles,
   onSubmit,
   placeholder,
   selection,
-  showRawResponse,
   submitDisabled: submitDisabledProp,
   value,
 }: OpencodeComposerProps) {
@@ -168,7 +171,6 @@ export function OpencodeComposer({
     submitDisabledProp ||
     isSubmitting ||
     (!value.trim() && attachments.length === 0);
-  const actionDisabled = onStop ? isStopping : submitDisabled;
   const submit = () => {
     if (submitDisabled) return;
     inputRef.current?.blur();
@@ -257,6 +259,15 @@ export function OpencodeComposer({
   }, [activeFileMention?.query, searchFiles]);
 
   const changeText = (nextValue: string) => {
+    setSelectionEnd((currentCursor) => {
+      if (currentCursor === value.length) return nextValue.length;
+
+      const lengthDelta = nextValue.length - value.length;
+      return Math.max(
+        0,
+        Math.min(nextValue.length, currentCursor + lengthDelta),
+      );
+    });
     onChangeText(nextValue);
     onChangeFileReferences?.(
       fileReferences.filter((reference) =>
@@ -328,9 +339,8 @@ export function OpencodeComposer({
           onChange={onChangeSelection}
           onNewChat={onNewChat}
           onOpenTerminal={onOpenTerminal}
-          onToggleRaw={onToggleRaw}
+          providerConnection={providerConnection}
           selection={selection}
-          showRawResponse={showRawResponse}
         />
       </BlurTargetView>
       {activeFileMention && searchFiles ? (
@@ -465,27 +475,47 @@ export function OpencodeComposer({
             textAlignVertical="top"
             value={value}
           />
+          {onStop ? (
+            <Pressable
+              accessibilityLabel="Stop response"
+              accessibilityRole="button"
+              disabled={isStopping}
+              onPress={onStop}
+              style={({ pressed }) => [
+                styles.sendButton,
+                styles.stopButton,
+                isStopping && styles.disabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              {isStopping ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <SymbolView
+                  name={{ ios: "stop.fill", android: "stop" }}
+                  size={17}
+                  tintColor="#ffffff"
+                />
+              )}
+            </Pressable>
+          ) : null}
           <Pressable
-            accessibilityLabel={onStop ? "Stop response" : "Send prompt"}
+            accessibilityLabel={onStop ? "Queue task" : "Send prompt"}
             accessibilityRole="button"
-            disabled={actionDisabled}
-            onPress={onStop ?? submit}
+            disabled={submitDisabled}
+            onPress={submit}
             style={({ pressed }) => [
               styles.sendButton,
               { backgroundColor: theme.text },
-              actionDisabled && styles.disabled,
+              submitDisabled && styles.disabled,
               pressed && styles.pressed,
             ]}
           >
-            {isSubmitting || isStopping ? (
+            {isSubmitting ? (
               <ActivityIndicator color={theme.background} size="small" />
             ) : (
               <SymbolView
-                name={
-                  onStop
-                    ? { ios: "stop.fill", android: "stop" }
-                    : { ios: "arrow.up", android: "arrow_upward" }
-                }
+                name={{ ios: "arrow.up", android: "arrow_upward" }}
                 size={17}
                 tintColor={theme.background}
               />
@@ -503,21 +533,20 @@ const PromptSelectors = memo(function PromptSelectors({
   onChange,
   onNewChat,
   onOpenTerminal,
-  onToggleRaw,
+  providerConnection,
   selection,
-  showRawResponse,
 }: {
   disabled?: boolean;
   inventory?: OpencodeInventory;
   onChange: (selection: OpencodePromptSelection) => void;
   onNewChat?: () => void;
   onOpenTerminal?: () => void;
-  onToggleRaw?: () => void;
+  providerConnection?: OpencodeProviderConnection;
   selection: OpencodePromptSelection;
-  showRawResponse?: boolean;
 }) {
   const theme = useTheme();
   const [picker, setPicker] = useState<PickerKind | null>(null);
+  const [providerConnectOpen, setProviderConnectOpen] = useState(false);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
   );
@@ -539,10 +568,20 @@ const PromptSelectors = memo(function PromptSelectors({
   );
   const options = useMemo<PickerOption[]>(() => {
     if (picker === "provider") {
-      return providers.map((provider) => ({
-        id: provider.id,
-        title: provider.name,
-      }));
+      return [
+        ...providers.map((provider) => ({
+          id: provider.id,
+          title: provider.name,
+        })),
+        ...(providerConnection
+          ? [
+              {
+                id: CONNECT_PROVIDER_OPTION,
+                title: "Connect provider",
+              },
+            ]
+          : []),
+      ];
     }
     if (picker === "model") {
       return (inventory?.models ?? [])
@@ -570,10 +609,22 @@ const PromptSelectors = memo(function PromptSelectors({
       ];
     }
     return [];
-  }, [inventory, picker, providers, selectedModel, selectedProviderID]);
+  }, [
+    inventory,
+    picker,
+    providerConnection,
+    providers,
+    selectedModel,
+    selectedProviderID,
+  ]);
 
   const choose = (id: string) => {
     if (picker === "provider") {
+      if (id === CONNECT_PROVIDER_OPTION) {
+        setPicker(null);
+        setProviderConnectOpen(true);
+        return;
+      }
       const providerModel = inventory?.models.find(
         (model) => model.providerID === id,
       );
@@ -605,7 +656,7 @@ const PromptSelectors = memo(function PromptSelectors({
         style={styles.pillsScroller}
       >
         <SelectorPill
-          disabled={disabled || !providers.length}
+          disabled={disabled || (!providers.length && !providerConnection)}
           icon={{ ios: "brain", android: "psychology" }}
           label={
             selectedModel?.name ??
@@ -634,16 +685,6 @@ const PromptSelectors = memo(function PromptSelectors({
             icon={{ ios: "plus", android: "add" }}
             label="New chat"
             onPress={onNewChat}
-            showChevron={false}
-          />
-        ) : null}
-        {onToggleRaw ? (
-          <SelectorPill
-            disabled={disabled}
-            icon={{ ios: "curlybraces", android: "code" }}
-            label="Raw"
-            onPress={onToggleRaw}
-            selected={showRawResponse}
             showChevron={false}
           />
         ) : null}
@@ -682,6 +723,13 @@ const PromptSelectors = memo(function PromptSelectors({
         }
         visible={picker !== null}
       />
+      {providerConnection ? (
+        <OpencodeProviderConnectSheet
+          connection={providerConnection}
+          onClose={() => setProviderConnectOpen(false)}
+          visible={providerConnectOpen}
+        />
+      ) : null}
     </>
   );
 });
@@ -1068,6 +1116,9 @@ const styles = StyleSheet.create({
     height: 36,
     justifyContent: "center",
     width: 36,
+  },
+  stopButton: {
+    backgroundColor: "#dc2626",
   },
   sheet: {
     flex: 1,

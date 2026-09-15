@@ -7,7 +7,10 @@ import {
 
 import { Sandbox } from "e2b";
 import { and, db, eq, gitRepos, gitRepoOverviewJobs } from "@repo/db";
-import { getGitRepoCredentials } from "../github-app-functions/get-git-repo-token.js";
+import {
+  getGitCloneUrl,
+  getGitRepoCredentials,
+} from "../github-app-functions/get-git-repo-token.js";
 import { env } from "../lib/env.js";
 
 export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
@@ -38,7 +41,12 @@ export const gitRepoOverviewWorker = new Worker<GitRepoOverviewJobData>(
       apiKey: env.E2B_API_KEY,
     });
 
-    await sandbox.git.clone(gitRepoCredentials.http_url, {
+    const cloneUrl = getGitCloneUrl(
+      gitRepoCredentials.provider_url,
+      repo.full_name,
+    );
+
+    await sandbox.git.clone(cloneUrl, {
       path: `/home/user/${repoName}`,
       username: gitRepoCredentials.git_username,
       password: gitRepoCredentials.access_token,

@@ -1,14 +1,13 @@
 "use client";
 
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
+import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import { RuntimeToolCard } from "@/components/runtime-tool-card";
-import { useRuntimeControlSocket } from "@/hooks/use-runtime-control-socket";
 import {
   useGetInstances,
   useGetProjectDomainsById,
   useRestartDevScript,
-  useRuntimeStats,
 } from "@repo/api-hooks";
 import { getOpencodePassword } from "@repo/api-client";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
@@ -122,16 +121,11 @@ export function ProjectSessionSettingsPage({
     localToken,
     accessToken: instance?.access_token ?? "",
   };
-  const runtimeStats = useRuntimeStats(connection, true);
+  const runtimeSocket = useRuntimeSession();
   const restartDevScript = useRestartDevScript(connection);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(instance));
   const domainsPointToRuntime =
     domainsQuery.data?.target_instance_id === instance?.id;
-  const controlDomain = domainsPointToRuntime
-    ? domainsQuery.data?.proxy_domains.find(
-        (domain) => domain.target_port === 3101,
-      )?.domain
-    : undefined;
   const opencodeDomain = domainsPointToRuntime
     ? domainsQuery.data?.proxy_domains.find(
         (domain) => domain.target_port === 4096,
@@ -142,25 +136,19 @@ export function ProjectSessionSettingsPage({
         (domain) => domain.target_port === 3773,
       )?.domain
     : undefined;
-  const runtimeSocket = useRuntimeControlSocket({
-    enabled: Boolean(controlDomain && localToken),
-    localToken,
-    runtimeUrl: controlDomain ? `https://${controlDomain}` : "",
-  });
-
   useEffect(() => {
     if (!instance) return;
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(interval);
   }, [instance]);
 
-  const projectChatUrl = `/projects/${projectId}/chats/${projectSessionId}`;
+  const projectChatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
   const chatUrl = sessionId
-    ? `${projectChatUrl}/sessions/${sessionId}`
+    ? `${projectChatUrl}/chats/${sessionId}`
     : projectChatUrl;
-  const terminalUrl = `/projects/${projectId}/chats/${projectSessionId}/terminal`;
-  const cpuPercent = normalizePercent(runtimeStats.data?.cpu_percent);
-  const memoryPercent = normalizePercent(runtimeStats.data?.used_percent);
+  const terminalUrl = `/projects/${projectId}/sessions/${projectSessionId}/terminal`;
+  const cpuPercent = normalizePercent(runtimeSocket.stats?.cpu_percent);
+  const memoryPercent = normalizePercent(runtimeSocket.stats?.used_percent);
   const terminatesAt = instance
     ? new Date(instance.terminates_at).getTime()
     : Number.NaN;
@@ -260,13 +248,13 @@ export function ProjectSessionSettingsPage({
             icon={<Cpu className="size-4" />}
             label="CPU"
             value={cpuPercent}
-            loading={runtimeStats.isPending}
+            loading={!runtimeSocket.stats}
           />
           <MetricCard
             icon={<HardDrive className="size-4" />}
             label="Memory"
             value={memoryPercent}
-            loading={runtimeStats.isPending}
+            loading={!runtimeSocket.stats}
           />
         </section>
 

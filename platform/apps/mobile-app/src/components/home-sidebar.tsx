@@ -33,6 +33,7 @@ type NavigationItem = {
   href?:
     | "/"
     | "/github-repos"
+    | "/access-tokens"
     | "/demo-projects"
     | "/templates"
     | "/limits"
@@ -61,6 +62,11 @@ const navigation: NavigationItem[] = [
     title: "GitHub Repos",
     icon: { ios: "chevron.left.forwardslash.chevron.right", android: "code" },
     href: "/github-repos",
+  },
+  {
+    title: "Access Tokens",
+    icon: { ios: "key", android: "key" },
+    href: "/access-tokens",
   },
   {
     title: "Demo Projects",

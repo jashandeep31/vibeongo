@@ -3,14 +3,21 @@
 import {
   abortOpencodeSession,
   answerOpencodeQuestion,
+  cancelOpencodeQueuedPrompt,
+  editOpencodeQueuedPrompt,
   getOpencodeInventory,
-  getOpencodeSessionMessages,
+  getOpencodeQueuedPrompts,
+  getOpencodeSessionMessagePage,
   getOpencodeSessionRaw,
   rejectOpencodeQuestion,
   revertOpencodeSession,
   sendOpencodePrompt,
+  steerOpencodeQueuedPrompt,
+  queueOpencodePrompt,
+  reorderOpencodeQueuedPrompts,
   unrevertOpencodeSession,
   type OpencodeSessionData,
+  type OpencodeQueuedPrompt,
   type OpencodePromptSelection,
   type OpencodeFileReference,
   type QuestionAnswer,
@@ -35,6 +42,7 @@ export const useOpencodeSession = ({
   select,
   refetchOnMount,
   notifyOnChangeProps,
+  gcTime,
 }: {
   chatId: string;
   sessionId: string;
@@ -45,6 +53,7 @@ export const useOpencodeSession = ({
   select?: (data: OpencodeSessionData) => OpencodeSessionData;
   refetchOnMount?: boolean;
   notifyOnChangeProps?: UseQueryOptions<OpencodeSessionData>["notifyOnChangeProps"];
+  gcTime?: number;
 }) => {
   const queryClient = useQueryClient();
   const queryKey = useMemo(
@@ -72,6 +81,7 @@ export const useOpencodeSession = ({
     },
     enabled: !!serverUrl && !!accessToken && !!password,
     staleTime: hasOptimisticSession ? Infinity : 0,
+    ...(gcTime === undefined ? {} : { gcTime }),
     ...(select ? { select } : {}),
     ...(refetchOnMount === undefined ? {} : { refetchOnMount }),
     ...(notifyOnChangeProps === undefined ? {} : { notifyOnChangeProps }),
@@ -83,11 +93,11 @@ export const useOpencodeSession = ({
   const [isLoadingOlder, setIsLoadingOlder] = useState(false);
   const loadOlder = useCallback(async () => {
     const current = queryClient.getQueryData<OpencodeSessionData>(queryKey);
-    const before = current?.messagePage?.oldestMessageId;
+    const cursor = current?.messagePage?.cursor;
     if (
       !messageLimit ||
       !current?.messagePage?.hasOlder ||
-      !before ||
+      !cursor ||
       loadingOlderRef.current
     ) {
       return;
@@ -96,77 +106,29 @@ export const useOpencodeSession = ({
     loadingOlderRef.current = true;
     setIsLoadingOlder(true);
     try {
-      const requestedPageSize = messageLimit + 1;
-      let pageLimit = requestedPageSize;
-      let older;
-      try {
-        older = await getOpencodeSessionMessages(
-          chatId,
-          current.session,
-          serverUrl,
-          accessToken,
-          password,
-          { before, limit: requestedPageSize },
-        );
-      } catch {
-        // Older OpenCode servers reject the `before` query parameter. Fall
-        // back to requesting a larger latest-message window instead.
-        pageLimit = current.messages.length + requestedPageSize;
-        older = await getOpencodeSessionMessages(
-          chatId,
-          current.session,
-          serverUrl,
-          accessToken,
-          password,
-          { limit: pageLimit },
-        );
-      }
-      // Older servers may ignore `before`. Request a larger latest window
-      // once, then fail visibly if the server still cannot advance history.
-      const knownIds = new Set(
-        current.messages.map((message) => message.info.id),
+      const olderPage = await getOpencodeSessionMessagePage(
+        chatId,
+        current.session,
+        serverUrl,
+        accessToken,
+        password,
+        { cursor, limit: messageLimit },
       );
-      if (
-        pageLimit === requestedPageSize &&
-        older.length > 0 &&
-        older.every((message) => knownIds.has(message.info.id))
-      ) {
-        pageLimit = current.messages.length + requestedPageSize;
-        older = await getOpencodeSessionMessages(
-          chatId,
-          current.session,
-          serverUrl,
-          accessToken,
-          password,
-          { limit: pageLimit },
-        );
-        if (
-          older.length >= requestedPageSize &&
-          older.every((message) => knownIds.has(message.info.id))
-        ) {
-          throw new Error(
-            "The server returned the same history page. Update the project's OpenCode server and try again.",
-          );
-        }
-      }
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (latest) => {
         if (!latest) return latest;
         const existingIds = new Set(
           latest.messages.map((message) => message.info.id),
         );
-        const uniqueOlder = older.filter(
+        const uniqueOlder = olderPage.messages.filter(
           (message) => !existingIds.has(message.info.id),
         );
-        const hasOlder = uniqueOlder.length > messageLimit;
-        const page = hasOlder
-          ? uniqueOlder.slice(-messageLimit)
-          : uniqueOlder;
-        const messages = [...page, ...latest.messages];
+        const messages = [...uniqueOlder, ...latest.messages];
         return {
           ...latest,
           messages,
           messagePage: {
-            hasOlder,
+            hasOlder: Boolean(olderPage.cursor),
+            ...(olderPage.cursor ? { cursor: olderPage.cursor } : {}),
             oldestMessageId: messages[0]?.info.id,
           },
         };
@@ -208,11 +170,12 @@ function reconcileActiveOpencodeSession(
       message.info.role === "user" &&
       !message.info.id.startsWith("optimistic:"),
   );
-  const currentMessages = incomingHasRealUserMessage
+  const retainedMessages = incomingHasRealUserMessage
     ? current.messages.filter(
         (message) => !message.info.id.startsWith("optimistic:"),
       )
     : current.messages;
+  const currentMessages = dedupeOpencodeMessages(retainedMessages);
   const incomingById = new Map(
     incoming.messages.map((message) => [message.info.id, message]),
   );
@@ -233,19 +196,45 @@ function reconcileActiveOpencodeSession(
     return {
       info:
         current.status.type === "idle" ? incomingMessage.info : message.info,
-      parts: [...parts, ...currentPartsById.values()],
+      parts:
+        current.status.type === "idle"
+          ? parts
+          : dedupeOpencodeParts([...parts, ...currentPartsById.values()]),
     };
   });
   mergedMessages.push(...incomingById.values());
 
   return {
     ...incoming,
-    messages: mergedMessages,
+    messages: dedupeOpencodeMessages(mergedMessages),
     messagePage: current.messagePage ?? incoming.messagePage,
     ...(!incomingHasRealUserMessage && current.optimistic
       ? { optimistic: true }
       : {}),
   };
+}
+
+function dedupeOpencodeMessages(messages: OpencodeSessionData["messages"]) {
+  const byId = new Map<string, OpencodeSessionData["messages"][number]>();
+  for (const message of messages) {
+    const existing = byId.get(message.info.id);
+    byId.set(
+      message.info.id,
+      existing
+        ? {
+            info: message.info,
+            parts: dedupeOpencodeParts([...existing.parts, ...message.parts]),
+          }
+        : message,
+    );
+  }
+  return [...byId.values()];
+}
+
+function dedupeOpencodeParts(
+  parts: OpencodeSessionData["messages"][number]["parts"],
+) {
+  return [...new Map(parts.map((part) => [part.id, part])).values()];
 }
 
 export const useSendOpencodePrompt = ({
@@ -301,6 +290,214 @@ export const useSendOpencodePrompt = ({
         password,
       );
     },
+  });
+};
+
+export const useOpencodeQueuedPrompts = ({
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "queue", sessionId, serverUrl],
+    queryFn: () =>
+      getOpencodeQueuedPrompts(sessionId, serverUrl, accessToken, password),
+    enabled: !!sessionId && !!serverUrl && !!accessToken && !!password,
+    refetchInterval: 1_000,
+  });
+
+export const useQueueOpencodePrompt = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  return useMutation({
+    mutationFn: async ({
+      text,
+      files,
+      attachments: directAttachments = [],
+      fileReferences = [],
+      selection,
+    }: {
+      text: string;
+      files: File[];
+      attachments?: UploadAttachment[];
+      fileReferences?: OpencodeFileReference[];
+      selection: OpencodePromptSelection;
+    }) => {
+      const attachments: UploadAttachment[] = await Promise.all(
+        files.map(async (file) => ({
+          type: "image" as const,
+          name: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          dataUrl: await fileToDataUrl(file),
+        })),
+      );
+      return queueOpencodePrompt(
+        chatId,
+        sessionId,
+        text,
+        [...directAttachments, ...attachments],
+        fileReferences,
+        selection,
+        serverUrl,
+        accessToken,
+        password,
+      );
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+};
+
+export const useCancelOpencodeQueuedPrompt = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
+  const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+  return useMutation({
+    mutationFn: (inboxId: string) =>
+      cancelOpencodeQueuedPrompt(
+        sessionId,
+        inboxId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+      ]),
+  });
+};
+
+export const useSteerOpencodeQueuedPrompt = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
+  const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+  return useMutation({
+    mutationFn: (inboxId: string) =>
+      steerOpencodeQueuedPrompt(
+        sessionId,
+        inboxId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+      ]),
+  });
+};
+
+export const useReorderOpencodeQueuedPrompts = ({
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  return useMutation({
+    mutationFn: ({
+      queuedPrompts,
+      inboxIds,
+    }: {
+      queuedPrompts: OpencodeQueuedPrompt[];
+      inboxIds: string[];
+    }) =>
+      reorderOpencodeQueuedPrompts(
+        queuedPrompts,
+        inboxIds,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+  });
+};
+
+export const useEditOpencodeQueuedPrompt = ({
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  return useMutation({
+    mutationFn: ({
+      queuedPrompts,
+      inboxId,
+      text,
+    }: {
+      queuedPrompts: OpencodeQueuedPrompt[];
+      inboxId: string;
+      text: string;
+    }) =>
+      editOpencodeQueuedPrompt(
+        queuedPrompts,
+        inboxId,
+        text,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
   });
 };
 

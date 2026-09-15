@@ -190,6 +190,12 @@ export function PlaygroundUserMenu() {
 
             <DropdownMenuSeparator />
             <DropdownMenuItem asChild className="rounded-lg">
+              <Link href="/profile" onClick={closeMobileSidebar}>
+                <UserRound />
+                Profile
+              </Link>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild className="rounded-lg">
               <Link href="/wallet" onClick={closeMobileSidebar}>
                 <WalletCards />
                 Wallet

@@ -1,0 +1,157 @@
+---
+title: Protect your repositories
+description: Require pull requests on GitHub and Forgejo so agents cannot overwrite the main branch.
+---
+
+# Protect your repositories
+
+Protect the default branch before giving a coding agent repository write access.
+The recommended policy blocks direct and force pushes to `main`, while allowing
+an agent to push a separate branch and open a pull request.
+
+Branch protection guards the protected branch. It does not stop an agent from
+rewriting its own working branch, so give each agent a separate branch and
+review the pull request before merging it.
+
+## Recommended policy
+
+Apply these rules to `main`:
+
+- require every change to arrive through a pull request;
+- block force pushes and branch deletion;
+- apply the rules to administrators and automation identities;
+- do not give an agent bypass permission;
+- optionally require one human approval and your CI status checks.
+
+Requiring a pull request with zero approvals records and isolates the change,
+but it does not provide human review. Require at least one approval when a human
+must explicitly accept every agent change.
+
+## GitHub
+
+GitHub rulesets are the preferred way to apply the policy:
+
+1. Open the repository on GitHub and select **Settings**.
+2. In **Code and automation**, open **Rules**, then **Rulesets**.
+3. Select **New ruleset** and **New branch ruleset**.
+4. Name it `Protect main` and set **Enforcement status** to **Active**.
+5. Leave the bypass list empty. In particular, do not add the GitHub App, bot,
+   or user account used by an agent.
+6. Under **Target branches**, include the default branch, or include the branch
+   pattern `main`.
+7. Enable **Restrict deletions**, **Require a pull request before merging**, and
+   **Block force pushes**.
+8. Set required approvals to `1` for human review, or `0` if a pull request is
+   required only as an audit trail.
+9. If CI is configured, enable **Require status checks to pass** and select the
+   checks that must succeed.
+10. Create the ruleset.
+
+GitHub documents the complete [ruleset creation
+flow](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/creating-rulesets-for-a-repository)
+and the [available branch
+rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets).
+
+### Protect selected files on GitHub
+
+If some paths need an explicit owner, add a `.github/CODEOWNERS` file and enable
+**Require review from Code Owners** in the pull-request rule. For example:
+
+```text
+# A trusted team must approve changes to deployment and agent policy files.
+/.github/                    @YOUR_ORG/platform-maintainers
+/infra/                      @YOUR_ORG/platform-maintainers
+/AGENTS.md                   @YOUR_ORG/platform-maintainers
+```
+
+Replace the example team with a real GitHub user or team that has repository
+access. Do not make the agent identity a code owner or ruleset bypass actor.
+
+## Forgejo
+
+For a repository created or forked by VibeOngo, no manual setup is required.
+The server calls `ensureForgejoMainBranchProtection` in
+`platform/apps/server/src/services/forgejo/repo-actions.ts` after repository
+creation, template generation, and forking. It also repairs protection when an
+existing repository is reused.
+
+The service sends this branch-protection policy through the Forgejo API:
+
+```ts
+const MAIN_BRANCH_PROTECTION = {
+  rule_name: "main",
+  enable_push: false,
+  enable_push_whitelist: false,
+  enable_merge_whitelist: false,
+  apply_to_admins: true,
+  required_approvals: 0,
+};
+```
+
+The important settings are:
+
+| Setting | Effect |
+| --- | --- |
+| `rule_name: "main"` | Protects the `main` branch. |
+| `enable_push: false` | Blocks direct pushes, including force pushes, to `main`. |
+| `apply_to_admins: true` | Prevents administrators from silently bypassing the push rule. |
+| `enable_merge_whitelist: false` | Keeps pull-request merging available to users who normally have merge permission. |
+| `required_approvals: 0` | Requires the pull-request route without requiring a review. Change it to `1` for human approval. |
+
+`ensureForgejoMainBranchProtection` first reads the `main` rule. It patches an
+existing rule or creates one when Forgejo returns `404`, so calling it repeatedly
+is safe.
+
+### Configure Forgejo manually
+
+For repositories not managed by VibeOngo:
+
+1. Open the repository in Forgejo and select **Settings**.
+2. Open **Branches** and add a branch protection rule for `main`.
+3. Disable direct push to the protected branch. Do not add the agent account to
+   a push allowlist.
+4. Apply the protection to administrators.
+5. Keep pull-request merging enabled.
+6. Set required approvals to `1` for mandatory human review, or `0` for a
+   PR-only audit trail.
+7. Save the rule.
+
+Forgejo wording can vary slightly by version. Verify the saved rule by trying
+the checks below instead of relying only on the form labels.
+
+## Verify the protection
+
+Use a disposable commit for this test. A direct push to `main` must fail:
+
+```bash
+git switch main
+git pull --ff-only
+git commit --allow-empty -m "test: verify branch protection"
+git push origin main
+```
+
+Move that commit to an agent branch and push it:
+
+```bash
+git switch -c agent/verify-protection
+git push -u origin agent/verify-protection
+```
+
+Open a pull request from `agent/verify-protection` into `main`. The pull request
+should be mergeable only after all configured approvals and checks pass. Also
+confirm that a force push to `main` is rejected and that the agent identity is
+not listed as a bypass actor or push-allowlisted user.
+
+## Agent workflow
+
+Give the agent write access only when it needs to publish a branch. Its normal
+flow should be:
+
+```text
+main (protected) -> agent/task-name -> pull request -> review/checks -> merge
+```
+
+Use a fresh `agent/<task>` branch for every task. Never share a long-lived
+working branch between agents, and never give their credentials administrator,
+ruleset-editing, or bypass privileges. Branch protection cannot help if the
+same credentials can disable the protection.

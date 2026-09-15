@@ -25,15 +25,21 @@ export const addUserOnboardingJob = async (data: UserOnboardingJobData) => {
   const existingJob = await userOnboardingQueue.getJob(jobId);
 
   if (existingJob) {
-    if ((await existingJob.getState()) === "failed") {
+    const state = await existingJob.getState();
+
+    if (state === "failed") {
       await existingJob.retry();
+      return;
     }
-    return;
+
+    if (state !== "completed") return;
+
+    await existingJob.remove();
   }
 
   await userOnboardingQueue.add(USER_ONBOARDING_JOB_NAME, data, {
     jobId,
-    attempts: 5,
+    attempts: 3,
     backoff: {
       type: "exponential",
       delay: 5_000,

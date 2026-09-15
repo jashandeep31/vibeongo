@@ -1,1 +1,0 @@
-ALTER TYPE "public"."user_config_type" ADD VALUE 'fx';

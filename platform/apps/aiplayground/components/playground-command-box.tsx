@@ -32,11 +32,15 @@ import {
   BotMessageSquare,
   ExternalLink,
   Folder,
+  FolderOpen,
   Gauge,
+  GitCompareArrows,
   Globe,
   Github,
   House,
   Import,
+  KeyRound,
+  LayoutTemplate,
   Loader2,
   MessageSquarePlus,
   Play,
@@ -44,6 +48,7 @@ import {
   Settings,
   SquareDashedMousePointer,
   SquarePen,
+  Terminal,
   WalletCards,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -81,10 +86,22 @@ const staticNavigation = [
     keywords: "git repos repositories github",
   },
   {
+    title: "Access Tokens",
+    url: "/access-tokens",
+    icon: KeyRound,
+    keywords: "git access tokens credentials github forgejo",
+  },
+  {
     title: "Demo Projects",
     url: "/demo-projects",
     icon: Import,
     keywords: "import demo projects templates",
+  },
+  {
+    title: "Templates",
+    url: "/templates",
+    icon: LayoutTemplate,
+    keywords: "templates project templates",
   },
   {
     title: "Wallet",
@@ -109,9 +126,14 @@ function getServerUrl(
 
 export function PlaygroundCommandBox() {
   const router = useRouter();
-  const params = useParams<{ projectId?: string; chatId?: string }>();
+  const params = useParams<{
+    opencodeSessionId?: string;
+    projectId?: string;
+    projectSessionId?: string;
+  }>();
+  const routeOpencodeSessionId = params.opencodeSessionId;
   const routeProjectId = params.projectId;
-  const routeProjectSessionId = params.chatId;
+  const routeProjectSessionId = params.projectSessionId;
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const chatsBySessionId = useSessionChatsStore(
@@ -263,8 +285,20 @@ export function PlaygroundCommandBox() {
   ) => {
     const searchParams = new URLSearchParams({ serverUrl });
     router.push(
-      `/projects/${encodeURIComponent(targetProjectId)}/chats/${encodeURIComponent(projectSessionId)}/sessions/${encodeURIComponent(opencodeSessionId)}?${searchParams.toString()}`,
+      `/projects/${encodeURIComponent(targetProjectId)}/sessions/${encodeURIComponent(projectSessionId)}/chats/${encodeURIComponent(opencodeSessionId)}?${searchParams.toString()}`,
     );
+    setOpen(false);
+  };
+
+  const currentChatNavigation =
+    routeProjectId && routeProjectSessionId && routeOpencodeSessionId
+      ? {
+          chatUrl: `/projects/${encodeURIComponent(routeProjectId)}/sessions/${encodeURIComponent(routeProjectSessionId)}/chats/${encodeURIComponent(routeOpencodeSessionId)}`,
+          terminalUrl: `/projects/${encodeURIComponent(routeProjectId)}/sessions/${encodeURIComponent(routeProjectSessionId)}/terminal`,
+        }
+      : null;
+  const navigateTo = (url: string) => {
+    router.push(url);
     setOpen(false);
   };
 
@@ -285,7 +319,7 @@ export function PlaygroundCommandBox() {
 
     const searchParams = new URLSearchParams({ serverUrl, directory });
     router.push(
-      `/projects/${encodeURIComponent(repoDialogSession.session.project_id)}/chats/${encodeURIComponent(repoDialogSession.session.id)}?${searchParams.toString()}`,
+      `/projects/${encodeURIComponent(repoDialogSession.session.project_id)}/sessions/${encodeURIComponent(repoDialogSession.session.id)}?${searchParams.toString()}`,
     );
     setRepoDialogSessionId(null);
     setOpen(false);
@@ -634,6 +668,53 @@ export function PlaygroundCommandBox() {
                 </CommandGroup>
                 {projectOptions}
               </>
+            ) : null}
+
+            {currentChatNavigation ? (
+              <CommandGroup heading="Current chat">
+                <CommandItem
+                  value="current chat messages conversation"
+                  onSelect={() => navigateTo(currentChatNavigation.chatUrl)}
+                >
+                  <BotMessageSquare />
+                  Chat
+                </CommandItem>
+                <CommandItem
+                  value="git diff review changes changed files source control"
+                  onSelect={() =>
+                    navigateTo(`${currentChatNavigation.chatUrl}/review`)
+                  }
+                >
+                  <GitCompareArrows />
+                  Review changes
+                  <CommandShortcut>Git diff</CommandShortcut>
+                </CommandItem>
+                <CommandItem
+                  value="files browse workspace code current chat"
+                  onSelect={() =>
+                    navigateTo(`${currentChatNavigation.chatUrl}/files`)
+                  }
+                >
+                  <FolderOpen />
+                  Files
+                </CommandItem>
+                <CommandItem
+                  value="chat settings runtime configuration current chat"
+                  onSelect={() =>
+                    navigateTo(`${currentChatNavigation.chatUrl}/settings`)
+                  }
+                >
+                  <Settings />
+                  Runtime settings
+                </CommandItem>
+                <CommandItem
+                  value="terminal shell command line current session"
+                  onSelect={() => navigateTo(currentChatNavigation.terminalUrl)}
+                >
+                  <Terminal />
+                  Terminal
+                </CommandItem>
+              </CommandGroup>
             ) : null}
 
             <CommandGroup heading="Navigation">

@@ -69,11 +69,13 @@ const MarkdownRenderer = memo(({ content }: MarkdownRendererProps) => {
           ),
           a: ({ className, ...props }) => (
             <a
+              {...props}
               className={cn(
                 "font-medium underline underline-offset-4",
                 className,
               )}
-              {...props}
+              target="_blank"
+              rel="noreferrer"
             />
           ),
           p: ({ className, ...props }) => (
@@ -89,7 +91,13 @@ const MarkdownRenderer = memo(({ content }: MarkdownRendererProps) => {
             />
           ),
           li: ({ className, ...props }) => (
-            <li className={cn("mt-1", className)} {...props} />
+            <li
+              className={cn(
+                "mt-1 [&>input[type=checkbox]]:mr-2 [&>input[type=checkbox]]:align-middle",
+                className,
+              )}
+              {...props}
+            />
           ),
           blockquote: ({ className, ...props }) => (
             <blockquote

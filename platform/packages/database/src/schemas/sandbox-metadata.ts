@@ -42,7 +42,7 @@ export const sandboxTypes = pgTable("sandbox_types", {
   }),
 
   // Stored as real price * 10^7.
-  price_per_seconds: bigint({ mode: "number" }).notNull(),
+  price_per_second: bigint("price_per_seconds", { mode: "number" }).notNull(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),

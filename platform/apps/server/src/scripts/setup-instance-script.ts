@@ -22,6 +22,9 @@ set -euxo pipefail
 mkdir -p /home/ubuntu/.logs
 exec > /home/ubuntu/.logs/vibeongo.log 2>&1
 
+git config --global user.email "hi@jashan.dev"
+git config --global user.name "vibeongo"
+
 USER_HOME="/home/${username}"
 
 setup_ssh() {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import {
   createWebTerminalSocket,
@@ -17,6 +17,18 @@ export type WebTmuxPane = { name: string };
 export type WebTmuxWindow = { id: string; name: string; panes: WebTmuxPane[] };
 export type WebTmuxSession = { name: string; windows: WebTmuxWindow[] };
 export type WebFavoriteDir = { name: string; path: string };
+export type RuntimeStats = {
+  cpu_percent: number;
+  free: number;
+  time: string;
+  total: number;
+  used: number;
+  used_percent: number;
+};
+export type RuntimeControlMessage = {
+  data?: unknown;
+  type?: unknown;
+};
 export type WebTerminalSession =
   | { id: string; kind: "shell"; name: string; workingDirectory: string }
   | {
@@ -148,7 +160,16 @@ export function useWebTerminalWorkspaceSocket({
   >(null);
   const [tmuxSessions, setTmuxSessions] = useState<WebTmuxSession[]>([]);
   const [favoriteDirs, setFavoriteDirs] = useState<WebFavoriteDir[]>([]);
+  const [stats, setStats] = useState<RuntimeStats | null>(null);
+  const [logs, setLogs] = useState("");
+  const [toolMessages, setToolMessages] = useState<
+    Partial<Record<"codex" | "opencode", RuntimeControlMessage>>
+  >({});
   const reconnectAttemptRef = useRef(0);
+  const socketRef = useRef<WebSocket | null>(null);
+  const listenersRef = useRef(
+    new Set<(message: RuntimeControlMessage) => void>(),
+  );
 
   useEffect(() => {
     if (!enabled || !runtimeUrl || !localToken || !accessToken) {
@@ -157,6 +178,9 @@ export function useWebTerminalWorkspaceSocket({
       setActiveTerminalSessionId(null);
       setTmuxSessions([]);
       setFavoriteDirs([]);
+      setStats(null);
+      setLogs("");
+      setToolMessages({});
       return;
     }
 
@@ -194,6 +218,7 @@ export function useWebTerminalWorkspaceSocket({
           path: "/v2/ws",
           runtimeUrl,
         });
+        socketRef.current = socket;
       } catch {
         if (!active) return;
         setStatus("error");
@@ -206,12 +231,16 @@ export function useWebTerminalWorkspaceSocket({
         if (!active || socket !== currentSocket) return;
         reconnectAttemptRef.current = 0;
         setStatus("connected");
+        currentSocket.send(
+          JSON.stringify({ type: "subscribe", topics: ["stats"] }),
+        );
       };
       currentSocket.onmessage = (event) => {
         if (!active || typeof event.data !== "string") return;
 
         try {
           const message = JSON.parse(event.data) as Record<string, unknown>;
+          listenersRef.current.forEach((listener) => listener(message));
           if (message.type === "terminalSessions") {
             const sessions = parseTerminalSessions(message.sessions);
             if (!sessions) return;
@@ -225,6 +254,30 @@ export function useWebTerminalWorkspaceSocket({
           } else if (message.type === "favoriteDirs") {
             const dirs = parseFavoriteDirs(message.dirs);
             if (dirs) setFavoriteDirs(dirs);
+          } else if (message.type === "stats") {
+            const data = message.data as Partial<RuntimeStats> | undefined;
+            if (
+              data &&
+              typeof data.cpu_percent === "number" &&
+              typeof data.used_percent === "number"
+            ) {
+              setStats(data as RuntimeStats);
+            }
+          } else if (
+            message.type === "logs" &&
+            typeof message.data === "string"
+          ) {
+            setLogs(message.data.slice(-40_000));
+          } else if (
+            message.type === "tool" &&
+            message.data &&
+            typeof message.data === "object" &&
+            !Array.isArray(message.data)
+          ) {
+            const tool = (message.data as Record<string, unknown>).tool;
+            if (tool === "codex" || tool === "opencode") {
+              setToolMessages((current) => ({ ...current, [tool]: message }));
+            }
           }
         } catch {
           // Ignore non-control messages on the workspace socket.
@@ -238,28 +291,57 @@ export function useWebTerminalWorkspaceSocket({
       currentSocket.onclose = () => {
         if (!active || socket !== currentSocket) return;
         socket = null;
+        socketRef.current = null;
         setStatus("disconnected");
         scheduleReconnect();
       };
     };
 
     reconnectAttemptRef.current = 0;
+    setStats(null);
+    setLogs("");
+    setToolMessages({});
     void connect();
 
     return () => {
       active = false;
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectAttemptRef.current = 0;
+      socketRef.current = null;
       socket?.close(1000, "Web terminal workspace unmounted");
     };
   }, [accessToken, enabled, localToken, runtimeUrl]);
 
+  const sendJsonMessage = useCallback((message: unknown) => {
+    const socket = socketRef.current;
+    if (!socket || socket.readyState !== WebSocket.OPEN) return false;
+    try {
+      socket.send(JSON.stringify(message));
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const subscribeJsonMessage = useCallback(
+    (listener: (message: RuntimeControlMessage) => void) => {
+      listenersRef.current.add(listener);
+      return () => listenersRef.current.delete(listener);
+    },
+    [],
+  );
+
   return {
     activeTerminalSessionId,
     favoriteDirs,
+    logs,
+    sendJsonMessage,
+    stats,
     status,
+    subscribeJsonMessage,
     terminalSessionIds: terminalSessions.map((session) => session.id),
     terminalSessions,
     tmuxSessions,
+    toolMessages,
   };
 }

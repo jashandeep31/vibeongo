@@ -22,6 +22,38 @@ export type ToolPart = OpencodeToolPart;
 export const createChatTurns = createOpencodeChatTurns;
 export const getMessageText = getOpencodeMessageText;
 
+// Owned by the screen; retain only the three most recently displayed chats.
+export function createChatTurnCache() {
+  const selectors = new Map<
+    string,
+    ReturnType<typeof createChatTurnSelector>
+  >();
+  return (key: string) => {
+    const selector = selectors.get(key) ?? createChatTurnSelector();
+    selectors.delete(key);
+    selectors.set(key, selector);
+    if (selectors.size > 3) selectors.delete(selectors.keys().next().value!);
+    return selector;
+  };
+}
+
+export function createChatTimelineSelector() {
+  let previousCompleted: ChatTurn[] = [];
+
+  return (turns: ChatTurn[], isStreaming: boolean) => {
+    const activeTurn = isStreaming ? turns.at(-1) : undefined;
+    const completed = activeTurn ? turns.slice(0, -1) : turns;
+    const completedTurns =
+      completed.length === previousCompleted.length &&
+      completed.every((turn, index) => turn === previousCompleted[index])
+        ? previousCompleted
+        : completed;
+
+    previousCompleted = completedTurns;
+    return { activeTurn, completedTurns };
+  };
+}
+
 // Cache by immutable source messages, so a token only rebuilds its own turn.
 export function createChatTurnSelector() {
   let cache = new Map<string, { messages: SessionMessage[]; turn: ChatTurn }>();

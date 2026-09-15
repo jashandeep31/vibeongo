@@ -1,1 +1,0 @@
-DROP TABLE "session_auth_tokens" CASCADE;

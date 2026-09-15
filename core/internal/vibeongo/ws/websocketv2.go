@@ -1,6 +1,7 @@
 package ws
 
 import (
+	"context"
 	"encoding/json"
 	"log"
 	"os"
@@ -15,6 +16,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store/newstores"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
+	wsfunctions "github.com/jashandeep31/vibeongo/core/internal/vibeongo/ws/ws_functions"
 	"github.com/labstack/echo/v5"
 )
 
@@ -29,6 +31,14 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 
 		// closing the connection
 		defer conn.Close()
+		ctx, cancel := context.WithCancel(c.Request().Context())
+		defer cancel()
+		topicCancels := make(map[string]context.CancelFunc)
+		defer func() {
+			for _, cancelTopic := range topicCancels {
+				cancelTopic()
+			}
+		}()
 
 		// creating channels
 		stopTmuxPolling := make(chan struct{})
@@ -80,9 +90,61 @@ func WebSocketV2(tools *store.Tools) echo.HandlerFunc {
 
 			if messageType == websocket.TextMessage {
 				var control websocketV2ControlMessage
-				if err := json.Unmarshal(msg, &control); err == nil && control.Type == "killTerminal" {
+				if err := json.Unmarshal(msg, &control); err != nil {
+					websocketV2ErrorSender(conn, &writeMu)("invalid control message")
+					continue
+				}
+
+				if control.Type == "subscribe" {
+					for _, topic := range control.Topics {
+						if _, subscribed := topicCancels[topic]; subscribed {
+							continue
+						}
+						topicCtx, cancelTopic := context.WithCancel(ctx)
+						switch topic {
+						case "stats":
+							topicCancels[topic] = cancelTopic
+							go wsfunctions.StatsHandler(topicCtx, conn, &writeMu)
+						case "logs":
+							topicCancels[topic] = cancelTopic
+							go wsfunctions.LogsHandler(topicCtx, conn, &writeMu)
+						default:
+							cancelTopic()
+							websocketV2ErrorSender(conn, &writeMu)("unsupported subscription topic: " + topic)
+						}
+					}
+					continue
+				}
+
+				if control.Type == "unsubscribe" {
+					for _, topic := range control.Topics {
+						if cancelTopic, subscribed := topicCancels[topic]; subscribed {
+							cancelTopic()
+							delete(topicCancels, topic)
+						}
+					}
+					continue
+				}
+
+				if control.Type == "killTerminal" {
 					if err := handleKillTerminalSession(conn, &writeMu, tools.TerminalSessionStore, control.ID); err != nil {
 						log.Println("Failed to handle terminal kill:", err)
+						break
+					}
+					continue
+				}
+
+				if control.Type == "tool" {
+					if err := wsfunctions.ToolsHandler(ctx, conn, &writeMu, control.Data, tools, websocketV2ErrorSender(conn, &writeMu)); err != nil {
+						log.Println("Failed to handle tool control:", err)
+						break
+					}
+					continue
+				}
+
+				if control.Type == "shelltools" {
+					if err := wsfunctions.ShellToolsHandler(ctx, conn, &writeMu, control.Data, websocketV2ErrorSender(conn, &writeMu)); err != nil {
+						log.Println("Failed to handle shell tool control:", err)
 						break
 					}
 					continue
@@ -109,8 +171,30 @@ type favoriteDir struct {
 }
 
 type websocketV2ControlMessage struct {
-	Type string `json:"type"`
-	ID   string `json:"id,omitempty"`
+	Type   string          `json:"type"`
+	ID     string          `json:"id,omitempty"`
+	Data   json.RawMessage `json:"data,omitempty"`
+	Topics []string        `json:"topics,omitempty"`
+}
+
+func websocketV2ErrorSender(conn *websocket.Conn, writeMu *sync.Mutex) func(string) {
+	return func(message string) {
+		writeMu.Lock()
+		defer writeMu.Unlock()
+		if err := conn.WriteJSON(struct {
+			Type string `json:"type"`
+			Data struct {
+				Error string `json:"error"`
+			} `json:"data"`
+		}{
+			Type: "error",
+			Data: struct {
+				Error string `json:"error"`
+			}{Error: message},
+		}); err != nil {
+			log.Println("Failed to write websocket error:", err)
+		}
+	}
 }
 
 func handleKillTerminalSession(conn *websocket.Conn, writeMu *sync.Mutex, sessionsStore *newstores.SessionsStore, id string) error {

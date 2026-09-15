@@ -5,7 +5,7 @@ export type GithubRepo = typeof gitRepos.$inferSelect & {
   html_url: string;
 };
 
-export type GithubRepoIssue = {
+export type GitRepoIssue = {
   id: number;
   number: number;
   html_url: string;
@@ -27,7 +27,7 @@ export type GithubRepoIssue = {
   }[];
 };
 
-export type GithubRepoPullRequest = {
+export type GitRepoPullRequest = {
   id: number;
   number: number;
   html_url: string;
@@ -53,16 +53,55 @@ export type GithubRepoPullRequest = {
   };
 };
 
-export type GithubRepoWithIssues = GithubRepo & {
-  issues: GithubRepoIssue[];
-};
-
-export type GithubRepoWithPullRequests = GithubRepo & {
-  pull_requests: GithubRepoPullRequest[];
-};
-
 export type CreateForgejoRepoInput = {
   reponame: string;
+};
+
+export type GitRepoActivityType = "pr" | "issue";
+
+export type GitRepoAccessToken = {
+  id: string;
+  instance_id: string | null;
+  repo_id: string;
+  provider: "github" | "forgejo";
+  provider_token_id: string | null;
+  expires_at: string;
+  revoked_at: string | null;
+  created_at: string;
+  updated_at: string | null;
+};
+
+export type GetGitRepoAccessTokensParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetGitRepoAccessTokensResponse = {
+  data: GitRepoAccessToken[];
+  page: number;
+  hasNext: boolean;
+};
+
+export type GetGitRepoActivityInput<T extends GitRepoActivityType> = {
+  id: string;
+  type: T;
+  page?: number;
+  count?: number;
+};
+
+export type GitRepoActivityResponse<T extends GitRepoActivityType> = {
+  data: T extends "issue" ? GitRepoIssue[] : GitRepoPullRequest[];
+  pagination: {
+    page: number;
+    count: number;
+    hasMore: boolean;
+  };
+};
+
+export type GetGitRepoActivityDetailsInput<T extends GitRepoActivityType> = {
+  id: string;
+  type: T;
+  number: number;
 };
 
 export const createForgejoRepo =
@@ -84,6 +123,30 @@ export const getGithubRepos =
     return response.data.data;
   };
 
+export const getGitRepoAccessTokens =
+  (apiClient: AxiosInstance) =>
+  async (
+    params: GetGitRepoAccessTokensParams = {},
+  ): Promise<GetGitRepoAccessTokensResponse> => {
+    const response = await apiClient.get(`/api/v1/git-repos/access-tokens`, {
+      withCredentials: true,
+      params,
+    });
+
+    return response.data;
+  };
+
+export const revokeGitRepoAccessToken =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.delete(
+      `/api/v1/git-repos/access-tokens/${id}`,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
 export const deleteGithubRepo =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<{ message: string }> => {
@@ -94,24 +157,45 @@ export const deleteGithubRepo =
     return response.data;
   };
 
-export const getGithubRepoIssues =
+export const getGitRepoById =
   (apiClient: AxiosInstance) =>
-  async (id: string): Promise<GithubRepoWithIssues> => {
+  async (id: string): Promise<GithubRepo> => {
     const response = await apiClient.get(`/api/v1/git-repos/${id}`, {
       withCredentials: true,
-      params: { include: "issues" },
     });
 
     return response.data.data;
   };
 
-export const getGithubRepoPullRequests =
+export const getGitRepoActivity =
   (apiClient: AxiosInstance) =>
-  async (id: string): Promise<GithubRepoWithPullRequests> => {
-    const response = await apiClient.get(`/api/v1/git-repos/${id}`, {
+  async <T extends GitRepoActivityType>({
+    id,
+    type,
+    page = 1,
+    count = 20,
+  }: GetGitRepoActivityInput<T>): Promise<GitRepoActivityResponse<T>> => {
+    const response = await apiClient.get(`/api/v1/git-repos/${id}/activity`, {
       withCredentials: true,
-      params: { include: "pull_requests" },
+      params: { type, page, count },
     });
+
+    return response.data;
+  };
+
+export const getGitRepoActivityDetails =
+  (apiClient: AxiosInstance) =>
+  async <T extends GitRepoActivityType>({
+    id,
+    type,
+    number,
+  }: GetGitRepoActivityDetailsInput<T>): Promise<
+    T extends "issue" ? GitRepoIssue : GitRepoPullRequest
+  > => {
+    const response = await apiClient.get(
+      `/api/v1/git-repos/${id}/activity/${type}/${number}`,
+      { withCredentials: true },
+    );
 
     return response.data.data;
   };

@@ -4,7 +4,7 @@ import {
   eq,
   instanceRegions,
   instances,
-  instanceSlotInstanceCategory,
+  instanceSlotCategory,
   instanceTypes,
   projects,
   projectSshKeys,
@@ -45,7 +45,7 @@ interface SpinUpAndSaveInstanceV2 {
   sessionId: string;
   runtime: InstanceRuntime;
   spinedUpBy: InstanceAutoTerminateSetting;
-  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
+  category: (typeof instanceSlotCategory.enumValues)[number];
 }
 
 export const spinUpAndSaveInstanceV2 = async ({

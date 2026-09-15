@@ -10,7 +10,9 @@ import (
 
 func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	e.GET("/", handlers.Health)
-	e.GET("/ws", ws.WebSocket(tools), middlewares.CheckLocalWebSocketAuth(localToken))
+	// Deprecated: AI Playground and mobile use /v2/ws. Keep this disabled while
+	// the legacy web app is out of scope for the v2 runtime protocol migration.
+	// e.GET("/ws", ws.WebSocket(tools), middlewares.CheckLocalWebSocketAuth(localToken))
 	e.GET("/v2/ws", ws.WebSocketV2(tools), middlewares.CheckVibeongoWebSocketAuth(tools.AuthTokenStore))
 	e.GET("/v2/ws/terminal/:id", ws.TerminalWebSocket(tools), middlewares.CheckVibeongoWebSocketAuth(tools.AuthTokenStore))
 
@@ -20,7 +22,8 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	// protected.GET("/opencode/inventory", handlers.OpencodeInventoryHandler)
 	protected.POST("/ws/token", handlers.WebSocketAuthTokenHandler(tools.AuthTokenStore))
 	protected.GET("/tools-stats", handlers.ToolsStatsHandler(tools))
-	protected.GET("/stats", handlers.GetRuntimeStats)
+	// Deprecated: runtime stats are streamed over /v2/ws.
+	// protected.GET("/stats", handlers.GetRuntimeStats)
 	protected.GET("/ufw", handlers.GetAllowedPorts)
 	protected.POST("/restart-dev-script", handlers.RestartDevScriptHandler)
 	protected.GET("/terminate-after-done", handlers.GetTerminateAfterDone)

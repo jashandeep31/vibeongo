@@ -8,7 +8,7 @@ import {
   instanceSlots,
   projectSessions,
   users,
-  instanceSlotInstanceCategory,
+  instanceSlotCategory,
   projects,
 } from "@repo/db";
 import { tierLimits } from "../../utils/constants.js";
@@ -26,12 +26,12 @@ interface CheckAndLaunchInstance {
   sessionId: string;
   spinedUpBy: InstanceAutoTerminateSetting;
   runtime: InstanceRuntime;
-  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
+  category: (typeof instanceSlotCategory.enumValues)[number];
 }
 
 type DispatchQueuedInstanceLaunchesInput = {
   userId: string;
-  category: (typeof instanceSlotInstanceCategory.enumValues)[number];
+  category: (typeof instanceSlotCategory.enumValues)[number];
 };
 
 class InstanceCapacityUnavailableError extends Error {}
@@ -149,7 +149,7 @@ export async function scheduleAutomatedInstanceLaunch({
         session_id: sessionId,
         instance_type_id: project.instance_type_id,
         sandbox_type_id: project.sandbox_type_id,
-        spined_up_by: spinedUpBy,
+        spun_up_by: spinedUpBy,
         status: "queued",
       })
       .returning({ id: instanceSlots.id });
@@ -252,7 +252,7 @@ export const checkAndLaunchInstance = async ({
         instance_type_id: project.instance_type_id,
         sandbox_type_id: project.sandbox_type_id,
         status: "provisioning",
-        spined_up_by: spinedUpBy,
+        spun_up_by: spinedUpBy,
       })
       .returning({
         id: instanceSlots.id,
@@ -367,7 +367,7 @@ const spinUpInstanceFromSlot = async (slotId: string) => {
   const spinedUpBy = z
     .enum(["manual", "pr", "issue"])
     .default("manual")
-    .parse(slot.spined_up_by);
+    .parse(slot.spun_up_by);
 
   const instance = await spinUpAndSaveInstanceV2({
     userId: user.id,

@@ -1,10 +1,10 @@
 "use client";
 
-import type { SnapshotFileDiff } from "@opencode-ai/sdk/v2/client";
+import type { SnapshotFileDiff } from "@repo/api-client";
 import { cn } from "@repo/ui/lib/utils";
 import { ChevronRight, FileCode2 } from "lucide-react";
 
-type DiffRow = {
+export type OpencodeDiffRow = {
   kind: "context" | "addition" | "deletion" | "hunk" | "meta";
   text: string;
   oldLine?: number;
@@ -18,11 +18,13 @@ export function OpencodeFileDiff({
   diff: SnapshotFileDiff;
   defaultOpen?: boolean;
 }) {
-  const path = normalizeFilePath(diff.file);
+  const path = normalizeOpencodeFilePath(diff.file);
   const parts = path.split("/").filter(Boolean);
   const fileName = parts.at(-1) ?? "Unknown file";
   const directory = parts.slice(0, -1).join("/");
-  const rows = collapseContext(parsePatch(diff.patch ?? ""));
+  const rows = collapseOpencodeDiffContext(
+    parseOpencodePatch(diff.patch ?? ""),
+  );
 
   return (
     <details open={defaultOpen} className="group/edit min-w-0 text-sm">
@@ -104,7 +106,7 @@ export function OpencodeFileDiff({
   );
 }
 
-function normalizeFilePath(file?: string) {
+export function normalizeOpencodeFilePath(file?: string) {
   const normalized = (file || "Unknown file").replaceAll("\\", "/");
   return normalized
     .replace(/^\/home\/ubuntu\/code\/[^/]+\//, "")
@@ -112,8 +114,8 @@ function normalizeFilePath(file?: string) {
     .replace(/^\//, "");
 }
 
-function parsePatch(patch: string): DiffRow[] {
-  const rows: DiffRow[] = [];
+export function parseOpencodePatch(patch: string): OpencodeDiffRow[] {
+  const rows: OpencodeDiffRow[] = [];
   let oldLine = 0;
   let newLine = 0;
   let insideHunk = false;
@@ -153,8 +155,8 @@ function parsePatch(patch: string): DiffRow[] {
   return rows;
 }
 
-function collapseContext(rows: DiffRow[]) {
-  const collapsed: DiffRow[] = [];
+export function collapseOpencodeDiffContext(rows: OpencodeDiffRow[]) {
+  const collapsed: OpencodeDiffRow[] = [];
 
   for (let index = 0; index < rows.length; ) {
     const row = rows[index];

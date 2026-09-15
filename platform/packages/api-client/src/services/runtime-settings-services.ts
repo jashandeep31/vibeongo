@@ -7,15 +7,6 @@ export type TerminateAfterDoneStatus = {
   terminate: boolean;
 };
 
-export type RuntimeStats = {
-  total: number;
-  used: number;
-  free: number;
-  used_percent: number;
-  cpu_percent: number;
-  time: string;
-};
-
 type RuntimeConnection = {
   runtimeUrl: string;
   localToken: string;
@@ -64,20 +55,6 @@ export async function getTerminateAfterDoneStatus({
     "Could not load terminate-after-done setting",
   );
   return response.json() as Promise<TerminateAfterDoneStatus>;
-}
-
-export async function getRuntimeStats({
-  runtimeUrl,
-  localToken,
-  accessToken,
-}: RuntimeConnection): Promise<RuntimeStats> {
-  const response = await fetch(`${getRuntimeUrl(runtimeUrl)}/stats`, {
-    headers: getRuntimeHeaders(localToken, accessToken),
-    cache: "no-store",
-    signal: AbortSignal.timeout(5_000),
-  });
-  await assertRuntimeResponse(response, "Could not load runtime stats");
-  return response.json() as Promise<RuntimeStats>;
 }
 
 export async function disableTerminateAfterDone({

@@ -11,6 +11,7 @@ const credentials = {
 
 export class VercelSandboxClient {
   async createInstance({
+    region,
     instanceName,
     userData,
     terminatedAfterInMinutes,
@@ -19,12 +20,15 @@ export class VercelSandboxClient {
     const sandbox = await Sandbox.create({
       ...credentials,
       name: instanceName.split(" ").join("-").toLowerCase(),
+      region: region,
       source: {
         type: "snapshot",
         snapshotId: instanceType,
       },
       ports: [3101, 4096, 3000, 8000],
       timeout: terminatedAfterInMinutes * 60 * 1000,
+
+      signal: AbortSignal.timeout(30_000),
     });
     await addSandboxSetupJob({
       provider: "vercel",

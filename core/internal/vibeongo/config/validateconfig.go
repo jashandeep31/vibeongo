@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 type Config struct {
@@ -58,14 +59,24 @@ type DockerConfig struct {
 	Containers []DockerContainerConfig `json:"containers"`
 }
 
+type GitRepoType string
+
+const (
+	GitRepoTypeGitHub  GitRepoType = "github"
+	GitRepoTypeForgejo GitRepoType = "forgejo"
+)
+
 type GitRepoConfig struct {
-	FullName    string `json:"full_name"`
-	AccessToken string `json:"access_token"`
-	HTTPURL     string `json:"http_url"`
-	GitUsername string `json:"git_username"`
-	FolderName  string `json:"folder_name"`
-	Public      bool   `json:"public"`
-	SetupScript string `json:"setup_script"`
+	Type        GitRepoType `json:"type"`
+	FullName    string      `json:"full_name"`
+	RepoName    string      `json:"repo_name"`
+	AccessToken string      `json:"access_token"`
+	ExpiresAt   *time.Time  `json:"expires_at"`
+	ProviderURL string      `json:"provider_url"`
+	GitUsername string      `json:"git_username"`
+	FolderName  string      `json:"folder_name"`
+	Public      bool        `json:"public"`
+	SetupScript string      `json:"setup_script"`
 }
 
 type OpenCodeConfig struct {

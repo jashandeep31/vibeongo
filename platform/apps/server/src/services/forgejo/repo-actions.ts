@@ -64,6 +64,36 @@ type GenerateForgejoRepoResult =
       statusCode?: number;
     };
 
+const MAIN_BRANCH_PROTECTION = {
+  rule_name: "main",
+  enable_push: false,
+  enable_push_whitelist: false,
+  enable_merge_whitelist: false,
+  apply_to_admins: true,
+  required_approvals: 0,
+};
+
+export async function ensureForgejoMainBranchProtection({
+  owner,
+  repo,
+}: {
+  owner: string;
+  repo: string;
+}): Promise<void> {
+  const basePath = `/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/branch_protections`;
+
+  try {
+    await forgejoAPIClient.get(`${basePath}/main`);
+    await forgejoAPIClient.patch(`${basePath}/main`, MAIN_BRANCH_PROTECTION);
+  } catch (error: unknown) {
+    if (!axios.isAxiosError(error) || error.response?.status !== 404) {
+      throw error;
+    }
+
+    await forgejoAPIClient.post(basePath, MAIN_BRANCH_PROTECTION);
+  }
+}
+
 export async function createForgejoRepo({
   username,
   reponame,
@@ -71,17 +101,24 @@ export async function createForgejoRepo({
 }: CreateForgejoRepo): Promise<CreateForgejoRepoResult> {
   try {
     const res = await forgejoAPIClient.post<ForgejoRepo>(
-      `/admin/users/${username}/repos`,
+      `/admin/users/${encodeURIComponent(username)}/repos`,
       {
+        auto_init: true,
         default_branch: "main",
         description,
         name: reponame,
         object_format_name: "sha1",
         private: false,
+        readme: "Default",
         template: true,
         trust_model: "default",
       },
     );
+
+    await ensureForgejoMainBranchProtection({
+      owner: username,
+      repo: res.data.name,
+    });
 
     return {
       status: "ok",
@@ -112,7 +149,7 @@ export async function getForgejoRepo({
 }): Promise<ForgejoRepo | null> {
   try {
     const res = await forgejoAPIClient.get<ForgejoRepo>(
-      `/repos/${username}/${reponame}`,
+      `/repos/${encodeURIComponent(username)}/${encodeURIComponent(reponame)}`,
     );
     return res.data;
   } catch (error: unknown) {
@@ -129,24 +166,30 @@ export async function getForgejoRepoAccessToken({
 }: {
   username: string;
   reponame: string;
-}): Promise<string> {
-  const res = await forgejoAPIClient.post(`/admin/users/${username}/tokens`, {
-    username: username,
-    name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
-    repositories: [
-      {
-        name: reponame,
-        owner: username,
-      },
-    ],
-    scopes: [
-      "read:issue",
-      "write:issue",
-      "read:repository",
-      "write:repository",
-    ],
-  });
-  return res.data.sha1 as string;
+}): Promise<{ accessToken: string; tokenId: number }> {
+  const res = await forgejoAPIClient.post(
+    `/admin/users/${encodeURIComponent(username)}/tokens`,
+    {
+      username: username,
+      name: `vibeongo-access-token-${crypto.randomBytes(16).toString("hex")}`,
+      repositories: [
+        {
+          name: reponame,
+          owner: username,
+        },
+      ],
+      scopes: [
+        "read:issue",
+        "write:issue",
+        "read:repository",
+        "write:repository",
+      ],
+    },
+  );
+  return {
+    accessToken: res.data.sha1 as string,
+    tokenId: res.data.id as number,
+  };
 }
 
 export async function forkRepoToForgejo({
@@ -166,7 +209,7 @@ export async function forkRepoToForgejo({
   let tokenId: number | null = null;
   try {
     const tokenResponse = await forgejoAPIClient.post(
-      `/admin/users/${forkFor}/tokens`,
+      `/admin/users/${encodeURIComponent(forkFor)}/tokens`,
       {
         name: tokenName,
         scopes: ["write:repository", "read:repository"],
@@ -179,7 +222,7 @@ export async function forkRepoToForgejo({
     if (!token) throw new AppError("Failed to create token", 500);
 
     const res = await forgejoAPIClient.post<ForgejoForkResponse>(
-      `/repos/${sourceRepoOwnername}/${sourceReponame}/forks`,
+      `/repos/${encodeURIComponent(sourceRepoOwnername)}/${encodeURIComponent(sourceReponame)}/forks`,
       {
         ...(newReponame ? { name: newReponame } : {}),
         ...(newRepoOrganizationName
@@ -199,6 +242,11 @@ export async function forkRepoToForgejo({
         error: `Unexpected Forgejo response status: ${res.status}`,
       };
     }
+
+    await ensureForgejoMainBranchProtection({
+      owner: res.data.owner.login,
+      repo: res.data.name,
+    });
 
     return {
       status: "ok",
@@ -226,7 +274,7 @@ export async function forkRepoToForgejo({
     if (tokenId !== null) {
       try {
         await forgejoAPIClient.delete(
-          `/admin/users/${forkFor}/tokens/${tokenId}`,
+          `/admin/users/${encodeURIComponent(forkFor)}/tokens/${tokenId}`,
         );
       } catch (error: unknown) {
         console.error(`Failed to delete temporary Forgejo token ${tokenName}`);
@@ -251,7 +299,7 @@ export async function generateRepoFromForgejoTemplate({
 
   try {
     const tokenResponse = await forgejoAPIClient.post(
-      `/admin/users/${generateFor}/tokens`,
+      `/admin/users/${encodeURIComponent(generateFor)}/tokens`,
       {
         name: tokenName,
         scopes: ["write:repository", "read:repository", "write:user"],
@@ -263,7 +311,7 @@ export async function generateRepoFromForgejoTemplate({
     if (!token) throw new AppError("Failed to create token", 500);
 
     const response = await forgejoAPIClient.post<ForgejoForkResponse>(
-      `/repos/${templateOwner}/${templateRepo}/generate`,
+      `/repos/${encodeURIComponent(templateOwner)}/${encodeURIComponent(templateRepo)}/generate`,
       {
         git_content: true,
         name: newRepoName,
@@ -284,6 +332,11 @@ export async function generateRepoFromForgejoTemplate({
         statusCode: response.status,
       };
     }
+
+    await ensureForgejoMainBranchProtection({
+      owner: response.data.owner.login,
+      repo: response.data.name,
+    });
 
     return {
       status: "ok",
@@ -316,7 +369,7 @@ export async function generateRepoFromForgejoTemplate({
     if (tokenId !== null) {
       try {
         await forgejoAPIClient.delete(
-          `/admin/users/${generateFor}/tokens/${tokenId}`,
+          `/admin/users/${encodeURIComponent(generateFor)}/tokens/${tokenId}`,
         );
       } catch {
         console.error(`Failed to delete temporary Forgejo token ${tokenName}`);
@@ -360,7 +413,13 @@ export async function ensureRepoForkToForgejo({
     username: forkFor,
     reponame: targetReponame,
   });
-  if (existingRepo) return toForkedRepo(existingRepo, forkFor);
+  if (existingRepo) {
+    await ensureForgejoMainBranchProtection({
+      owner: forkFor,
+      repo: existingRepo.name,
+    });
+    return toForkedRepo(existingRepo, forkFor);
+  }
 
   const forkedRepo = await forkRepoToForgejo({
     sourceRepoOwnername,
@@ -372,7 +431,13 @@ export async function ensureRepoForkToForgejo({
 
   // Forgejo may report a conflict while an earlier asynchronous fork finishes.
   const repoAfterFork = await waitForForgejoRepo(forkFor, targetReponame);
-  if (repoAfterFork) return toForkedRepo(repoAfterFork, forkFor);
+  if (repoAfterFork) {
+    await ensureForgejoMainBranchProtection({
+      owner: forkFor,
+      repo: repoAfterFork.name,
+    });
+    return toForkedRepo(repoAfterFork, forkFor);
+  }
 
   throw new Error(`Failed to fork demo repository: ${forkedRepo.error}`);
 }

@@ -25,17 +25,21 @@ import { useEffect, useRef } from "react";
 
 function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   const queryClient = useQueryClient();
-  const routeParams = useParams<{ chatId?: string; sessionId?: string }>();
+  const routeParams = useParams<{
+    projectSessionId?: string;
+    opencodeSessionId?: string;
+  }>();
   const activeChatRef = useRef({
-    projectSessionId: routeParams.chatId,
-    opencodeSessionId: routeParams.sessionId,
+    projectSessionId: routeParams.projectSessionId,
+    opencodeSessionId: routeParams.opencodeSessionId,
   });
   activeChatRef.current = {
-    projectSessionId: routeParams.chatId,
-    opencodeSessionId: routeParams.sessionId,
+    projectSessionId: routeParams.projectSessionId,
+    opencodeSessionId: routeParams.opencodeSessionId,
   };
   const statusEventVersionsRef = useRef(new Map<string, number>());
   const handledCompletedAnswersRef = useRef(new Set<string>());
+  const filesystemRefreshTimerRef = useRef<number | undefined>(undefined);
   const updateSession = useSessionsStore((store) => store.updateSession);
   const {
     data: instancesData,
@@ -83,12 +87,16 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   );
 
   useEffect(() => {
-    if (routeParams.chatId !== sessionId || !routeParams.sessionId) return;
+    if (
+      routeParams.projectSessionId !== sessionId ||
+      !routeParams.opencodeSessionId
+    )
+      return;
 
     useSessionChatsStore
       .getState()
-      .setChatUnread(sessionId, routeParams.sessionId, false);
-  }, [routeParams.chatId, routeParams.sessionId, sessionId]);
+      .setChatUnread(sessionId, routeParams.opencodeSessionId, false);
+  }, [routeParams.opencodeSessionId, routeParams.projectSessionId, sessionId]);
 
   useEffect(() => {
     if (!isOpencodeRunning || !serverUrl || !accessToken || !opencodeSessions) {
@@ -205,6 +213,53 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
     const handleEvent = (event: Event) => {
       const opencodeSessionId = getEventSessionId(event);
       const chatsStore = useSessionChatsStore.getState();
+      const eventType = (event as { type: string }).type;
+
+      if (eventType === "filesystem.changed") {
+        const active = activeChatRef.current;
+        if (
+          active.projectSessionId === sessionId &&
+          active.opencodeSessionId
+        ) {
+          window.clearTimeout(filesystemRefreshTimerRef.current);
+          filesystemRefreshTimerRef.current = window.setTimeout(() => {
+            void queryClient.invalidateQueries({
+              queryKey: [
+                "opencode",
+                "session",
+                sessionId,
+                active.opencodeSessionId,
+                serverUrl,
+              ],
+              exact: true,
+            });
+          }, 150);
+        }
+      }
+
+      if (eventType === "session.renamed" && opencodeSessionId) {
+        const title = (event.properties as unknown as { title?: unknown })
+          .title;
+        if (typeof title === "string") {
+          chatsStore.setSessionChats(
+            sessionId,
+            chatsStore
+              .getSessionChats(sessionId)
+              .map((chat) =>
+                chat.id === opencodeSessionId ? { ...chat, title } : chat,
+              ),
+          );
+          queryClient.setQueriesData<OpencodeSessionData>(
+            {
+              queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+            },
+            (current) =>
+              current
+                ? { ...current, session: { ...current.session, title } }
+                : current,
+          );
+        }
+      }
 
       if (
         opencodeSessionId &&
@@ -223,10 +278,13 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
         event.type === "session.created" ||
         event.type === "session.updated"
       ) {
-        if (event.properties.info.parentID) {
-          chatsStore.deleteSessionChat(sessionId, event.properties.info.id);
-        } else {
-          chatsStore.upsertSessionChat(sessionId, event.properties.info);
+        const info = event.properties.info;
+        if (info) {
+          if (info.parentID) {
+            chatsStore.deleteSessionChat(sessionId, info.id);
+          } else {
+            chatsStore.upsertSessionChat(sessionId, info);
+          }
         }
       } else if (event.type === "session.deleted") {
         chatsStore.deleteSessionChat(sessionId, event.properties.sessionID);
@@ -325,12 +383,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
             () => {
               void refreshStatuses();
               void queryClient.invalidateQueries({
-                queryKey: [
-                  "opencode",
-                  "chat-sessions",
-                  sessionId,
-                  serverUrl,
-                ],
+                queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],
                 exact: true,
               });
               resyncActiveChat();
@@ -448,6 +501,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
 
     return () => {
       disposed = true;
+      window.clearTimeout(filesystemRefreshTimerRef.current);
       document.removeEventListener("visibilitychange", reconnectWhenVisible);
       streamController?.abort();
     };

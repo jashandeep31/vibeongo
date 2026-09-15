@@ -1,10 +1,4 @@
 import dotenv from "dotenv";
-import {
-  createForgejoUserAccount,
-  getAllForgejoUsers,
-} from "./services/forgejo/user-actions.js";
-import { db, users, eq } from "@repo/db";
-import { getForgejoRepo } from "./services/forgejo/repo-actions.js";
 dotenv.config();
 
 export default async function test() {
@@ -13,4 +7,12 @@ export default async function test() {
   //   reponame: "the-randome",
   // });
   // console.log(existingRepo);
+  //
+  //
+  // const allusers = await db.select().from(users);
+  //
+  // for (const user of allusers) {
+  //   if (user.forgejo_id === null) continue;
+  //   console.log(await getForgejoUserById(user.forgejo_id));
+  // }
 }

@@ -10,12 +10,18 @@ import {
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
+  useCancelOpencodeQueuedPrompt,
+  useEditOpencodeQueuedPrompt,
   useOpencodeInventory,
+  useOpencodeQueuedPrompts,
   useOpencodeSession,
+  useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReorderOpencodeQueuedPrompts,
   useRestoreRevertedOpencodeMessage,
   useRevertOpencodeSession,
   useSendOpencodePrompt,
+  useSteerOpencodeQueuedPrompt,
 } from "@repo/api-hooks";
 import { useSessionChatsStore } from "@repo/app-store";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -34,11 +40,12 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 
 import {
-  createChatTurns,
+  createChatTurnCache,
   createChatTurnSelector,
   getRevertedMessageLabel,
   getSessionPromptSelection,
@@ -57,27 +64,25 @@ import {
   ProjectChatSwitcherDrawer,
   type ProjectChatTarget,
 } from "@/components/projects/project-chat-switcher-drawer";
-import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
-import { ProjectFilesButton } from "@/components/projects/project-files-button";
-import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
+import { ProjectWorkspaceTopBar } from "@/components/projects/project-workspace-top-bar";
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import { PageChromeLayout } from "@/components/page-chrome";
 import { PAGE_CHROME } from "@/constants/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import {
-  InstanceExpiryCountdown,
-  useInstanceExpiryWarning,
-} from "@/components/projects/instance-expiry-countdown";
+import { useInstanceExpiryWarning } from "@/components/projects/instance-expiry-countdown";
 
 type SwipePreview = { chatId: string; offset: -1 | 1 };
+const CHAT_CACHE_TIME = 30 * 60 * 1_000;
+const ignoreChatRevert = () => {};
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
 
 export function ProjectChatScreen() {
+  const turnCache = useMemo(() => createChatTurnCache(), []);
   const theme = useTheme();
   const router = useRouter();
   const [chatTransitionDistance, setChatTransitionDistance] = useState(
@@ -95,7 +100,6 @@ export function ProjectChatScreen() {
   const chatTransitionX = useRef(new Animated.Value(0)).current;
   const isChatTransitioningRef = useRef(false);
   const chatTransitionEntryXRef = useRef<number | null>(null);
-  const pendingChatHandoffIdRef = useRef("");
   const params = useLocalSearchParams<{
     chatId?: string | string[];
     projectId?: string | string[];
@@ -131,6 +135,7 @@ export function ProjectChatScreen() {
     messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
     select: selectChatShellData,
     notifyOnChangeProps: ["data", "error", "isPending"],
+    gcTime: CHAT_CACHE_TIME,
   });
   const answerQuestion = useAnswerOpencodeQuestion({
     chatId: projectSessionId,
@@ -178,19 +183,8 @@ export function ProjectChatScreen() {
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const isKeyboardVisibleRef = useRef(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
-  const [showRawResponse, setShowRawResponse] = useState(false);
   const [swipePreview, setSwipePreview] = useState<SwipePreview | null>(null);
-  const previewMessages = useSessionChatsStore((store) =>
-    swipePreview
-      ? store.messagesBySessionId[projectSessionId]?.[swipePreview.chatId]
-      : undefined,
-  );
-  // Keep the outgoing chat mounted while the next chat is fetched. Replacing it
-  // with the loading screen between the exit and entrance animations causes a
-  // visible flash and makes the swipe feel like two separate transitions.
-  const displayedDataRef = useRef(sessionQuery.data);
-  if (sessionQuery.data) displayedDataRef.current = sessionQuery.data;
-  const data = sessionQuery.data ?? displayedDataRef.current;
+  const data = sessionQuery.data;
   const searchFiles = useCallback(
     (query: string) =>
       findOpencodeFiles(
@@ -230,10 +224,6 @@ export function ProjectChatScreen() {
           revertedMessages: messages.slice(revertIndex),
         };
   }, [data?.messages, data?.session.revert?.messageID]);
-  const swipePreviewTurns = useMemo(
-    () => createChatTurns(previewMessages ?? [], inventoryQuery.data?.models),
-    [inventoryQuery.data?.models, previewMessages],
-  );
   const revertedQuestions = useMemo(
     () =>
       revertedMessages
@@ -254,26 +244,6 @@ export function ProjectChatScreen() {
     sessionSelection.model,
     sessionSelection.variant,
   ]);
-
-  useEffect(() => {
-    const inventory = inventoryQuery.data;
-    if (!inventory) return;
-    setSelection((current) => ({
-      ...current,
-      model:
-        current.model &&
-        inventory.models.some((model) => model.id === current.model)
-          ? current.model
-          : (inventory.defaultSelection.model ?? inventory.models[0]?.id),
-      agent:
-        current.agent &&
-        inventory.agents.some((agent) => agent.id === current.agent)
-          ? current.agent
-          : (inventory.defaultSelection.agent ??
-            inventory.agents.find((agent) => agent.mode === "primary")?.id ??
-            inventory.agents[0]?.id),
-    }));
-  }, [inventoryQuery.data]);
 
   const goBack = useCallback(() => router.replace("/"), [router]);
 
@@ -413,10 +383,13 @@ export function ProjectChatScreen() {
 
     chatTransitionEntryXRef.current = null;
     if (swipePreview?.chatId === opencodeSessionId) {
-      // Keep the cached preview at x=0 while the real chat mounts offscreen.
-      // Its ScrollView completes the handoff only after it is at the end.
-      pendingChatHandoffIdRef.current = opencodeSessionId;
-      return;
+      // Both lists start at the latest turn; no history layout/scroll is needed.
+      const frame = requestAnimationFrame(() => {
+        chatTransitionX.setValue(0);
+        setSwipePreview(null);
+        isChatTransitioningRef.current = false;
+      });
+      return () => cancelAnimationFrame(frame);
     }
 
     chatTransitionX.setValue(entryX);
@@ -431,6 +404,14 @@ export function ProjectChatScreen() {
       }),
     );
   }, [chatTransitionX, opencodeSessionId, sessionQuery.data, swipePreview]);
+
+  useEffect(() => {
+    if (!sessionQuery.error) return;
+    chatTransitionEntryXRef.current = null;
+    chatTransitionX.setValue(0);
+    setSwipePreview(null);
+    isChatTransitioningRef.current = false;
+  }, [sessionQuery.error, chatTransitionX]);
 
   const pageSwipeResponder = useMemo(
     () =>
@@ -530,10 +511,6 @@ export function ProjectChatScreen() {
     [rejectQuestion.mutate],
   );
 
-  const toggleRawResponse = useCallback(
-    () => setShowRawResponse((visible) => !visible),
-    [],
-  );
   const refreshManually = useCallback(async () => {
     if (isManuallyRefreshing) return;
 
@@ -549,14 +526,7 @@ export function ProjectChatScreen() {
   }, [inventoryQuery.refetch, isManuallyRefreshing, sessionQuery.resync]);
   const openChatSwitcher = useCallback(() => setIsChatSwitcherOpen(true), []);
 
-  const completeChatHandoff = useCallback(() => {
-    pendingChatHandoffIdRef.current = "";
-    chatTransitionX.setValue(0);
-    setSwipePreview(null);
-    isChatTransitioningRef.current = false;
-  }, [chatTransitionX]);
-
-  if (runtime.isPending) {
+  if (runtime.isPending && !data) {
     return (
       <View style={[styles.loading, { backgroundColor: theme.background }]}>
         <ActivityIndicator />
@@ -564,7 +534,7 @@ export function ProjectChatScreen() {
     );
   }
 
-  if (runtime.isError || !runtime.instance) {
+  if ((runtime.isError || !runtime.instance) && !data) {
     return (
       <View style={[styles.screen, { backgroundColor: theme.background }]}>
         <ProjectChatStatus
@@ -576,7 +546,7 @@ export function ProjectChatScreen() {
     );
   }
 
-  if (sessionQuery.isPending) {
+  if (sessionQuery.isPending && !data) {
     return (
       <View style={[styles.loading, { backgroundColor: theme.background }]}>
         <ActivityIndicator />
@@ -584,7 +554,7 @@ export function ProjectChatScreen() {
     );
   }
 
-  if (sessionQuery.error || !data) {
+  if (!data) {
     return (
       <View style={[styles.screen, { backgroundColor: theme.background }]}>
         <ProjectChatStatus
@@ -610,17 +580,26 @@ export function ProjectChatScreen() {
               />
             }
             top={
-              <ProjectChatHeader
-                instanceId={runtime.instance.id}
+              <ProjectWorkspaceTopBar
+                changeCount={data.changes.length}
+                connection={{
+                  accessToken: runtime.accessToken,
+                  chatId: projectSessionId,
+                  directory: data.session.directory,
+                  password: runtime.password,
+                  serverUrl: runtime.serverUrl,
+                }}
+                instanceId={runtime.instance?.id ?? ""}
                 isExpiring={isInstanceExpiring}
                 isRefreshing={isManuallyRefreshing}
                 onBack={goBack}
                 onOpenSwitcher={openChatSwitcher}
                 onRefresh={refreshManually}
                 opencodePassword={runtime.password}
+                opencodeSessionId={opencodeSessionId}
                 projectId={projectId}
                 projectSessionId={projectSessionId}
-                terminatesAt={runtime.instance.terminates_at}
+                terminatesAt={runtime.instance?.terminates_at}
                 title={data.session.title || "Untitled chat"}
               />
             }
@@ -647,8 +626,14 @@ export function ProjectChatScreen() {
                       ]}
                     >
                       <AdjacentChatPreview
+                        accessToken={runtime.accessToken}
+                        chatId={swipePreview.chatId}
+                        models={inventoryQuery.data?.models}
+                        password={runtime.password}
+                        projectSessionId={projectSessionId}
+                        serverUrl={runtime.serverUrl}
                         topInset={topInset}
-                        turns={swipePreviewTurns}
+                        turnCache={turnCache}
                       />
                     </Animated.View>
                   ) : null}
@@ -662,6 +647,7 @@ export function ProjectChatScreen() {
                     {...pageSwipeResponder.panHandlers}
                   >
                     <ChatTimeline
+                      turnCache={turnCache}
                       projectSessionId={projectSessionId}
                       opencodeSessionId={opencodeSessionId}
                       serverUrl={runtime.serverUrl}
@@ -669,13 +655,10 @@ export function ProjectChatScreen() {
                       password={runtime.password}
                       models={inventoryQuery.data?.models}
                       topInset={topInset}
-                      showRawResponse={showRawResponse}
                       isReverting={revertSession.isPending}
                       revertingId={revertSession.variables}
                       isRestoring={restoreMessage.isPending}
                       onRevert={revertTurn}
-                      pendingChatHandoffIdRef={pendingChatHandoffIdRef}
-                      onHandoffComplete={completeChatHandoff}
                     />
                   </Animated.View>
                 </View>
@@ -688,7 +671,7 @@ export function ProjectChatScreen() {
                       { backgroundColor: theme.background },
                     ]}
                   />
-                  {!showRawResponse && revertedQuestions.length > 0 ? (
+                  {revertedQuestions.length > 0 ? (
                     <RevertedMessagesPanel
                       chatId={projectSessionId}
                       messages={revertedQuestions}
@@ -720,10 +703,15 @@ export function ProjectChatScreen() {
                     />
                   ) : (
                     <ProjectChatComposer
+                      disabled={!runtime.serverUrl || !!sessionQuery.error}
                       accessToken={runtime.accessToken}
                       accessibilityLabel="Follow-up prompt"
                       chatId={projectSessionId}
                       inventory={inventoryQuery.data}
+                      directory={data.session.directory}
+                      onProviderConnected={async () => {
+                        await inventoryQuery.refetch();
+                      }}
                       password={runtime.password}
                       promptError={data.promptError}
                       serverUrl={runtime.serverUrl}
@@ -732,10 +720,8 @@ export function ProjectChatScreen() {
                       key={opencodeSessionId}
                       onNewChat={openNewChat}
                       onOpenTerminal={openTerminal}
-                      onToggleRaw={toggleRawResponse}
                       selection={selection}
                       searchFiles={searchFiles}
-                      showRawResponse={showRawResponse}
                     />
                   )}
                 </View>
@@ -797,38 +783,41 @@ export function ProjectChatScreen() {
 }
 
 const ProjectChatComposer = memo(function ProjectChatComposer({
+  disabled,
   accessToken,
   accessibilityLabel,
   chatId,
   inventory,
+  directory,
   onChangeSelection,
   onNewChat,
   onOpenTerminal,
-  onToggleRaw,
+  onProviderConnected,
   password,
   promptError,
   searchFiles,
   selection,
   serverUrl,
   sessionId,
-  showRawResponse,
 }: {
   accessToken: string;
+  disabled: boolean;
   accessibilityLabel: string;
   chatId: string;
   inventory?: OpencodeInventory;
+  directory: string;
   onChangeSelection: (selection: OpencodePromptSelection) => void;
   onNewChat: () => void;
   onOpenTerminal: () => void;
-  onToggleRaw: () => void;
+  onProviderConnected: () => Promise<void>;
   password?: string;
   promptError?: string;
   searchFiles: (query: string) => Promise<string[]>;
   selection: OpencodePromptSelection;
   serverUrl: string;
   sessionId: string;
-  showRawResponse: boolean;
 }) {
+  const theme = useTheme();
   const isStreaming = useSessionChatsStore(
     (store) =>
       store.statusesBySessionId[chatId]?.[sessionId]?.type !== "idle" &&
@@ -841,6 +830,82 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
     accessToken,
     password,
   });
+  const queuePrompt = useQueueOpencodePrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const { data: queuedPrompts = [] } = useOpencodeQueuedPrompts({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
+    useState(false);
+  const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
+    string | undefined
+  >();
+  const [editingQueuedPrompt, setEditingQueuedPrompt] = useState<
+    { id: string; text: string } | undefined
+  >();
+  const queuedDragOffset = useRef(new Animated.Value(0)).current;
+  const queuedDragStartY = useRef<number | undefined>(undefined);
+  const cancelQueuedPrompt = useCancelOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const steerQueuedPrompt = useSteerOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const editQueuedPrompt = useEditOpencodeQueuedPrompt({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const reorderQueuedPrompts = useReorderOpencodeQueuedPrompts({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const moveQueuedPrompt = (source: number, destination: number) => {
+    if (
+      source === destination ||
+      source < 0 ||
+      destination < 0 ||
+      source >= displayedQueuedPrompts.length ||
+      destination >= displayedQueuedPrompts.length
+    )
+      return;
+    const inboxIds = displayedQueuedPrompts.map((item) => item.id);
+    const [moved] = inboxIds.splice(source, 1);
+    inboxIds.splice(destination, 0, moved!);
+    reorderQueuedPrompts.mutate(
+      { inboxIds, queuedPrompts: displayedQueuedPrompts },
+      {
+        onError: (error) =>
+          Alert.alert("Could not reorder messages", error.message),
+      },
+    );
+  };
+  const displayedQueuedPrompts = reorderQueuedPrompts.isPending
+    ? reorderQueuedPrompts.variables.inboxIds.flatMap((id) =>
+        reorderQueuedPrompts.variables.queuedPrompts.filter(
+          (item) => item.id === id,
+        ),
+      )
+    : queuedPrompts;
   const abortSession = useAbortOpencodeSession({
     chatId,
     sessionId,
@@ -854,21 +919,35 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
       if (
         (!text && attachments.length === 0) ||
         sendPrompt.isPending ||
-        isStreaming
+        queuePrompt.isPending
       )
         return;
-      sendPrompt.mutate(
-        {
-          text,
-          files: [],
-          attachments,
-          fileReferences,
-          selection,
-        },
-        { onError: restore },
-      );
+      const input = {
+        text,
+        files: [],
+        attachments,
+        fileReferences,
+        selection,
+      };
+      if (isStreaming) {
+        queuePrompt.mutate(input, {
+          onError: (error) => {
+            restore();
+            Alert.alert("Could not queue message", error.message);
+          },
+        });
+        return;
+      }
+      sendPrompt.mutate(input, { onError: restore });
     },
-    [isStreaming, selection, sendPrompt.isPending, sendPrompt.mutate],
+    [
+      isStreaming,
+      queuePrompt.isPending,
+      queuePrompt.mutate,
+      selection,
+      sendPrompt.isPending,
+      sendPrompt.mutate,
+    ],
   );
   const stopStreaming = useCallback(() => {
     abortSession.mutate(undefined, {
@@ -878,24 +957,294 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
 
   return (
     <>
+      {queuedPrompts.length ? (
+        <View
+          style={[
+            styles.queuedPrompts,
+            {
+              backgroundColor: theme.backgroundElement,
+              borderColor: theme.backgroundSelected,
+            },
+          ]}
+        >
+          {areQueuedPromptsExpanded
+            ? displayedQueuedPrompts.map((item, index) => (
+                <Animated.View
+                  key={item.id}
+                  style={[
+                    styles.queuedPromptRow,
+                    draggedQueuedPromptId === item.id
+                      ? {
+                          opacity: 0.8,
+                          transform: [{ translateY: queuedDragOffset }],
+                        }
+                      : undefined,
+                  ]}
+                >
+                  <View
+                    accessible
+                    accessibilityLabel="Drag to reorder queued message"
+                    accessibilityRole="adjustable"
+                    onMoveShouldSetResponder={() =>
+                      !reorderQueuedPrompts.isPending
+                    }
+                    onResponderGrant={(event) => {
+                      queuedDragStartY.current = event.nativeEvent.pageY;
+                      queuedDragOffset.setValue(0);
+                      setDraggedQueuedPromptId(item.id);
+                    }}
+                    onResponderMove={(event) => {
+                      const startY = queuedDragStartY.current;
+                      if (startY === undefined) return;
+                      queuedDragOffset.setValue(
+                        event.nativeEvent.pageY - startY,
+                      );
+                    }}
+                    onResponderRelease={(event) => {
+                      const startY = queuedDragStartY.current;
+                      queuedDragStartY.current = undefined;
+                      if (startY === undefined) return;
+                      const offset = Math.round(
+                        (event.nativeEvent.pageY - startY) / 32,
+                      );
+                      moveQueuedPrompt(
+                        index,
+                        Math.max(
+                          0,
+                          Math.min(
+                            displayedQueuedPrompts.length - 1,
+                            index + offset,
+                          ),
+                        ),
+                      );
+                      Animated.spring(queuedDragOffset, {
+                        toValue: 0,
+                        useNativeDriver: true,
+                      }).start(() => setDraggedQueuedPromptId(undefined));
+                    }}
+                    style={styles.queuedPromptDragHandle}
+                  >
+                    <View style={styles.queuedPromptDragDots}>
+                      {Array.from({ length: 6 }).map((_, dotIndex) => (
+                        <View
+                          key={dotIndex}
+                          style={[
+                            styles.queuedPromptDragDot,
+                            { backgroundColor: theme.textSecondary },
+                          ]}
+                        />
+                      ))}
+                    </View>
+                  </View>
+                  {editingQueuedPrompt?.id === item.id ? (
+                    <TextInput
+                      autoFocus
+                      multiline
+                      onChangeText={(text) =>
+                        setEditingQueuedPrompt({ id: item.id, text })
+                      }
+                      style={[
+                        styles.queuedPromptInput,
+                        {
+                          color: theme.text,
+                          borderColor: theme.backgroundSelected,
+                        },
+                      ]}
+                      value={editingQueuedPrompt.text}
+                    />
+                  ) : (
+                    <ThemedText
+                      numberOfLines={1}
+                      style={[styles.queuedPrompt, { flex: 1 }]}
+                    >
+                      {item.prompt.text || "Attachment"}
+                    </ThemedText>
+                  )}
+                  {editingQueuedPrompt?.id === item.id ? (
+                    <>
+                      <Pressable
+                        accessibilityLabel="Save queued message"
+                        accessibilityRole="button"
+                        disabled={editQueuedPrompt.isPending}
+                        onPress={() =>
+                          editQueuedPrompt.mutate(
+                            {
+                              inboxId: item.id,
+                              queuedPrompts: displayedQueuedPrompts,
+                              text: editingQueuedPrompt.text,
+                            },
+                            {
+                              onError: (error) =>
+                                Alert.alert(
+                                  "Could not edit message",
+                                  error.message,
+                                ),
+                              onSuccess: () =>
+                                setEditingQueuedPrompt(undefined),
+                            },
+                          )
+                        }
+                        style={styles.queuedPromptAction}
+                      >
+                        <SymbolView
+                          name={{ ios: "checkmark", android: "check" }}
+                          size={14}
+                          tintColor={theme.textSecondary}
+                        />
+                      </Pressable>
+                      <Pressable
+                        accessibilityLabel="Cancel editing queued message"
+                        accessibilityRole="button"
+                        onPress={() => setEditingQueuedPrompt(undefined)}
+                        style={styles.queuedPromptAction}
+                      >
+                        <SymbolView
+                          name={{ ios: "xmark", android: "close" }}
+                          size={14}
+                          tintColor={theme.textSecondary}
+                        />
+                      </Pressable>
+                    </>
+                  ) : (
+                    <Pressable
+                      accessibilityLabel="Edit queued message"
+                      accessibilityRole="button"
+                      disabled={
+                        cancelQueuedPrompt.isPending ||
+                        steerQueuedPrompt.isPending ||
+                        reorderQueuedPrompts.isPending
+                      }
+                      onPress={() =>
+                        setEditingQueuedPrompt({
+                          id: item.id,
+                          text: item.prompt.text,
+                        })
+                      }
+                      style={styles.queuedPromptAction}
+                    >
+                      <SymbolView
+                        name={{ ios: "pencil", android: "edit" }}
+                        size={14}
+                        tintColor={theme.textSecondary}
+                      />
+                    </Pressable>
+                  )}
+                  <Pressable
+                    accessibilityLabel={
+                      isStreaming
+                        ? "Steer queued message"
+                        : "Send queued message"
+                    }
+                    accessibilityRole="button"
+                    disabled={
+                      cancelQueuedPrompt.isPending ||
+                      steerQueuedPrompt.isPending ||
+                      reorderQueuedPrompts.isPending
+                    }
+                    onPress={() =>
+                      steerQueuedPrompt.mutate(item.id, {
+                        onError: (error) =>
+                          Alert.alert("Could not steer message", error.message),
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.queuedPromptAction,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "paperplane.fill", android: "send" }}
+                      size={14}
+                      tintColor={theme.textSecondary}
+                    />
+                  </Pressable>
+                  <Pressable
+                    accessibilityLabel="Remove queued message"
+                    accessibilityRole="button"
+                    disabled={
+                      cancelQueuedPrompt.isPending ||
+                      steerQueuedPrompt.isPending ||
+                      reorderQueuedPrompts.isPending
+                    }
+                    onPress={() =>
+                      cancelQueuedPrompt.mutate(item.id, {
+                        onError: (error) =>
+                          Alert.alert(
+                            "Could not remove message",
+                            error.message,
+                          ),
+                      })
+                    }
+                    style={({ pressed }) => [
+                      styles.queuedPromptAction,
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    <SymbolView
+                      name={{ ios: "trash", android: "delete" }}
+                      size={14}
+                      tintColor={theme.textSecondary}
+                    />
+                  </Pressable>
+                </Animated.View>
+              ))
+            : null}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityState={{ expanded: areQueuedPromptsExpanded }}
+            onPress={() => setAreQueuedPromptsExpanded((expanded) => !expanded)}
+            style={({ pressed }) => [
+              styles.queuedPromptsHeader,
+              pressed && styles.pressed,
+            ]}
+          >
+            <ThemedText style={styles.queuedPromptsTitle}>
+              Queued messages ({queuedPrompts.length})
+            </ThemedText>
+            <ThemedText
+              style={[
+                styles.queuedPromptsToggle,
+                { color: theme.textSecondary },
+              ]}
+            >
+              {areQueuedPromptsExpanded ? "Hide" : "Show"}
+            </ThemedText>
+            <SymbolView
+              name={{
+                ios: areQueuedPromptsExpanded ? "chevron.down" : "chevron.up",
+                android: areQueuedPromptsExpanded
+                  ? "expand_more"
+                  : "keyboard_arrow_up",
+              }}
+              size={14}
+              tintColor={theme.textSecondary}
+            />
+          </Pressable>
+        </View>
+      ) : null}
       <OpencodeComposerController
         accessibilityLabel={accessibilityLabel}
         inventory={inventory}
         isStopping={abortSession.isPending}
-        isSubmitting={sendPrompt.isPending}
+        isSubmitting={sendPrompt.isPending || queuePrompt.isPending}
         onChangeSelection={onChangeSelection}
         onNewChat={onNewChat}
         onOpenTerminal={onOpenTerminal}
-        onToggleRaw={onToggleRaw}
         onStop={isStreaming ? stopStreaming : undefined}
         onSubmit={submit}
-        placeholder={
-          isStreaming ? "Write your next message…" : "Ask a follow-up…"
-        }
+        placeholder={isStreaming ? "Type " : "Ask a follow-up…"}
+        providerConnection={{
+          accessToken,
+          chatId,
+          directory,
+          onConnected: onProviderConnected,
+          password,
+          serverUrl,
+        }}
         selection={selection}
         searchFiles={searchFiles}
-        showRawResponse={showRawResponse}
-        submitDisabled={isStreaming}
+        disabled={disabled}
+        submitDisabled={disabled}
       />
       {sendPrompt.error || promptError ? (
         <ThemedText style={styles.error}>
@@ -924,6 +1273,7 @@ function createChatShellSelector() {
       previous.session.model?.providerID === data.session.model?.providerID &&
       previous.session.model?.id === data.session.model?.id &&
       previous.session.model?.variant === data.session.model?.variant &&
+      previous.changes.length === data.changes.length &&
       previous.promptError === data.promptError &&
       sameItems(previous.messages, messages) &&
       sameItems(previous.questions, data.questions)
@@ -933,7 +1283,7 @@ function createChatShellSelector() {
     previous = {
       ...data,
       messages,
-      changes: [],
+      changes: data.changes,
       status: { type: "idle" },
     };
     return previous;
@@ -947,41 +1297,82 @@ function sameItems<T>(previous: T[], next: T[]) {
   );
 }
 
-const ChatTimeline = memo(function ChatTimeline({
-  projectSessionId,
-  opencodeSessionId,
-  serverUrl,
+function getVisibleMessages(data: OpencodeSessionData) {
+  const revertMessageId = data.session.revert?.messageID;
+  if (!revertMessageId) return data.messages;
+
+  const revertIndex = data.messages.findIndex(
+    (message) => message.info.id === revertMessageId,
+  );
+  return revertIndex < 0 ? data.messages : data.messages.slice(0, revertIndex);
+}
+
+function getCompletedMessages(data: OpencodeSessionData) {
+  const messages = getVisibleMessages(data);
+  if (data.status.type === "idle") return messages;
+
+  const activeUserMessage = messages.findLast(
+    (message) => message.info.role === "user",
+  );
+  if (!activeUserMessage) return messages;
+
+  return messages.filter(
+    (message) =>
+      message.info.id !== activeUserMessage.info.id &&
+      !(
+        message.info.role === "assistant" &&
+        message.info.parentID === activeUserMessage.info.id
+      ),
+  );
+}
+
+function createCompletedTimelineDataSelector() {
+  let previous: OpencodeSessionData | undefined;
+
+  return (data: OpencodeSessionData): OpencodeSessionData => {
+    const messages = getCompletedMessages(data);
+    if (
+      previous &&
+      previous.session.id === data.session.id &&
+      previous.session.title === data.session.title &&
+      previous.session.directory === data.session.directory &&
+      previous.session.agent === data.session.agent &&
+      previous.session.revert?.messageID === data.session.revert?.messageID &&
+      previous.status.type === data.status.type &&
+      previous.messagePage?.hasOlder === data.messagePage?.hasOlder &&
+      previous.messagePage?.cursor === data.messagePage?.cursor &&
+      sameItems(previous.messages, messages) &&
+      sameItems(previous.questions, data.questions)
+    ) {
+      return previous;
+    }
+
+    previous = { ...data, messages };
+    return previous;
+  };
+}
+
+const ActiveChatTurnHeader = memo(function ActiveChatTurnHeader({
   accessToken,
-  password,
-  models,
-  topInset,
-  showRawResponse,
   isReverting,
-  revertingId,
-  isRestoring,
+  models,
   onRevert,
-  pendingChatHandoffIdRef,
-  onHandoffComplete,
+  opencodeSessionId,
+  password,
+  projectSessionId,
+  revertingId,
+  serverUrl,
 }: {
-  projectSessionId: string;
-  opencodeSessionId: string;
-  serverUrl: string;
   accessToken: string;
-  password?: string;
-  models?: OpencodeModelOption[];
-  topInset: number;
-  showRawResponse: boolean;
   isReverting: boolean;
-  revertingId?: string;
-  isRestoring: boolean;
+  models?: OpencodeModelOption[];
   onRevert: (id: string) => void;
-  pendingChatHandoffIdRef: { current: string };
-  onHandoffComplete: () => void;
+  opencodeSessionId: string;
+  password?: string;
+  projectSessionId: string;
+  revertingId?: string;
+  serverUrl: string;
 }) {
-  const theme = useTheme();
-  const scrollRef =
-    useRef<FlatList<ReturnType<typeof createChatTurns>[number]>>(null);
-  const initiallyScrolledSessionIdRef = useRef("");
   const sessionQuery = useOpencodeSession({
     chatId: projectSessionId,
     sessionId: opencodeSessionId,
@@ -990,38 +1381,90 @@ const ChatTimeline = memo(function ChatTimeline({
     password,
     messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
     refetchOnMount: false,
+    gcTime: CHAT_CACHE_TIME,
+  });
+  const selectTurns = useMemo(() => createChatTurnSelector(), []);
+  const turns = useMemo(
+    () =>
+      selectTurns(
+        sessionQuery.data ? getVisibleMessages(sessionQuery.data) : [],
+        models,
+      ),
+    [models, selectTurns, sessionQuery.data],
+  );
+  const activeTurn = sessionQuery.isStreaming ? turns.at(-1) : undefined;
+
+  return activeTurn ? (
+    <OpencodeChatTurn
+      isReverting={isReverting && revertingId === activeTurn.id}
+      isStreaming
+      item={activeTurn}
+      onRevert={onRevert}
+    />
+  ) : null;
+});
+
+const ChatTimeline = memo(function ChatTimeline({
+  turnCache,
+  projectSessionId,
+  opencodeSessionId,
+  serverUrl,
+  accessToken,
+  password,
+  models,
+  topInset,
+  isReverting,
+  revertingId,
+  isRestoring,
+  onRevert,
+}: {
+  turnCache: ReturnType<typeof createChatTurnCache>;
+  projectSessionId: string;
+  opencodeSessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+  models?: OpencodeModelOption[];
+  topInset: number;
+  isReverting: boolean;
+  revertingId?: string;
+  isRestoring: boolean;
+  onRevert: (id: string) => void;
+}) {
+  const theme = useTheme();
+  const selectCompletedData = useMemo(
+    () => createCompletedTimelineDataSelector(),
+    [],
+  );
+  const sessionQuery = useOpencodeSession({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl,
+    accessToken,
+    password,
+    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
+    select: selectCompletedData,
+    notifyOnChangeProps: ["data", "error"],
+    refetchOnMount: false,
+    gcTime: CHAT_CACHE_TIME,
   });
   const data = sessionQuery.data;
   const activeQuestion = data?.questions[0];
   const selectTurns = useMemo(
-    () => createChatTurnSelector(),
-    [opencodeSessionId],
+    () =>
+      turnCache(
+        JSON.stringify([projectSessionId, serverUrl, opencodeSessionId]),
+      ),
+    [turnCache, projectSessionId, serverUrl, opencodeSessionId],
   );
-  const turns = useMemo(() => {
-    const messages = data?.messages ?? [];
-    const revertIndex = data?.session.revert?.messageID
-      ? messages.findIndex(
-          (message) => message.info.id === data.session.revert?.messageID,
-        )
-      : -1;
-    return selectTurns(
-      revertIndex < 0 ? messages : messages.slice(0, revertIndex),
-      models,
-    );
-  }, [data?.messages, data?.session.revert?.messageID, models, selectTurns]);
+  const completedTurns = useMemo(
+    () => selectTurns(data?.messages ?? [], models),
+    [data?.messages, models, selectTurns],
+  );
   useEffect(() => {
     if (!sessionQuery.data) return;
     const store = useSessionChatsStore.getState();
     store.upsertSessionChat(projectSessionId, sessionQuery.data.session);
-    if (
-      store.getChatMessages(projectSessionId, opencodeSessionId) !==
-      sessionQuery.data.messages
-    )
-      store.setChatMessages(
-        projectSessionId,
-        opencodeSessionId,
-        sessionQuery.data.messages,
-      );
     store.setChatStatus(
       projectSessionId,
       opencodeSessionId,
@@ -1033,288 +1476,191 @@ const ChatTimeline = memo(function ChatTimeline({
       sessionQuery.data.questions.length > 0,
     );
   }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
+  const reversedCompletedTurns = useMemo(
+    () => [...completedTurns].reverse(),
+    [completedTurns],
+  );
+  const renderCompletedTurn = useCallback(
+    ({ item: turn }: { item: (typeof completedTurns)[number] }) => (
+      <OpencodeChatTurn
+        isReverting={isReverting && revertingId === turn.id}
+        isStreaming={false}
+        item={turn}
+        onRevert={onRevert}
+      />
+    ),
+    [isReverting, onRevert, revertingId],
+  );
   if (!data) return null;
   return (
     <>
-      {showRawResponse ? (
-        <ScrollView
-          contentContainerStyle={[styles.messages, { paddingTop: topInset }]}
-          horizontal
-          showsHorizontalScrollIndicator
-        >
-          <ThemedText selectable style={styles.rawResponse}>
-            {JSON.stringify(data, null, 2)}
-          </ThemedText>
-        </ScrollView>
-      ) : (
-        <ChatRevertDisabledContext.Provider
-          value={sessionQuery.isStreaming || isReverting || isRestoring}
-        >
-          <FlatList
-            contentOffset={{ x: 0, y: 1_000_000 }}
-            contentContainerStyle={[styles.messages, { paddingTop: topInset }]}
-            data={turns}
-            initialNumToRender={6}
-            keyboardDismissMode="interactive"
-            keyboardShouldPersistTaps="handled"
-            key={opencodeSessionId}
-            keyExtractor={(turn) => turn.id}
-            ListEmptyComponent={
-              !activeQuestion && !sessionQuery.isStreaming ? (
-                <ThemedText
-                  style={[styles.emptyText, { color: theme.textSecondary }]}
-                >
-                  Start the chat by describing what you want to build.
-                </ThemedText>
-              ) : sessionQuery.isStreaming ? (
-                <View style={styles.thinking}>
-                  <ActivityIndicator size="small" />
-                  <ThemedText themeColor="textSecondary">
-                    Vibeongo is working…
-                  </ThemedText>
-                </View>
-              ) : null
-            }
-            ListHeaderComponent={
-              sessionQuery.hasOlderMessages ? (
-                <Pressable
-                  accessibilityLabel="Load earlier messages"
-                  accessibilityRole="button"
-                  disabled={sessionQuery.isLoadingOlder}
-                  onPress={() =>
-                    void sessionQuery
-                      .loadOlder()
-                      .catch((error: unknown) =>
-                        Alert.alert(
-                          "Could not load earlier messages",
-                          error instanceof Error
-                            ? error.message
-                            : "Please try again.",
-                        ),
-                      )
-                  }
-                  style={({ pressed }) => [
-                    styles.loadEarlierButton,
-                    {
-                      backgroundColor: theme.backgroundElement,
-                      borderColor: theme.backgroundSelected,
-                    },
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  {sessionQuery.isLoadingOlder ? (
-                    <ActivityIndicator size="small" />
-                  ) : (
-                    <ThemedText style={styles.loadEarlierText}>
-                      Load earlier messages
-                    </ThemedText>
-                  )}
-                </Pressable>
-              ) : null
-            }
-            maintainVisibleContentPosition={{
-              minIndexForVisible: 0,
-            }}
-            maxToRenderPerBatch={5}
-            onContentSizeChange={() => {
-              if (data.session.id !== opencodeSessionId) return;
-
-              const isPendingHandoff =
-                pendingChatHandoffIdRef.current === opencodeSessionId;
-              if (
-                !isPendingHandoff &&
-                initiallyScrolledSessionIdRef.current === opencodeSessionId
-              ) {
-                return;
-              }
-
-              initiallyScrolledSessionIdRef.current = opencodeSessionId;
-              requestAnimationFrame(() => {
-                scrollRef.current?.scrollToEnd({
-                  animated: false,
-                });
-                if (!isPendingHandoff) return;
-
-                requestAnimationFrame(() => {
-                  if (pendingChatHandoffIdRef.current !== opencodeSessionId)
-                    return;
-
-                  onHandoffComplete();
-                });
-              });
-            }}
-            ref={scrollRef}
-            removeClippedSubviews={Platform.OS === "android"}
-            renderItem={({ item: turn, index }) => (
-              <OpencodeChatTurn
-                isReverting={isReverting && revertingId === turn.id}
-                isStreaming={
-                  sessionQuery.isStreaming && index === turns.length - 1
-                }
-                item={turn}
+      <ChatRevertDisabledContext.Provider
+        value={sessionQuery.isStreaming || isReverting || isRestoring}
+      >
+        <FlatList
+          inverted
+          contentContainerStyle={[
+            styles.messages,
+            { paddingTop: 150, paddingBottom: topInset },
+          ]}
+          data={reversedCompletedTurns}
+          initialNumToRender={6}
+          keyboardDismissMode="interactive"
+          keyboardShouldPersistTaps="handled"
+          key={opencodeSessionId}
+          keyExtractor={(turn) => turn.id}
+          ListHeaderComponent={
+            sessionQuery.isStreaming ? (
+              <ActiveChatTurnHeader
+                accessToken={accessToken}
+                isReverting={isReverting}
+                models={models}
                 onRevert={onRevert}
+                opencodeSessionId={opencodeSessionId}
+                password={password}
+                projectSessionId={projectSessionId}
+                revertingId={revertingId}
+                serverUrl={serverUrl}
               />
-            )}
-            showsVerticalScrollIndicator={false}
-            windowSize={5}
-          />
-        </ChatRevertDisabledContext.Provider>
-      )}
+            ) : null
+          }
+          ListEmptyComponent={
+            !activeQuestion && !sessionQuery.isStreaming ? (
+              <ThemedText
+                style={[styles.emptyText, { color: theme.textSecondary }]}
+              >
+                Start the chat by describing what you want to build.
+              </ThemedText>
+            ) : null
+          }
+          ListFooterComponent={
+            sessionQuery.hasOlderMessages ? (
+              <Pressable
+                accessibilityLabel="Load earlier messages"
+                accessibilityRole="button"
+                disabled={sessionQuery.isLoadingOlder}
+                onPress={() =>
+                  void sessionQuery
+                    .loadOlder()
+                    .catch((error: unknown) =>
+                      Alert.alert(
+                        "Could not load earlier messages",
+                        error instanceof Error
+                          ? error.message
+                          : "Please try again.",
+                      ),
+                    )
+                }
+                style={({ pressed }) => [
+                  styles.loadEarlierButton,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.backgroundSelected,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                {sessionQuery.isLoadingOlder ? (
+                  <ActivityIndicator size="small" />
+                ) : (
+                  <ThemedText style={styles.loadEarlierText}>
+                    Load earlier messages
+                  </ThemedText>
+                )}
+              </Pressable>
+            ) : null
+          }
+          maintainVisibleContentPosition={{
+            minIndexForVisible: 0,
+          }}
+          maxToRenderPerBatch={5}
+          removeClippedSubviews={Platform.OS === "android"}
+          renderItem={renderCompletedTurn}
+          showsVerticalScrollIndicator={false}
+          windowSize={5}
+        />
+      </ChatRevertDisabledContext.Provider>
     </>
   );
 });
 
-const ProjectChatHeader = memo(function ProjectChatHeader({
-  instanceId,
-  isExpiring,
-  isRefreshing,
-  onBack,
-  onOpenSwitcher,
-  onRefresh,
-  opencodePassword,
-  projectId,
-  projectSessionId,
-  terminatesAt,
-  title,
-}: {
-  instanceId: string;
-  isExpiring: boolean;
-  isRefreshing: boolean;
-  onBack: () => void;
-  onOpenSwitcher: () => void;
-  onRefresh: () => void;
-  opencodePassword?: string;
-  projectId: string;
-  projectSessionId: string;
-  terminatesAt: Date | number | string | null | undefined;
-  title: string;
-}) {
-  const theme = useTheme();
-  return (
-    <PageHeader
-      accessibilityLabel="Switch chat"
-      onBack={onBack}
-      onTitlePress={onOpenSwitcher}
-      right={
-        <View
-          style={[
-            styles.headerActions,
-            { backgroundColor: theme.backgroundElement },
-          ]}
-        >
-          <ProjectFilesButton
-            projectId={projectId}
-            projectSessionId={projectSessionId}
-          />
-          <ProjectSettingsButton
-            projectId={projectId}
-            projectSessionId={projectSessionId}
-          />
-          <ProjectDomainsButton
-            instanceId={instanceId}
-            opencodePassword={opencodePassword}
-            projectId={projectId}
-          />
-          <Pressable
-            accessibilityLabel="Reload chat"
-            accessibilityRole="button"
-            disabled={isRefreshing}
-            onPress={() => void onRefresh()}
-            style={({ pressed }) => [
-              styles.headerAction,
-              pressed && styles.pressed,
-            ]}
-          >
-            {isRefreshing ? (
-              <ActivityIndicator size="small" />
-            ) : (
-              <SymbolView
-                name={{ ios: "arrow.clockwise", android: "refresh" }}
-                size={19}
-                tintColor={theme.textSecondary}
-              />
-            )}
-          </Pressable>
-        </View>
-      }
-      title={title}
-      titleContainerStyle={
-        isExpiring
-          ? {
-              backgroundColor: "rgba(245, 158, 11, 0.14)",
-              borderColor: "rgba(245, 158, 11, 0.55)",
-              borderWidth: 1,
-            }
-          : undefined
-      }
-      titleLeading={
-        isExpiring ? (
-          <SymbolView
-            name={{ ios: "clock.fill", android: "schedule" }}
-            size={13}
-            tintColor="#f59e0b"
-          />
-        ) : undefined
-      }
-      titleTrailing={
-        <>
-          {isExpiring ? (
-            <InstanceExpiryCountdown
-              style={styles.headerCountdown}
-              terminatesAt={terminatesAt}
-            />
-          ) : null}
-          <SymbolView
-            name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
-            size={13}
-            tintColor={theme.textSecondary}
-          />
-        </>
-      }
-      titleVariant="pill"
-    />
-  );
-});
-
 function AdjacentChatPreview({
+  accessToken,
+  chatId,
+  models,
+  password,
+  projectSessionId,
+  serverUrl,
   topInset,
-  turns,
+  turnCache,
 }: {
+  accessToken: string;
+  chatId: string;
+  models?: OpencodeModelOption[];
+  password?: string;
+  projectSessionId: string;
+  serverUrl: string;
   topInset: number;
-  turns: ReturnType<typeof createChatTurns>;
+  turnCache: ReturnType<typeof createChatTurnCache>;
 }) {
-  const scrollRef = useRef<ScrollView>(null);
-
+  const sessionQuery = useOpencodeSession({
+    chatId: projectSessionId,
+    sessionId: chatId,
+    serverUrl,
+    accessToken,
+    password,
+    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
+    refetchOnMount: false,
+    gcTime: CHAT_CACHE_TIME,
+  });
+  const selectTurns = useMemo(
+    () => turnCache(JSON.stringify([projectSessionId, serverUrl, chatId])),
+    [chatId, projectSessionId, serverUrl, turnCache],
+  );
+  const turns = useMemo(() => {
+    const messages = sessionQuery.data?.messages ?? [];
+    const revertMessageId = sessionQuery.data?.session.revert?.messageID;
+    const revertIndex = revertMessageId
+      ? messages.findIndex((message) => message.info.id === revertMessageId)
+      : -1;
+    return selectTurns(
+      revertIndex < 0 ? messages : messages.slice(0, revertIndex),
+      models,
+    );
+  }, [models, selectTurns, sessionQuery.data]);
+  const reversedTurns = useMemo(() => [...turns].reverse(), [turns]);
+  const renderTurn = useCallback(
+    ({ item }: { item: (typeof turns)[number] }) => (
+      <OpencodeChatTurn
+        isReverting={false}
+        isStreaming={false}
+        item={item}
+        onRevert={ignoreChatRevert}
+      />
+    ),
+    [],
+  );
   return (
-    <ScrollView
-      contentOffset={{ x: 0, y: 1_000_000 }}
+    <FlatList
+      inverted
+      data={reversedTurns}
+      initialNumToRender={6}
+      maxToRenderPerBatch={5}
+      windowSize={5}
       contentContainerStyle={[
         styles.messages,
-        styles.adjacentMessages,
-        { paddingTop: topInset },
+        { paddingTop: 150, paddingBottom: topInset },
       ]}
-      onContentSizeChange={() =>
-        scrollRef.current?.scrollToEnd({ animated: false })
-      }
-      ref={scrollRef}
-      showsVerticalScrollIndicator={false}
-    >
-      {turns.length ? (
-        turns.map((turn) => (
-          <OpencodeChatTurn
-            isReverting={false}
-            isStreaming={false}
-            item={turn}
-            key={turn.id}
-            onRevert={() => {}}
-          />
-        ))
-      ) : (
+      keyExtractor={(turn) => turn.id}
+      removeClippedSubviews={Platform.OS === "android"}
+      renderItem={renderTurn}
+      ListEmptyComponent={
         <View style={styles.adjacentPreviewLoading}>
           <ActivityIndicator size="small" />
         </View>
-      )}
-    </ScrollView>
+      }
+      showsVerticalScrollIndicator={false}
+    />
   );
 }
 
@@ -1457,64 +1803,12 @@ const styles = StyleSheet.create({
     marginTop: 120,
     textAlign: "center",
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  headerAction: {
-    alignItems: "center",
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  headerActions: {
-    alignItems: "center",
-    borderRadius: 24,
-    flexDirection: "row",
-    height: 44,
-    overflow: "hidden",
-  },
-  headerButton: {
-    alignItems: "center",
-    borderRadius: 20,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  headerTitlePill: {
-    alignItems: "center",
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    flex: 1,
-    flexDirection: "row",
-    gap: 7,
-    height: 42,
-    justifyContent: "center",
-    minWidth: 0,
-    paddingHorizontal: 16,
-  },
   inputSolidBackground: {
     bottom: 0,
     height: PAGE_CHROME.bottom.estimatedInset,
     left: 0,
     position: "absolute",
     right: 0,
-  },
-  headerTitle: {
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 20,
-    maxWidth: "100%",
-  },
-  headerCountdown: {
-    color: "#f59e0b",
-    fontFamily: Fonts.mono,
-    fontSize: 11,
-    fontWeight: "800",
   },
   loading: {
     alignItems: "center",
@@ -1541,11 +1835,58 @@ const styles = StyleSheet.create({
     paddingHorizontal: 18,
     paddingTop: 24,
   },
-  rawResponse: {
-    fontFamily: Platform.select({ ios: "ui-monospace", default: "monospace" }),
-    fontSize: 11,
-    lineHeight: 17,
-    minWidth: 500,
+  queuedPrompt: {
+    fontSize: 12,
+  },
+  queuedPromptAction: {
+    paddingHorizontal: 4,
+    paddingVertical: 2,
+  },
+  queuedPromptDragHandle: { padding: 4 },
+  queuedPromptInput: {
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    flex: 1,
+    fontSize: 12,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+  },
+  queuedPromptDragDot: {
+    borderRadius: 1,
+    height: 2,
+    width: 2,
+  },
+  queuedPromptDragDots: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    gap: 2,
+    width: 8,
+  },
+  queuedPromptRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
+  queuedPrompts: {
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    gap: 4,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+  },
+  queuedPromptsHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+  },
+  queuedPromptsTitle: {
+    flex: 1,
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  queuedPromptsToggle: {
+    fontSize: 12,
+    fontWeight: "600",
+    marginRight: 4,
   },
   restoreButton: {
     alignItems: "center",

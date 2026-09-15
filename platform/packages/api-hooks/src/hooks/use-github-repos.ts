@@ -1,11 +1,36 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "../api-client-context.js";
+import type {
+  GetGitRepoAccessTokensParams,
+  GitRepoActivityType,
+} from "@repo/api-client";
 
 export const useGithubRepos = () => {
   const client = useApiClient();
   return useQuery({
     queryKey: ["github-repos"],
     queryFn: client.githubRepos.getGithubRepos,
+  });
+};
+
+export const useGitRepoAccessTokens = (
+  params: GetGitRepoAccessTokensParams = {},
+) => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["git-repo-access-tokens", params],
+    queryFn: () => client.githubRepos.getGitRepoAccessTokens(params),
+  });
+};
+
+export const useRevokeGitRepoAccessToken = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.githubRepos.revokeGitRepoAccessToken,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: ["git-repo-access-tokens"] }),
   });
 };
 
@@ -27,25 +52,47 @@ export const useDeleteGithubRepo = () => {
   return useMutation({
     mutationFn: client.githubRepos.deleteGithubRepo,
     onSuccess: (_, id) => {
-      queryClient.removeQueries({ queryKey: ["github-repo", id] });
+      queryClient.removeQueries({ queryKey: ["git-repo", id] });
       return queryClient.invalidateQueries({ queryKey: ["github-repos"] });
     },
   });
 };
 
-export const useGithubRepoIssues = (id: string) => {
+export const useGitRepoById = (id: string) => {
   const client = useApiClient();
   return useQuery({
-    queryKey: ["github-repo", id, "issues"],
-    queryFn: () => client.githubRepos.getGithubRepoIssues(id),
+    queryKey: ["git-repo", id],
+    queryFn: () => client.githubRepos.getGitRepoById(id),
   });
 };
 
-export const useGithubRepoPullRequests = (id: string) => {
+export const useGitRepoActivity = <T extends GitRepoActivityType>(
+  id: string,
+  type: T,
+  options: { page?: number; count?: number; enabled?: boolean } = {},
+) => {
   const client = useApiClient();
+  const { page = 1, count = 20, enabled = true } = options;
+
   return useQuery({
-    queryKey: ["github-repo", id, "pull-requests"],
-    queryFn: () => client.githubRepos.getGithubRepoPullRequests(id),
+    queryKey: ["git-repo", id, "activity", type, page, count],
+    queryFn: () =>
+      client.githubRepos.getGitRepoActivity({ id, type, page, count }),
+    enabled,
+  });
+};
+
+export const useGitRepoActivityDetails = <T extends GitRepoActivityType>(
+  id: string,
+  type: T,
+  number: number,
+) => {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ["git-repo", id, "activity", type, number],
+    queryFn: () =>
+      client.githubRepos.getGitRepoActivityDetails({ id, type, number }),
   });
 };
 
@@ -59,7 +106,7 @@ export const useUpdateGithubRepoAutomation = () => {
       Promise.all([
         queryClient.invalidateQueries({ queryKey: ["github-repos"] }),
         queryClient.invalidateQueries({
-          queryKey: ["github-repo", variables.id],
+          queryKey: ["git-repo", variables.id],
         }),
       ]),
   });

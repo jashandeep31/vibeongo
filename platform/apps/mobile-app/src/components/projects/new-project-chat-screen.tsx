@@ -2,10 +2,14 @@ import {
   findOpencodeFiles,
   type OpencodePromptSelection,
 } from "@repo/api-client";
-import { useOpencodeInventory, useStartOpencodeSession } from "@repo/api-hooks";
+import {
+  useOpencodeInventory,
+  useOpencodeProjectDirectories,
+  useStartOpencodeSession,
+  useUserSettings,
+} from "@repo/api-hooks";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { SymbolView } from "expo-symbols";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -20,19 +24,14 @@ import {
   OpencodeComposerController,
 } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
-import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
-import { ProjectFilesButton } from "@/components/projects/project-files-button";
-import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
+import { ProjectWorkspaceTopBar } from "@/components/projects/project-workspace-top-bar";
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import { PageChromeLayout } from "@/components/page-chrome";
 import { PAGE_CHROME } from "@/constants/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import {
-  InstanceExpiryCountdown,
-  useInstanceExpiryWarning,
-} from "@/components/projects/instance-expiry-countdown";
+import { useInstanceExpiryWarning } from "@/components/projects/instance-expiry-countdown";
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -88,6 +87,14 @@ export function NewProjectChatScreen() {
     runtime.accessToken,
     runtime.password,
   );
+  const directoriesQuery = useOpencodeProjectDirectories(
+    projectSessionId,
+    runtime.serverUrl,
+    runtime.accessToken,
+    runtime.password,
+  );
+  const resolvedDirectory = directory || directoriesQuery.data?.[0]?.worktree;
+  const { data: userSettings } = useUserSettings();
   const startSession = useStartOpencodeSession();
   const [selection, setSelection] = useState<OpencodePromptSelection>(() => ({
     agent: inheritedAgent || undefined,
@@ -101,12 +108,12 @@ export function NewProjectChatScreen() {
         runtime.serverUrl,
         runtime.accessToken,
         query,
-        directory || undefined,
+        resolvedDirectory,
         runtime.password,
       ),
     [
-      directory,
       projectSessionId,
+      resolvedDirectory,
       runtime.accessToken,
       runtime.password,
       runtime.serverUrl,
@@ -116,13 +123,19 @@ export function NewProjectChatScreen() {
   useEffect(() => {
     const inventory = inventoryQuery.data;
     if (!inventory) return;
+    const configuredDefaultModel = userSettings?.default_model ?? undefined;
+    const defaultModel = inventory.models.some(
+      (model) => model.id === configuredDefaultModel,
+    )
+      ? configuredDefaultModel
+      : (inventory.defaultSelection.model ?? inventory.models[0]?.id);
     setSelection((current) => ({
       ...current,
       model:
         current.model &&
         inventory.models.some((model) => model.id === current.model)
           ? current.model
-          : (inventory.defaultSelection.model ?? inventory.models[0]?.id),
+          : defaultModel,
       agent:
         current.agent &&
         inventory.agents.some((agent) => agent.id === current.agent)
@@ -131,7 +144,7 @@ export function NewProjectChatScreen() {
             inventory.agents.find((agent) => agent.mode === "primary")?.id ??
             inventory.agents[0]?.id),
     }));
-  }, [inventoryQuery.data]);
+  }, [inventoryQuery.data, userSettings?.default_model]);
 
   const goBack = () => {
     if (returnOpencodeSessionId && returnProjectId && returnProjectSessionId) {
@@ -172,7 +185,7 @@ export function NewProjectChatScreen() {
         serverUrl: runtime.serverUrl,
         accessToken: runtime.accessToken,
         password: runtime.password,
-        directory,
+        directory: resolvedDirectory,
         text,
         files: [],
         attachments,
@@ -217,57 +230,45 @@ export function NewProjectChatScreen() {
             />
           }
           top={
-            <PageHeader
-              onBack={goBack}
-              right={
-                <View
-                  style={[
-                    styles.headerActions,
-                    { backgroundColor: theme.backgroundElement },
-                  ]}
-                >
-                  <ProjectFilesButton
-                    projectId={projectId}
-                    projectSessionId={projectSessionId}
-                  />
-                  <ProjectSettingsButton
-                    projectId={projectId}
-                    projectSessionId={projectSessionId}
-                  />
-                  <ProjectDomainsButton
-                    instanceId={runtime.instance.id}
-                    opencodePassword={runtime.password}
-                    projectId={projectId}
-                  />
-                </View>
-              }
-              title="New chat"
-              titleContainerStyle={
-                isInstanceExpiring
+            <ProjectWorkspaceTopBar
+              connection={
+                resolvedDirectory
                   ? {
-                      backgroundColor: "rgba(245, 158, 11, 0.14)",
-                      borderColor: "rgba(245, 158, 11, 0.55)",
-                      borderWidth: 1,
+                      accessToken: runtime.accessToken,
+                      chatId: projectSessionId,
+                      directory: resolvedDirectory,
+                      password: runtime.password,
+                      serverUrl: runtime.serverUrl,
                     }
                   : undefined
               }
-              titleTrailing={
-                isInstanceExpiring ? (
-                  <InstanceExpiryCountdown
-                    style={styles.headerCountdown}
-                    terminatesAt={runtime.instance?.terminates_at}
-                  />
-                ) : (
-                  <ThemedText
-                    numberOfLines={1}
-                    style={styles.headerSubtitle}
-                    themeColor="textSecondary"
-                  >
-                    {projectName} · {sessionName}
-                  </ThemedText>
-                )
+              instanceId={runtime.instance.id}
+              isExpiring={isInstanceExpiring}
+              isRefreshing={
+                inventoryQuery.isFetching || directoriesQuery.isFetching
               }
-              titleVariant="pill"
+              onBack={goBack}
+              onRefresh={() => {
+                void Promise.allSettled([
+                  inventoryQuery.refetch(),
+                  directoriesQuery.refetch(),
+                ]);
+              }}
+              opencodePassword={runtime.password}
+              projectId={projectId}
+              projectSessionId={projectSessionId}
+              showReview={false}
+              terminatesAt={runtime.instance.terminates_at}
+              title="New chat"
+              titleTrailing={
+                <ThemedText
+                  numberOfLines={1}
+                  style={styles.headerSubtitle}
+                  themeColor="textSecondary"
+                >
+                  {projectName} · {sessionName}
+                </ThemedText>
+              }
             />
           }
         >
@@ -290,7 +291,7 @@ export function NewProjectChatScreen() {
                   What should we work on?
                 </ThemedText>
                 <ThemedText style={styles.directory} themeColor="textSecondary">
-                  {directory}
+                  {resolvedDirectory}
                 </ThemedText>
               </View>
               <OpencodeComposerController
@@ -302,6 +303,16 @@ export function NewProjectChatScreen() {
                 onOpenTerminal={openTerminal}
                 onSubmit={submit}
                 placeholder="Describe the task…"
+                providerConnection={{
+                  accessToken: runtime.accessToken,
+                  chatId: projectSessionId,
+                  directory: resolvedDirectory,
+                  onConnected: async () => {
+                    await inventoryQuery.refetch();
+                  },
+                  password: runtime.password,
+                  serverUrl: runtime.serverUrl,
+                }}
                 selection={selection}
                 searchFiles={searchFiles}
               />
@@ -337,57 +348,10 @@ const styles = StyleSheet.create({
     fontSize: 13,
     textAlign: "center",
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  headerActions: {
-    alignItems: "center",
-    borderRadius: 24,
-    flexDirection: "row",
-    height: 44,
-    overflow: "hidden",
-  },
-  headerButton: {
-    alignItems: "center",
-    borderRadius: 20,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  headerCountdown: {
-    color: "#f59e0b",
-    fontFamily: Fonts.mono,
-    fontSize: 10,
-    fontWeight: "800",
-  },
-  headerExpiryRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 4,
-  },
   headerSubtitle: {
     flexShrink: 1,
     fontSize: 12,
     lineHeight: 15,
-  },
-  headerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 17,
-  },
-  headerTitlePill: {
-    alignItems: "center",
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    flex: 1,
-    height: 42,
-    justifyContent: "center",
-    minWidth: 0,
-    paddingHorizontal: 16,
   },
   inputSolidBackground: {
     bottom: 0,

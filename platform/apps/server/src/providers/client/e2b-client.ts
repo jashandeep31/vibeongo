@@ -25,6 +25,7 @@ export class E2BClient {
       metadata: { name: instanceName },
       apiKey: env.E2B_API_KEY,
       timeoutMs: 1000 * terminateInstanceInSecs,
+      requestTimeoutMs: 30_000,
       network: {
         allowPublicTraffic: false,
       },

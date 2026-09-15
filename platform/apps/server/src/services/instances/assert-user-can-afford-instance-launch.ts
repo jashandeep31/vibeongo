@@ -55,7 +55,7 @@ export const assertUserCanAffordInstanceLaunch = async ({
     }
 
     const [sandboxType] = await tx
-      .select({ pricePerSecond: sandboxTypes.price_per_seconds })
+      .select({ pricePerSecond: sandboxTypes.price_per_second })
       .from(sandboxTypes)
       .where(eq(sandboxTypes.id, sandboxTypeId));
 

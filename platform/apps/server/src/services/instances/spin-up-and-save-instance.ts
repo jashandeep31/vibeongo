@@ -148,7 +148,7 @@ export const spinUpAndSaveInstance = async ({
       return null;
     }
 
-    const twoHourCost = row.sandboxType.price_per_seconds * 60 * 120;
+    const twoHourCost = row.sandboxType.price_per_second * 60 * 120;
     requiredBalance = Math.ceil(
       twoHourCost + twoHourCost * (env.PROFIT_PRECENTAGE / 100),
     );

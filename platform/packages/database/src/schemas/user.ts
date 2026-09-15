@@ -26,12 +26,15 @@ export const users = pgTable("users", {
   last_name: varchar(),
   role: userRoles().default("user").notNull(),
 
+  // forjego_data
+  forgejo_id: integer().unique(),
+
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
 
 export const accountProviders = pgEnum("account_providers", ["github"]);
-export const acountStatus = pgEnum("account_status", [
+export const accountStatus = pgEnum("account_status", [
   "active",
   "banned",
   "deleted",
@@ -39,10 +42,11 @@ export const acountStatus = pgEnum("account_status", [
 
 export const accounts = pgTable("accounts", {
   id: uuid().unique().defaultRandom(),
-  user_id: uuid().references(() => users.id),
+  user_id: uuid().references(() => users.id).notNull().unique(),
 
   provider: accountProviders().notNull(),
-  status: acountStatus().notNull().default("active"),
+  provider_account_id: varchar({ length: 255 }).notNull().unique(),
+  status: accountStatus().notNull().default("active"),
   verified: boolean().notNull().default(true),
   token: varchar({ length: 255 }).notNull(),
 
