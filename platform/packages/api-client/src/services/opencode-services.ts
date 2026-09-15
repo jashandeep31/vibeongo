@@ -559,6 +559,33 @@ export type OpencodeAgentOption = {
   mode: "subagent" | "primary" | "all";
 };
 
+export type OpencodeMcpStatus =
+  | { status: "connected" }
+  | { status: "pending" }
+  | { status: "disabled" }
+  | { status: "needs_auth" }
+  | { status: "failed"; error: string };
+
+export type OpencodeMcpServer = {
+  name: string;
+  status: OpencodeMcpStatus;
+  integrationID?: string;
+};
+
+export type OpencodeMcpConfig =
+  | {
+      type: "local";
+      command: string[];
+      cwd?: string;
+      environment?: Record<string, string>;
+    }
+  | {
+      type: "remote";
+      url: string;
+      headers?: Record<string, string>;
+      oauth?: false;
+    };
+
 export type OpencodeInventory = {
   models: OpencodeModelOption[];
   agents: OpencodeAgentOption[];
@@ -2050,6 +2077,114 @@ function normalizeV2ToolState(
         : [],
     ),
   };
+}
+
+export async function getOpencodeMcpServers(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const result = await client.mcp.list({ location: { directory } });
+  return [...result.data]
+    .map((server) => server as OpencodeMcpServer)
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+export async function addOpencodeMcpServer(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory: string,
+  name: string,
+  config: OpencodeMcpConfig,
+  password?: string,
+) {
+  const server = name.trim();
+  if (!server) throw new Error("MCP server name is required");
+  if (config.type === "local" && !config.command[0]?.trim()) {
+    throw new Error("A local MCP command is required");
+  }
+  if (config.type === "remote") {
+    const url = new URL(config.url);
+    if (url.protocol !== "https:" && url.protocol !== "http:") {
+      throw new Error("Remote MCP URL must use HTTP or HTTPS");
+    }
+  }
+
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  await client.mcp.add({ server, config, location: { directory } });
+}
+
+export async function toggleOpencodeMcpServer(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory: string,
+  name: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const location = { directory };
+  const server = (await client.mcp.list({ location })).data.find(
+    (item) => item.name === name,
+  );
+  if (!server) throw new Error(`MCP server ${name} was not found`);
+
+  if (server.status.status === "pending") return {};
+  if (server.status.status === "connected") {
+    await client.mcp.disconnect({ server: name, location });
+  } else if (server.status.status === "needs_auth") {
+    if (!server.integrationID) {
+      throw new Error(`MCP server ${name} has no authentication integration`);
+    }
+    const integration = await client.integration.get({
+      integrationID: server.integrationID,
+      location,
+    });
+    const method = integration.data?.methods.find(
+      (item) => item.type === "oauth" && !item.form?.length,
+    );
+    if (!method || method.type !== "oauth") {
+      throw new Error(`${name} requires an interactive authentication form`);
+    }
+    const attempt = await client.integration.oauth.connect({
+      integrationID: server.integrationID,
+      methodID: method.id,
+      location,
+    });
+    return { authorizationUrl: attempt.data.url };
+  } else {
+    await client.mcp.connect({ server: name, location });
+  }
+
+  const current = (await client.mcp.list({ location })).data.find(
+    (item) => item.name === name,
+  );
+  if (current?.status.status === "failed") {
+    throw new Error(`${name}: ${current.status.error}`);
+  }
+  return {};
 }
 
 function getOpencodeClient(

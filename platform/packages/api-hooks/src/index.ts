@@ -12,6 +12,7 @@ export * from "./hooks/use-instance.js";
 export * from "./hooks/use-instance-slots.js";
 export * from "./hooks/use-ip.js";
 export * from "./hooks/use-opencode-session.js";
+export * from "./hooks/use-opencode-mcp.js";
 export * from "./hooks/use-opencode-sessions.js";
 export * from "./hooks/use-opencode-status.js";
 export * from "./hooks/use-project-metadata.js";

@@ -3,6 +3,7 @@
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { OpencodeComposer } from "@/components/chat/opencode-composer";
+import { OpencodeMcpMenu } from "@/components/chat/opencode-mcp-menu";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import {
@@ -462,8 +463,21 @@ export function OpencodeSessionChat({
         >
           <RefreshCw className={isRefreshing ? "animate-spin" : undefined} />
         </Button>
+        <OpencodeMcpMenu
+          connection={{
+            chatId,
+            serverUrl,
+            accessToken,
+            password,
+            directory: rawResponse.session.directory,
+          }}
+        />
         <RuntimePulseMenu projectSessionId={chatId} />
-        <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
+        <ProjectDomainsDialog
+          projectId={projectId}
+          projectSessionId={chatId}
+          iconOnly
+        />
       </div>
       <div
         ref={scrollAreaRef}

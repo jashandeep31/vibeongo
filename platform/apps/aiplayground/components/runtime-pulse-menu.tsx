@@ -41,13 +41,10 @@ function normalizePercent(value: unknown) {
 }
 
 const runtimeDateFormatter = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
   month: "short",
   day: "numeric",
   hour: "2-digit",
   minute: "2-digit",
-  second: "2-digit",
-  timeZoneName: "short",
 });
 
 function formatRuntimeDate(value: unknown) {
@@ -157,12 +154,17 @@ export function RuntimePulseMenu({
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="sm">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Runtime controls"
+            title="Runtime controls"
+          >
             <Activity />
-            <span className="hidden sm:inline">Runtime controls</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuContent align="end" className="w-72">
           <DropdownMenuLabel className="flex items-center justify-between px-3 py-2">
             <span>Runtime controls</span>
             <span
@@ -212,29 +214,29 @@ export function RuntimePulseMenu({
 
           <div className="text-muted-foreground grid gap-2 px-3 pb-3 text-xs">
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <Rocket className="size-3.5" /> Started at
               </span>
               <time
-                className="text-foreground text-right font-medium"
+                className="text-foreground text-right font-medium whitespace-nowrap tabular-nums"
                 dateTime={new Date(instance.started_at).toISOString()}
               >
                 {formatRuntimeDate(instance.started_at)}
               </time>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <CalendarClock className="size-3.5" /> Terminates at
               </span>
               <time
-                className="text-foreground text-right font-medium"
+                className="text-foreground text-right font-medium whitespace-nowrap tabular-nums"
                 dateTime={new Date(instance.terminates_at).toISOString()}
               >
                 {formatRuntimeDate(instance.terminates_at)}
               </time>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <TimerReset className="size-3.5" /> Terminates in
               </span>
               <span className="text-foreground font-mono font-medium tabular-nums">
