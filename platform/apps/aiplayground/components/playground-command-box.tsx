@@ -32,7 +32,9 @@ import {
   BotMessageSquare,
   ExternalLink,
   Folder,
+  FolderOpen,
   Gauge,
+  GitCompareArrows,
   Globe,
   Github,
   House,
@@ -46,6 +48,7 @@ import {
   Settings,
   SquareDashedMousePointer,
   SquarePen,
+  Terminal,
   WalletCards,
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -124,9 +127,11 @@ function getServerUrl(
 export function PlaygroundCommandBox() {
   const router = useRouter();
   const params = useParams<{
+    opencodeSessionId?: string;
     projectId?: string;
     projectSessionId?: string;
   }>();
+  const routeOpencodeSessionId = params.opencodeSessionId;
   const routeProjectId = params.projectId;
   const routeProjectSessionId = params.projectSessionId;
   const projects = useProjectsStore((store) => store.projects);
@@ -282,6 +287,18 @@ export function PlaygroundCommandBox() {
     router.push(
       `/projects/${encodeURIComponent(targetProjectId)}/sessions/${encodeURIComponent(projectSessionId)}/chats/${encodeURIComponent(opencodeSessionId)}?${searchParams.toString()}`,
     );
+    setOpen(false);
+  };
+
+  const currentChatNavigation =
+    routeProjectId && routeProjectSessionId && routeOpencodeSessionId
+      ? {
+          chatUrl: `/projects/${encodeURIComponent(routeProjectId)}/sessions/${encodeURIComponent(routeProjectSessionId)}/chats/${encodeURIComponent(routeOpencodeSessionId)}`,
+          terminalUrl: `/projects/${encodeURIComponent(routeProjectId)}/sessions/${encodeURIComponent(routeProjectSessionId)}/terminal`,
+        }
+      : null;
+  const navigateTo = (url: string) => {
+    router.push(url);
     setOpen(false);
   };
 
@@ -651,6 +668,53 @@ export function PlaygroundCommandBox() {
                 </CommandGroup>
                 {projectOptions}
               </>
+            ) : null}
+
+            {currentChatNavigation ? (
+              <CommandGroup heading="Current chat">
+                <CommandItem
+                  value="current chat messages conversation"
+                  onSelect={() => navigateTo(currentChatNavigation.chatUrl)}
+                >
+                  <BotMessageSquare />
+                  Chat
+                </CommandItem>
+                <CommandItem
+                  value="git diff review changes changed files source control"
+                  onSelect={() =>
+                    navigateTo(`${currentChatNavigation.chatUrl}/review`)
+                  }
+                >
+                  <GitCompareArrows />
+                  Review changes
+                  <CommandShortcut>Git diff</CommandShortcut>
+                </CommandItem>
+                <CommandItem
+                  value="files browse workspace code current chat"
+                  onSelect={() =>
+                    navigateTo(`${currentChatNavigation.chatUrl}/files`)
+                  }
+                >
+                  <FolderOpen />
+                  Files
+                </CommandItem>
+                <CommandItem
+                  value="chat settings runtime configuration current chat"
+                  onSelect={() =>
+                    navigateTo(`${currentChatNavigation.chatUrl}/settings`)
+                  }
+                >
+                  <Settings />
+                  Runtime settings
+                </CommandItem>
+                <CommandItem
+                  value="terminal shell command line current session"
+                  onSelect={() => navigateTo(currentChatNavigation.terminalUrl)}
+                >
+                  <Terminal />
+                  Terminal
+                </CommandItem>
+              </CommandGroup>
             ) : null}
 
             <CommandGroup heading="Navigation">

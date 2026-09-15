@@ -14,7 +14,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Columns2,
-  ExternalLink,
   FileCode2,
   GitCompareArrows,
   RefreshCw,
@@ -260,7 +259,6 @@ export function OpencodeReviewPanel({
                 diffStyle={diffStyle}
                 expandedContext={expandedContext}
                 onExpandedContextChange={setExpandedContext}
-                chatUrl={chatUrl}
                 canSelectPrevious={selectedIndex > 0}
                 canSelectNext={
                   selectedIndex >= 0 && selectedIndex < filteredChanges.length - 1
@@ -281,7 +279,6 @@ function ReviewDiffPreview({
   diffStyle,
   expandedContext,
   onExpandedContextChange,
-  chatUrl,
   canSelectPrevious,
   canSelectNext,
   onSelectPrevious,
@@ -291,7 +288,6 @@ function ReviewDiffPreview({
   diffStyle: DiffStyle;
   expandedContext: boolean;
   onExpandedContextChange: (expanded: boolean) => void;
-  chatUrl: string;
   canSelectPrevious: boolean;
   canSelectNext: boolean;
   onSelectPrevious: () => void;
@@ -321,11 +317,6 @@ function ReviewDiffPreview({
           </Button>
           <Button type="button" variant="ghost" size="icon-sm" aria-label={expandedContext ? "Collapse unchanged lines" : "Expand unchanged lines"} title={expandedContext ? "Collapse unchanged lines" : "Expand unchanged lines"} onClick={() => onExpandedContextChange(!expandedContext)}>
             <ChevronsUpDown />
-          </Button>
-          <Button asChild type="button" variant="ghost" size="icon-sm">
-            <Link href={`${chatUrl}/files`} aria-label="Open file" title={`Open ${path} in Files`}>
-              <ExternalLink />
-            </Link>
           </Button>
         </div>
       </div>

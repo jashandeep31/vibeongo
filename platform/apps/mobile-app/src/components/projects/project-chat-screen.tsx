@@ -64,19 +64,14 @@ import {
   ProjectChatSwitcherDrawer,
   type ProjectChatTarget,
 } from "@/components/projects/project-chat-switcher-drawer";
-import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
-import { ProjectFilesButton } from "@/components/projects/project-files-button";
-import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
+import { ProjectWorkspaceTopBar } from "@/components/projects/project-workspace-top-bar";
 import { ThemedText } from "@/components/themed-text";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import { PageChromeLayout } from "@/components/page-chrome";
 import { PAGE_CHROME } from "@/constants/page-chrome";
 import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import {
-  InstanceExpiryCountdown,
-  useInstanceExpiryWarning,
-} from "@/components/projects/instance-expiry-countdown";
+import { useInstanceExpiryWarning } from "@/components/projects/instance-expiry-countdown";
 
 type SwipePreview = { chatId: string; offset: -1 | 1 };
 const CHAT_CACHE_TIME = 30 * 60 * 1_000;
@@ -584,7 +579,15 @@ export function ProjectChatScreen() {
               />
             }
             top={
-              <ProjectChatHeader
+              <ProjectWorkspaceTopBar
+                changeCount={data.changes.length}
+                connection={{
+                  accessToken: runtime.accessToken,
+                  chatId: projectSessionId,
+                  directory: data.session.directory,
+                  password: runtime.password,
+                  serverUrl: runtime.serverUrl,
+                }}
                 instanceId={runtime.instance?.id ?? ""}
                 isExpiring={isInstanceExpiring}
                 isRefreshing={isManuallyRefreshing}
@@ -592,6 +595,7 @@ export function ProjectChatScreen() {
                 onOpenSwitcher={openChatSwitcher}
                 onRefresh={refreshManually}
                 opencodePassword={runtime.password}
+                opencodeSessionId={opencodeSessionId}
                 projectId={projectId}
                 projectSessionId={projectSessionId}
                 terminatesAt={runtime.instance?.terminates_at}
@@ -1268,6 +1272,7 @@ function createChatShellSelector() {
       previous.session.model?.providerID === data.session.model?.providerID &&
       previous.session.model?.id === data.session.model?.id &&
       previous.session.model?.variant === data.session.model?.variant &&
+      previous.changes.length === data.changes.length &&
       previous.promptError === data.promptError &&
       sameItems(previous.messages, messages) &&
       sameItems(previous.questions, data.questions)
@@ -1277,7 +1282,7 @@ function createChatShellSelector() {
     previous = {
       ...data,
       messages,
-      changes: [],
+      changes: data.changes,
       status: { type: "idle" },
     };
     return previous;
@@ -1470,118 +1475,6 @@ const ChatTimeline = memo(function ChatTimeline({
         />
       </ChatRevertDisabledContext.Provider>
     </>
-  );
-});
-
-const ProjectChatHeader = memo(function ProjectChatHeader({
-  instanceId,
-  isExpiring,
-  isRefreshing,
-  onBack,
-  onOpenSwitcher,
-  onRefresh,
-  opencodePassword,
-  projectId,
-  projectSessionId,
-  terminatesAt,
-  title,
-}: {
-  instanceId: string;
-  isExpiring: boolean;
-  isRefreshing: boolean;
-  onBack: () => void;
-  onOpenSwitcher: () => void;
-  onRefresh: () => void;
-  opencodePassword?: string;
-  projectId: string;
-  projectSessionId: string;
-  terminatesAt: Date | number | string | null | undefined;
-  title: string;
-}) {
-  const theme = useTheme();
-  return (
-    <PageHeader
-      accessibilityLabel="Switch chat"
-      onBack={onBack}
-      onTitlePress={onOpenSwitcher}
-      right={
-        <View
-          style={[
-            styles.headerActions,
-            { backgroundColor: theme.backgroundElement },
-          ]}
-        >
-          <ProjectFilesButton
-            projectId={projectId}
-            projectSessionId={projectSessionId}
-          />
-          <ProjectSettingsButton
-            projectId={projectId}
-            projectSessionId={projectSessionId}
-          />
-          <ProjectDomainsButton
-            instanceId={instanceId}
-            opencodePassword={opencodePassword}
-            projectId={projectId}
-          />
-          <Pressable
-            accessibilityLabel="Reload chat"
-            accessibilityRole="button"
-            disabled={isRefreshing}
-            onPress={() => void onRefresh()}
-            style={({ pressed }) => [
-              styles.headerAction,
-              pressed && styles.pressed,
-            ]}
-          >
-            {isRefreshing ? (
-              <ActivityIndicator size="small" />
-            ) : (
-              <SymbolView
-                name={{ ios: "arrow.clockwise", android: "refresh" }}
-                size={19}
-                tintColor={theme.textSecondary}
-              />
-            )}
-          </Pressable>
-        </View>
-      }
-      title={title}
-      titleContainerStyle={
-        isExpiring
-          ? {
-              backgroundColor: "rgba(245, 158, 11, 0.14)",
-              borderColor: "rgba(245, 158, 11, 0.55)",
-              borderWidth: 1,
-            }
-          : undefined
-      }
-      titleLeading={
-        isExpiring ? (
-          <SymbolView
-            name={{ ios: "clock.fill", android: "schedule" }}
-            size={13}
-            tintColor="#f59e0b"
-          />
-        ) : undefined
-      }
-      titleTrailing={
-        <>
-          {isExpiring ? (
-            <InstanceExpiryCountdown
-              style={styles.headerCountdown}
-              terminatesAt={terminatesAt}
-            />
-          ) : null}
-          <SymbolView
-            name={{ ios: "chevron.down", android: "keyboard_arrow_down" }}
-            size={13}
-            tintColor={theme.textSecondary}
-          />
-        </>
-      }
-      titleVariant="pill"
-    />
   );
 });
 
@@ -1799,64 +1692,12 @@ const styles = StyleSheet.create({
     marginTop: 120,
     textAlign: "center",
   },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  headerAction: {
-    alignItems: "center",
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  headerActions: {
-    alignItems: "center",
-    borderRadius: 24,
-    flexDirection: "row",
-    height: 44,
-    overflow: "hidden",
-  },
-  headerButton: {
-    alignItems: "center",
-    borderRadius: 20,
-    height: 40,
-    justifyContent: "center",
-    width: 40,
-  },
-  headerTitlePill: {
-    alignItems: "center",
-    borderRadius: 22,
-    borderWidth: StyleSheet.hairlineWidth,
-    flex: 1,
-    flexDirection: "row",
-    gap: 7,
-    height: 42,
-    justifyContent: "center",
-    minWidth: 0,
-    paddingHorizontal: 16,
-  },
   inputSolidBackground: {
     bottom: 0,
     height: PAGE_CHROME.bottom.estimatedInset,
     left: 0,
     position: "absolute",
     right: 0,
-  },
-  headerTitle: {
-    flexShrink: 1,
-    fontSize: 14,
-    fontWeight: "700",
-    lineHeight: 20,
-    maxWidth: "100%",
-  },
-  headerCountdown: {
-    color: "#f59e0b",
-    fontFamily: Fonts.mono,
-    fontSize: 11,
-    fontWeight: "800",
   },
   loading: {
     alignItems: "center",
