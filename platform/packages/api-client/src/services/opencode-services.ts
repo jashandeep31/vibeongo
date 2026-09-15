@@ -730,7 +730,7 @@ export async function getOpencodeSessionRaw(
     password,
     session.directory,
   );
-  const [messagesResult, questions, activeResult] = await Promise.all([
+  const [messagesResult, questions, activeResult, changes] = await Promise.all([
     client.message.list({
       sessionID: sessionId,
       limit: messageLimit,
@@ -738,6 +738,25 @@ export async function getOpencodeSessionRaw(
     }),
     getOpencodeSessionForms(serverUrl, accessToken, password, sessionId),
     client.session.active(),
+    client.vcs
+      .diff({
+        location: { directory: session.directory },
+        mode: "working",
+      })
+      .then((result) => result.data)
+      .catch(async (vcsError) => {
+        // Older OpenCode servers may not expose VCS review yet. Their session
+        // diff endpoint still provides the latest turn's snapshot changes.
+        try {
+          return await client.session.diff({ sessionID: sessionId });
+        } catch (sessionError) {
+          console.warn("Could not load OpenCode changes", {
+            vcsError,
+            sessionError,
+          });
+          return session.summary?.diffs ?? [];
+        }
+      }),
   ]);
 
   const rawMessages = [...messagesResult.data];
@@ -775,7 +794,7 @@ export async function getOpencodeSessionRaw(
       : { type: "idle" as const },
     messages,
     questions,
-    changes: [],
+    changes,
     messagePage: {
       hasOlder,
       ...(hasOlder && nextCursor ? { cursor: nextCursor } : {}),

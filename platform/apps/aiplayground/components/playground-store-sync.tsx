@@ -39,6 +39,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   };
   const statusEventVersionsRef = useRef(new Map<string, number>());
   const handledCompletedAnswersRef = useRef(new Set<string>());
+  const filesystemRefreshTimerRef = useRef<number | undefined>(undefined);
   const updateSession = useSessionsStore((store) => store.updateSession);
   const {
     data: instancesData,
@@ -213,6 +214,28 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       const opencodeSessionId = getEventSessionId(event);
       const chatsStore = useSessionChatsStore.getState();
       const eventType = (event as { type: string }).type;
+
+      if (eventType === "filesystem.changed") {
+        const active = activeChatRef.current;
+        if (
+          active.projectSessionId === sessionId &&
+          active.opencodeSessionId
+        ) {
+          window.clearTimeout(filesystemRefreshTimerRef.current);
+          filesystemRefreshTimerRef.current = window.setTimeout(() => {
+            void queryClient.invalidateQueries({
+              queryKey: [
+                "opencode",
+                "session",
+                sessionId,
+                active.opencodeSessionId,
+                serverUrl,
+              ],
+              exact: true,
+            });
+          }, 150);
+        }
+      }
 
       if (eventType === "session.renamed" && opencodeSessionId) {
         const title = (event.properties as unknown as { title?: unknown })
@@ -478,6 +501,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
 
     return () => {
       disposed = true;
+      window.clearTimeout(filesystemRefreshTimerRef.current);
       document.removeEventListener("visibilitychange", reconnectWhenVisible);
       streamController?.abort();
     };
