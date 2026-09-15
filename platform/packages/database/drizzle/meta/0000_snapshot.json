@@ -1,9 +1,239 @@
 {
-  "id": "86b56360-2413-4b36-a65a-e2e7a6297452",
+  "id": "6c8118e4-d25c-4626-850f-a8a8d342ab91",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
+    "public.chat_answer": {
+      "name": "chat_answer",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "answer": {
+          "name": "answer",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reasoning": {
+          "name": "reasoning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "finish_reason": {
+          "name": "finish_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "usage": {
+          "name": "usage",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "steps": {
+          "name": "steps",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "memory": {
+          "name": "memory",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "question_id": {
+          "name": "question_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chat_answer_question_id_chat_questions_id_fk": {
+          "name": "chat_answer_question_id_chat_questions_id_fk",
+          "tableFrom": "chat_answer",
+          "tableTo": "chat_questions",
+          "columnsFrom": [
+            "question_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chat_questions": {
+      "name": "chat_questions",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "question": {
+          "name": "question",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "payload": {
+          "name": "payload",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{\"mentions\":[]}'::jsonb"
+        },
+        "chat_id": {
+          "name": "chat_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_number": {
+          "name": "order_number",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chat_questions_chat_id_chats_id_fk": {
+          "name": "chat_questions_chat_id_chats_id_fk",
+          "tableFrom": "chat_questions",
+          "tableTo": "chats",
+          "columnsFrom": [
+            "chat_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.chats": {
+      "name": "chats",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "chat_agent": {
+          "name": "chat_agent",
+          "type": "chat_agent_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "chats_user_id_users_id_fk": {
+          "name": "chats_user_id_users_id_fk",
+          "tableFrom": "chats",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.environments": {
       "name": "environments",
       "schema": "",
@@ -64,8 +294,143 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.github_repo_members": {
-      "name": "github_repo_members",
+    "public.git_repo_access_tokens": {
+      "name": "git_repo_access_tokens",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "instance_id": {
+          "name": "instance_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "repo_id": {
+          "name": "repo_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "git_provider",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_token_id": {
+          "name": "provider_token_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "encrypted_token": {
+          "name": "encrypted_token",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_iv": {
+          "name": "token_iv",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "token_tag": {
+          "name": "token_tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expires_at": {
+          "name": "expires_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revoked_at": {
+          "name": "revoked_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "git_repo_access_tokens_user_id_users_id_fk": {
+          "name": "git_repo_access_tokens_user_id_users_id_fk",
+          "tableFrom": "git_repo_access_tokens",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "git_repo_access_tokens_instance_id_instances_id_fk": {
+          "name": "git_repo_access_tokens_instance_id_instances_id_fk",
+          "tableFrom": "git_repo_access_tokens",
+          "tableTo": "instances",
+          "columnsFrom": [
+            "instance_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "git_repo_access_tokens_repo_id_git_repos_id_fk": {
+          "name": "git_repo_access_tokens_repo_id_git_repos_id_fk",
+          "tableFrom": "git_repo_access_tokens",
+          "tableTo": "git_repos",
+          "columnsFrom": [
+            "repo_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.git_repo_members": {
+      "name": "git_repo_members",
       "schema": "",
       "columns": {
         "id": {
@@ -125,10 +490,10 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "github_repo_members_repo_id_github_repos_id_fk": {
-          "name": "github_repo_members_repo_id_github_repos_id_fk",
-          "tableFrom": "github_repo_members",
-          "tableTo": "github_repos",
+        "git_repo_members_repo_id_git_repos_id_fk": {
+          "name": "git_repo_members_repo_id_git_repos_id_fk",
+          "tableFrom": "git_repo_members",
+          "tableTo": "git_repos",
           "columnsFrom": [
             "repo_id"
           ],
@@ -141,8 +506,8 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "github_repo_members_username_repo_id_unique": {
-          "name": "github_repo_members_username_repo_id_unique",
+        "git_repo_members_username_repo_id_unique": {
+          "name": "git_repo_members_username_repo_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "username",
@@ -154,8 +519,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.github_repos": {
-      "name": "github_repos",
+    "public.git_repos": {
+      "name": "git_repos",
       "schema": "",
       "columns": {
         "id": {
@@ -170,6 +535,14 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "type": {
+          "name": "type",
+          "type": "git_repo_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'github'"
         },
         "default_project_id": {
           "name": "default_project_id",
@@ -196,6 +569,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "overview": {
+          "name": "overview",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
         },
         "public": {
           "name": "public",
@@ -240,9 +620,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "github_repos_user_id_users_id_fk": {
-          "name": "github_repos_user_id_users_id_fk",
-          "tableFrom": "github_repos",
+        "git_repos_user_id_users_id_fk": {
+          "name": "git_repos_user_id_users_id_fk",
+          "tableFrom": "git_repos",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -253,9 +633,9 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "github_repos_default_project_id_projects_id_fk": {
-          "name": "github_repos_default_project_id_projects_id_fk",
-          "tableFrom": "github_repos",
+        "git_repos_default_project_id_projects_id_fk": {
+          "name": "git_repos_default_project_id_projects_id_fk",
+          "tableFrom": "git_repos",
           "tableTo": "projects",
           "columnsFrom": [
             "default_project_id"
@@ -269,19 +649,105 @@
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "github_repos_default_project_id_unique": {
-          "name": "github_repos_default_project_id_unique",
+        "git_repos_default_project_id_unique": {
+          "name": "git_repos_default_project_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "default_project_id"
           ]
         },
-        "github_repos_user_id_full_name_unique": {
-          "name": "github_repos_user_id_full_name_unique",
+        "git_repos_user_id_full_name_unique": {
+          "name": "git_repos_user_id_full_name_unique",
           "nullsNotDistinct": false,
           "columns": [
             "user_id",
             "full_name"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.instance_openrouter_keys": {
+      "name": "instance_openrouter_keys",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "instance_id": {
+          "name": "instance_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "hash": {
+          "name": "hash",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encrypted_key": {
+          "name": "encrypted_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iv": {
+          "name": "iv",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "instance_openrouter_keys_instance_id_instances_id_fk": {
+          "name": "instance_openrouter_keys_instance_id_instances_id_fk",
+          "tableFrom": "instance_openrouter_keys",
+          "tableTo": "instances",
+          "columnsFrom": [
+            "instance_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "instance_openrouter_keys_id_unique": {
+          "name": "instance_openrouter_keys_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
           ]
         }
       },
@@ -308,6 +774,12 @@
         },
         "slug": {
           "name": "slug",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ami": {
+          "name": "ami",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
@@ -398,9 +870,16 @@
         },
         "price_per_hour": {
           "name": "price_per_hour",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
         },
         "created_at": {
           "name": "created_at",
@@ -434,12 +913,189 @@
         }
       },
       "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.instance_slots": {
+      "name": "instance_slots",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "instance_id": {
+          "name": "instance_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "priority": {
+          "name": "priority",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "error": {
+          "name": "error",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "category": {
+          "name": "category",
+          "type": " instance_slot_instance_category",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "runtime_kind": {
+          "name": "runtime_kind",
+          "type": "instance_runtime_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "instance_type_id": {
+          "name": "instance_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sandbox_type_id": {
+          "name": "sandbox_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "assign_domains": {
+          "name": "assign_domains",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "spined_up_by": {
+          "name": "spined_up_by",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "status": {
+          "name": "status",
+          "type": "instance_slot_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "instance_slots_user_id_users_id_fk": {
+          "name": "instance_slots_user_id_users_id_fk",
+          "tableFrom": "instance_slots",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "instance_slots_instance_id_instances_id_fk": {
+          "name": "instance_slots_instance_id_instances_id_fk",
+          "tableFrom": "instance_slots",
+          "tableTo": "instances",
+          "columnsFrom": [
+            "instance_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "instance_slots_session_id_project_session_id_fk": {
+          "name": "instance_slots_session_id_project_session_id_fk",
+          "tableFrom": "instance_slots",
+          "tableTo": "project_session",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "instance_slots_instance_type_id_instance_types_id_fk": {
+          "name": "instance_slots_instance_type_id_instance_types_id_fk",
+          "tableFrom": "instance_slots",
+          "tableTo": "instance_types",
+          "columnsFrom": [
+            "instance_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "instance_slots_sandbox_type_id_sandbox_types_id_fk": {
+          "name": "instance_slots_sandbox_type_id_sandbox_types_id_fk",
+          "tableFrom": "instance_slots",
+          "tableTo": "sandbox_types",
+          "columnsFrom": [
+            "sandbox_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {
-        "instance_types_slug_unique": {
-          "name": "instance_types_slug_unique",
+        "instance_slots_instance_id_unique": {
+          "name": "instance_slots_instance_id_unique",
           "nullsNotDistinct": false,
           "columns": [
-            "slug"
+            "instance_id"
           ]
         }
       },
@@ -477,8 +1133,22 @@
           "primaryKey": false,
           "notNull": true
         },
+        "runtime_kind": {
+          "name": "runtime_kind",
+          "type": "instance_runtime_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'vm'"
+        },
         "instance_type_id": {
           "name": "instance_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sandbox_type_id": {
+          "name": "sandbox_type_id",
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
@@ -488,6 +1158,12 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
+        },
+        "terminates_at": {
+          "name": "terminates_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true
         },
         "terminated_at": {
           "name": "terminated_at",
@@ -511,7 +1187,7 @@
         },
         "session_cost": {
           "name": "session_cost",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -541,8 +1217,20 @@
           "primaryKey": false,
           "notNull": false
         },
-        "aws_instance_id": {
-          "name": "aws_instance_id",
+        "provider_instance_id": {
+          "name": "provider_instance_id",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "proxy_domain": {
+          "name": "proxy_domain",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "access_token": {
+          "name": "access_token",
           "type": "varchar",
           "primaryKey": false,
           "notNull": true
@@ -603,6 +1291,19 @@
           "onDelete": "no action",
           "onUpdate": "no action"
         },
+        "instances_sandbox_type_id_sandbox_types_id_fk": {
+          "name": "instances_sandbox_type_id_sandbox_types_id_fk",
+          "tableFrom": "instances",
+          "tableTo": "sandbox_types",
+          "columnsFrom": [
+            "sandbox_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
         "instances_project_session_id_project_session_id_fk": {
           "name": "instances_project_session_id_project_session_id_fk",
           "tableFrom": "instances",
@@ -614,6 +1315,178 @@
             "id"
           ],
           "onDelete": "set null",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "instances_exactly_one_runtime_type": {
+          "name": "instances_exactly_one_runtime_type",
+          "value": "\n        (\n          \"instances\".\"runtime_kind\" = 'vm'\n          AND \"instances\".\"instance_type_id\" IS NOT NULL\n          AND \"instances\".\"sandbox_type_id\" IS NULL\n        )\n        OR\n        (\n          \"instances\".\"runtime_kind\" = 'sandbox'\n          AND \"instances\".\"sandbox_type_id\" IS NOT NULL\n          AND \"instances\".\"instance_type_id\" IS NULL\n        )\n      "
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.git_repo_overview_jobs": {
+      "name": "git_repo_overview_jobs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "repoId": {
+          "name": "repoId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "userId": {
+          "name": "userId",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "git_repo_overview_jobs_status_enum",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "error": {
+          "name": "error",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "git_repo_overview_jobs_repoId_git_repos_id_fk": {
+          "name": "git_repo_overview_jobs_repoId_git_repos_id_fk",
+          "tableFrom": "git_repo_overview_jobs",
+          "tableTo": "git_repos",
+          "columnsFrom": [
+            "repoId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "git_repo_overview_jobs_userId_users_id_fk": {
+          "name": "git_repo_overview_jobs_userId_users_id_fk",
+          "tableFrom": "git_repo_overview_jobs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "userId"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.project_chats": {
+      "name": "project_chats",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "project_chats_project_id_projects_id_fk": {
+          "name": "project_chats_project_id_projects_id_fk",
+          "tableFrom": "project_chats",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "project_chats_user_id_users_id_fk": {
+          "name": "project_chats_user_id_users_id_fk",
+          "tableFrom": "project_chats",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -651,13 +1524,6 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": false
-        },
-        "allow_all_ips": {
-          "name": "allow_all_ips",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -826,6 +1692,12 @@
           "name": "agent",
           "type": "project_session_task_agents",
           "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "order_number": {
+          "name": "order_number",
+          "type": "integer",
           "primaryKey": false,
           "notNull": true
         },
@@ -1220,21 +2092,13 @@
         }
       },
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "project_files_project_id_unique": {
-          "name": "project_files_project_id_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "project_id"
-          ]
-        }
-      },
+      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.project_github_repos": {
-      "name": "project_github_repos",
+    "public.project_git_repos": {
+      "name": "project_git_repos",
       "schema": "",
       "columns": {
         "id": {
@@ -1273,9 +2137,9 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "project_github_repos_project_id_projects_id_fk": {
-          "name": "project_github_repos_project_id_projects_id_fk",
-          "tableFrom": "project_github_repos",
+        "project_git_repos_project_id_projects_id_fk": {
+          "name": "project_git_repos_project_id_projects_id_fk",
+          "tableFrom": "project_git_repos",
           "tableTo": "projects",
           "columnsFrom": [
             "project_id"
@@ -1286,10 +2150,10 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "project_github_repos_github_repo_id_github_repos_id_fk": {
-          "name": "project_github_repos_github_repo_id_github_repos_id_fk",
-          "tableFrom": "project_github_repos",
-          "tableTo": "github_repos",
+        "project_git_repos_github_repo_id_git_repos_id_fk": {
+          "name": "project_git_repos_github_repo_id_git_repos_id_fk",
+          "tableFrom": "project_git_repos",
+          "tableTo": "git_repos",
           "columnsFrom": [
             "github_repo_id"
           ],
@@ -1414,12 +2278,25 @@
           "primaryKey": false,
           "notNull": true
         },
+        "sandbox_type_id": {
+          "name": "sandbox_type_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "total_charges": {
           "name": "total_charges",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
+        },
+        "overview": {
+          "name": "overview",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
         },
         "initial_script": {
           "name": "initial_script",
@@ -1434,6 +2311,26 @@
           "primaryKey": false,
           "notNull": true,
           "default": "''"
+        },
+        "dev_script": {
+          "name": "dev_script",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "deleted": {
+          "name": "deleted",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -1471,6 +2368,19 @@
           "tableTo": "instance_types",
           "columnsFrom": [
             "instance_type_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "projects_sandbox_type_id_sandbox_types_id_fk": {
+          "name": "projects_sandbox_type_id_sandbox_types_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "sandbox_types",
+          "columnsFrom": [
+            "sandbox_type_id"
           ],
           "columnsTo": [
             "id"
@@ -1526,6 +2436,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": true
+        },
+        "allow_all_ips": {
+          "name": "allow_all_ips",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "created_at": {
           "name": "created_at",
@@ -1601,8 +2518,8 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.session_auth_tokens": {
-      "name": "session_auth_tokens",
+    "public.sandbox_regions": {
+      "name": "sandbox_regions",
       "schema": "",
       "columns": {
         "id": {
@@ -1612,23 +2529,114 @@
           "notNull": true,
           "default": "gen_random_uuid()"
         },
-        "session_id": {
-          "name": "session_id",
-          "type": "uuid",
+        "name": {
+          "name": "name",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": true
         },
-        "token": {
-          "name": "token",
-          "type": "varchar(255)",
+        "slug": {
+          "name": "slug",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": true
         },
-        "expires_at": {
-          "name": "expires_at",
+        "provider": {
+          "name": "provider",
+          "type": "sandbox_providers",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
           "type": "timestamp",
           "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.sandbox_types": {
+      "name": "sandbox_types",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "name": {
+          "name": "name",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "slug": {
+          "name": "slug",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
           "notNull": false
+        },
+        "cpu": {
+          "name": "cpu",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "ram": {
+          "name": "ram",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": false,
+          "default": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "sandbox_providers",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sandbox_region": {
+          "name": "sandbox_region",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "price_per_seconds": {
+          "name": "price_per_seconds",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
         },
         "created_at": {
           "name": "created_at",
@@ -1647,12 +2655,12 @@
       },
       "indexes": {},
       "foreignKeys": {
-        "session_auth_tokens_session_id_project_session_id_fk": {
-          "name": "session_auth_tokens_session_id_project_session_id_fk",
-          "tableFrom": "session_auth_tokens",
-          "tableTo": "project_session",
+        "sandbox_types_sandbox_region_sandbox_regions_id_fk": {
+          "name": "sandbox_types_sandbox_region_sandbox_regions_id_fk",
+          "tableFrom": "sandbox_types",
+          "tableTo": "sandbox_regions",
           "columnsFrom": [
-            "session_id"
+            "sandbox_region"
           ],
           "columnsTo": [
             "id"
@@ -1716,6 +2724,288 @@
         "shh_keys_user_id_users_id_fk": {
           "name": "shh_keys_user_id_users_id_fk",
           "tableFrom": "shh_keys",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.telegram_bot_chat": {
+      "name": "telegram_bot_chat",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "state": {
+          "name": "state",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "telegram_bot_chat_user_id_users_id_fk": {
+          "name": "telegram_bot_chat_user_id_users_id_fk",
+          "tableFrom": "telegram_bot_chat",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "telegram_bot_chat_id_unique": {
+          "name": "telegram_bot_chat_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "telegram_bot_chat_user_id_unique": {
+          "name": "telegram_bot_chat_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.telegram_bot_chat_session": {
+      "name": "telegram_bot_chat_session",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "telegram_chat_id": {
+          "name": "telegram_chat_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "project_id": {
+          "name": "project_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "telegram_bot_chat_session_user_project_idx": {
+          "name": "telegram_bot_chat_session_user_project_idx",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "project_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "telegram_bot_chat_session_user_id_users_id_fk": {
+          "name": "telegram_bot_chat_session_user_id_users_id_fk",
+          "tableFrom": "telegram_bot_chat_session",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "telegram_bot_chat_session_project_id_projects_id_fk": {
+          "name": "telegram_bot_chat_session_project_id_projects_id_fk",
+          "tableFrom": "telegram_bot_chat_session",
+          "tableTo": "projects",
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.telegram_bot_chat_session_message": {
+      "name": "telegram_bot_chat_session_message",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "session_id": {
+          "name": "session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "telegram_chat_id": {
+          "name": "telegram_chat_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "telegram_bot_chat_session_message_role",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "text": {
+          "name": "text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "telegram_bot_chat_session_message_context_idx": {
+          "name": "telegram_bot_chat_session_message_context_idx",
+          "columns": [
+            {
+              "expression": "session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "telegram_bot_chat_session_message_session_id_telegram_bot_chat_session_id_fk": {
+          "name": "telegram_bot_chat_session_message_session_id_telegram_bot_chat_session_id_fk",
+          "tableFrom": "telegram_bot_chat_session_message",
+          "tableTo": "telegram_bot_chat_session",
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "telegram_bot_chat_session_message_user_id_users_id_fk": {
+          "name": "telegram_bot_chat_session_message_user_id_users_id_fk",
+          "tableFrom": "telegram_bot_chat_session_message",
           "tableTo": "users",
           "columnsFrom": [
             "user_id"
@@ -1908,14 +3198,14 @@
         },
         "total_balance": {
           "name": "total_balance",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
         },
         "balance": {
           "name": "balance",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -2021,7 +3311,7 @@
         },
         "balance": {
           "name": "balance",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true,
           "default": 0
@@ -2109,7 +3399,7 @@
         },
         "amount": {
           "name": "amount",
-          "type": "integer",
+          "type": "bigint",
           "primaryKey": false,
           "notNull": true
         },
@@ -2184,12 +3474,18 @@
           "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "provider": {
           "name": "provider",
           "type": "account_providers",
           "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_account_id": {
+          "name": "provider_account_id",
+          "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
         },
@@ -2261,6 +3557,129 @@
       "uniqueConstraints": {
         "accounts_id_unique": {
           "name": "accounts_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "accounts_user_id_unique": {
+          "name": "accounts_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        },
+        "accounts_provider_account_id_unique": {
+          "name": "accounts_provider_account_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "provider_account_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.user_configs": {
+      "name": "user_configs",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "config_type": {
+          "name": "config_type",
+          "type": "user_config_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "iv": {
+          "name": "iv",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "encrypted_config": {
+          "name": "encrypted_config",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "tag": {
+          "name": "tag",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "config_user_id_type_unique": {
+          "name": "config_user_id_type_unique",
+          "columns": [
+            {
+              "expression": "user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "config_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "user_configs_user_id_users_id_fk": {
+          "name": "user_configs_user_id_users_id_fk",
+          "tableFrom": "user_configs",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_configs_id_unique": {
+          "name": "user_configs_id_unique",
           "nullsNotDistinct": false,
           "columns": [
             "id"
@@ -2353,6 +3772,133 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.user_settings": {
+      "name": "user_settings",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "default_pr_model": {
+          "name": "default_pr_model",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_issue_fixer_model": {
+          "name": "default_issue_fixer_model",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_comment_model": {
+          "name": "default_comment_model",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_model": {
+          "name": "default_model",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "telegram_chat_id": {
+          "name": "telegram_chat_id",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "default_issue_instance_auto_terminate_after_minutes": {
+          "name": "default_issue_instance_auto_terminate_after_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "default_pr_instance_auto_terminate_after_minutes": {
+          "name": "default_pr_instance_auto_terminate_after_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 30
+        },
+        "default_manual_instance_auto_terminate_after_minutes": {
+          "name": "default_manual_instance_auto_terminate_after_minutes",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 120
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "user_settings_user_id_users_id_fk": {
+          "name": "user_settings_user_id_users_id_fk",
+          "tableFrom": "user_settings",
+          "tableTo": "users",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "user_settings_id_unique": {
+          "name": "user_settings_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "id"
+          ]
+        },
+        "user_settings_user_id_unique": {
+          "name": "user_settings_user_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "user_id"
+          ]
+        },
+        "user_settings_telegram_chat_id_unique": {
+          "name": "user_settings_telegram_chat_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "telegram_chat_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.users": {
       "name": "users",
       "schema": "",
@@ -2376,6 +3922,14 @@
           "primaryKey": false,
           "notNull": true
         },
+        "tier": {
+          "name": "tier",
+          "type": "user_tiers",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'tier1'"
+        },
         "first_name": {
           "name": "first_name",
           "type": "varchar",
@@ -2395,6 +3949,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'user'"
+        },
+        "forgejo_id": {
+          "name": "forgejo_id",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2434,6 +3994,13 @@
           "nullsNotDistinct": false,
           "columns": [
             "username"
+          ]
+        },
+        "users_forgejo_id_unique": {
+          "name": "users_forgejo_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "forgejo_id"
           ]
         }
       },
@@ -2512,11 +4079,67 @@
     }
   },
   "enums": {
+    "public.chat_agent_enum": {
+      "name": "chat_agent_enum",
+      "schema": "public",
+      "values": [
+        "project-handler",
+        "tasks-maker",
+        "vibeongo-agent"
+      ]
+    },
+    "public.git_provider": {
+      "name": "git_provider",
+      "schema": "public",
+      "values": [
+        "github",
+        "forgejo"
+      ]
+    },
+    "public.git_repo_type": {
+      "name": "git_repo_type",
+      "schema": "public",
+      "values": [
+        "github",
+        "forgejo"
+      ]
+    },
     "public.instance_providers": {
       "name": "instance_providers",
       "schema": "public",
       "values": [
-        "aws"
+        "aws",
+        "digitalocean"
+      ]
+    },
+    "public.instance_runtime_kind": {
+      "name": "instance_runtime_kind",
+      "schema": "public",
+      "values": [
+        "vm",
+        "sandbox"
+      ]
+    },
+    "public. instance_slot_instance_category": {
+      "name": " instance_slot_instance_category",
+      "schema": "public",
+      "values": [
+        "auto",
+        "manual"
+      ]
+    },
+    "public.instance_slot_status": {
+      "name": "instance_slot_status",
+      "schema": "public",
+      "values": [
+        "queued",
+        "provisioning",
+        "active",
+        "failed",
+        "terminating",
+        "terminated",
+        "cancelled",
+        "expired"
       ]
     },
     "public.instance_state": {
@@ -2527,14 +4150,24 @@
         "terminated"
       ]
     },
+    "public.git_repo_overview_jobs_status_enum": {
+      "name": "git_repo_overview_jobs_status_enum",
+      "schema": "public",
+      "values": [
+        "pending",
+        "processing",
+        "done",
+        "failed"
+      ]
+    },
     "public.project_session_task_agents": {
       "name": "project_session_task_agents",
       "schema": "public",
       "values": [
         "build",
         "plan",
-        "reviewer",
-        "fixer"
+        "issue-resolver",
+        "pr-reviewer"
       ]
     },
     "public.project_session_category": {
@@ -2543,6 +4176,23 @@
       "values": [
         "manual",
         "auto"
+      ]
+    },
+    "public.sandbox_providers": {
+      "name": "sandbox_providers",
+      "schema": "public",
+      "values": [
+        "e2b",
+        "vercel",
+        "daytona"
+      ]
+    },
+    "public.telegram_bot_chat_session_message_role": {
+      "name": "telegram_bot_chat_session_message_role",
+      "schema": "public",
+      "values": [
+        "user",
+        "bot"
       ]
     },
     "public.ec2_status": {
@@ -2587,6 +4237,16 @@
         "deleted"
       ]
     },
+    "public.user_config_type": {
+      "name": "user_config_type",
+      "schema": "public",
+      "values": [
+        "opencode",
+        "codex",
+        "pi",
+        "fx"
+      ]
+    },
     "public.user_login_method_enum": {
       "name": "user_login_method_enum",
       "schema": "public",
@@ -2600,6 +4260,15 @@
       "values": [
         "user",
         "admin"
+      ]
+    },
+    "public.user_tiers": {
+      "name": "user_tiers",
+      "schema": "public",
+      "values": [
+        "tier1",
+        "tier2",
+        "tier3"
       ]
     }
   },

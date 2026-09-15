@@ -1,1 +1,0 @@
-ALTER TABLE "project_session_tasks" ADD COLUMN "order_number" integer NOT NULL;

@@ -1,1 +1,0 @@
-ALTER TABLE "instance_regions" ALTER COLUMN "ami" DROP DEFAULT;

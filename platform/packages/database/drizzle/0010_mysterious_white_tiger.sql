@@ -1,1 +1,0 @@
-ALTER TABLE "instances" ADD COLUMN "terminates_at" timestamp NOT NULL;
