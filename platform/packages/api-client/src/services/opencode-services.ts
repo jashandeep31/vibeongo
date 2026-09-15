@@ -550,6 +550,7 @@ export type OpencodeModelOption = {
   name: string;
   providerName: string;
   variants: string[];
+  contextLimit: number;
 };
 
 export type OpencodeAgentOption = {
@@ -1004,6 +1005,7 @@ export async function getOpencodeInventory(
       name: model.name,
       providerName: providers.get(model.providerID)?.name ?? model.providerID,
       variants: model.variants.map((variant) => variant.id),
+      contextLimit: model.limit.context,
     }));
   const hiddenAgentNames = new Set(["compaction", "title", "summary"]);
   const agents = agentsResponse.data

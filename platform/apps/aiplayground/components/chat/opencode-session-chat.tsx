@@ -3,9 +3,7 @@
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { OpencodeComposer } from "@/components/chat/opencode-composer";
-import { OpencodeMcpMenu } from "@/components/chat/opencode-mcp-menu";
-import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
-import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
+import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
@@ -41,7 +39,6 @@ import {
   ListTodo,
   Plus,
   Pencil,
-  RefreshCw,
   Send,
   Settings2,
   Terminal,
@@ -420,65 +417,19 @@ export function OpencodeSessionChat({
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
-      <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="bg-background/90 shadow-sm backdrop-blur"
-        >
-          <Link
-            href={`${sessionUrl}/chats/${sessionId}/files`}
-            aria-label="Open files"
-            title="Open files"
-          >
-            <FolderOpen />
-          </Link>
-        </Button>
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="bg-background/90 shadow-sm backdrop-blur"
-        >
-          <Link
-            href={`${sessionUrl}/chats/${sessionId}/settings`}
-            aria-label="Runtime settings"
-            title="Runtime settings"
-          >
-            <Settings2 />
-          </Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="bg-background/90 shadow-sm backdrop-blur"
-          aria-label="Refresh chat events"
-          title="Refresh chat events"
-          disabled={isRefreshing}
-          onClick={onRefresh}
-        >
-          <RefreshCw className={isRefreshing ? "animate-spin" : undefined} />
-        </Button>
-        <OpencodeMcpMenu
-          connection={{
-            chatId,
-            serverUrl,
-            accessToken,
-            password,
-            directory: rawResponse.session.directory,
-          }}
-        />
-        <RuntimePulseMenu projectSessionId={chatId} />
-        <ProjectDomainsDialog
-          projectId={projectId}
-          projectSessionId={chatId}
-          iconOnly
-        />
-      </div>
+      <OpencodeChatTopBar
+        projectId={projectId}
+        projectSessionId={chatId}
+        chatUrl={`${sessionUrl}/chats/${sessionId}`}
+        serverUrl={serverUrl}
+        accessToken={accessToken}
+        password={password}
+        directory={rawResponse.session.directory}
+        session={rawResponse}
+        inventory={inventory}
+        isRefreshing={isRefreshing}
+        onRefresh={onRefresh}
+      />
       <div
         ref={scrollAreaRef}
         onScroll={updateScrollButtonVisibility}
