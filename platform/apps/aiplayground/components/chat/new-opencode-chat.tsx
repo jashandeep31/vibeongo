@@ -1,8 +1,9 @@
 "use client";
 
-import { PromptInput } from "@/components/chat/prompt-input";
+import { OpencodeComposer } from "@/components/chat/opencode-composer";
 import { useOpencodeInventory } from "@repo/api-hooks";
 import { useStartOpencodeSession } from "@repo/api-hooks";
+import { useUserSettings } from "@repo/api-hooks";
 import type { OpencodePromptSelection } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { ChevronRight, Terminal } from "lucide-react";
@@ -31,15 +32,23 @@ export function NewOpencodeChat({
 }) {
   const router = useRouter();
   const startSession = useStartOpencodeSession();
-  const { data: inventory } = useOpencodeInventory(
+  const inventoryQuery = useOpencodeInventory(
     chatId,
     serverUrl,
     accessToken,
     password,
   );
+  const inventory = inventoryQuery.data;
+  const { data: userSettings } = useUserSettings();
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
+  const configuredDefaultModel = userSettings?.default_model ?? undefined;
+  const defaultModel = inventory?.models.some(
+    (model) => model.id === configuredDefaultModel,
+  )
+    ? configuredDefaultModel
+    : inventory?.models[0]?.id;
   const effectiveSelection: OpencodePromptSelection = {
-    model: selection.model ?? inventory?.models[0]?.id,
+    model: selection.model ?? defaultModel,
     variant: selection.variant,
     agent:
       selection.agent ??
@@ -60,7 +69,7 @@ export function NewOpencodeChat({
       onSessionCreated: (sessionId) => {
         const params = new URLSearchParams({ serverUrl });
         router.replace(
-          `${chatUrl}/sessions/${encodeURIComponent(sessionId)}?${params.toString()}`,
+          `${chatUrl}/chats/${encodeURIComponent(sessionId)}?${params.toString()}`,
         );
       },
     });
@@ -86,10 +95,20 @@ export function NewOpencodeChat({
           <ChevronRight className="text-muted-foreground size-5 shrink-0" />
           <span className="shrink-0">New chat</span>
         </h1>
-        <PromptInput
+        <OpencodeComposer
           onSubmit={handleSubmit}
           disabled={startSession.isPending}
           inventory={inventory}
+          providerConnection={{
+            accessToken,
+            chatId,
+            directory,
+            onConnected: async () => {
+              await inventoryQuery.refetch();
+            },
+            password,
+            serverUrl,
+          }}
           selection={effectiveSelection}
           onSelectionChange={setSelection}
           autoFocus

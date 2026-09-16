@@ -12,6 +12,24 @@ import * as walletApi from "./services/wallet-services.js";
 
 export * from "./services/opencode-services.js";
 export * from "./services/opencode-chat-utils.js";
+export type {
+  AssistantMessage,
+  Event,
+  FilePart,
+  Message,
+  Part,
+  QuestionAnswer,
+  QuestionOption,
+  QuestionRequest,
+  ReasoningPart,
+  Session,
+  SessionInputAdmitted,
+  SessionStatus,
+  TextPart,
+  ToolPart,
+  ToolState,
+  UserMessage,
+} from "./services/opencode-types.js";
 export * from "./services/proxy-auth.js";
 export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
@@ -24,10 +42,15 @@ export type {
 } from "./services/instance-slot-services.js";
 export type {
   GithubRepo,
-  GithubRepoIssue,
-  GithubRepoPullRequest,
-  GithubRepoWithIssues,
-  GithubRepoWithPullRequests,
+  GitRepoIssue,
+  GitRepoPullRequest,
+  GetGitRepoActivityInput,
+  GetGitRepoActivityDetailsInput,
+  GitRepoActivityResponse,
+  GitRepoActivityType,
+  GitRepoAccessToken,
+  GetGitRepoAccessTokensParams,
+  GetGitRepoAccessTokensResponse,
 } from "./services/github-repo-services.js";
 export type {
   CreateProjectFromTemplateInput,

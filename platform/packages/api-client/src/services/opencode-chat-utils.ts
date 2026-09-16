@@ -1,4 +1,4 @@
-import type { ToolPart } from "@opencode-ai/sdk/v2/client";
+import type { ToolPart } from "./opencode-types.js";
 
 import { getOpencodeUserMessage } from "./opencode-services.js";
 import type {
@@ -7,7 +7,7 @@ import type {
   OpencodeSessionData,
 } from "./opencode-services.js";
 
-export const OPENCODE_MESSAGE_PAGE_SIZE = 25;
+export const OPENCODE_MESSAGE_PAGE_SIZE = 26;
 
 export type SessionMessage = OpencodeSessionData["messages"][number];
 export type SessionPart = SessionMessage["parts"][number];

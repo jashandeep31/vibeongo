@@ -130,17 +130,17 @@ BASE_URL=http://localhost:3000
     ],
   },
   {
-    reponame: "brandmyphone-oss",
-    ownername: "jashandeep31",
-    description: "Next.js phone sticker sponsorship application.",
-    tags: ["Next.js", "TypeScript", "Sponsorship"],
+    reponame: "portfolio",
+    ownername: "vibeongo",
+    description: "A Next.js portfolio website.",
+    tags: ["Next.js", "TypeScript", "Portfolio"],
     project: {
-      name: "brandmyphone-oss",
-      description: "Next.js phone sticker sponsorship application.",
+      name: "portfolio",
+      description: "A Next.js portfolio website.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/brandmyphone-oss
+      finalScript: `cd /home/ubuntu/code/portfolio
 npm install`,
-      devScript: `cd /home/ubuntu/code/brandmyphone-oss
+      devScript: `cd /home/ubuntu/code/portfolio
 npm run dev -- --hostname 0.0.0.0`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
@@ -181,25 +181,5 @@ npm run dev -- --hostname 0.0.0.0`,
         ],
       },
     },
-    files: [
-      {
-        name: ".env.local",
-        path: "/brandmyphone-oss",
-        content: `NEXT_PUBLIC_SITE_URL=http://localhost:3000
-NEXT_PUBLIC_POSTHOG_KEY=
-NEXT_PUBLIC_POSTHOG_HOST=https://us.i.posthog.com
-CLOUDFLARE_API_TOKEN=
-CLOUDFLARE_ACCOUNT_ID=
-DODO_PAYMENTS_API_KEY=
-DODO_PAYMENTS_WEBHOOK_KEY=
-DODO_PAYMENTS_ENVIRONMENT=test_mode
-DODO_PRODUCT_ID=
-POSTHOG_PERSONAL_API_KEY=
-POSTHOG_PROJECT_ID=
-POSTHOG_HOST=https://us.i.posthog.com
-CRON_SECRET=
-`,
-      },
-    ],
   },
 ] as const;

@@ -50,7 +50,7 @@ export const renewTokens = catchAsync(async (req: Request, res: Response) => {
     .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
 
   const config = {
-    repos: await getConfigReadyGitRepos(validRepos),
+    repos: await getConfigReadyGitRepos(validRepos, { instanceId }),
   };
 
   res.status(200).json({ data: config });

@@ -6,6 +6,7 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/actions"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/mcp"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/server"
 	"github.com/spf13/cobra"
 )
@@ -305,6 +306,16 @@ func GetDomainCmd() *cobra.Command {
 	}
 }
 
+func McpCommand() *cobra.Command {
+	return &cobra.Command{
+
+		Use:   "mcp",
+		Short: "Start the MCP server",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return mcp.MCPCommand()
+		},
+	}
+}
 func TestCommand() *cobra.Command {
 	return &cobra.Command{
 		Use:   "test",

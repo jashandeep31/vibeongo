@@ -6,13 +6,11 @@ import { ThemedText } from "@/components/themed-text";
 import type { SnapshotFileDiff } from "@/components/projects/opencode-chat-turns";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
-
-type DiffRow = {
-  kind: "context" | "addition" | "deletion" | "hunk" | "meta";
-  text: string;
-  oldLine?: number;
-  newLine?: number;
-};
+import {
+  collapseOpencodeDiffContext,
+  normalizeOpencodeFilePath,
+  parseOpencodePatch,
+} from "@/lib/opencode-diff";
 
 export function OpencodeFileDiff({
   diff,
@@ -23,11 +21,13 @@ export function OpencodeFileDiff({
 }) {
   const theme = useTheme();
   const [open, setOpen] = useState(defaultOpen);
-  const path = normalizeFilePath(diff.file);
+  const path = normalizeOpencodeFilePath(diff.file);
   const parts = path.split("/").filter(Boolean);
   const fileName = parts.at(-1) ?? "Unknown file";
   const directory = parts.slice(0, -1).join("/");
-  const rows = collapseContext(parsePatch(diff.patch ?? ""));
+  const rows = collapseOpencodeDiffContext(
+    parseOpencodePatch(diff.patch ?? ""),
+  );
 
   return (
     <View style={styles.container}>
@@ -131,80 +131,6 @@ export function OpencodeFileDiff({
       ) : null}
     </View>
   );
-}
-
-function normalizeFilePath(file?: string) {
-  return (file || "Unknown file")
-    .replaceAll("\\", "/")
-    .replace(/^\/home\/ubuntu\/code\/[^/]+\//, "")
-    .replace(/^\.\//, "")
-    .replace(/^\//, "");
-}
-
-function parsePatch(patch: string): DiffRow[] {
-  const rows: DiffRow[] = [];
-  let oldLine = 0;
-  let newLine = 0;
-  let insideHunk = false;
-
-  for (const line of patch.split("\n")) {
-    const hunk = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@(.*)$/.exec(line);
-    if (hunk) {
-      oldLine = Number(hunk[1]);
-      newLine = Number(hunk[2]);
-      insideHunk = true;
-      rows.push({ kind: "hunk", text: line });
-    } else if (!insideHunk) {
-      continue;
-    } else if (line.startsWith("+")) {
-      rows.push({ kind: "addition", text: line.slice(1), newLine });
-      newLine += 1;
-    } else if (line.startsWith("-")) {
-      rows.push({ kind: "deletion", text: line.slice(1), oldLine });
-      oldLine += 1;
-    } else if (line.startsWith(" ")) {
-      rows.push({ kind: "context", text: line.slice(1), oldLine, newLine });
-      oldLine += 1;
-      newLine += 1;
-    } else if (line.startsWith("\\")) {
-      rows.push({ kind: "meta", text: line });
-    }
-  }
-
-  return rows;
-}
-
-function collapseContext(rows: DiffRow[]) {
-  const collapsed: DiffRow[] = [];
-  for (let index = 0; index < rows.length; ) {
-    const row = rows[index];
-    if (!row || row.kind !== "context") {
-      if (row) collapsed.push(row);
-      index += 1;
-      continue;
-    }
-
-    let end = index;
-    while (rows[end]?.kind === "context") end += 1;
-    const run = rows.slice(index, end);
-    if (run.length <= 8) {
-      collapsed.push(...run);
-    } else {
-      const leading = index > 0 ? run.slice(0, 3) : [];
-      const trailing = end < rows.length ? run.slice(-3) : [];
-      const hiddenCount = run.length - leading.length - trailing.length;
-      collapsed.push(...leading);
-      if (hiddenCount > 0) {
-        collapsed.push({
-          kind: "meta",
-          text: `… ${hiddenCount} unchanged ${hiddenCount === 1 ? "line" : "lines"}`,
-        });
-      }
-      collapsed.push(...trailing);
-    }
-    index = end;
-  }
-  return collapsed;
 }
 
 const styles = StyleSheet.create({

@@ -2,17 +2,22 @@
 
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
-import { PromptInput } from "@/components/chat/prompt-input";
-import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
-import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
+import { OpencodeComposer } from "@/components/chat/opencode-composer";
+import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
+  useCancelOpencodeQueuedPrompt,
+  useEditOpencodeQueuedPrompt,
   useOpencodeInventory,
+  useOpencodeQueuedPrompts,
+  useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReorderOpencodeQueuedPrompts,
   useRevertOpencodeSession,
   useRestoreRevertedOpencodeMessage,
   useSendOpencodePrompt,
+  useSteerOpencodeQueuedPrompt,
 } from "@repo/api-hooks";
 import {
   createOpencodeChatTurns,
@@ -26,16 +31,20 @@ import {
 import { Button } from "@repo/ui/components/button";
 import {
   ArrowDown,
-  Braces,
   ChevronRight,
+  Check,
   FolderOpen,
+  GripVertical,
   Loader2,
-  MessagesSquare,
+  ListTodo,
   Plus,
-  RefreshCw,
+  Pencil,
+  Send,
   Settings2,
   Terminal,
+  Trash2,
   Undo2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -74,12 +83,13 @@ export function OpencodeSessionChat({
   onLoadOlder: () => Promise<void>;
   onRefresh: () => void;
 }) {
-  const { data: inventory } = useOpencodeInventory(
+  const inventoryQuery = useOpencodeInventory(
     chatId,
     serverUrl,
     accessToken,
     password,
   );
+  const inventory = inventoryQuery.data;
   const revertMessageId = rawResponse.session.revert?.messageID;
   const { visibleMessages, revertedMessages } = useMemo(() => {
     if (!revertMessageId) {
@@ -120,6 +130,80 @@ export function OpencodeSessionChat({
     accessToken,
     password,
   });
+  const queuePrompt = useQueueOpencodePrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const { data: queuedPrompts = [] } = useOpencodeQueuedPrompts({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
+    useState(false);
+  const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
+    string | undefined
+  >();
+  const [editingQueuedPrompt, setEditingQueuedPrompt] = useState<
+    { id: string; text: string } | undefined
+  >();
+  const cancelQueuedPrompt = useCancelOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const steerQueuedPrompt = useSteerOpencodeQueuedPrompt({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const editQueuedPrompt = useEditOpencodeQueuedPrompt({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const reorderQueuedPrompts = useReorderOpencodeQueuedPrompts({
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const moveQueuedPrompt = (source: number, destination: number) => {
+    if (
+      source === destination ||
+      source < 0 ||
+      destination < 0 ||
+      source >= displayedQueuedPrompts.length ||
+      destination >= displayedQueuedPrompts.length
+    )
+      return;
+    const inboxIds = displayedQueuedPrompts.map((item) => item.id);
+    const [moved] = inboxIds.splice(source, 1);
+    inboxIds.splice(destination, 0, moved!);
+    reorderQueuedPrompts.mutate(
+      { inboxIds, queuedPrompts: displayedQueuedPrompts },
+      {
+        onError: (error) =>
+          toast.error(error.message || "Could not reorder queued messages"),
+      },
+    );
+  };
+  const displayedQueuedPrompts = reorderQueuedPrompts.isPending
+    ? reorderQueuedPrompts.variables.inboxIds.flatMap((id) =>
+        reorderQueuedPrompts.variables.queuedPrompts.filter(
+          (item) => item.id === id,
+        ),
+      )
+    : queuedPrompts;
   const answerQuestion = useAnswerOpencodeQuestion({
     chatId,
     sessionId,
@@ -162,7 +246,6 @@ export function OpencodeSessionChat({
   const [selection, setSelection] =
     useState<OpencodePromptSelection>(sessionSelection);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [showRawResponse, setShowRawResponse] = useState(false);
   const [composerHeight, setComposerHeight] = useState(200);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
@@ -277,23 +360,7 @@ export function OpencodeSessionChat({
     });
   };
 
-  const rawResponseControl = (
-    <Button
-      type="button"
-      variant="secondary"
-      size="sm"
-      onClick={() => setShowRawResponse((visible) => !visible)}
-      className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
-    >
-      {showRawResponse ? (
-        <MessagesSquare className="size-3.5" />
-      ) : (
-        <Braces className="size-3.5" />
-      )}
-      {showRawResponse ? "Rendered chat" : "Raw response"}
-    </Button>
-  );
-  const chatUrl = `/projects/${projectId}/chats/${chatId}`;
+  const sessionUrl = `/projects/${projectId}/sessions/${chatId}`;
   const newChatParams = new URLSearchParams({ serverUrl });
   const composerControls = (
     <>
@@ -304,12 +371,11 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}?${newChatParams.toString()}`}>
+        <Link href={`${sessionUrl}?${newChatParams.toString()}`}>
           <Plus className="size-3.5" />
           New chat
         </Link>
       </Button>
-      {rawResponseControl}
       <Button
         asChild
         type="button"
@@ -317,7 +383,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}/sessions/${sessionId}/files`}>
+        <Link href={`${sessionUrl}/chats/${sessionId}/files`}>
           <FolderOpen className="size-3.5" />
           Files
         </Link>
@@ -329,7 +395,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}/terminal`}>
+        <Link href={`${sessionUrl}/terminal`}>
           <Terminal className="size-3.5" />
           Terminal
         </Link>
@@ -341,7 +407,7 @@ export function OpencodeSessionChat({
         size="sm"
         className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
       >
-        <Link href={`${chatUrl}/sessions/${sessionId}/settings`}>
+        <Link href={`${sessionUrl}/chats/${sessionId}/settings`}>
           <Settings2 className="size-3.5" />
           Settings
         </Link>
@@ -351,52 +417,19 @@ export function OpencodeSessionChat({
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col justify-between">
-      <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="bg-background/90 shadow-sm backdrop-blur"
-        >
-          <Link
-            href={`${chatUrl}/sessions/${sessionId}/files`}
-            aria-label="Open files"
-            title="Open files"
-          >
-            <FolderOpen />
-          </Link>
-        </Button>
-        <Button
-          asChild
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="bg-background/90 shadow-sm backdrop-blur"
-        >
-          <Link
-            href={`${chatUrl}/sessions/${sessionId}/settings`}
-            aria-label="Runtime settings"
-            title="Runtime settings"
-          >
-            <Settings2 />
-          </Link>
-        </Button>
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          className="bg-background/90 shadow-sm backdrop-blur"
-          aria-label="Refresh chat events"
-          title="Refresh chat events"
-          disabled={isRefreshing}
-          onClick={onRefresh}
-        >
-          <RefreshCw className={isRefreshing ? "animate-spin" : undefined} />
-        </Button>
-        <RuntimePulseMenu projectSessionId={chatId} />
-        <ProjectDomainsDialog projectId={projectId} projectSessionId={chatId} />
-      </div>
+      <OpencodeChatTopBar
+        projectId={projectId}
+        projectSessionId={chatId}
+        chatUrl={`${sessionUrl}/chats/${sessionId}`}
+        serverUrl={serverUrl}
+        accessToken={accessToken}
+        password={password}
+        directory={rawResponse.session.directory}
+        session={rawResponse}
+        inventory={inventory}
+        isRefreshing={isRefreshing}
+        onRefresh={onRefresh}
+      />
       <div
         ref={scrollAreaRef}
         onScroll={updateScrollButtonVisibility}
@@ -415,55 +448,43 @@ export function OpencodeSessionChat({
                   disabled={isLoadingOlder}
                   onClick={() => void loadEarlierMessages()}
                 >
-                  {isLoadingOlder ? (
-                    <Loader2 className="animate-spin" />
-                  ) : null}
+                  {isLoadingOlder ? <Loader2 className="animate-spin" /> : null}
                   Load earlier messages
                 </Button>
               </div>
             ) : null}
-            {showRawResponse ? (
-              <pre className="w-full text-xs break-words whitespace-pre-wrap">
-                {JSON.stringify(rawResponse, null, 2)}
-              </pre>
-            ) : null}
-            {!showRawResponse &&
-            turns.length === 0 &&
+            {turns.length === 0 &&
             revertedQuestions.length === 0 &&
             !activeQuestion ? (
               <div className="text-muted-foreground flex min-h-[45vh] items-center justify-center text-sm">
                 Start the chat by describing what you want to build.
               </div>
             ) : null}
-            {!showRawResponse &&
-              turns.map((turn, index) => (
-                <OpencodeChatQuestion
-                  key={turn.id}
-                  item={turn}
-                  isStreaming={isStreaming && index === turns.length - 1}
-                  isReverting={
-                    revertSession.isPending &&
-                    revertSession.variables === turn.id
-                  }
-                  revertDisabled={
-                    isStreaming ||
-                    revertSession.isPending ||
-                    restoreMessage.isPending
-                  }
-                  onRevert={() =>
-                    revertSession.mutate(turn.id, {
-                      onSuccess: () => toast.success("Messages rolled back"),
-                      onError: (error) =>
-                        toast.error(
-                          error.message || "Could not revert messages",
-                        ),
-                    })
-                  }
-                  reserveBottomSpace={
-                    index === turns.length - 1 && !activeQuestion
-                  }
-                />
-              ))}
+            {turns.map((turn, index) => (
+              <OpencodeChatQuestion
+                key={turn.id}
+                item={turn}
+                isStreaming={isStreaming && index === turns.length - 1}
+                isReverting={
+                  revertSession.isPending && revertSession.variables === turn.id
+                }
+                revertDisabled={
+                  isStreaming ||
+                  revertSession.isPending ||
+                  restoreMessage.isPending
+                }
+                onRevert={() =>
+                  revertSession.mutate(turn.id, {
+                    onSuccess: () => toast.success("Messages rolled back"),
+                    onError: (error) =>
+                      toast.error(error.message || "Could not revert messages"),
+                  })
+                }
+                reserveBottomSpace={
+                  index === turns.length - 1 && !activeQuestion
+                }
+              />
+            ))}
           </div>
         </div>
       </div>
@@ -493,7 +514,7 @@ export function OpencodeSessionChat({
           className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)] backdrop-blur-xl"
         />
         <div className="relative mx-auto w-full max-w-4xl">
-          {!showRawResponse && revertedQuestions.length > 0 ? (
+          {revertedQuestions.length > 0 ? (
             <div className="mb-2">
               <RevertedMessagesPanel
                 messages={revertedQuestions}
@@ -515,45 +536,265 @@ export function OpencodeSessionChat({
             </div>
           ) : null}
           {activeQuestion ? (
+            <OpencodeQuestionPrompt
+              key={activeQuestion.id}
+              request={activeQuestion}
+              isSubmitting={answerQuestion.isPending}
+              isDismissing={rejectQuestion.isPending}
+              onSubmit={submitQuestionAnswer}
+              onDismiss={dismissQuestion}
+            />
+          ) : (
             <>
-              <div className="mb-3 flex justify-end">{rawResponseControl}</div>
-              <OpencodeQuestionPrompt
-                key={activeQuestion.id}
-                request={activeQuestion}
-                isSubmitting={answerQuestion.isPending}
-                isDismissing={rejectQuestion.isPending}
-                onSubmit={submitQuestionAnswer}
-                onDismiss={dismissQuestion}
+              {queuedPrompts.length ? (
+                <div className="bg-card mb-2 rounded-2xl border px-4 py-3 shadow-sm">
+                  {areQueuedPromptsExpanded ? (
+                    <div
+                      id="queued-prompts"
+                      className="mb-2 flex flex-col gap-1.5"
+                    >
+                      {displayedQueuedPrompts.map((item, index) => (
+                        <div
+                          key={item.id}
+                          data-queue-prompt-row
+                          className="flex min-w-0 items-center gap-2 rounded-md text-sm"
+                          onDragOver={(event) => event.preventDefault()}
+                          onDrop={() => {
+                            const source = displayedQueuedPrompts.findIndex(
+                              (entry) => entry.id === draggedQueuedPromptId,
+                            );
+                            moveQueuedPrompt(source, index);
+                            setDraggedQueuedPromptId(undefined);
+                          }}
+                        >
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-xs"
+                            draggable={!reorderQueuedPrompts.isPending}
+                            aria-label="Drag to reorder queued message"
+                            disabled={reorderQueuedPrompts.isPending}
+                            onDragStart={(event) => {
+                              event.dataTransfer.effectAllowed = "move";
+                              const row = event.currentTarget.closest(
+                                "[data-queue-prompt-row]",
+                              );
+                              if (row instanceof HTMLElement) {
+                                event.dataTransfer.setDragImage(row, 16, 16);
+                              }
+                              setDraggedQueuedPromptId(item.id);
+                            }}
+                            onDragEnd={() =>
+                              setDraggedQueuedPromptId(undefined)
+                            }
+                          >
+                            <GripVertical />
+                          </Button>
+                          {editingQueuedPrompt?.id === item.id ? (
+                            <input
+                              className="border-input min-w-0 flex-1 rounded-md border bg-transparent px-2 py-1 text-sm"
+                              value={editingQueuedPrompt.text}
+                              onChange={(event) =>
+                                setEditingQueuedPrompt({
+                                  id: item.id,
+                                  text: event.target.value,
+                                })
+                              }
+                              autoFocus
+                            />
+                          ) : (
+                            <span className="min-w-0 flex-1 truncate">
+                              {item.prompt.text || "Attachment"}
+                            </span>
+                          )}
+                          <div className="flex shrink-0 items-center gap-1">
+                            {editingQueuedPrompt?.id === item.id ? (
+                              <>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  aria-label="Save queued message"
+                                  disabled={editQueuedPrompt.isPending}
+                                  onClick={() =>
+                                    editQueuedPrompt.mutate(
+                                      {
+                                        inboxId: item.id,
+                                        queuedPrompts: displayedQueuedPrompts,
+                                        text: editingQueuedPrompt.text,
+                                      },
+                                      {
+                                        onError: (error) =>
+                                          toast.error(
+                                            error.message ||
+                                              "Could not edit queued message",
+                                          ),
+                                        onSuccess: () =>
+                                          setEditingQueuedPrompt(undefined),
+                                      },
+                                    )
+                                  }
+                                >
+                                  <Check />
+                                </Button>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon-xs"
+                                  aria-label="Cancel editing queued message"
+                                  onClick={() =>
+                                    setEditingQueuedPrompt(undefined)
+                                  }
+                                >
+                                  <X />
+                                </Button>
+                              </>
+                            ) : (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon-xs"
+                                aria-label="Edit queued message"
+                                disabled={
+                                  cancelQueuedPrompt.isPending ||
+                                  steerQueuedPrompt.isPending ||
+                                  reorderQueuedPrompts.isPending
+                                }
+                                onClick={() =>
+                                  setEditingQueuedPrompt({
+                                    id: item.id,
+                                    text: item.prompt.text,
+                                  })
+                                }
+                              >
+                                <Pencil />
+                              </Button>
+                            )}
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              aria-label={
+                                isStreaming
+                                  ? "Steer queued message"
+                                  : "Send queued message"
+                              }
+                              disabled={
+                                cancelQueuedPrompt.isPending ||
+                                steerQueuedPrompt.isPending ||
+                                reorderQueuedPrompts.isPending
+                              }
+                              onClick={() =>
+                                steerQueuedPrompt.mutate(item.id, {
+                                  onError: (error) =>
+                                    toast.error(
+                                      error.message ||
+                                        "Could not steer queued message",
+                                    ),
+                                })
+                              }
+                            >
+                              <Send />
+                            </Button>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon-xs"
+                              aria-label="Remove queued message"
+                              disabled={
+                                cancelQueuedPrompt.isPending ||
+                                steerQueuedPrompt.isPending ||
+                                reorderQueuedPrompts.isPending
+                              }
+                              onClick={() =>
+                                cancelQueuedPrompt.mutate(item.id, {
+                                  onError: (error) =>
+                                    toast.error(
+                                      error.message ||
+                                        "Could not remove queued message",
+                                    ),
+                                })
+                              }
+                            >
+                              <Trash2 />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                  <div className="text-muted-foreground flex items-center gap-2 text-xs font-medium">
+                    <ListTodo className="size-4" />
+                    Queued messages ({queuedPrompts.length})
+                    <button
+                      type="button"
+                      className="hover:text-foreground ml-auto flex items-center gap-1 rounded-sm px-1 py-0.5 transition-colors"
+                      aria-expanded={areQueuedPromptsExpanded}
+                      aria-controls="queued-prompts"
+                      onClick={() =>
+                        setAreQueuedPromptsExpanded((expanded) => !expanded)
+                      }
+                    >
+                      {areQueuedPromptsExpanded ? "Hide" : "Show"}
+                      <ChevronRight
+                        className={`size-3.5 transition-transform ${
+                          areQueuedPromptsExpanded ? "rotate-90" : "-rotate-90"
+                        }`}
+                      />
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+              <OpencodeComposer
+                submitDisabled={sendPrompt.isPending || queuePrompt.isPending}
+                isStreaming={isStreaming}
+                queueWhenStreaming
+                isStopping={abortSession.isPending}
+                onStop={() =>
+                  abortSession.mutate(undefined, {
+                    onError: (error) =>
+                      toast.error(error.message || "Could not stop OpenCode"),
+                  })
+                }
+                inventory={inventory}
+                providerConnection={{
+                  accessToken,
+                  chatId,
+                  directory: rawResponse.session.directory,
+                  onConnected: async () => {
+                    await inventoryQuery.refetch();
+                  },
+                  password,
+                  serverUrl,
+                }}
+                selection={effectiveSelection}
+                onSelectionChange={updateSelection}
+                onSubmit={(question, files, fileReferences) => {
+                  const input = {
+                    text: question,
+                    files,
+                    fileReferences,
+                    selection: effectiveSelection,
+                  };
+                  if (isStreaming) {
+                    queuePrompt.mutate(input, {
+                      onError: (error) =>
+                        toast.error(error.message || "Could not queue message"),
+                    });
+                  } else {
+                    sendPrompt.mutate(input, {
+                      onError: (error) =>
+                        toast.error(error.message || "Could not send message"),
+                    });
+                  }
+                }}
+                searchFiles={searchFiles}
+                onSubmitSuccess={() => scrollToBottom("smooth")}
+                autoFocus
+                focusOnTyping
+                trailingControl={composerControls}
               />
             </>
-          ) : (
-            <PromptInput
-              submitDisabled={sendPrompt.isPending || isStreaming}
-              isStreaming={isStreaming}
-              isStopping={abortSession.isPending}
-              onStop={() =>
-                abortSession.mutate(undefined, {
-                  onError: (error) =>
-                    toast.error(error.message || "Could not stop OpenCode"),
-                })
-              }
-              inventory={inventory}
-              selection={effectiveSelection}
-              onSelectionChange={updateSelection}
-              onSubmit={(question, files, fileReferences) =>
-                sendPrompt.mutate({
-                  text: question,
-                  files,
-                  fileReferences,
-                  selection: effectiveSelection,
-                })
-              }
-              searchFiles={searchFiles}
-              onSubmitSuccess={() => scrollToBottom("smooth")}
-              autoFocus
-              focusOnTyping
-              trailingControl={composerControls}
-            />
           )}
         </div>
       </div>

@@ -1,10 +1,10 @@
 "use client";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import {
   useDisableTerminateAfterDone,
-  useRuntimeStats,
   useTerminateAfterDoneStatus,
 } from "@repo/api-hooks";
 import { useSessionsStore } from "@repo/app-store";
@@ -41,13 +41,10 @@ function normalizePercent(value: unknown) {
 }
 
 const runtimeDateFormatter = new Intl.DateTimeFormat(undefined, {
-  year: "numeric",
   month: "short",
   day: "numeric",
   hour: "2-digit",
   minute: "2-digit",
-  second: "2-digit",
-  timeZoneName: "short",
 });
 
 function formatRuntimeDate(value: unknown) {
@@ -115,7 +112,7 @@ export function RuntimePulseMenu({
   };
   const terminateStatus = useTerminateAfterDoneStatus(connection);
   const disableTerminate = useDisableTerminateAfterDone(connection);
-  const runtimeStats = useRuntimeStats(connection, isOpen);
+  const runtime = useRuntimeSession();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -129,8 +126,8 @@ export function RuntimePulseMenu({
   }
 
   const terminateAfterDone = terminateStatus.data?.terminate;
-  const cpuPercent = normalizePercent(runtimeStats.data?.cpu_percent);
-  const memoryPercent = normalizePercent(runtimeStats.data?.used_percent);
+  const cpuPercent = normalizePercent(runtime.stats?.cpu_percent);
+  const memoryPercent = normalizePercent(runtime.stats?.used_percent);
   const sshCommand = instance.public_ip
     ? `ssh ubuntu@${instance.public_ip}`
     : null;
@@ -157,16 +154,34 @@ export function RuntimePulseMenu({
         }}
       >
         <DropdownMenuTrigger asChild>
-          <Button type="button" variant="outline" size="sm">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            aria-label="Runtime controls"
+            title="Runtime controls"
+          >
             <Activity />
-            <span className="hidden sm:inline">Runtime controls</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-80">
+        <DropdownMenuContent align="end" className="w-72">
           <DropdownMenuLabel className="flex items-center justify-between px-3 py-2">
             <span>Runtime controls</span>
-            <span className="flex items-center gap-1.5 text-xs font-normal text-emerald-600 dark:text-emerald-400">
-              <span className="size-1.5 rounded-full bg-current" /> Live
+            <span
+              className={`flex items-center gap-1.5 text-xs font-normal ${
+                runtime.status === "connected"
+                  ? "text-emerald-600 dark:text-emerald-400"
+                  : runtime.status === "connecting"
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-muted-foreground"
+              }`}
+            >
+              <span className="size-1.5 rounded-full bg-current" />
+              {runtime.status === "connected"
+                ? "Live"
+                : runtime.status === "connecting"
+                  ? "Connecting"
+                  : "Offline"}
             </span>
           </DropdownMenuLabel>
 
@@ -199,29 +214,29 @@ export function RuntimePulseMenu({
 
           <div className="text-muted-foreground grid gap-2 px-3 pb-3 text-xs">
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <Rocket className="size-3.5" /> Started at
               </span>
               <time
-                className="text-foreground text-right font-medium"
+                className="text-foreground text-right font-medium whitespace-nowrap tabular-nums"
                 dateTime={new Date(instance.started_at).toISOString()}
               >
                 {formatRuntimeDate(instance.started_at)}
               </time>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <CalendarClock className="size-3.5" /> Terminates at
               </span>
               <time
-                className="text-foreground text-right font-medium"
+                className="text-foreground text-right font-medium whitespace-nowrap tabular-nums"
                 dateTime={new Date(instance.terminates_at).toISOString()}
               >
                 {formatRuntimeDate(instance.terminates_at)}
               </time>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <span className="flex items-center gap-1.5">
+              <span className="flex shrink-0 items-center gap-1.5 whitespace-nowrap">
                 <TimerReset className="size-3.5" /> Terminates in
               </span>
               <span className="text-foreground font-mono font-medium tabular-nums">

@@ -28,10 +28,12 @@ import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { useTheme } from "@/hooks/use-theme";
 
 export function ProjectDomainsButton({
+  compact = false,
   instanceId,
   opencodePassword,
   projectId,
 }: {
+  compact?: boolean;
   instanceId: string;
   opencodePassword?: string;
   projectId: string;
@@ -278,9 +280,11 @@ export function ProjectDomainsButton({
       <Pressable
         accessibilityLabel="Project domains"
         accessibilityRole="button"
+        hitSlop={compact ? 3 : undefined}
         onPress={() => setVisible(true)}
         style={({ pressed }) => [
           styles.headerAction,
+          compact && styles.compactHeaderAction,
           pressed && styles.pressed,
         ]}
       >
@@ -1110,6 +1114,7 @@ const styles = StyleSheet.create({
   drawerHeaderCopy: { flex: 1 },
   drawerSubtitle: { fontSize: 12, lineHeight: 17 },
   drawerTitle: { fontSize: 18, fontWeight: "700" },
+  compactHeaderAction: { width: 36 },
   handle: {
     alignSelf: "center",
     borderRadius: 2,

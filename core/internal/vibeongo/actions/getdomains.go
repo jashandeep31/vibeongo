@@ -9,36 +9,45 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 )
 
-func GetDomains() error {
-	cfg, err := config.LoadAndValidate()
-	if err != nil {
-		return err
-	}
+type RuntimeDomain struct {
+	ID         string `json:"id"`
+	Domain     string `json:"domain"`
+	TargetPort int    `json:"target_port"`
+	IsEditable bool   `json:"is_editable"`
+}
 
+func FetchDomains(cfg config.Config) ([]RuntimeDomain, error) {
 	apiClient := httpclient.Client{BaseURL: cfg.ServerBaseURL}
 	apiRoute := "/api/v1/runtime/sessions/" + cfg.SessionID + "/get-domains"
 
 	var res struct {
 		Data struct {
-			Domains []struct {
-				Id         string `json:"id"`
-				Domain     string `json:"domain"`
-				TargetPort int    `json:"target_port"`
-				IsEditable bool   `json:"is_editable"`
-			} `json:"domains"`
+			Domains []RuntimeDomain `json:"domains"`
 		} `json:"data"`
 	}
 
 	headers := runtimeAuthHeaders(cfg)
 	resp, err := apiClient.Get(apiRoute, headers, &res)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to get domains: unexpected status code %d", resp.StatusCode)
+		return nil, fmt.Errorf("failed to get domains: unexpected status code %d", resp.StatusCode)
+	}
+	return res.Data.Domains, nil
+}
+
+func GetDomains() error {
+	cfg, err := config.LoadAndValidate()
+	if err != nil {
+		return err
+	}
+	domainList, err := FetchDomains(cfg)
+	if err != nil {
+		return err
 	}
 
-	domains, err := json.MarshalIndent(res.Data.Domains, "", "  ")
+	domains, err := json.MarshalIndent(domainList, "", "  ")
 	if err != nil {
 		return fmt.Errorf("failed to encode domains: %w", err)
 	}

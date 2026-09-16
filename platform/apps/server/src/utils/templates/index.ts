@@ -27,7 +27,7 @@ export const projectTemplates: Record<
   (repoName: string) => ProjectTemplate
 > = {
   "next-js-project": (repoName: string) => ({
-    ownername: "jashandeep31",
+    ownername: "vibeongo",
     reponame: "next-js-project",
     project: {
       name: "basic-nextjs-project",
@@ -71,7 +71,7 @@ volumes:
     ],
   }),
   "next-js-express-project": (repoName: string) => ({
-    ownername: "jashandeep31",
+    ownername: "vibeongo",
     reponame: "next-js-express-project",
     project: {
       name: "nextjs-express-project",
@@ -127,7 +127,7 @@ volumes:
     ],
   }),
   "turborepo-project": (repoName: string) => ({
-    ownername: "jashandeep31",
+    ownername: "vibeongo",
     reponame: "turborepo-project",
     project: {
       name: "turborepo-project",

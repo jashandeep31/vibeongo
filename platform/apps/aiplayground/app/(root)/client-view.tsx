@@ -74,7 +74,7 @@ function getRunningSessionUrl(entry: SessionEntry, directory: string) {
 
   const serverUrl = `https://4096-${entry.instance.id}${entry.instance.proxy_domain}`;
   const params = new URLSearchParams({ serverUrl, directory });
-  return `/projects/${entry.session.project_id}/chats/${entry.session.id}?${params.toString()}`;
+  return `/projects/${entry.session.project_id}/sessions/${entry.session.id}?${params.toString()}`;
 }
 
 function getServerUrl(entry: SessionEntry) {
@@ -109,7 +109,7 @@ function SessionRow({
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const serverUrl = getServerUrl(entry);
-  const chatUrl = `/projects/${entry.session.project_id}/chats/${entry.session.id}`;
+  const sessionUrl = `/projects/${entry.session.project_id}/sessions/${entry.session.id}`;
   const storedOpencodeSessions = useSessionChatsStore(
     (store) => store.chatsBySessionId[entry.session.id],
   );
@@ -188,7 +188,7 @@ function SessionRow({
                 aria-label={`Open terminal for ${entry.session.name}`}
                 title="Open terminal"
               >
-                <Link href={`${chatUrl}/terminal`}>
+                <Link href={`${sessionUrl}/terminal`}>
                   <Terminal />
                 </Link>
               </Button>
@@ -232,7 +232,7 @@ function SessionRow({
           <div className="space-y-1 py-3 pl-7">
             {opencodeSessions.map((opencodeSession) => {
               const params = new URLSearchParams({ serverUrl });
-              const url = `${chatUrl}/sessions/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+              const url = `${sessionUrl}/chats/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
 
               return (
                 <Button

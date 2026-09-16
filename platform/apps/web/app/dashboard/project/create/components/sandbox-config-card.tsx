@@ -228,7 +228,7 @@ function SandboxConfigCard() {
                             {sandboxType.cpu || "N/A"} ·{" "}
                             {sandboxType.ram || "N/A"} ·{" "}
                             {formatPricePerSecond(
-                              sandboxType.price_per_seconds,
+                              sandboxType.price_per_second,
                             )}
                           </span>
                         </span>
@@ -241,7 +241,7 @@ function SandboxConfigCard() {
                         ) : null}
                         <span className="text-background/70">
                           Billed at{" "}
-                          {formatPricePerSecond(sandboxType.price_per_seconds)}.
+                          {formatPricePerSecond(sandboxType.price_per_second)}.
                         </span>
                       </span>
                     </TooltipContent>

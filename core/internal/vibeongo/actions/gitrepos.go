@@ -25,10 +25,16 @@ func GenerateGitCloneScript(gitRepos []config.GitRepoConfig) string {
 	return script
 }
 
+// gitCloneURL builds a repository clone URL from its provider base URL.
+func gitCloneURL(repo config.GitRepoConfig) string {
+	return strings.TrimRight(repo.ProviderURL, "/") + "/" +
+		strings.TrimLeft(repo.FullName, "/") + ".git"
+}
+
 // generateGitCloneCommand adds the provider-specific username and access token
-// to the provider-neutral HTTP URL supplied by the server.
+// to the clone URL derived from the provider URL and repository full name.
 func generateGitCloneCommand(repo config.GitRepoConfig) string {
-	cloneURL := repo.HTTPURL
+	cloneURL := gitCloneURL(repo)
 	if repo.AccessToken != "" && repo.GitUsername != "" {
 		if parsedURL, err := url.Parse(cloneURL); err == nil {
 			parsedURL.User = url.UserPassword(repo.GitUsername, repo.AccessToken)

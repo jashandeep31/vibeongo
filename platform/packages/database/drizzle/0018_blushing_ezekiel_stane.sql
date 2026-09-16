@@ -1,1 +1,0 @@
-ALTER TABLE "projects" ALTER COLUMN "sandbox_type_id" SET NOT NULL;

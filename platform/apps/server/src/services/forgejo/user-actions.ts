@@ -2,6 +2,7 @@ import axios from "axios";
 import { env } from "../../lib/env.js";
 import { users } from "@repo/db";
 import crypto from "crypto";
+import { AppError } from "../../lib/app-error.js";
 
 export const forgejoAPIClient = axios.create({
   baseURL: env.FORGEJO_URL + "/api/v1",
@@ -9,13 +10,56 @@ export const forgejoAPIClient = axios.create({
     Authorization: `Bearer ${env.FORGEJO_TOKEN}`,
   },
 });
+
+export interface ForgejoUser {
+  id: number;
+  login: string;
+  login_name: string;
+  source_id: number;
+  full_name: string;
+  email: string;
+  avatar_url: string;
+  html_url: string;
+  language: string;
+  is_admin: boolean;
+  last_login: string;
+  created: string;
+  restricted: boolean;
+  active: boolean;
+  prohibit_login: boolean;
+  location: string;
+  pronouns: string;
+  website: string;
+  description: string;
+  visibility: string;
+  followers_count: number;
+  following_count: number;
+  starred_repos_count: number;
+  username: string;
+}
+
+interface ForgejoUserSearchResponse {
+  ok: boolean;
+  data: ForgejoUser[];
+}
+
+export async function getForgejoUserById(
+  forgejoId: number,
+): Promise<ForgejoUser | null> {
+  const response = await forgejoAPIClient.get<ForgejoUserSearchResponse>(
+    "/users/search",
+    { params: { uid: forgejoId } },
+  );
+
+  return response.data.data.find((user) => user.id === forgejoId) ?? null;
+}
+
 export async function createForgejoUserAccount(
   user: typeof users.$inferSelect,
-): Promise<{
-  status: "ok" | "error";
-  user: any;
-}> {
-  const res = await forgejoAPIClient.post("/admin/users", {
+): Promise<
+  { status: "ok"; user: ForgejoUser } | { status: "error"; user: null }
+> {
+  const res = await forgejoAPIClient.post<ForgejoUser>("/admin/users", {
     created_at: new Date(),
     email: user.email,
     full_name: user.first_name ? user.first_name : user.username,
@@ -44,9 +88,9 @@ export async function createForgejoUserAccount(
 
 export async function getForgejoUser(
   username: string,
-): Promise<unknown | null> {
+): Promise<ForgejoUser | null> {
   try {
-    const res = await forgejoAPIClient.get(
+    const res = await forgejoAPIClient.get<ForgejoUser>(
       `/users/${encodeURIComponent(username)}`,
     );
     return res.data;
@@ -60,16 +104,31 @@ export async function getForgejoUser(
 
 export async function ensureForgejoUserAccount(
   user: typeof users.$inferSelect,
-): Promise<void> {
-  if (await getForgejoUser(user.username)) return;
+): Promise<ForgejoUser> {
+  if (user.forgejo_id !== null) {
+    const existingUser = await getForgejoUserById(user.forgejo_id);
+    if (existingUser) return existingUser;
+
+    throw new AppError(
+      `Forgejo user ${user.forgejo_id} was not found`,
+      502,
+    );
+  }
+
+  const existingUser = await getForgejoUser(user.username);
+  if (existingUser) return existingUser;
 
   try {
-    await createForgejoUserAccount(user);
+    const result = await createForgejoUserAccount(user);
+    if (result.status === "ok") return result.user;
   } catch (error: unknown) {
     // A retry or concurrent job may have created the account after our check.
-    if (await getForgejoUser(user.username)) return;
+    const concurrentlyCreatedUser = await getForgejoUser(user.username);
+    if (concurrentlyCreatedUser) return concurrentlyCreatedUser;
     throw error;
   }
+
+  throw new Error(`Failed to create Forgejo user ${user.username}`);
 }
 
 export async function getAllForgejoUsers(login_name?: string) {

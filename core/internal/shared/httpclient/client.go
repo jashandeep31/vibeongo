@@ -11,10 +11,21 @@ import (
 )
 
 type Client struct {
-	BaseURL string
+	BaseURL          string
+	DisableRedirects bool
 }
 
 const defaultHTTPTimeout = 10 * time.Second
+
+func (c *Client) httpClient() *http.Client {
+	client := &http.Client{Timeout: defaultHTTPTimeout}
+	if c.DisableRedirects {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
+			return http.ErrUseLastResponse
+		}
+	}
+	return client
+}
 
 func (c *Client) Post(path string, payload any, headers map[string]string, out any) (*http.Response, error) {
 	body, err := json.Marshal(payload)
@@ -33,8 +44,7 @@ func (c *Client) Post(path string, payload any, headers map[string]string, out a
 		req.Header.Set(k, v)
 	}
 
-	client := &http.Client{Timeout: defaultHTTPTimeout}
-	resp, err := client.Do(req)
+	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -52,8 +62,7 @@ func (c *Client) Get(path string, headers map[string]string, out any) (*http.Res
 		req.Header.Set(k, v)
 	}
 
-	client := &http.Client{Timeout: defaultHTTPTimeout}
-	resp, err := client.Do(req)
+	resp, err := c.httpClient().Do(req)
 	if err != nil {
 		return nil, err
 	}

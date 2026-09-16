@@ -43,9 +43,11 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 export function ProjectDomainsDialog({
   projectId,
   projectSessionId,
+  iconOnly = false,
 }: {
   projectId: string;
   projectSessionId?: string;
+  iconOnly?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [newIp, setNewIp] = useState("");
@@ -268,7 +270,7 @@ export function ProjectDomainsDialog({
       <Button
         type="button"
         variant="outline"
-        size="sm"
+        size={iconOnly ? "icon-sm" : "sm"}
         className={
           needsAssignment
             ? "border-blue-600 bg-blue-600 text-white shadow-sm hover:bg-blue-700 hover:text-white"
@@ -278,6 +280,20 @@ export function ProjectDomainsDialog({
         }
         disabled={assignDomains.isPending}
         onClick={handleDomainAction}
+        aria-label={
+          needsAssignment
+            ? "Assign domains"
+            : showIpWarning
+              ? "Project domain IP access warning"
+              : "Project domains"
+        }
+        title={
+          needsAssignment
+            ? "Assign domains"
+            : showIpWarning
+              ? "IP not allowed"
+              : "Project domains"
+        }
       >
         {assignDomains.isPending ? (
           <LoaderCircle className="animate-spin" />
@@ -286,11 +302,13 @@ export function ProjectDomainsDialog({
         ) : (
           <Globe />
         )}
-        {needsAssignment
-          ? "Assign domains"
-          : showIpWarning
-            ? "IP not allowed"
-            : "Domains"}
+        {iconOnly
+          ? null
+          : needsAssignment
+            ? "Assign domains"
+            : showIpWarning
+              ? "IP not allowed"
+              : "Domains"}
       </Button>
 
       <Dialog

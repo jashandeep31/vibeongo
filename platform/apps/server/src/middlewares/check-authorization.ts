@@ -3,6 +3,7 @@ import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../lib/env.js";
 import { clearSessionCookie } from "../lib/session-cookie.js";
+import { findWebSession } from "../lib/auth-session.js";
 
 const userRolesArray = [...userRoles.enumValues, "all"] as const;
 type UserRole = (typeof userRolesArray)[number];
@@ -57,6 +58,22 @@ function appBasedAuthenticator(
   return authenticateToken(req, res, next, token, allowedRoles);
 }
 
+async function authenticateWebSessionOrLegacyJwt(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  token: string,
+  allowedRoles: UserRole[],
+) {
+  const session = await findWebSession(token);
+  if (session) {
+    return authenticateUser(req, res, next, session.user_id, allowedRoles);
+  }
+
+  // Preserve legacy JWT-cookie authentication during the migration.
+  return authenticateToken(req, res, next, token, allowedRoles);
+}
+
 function webBasedAuthenticator(
   req: Request,
   res: Response,
@@ -68,7 +85,13 @@ function webBasedAuthenticator(
     return failedToAuthenticate(res);
   }
 
-  return authenticateToken(req, res, next, token, allowedRoles);
+  return authenticateWebSessionOrLegacyJwt(
+    req,
+    res,
+    next,
+    token,
+    allowedRoles,
+  );
 }
 
 async function authenticateToken(
@@ -96,6 +119,16 @@ async function authenticateToken(
     return failedToAuthenticate(res);
   }
 
+  return authenticateUser(req, res, next, id, allowedRoles);
+}
+
+async function authenticateUser(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  id: string,
+  allowedRoles: UserRole[],
+) {
   const [userAndAccountRow] = await db
     .select({ user: users, account: accounts })
     .from(users)

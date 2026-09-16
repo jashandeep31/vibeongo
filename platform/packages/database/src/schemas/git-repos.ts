@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { users } from "./user.js";
 import { projects } from "./projects.js";
+import { instances } from "./instances.js";
 
 export const gitRepoType = pgEnum("git_repo_type", ["github", "forgejo"]);
 
@@ -67,3 +68,36 @@ export const gitRepoMembers = pgTable(
   },
   (t) => [unique().on(t.username, t.repo_id)],
 );
+
+export const gitProvider = pgEnum("git_provider", ["github", "forgejo"]);
+
+export const gitRepoAccessTokens = pgTable("git_repo_access_tokens", {
+  id: uuid().primaryKey().defaultRandom(),
+
+  user_id: uuid()
+    .references(() => users.id, { onDelete: "cascade" })
+    .notNull(),
+
+  instance_id: uuid().references(() => instances.id, { onDelete: "set null" }),
+
+  repo_id: uuid()
+    .references(() => gitRepos.id, { onDelete: "cascade" })
+    .notNull(),
+
+  provider: gitProvider().notNull(),
+
+  // Provider-side identifier, when available.
+  provider_token_id: varchar(),
+
+  // GitHub requires the token itself to revoke an installation access token.
+  // These fields remain null for providers that support revocation by token ID.
+  encrypted_token: text(),
+  token_iv: varchar(),
+  token_tag: text(),
+
+  expires_at: timestamp().notNull(),
+  revoked_at: timestamp(),
+
+  created_at: timestamp().defaultNow().notNull(),
+  updated_at: timestamp().defaultNow(),
+});

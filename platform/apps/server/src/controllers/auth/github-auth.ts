@@ -14,8 +14,11 @@ import {
   consumePendingMobileAuthorization,
 } from "../../cache/oauth-cache.js";
 import { addUserOnboardingJob } from "../../jobs/user-onboarding.js";
+import {
+  createWebSession,
+  webSessionMaxAgeMs,
+} from "../../lib/auth-session.js";
 
-const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 const mobileCallbackUri = "vibeongo://auth/callback";
 
 type WebApp = "legacy" | "next";
@@ -25,6 +28,7 @@ function getWebApp(clientId: unknown): WebApp {
 }
 
 const githubProfileSchema = z.object({
+  id: z.number().int().positive(),
   email: z.string().nullable().optional(),
   name: z.string().nullable().optional(),
   login: z.string().nullable().optional(),
@@ -156,6 +160,7 @@ export const githubAuthCallbackController = catchAsync(
     const user_agent = req.headers["user-agent"];
     const { user, account, isNewUser } = await createOrGetUser({
       email,
+      providerAccountId: profile.id.toString(),
       name: profile.name ?? undefined,
       token: accessToken,
       username: profile.login,
@@ -167,7 +172,7 @@ export const githubAuthCallbackController = catchAsync(
       throw new Error("Account is not active");
     }
 
-    if (isNewUser) {
+    if (isNewUser || user.forgejo_id === null) {
       try {
         await addUserOnboardingJob({ userId: user.id });
       } catch (error: unknown) {
@@ -207,12 +212,17 @@ export const githubAuthCallbackController = catchAsync(
       return;
     }
 
-    const token = jwt.sign({ id: user.id }, env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    const token =
+      state === "web:next"
+        ? await createWebSession({
+            userId: user.id,
+            ...(ip ? { ipAddress: ip.toString() } : {}),
+            ...(user_agent ? { userAgent: user_agent.toString() } : {}),
+          })
+        : jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: "30d" });
     res.cookie("session", token, {
       ...sessionCookieOptions,
-      maxAge: sessionMaxAgeMs,
+      maxAge: webSessionMaxAgeMs,
     });
     res.redirect(webRedirectUrl ?? env.FRONTEND_URL);
   },
