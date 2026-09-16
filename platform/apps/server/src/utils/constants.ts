@@ -15,22 +15,20 @@ export const tierLimits = {
 
 export const demoReposToFork = [
   {
-    reponame: "todo-nextjs",
-    ownername: "jashandeep31",
-    description:
-      "A simple Next.js todo app for trying the Vibeongo project workflow.",
-    tags: ["Next.js", "TypeScript", "Todo"],
+    reponame: "portfolio",
+    ownername: "vibeongo",
+    description: "A Next.js portfolio website.",
+    tags: ["Next.js", "TypeScript", "Portfolio"],
     project: {
-      name: "todo-nextjs",
-      description:
-        "A simple Next.js todo app for trying the Vibeongo project workflow.",
+      name: "portfolio",
+      description: "A Next.js portfolio website.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/todo-nextjs
-npm i`,
-      devScript: `cd /home/ubuntu/code/todo-nextjs
+      finalScript: `cd /home/ubuntu/code/portfolio
+npm install`,
+      devScript: `cd /home/ubuntu/code/portfolio
 npm run dev`,
       config: {
-        ports: [],
+        ports: [{ port: 3000, protocol: "TCP" }],
         packages: [
           {
             name: "docker",
@@ -41,7 +39,7 @@ npm run dev`,
             config: {
               auth_json: {},
               use_user_config: true,
-              model: "",
+              model: "default",
             },
           },
           {
@@ -58,26 +56,31 @@ npm run dev`,
               use_user_config: true,
             },
           },
+          {
+            name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
         ],
       },
     },
   },
   {
-    reponame: "vibeongo-url-shortner",
-    ownername: "jashandeep31",
-    description:
-      "A TypeScript and Express URL shortener with PostgreSQL and Prisma.",
-    tags: ["TypeScript", "Express", "PostgreSQL", "Prisma"],
+    reponame: "blogging-website",
+    ownername: "vibeongo",
+    description: "A Next.js blogging website backed by PostgreSQL and Drizzle.",
+    tags: ["Next.js", "TypeScript", "PostgreSQL", "Drizzle"],
     project: {
-      name: "vibeongo-url",
+      name: "blogging-website",
       description:
-        "A TypeScript and Express URL shortener with PostgreSQL and Prisma.",
+        "A Next.js blogging website backed by PostgreSQL and Drizzle.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/vibeongo-url-shortner
+      finalScript: `cd /home/ubuntu/code/blogging-website
 npm install
-npm run db:migrate
-npm run build`,
-      devScript: `cd /home/ubuntu/code/vibeongo-url-shortner
+npm run db:migrate`,
+      devScript: `cd /home/ubuntu/code/blogging-website
 npm run dev`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
@@ -95,7 +98,7 @@ npm run dev`,
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: url_shortner
+      POSTGRES_DB: app
     ports:
       - "5432:5432"
     volumes:
@@ -115,33 +118,52 @@ volumes:
               model: "default",
             },
           },
+          {
+            name: "codex",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "pi",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
         ],
       },
     },
     files: [
       {
         name: ".env",
-        path: "/vibeongo-url-shortner",
-        content: `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/url_shortner
-PORT=3000
-BASE_URL=http://localhost:3000
-`,
+        path: "/blogging-website",
+        content:
+          "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app\n",
       },
     ],
   },
   {
-    reponame: "portfolio",
+    reponame: "env-manager",
     ownername: "vibeongo",
-    description: "A Next.js portfolio website.",
-    tags: ["Next.js", "TypeScript", "Portfolio"],
+    description: "A Next.js tool for comparing environment variable files.",
+    tags: ["Next.js", "TypeScript", "Environment Variables"],
     project: {
-      name: "portfolio",
-      description: "A Next.js portfolio website.",
+      name: "env-manager",
+      description: "A Next.js tool for comparing environment variable files.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/portfolio
+      finalScript: `cd /home/ubuntu/code/env-manager
 npm install`,
-      devScript: `cd /home/ubuntu/code/portfolio
-npm run dev -- --hostname 0.0.0.0`,
+      devScript: `cd /home/ubuntu/code/env-manager
+npm run dev`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
         packages: [
