@@ -250,10 +250,30 @@ export const useSendOpencodePrompt = ({
   accessToken: string;
   password?: string;
 }) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+
   return useMutation({
     onMutate: () => {
       const chatsStore = useSessionChatsStore.getState();
       chatsStore.setChatUnread(chatId, sessionId, false);
+      const previous = queryClient.getQueryData<OpencodeSessionData>(queryKey);
+      const revertMessageId = previous?.session.revert?.messageID;
+      if (!previous || !revertMessageId) return { previous };
+
+      const revertIndex = previous.messages.findIndex(
+        (message) => message.info.id === revertMessageId,
+      );
+      const { revert: _revert, ...session } = previous.session;
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, {
+        ...previous,
+        session,
+        messages:
+          revertIndex < 0
+            ? previous.messages
+            : previous.messages.slice(0, revertIndex),
+      });
+      return { previous };
     },
     mutationFn: async ({
       text,
@@ -289,6 +309,11 @@ export const useSendOpencodePrompt = ({
         accessToken,
         password,
       );
+    },
+    onError: (_error, _variables, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(queryKey, context.previous);
+      }
     },
   });
 };
