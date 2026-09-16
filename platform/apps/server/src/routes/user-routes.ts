@@ -21,6 +21,7 @@ import {
   getUserConfigs,
   updateUserConfig,
 } from "../controllers/user/config-controller.js";
+import { setForgejoPassword } from "../controllers/user/forgejo-controller.js";
 
 const routes: Router = Router();
 
@@ -34,6 +35,10 @@ routes
   .get(checkAuthorization(["all"]), getUserSettings)
   .put(checkAuthorization(["all"]), updateUserSettings);
 routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
+
+routes
+  .route("/forgejo/password")
+  .put(checkAuthorization(["all"]), setForgejoPassword);
 
 routes
   .route("/configs")

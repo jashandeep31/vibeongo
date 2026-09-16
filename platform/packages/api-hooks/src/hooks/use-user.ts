@@ -75,6 +75,13 @@ export const useUpdateUserSettings = () => {
   });
 };
 
+export const useSetForgejoPassword = () => {
+  const client = useApiClient();
+  return useMutation({
+    mutationFn: client.users.setForgejoPassword,
+  });
+};
+
 export const useUserConfigs = () => {
   const client = useApiClient();
   return useQuery({

@@ -6,6 +6,7 @@ import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
 import { logout } from "@/services/auth-services";
 import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
 import {
+  useSetForgejoPassword,
   useUpdateUserSettings,
   useUserConfigs,
   useUserSettings,
@@ -17,6 +18,7 @@ import {
   Bot,
   Check,
   KeyRound,
+  LockKeyhole,
   LogOut,
   Monitor,
   Moon,
@@ -121,6 +123,7 @@ export default function SettingsPage() {
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
   const updateTerminationSettings = useUpdateUserSettings();
+  const setForgejoPassword = useSetForgejoPassword();
   const deleteSshKey = useDeleteSshKey();
   const userSettings = settingsQuery.data;
   const [telegramChatId, setTelegramChatId] = useState("");
@@ -138,6 +141,9 @@ export default function SettingsPage() {
     defaultManualInstanceAutoTerminateAfterMinutes: "",
   });
   const [isTerminationFormDirty, setIsTerminationFormDirty] = useState(false);
+  const [forgejoPassword, setForgejoPasswordValue] = useState("");
+  const [forgejoPasswordConfirmation, setForgejoPasswordConfirmation] =
+    useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   useEffect(() => {
@@ -232,6 +238,25 @@ export default function SettingsPage() {
       toast.success("SSH key deleted");
     } catch {
       toast.error("Failed to delete SSH key");
+    }
+  };
+
+  const saveForgejoPassword = async () => {
+    if (forgejoPassword.length < 4 || forgejoPassword.length > 20) {
+      toast.error("Password must be between 4 and 20 characters");
+      return;
+    }
+    if (forgejoPassword !== forgejoPasswordConfirmation) {
+      toast.error("Passwords do not match");
+      return;
+    }
+    try {
+      await setForgejoPassword.mutateAsync({ password: forgejoPassword });
+      setForgejoPasswordValue("");
+      setForgejoPasswordConfirmation("");
+      toast.success("Forgejo password updated");
+    } catch {
+      toast.error("Failed to update Forgejo password");
     }
   };
 
@@ -559,6 +584,67 @@ export default function SettingsPage() {
       </SettingsSection>
 
       <SettingsSection
+        title="Forgejo password"
+        description="Set the password used to sign in to your Forgejo account. Use 4–20 characters."
+        icon={LockKeyhole}
+      >
+        <form
+          className="grid max-w-xl gap-4"
+          onSubmit={(event) => {
+            event.preventDefault();
+            void saveForgejoPassword();
+          }}
+        >
+          <label className="grid gap-1.5">
+            <span className="text-muted-foreground text-xs">New password</span>
+            <Input
+              type="password"
+              autoComplete="new-password"
+              minLength={4}
+              maxLength={20}
+              required
+              value={forgejoPassword}
+              onChange={(event) => setForgejoPasswordValue(event.target.value)}
+              disabled={setForgejoPassword.isPending}
+            />
+          </label>
+          <label className="grid gap-1.5">
+            <span className="text-muted-foreground text-xs">
+              Confirm password
+            </span>
+            <Input
+              type="password"
+              autoComplete="new-password"
+              minLength={4}
+              maxLength={20}
+              required
+              value={forgejoPasswordConfirmation}
+              onChange={(event) =>
+                setForgejoPasswordConfirmation(event.target.value)
+              }
+              disabled={setForgejoPassword.isPending}
+            />
+          </label>
+          <div className="flex justify-end">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={
+                !forgejoPassword ||
+                !forgejoPasswordConfirmation ||
+                setForgejoPassword.isPending
+              }
+            >
+              <Save />
+              {setForgejoPassword.isPending
+                ? "Saving..."
+                : "Save Forgejo password"}
+            </Button>
+          </div>
+        </form>
+      </SettingsSection>
+
+      <SettingsSection
         title="Session"
         description="Sign out of AI Playground on this device."
         icon={LogOut}
@@ -590,6 +676,7 @@ export default function SettingsPage() {
           .
         </p>
       </SettingsSection>
+
     </div>
   );
 }

@@ -64,7 +64,11 @@ export type {
   ProjectTemplate,
   ProjectWithSessions,
 } from "./services/project-services.js";
-export type { UserConfigValue } from "./services/user-services.js";
+export type {
+  SetForgejoPasswordPayload,
+  SetForgejoPasswordResponse,
+  UserConfigValue,
+} from "./services/user-services.js";
 
 function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
   module: T,

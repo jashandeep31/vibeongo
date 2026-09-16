@@ -44,6 +44,14 @@ export type UpdateUserSettingsPayload = {
   defaultManualInstanceAutoTerminateAfterMinutes?: (typeof userSettings.$inferSelect)["default_manual_instance_auto_terminate_after_minutes"];
 };
 
+export type SetForgejoPasswordPayload = {
+  password: string;
+};
+
+export type SetForgejoPasswordResponse = {
+  message: string;
+};
+
 export const getUserMetadata =
   (apiClient: AxiosInstance) => async (): Promise<UserMetadata> => {
     const response = await apiClient.get(`/api/v1/users/metadata`, {
@@ -71,6 +79,19 @@ export const updateUserSettings =
       withCredentials: true,
     });
     return response.data.data;
+  };
+
+export const setForgejoPassword =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: SetForgejoPasswordPayload,
+  ): Promise<SetForgejoPasswordResponse> => {
+    const response = await apiClient.put(
+      `/api/v1/users/forgejo/password`,
+      payload,
+      { withCredentials: true },
+    );
+    return response.data;
   };
 
 export const getUserConfigs =

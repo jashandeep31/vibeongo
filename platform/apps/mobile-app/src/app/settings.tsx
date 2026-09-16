@@ -4,6 +4,7 @@ import {
   useCreateUserConfig,
   useDeleteSshKey,
   useSshKeys,
+  useSetForgejoPassword,
   useUpdateSshKey,
   useUpdateUserConfig,
   useUpdateUserSettings,
@@ -140,6 +141,7 @@ export default function SettingsScreen() {
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
   const updateTerminationSettings = useUpdateUserSettings();
+  const setForgejoPassword = useSetForgejoPassword();
   const deleteSshKey = useDeleteSshKey();
   const userSettings = settingsQuery.data;
   const [telegramChatId, setTelegramChatId] = useState("");
@@ -157,6 +159,9 @@ export default function SettingsScreen() {
     defaultManualInstanceAutoTerminateAfterMinutes: "",
   });
   const [isTerminationFormDirty, setIsTerminationFormDirty] = useState(false);
+  const [forgejoPassword, setForgejoPasswordValue] = useState("");
+  const [forgejoPasswordConfirmation, setForgejoPasswordConfirmation] =
+    useState("");
   const [configEditor, setConfigEditor] = useState<{
     type: ConfigType;
     name: string;
@@ -264,6 +269,31 @@ export default function SettingsScreen() {
       setSshKeyToDelete(null);
     } catch {
       showSettingsError("Could not delete SSH key", "Please try again.");
+    }
+  };
+
+  const saveForgejoPassword = async () => {
+    if (forgejoPassword.length < 4 || forgejoPassword.length > 20) {
+      showSettingsError(
+        "Invalid password",
+        "Password must be between 4 and 20 characters.",
+      );
+      return;
+    }
+    if (forgejoPassword !== forgejoPasswordConfirmation) {
+      showSettingsError("Passwords do not match", "Enter the same password twice.");
+      return;
+    }
+    try {
+      await setForgejoPassword.mutateAsync({ password: forgejoPassword });
+      setForgejoPasswordValue("");
+      setForgejoPasswordConfirmation("");
+      Toast.show({ type: "success", text1: "Forgejo password updated" });
+    } catch {
+      showSettingsError(
+        "Could not update Forgejo password",
+        "Please try again.",
+      );
     }
   };
 
@@ -566,6 +596,43 @@ export default function SettingsScreen() {
                   </ThemedText>
                 </View>
               )}
+            </SettingsSection>
+
+            <SettingsSection
+              description="Set the password used to sign in to your Forgejo account. Use 4–20 characters."
+              icon={{ ios: "lock", android: "lock" }}
+              title="Forgejo password"
+            >
+              <View style={styles.formFields}>
+                <LabeledInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!setForgejoPassword.isPending}
+                  label="New password"
+                  maxLength={20}
+                  onChangeText={setForgejoPasswordValue}
+                  secureTextEntry
+                  textContentType="newPassword"
+                  value={forgejoPassword}
+                />
+                <LabeledInput
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!setForgejoPassword.isPending}
+                  label="Confirm password"
+                  maxLength={20}
+                  onChangeText={setForgejoPasswordConfirmation}
+                  secureTextEntry
+                  textContentType="newPassword"
+                  value={forgejoPasswordConfirmation}
+                />
+              </View>
+              <SaveButton
+                disabled={!forgejoPassword || !forgejoPasswordConfirmation}
+                label="Save Forgejo password"
+                onPress={() => void saveForgejoPassword()}
+                pending={setForgejoPassword.isPending}
+              />
             </SettingsSection>
           </ScrollView>
         )}
