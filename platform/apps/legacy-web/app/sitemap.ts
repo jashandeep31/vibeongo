@@ -11,6 +11,9 @@ export default function sitemap(): MetadataRoute.Sitemap {
       url: `${siteUrl}/contact`,
     },
     {
+      url: `${siteUrl}/pricing`,
+    },
+    {
       url: `${siteUrl}/privacy`,
     },
     {

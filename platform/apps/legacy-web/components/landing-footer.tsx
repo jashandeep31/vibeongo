@@ -17,6 +17,14 @@ export function LandingFooter() {
             <h3 className="text-sm font-semibold text-foreground">Resources</h3>
             <ul className="mt-4 space-y-2 text-sm text-muted-foreground">
               <li>
+                <Link
+                  href="/pricing"
+                  className="hover:text-primary transition-colors"
+                >
+                  Pricing
+                </Link>
+              </li>
+              <li>
                 <Link 
                   href="https://github.com/jashandeep31/vibeongo" 
                   className="hover:text-primary transition-colors"
