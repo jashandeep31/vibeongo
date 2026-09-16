@@ -1,9 +1,11 @@
 import {
   getInstanceRegions,
   getInstanceTypesByRegionId,
+  getPricingMetadata,
   getSandboxRegions,
   getSandboxTypesByRegionId,
 } from "@/services/instance-metadata-service";
+import type { PricingMetadata } from "@/services/instance-metadata-service";
 import {
   instanceRegions,
   instanceTypes,
@@ -44,4 +46,10 @@ export const useSandboxTypesByRegionId = ({
     queryKey: ["sandbox-types", regionId],
     queryFn: () => getSandboxTypesByRegionId({ regionId: regionId! }),
     enabled: !!regionId,
+  });
+
+export const usePricingMetadata = () =>
+  useQuery<PricingMetadata>({
+    queryKey: ["pricing-metadata"],
+    queryFn: getPricingMetadata,
   });
