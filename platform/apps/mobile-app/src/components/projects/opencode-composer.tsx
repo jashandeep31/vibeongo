@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Keyboard,
   Modal,
   Pressable,
   ScrollView,
@@ -173,8 +172,6 @@ export function OpencodeComposer({
     (!value.trim() && attachments.length === 0);
   const submit = () => {
     if (submitDisabled) return;
-    inputRef.current?.blur();
-    Keyboard.dismiss();
     onSubmit();
   };
   const pickImages = async () => {
