@@ -25,9 +25,11 @@ type TodoItem = {
 };
 
 export function OpencodeToolCall({
+  isStreaming,
   tools,
   summaryDiffs = [],
 }: {
+  isStreaming: boolean;
   tools: ToolPart[];
   summaryDiffs?: SnapshotFileDiff[];
 }) {
@@ -75,7 +77,9 @@ export function OpencodeToolCall({
           />
         ))}
         {diffs.length === 0
-          ? tools.map((tool) => <EditStatus key={tool.id} tool={tool} />)
+          ? tools.map((tool) => (
+              <EditStatus isStreaming={isStreaming} key={tool.id} tool={tool} />
+            ))
           : null}
       </View>
     );
@@ -95,7 +99,7 @@ export function OpencodeToolCall({
     return <ExplorationGroup tools={tools} />;
   }
 
-  return <GenericTool tool={firstTool} />;
+  return <GenericTool isStreaming={isStreaming} tool={firstTool} />;
 }
 
 function Collapsible({
@@ -259,12 +263,19 @@ function CompletedQuestions({ tool }: { tool: ToolPart }) {
   );
 }
 
-function EditStatus({ tool }: { tool: ToolPart }) {
+function EditStatus({
+  isStreaming,
+  tool,
+}: {
+  isStreaming: boolean;
+  tool: ToolPart;
+}) {
   const theme = useTheme();
   const file = getToolFile(tool);
   const fileName = file.split("/").filter(Boolean).at(-1) ?? "file";
   const pending =
-    tool.state.status === "pending" || tool.state.status === "running";
+    isStreaming &&
+    (tool.state.status === "pending" || tool.state.status === "running");
   return (
     <View style={styles.inlineResult}>
       <ThemedText style={styles.summaryLabel}>Edit</ThemedText>
@@ -366,9 +377,17 @@ function ExplorationResult({ tool }: { tool: ToolPart }) {
   );
 }
 
-function GenericTool({ tool }: { tool: ToolPart }) {
+function GenericTool({
+  isStreaming,
+  tool,
+}: {
+  isStreaming: boolean;
+  tool: ToolPart;
+}) {
   const theme = useTheme();
   const state = tool.state;
+  const pending =
+    isStreaming && (state.status === "pending" || state.status === "running");
   const shell = isShellTool(tool);
   const command = shell ? getStringInput(tool, "command") : "";
   const result =
@@ -376,11 +395,19 @@ function GenericTool({ tool }: { tool: ToolPart }) {
       ? state.output
       : state.status === "error"
         ? state.error
-        : "Running…";
+        : pending
+          ? "Running…"
+          : "Done";
   return (
     <Collapsible
       label={getToolName(tool)}
-      subtitle={state.status === "pending" ? "pending" : state.status}
+      subtitle={
+        pending
+          ? state.status
+          : state.status === "error"
+            ? "error"
+            : "completed"
+      }
     >
       <ScrollView
         horizontal
@@ -406,7 +433,9 @@ function GenericTool({ tool }: { tool: ToolPart }) {
                   ? `\n\n${state.output}`
                   : state.status === "error"
                     ? `\n\n${state.error}`
-                    : "\n\nRunning…"
+                    : pending
+                      ? "\n\nRunning…"
+                      : "\n\nDone"
               }`}
         </ThemedText>
       </ScrollView>

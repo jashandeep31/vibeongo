@@ -179,18 +179,15 @@ const ChatContentBlock = memo(
     summaryDiffs?: SnapshotFileDiff[];
   }) {
     if (content.type === "text") {
-      if (isStreaming) {
-        return (
-          <ThemedText selectable style={styles.streamingText}>
-            {content.text}
-          </ThemedText>
-        );
-      }
       return <NativeMarkdown content={content.text} />;
     }
     if (content.type === "tools") {
       return (
-        <OpencodeToolCall summaryDiffs={summaryDiffs} tools={content.tools} />
+        <OpencodeToolCall
+          isStreaming={isStreaming}
+          summaryDiffs={summaryDiffs}
+          tools={content.tools}
+        />
       );
     }
     if (content.type === "error") {
@@ -340,7 +337,6 @@ const styles = StyleSheet.create({
   questionGroup: { alignItems: "flex-end", gap: 2 },
   questionText: { fontSize: 15, lineHeight: 22 },
   response: { gap: 7 },
-  streamingText: { fontSize: 15, lineHeight: 22 },
   thinking: {
     alignItems: "center",
     flexDirection: "row",
