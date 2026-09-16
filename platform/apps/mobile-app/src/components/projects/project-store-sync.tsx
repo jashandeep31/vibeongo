@@ -232,10 +232,7 @@ function ProjectSessionRuntimeSync({
           opencodeSessionId,
           event.properties.status,
         );
-      } else if (
-        event.type === "session.idle" ||
-        event.type === "session.error"
-      ) {
+      } else if (isSessionCompletionEvent(event)) {
         store.setChatStatus(sessionId, opencodeSessionId, { type: "idle" });
       }
 
@@ -248,7 +245,7 @@ function ProjectSessionRuntimeSync({
         store.setChatAttention(sessionId, opencodeSessionId, false);
       }
 
-      if (event.type === "session.idle") {
+      if (isSessionCompletionEvent(event)) {
         void queryClient.invalidateQueries({
           queryKey: ["opencode", "session", sessionId, opencodeSessionId],
         });
@@ -479,6 +476,18 @@ function getEventSessionId(event: Event) {
   return typeof properties?.sessionID === "string"
     ? properties.sessionID
     : undefined;
+}
+
+function isSessionCompletionEvent(event: Event) {
+  return (
+    event.type === "session.idle" ||
+    event.type === "session.error" ||
+    event.type === "session.execution.succeeded" ||
+    event.type === "session.execution.failed" ||
+    event.type === "session.execution.interrupted" ||
+    (event.type === "session.status" &&
+      event.properties.status?.type === "idle")
+  );
 }
 
 export function ProjectStoreSync({ enabled }: { enabled: boolean }) {

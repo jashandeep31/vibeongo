@@ -183,7 +183,11 @@ const ChatContentBlock = memo(
     }
     if (content.type === "tools") {
       return (
-        <OpencodeToolCall summaryDiffs={summaryDiffs} tools={content.tools} />
+        <OpencodeToolCall
+          isStreaming={isStreaming}
+          summaryDiffs={summaryDiffs}
+          tools={content.tools}
+        />
       );
     }
     if (content.type === "error") {
