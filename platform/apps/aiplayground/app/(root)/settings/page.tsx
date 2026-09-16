@@ -17,6 +17,7 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import {
   Bot,
   Check,
+  ExternalLink,
   KeyRound,
   LockKeyhole,
   LogOut,
@@ -37,6 +38,7 @@ import { toast } from "sonner";
 
 const AUTO_TERMINATE_MIN_MINUTES = 15;
 const AUTO_TERMINATE_MAX_MINUTES = 1200;
+const FORGEJO_URL = "https://forgejo.devsradar.com/";
 
 const themeOptions = [
   {
@@ -588,6 +590,15 @@ export default function SettingsPage() {
         description="Set the password used to sign in to your Forgejo account. Use 4–20 characters."
         icon={LockKeyhole}
       >
+        <a
+          href={FORGEJO_URL}
+          target="_blank"
+          rel="noreferrer"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium underline underline-offset-4"
+        >
+          Open Forgejo
+          <ExternalLink className="size-3.5" />
+        </a>
         <form
           className="grid max-w-xl gap-4"
           onSubmit={(event) => {
@@ -676,7 +687,6 @@ export default function SettingsPage() {
           .
         </p>
       </SettingsSection>
-
     </div>
   );
 }

@@ -13,6 +13,7 @@ import {
   useUserSettings,
 } from "@repo/api-hooks";
 import { useQueryClient } from "@repo/api-hooks";
+import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import {
@@ -56,6 +57,7 @@ import {
 
 const AUTO_TERMINATE_MIN_MINUTES = 15;
 const AUTO_TERMINATE_MAX_MINUTES = 1200;
+const FORGEJO_URL = "https://forgejo.devsradar.com/";
 
 function showSettingsError(text1: string, text2?: string) {
   Toast.show({ type: "error", text1, text2 });
@@ -281,7 +283,10 @@ export default function SettingsScreen() {
       return;
     }
     if (forgejoPassword !== forgejoPasswordConfirmation) {
-      showSettingsError("Passwords do not match", "Enter the same password twice.");
+      showSettingsError(
+        "Passwords do not match",
+        "Enter the same password twice.",
+      );
       return;
     }
     try {
@@ -603,6 +608,31 @@ export default function SettingsScreen() {
               icon={{ ios: "lock", android: "lock" }}
               title="Forgejo password"
             >
+              <Pressable
+                accessibilityHint="Opens Forgejo in your browser"
+                accessibilityRole="link"
+                onPress={() => {
+                  void Linking.openURL(FORGEJO_URL).catch(() =>
+                    showSettingsError(
+                      "Could not open Forgejo",
+                      "Please try again.",
+                    ),
+                  );
+                }}
+                style={({ pressed }) => [
+                  styles.externalLink,
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText style={styles.externalLinkLabel}>
+                  Open Forgejo
+                </ThemedText>
+                <SymbolView
+                  name={{ ios: "arrow.up.right", android: "open_in_new" }}
+                  size={15}
+                  tintColor={theme.text}
+                />
+              </Pressable>
               <View style={styles.formFields}>
                 <LabeledInput
                   autoCapitalize="none"
@@ -1287,6 +1317,18 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
   },
   formFields: { gap: 14 },
+  externalLink: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    gap: 6,
+    marginBottom: 18,
+  },
+  externalLinkLabel: {
+    fontSize: 14,
+    fontWeight: "600",
+    textDecorationLine: "underline",
+  },
   labeledInput: { gap: 6 },
   inputLabel: { fontSize: 12, lineHeight: 16 },
   saveButton: {
