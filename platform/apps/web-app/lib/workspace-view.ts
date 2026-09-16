@@ -1,6 +1,6 @@
 export type WorkspaceView = "chats" | "projects";
 
-export const WORKSPACE_VIEW_CHANGE_EVENT = "aiplayground-workspace-view-change";
+export const WORKSPACE_VIEW_CHANGE_EVENT = "web-app-workspace-view-change";
 
 export function isWorkspaceView(value: unknown): value is WorkspaceView {
   return value === "chats" || value === "projects";

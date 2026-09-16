@@ -161,10 +161,10 @@ listens on the configured `PORT`.
 To run the web application in another terminal:
 
 ```bash
-pnpm --filter web dev
+pnpm --filter web-app dev
 ```
 
-The web app starts on `http://localhost:3000`. Its API configuration must point
+The web app starts on `http://localhost:3003`. Its API configuration must point
 to the same `BACKEND_URL` used by the server.
 
 ## Common startup problems
@@ -183,7 +183,7 @@ Confirm the GitHub App private key is named exactly `vibeongo.pem` and is inside
 ### CORS errors in the browser
 
 Add the exact frontend origin to `ALLOWED_ORIGINS`. For the default web server,
-that origin is `http://localhost:3000`.
+that origin is `http://localhost:3003`.
 
 ### GitHub redirects to the wrong URL
 

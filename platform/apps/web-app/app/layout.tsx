@@ -1,6 +1,6 @@
 import { PwaRegistration } from "@/components/pwa-registration";
 import type { Metadata, Viewport } from "next";
-import "./aiplayground.css";
+import "./web-app.css";
 import Provider from "./provider";
 import { Toaster } from "sonner";
 

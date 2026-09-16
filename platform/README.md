@@ -17,8 +17,11 @@ This Turborepo includes the following packages/apps:
 ### Apps and Packages
 
 - `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
+- `web-app`: the primary [Next.js](https://nextjs.org/) product application
+- `legacy-web`: the legacy [Next.js](https://nextjs.org/) application
+- `mobile-app`: the Expo mobile application
+- `server`: the API server
+- `@repo/ui`: shared UI components used by the web applications
 - `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
 - `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
 
@@ -80,12 +83,12 @@ You can develop a specific package by using a [filter](https://turborepo.dev/doc
 
 ```
 # With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended)
-turbo dev --filter=web
+turbo dev --filter=web-app
 
 # Without [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation), use your package manager
-npx turbo dev --filter=web
-yarn exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
+npx turbo dev --filter=web-app
+yarn exec turbo dev --filter=web-app
+pnpm exec turbo dev --filter=web-app
 ```
 
 ### Remote Caching

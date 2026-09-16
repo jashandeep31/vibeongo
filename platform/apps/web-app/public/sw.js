@@ -1,5 +1,5 @@
 const VERSION = "v1";
-const CACHE_NAME = `aiplayground-${VERSION}`;
+const CACHE_NAME = `web-app-${VERSION}`;
 const APP_ASSETS = [
   "/icon-192.png",
   "/icon-512.png",
@@ -23,7 +23,7 @@ self.addEventListener("activate", (event) => {
         Promise.all(
           keys
             .filter(
-              (key) => key.startsWith("aiplayground-") && key !== CACHE_NAME,
+              (key) => key.startsWith("web-app-") && key !== CACHE_NAME,
             )
             .map((key) => caches.delete(key)),
         ),
