@@ -49,10 +49,11 @@ export default function PricingClientView() {
   const instanceRegions = data?.instances.map(({ region }) => region) ?? [];
   const activeInstanceRegionId =
     selectedInstanceRegionId || instanceRegions[0]?.id || "";
-  const activeInstanceTypes =
-    data?.instances.find(
+  const activeInstanceTypes = [
+    ...(data?.instances.find(
       ({ region }) => region.id === activeInstanceRegionId,
-    )?.types ?? [];
+    )?.types ?? []),
+  ].sort((left, right) => left.price_per_hour - right.price_per_hour);
   const [selectedEstimateTypeId, setSelectedEstimateTypeId] = useState("");
   const selectedEstimateType =
     activeInstanceTypes.find((type) => type.id === selectedEstimateTypeId) ??
@@ -132,28 +133,24 @@ export default function PricingClientView() {
               ) : null}
             </div>
             <PricingOptions
-              rows={data.instances.flatMap(({ region, types }) =>
-                region.id === activeInstanceRegionId
-                  ? types.map((type) => ({
-                      id: type.id,
-                      name: type.name,
-                      provider: type.provider,
-                      cpu: type.cpu,
-                      ram: type.ram,
-                      hourlyPrice: formatPrice(
-                        type.price_per_hour * MANAGEMENT_CHARGE_MULTIPLIER,
-                      ),
-                      alwaysOnPrice: formatPrice(
-                        type.price_per_hour * HOURS_IN_30_DAYS,
-                      ),
-                      vibeOnGoPrice: formatPrice(
-                        type.price_per_hour *
-                          MANAGEMENT_CHARGE_MULTIPLIER *
-                          vibeOnGoHoursInComparison,
-                      ),
-                    }))
-                  : [],
-              )}
+              rows={activeInstanceTypes.map((type) => ({
+                id: type.id,
+                name: type.name,
+                provider: type.provider,
+                cpu: type.cpu,
+                ram: type.ram,
+                hourlyPrice: formatPrice(
+                  type.price_per_hour * MANAGEMENT_CHARGE_MULTIPLIER,
+                ),
+                alwaysOnPrice: formatPrice(
+                  type.price_per_hour * HOURS_IN_30_DAYS,
+                ),
+                vibeOnGoPrice: formatPrice(
+                  type.price_per_hour *
+                    MANAGEMENT_CHARGE_MULTIPLIER *
+                    vibeOnGoHoursInComparison,
+                ),
+              }))}
               emptyLabel="No virtual machine options are available."
               vibeOnGoLabel={vibeOnGoLabel}
             />
@@ -180,8 +177,9 @@ export default function PricingClientView() {
               used for the 30-day estimates below.
             </p>
             <PricingOptions
-              rows={data.sandboxes.flatMap(({ types }) =>
-                types.map((type) => ({
+              rows={data.sandboxes
+                .flatMap(({ types }) =>
+                  types.map((type) => ({
                   id: type.id,
                   name: type.name,
                   provider: type.provider,
@@ -203,8 +201,10 @@ export default function PricingClientView() {
                       MANAGEMENT_CHARGE_MULTIPLIER *
                       vibeOnGoHoursInComparison,
                   ),
-                })),
-              )}
+                    sortPrice: type.price_per_second,
+                  })),
+                )
+                .sort((left, right) => left.sortPrice - right.sortPrice)}
               emptyLabel="No sandbox options are available."
               vibeOnGoLabel={vibeOnGoLabel}
             />
@@ -212,6 +212,7 @@ export default function PricingClientView() {
           <IncludedFeatures />
         </div>
       ) : null}
+      <PricingFaq />
     </article>
   );
 }
@@ -491,6 +492,44 @@ function IncludedFeatures() {
           added based on how much network data your workspace uses.
         </AlertDescription>
       </Alert>
+    </section>
+  );
+}
+
+function PricingFaq() {
+  const questions = [
+    {
+      question: "How does VibeOnGo pricing work?",
+      answer:
+        "Virtual machines are billed per hour and sandboxes are billed per second. Use the calculator above to estimate base compute costs for the workspace type and schedule you choose.",
+    },
+    {
+      question: "What is the difference between a virtual machine and a sandbox?",
+      answer:
+        "Virtual machines are persistent workspaces for ongoing development. Sandboxes are disposable, isolated workspaces for short-lived or automated tasks.",
+    },
+    {
+      question: "Are network charges included in the estimates?",
+      answer:
+        "No. The estimates cover base compute. Network-usage charges depend on how much data your workspace transfers.",
+    },
+  ];
+
+  return (
+    <section className="mt-12 border-t pt-10" aria-labelledby="pricing-faq">
+      <h2 id="pricing-faq" className="text-xl font-semibold">
+        Pricing FAQ
+      </h2>
+      <dl className="mt-6 space-y-6">
+        {questions.map(({ question, answer }) => (
+          <div key={question}>
+            <dt className="font-medium">{question}</dt>
+            <dd className="mt-2 text-sm leading-6 text-muted-foreground">
+              {answer}
+            </dd>
+          </div>
+        ))}
+      </dl>
     </section>
   );
 }
