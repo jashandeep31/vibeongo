@@ -1326,11 +1326,11 @@ function getCompletedMessages(data: OpencodeSessionData) {
   );
 }
 
-function createCompletedTimelineDataSelector() {
+function createTimelineDataSelector() {
   let previous: OpencodeSessionData | undefined;
 
   return (data: OpencodeSessionData): OpencodeSessionData => {
-    const messages = getCompletedMessages(data);
+    const messages = getVisibleMessages(data);
     if (
       previous &&
       previous.session.id === data.session.id &&
@@ -1351,58 +1351,6 @@ function createCompletedTimelineDataSelector() {
     return previous;
   };
 }
-
-const ActiveChatTurnHeader = memo(function ActiveChatTurnHeader({
-  accessToken,
-  isReverting,
-  models,
-  onRevert,
-  opencodeSessionId,
-  password,
-  projectSessionId,
-  revertingId,
-  serverUrl,
-}: {
-  accessToken: string;
-  isReverting: boolean;
-  models?: OpencodeModelOption[];
-  onRevert: (id: string) => void;
-  opencodeSessionId: string;
-  password?: string;
-  projectSessionId: string;
-  revertingId?: string;
-  serverUrl: string;
-}) {
-  const sessionQuery = useOpencodeSession({
-    chatId: projectSessionId,
-    sessionId: opencodeSessionId,
-    serverUrl,
-    accessToken,
-    password,
-    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
-    refetchOnMount: false,
-    gcTime: CHAT_CACHE_TIME,
-  });
-  const selectTurns = useMemo(() => createChatTurnSelector(), []);
-  const turns = useMemo(
-    () =>
-      selectTurns(
-        sessionQuery.data ? getVisibleMessages(sessionQuery.data) : [],
-        models,
-      ),
-    [models, selectTurns, sessionQuery.data],
-  );
-  const activeTurn = sessionQuery.isStreaming ? turns.at(-1) : undefined;
-
-  return activeTurn ? (
-    <OpencodeChatTurn
-      isReverting={isReverting && revertingId === activeTurn.id}
-      isStreaming
-      item={activeTurn}
-      onRevert={onRevert}
-    />
-  ) : null;
-});
 
 const ChatTimeline = memo(function ChatTimeline({
   turnCache,
@@ -1432,10 +1380,7 @@ const ChatTimeline = memo(function ChatTimeline({
   onRevert: (id: string) => void;
 }) {
   const theme = useTheme();
-  const selectCompletedData = useMemo(
-    () => createCompletedTimelineDataSelector(),
-    [],
-  );
+  const selectTimelineData = useMemo(() => createTimelineDataSelector(), []);
   const sessionQuery = useOpencodeSession({
     chatId: projectSessionId,
     sessionId: opencodeSessionId,
@@ -1443,7 +1388,7 @@ const ChatTimeline = memo(function ChatTimeline({
     accessToken,
     password,
     messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
-    select: selectCompletedData,
+    select: selectTimelineData,
     notifyOnChangeProps: ["data", "error"],
     refetchOnMount: false,
     gcTime: CHAT_CACHE_TIME,
@@ -1457,7 +1402,7 @@ const ChatTimeline = memo(function ChatTimeline({
       ),
     [turnCache, projectSessionId, serverUrl, opencodeSessionId],
   );
-  const completedTurns = useMemo(
+  const turns = useMemo(
     () => selectTurns(data?.messages ?? [], models),
     [data?.messages, models, selectTurns],
   );
@@ -1476,20 +1421,18 @@ const ChatTimeline = memo(function ChatTimeline({
       sessionQuery.data.questions.length > 0,
     );
   }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
-  const reversedCompletedTurns = useMemo(
-    () => [...completedTurns].reverse(),
-    [completedTurns],
-  );
-  const renderCompletedTurn = useCallback(
-    ({ item: turn }: { item: (typeof completedTurns)[number] }) => (
+  const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
+  const reversedTurns = useMemo(() => [...turns].reverse(), [turns]);
+  const renderTurn = useCallback(
+    ({ item: turn }: { item: (typeof turns)[number] }) => (
       <OpencodeChatTurn
         isReverting={isReverting && revertingId === turn.id}
-        isStreaming={false}
+        isStreaming={turn.id === activeTurnId}
         item={turn}
         onRevert={onRevert}
       />
     ),
-    [isReverting, onRevert, revertingId],
+    [activeTurnId, isReverting, onRevert, revertingId],
   );
   if (!data) return null;
   return (
@@ -1503,27 +1446,12 @@ const ChatTimeline = memo(function ChatTimeline({
             styles.messages,
             { paddingTop: 150, paddingBottom: topInset },
           ]}
-          data={reversedCompletedTurns}
+          data={reversedTurns}
           initialNumToRender={6}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           key={opencodeSessionId}
           keyExtractor={(turn) => turn.id}
-          ListHeaderComponent={
-            sessionQuery.isStreaming ? (
-              <ActiveChatTurnHeader
-                accessToken={accessToken}
-                isReverting={isReverting}
-                models={models}
-                onRevert={onRevert}
-                opencodeSessionId={opencodeSessionId}
-                password={password}
-                projectSessionId={projectSessionId}
-                revertingId={revertingId}
-                serverUrl={serverUrl}
-              />
-            ) : null
-          }
           ListEmptyComponent={
             !activeQuestion && !sessionQuery.isStreaming ? (
               <ThemedText
@@ -1575,7 +1503,7 @@ const ChatTimeline = memo(function ChatTimeline({
           }}
           maxToRenderPerBatch={5}
           removeClippedSubviews={Platform.OS === "android"}
-          renderItem={renderCompletedTurn}
+          renderItem={renderTurn}
           showsVerticalScrollIndicator={false}
           windowSize={5}
         />
