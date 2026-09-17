@@ -55,11 +55,6 @@ export const triggerProjectAutomationManually = catchAsync(
     if (!projectAutomation)
       throw new AppError("Project automation not found", 404);
 
-    //steps to handle
-    //create project session
-    // add tasks to project session
-    // trigger it
-
     const automatedProjectSession = await db.transaction(async (tx) => {
       const [projectSession] = await tx
         .insert(projectSessions)

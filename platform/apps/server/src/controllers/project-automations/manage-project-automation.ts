@@ -5,7 +5,6 @@ import {
   commonFilterSchema,
   projectAutomationSchema,
   projectAutomationTaskSchema,
-  projectSessionTaskSchema,
   z,
 } from "@repo/shared";
 import {
@@ -13,9 +12,11 @@ import {
   db,
   eq,
   and,
+  asc,
   projectAutomations,
   projectAutomationTasks,
   projects,
+  projectAutomationRuns,
 } from "@repo/db";
 
 export const getProjectAutomations = catchAsync(
@@ -93,10 +94,96 @@ export const createProjectAutomation = catchAsync(
           };
         }),
       );
+
+      await tx.insert(projectAutomationRuns).values({
+        project_automation_id: projectAutomation.id,
+        created_at: new Date(),
+        updated_at: new Date(),
+      });
     });
 
     res
       .status(200)
       .json({ message: "Project automation created successfully" });
+  },
+);
+
+export const getProjectAutomation = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 401);
+
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const projectAutomationWithTasks = await db
+      .select()
+      .from(projectAutomations)
+      .leftJoin(
+        projectAutomationTasks,
+        eq(projectAutomationTasks.project_automation_id, projectAutomations.id),
+      )
+      .where(
+        and(
+          eq(projectAutomations.id, id),
+          eq(projectAutomations.user_id, user.id),
+        ),
+      )
+      .orderBy(asc(projectAutomationTasks.order_number));
+
+    if (!projectAutomationWithTasks[0]?.project_automations)
+      throw new AppError("Project automation not found", 404);
+
+    res.status(200).json({
+      data: {
+        project_automation: projectAutomationWithTasks[0].project_automations,
+        tasks: projectAutomationWithTasks.flatMap((row) =>
+          row.project_automation_tasks ? [row.project_automation_tasks] : [],
+        ),
+      },
+    });
+  },
+);
+
+export const getProjectAutomationRuns = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 401);
+    const { id } = z
+      .object({
+        id: z.uuid(),
+      })
+      .parse(req.params);
+
+    const projectAutomationRunRows = await db
+      .select({
+        projectAutomationRun: projectAutomationRuns,
+      })
+      .from(projectAutomationRuns)
+      .innerJoin(
+        projectAutomations,
+        and(
+          eq(
+            projectAutomations.id,
+            projectAutomationRuns.project_automation_id,
+          ),
+          eq(projectAutomations.user_id, user.id),
+        ),
+      )
+      .where(eq(projectAutomationRuns.project_automation_id, id))
+      .orderBy(asc(projectAutomationRuns.created_at));
+
+    if (!projectAutomationRunRows[0]?.projectAutomationRun) {
+      throw new AppError("Project automation not found", 404);
+    }
+
+    res.status(200).json({
+      data: {
+        runs: projectAutomationRunRows,
+      },
+    });
   },
 );
