@@ -13,6 +13,7 @@ import {
   streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
+  type Session,
 } from "@repo/api-client";
 import {
   useProjectsStore,
@@ -217,10 +218,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
 
       if (eventType === "filesystem.changed") {
         const active = activeChatRef.current;
-        if (
-          active.projectSessionId === sessionId &&
-          active.opencodeSessionId
-        ) {
+        if (active.projectSessionId === sessionId && active.opencodeSessionId) {
           window.clearTimeout(filesystemRefreshTimerRef.current);
           filesystemRefreshTimerRef.current = window.setTimeout(() => {
             void queryClient.invalidateQueries({
@@ -274,17 +272,20 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
         );
       }
 
-      if (
-        event.type === "session.created" ||
-        event.type === "session.updated"
-      ) {
-        const info = event.properties.info;
-        if (info) {
-          if (info.parentID) {
-            chatsStore.deleteSessionChat(sessionId, info.id);
-          } else {
-            chatsStore.upsertSessionChat(sessionId, info);
-          }
+      if (event.type === "session.created") {
+        const info = sessionFromCreatedEvent(event);
+        if (info?.parentID) {
+          chatsStore.deleteSessionChat(sessionId, info.id);
+        } else if (info) {
+          chatsStore.upsertSessionChat(sessionId, info);
+          chatsStore.setChatStatus(sessionId, info.id, { type: "idle" });
+        }
+      } else if (event.type === "session.updated") {
+        const info = event.properties.info as Session | undefined;
+        if (info?.parentID) {
+          chatsStore.deleteSessionChat(sessionId, info.id);
+        } else if (info) {
+          chatsStore.upsertSessionChat(sessionId, info);
         }
       } else if (
         event.type === "session.model.selected" ||
@@ -377,10 +378,14 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       if (
         event.type === "session.created" ||
         event.type === "session.updated" ||
+        event.type === "session.forked" ||
+        event.type === "session.renamed" ||
         event.type === "session.deleted"
       ) {
         void queryClient.invalidateQueries({
           queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],
+          exact: true,
+          refetchType: "active",
         });
       }
     };
@@ -568,6 +573,45 @@ function getEventSessionId(event: Event) {
     | undefined;
   const sessionID = properties?.sessionID;
   return typeof sessionID === "string" ? sessionID : undefined;
+}
+
+function sessionFromCreatedEvent(event: Event): Session | undefined {
+  const value = event.properties as Record<string, unknown>;
+  if (typeof value.sessionID !== "string") return undefined;
+  const location = value.location as { directory?: unknown } | undefined;
+  if (typeof location?.directory !== "string") return undefined;
+  const now = Date.now();
+  const model = value.model as
+    | { id?: unknown; providerID?: unknown; variant?: unknown }
+    | undefined;
+  return {
+    id: value.sessionID,
+    slug: typeof value.slug === "string" ? value.slug : value.sessionID,
+    projectID: typeof value.projectID === "string" ? value.projectID : "",
+    directory: location.directory,
+    ...(typeof value.parentID === "string" ? { parentID: value.parentID } : {}),
+    title:
+      typeof value.title === "string" && value.title.trim()
+        ? value.title
+        : "New chat",
+    ...(typeof value.agent === "string" ? { agent: value.agent } : {}),
+    ...(typeof model?.id === "string" && typeof model.providerID === "string"
+      ? {
+          model: {
+            id: model.id,
+            providerID: model.providerID,
+            ...(typeof model.variant === "string"
+              ? { variant: model.variant }
+              : {}),
+          },
+        }
+      : {}),
+    version: typeof value.version === "string" ? value.version : "2",
+    ...(value.metadata && typeof value.metadata === "object"
+      ? { metadata: value.metadata as Record<string, unknown> }
+      : {}),
+    time: { created: now, updated: now },
+  };
 }
 
 function markAnswerUnreadIfNotViewing(

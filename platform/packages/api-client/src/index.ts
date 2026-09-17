@@ -18,6 +18,7 @@ export type {
   FilePart,
   Message,
   Part,
+  PermissionRequest,
   QuestionAnswer,
   QuestionOption,
   QuestionRequest,
@@ -29,6 +30,8 @@ export type {
   ToolPart,
   ToolState,
   UserMessage,
+  WebSearchProvider,
+  WebSearchRequest,
 } from "./services/opencode-types.js";
 export * from "./services/proxy-auth.js";
 export * from "./services/runtime-files-services.js";

@@ -4,12 +4,18 @@ import {
   abortOpencodeSession,
   answerOpencodeQuestion,
   cancelOpencodeQueuedPrompt,
+  deleteOpencodeSession,
   editOpencodeQueuedPrompt,
+  exportOpencodeSession,
+  forkOpencodeSession,
   getOpencodeInventory,
+  getOpencodeWebSearchProviders,
   getOpencodeQueuedPrompts,
   getOpencodeSessionMessagePage,
   getOpencodeSessionRaw,
   rejectOpencodeQuestion,
+  replyOpencodePermission,
+  replyOpencodeWebSearchRequest,
   revertOpencodeSession,
   sendOpencodePrompt,
   steerOpencodeQueuedPrompt,
@@ -21,6 +27,7 @@ import {
   type OpencodePromptSelection,
   type OpencodeFileReference,
   type QuestionAnswer,
+  type WebSearchRequest,
   type UploadAttachment,
 } from "@repo/api-client";
 import { useSessionChatsStore } from "@repo/app-store";
@@ -721,6 +728,226 @@ export const useRejectOpencodeQuestion = ({
           : current,
       );
       void queryClient.invalidateQueries({ queryKey });
+    },
+  });
+};
+
+export const useReplyOpencodePermission = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+  return useMutation({
+    mutationFn: ({
+      requestId,
+      decision,
+    }: {
+      requestId: string;
+      decision: "once" | "always" | "reject";
+    }) =>
+      replyOpencodePermission(
+        chatId,
+        sessionId,
+        requestId,
+        decision,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: (_, { requestId }) => {
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              permissions: current.permissions.filter(
+                (request) => request.id !== requestId,
+              ),
+            }
+          : current,
+      );
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    },
+  });
+};
+
+export const useOpencodeWebSearchProviders = ({
+  chatId,
+  directory,
+  serverUrl,
+  accessToken,
+  password,
+  enabled,
+}: {
+  chatId: string;
+  directory: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+  enabled: boolean;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "websearch-providers", serverUrl, directory],
+    queryFn: () =>
+      getOpencodeWebSearchProviders(
+        chatId,
+        directory,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    enabled: enabled && !!serverUrl && !!accessToken,
+    staleTime: 60_000,
+  });
+
+export const useReplyOpencodeWebSearchRequest = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
+  return useMutation({
+    mutationFn: ({
+      request,
+      selection,
+    }: {
+      request: WebSearchRequest;
+      selection: string | false;
+    }) =>
+      replyOpencodeWebSearchRequest(
+        chatId,
+        request,
+        selection,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: (_, { request }) => {
+      queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
+        current
+          ? {
+              ...current,
+              webSearchRequests: current.webSearchRequests.filter(
+                (item) => item.id !== request.id,
+              ),
+            }
+          : current,
+      );
+      void queryClient.invalidateQueries({ queryKey, exact: true });
+    },
+  });
+};
+
+export const useForkOpencodeSession = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  const upsertSessionChat = useSessionChatsStore(
+    (store) => store.upsertSessionChat,
+  );
+  return useMutation({
+    mutationFn: (before?: string) =>
+      forkOpencodeSession(
+        chatId,
+        sessionId,
+        before,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: (session) => {
+      upsertSessionChat(chatId, session);
+      void queryClient.invalidateQueries({
+        queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
+        exact: true,
+      });
+    },
+  });
+};
+
+export const useExportOpencodeSession = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) =>
+  useMutation({
+    mutationFn: () =>
+      exportOpencodeSession(
+        chatId,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+  });
+
+export const useDeleteOpencodeSession = ({
+  chatId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (sessionId: string) =>
+      deleteOpencodeSession(
+        chatId,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    onSuccess: (_, sessionId) => {
+      useSessionChatsStore.getState().deleteSessionChat(chatId, sessionId);
+      queryClient.removeQueries({
+        queryKey: ["opencode", "session", chatId, sessionId, serverUrl],
+        exact: true,
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
+        exact: true,
+      });
     },
   });
 };

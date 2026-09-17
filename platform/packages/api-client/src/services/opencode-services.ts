@@ -8,12 +8,15 @@ import type {
   Event,
   Message,
   Part,
+  PermissionRequest,
   QuestionAnswer,
   QuestionRequest,
   Session,
   SessionInputAdmitted,
   SessionStatus,
   SnapshotFileDiff,
+  WebSearchProvider,
+  WebSearchRequest,
 } from "./opencode-types.js";
 import {
   getProxyAuthorizationValue,
@@ -33,6 +36,8 @@ export type OpencodeSessionData = {
   status: SessionStatus;
   messages: Array<{ info: Message; parts: Part[] }>;
   questions: QuestionRequest[];
+  permissions: PermissionRequest[];
+  webSearchRequests: WebSearchRequest[];
   changes: SnapshotFileDiff[];
   optimistic?: boolean;
   promptError?: string | undefined;
@@ -428,24 +433,34 @@ export function reduceOpencodeSessionData(
   const native = event.properties as unknown as Record<string, unknown>;
   if (native.sessionID === sessionId) {
     if (nativeType === "form.created") {
-      const questions = normalizeV2Form(native as unknown as OpencodeForm);
-      return questions.length
-        ? {
-            ...current,
-            questions: [
-              ...current.questions.filter(
-                (question) => question.id !== questions[0]?.id,
-              ),
-              ...questions,
-            ],
-          }
-        : current;
+      const form = normalizeV2Form(native as unknown as OpencodeForm);
+      if (!form.questions.length && !form.webSearchRequests.length) {
+        return current;
+      }
+      return {
+        ...current,
+        questions: [
+          ...current.questions.filter(
+            (question) => question.id !== form.questions[0]?.id,
+          ),
+          ...form.questions,
+        ],
+        webSearchRequests: [
+          ...current.webSearchRequests.filter(
+            (request) => request.id !== form.webSearchRequests[0]?.id,
+          ),
+          ...form.webSearchRequests,
+        ],
+      };
     }
     if (nativeType === "form.replied" || nativeType === "form.cancelled") {
       return {
         ...current,
         questions: current.questions.filter(
           (question) => question.id !== native.id,
+        ),
+        webSearchRequests: current.webSearchRequests.filter(
+          (request) => request.id !== native.id,
         ),
       };
     }
@@ -459,6 +474,32 @@ export function reduceOpencodeSessionData(
     ) {
       return { ...current, status: { type: "idle" } };
     }
+  }
+
+  if (nativeType === "permission.asked" && native.sessionID === sessionId) {
+    const permission = normalizePermissionRequest(
+      native as unknown as PermissionRequest,
+    );
+    return {
+      ...current,
+      permissions: [
+        ...current.permissions.filter((item) => item.id !== permission.id),
+        permission,
+      ],
+    };
+  }
+
+  if (
+    nativeType === "permission.replied" &&
+    native.sessionID === sessionId &&
+    typeof native.requestID === "string"
+  ) {
+    return {
+      ...current,
+      permissions: current.permissions.filter(
+        (item) => item.id !== native.requestID,
+      ),
+    };
   }
 
   if (
@@ -646,6 +687,11 @@ type OpencodeForm = {
   }>;
 };
 
+type OpencodeSessionForms = {
+  questions: QuestionRequest[];
+  webSearchRequests: WebSearchRequest[];
+};
+
 export type OpencodeStatus = {
   running: boolean;
 };
@@ -750,34 +796,36 @@ export async function getOpencodeSessionRaw(
     password,
     session.directory,
   );
-  const [messagesResult, questions, activeResult, changes] = await Promise.all([
-    client.message.list({
-      sessionID: sessionId,
-      limit: messageLimit,
-      order: "desc",
-    }),
-    getOpencodeSessionForms(serverUrl, accessToken, password, sessionId),
-    client.session.active(),
-    client.vcs
-      .diff({
-        location: { directory: session.directory },
-        mode: "working",
-      })
-      .then((result) => result.data)
-      .catch(async (vcsError) => {
-        // Older OpenCode servers may not expose VCS review yet. Their session
-        // diff endpoint still provides the latest turn's snapshot changes.
-        try {
-          return await client.session.diff({ sessionID: sessionId });
-        } catch (sessionError) {
-          console.warn("Could not load OpenCode changes", {
-            vcsError,
-            sessionError,
-          });
-          return session.summary?.diffs ?? [];
-        }
+  const [messagesResult, forms, permissions, activeResult, changes] =
+    await Promise.all([
+      client.message.list({
+        sessionID: sessionId,
+        limit: messageLimit,
+        order: "desc",
       }),
-  ]);
+      getOpencodeSessionForms(serverUrl, accessToken, password, sessionId),
+      client.permission.list({ sessionID: sessionId }),
+      client.session.active(),
+      client.vcs
+        .diff({
+          location: { directory: session.directory },
+          mode: "working",
+        })
+        .then((result) => result.data)
+        .catch(async (vcsError) => {
+          // Older OpenCode servers may not expose VCS review yet. Their session
+          // diff endpoint still provides the latest turn's snapshot changes.
+          try {
+            return await client.session.diff({ sessionID: sessionId });
+          } catch (sessionError) {
+            console.warn("Could not load OpenCode changes", {
+              vcsError,
+              sessionError,
+            });
+            return session.summary?.diffs ?? [];
+          }
+        }),
+    ]);
 
   const rawMessages = [...messagesResult.data];
   let nextCursor = messagesResult.cursor.next ?? undefined;
@@ -813,7 +861,9 @@ export async function getOpencodeSessionRaw(
       ? { type: "busy" as const }
       : { type: "idle" as const },
     messages,
-    questions,
+    questions: forms.questions,
+    permissions: permissions.map(normalizePermissionRequest),
+    webSearchRequests: forms.webSearchRequests,
     changes,
     messagePage: {
       hasOlder,
@@ -920,6 +970,137 @@ export async function getOpencodeSessionStatuses(
   ) as Record<string, SessionStatus>;
 }
 
+function normalizePermissionRequest(request: {
+  id: string;
+  sessionID: string;
+  action: string;
+  resources: string[];
+  save?: string[];
+  message?: string;
+  metadata?: Record<string, unknown>;
+}): PermissionRequest {
+  return {
+    id: request.id,
+    sessionID: request.sessionID,
+    action: request.action,
+    resources: request.resources,
+    ...(request.save ? { save: request.save } : {}),
+    ...(request.message ? { message: request.message } : {}),
+    ...(request.metadata ? { metadata: request.metadata } : {}),
+  };
+}
+
+export async function replyOpencodePermission(
+  chatId: string,
+  sessionId: string,
+  requestId: string,
+  decision: "once" | "always" | "reject",
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.permission.reply({
+    sessionID: sessionId,
+    requestID: requestId,
+    decision,
+  });
+}
+
+export async function getOpencodeWebSearchProviders(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+): Promise<WebSearchProvider[]> {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const result = await client.websearch.providers({
+    location: { directory },
+  });
+  return result.data;
+}
+
+export async function replyOpencodeWebSearchRequest(
+  chatId: string,
+  request: WebSearchRequest,
+  selection: string | false,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const answer = request.specific
+    ? { provider: selection }
+    : {
+        choice:
+          selection === false
+            ? "disable"
+            : selection === "random"
+              ? "allow"
+              : "choose",
+      };
+  await client.session.form.reply({
+    sessionID: request.sessionID,
+    formID: request.id,
+    answer,
+  });
+}
+
+export async function forkOpencodeSession(
+  chatId: string,
+  sessionId: string,
+  before: string | undefined,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  return normalizeV2Session(
+    await client.session.fork({ sessionID: sessionId, before }),
+  );
+}
+
+export async function deleteOpencodeSession(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.session.remove({ sessionID: sessionId });
+}
+
+export async function exportOpencodeSession(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  return client.session.export({ sessionID: sessionId });
+}
+
+export function getOpencodeSessionExportFilename(session: {
+  id: string;
+  title?: string;
+  slug?: string;
+}) {
+  const clean = (session.title || session.slug || session.id)
+    .toLowerCase()
+    .replace(/[^a-z0-9_-]+/gi, "-")
+    .replace(/^-+|-+$/g, "");
+  return `${clean || session.id}.json`;
+}
+
 export async function getOpencodeQuestions(
   _chatId: string,
   serverUrl: string,
@@ -932,7 +1113,7 @@ export async function getOpencodeQuestions(
   );
   if (!response.ok) throw new Error("Could not load OpenCode forms");
   const body = (await response.json()) as { data?: OpencodeForm[] };
-  return (body.data ?? []).flatMap(normalizeV2Form);
+  return (body.data ?? []).flatMap((form) => normalizeV2Form(form).questions);
 }
 
 async function getOpencodeSessionForms(
@@ -947,31 +1128,65 @@ async function getOpencodeSessionForms(
   );
   if (!response.ok) throw new Error("Could not load OpenCode session forms");
   const body = (await response.json()) as { data?: OpencodeForm[] };
-  return (body.data ?? []).flatMap(normalizeV2Form);
+  return (body.data ?? []).reduce<OpencodeSessionForms>(
+    (result, form) => {
+      const normalized = normalizeV2Form(form);
+      result.questions.push(...normalized.questions);
+      result.webSearchRequests.push(...normalized.webSearchRequests);
+      return result;
+    },
+    { questions: [], webSearchRequests: [] },
+  );
 }
 
-function normalizeV2Form(form: OpencodeForm): QuestionRequest[] {
-  if (form.metadata?.kind !== "question") return [];
+function normalizeV2Form(form: OpencodeForm): OpencodeSessionForms {
+  if (form.metadata?.kind === "websearch.provider") {
+    const provider = form.fields.find(
+      (field) =>
+        field.type === "string" &&
+        field.key === "provider" &&
+        field.options?.length,
+    );
+    return {
+      questions: [],
+      webSearchRequests: [
+        {
+          id: form.id,
+          sessionID: form.sessionID,
+          title: form.title,
+          specific: Boolean(provider),
+          options: provider?.options ?? [],
+          metadata: form.metadata,
+        },
+      ],
+    };
+  }
+  if (form.metadata?.kind !== "question") {
+    return { questions: [], webSearchRequests: [] };
+  }
   const fields = form.fields.filter(
     (field) => field.type === "string" || field.type === "multiselect",
   );
-  if (!fields.length) return [];
-  return [
-    {
-      id: form.id,
-      sessionID: form.sessionID,
-      questions: fields.map((field) => ({
-        header: field.title ?? form.title,
-        question: field.description ?? field.title ?? form.title,
-        options: (field.options ?? []).map((option) => ({
-          label: option.label,
-          description: option.description ?? option.label,
+  if (!fields.length) return { questions: [], webSearchRequests: [] };
+  return {
+    webSearchRequests: [],
+    questions: [
+      {
+        id: form.id,
+        sessionID: form.sessionID,
+        questions: fields.map((field) => ({
+          header: field.title ?? form.title,
+          question: field.description ?? field.title ?? form.title,
+          options: (field.options ?? []).map((option) => ({
+            label: option.label,
+            description: option.description ?? option.label,
+          })),
+          multiple: field.type === "multiselect",
+          custom: field.custom ?? true,
         })),
-        multiple: field.type === "multiselect",
-        custom: field.custom ?? true,
-      })),
-    },
-  ];
+      },
+    ],
+  };
 }
 
 export async function createOpencodeSession(

@@ -130,6 +130,8 @@ export const useStartOpencodeSession = () => {
         status: { type: "busy" },
         changes: [],
         questions: [],
+        permissions: [],
+        webSearchRequests: [],
         optimistic: true,
         messages: [
           {

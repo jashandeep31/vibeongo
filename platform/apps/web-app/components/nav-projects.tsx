@@ -1,6 +1,7 @@
 "use client";
 
 import { AutomatedSessionBadge } from "@/components/automated-session-badge";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import {
   ProjectSessionRuntimeDialog,
@@ -15,12 +16,14 @@ import {
 import {
   useGetProjectDomainsById,
   useGetProjectGithubReposById,
+  useDeleteOpencodeSession,
 } from "@repo/api-hooks";
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
 } from "@repo/api-hooks";
 import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
+import { getOpencodePassword, type Session } from "@repo/api-client";
 import {
   Collapsible,
   CollapsibleContent,
@@ -48,6 +51,7 @@ import {
   Terminal,
   Timer,
   BotMessageSquare,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
@@ -193,6 +197,7 @@ function ProjectSessionNavItem({
   const router = useRouter();
   const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
   const [isStartingNewChat, setIsStartingNewChat] = useState(false);
+  const [chatToDelete, setChatToDelete] = useState<Session | null>(null);
   const sessionEntry = useSessionsStore((store) =>
     store.sessions.find((entry) => entry.session.id === session.id),
   );
@@ -222,6 +227,13 @@ function ProjectSessionNavItem({
       ? `https://${opencodeDomain}`
       : "";
   const sessionUrl = `/projects/${session.projectId}/sessions/${session.id}`;
+  const opencodePassword = getOpencodePassword(instance?.config);
+  const deleteOpencodeChat = useDeleteOpencodeSession({
+    chatId: session.id,
+    serverUrl,
+    accessToken: instance?.access_token ?? "",
+    password: opencodePassword,
+  });
 
   const {
     data: githubRepos,
@@ -254,6 +266,22 @@ function ProjectSessionNavItem({
     }
 
     setIsStartingNewChat(false);
+  };
+
+  const handleDeleteChat = () => {
+    if (!chatToDelete) return;
+    const deleting = chatToDelete;
+    setChatToDelete(null);
+    deleteOpencodeChat.mutate(deleting.id, {
+      onSuccess: () => {
+        if (pathname.startsWith(`${sessionUrl}/chats/${deleting.id}`)) {
+          const params = new URLSearchParams({ serverUrl });
+          router.push(`${sessionUrl}?${params.toString()}`);
+        }
+        toast.success("Chat deleted");
+      },
+      onError: (error) => toast.error(error.message || "Could not delete chat"),
+    });
   };
 
   if (serverUrl && instance) {
@@ -312,48 +340,69 @@ function ProjectSessionNavItem({
 
                   return (
                     <SidebarMenuSubItem key={opencodeSession.id}>
-                      <SidebarMenuSubButton
-                        asChild
-                        size="sm"
-                        isActive={pathname === url.split("?")[0]}
-                      >
-                        <Link
-                          href={url}
-                          onClick={() => {
-                            useSessionChatsStore
-                              .getState()
-                              .setChatUnread(
-                                session.id,
-                                opencodeSession.id,
-                                false,
-                              );
-                            onNavigate();
-                          }}
+                      <div className="group/chat flex min-w-0 items-center gap-0.5">
+                        <SidebarMenuSubButton
+                          asChild
+                          size="sm"
+                          className="min-w-0 flex-1"
+                          isActive={pathname === url.split("?")[0]}
                         >
-                          {isProcessing ? (
-                            <Loader2
-                              className="animate-spin"
-                              aria-label="Chat is processing"
-                            />
-                          ) : (
-                            <BotMessageSquare />
-                          )}
-                          <span
-                            className="min-w-0 flex-1 truncate"
-                            title={opencodeSession.title}
+                          <Link
+                            href={url}
+                            onClick={() => {
+                              useSessionChatsStore
+                                .getState()
+                                .setChatUnread(
+                                  session.id,
+                                  opencodeSession.id,
+                                  false,
+                                );
+                              onNavigate();
+                            }}
                           >
-                            {opencodeSession.title}
-                          </span>
-                          {hasUnreadAnswer ? (
+                            {isProcessing ? (
+                              <Loader2
+                                className="animate-spin"
+                                aria-label="Chat is processing"
+                              />
+                            ) : (
+                              <BotMessageSquare />
+                            )}
                             <span
-                              className="ml-auto size-2.5 shrink-0 rounded-full bg-blue-500 ring-2 ring-blue-500/20"
-                              title="New answer"
+                              className="min-w-0 flex-1 truncate"
+                              title={opencodeSession.title}
                             >
-                              <span className="sr-only">New answer</span>
+                              {opencodeSession.title}
                             </span>
-                          ) : null}
-                        </Link>
-                      </SidebarMenuSubButton>
+                            {hasUnreadAnswer ? (
+                              <span
+                                className="ml-auto size-2.5 shrink-0 rounded-full bg-blue-500 ring-2 ring-blue-500/20"
+                                title="New answer"
+                              >
+                                <span className="sr-only">New answer</span>
+                              </span>
+                            ) : null}
+                          </Link>
+                        </SidebarMenuSubButton>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-xs"
+                          className="text-muted-foreground hover:text-destructive shrink-0 opacity-0 transition-opacity group-focus-within/chat:opacity-100 group-hover/chat:opacity-100"
+                          aria-label={`Delete ${opencodeSession.title}`}
+                          title="Delete chat"
+                          disabled={deleteOpencodeChat.isPending}
+                          onClick={() => setChatToDelete(opencodeSession)}
+                        >
+                          {deleteOpencodeChat.isPending &&
+                          deleteOpencodeChat.variables ===
+                            opencodeSession.id ? (
+                            <Loader2 className="animate-spin" />
+                          ) : (
+                            <Trash2 />
+                          )}
+                        </Button>
+                      </div>
                     </SidebarMenuSubItem>
                   );
                 })}
@@ -384,6 +433,21 @@ function ProjectSessionNavItem({
           isLoading={isReposPending}
           isError={isReposError}
           onSelect={handleRepoSelect}
+        />
+        <ConfirmationDialog
+          open={chatToDelete !== null}
+          onOpenChange={(open) => {
+            if (!open && !deleteOpencodeChat.isPending) setChatToDelete(null);
+          }}
+          title="Delete chat?"
+          description={
+            chatToDelete
+              ? `Delete "${chatToDelete.title}"? This cannot be undone.`
+              : "This cannot be undone."
+          }
+          confirmText="Delete chat"
+          isDestructive
+          onConfirm={handleDeleteChat}
         />
       </>
     );

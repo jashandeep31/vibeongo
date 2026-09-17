@@ -208,6 +208,27 @@ export type QuestionRequest = {
 };
 export type QuestionAnswer = string[];
 
+export type PermissionRequest = {
+  id: string;
+  sessionID: string;
+  action: string;
+  resources: string[];
+  save?: string[];
+  message?: string;
+  metadata?: Record<string, unknown>;
+};
+
+export type WebSearchProvider = { id: string; name: string };
+
+export type WebSearchRequest = {
+  id: string;
+  sessionID: string;
+  title: string;
+  specific: boolean;
+  options: Array<{ label: string; value: string; description?: string }>;
+  metadata?: Record<string, unknown>;
+};
+
 export type Event = {
   type: string;
   // Events are normalized at the SSE boundary. Their payload varies by event

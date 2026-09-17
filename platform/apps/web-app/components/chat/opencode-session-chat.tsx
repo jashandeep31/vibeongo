@@ -2,6 +2,8 @@
 
 import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
+import { OpencodePermissionDock } from "@/components/chat/opencode-permission-dock";
+import { OpencodeWebSearchDock } from "@/components/chat/opencode-web-search-dock";
 import { OpencodeComposer } from "@/components/chat/opencode-composer";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import {
@@ -13,6 +15,7 @@ import {
   useOpencodeQueuedPrompts,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReplyOpencodePermission,
   useReorderOpencodeQueuedPrompts,
   useRevertOpencodeSession,
   useRestoreRevertedOpencodeMessage,
@@ -123,6 +126,8 @@ export function OpencodeSessionChat({
     [revertedMessages],
   );
   const activeQuestion = rawResponse.questions[0];
+  const activePermission = rawResponse.permissions[0];
+  const activeWebSearchRequest = rawResponse.webSearchRequests[0];
   const sendPrompt = useSendOpencodePrompt({
     chatId,
     sessionId,
@@ -219,6 +224,13 @@ export function OpencodeSessionChat({
     password,
   });
   const rejectQuestion = useRejectOpencodeQuestion({
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const replyPermission = useReplyOpencodePermission({
     chatId,
     sessionId,
     serverUrl,
@@ -455,7 +467,9 @@ export function OpencodeSessionChat({
             ) : null}
             {turns.length === 0 &&
             revertedQuestions.length === 0 &&
-            !activeQuestion ? (
+            !activeQuestion &&
+            !activePermission &&
+            !activeWebSearchRequest ? (
               <div className="text-muted-foreground flex min-h-[45vh] items-center justify-center text-sm">
                 Start the chat by describing what you want to build.
               </div>
@@ -535,7 +549,32 @@ export function OpencodeSessionChat({
               />
             </div>
           ) : null}
-          {activeQuestion ? (
+          {activePermission ? (
+            <OpencodePermissionDock
+              request={activePermission}
+              isResponding={replyPermission.isPending}
+              onDecide={(decision) =>
+                replyPermission.mutate(
+                  { requestId: activePermission.id, decision },
+                  {
+                    onError: (error) =>
+                      toast.error(
+                        error.message || "Could not answer permission request",
+                      ),
+                  },
+                )
+              }
+            />
+          ) : activeWebSearchRequest ? (
+            <OpencodeWebSearchDock
+              request={activeWebSearchRequest}
+              chatId={chatId}
+              directory={rawResponse.session.directory}
+              serverUrl={serverUrl}
+              accessToken={accessToken}
+              password={password}
+            />
+          ) : activeQuestion ? (
             <OpencodeQuestionPrompt
               key={activeQuestion.id}
               request={activeQuestion}
