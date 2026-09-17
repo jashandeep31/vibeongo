@@ -16,12 +16,14 @@ import {
 } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@repo/ui/components/dialog";
+  Command,
+  CommandDialog,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@repo/ui/components/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -192,17 +194,31 @@ function OpencodeSessionActions({
     accessToken,
     password,
   });
-  const forkable = useMemo(
-    () =>
-      session.messages.flatMap((message) => {
-        if (message.info.role !== "user") return [];
-        const text = getOpencodeUserMessage(message.parts).text;
-        return text
-          ? [{ id: message.info.id, text, created: message.info.time.created }]
-          : [];
-      }),
-    [session.messages],
-  );
+  const forkable = useMemo(() => {
+    const userMessages = session.messages.filter(
+      (message) => message.info.role === "user",
+    );
+
+    return userMessages.flatMap((message, index) => {
+      const text = getOpencodeUserMessage(message.parts).text;
+      const hasCompletedAnswer = session.messages.some(
+        (candidate) =>
+          candidate.info.role === "assistant" &&
+          candidate.info.parentID === message.info.id &&
+          Boolean(candidate.info.time.completed),
+      );
+      if (!text || !hasCompletedAnswer) return [];
+
+      return [
+        {
+          id: message.info.id,
+          text,
+          created: message.info.time.created,
+          before: userMessages[index + 1]?.info.id,
+        },
+      ];
+    });
+  }, [session.messages]);
 
   const handleExport = () => {
     exportSession.mutate(undefined, {
@@ -224,7 +240,7 @@ function OpencodeSessionActions({
     });
   };
 
-  const handleFork = (before: string) => {
+  const handleFork = (before?: string) => {
     fork.mutate(before, {
       onSuccess: (forked) => {
         setForkOpen(false);
@@ -274,32 +290,38 @@ function OpencodeSessionActions({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-      <Dialog open={forkOpen} onOpenChange={setForkOpen}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Fork session</DialogTitle>
-            <DialogDescription>
-              Choose the user message that should become the fork boundary.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="max-h-[55vh] space-y-1 overflow-y-auto">
-            {[...forkable].reverse().map((message) => (
-              <button
-                key={message.id}
-                type="button"
-                className="hover:bg-muted focus-visible:ring-ring w-full rounded-lg p-3 text-left outline-none focus-visible:ring-2 disabled:opacity-50"
-                disabled={fork.isPending}
-                onClick={() => handleFork(message.id)}
-              >
-                <span className="line-clamp-2 text-sm">{message.text}</span>
-                <span className="text-muted-foreground mt-1 block text-xs">
-                  {new Date(message.created).toLocaleString()}
-                </span>
-              </button>
-            ))}
-          </div>
-        </DialogContent>
-      </Dialog>
+      <CommandDialog
+        open={forkOpen}
+        onOpenChange={setForkOpen}
+        title="Fork session"
+        description="Choose an answer to include in the new fork."
+        className="sm:max-w-md"
+      >
+        <Command>
+          <CommandInput placeholder="Search messages…" />
+          <CommandList>
+            <CommandEmpty>No completed messages found.</CommandEmpty>
+            <CommandGroup heading="Fork through answer">
+              {[...forkable].reverse().map((message) => (
+                <CommandItem
+                  key={message.id}
+                  value={`${message.text} ${message.created}`}
+                  disabled={fork.isPending}
+                  onSelect={() => handleFork(message.before)}
+                  className="items-start py-2.5 [&>svg:last-child]:hidden"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm">{message.text}</p>
+                    <p className="text-muted-foreground mt-0.5 text-xs">
+                      {new Date(message.created).toLocaleString()}
+                    </p>
+                  </div>
+                </CommandItem>
+              ))}
+            </CommandGroup>
+          </CommandList>
+        </Command>
+      </CommandDialog>
     </>
   );
 }

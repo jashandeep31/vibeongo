@@ -13,6 +13,7 @@ import {
   streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
+  type Session,
 } from "@repo/api-client";
 import {
   useProjectsStore,
@@ -193,11 +194,16 @@ function ProjectSessionRuntimeSync({
         event.type === "session.created" ||
         event.type === "session.updated"
       ) {
-        if (event.properties.info.parentID) {
-          store.deleteSessionChat(sessionId, event.properties.info.id);
-        } else {
-          store.upsertSessionChat(sessionId, event.properties.info);
+        const info =
+          event.type === "session.created"
+            ? sessionFromCreatedEvent(event)
+            : (event.properties.info as Session | undefined);
+        if (info?.parentID) {
+          store.deleteSessionChat(sessionId, info.id);
+        } else if (info) {
+          store.upsertSessionChat(sessionId, info);
         }
+        void sessionsQuery.refetch();
       } else if (
         event.type === "session.model.selected" ||
         event.type === "session.agent.selected"
@@ -215,6 +221,7 @@ function ProjectSessionRuntimeSync({
         }
       } else if (event.type === "session.deleted") {
         store.deleteSessionChat(sessionId, event.properties.sessionID);
+        void sessionsQuery.refetch();
       }
 
       if (!opencodeSessionId) return;
@@ -447,6 +454,41 @@ function getEventSessionId(event: Event) {
   return typeof properties?.sessionID === "string"
     ? properties.sessionID
     : undefined;
+}
+
+function sessionFromCreatedEvent(event: Event): Session | undefined {
+  const value = event.properties as Record<string, unknown>;
+  if (typeof value.sessionID !== "string") return undefined;
+  const location = value.location as { directory?: unknown } | undefined;
+  if (typeof location?.directory !== "string") return undefined;
+  const model = value.model as
+    | { id?: unknown; providerID?: unknown; variant?: unknown }
+    | undefined;
+  return {
+    id: value.sessionID,
+    slug: typeof value.slug === "string" ? value.slug : value.sessionID,
+    projectID: typeof value.projectID === "string" ? value.projectID : "",
+    directory: location.directory,
+    ...(typeof value.parentID === "string" ? { parentID: value.parentID } : {}),
+    title:
+      typeof value.title === "string" && value.title.trim()
+        ? value.title
+        : "New chat",
+    ...(typeof value.agent === "string" ? { agent: value.agent } : {}),
+    ...(typeof model?.id === "string" && typeof model.providerID === "string"
+      ? {
+          model: {
+            id: model.id,
+            providerID: model.providerID,
+            ...(typeof model.variant === "string"
+              ? { variant: model.variant }
+              : {}),
+          },
+        }
+      : {}),
+    version: typeof value.version === "string" ? value.version : "v2",
+    time: { created: Date.now(), updated: Date.now() },
+  };
 }
 
 function isSessionCompletionEvent(event: Event) {

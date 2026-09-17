@@ -27,12 +27,14 @@ export type NewProjectChatTarget = {
 export function ProjectChatSwitcherDrawer({
   current,
   onClose,
+  onDelete,
   onNewChat,
   onSelect,
   visible,
 }: {
   current: ProjectChatTarget;
   onClose: () => void;
+  onDelete?: (target: ProjectChatTarget) => void;
   onNewChat: (target: NewProjectChatTarget) => void;
   onSelect: (target: ProjectChatTarget) => void;
   visible: boolean;
@@ -83,18 +85,6 @@ export function ProjectChatSwitcherDrawer({
           />
           <View style={styles.header}>
             <ThemedText style={styles.title}>Projects</ThemedText>
-            <Pressable
-              accessibilityLabel="Close"
-              accessibilityRole="button"
-              onPress={onClose}
-              style={styles.close}
-            >
-              <SymbolView
-                name={{ ios: "xmark", android: "close" }}
-                size={18}
-                tintColor={theme.textSecondary}
-              />
-            </Pressable>
           </View>
 
           <ScrollView
@@ -266,6 +256,31 @@ export function ProjectChatSwitcherDrawer({
                                         tintColor={theme.text}
                                       />
                                     ) : null}
+                                    {onDelete ? (
+                                      <Pressable
+                                        accessibilityLabel={`Delete ${chat.title || "chat"}`}
+                                        accessibilityRole="button"
+                                        hitSlop={8}
+                                        onPress={(event) => {
+                                          event.stopPropagation();
+                                          onDelete({
+                                            opencodeSessionId: chat.id,
+                                            projectId: project.id,
+                                            projectSessionId: session.id,
+                                          });
+                                        }}
+                                        style={styles.delete}
+                                      >
+                                        <SymbolView
+                                          name={{
+                                            ios: "trash",
+                                            android: "delete",
+                                          }}
+                                          size={16}
+                                          tintColor="#ef4444"
+                                        />
+                                      </Pressable>
+                                    ) : null}
                                   </Pressable>
                                 );
                               })}
@@ -348,11 +363,11 @@ const styles = StyleSheet.create({
   chatIndicator: { borderRadius: 4, height: 7, width: 7 },
   chats: { marginBottom: 6, paddingLeft: 24 },
   chatTitle: { flex: 1, fontSize: 13 },
-  close: {
+  delete: {
     alignItems: "center",
-    height: 40,
+    height: 30,
     justifyContent: "center",
-    width: 40,
+    width: 30,
   },
   content: { paddingBottom: 48, paddingTop: 18 },
   drawer: {
@@ -383,7 +398,7 @@ const styles = StyleSheet.create({
     marginTop: 8,
     width: 36,
   },
-  header: { alignItems: "center", flexDirection: "row", paddingHorizontal: 4 },
+  header: { paddingHorizontal: 4 },
   pressed: { opacity: 0.58 },
   project: {
     borderBottomWidth: StyleSheet.hairlineWidth,

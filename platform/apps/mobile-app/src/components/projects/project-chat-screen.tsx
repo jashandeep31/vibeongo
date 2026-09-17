@@ -11,7 +11,9 @@ import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useCancelOpencodeQueuedPrompt,
+  useDeleteOpencodeSession,
   useEditOpencodeQueuedPrompt,
+  useForkOpencodeSession,
   useOpencodeInventory,
   useOpencodeQueuedPrompts,
   useOpencodeSession,
@@ -22,6 +24,9 @@ import {
   useRevertOpencodeSession,
   useSendOpencodePrompt,
   useSteerOpencodeQueuedPrompt,
+  useOpencodeWebSearchProviders,
+  useReplyOpencodePermission,
+  useReplyOpencodeWebSearchRequest,
 } from "@repo/api-hooks";
 import { useSessionChatsStore } from "@repo/app-store";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
@@ -59,6 +64,9 @@ import {
   OpencodeComposerController,
 } from "@/components/projects/opencode-composer";
 import { OpencodeQuestionPrompt } from "@/components/projects/opencode-question-prompt";
+import { OpencodeForkDrawer } from "@/components/projects/opencode-fork-drawer";
+import { OpencodePermissionPrompt } from "@/components/projects/opencode-permission-prompt";
+import { OpencodeWebSearchPrompt } from "@/components/projects/opencode-web-search-prompt";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import {
   ProjectChatSwitcherDrawer,
@@ -151,6 +159,71 @@ export function ProjectChatScreen() {
     accessToken: runtime.accessToken,
     password: runtime.password,
   });
+  const replyPermission = useReplyOpencodePermission({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const replyWebSearch = useReplyOpencodeWebSearchRequest({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const deleteSession = useDeleteOpencodeSession({
+    chatId: projectSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const forkSession = useForkOpencodeSession({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const forkChat = useCallback(
+    (messageId: string) => {
+      if (forkSession.isPending) return;
+      const userMessages = (sessionQuery.data?.messages ?? []).filter(
+        (message) => message.info.role === "user",
+      );
+      const selectedIndex = userMessages.findIndex(
+        (message) => message.info.id === messageId,
+      );
+      if (selectedIndex === -1) {
+        Alert.alert(
+          "Could not fork chat",
+          "The selected message was not found.",
+        );
+        return;
+      }
+      const before = userMessages[selectedIndex + 1]?.info.id;
+      forkSession.mutate(before, {
+        onError: (error) => Alert.alert("Could not fork chat", error.message),
+        onSuccess: (session) =>
+          router.replace({
+            pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
+            params: {
+              chatId: session.id,
+              projectId,
+              projectSessionId,
+            },
+          }),
+      });
+    },
+    [
+      forkSession,
+      projectId,
+      projectSessionId,
+      router,
+      sessionQuery.data?.messages,
+    ],
+  );
   const revertSession = useRevertOpencodeSession({
     chatId: projectSessionId,
     sessionId: opencodeSessionId,
@@ -181,6 +254,7 @@ export function ProjectChatScreen() {
     runtime.password,
   );
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
+  const [isForkDrawerOpen, setIsForkDrawerOpen] = useState(false);
   const isKeyboardVisibleRef = useRef(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const [swipePreview, setSwipePreview] = useState<SwipePreview | null>(null);
@@ -235,6 +309,18 @@ export function ProjectChatScreen() {
     [revertedMessages],
   );
   const activeQuestion = data?.questions[0];
+  const activePermission = data?.permissions[0];
+  const activeWebSearchRequest = data?.webSearchRequests[0];
+  const webSearchProviders = useOpencodeWebSearchProviders({
+    chatId: projectSessionId,
+    directory: data?.session.directory ?? "",
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+    enabled: Boolean(
+      activeWebSearchRequest && !activeWebSearchRequest.options.length,
+    ),
+  });
 
   useEffect(() => {
     setSelection(sessionSelection);
@@ -594,6 +680,7 @@ export function ProjectChatScreen() {
                 isRefreshing={isManuallyRefreshing}
                 onBack={goBack}
                 onOpenSwitcher={openChatSwitcher}
+                onForkChat={() => setIsForkDrawerOpen(true)}
                 onRefresh={refreshManually}
                 opencodePassword={runtime.password}
                 opencodeSessionId={opencodeSessionId}
@@ -692,7 +779,43 @@ export function ProjectChatScreen() {
                       sessionId={opencodeSessionId}
                     />
                   ) : null}
-                  {activeQuestion ? (
+                  {activePermission ? (
+                    <OpencodePermissionPrompt
+                      isSubmitting={replyPermission.isPending}
+                      onReply={(requestId, decision) =>
+                        replyPermission.mutate(
+                          { requestId, decision },
+                          {
+                            onError: (error) =>
+                              Alert.alert(
+                                "Could not reply to permission",
+                                error.message,
+                              ),
+                          },
+                        )
+                      }
+                      request={activePermission}
+                    />
+                  ) : activeWebSearchRequest ? (
+                    <OpencodeWebSearchPrompt
+                      isLoading={webSearchProviders.isLoading}
+                      isSubmitting={replyWebSearch.isPending}
+                      onReply={(selection) =>
+                        replyWebSearch.mutate(
+                          { request: activeWebSearchRequest, selection },
+                          {
+                            onError: (error) =>
+                              Alert.alert(
+                                "Could not reply to web search",
+                                error.message,
+                              ),
+                          },
+                        )
+                      }
+                      providers={webSearchProviders.data}
+                      request={activeWebSearchRequest}
+                    />
+                  ) : activeQuestion ? (
                     <OpencodeQuestionPrompt
                       isDismissing={rejectQuestion.isPending}
                       isSubmitting={answerQuestion.isPending}
@@ -733,6 +856,26 @@ export function ProjectChatScreen() {
       <ProjectChatSwitcherDrawer
         current={{ opencodeSessionId, projectId, projectSessionId }}
         onClose={() => setIsChatSwitcherOpen(false)}
+        onDelete={(target) => {
+          const remove = () =>
+            deleteSession.mutate(target.opencodeSessionId, {
+              onError: (error) =>
+                Alert.alert("Could not delete chat", error.message),
+              onSuccess: () => {
+                setIsChatSwitcherOpen(false);
+                if (target.opencodeSessionId === opencodeSessionId) {
+                  router.setParams({
+                    chatId: "new",
+                    directory: data.session.directory,
+                  });
+                }
+              },
+            });
+          Alert.alert("Delete chat?", "This removes the chat from OpenCode.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete", style: "destructive", onPress: remove },
+          ]);
+        }}
         onNewChat={(target) => {
           setIsChatSwitcherOpen(false);
           if (
@@ -777,6 +920,15 @@ export function ProjectChatScreen() {
         }}
         onSelect={selectChat}
         visible={isChatSwitcherOpen}
+      />
+      <OpencodeForkDrawer
+        messages={data.messages}
+        onClose={() => setIsForkDrawerOpen(false)}
+        onSelect={(messageId) => {
+          setIsForkDrawerOpen(false);
+          forkChat(messageId);
+        }}
+        visible={isForkDrawerOpen}
       />
     </View>
   );
@@ -1459,6 +1611,7 @@ const ChatTimeline = memo(function ChatTimeline({
       latestTurnId,
       onRevert,
       revertingId,
+      turns,
     ],
   );
   if (!data) return null;

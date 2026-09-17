@@ -17,6 +17,7 @@ export function ProjectWorkspaceActionsMenu({
   isRefreshing,
   onClose,
   onFiles,
+  onFork,
   onMcp,
   onRefresh,
   onSettings,
@@ -26,6 +27,7 @@ export function ProjectWorkspaceActionsMenu({
   isRefreshing: boolean;
   onClose: () => void;
   onFiles: () => void;
+  onFork?: () => void;
   onMcp?: () => void;
   onRefresh: () => void;
   onSettings: () => void;
@@ -34,7 +36,7 @@ export function ProjectWorkspaceActionsMenu({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const itemCount = onMcp ? 4 : 3;
+  const itemCount = 3 + (onMcp ? 1 : 0) + (onFork ? 1 : 0);
   const menuHeight = itemCount * 45 + 10;
   const menuTop = Math.max(
     insets.top + 8,
@@ -76,6 +78,13 @@ export function ProjectWorkspaceActionsMenu({
             label="Files"
             onPress={act(onFiles)}
           />
+          {onFork ? (
+            <MenuItem
+              icon={{ ios: "arrow.triangle.branch", android: "account_tree" }}
+              label="Fork chat"
+              onPress={act(onFork)}
+            />
+          ) : null}
           <MenuItem
             icon={{ ios: "slider.horizontal.3", android: "tune" }}
             label="Runtime settings"

@@ -63,9 +63,7 @@ function OpencodeChatTurnComponent({
     const animation = Animated.timing(reservedHeight, {
       duration: 280,
       easing: Easing.out(Easing.cubic),
-      toValue: reserveBottomSpace
-        ? Dimensions.get("window").height * 0.6
-        : 0,
+      toValue: reserveBottomSpace ? Dimensions.get("window").height * 0.6 : 0,
       useNativeDriver: false,
     });
     animation.start();
@@ -152,28 +150,27 @@ function OpencodeChatTurnComponent({
           : null}
 
         {answer && !isStreaming ? (
-          <View style={styles.metadata}>
-            <IconButton
-              label="Copy response"
-              name={copied === "answer" ? "checkmark" : "doc.on.doc"}
-              onPress={() => void copy("answer", answer)}
-            />
-            {[
-              item.agent,
-              item.provider,
-              item.model,
-              formatDuration(item.durationMs),
-            ]
-              .filter(Boolean)
-              .map((value, index) => (
-                <ThemedText
-                  key={`${value}-${index}`}
-                  style={{ color: theme.textSecondary, fontSize: 11 }}
-                >
-                  {index > 0 ? "· " : ""}
-                  {value}
-                </ThemedText>
-              ))}
+          <View style={styles.responseFooter}>
+            <View style={styles.responseActions}>
+              <IconButton
+                label="Copy response"
+                name={copied === "answer" ? "checkmark" : "doc.on.doc"}
+                onPress={() => void copy("answer", answer)}
+              />
+            </View>
+            <View style={styles.metadata}>
+              {[item.model, formatDuration(item.durationMs)]
+                .filter((value): value is string => Boolean(value))
+                .map((value) => (
+                  <ThemedText
+                    key={value}
+                    numberOfLines={1}
+                    style={{ color: theme.textSecondary, fontSize: 11 }}
+                  >
+                    {value}
+                  </ThemedText>
+                ))}
+            </View>
           </View>
         ) : null}
 
@@ -285,10 +282,7 @@ function PulsingStatusText({ children }: { children: string }) {
 
   return (
     <Animated.Text
-      style={[
-        styles.thinking,
-        { color: theme.textSecondary, opacity },
-      ]}
+      style={[styles.thinking, { color: theme.textSecondary, opacity }]}
     >
       {children}
     </Animated.Text>
@@ -393,13 +387,20 @@ const styles = StyleSheet.create({
   metadata: {
     alignItems: "center",
     flexDirection: "row",
-    flexWrap: "wrap",
-    marginTop: 5,
+    gap: 5,
+    marginLeft: "auto",
   },
   pressed: { opacity: 0.65 },
   questionGroup: { alignItems: "flex-end", gap: 2 },
   questionText: { fontSize: 15, lineHeight: 22 },
   response: { gap: 7 },
+  responseActions: { flexDirection: "row" },
+  responseFooter: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 6,
+    marginTop: 5,
+  },
   thinking: {
     fontSize: 13,
     fontWeight: "500",

@@ -33,6 +33,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   isRefreshing = false,
   onBack,
   onOpenSwitcher,
+  onForkChat,
   onRefresh,
   opencodeSessionId,
   opencodePassword,
@@ -51,6 +52,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   isRefreshing?: boolean;
   onBack: () => void;
   onOpenSwitcher?: () => void;
+  onForkChat?: () => void;
   onRefresh: () => void;
   opencodeSessionId?: string;
   opencodePassword?: string;
@@ -227,6 +229,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
           isRefreshing={isRefreshing}
           onClose={() => setActionsAnchorY(null)}
           onFiles={openFiles}
+          onFork={onForkChat}
           onMcp={connection ? () => setMcpVisible(true) : undefined}
           onRefresh={onRefresh}
           onSettings={openSettings}
