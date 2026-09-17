@@ -23,7 +23,9 @@ export const projectAutomations = pgTable("project_automations", {
   description: text(),
 
   user_id: uuid().references(() => users.id, { onDelete: "cascade" }),
-  project_id: uuid().references(() => projects.id, { onDelete: "cascade" }),
+  project_id: uuid()
+    .references(() => projects.id, { onDelete: "cascade" })
+    .notNull(),
 
   last_run_at: timestamp().defaultNow().notNull(),
   next_run_at: timestamp().defaultNow().notNull(),

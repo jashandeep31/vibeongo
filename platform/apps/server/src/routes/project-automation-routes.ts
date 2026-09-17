@@ -3,7 +3,7 @@ import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   createProjectAutomation,
   getProjectAutomations,
-} from "../controllers/project-automations/crud-controller.js";
+} from "../controllers/project-automations/manage-project-automation.js";
 
 const routes: Router = Router();
 
