@@ -115,11 +115,6 @@ function ProjectSessionRuntimeSync({
     let disposed = false;
     let streamController: AbortController | null = null;
     const pendingSessionResyncs = new Set<string>();
-    const pendingMessageEvents = new Map<string, Event[]>();
-    const pendingMessageTimers = new Map<
-      string,
-      ReturnType<typeof setTimeout>
-    >();
 
     const resyncSessionAfterMissingEvent = (opencodeSessionId: string) => {
       if (pendingSessionResyncs.has(opencodeSessionId)) return;
@@ -190,22 +185,7 @@ function ProjectSessionRuntimeSync({
       );
     };
 
-    const flushMessageEvents = (opencodeSessionId: string) => {
-      const timer = pendingMessageTimers.get(opencodeSessionId);
-      if (timer) clearTimeout(timer);
-      pendingMessageTimers.delete(opencodeSessionId);
-      const events = pendingMessageEvents.get(opencodeSessionId) ?? [];
-      pendingMessageEvents.delete(opencodeSessionId);
-      applyQueryEvents(opencodeSessionId, events);
-    };
-
-    const flushAllMessageEvents = () => {
-      for (const opencodeSessionId of pendingMessageEvents.keys()) {
-        flushMessageEvents(opencodeSessionId);
-      }
-    };
-
-    const handleImmediateEvent = (event: Event) => {
+    const handleEvent = (event: Event) => {
       const opencodeSessionId = getEventSessionId(event);
       const store = useSessionChatsStore.getState();
 
@@ -238,7 +218,6 @@ function ProjectSessionRuntimeSync({
       }
 
       if (!opencodeSessionId) return;
-      flushMessageEvents(opencodeSessionId);
       applyQueryEvents(opencodeSessionId, [event]);
 
       if (event.type === "session.status") {
@@ -265,26 +244,6 @@ function ProjectSessionRuntimeSync({
           queryKey: ["opencode", "session", sessionId, opencodeSessionId],
         });
       }
-    };
-
-    const handleEvent = (event: Event) => {
-      const opencodeSessionId = getEventSessionId(event);
-      const isMessageChunk =
-        event.type === "message.part.delta" ||
-        event.type === "message.part.updated";
-      if (!opencodeSessionId || !isMessageChunk) {
-        handleImmediateEvent(event);
-        return;
-      }
-
-      const pending = pendingMessageEvents.get(opencodeSessionId) ?? [];
-      pending.push(event);
-      pendingMessageEvents.set(opencodeSessionId, pending);
-      if (pendingMessageTimers.has(opencodeSessionId)) return;
-      pendingMessageTimers.set(
-        opencodeSessionId,
-        setTimeout(() => flushMessageEvents(opencodeSessionId), 50),
-      );
     };
 
     const connect = async (signal: AbortSignal) => {
@@ -316,8 +275,6 @@ function ProjectSessionRuntimeSync({
             expoFetch as unknown as typeof globalThis.fetch,
           );
         } catch {}
-        flushAllMessageEvents();
-
         if (!disposed && !signal.aborted) {
           await new Promise((resolve) => setTimeout(resolve, 1_000));
         }
@@ -353,7 +310,6 @@ function ProjectSessionRuntimeSync({
       disposed = true;
       subscription.remove();
       streamController?.abort();
-      flushAllMessageEvents();
     };
   }, [
     accessToken,
