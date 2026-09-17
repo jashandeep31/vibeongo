@@ -28,9 +28,12 @@ export const projectAutomations = pgTable("project_automations", {
   last_run_at: timestamp().defaultNow().notNull(),
   next_run_at: timestamp().defaultNow().notNull(),
 
-  enabled: boolean(),
+  enabled: boolean().notNull().default(true),
 
+  // save the cron expression as a string
   cron_expression: varchar(),
+  // timzone is of user
+  timezone: varchar(),
 
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
@@ -67,7 +70,7 @@ export const projectAutomationTasks = pgTable("project_automation_tasks", {
   }),
 
   path_from_code: varchar().notNull(),
-  task: text().notNull(),
+  task_prompt: text().notNull(),
   agent: projectSessionTaskAgents().notNull(),
 
   order_number: integer().notNull(),
