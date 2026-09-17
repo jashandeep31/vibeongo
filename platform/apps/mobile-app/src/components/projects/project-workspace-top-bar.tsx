@@ -3,6 +3,7 @@ import { SymbolView } from "expo-symbols";
 import { memo, type ReactNode, useState } from "react";
 import {
   ActivityIndicator,
+  type GestureResponderEvent,
   Pressable,
   StyleSheet,
   View,
@@ -19,7 +20,7 @@ import {
   type OpencodeWorkspaceConnection,
 } from "@/components/projects/project-mcp-drawer";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
-import { ProjectWorkspaceActionsDrawer } from "@/components/projects/project-workspace-actions-drawer";
+import { ProjectWorkspaceActionsMenu } from "@/components/projects/project-workspace-actions-menu";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 
@@ -64,7 +65,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   const router = useRouter();
   const { width } = useWindowDimensions();
   const wide = width >= 760;
-  const [actionsVisible, setActionsVisible] = useState(false);
+  const [actionsAnchorY, setActionsAnchorY] = useState<number | null>(null);
   const [mcpVisible, setMcpVisible] = useState(false);
 
   const openReview = () => {
@@ -170,7 +171,9 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
                 accessibilityLabel="More workspace actions"
                 accessibilityRole="button"
                 hitSlop={3}
-                onPress={() => setActionsVisible(true)}
+                onPress={(event: GestureResponderEvent) =>
+                  setActionsAnchorY(event.nativeEvent.pageY)
+                }
                 style={({ pressed }) => [
                   styles.action,
                   styles.compactAction,
@@ -219,14 +222,15 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
         titleVariant="pill"
       />
       {!wide ? (
-        <ProjectWorkspaceActionsDrawer
+        <ProjectWorkspaceActionsMenu
+          anchorY={actionsAnchorY ?? 0}
           isRefreshing={isRefreshing}
-          onClose={() => setActionsVisible(false)}
+          onClose={() => setActionsAnchorY(null)}
           onFiles={openFiles}
           onMcp={connection ? () => setMcpVisible(true) : undefined}
           onRefresh={onRefresh}
           onSettings={openSettings}
-          visible={actionsVisible}
+          visible={actionsAnchorY !== null}
         />
       ) : null}
       {connection ? (
