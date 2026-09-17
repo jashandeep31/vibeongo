@@ -1576,6 +1576,10 @@ const ChatTimeline = memo(function ChatTimeline({
   const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
   const latestTurnId = turns.at(-1)?.id;
   const listRef = useRef<FlatList<(typeof turns)[number]>>(null);
+  const [isTimelineKeyboardVisible, setIsTimelineKeyboardVisible] = useState(
+    () => Keyboard.isVisible(),
+  );
+  const keyboardScrollTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const previousLatestTurnIdRef = useRef<string | undefined>(undefined);
   const pendingTimelineScrollRef = useRef<{ animated: boolean } | undefined>({
     animated: false,
@@ -1586,6 +1590,43 @@ const ChatTimeline = memo(function ChatTimeline({
     pendingTimelineScrollRef.current = undefined;
     listRef.current?.scrollToEnd({ animated: pending.animated });
   }, []);
+  useEffect(() => {
+    const show = Keyboard.addListener("keyboardDidShow", () => {
+      setIsTimelineKeyboardVisible(true);
+      if (keyboardScrollTimerRef.current) {
+        clearTimeout(keyboardScrollTimerRef.current);
+      }
+      keyboardScrollTimerRef.current = setTimeout(
+        () => listRef.current?.scrollToEnd({ animated: true }),
+        320,
+      );
+    });
+    const hide = Keyboard.addListener("keyboardDidHide", () => {
+      setIsTimelineKeyboardVisible(false);
+    });
+    return () => {
+      show.remove();
+      hide.remove();
+      if (keyboardScrollTimerRef.current) {
+        clearTimeout(keyboardScrollTimerRef.current);
+      }
+    };
+  }, []);
+  useEffect(() => {
+    if (!latestTurnId || !isTimelineKeyboardVisible) return;
+    if (keyboardScrollTimerRef.current) {
+      clearTimeout(keyboardScrollTimerRef.current);
+    }
+    keyboardScrollTimerRef.current = setTimeout(
+      () => listRef.current?.scrollToEnd({ animated: true }),
+      80,
+    );
+    return () => {
+      if (keyboardScrollTimerRef.current) {
+        clearTimeout(keyboardScrollTimerRef.current);
+      }
+    };
+  }, [isTimelineKeyboardVisible, latestTurnId]);
   useEffect(() => {
     if (!latestTurnId || previousLatestTurnIdRef.current === latestTurnId)
       return;
@@ -1601,13 +1642,18 @@ const ChatTimeline = memo(function ChatTimeline({
         isStreaming={turn.id === activeTurnId}
         item={turn}
         onRevert={onRevert}
-        reserveBottomSpace={turn.id === latestTurnId && !activeQuestion}
+        reserveBottomSpace={
+          turn.id === latestTurnId &&
+          !activeQuestion &&
+          !isTimelineKeyboardVisible
+        }
       />
     ),
     [
       activeQuestion,
       activeTurnId,
       isReverting,
+      isTimelineKeyboardVisible,
       latestTurnId,
       onRevert,
       revertingId,
