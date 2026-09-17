@@ -15,9 +15,11 @@ import {
 export function OpencodeFileDiff({
   diff,
   defaultOpen = false,
+  operationLabel = "Edit",
 }: {
   diff: SnapshotFileDiff;
   defaultOpen?: boolean;
+  operationLabel?: string | null;
 }) {
   const theme = useTheme();
   const [open, setOpen] = useState(defaultOpen);
@@ -37,7 +39,9 @@ export function OpencodeFileDiff({
         onPress={() => setOpen((value) => !value)}
         style={({ pressed }) => [styles.header, pressed && styles.pressed]}
       >
-        <ThemedText style={styles.label}>Edit</ThemedText>
+        {operationLabel ? (
+          <ThemedText style={styles.label}>{operationLabel}</ThemedText>
+        ) : null}
         <ThemedText numberOfLines={1} style={styles.fileName}>
           {fileName}
         </ThemedText>

@@ -14,6 +14,128 @@ export type SessionPart = SessionMessage["parts"][number];
 export type OpencodeToolPart = Extract<SessionPart, { type: "tool" }>;
 export type SnapshotFileDiff = OpencodeSessionData["changes"][number];
 
+export type OpencodeToolRenderGroup = {
+  kind: "files" | "skills" | "tool";
+  tools: OpencodeToolPart[];
+};
+
+export function groupOpencodeToolsForRendering(
+  tools: OpencodeToolPart[],
+): OpencodeToolRenderGroup[] {
+  return tools.reduce<OpencodeToolRenderGroup[]>((groups, tool) => {
+    const fileTool = isFileChangeTool(tool);
+    const skillTool = tool.tool === "skill" && tool.state.status !== "error";
+    const previous = groups.at(-1);
+    if (fileTool && previous?.kind === "files") {
+      previous.tools.push(tool);
+      return groups;
+    }
+    if (skillTool && previous?.kind === "skills") {
+      previous.tools.push(tool);
+      return groups;
+    }
+    groups.push({
+      kind: fileTool ? "files" : skillTool ? "skills" : "tool",
+      tools: [tool],
+    });
+    return groups;
+  }, []);
+}
+
+export function deriveOpencodeToolFileDiff(
+  tool: OpencodeToolPart,
+): SnapshotFileDiff | undefined {
+  const path = getToolInputString(tool, [
+    "path",
+    "filePath",
+    "file_path",
+    "filepath",
+    "file",
+  ]);
+  if (!path) return undefined;
+
+  if (tool.tool === "write") {
+    const content = getToolInputString(tool, ["content"]);
+    if (!content) return undefined;
+    return createOpencodeFileDiff(path, "", content);
+  }
+
+  if (tool.tool === "edit") {
+    const before = getToolInputString(tool, ["oldString", "old_string"]);
+    const after = getToolInputString(tool, ["newString", "new_string"]);
+    if (before === undefined || after === undefined || before === after) {
+      return undefined;
+    }
+    return createOpencodeFileDiff(path, before, after);
+  }
+
+  return undefined;
+}
+
+function createOpencodeFileDiff(
+  file: string,
+  before: string,
+  after: string,
+): SnapshotFileDiff {
+  const beforeLines = splitDiffLines(before);
+  const afterLines = splitDiffLines(after);
+  let prefix = 0;
+  while (
+    prefix < beforeLines.length &&
+    prefix < afterLines.length &&
+    beforeLines[prefix] === afterLines[prefix]
+  ) {
+    prefix += 1;
+  }
+
+  let suffix = 0;
+  while (
+    suffix < beforeLines.length - prefix &&
+    suffix < afterLines.length - prefix &&
+    beforeLines[beforeLines.length - 1 - suffix] ===
+      afterLines[afterLines.length - 1 - suffix]
+  ) {
+    suffix += 1;
+  }
+
+  const removed = beforeLines.slice(prefix, beforeLines.length - suffix);
+  const added = afterLines.slice(prefix, afterLines.length - suffix);
+  const patch = [
+    `--- ${file}`,
+    `+++ ${file}`,
+    `@@ -1,${beforeLines.length} +1,${afterLines.length} @@`,
+    ...beforeLines.slice(0, prefix).map((line) => ` ${line}`),
+    ...removed.map((line) => `-${line}`),
+    ...added.map((line) => `+${line}`),
+    ...beforeLines.slice(beforeLines.length - suffix).map((line) => ` ${line}`),
+  ].join("\n");
+
+  return {
+    file,
+    patch,
+    additions: added.length,
+    deletions: removed.length,
+  };
+}
+
+function splitDiffLines(value: string) {
+  if (!value) return [];
+  const lines = value.replaceAll("\r\n", "\n").split("\n");
+  if (value.endsWith("\n")) lines.pop();
+  return lines;
+}
+
+function getToolInputString(
+  tool: OpencodeToolPart,
+  keys: string[],
+): string | undefined {
+  for (const key of keys) {
+    const value = tool.state.input[key];
+    if (typeof value === "string") return value;
+  }
+  return undefined;
+}
+
 export type OpencodeChatContent =
   | { id: string; type: "text"; text: string }
   | { id: string; type: "tools"; tools: OpencodeToolPart[] }
@@ -229,9 +351,9 @@ export function createOpencodeChatTurns(
         ) {
           previousContent.tools.push(part);
         } else if (
-          isEditTool(part) &&
+          isFileChangeTool(part) &&
           previousContent?.type === "tools" &&
-          previousContent.tools.every(isEditTool)
+          previousContent.tools.every(isFileChangeTool)
         ) {
           previousContent.tools.push(part);
         } else {
@@ -273,7 +395,7 @@ export function createOpencodeChatTurns(
   return turns;
 }
 
-function isEditTool(tool: OpencodeToolPart) {
+function isFileChangeTool(tool: OpencodeToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }
 

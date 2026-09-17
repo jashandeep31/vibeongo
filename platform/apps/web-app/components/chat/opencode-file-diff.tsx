@@ -14,9 +14,11 @@ export type OpencodeDiffRow = {
 export function OpencodeFileDiff({
   diff,
   defaultOpen = false,
+  operationLabel = "Edit",
 }: {
   diff: SnapshotFileDiff;
   defaultOpen?: boolean;
+  operationLabel?: string | null;
 }) {
   const path = normalizeOpencodeFilePath(diff.file);
   const parts = path.split("/").filter(Boolean);
@@ -29,7 +31,9 @@ export function OpencodeFileDiff({
   return (
     <details open={defaultOpen} className="group/edit min-w-0 text-sm">
       <summary className="flex min-w-0 cursor-pointer list-none items-center gap-2 py-2 [&::-webkit-details-marker]:hidden">
-        <span className="shrink-0 font-medium">Edit</span>
+        {operationLabel ? (
+          <span className="shrink-0 font-medium">{operationLabel}</span>
+        ) : null}
         <span className="min-w-0 truncate" title={path}>
           {fileName}
         </span>

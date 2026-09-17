@@ -18,6 +18,10 @@ import {
 import { OpencodeFileDiff } from "@/components/projects/opencode-file-diff";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  deriveOpencodeToolFileDiff,
+  groupOpencodeToolsForRendering,
+} from "@repo/api-client";
 
 type TodoItem = {
   content: string;
@@ -65,23 +69,12 @@ export function OpencodeToolCall({
   }
 
   if (tools.every(isEditTool)) {
-    const toolDiffs = tools.flatMap(getToolDiffs);
-    const diffs = toolDiffs.length > 0 ? toolDiffs : summaryDiffs;
     return (
-      <View style={styles.group}>
-        {diffs.map((diff, index) => (
-          <OpencodeFileDiff
-            defaultOpen={index === 0}
-            diff={diff}
-            key={`${diff.file ?? "file"}-${index}`}
-          />
-        ))}
-        {diffs.length === 0
-          ? tools.map((tool) => (
-              <EditStatus isStreaming={isStreaming} key={tool.id} tool={tool} />
-            ))
-          : null}
-      </View>
+      <FileChangeGroup
+        isStreaming={isStreaming}
+        summaryDiffs={summaryDiffs}
+        tools={tools}
+      />
     );
   }
 
@@ -100,20 +93,256 @@ export function OpencodeToolCall({
   }
 
   if (tools.length === 1) {
-    return <GenericTool isStreaming={isStreaming} tool={firstTool} />;
+    return <ToolItem isStreaming={isStreaming} tool={firstTool} />;
   }
 
+  const renderGroups = groupOpencodeToolsForRendering(tools);
+  const firstFileGroupIndex = renderGroups.findIndex(
+    (group) => group.kind === "files",
+  );
   return (
     <Collapsible
       label={`Used ${tools.length}`}
       mutedLabel={getToolNames(tools)}
     >
-      <View style={styles.group}>
-        {tools.map((tool) => (
-          <GenericTool isStreaming={isStreaming} key={tool.id} tool={tool} />
-        ))}
+      <View style={styles.groupChildren}>
+        {renderGroups.map((group, index) =>
+          group.kind === "files" ? (
+            <FileChangeGroup
+              isStreaming={isStreaming}
+              key={group.tools.map((tool) => tool.id).join(":")}
+              summaryDiffs={index === firstFileGroupIndex ? summaryDiffs : []}
+              tools={group.tools}
+            />
+          ) : group.kind === "skills" ? (
+            <SkillGroup
+              key={group.tools.map((tool) => tool.id).join(":")}
+              tools={group.tools}
+            />
+          ) : (
+            <ToolItem
+              isStreaming={isStreaming}
+              key={group.tools[0]!.id}
+              tool={group.tools[0]!}
+            />
+          ),
+        )}
       </View>
     </Collapsible>
+  );
+}
+
+function FileChangeGroup({
+  isStreaming,
+  summaryDiffs,
+  tools,
+}: {
+  isStreaming: boolean;
+  summaryDiffs: SnapshotFileDiff[];
+  tools: ToolPart[];
+}) {
+  const toolDiffs = tools.flatMap(getToolDiffs);
+  const diffs = toolDiffs.length > 0 ? toolDiffs : summaryDiffs;
+  const fileCount = diffs.length || tools.length;
+  const title = getFileChangeTitle(tools);
+  return (
+    <View>
+      <View style={styles.fileGroupTitle}>
+        <ThemedText style={styles.summaryLabel}>{title}</ThemedText>
+        <ThemedText themeColor="textSecondary">
+          {fileCount} {fileCount === 1 ? "file" : "files"}
+        </ThemedText>
+      </View>
+      <View style={styles.groupChildren}>
+        {diffs.map((diff, index) => (
+          <OpencodeFileDiff
+            diff={diff}
+            key={`${diff.file ?? "file"}-${index}`}
+            operationLabel={null}
+          />
+        ))}
+        {diffs.length === 0
+          ? tools.map((tool) => (
+              <EditStatus isStreaming={isStreaming} key={tool.id} tool={tool} />
+            ))
+          : null}
+      </View>
+    </View>
+  );
+}
+
+function getFileChangeTitle(tools: ToolPart[]) {
+  const names = [...new Set(tools.map(getToolName))];
+  return names.length === 1 ? names[0]! : "Edit";
+}
+
+function ToolItem({
+  isStreaming,
+  tool,
+}: {
+  isStreaming: boolean;
+  tool: ToolPart;
+}) {
+  if (tool.state.status === "error") return <ToolError tool={tool} />;
+  if (tool.tool === "webfetch") return <WebfetchResult tool={tool} />;
+  if (tool.tool === "read" || tool.tool === "glob") {
+    return <ExplorationResult tool={tool} />;
+  }
+  if (tool.tool === "list" || tool.tool === "grep") {
+    return <ResearchTool tool={tool} />;
+  }
+  if (tool.tool === "websearch") return <WebSearchTool tool={tool} />;
+  if (tool.tool === "execute") return <ExecuteTool tool={tool} />;
+  if (tool.tool === "subagent" || tool.tool === "task") {
+    return <SubagentTool tool={tool} />;
+  }
+  if (tool.tool === "skill") return <SkillGroup tools={[tool]} />;
+  if (isBrowserTool(tool)) return <BrowserTool tool={tool} />;
+  return <GenericTool isStreaming={isStreaming} tool={tool} />;
+}
+
+function ResearchTool({ tool }: { tool: ToolPart }) {
+  const output = getToolOutput(tool);
+  const subtitle = [getResearchSubtitle(tool), ...getResearchArguments(tool)]
+    .filter(Boolean)
+    .join(" · ");
+  return (
+    <Collapsible label={getToolName(tool)} subtitle={subtitle}>
+      {output ? <FormattedToolOutput output={output} /> : null}
+    </Collapsible>
+  );
+}
+
+function ExecuteTool({ tool }: { tool: ToolPart }) {
+  const code = getStringInput(tool, "code");
+  const output = getToolOutput(tool);
+  return (
+    <Collapsible
+      label="Execute"
+      subtitle={code.split("\n")[0] || (isToolPending(tool) ? "Running…" : "")}
+    >
+      <FormattedToolOutput
+        output={`${code}${output ? `\n\n${output}` : isToolPending(tool) ? "\n\nRunning…" : ""}`}
+      />
+    </Collapsible>
+  );
+}
+
+function WebSearchTool({ tool }: { tool: ToolPart }) {
+  const provider = getMetadataString(tool, "provider");
+  return (
+    <Collapsible
+      label={provider ? `${capitalize(provider)} Web Search` : "Web Search"}
+      subtitle={getStringInput(tool, "query")}
+    >
+      <FormattedToolOutput output={getToolOutput(tool)} />
+    </Collapsible>
+  );
+}
+
+function SubagentTool({ tool }: { tool: ToolPart }) {
+  const theme = useTheme();
+  const agent = getStringInput(tool, "agent");
+  const description = getStringInput(tool, "description");
+  const background = getMetadataBoolean(tool, "background");
+  return (
+    <View
+      style={[styles.agentCard, { backgroundColor: theme.backgroundElement }]}
+    >
+      {isToolPending(tool) ? (
+        <ActivityIndicator size="small" />
+      ) : (
+        <ThemedText>◈</ThemedText>
+      )}
+      <ThemedText style={styles.summaryLabel}>
+        {agent ? capitalize(agent) : "Subagent"}
+      </ThemedText>
+      <ThemedText
+        numberOfLines={1}
+        style={[styles.inlineValue, { color: theme.textSecondary }]}
+      >
+        {description}
+        {background ? " (background)" : ""}
+      </ThemedText>
+      {getMetadataString(tool, "sessionID") ? (
+        <SymbolView
+          name={{ ios: "chevron.right", android: "chevron_right" }}
+          size={14}
+          tintColor={theme.textSecondary}
+        />
+      ) : null}
+    </View>
+  );
+}
+
+function SkillGroup({ tools }: { tools: ToolPart[] }) {
+  const theme = useTheme();
+  const names = tools.map(getSkillName).filter(Boolean);
+  return (
+    <View style={styles.inlineResult}>
+      {tools.some(isToolPending) ? <ActivityIndicator size="small" /> : null}
+      <ThemedText style={{ color: theme.textSecondary }}>Loaded</ThemedText>
+      <ThemedText numberOfLines={1} style={styles.skillNames}>
+        {names.join(", ") || "Skill"}
+      </ThemedText>
+      <ThemedText style={{ color: theme.textSecondary }}>
+        {names.length === 1 ? "skill" : "skills"}
+      </ThemedText>
+    </View>
+  );
+}
+
+function BrowserTool({ tool }: { tool: ToolPart }) {
+  const theme = useTheme();
+  const action =
+    getStringInput(tool, "action") || getStringInput(tool, "command");
+  const target = getStringInput(tool, "url") || getStringInput(tool, "target");
+  return (
+    <View style={styles.inlineResult}>
+      <ThemedText style={styles.summaryLabel}>Browser</ThemedText>
+      <ThemedText
+        numberOfLines={1}
+        style={[styles.inlineValue, { color: theme.textSecondary }]}
+      >
+        {[action, target].filter(Boolean).join(" · ") ||
+          (isToolPending(tool) ? "Running…" : "Completed")}
+      </ThemedText>
+    </View>
+  );
+}
+
+function ToolError({ tool }: { tool: ToolPart }) {
+  const message =
+    tool.state.status === "error"
+      ? tool.state.error.replace(/^Error:\s*/i, "")
+      : "Tool failed";
+  return (
+    <StatusCard
+      icon="xmark.circle"
+      title={`${getToolName(tool)} failed`}
+      message={message}
+    />
+  );
+}
+
+function FormattedToolOutput({ output }: { output: string }) {
+  const theme = useTheme();
+  if (!output) return null;
+  return (
+    <ScrollView
+      horizontal
+      style={[
+        styles.codeBlock,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.backgroundSelected,
+        },
+      ]}
+    >
+      <ThemedText selectable style={styles.codeText}>
+        {normalizeConsoleText(output)}
+      </ThemedText>
+    </ScrollView>
   );
 }
 
@@ -302,7 +531,7 @@ function EditStatus({
     (tool.state.status === "pending" || tool.state.status === "running");
   return (
     <View style={styles.inlineResult}>
-      <ThemedText style={styles.summaryLabel}>Edit</ThemedText>
+      <ThemedText style={styles.summaryLabel}>{getToolName(tool)}</ThemedText>
       <ThemedText
         numberOfLines={1}
         style={[styles.inlineValue, { color: theme.textSecondary }]}
@@ -471,6 +700,23 @@ function GenericTool({
 
 function getToolName(tool: ToolPart) {
   if (isShellTool(tool)) return "Shell";
+  const names: Record<string, string> = {
+    execute: "Execute",
+    list: "List",
+    glob: "Glob",
+    grep: "Grep",
+    read: "Read",
+    webfetch: "Webfetch",
+    websearch: "Web Search",
+    subagent: "Subagent",
+    task: "Subagent",
+    skill: "Skill",
+    edit: "Edit",
+    write: "Write",
+    patch: "Patch",
+    apply_patch: "Patch",
+  };
+  if (names[tool.tool]) return names[tool.tool]!;
   const title = "title" in tool.state ? tool.state.title : undefined;
   return typeof title === "string" && title && title !== "Completed"
     ? title
@@ -487,6 +733,81 @@ function isShellTool(tool: ToolPart) {
     tool.tool === "shell" ||
     typeof tool.state.input.command === "string"
   );
+}
+
+function isBrowserTool(tool: ToolPart) {
+  const name = tool.tool.toLowerCase();
+  return (
+    name === "browser" ||
+    name.includes("playwright") ||
+    name.includes("browser")
+  );
+}
+
+function isToolPending(tool: ToolPart) {
+  return tool.state.status === "pending" || tool.state.status === "running";
+}
+
+function getToolOutput(tool: ToolPart) {
+  if (tool.state.status === "completed")
+    return normalizeConsoleText(tool.state.output);
+  if (tool.state.status === "error")
+    return normalizeConsoleText(tool.state.error);
+  return "";
+}
+
+function normalizeConsoleText(value: string) {
+  return value
+    .replaceAll("\r\n", "\n")
+    .replaceAll("\r", "\n")
+    .replace(/\u001b\[[0-?]*[ -/]*[@-~]/g, "");
+}
+
+function getResearchSubtitle(tool: ToolPart) {
+  const path = getToolFile(tool).replace(/\/+$/, "");
+  if (tool.tool === "read") return path.split("/").filter(Boolean).at(-1) ?? "";
+  return path === "Unknown file" ? "/" : path;
+}
+
+function getResearchArguments(tool: ToolPart) {
+  const args: string[] = [];
+  for (const key of tool.tool === "read"
+    ? ["offset", "limit"]
+    : ["pattern", "include"]) {
+    const value = tool.state.input[key];
+    if (typeof value === "string" || typeof value === "number")
+      args.push(`${key}=${value}`);
+  }
+  return args;
+}
+
+function getMetadata(tool: ToolPart): Record<string, unknown> {
+  return "metadata" in tool.state &&
+    tool.state.metadata &&
+    typeof tool.state.metadata === "object"
+    ? (tool.state.metadata as Record<string, unknown>)
+    : {};
+}
+
+function getMetadataString(tool: ToolPart, key: string) {
+  const value = getMetadata(tool)[key];
+  return typeof value === "string" ? value : "";
+}
+
+function getMetadataBoolean(tool: ToolPart, key: string) {
+  return getMetadata(tool)[key] === true;
+}
+
+function getSkillName(tool: ToolPart) {
+  return (
+    getStringInput(tool, "name") ||
+    getStringInput(tool, "skill") ||
+    getMetadataString(tool, "name")
+  );
+}
+
+function capitalize(value: string) {
+  return value ? `${value[0]!.toUpperCase()}${value.slice(1)}` : value;
 }
 
 function getToolDiffs(tool: ToolPart): SnapshotFileDiff[] {
@@ -515,7 +836,10 @@ function getToolDiffs(tool: ToolPart): SnapshotFileDiff[] {
   const inputPatch =
     getStringInput(tool, "patch") || getStringInput(tool, "patchText");
   const diffPatch = patch ?? inputPatch;
-  if (!diffPatch) return [];
+  if (!diffPatch) {
+    const derived = deriveOpencodeToolFileDiff(tool);
+    return derived ? [derived] : [];
+  }
   const counts = countPatchChanges(diffPatch);
   return [{ file: getToolFile(tool), patch: diffPatch, ...counts }];
 }
@@ -624,6 +948,15 @@ function getSafeWebUrl(value: string) {
 }
 
 const styles = StyleSheet.create({
+  agentCard: {
+    alignItems: "center",
+    borderRadius: 9,
+    flexDirection: "row",
+    gap: 8,
+    marginVertical: 3,
+    minHeight: 38,
+    paddingHorizontal: 10,
+  },
   card: {
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,
@@ -646,7 +979,14 @@ const styles = StyleSheet.create({
   },
   errorText: { color: "#ef4444" },
   explorationList: { gap: 5, paddingBottom: 8 },
+  fileGroupTitle: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 36,
+  },
   group: { gap: 3 },
+  groupChildren: { gap: 3, paddingLeft: 14 },
   inlineResult: {
     alignItems: "center",
     flexDirection: "row",
@@ -675,6 +1015,7 @@ const styles = StyleSheet.create({
   },
   summaryLabel: { fontSize: 13, fontWeight: "700" },
   summarySubtitle: { flex: 1, fontSize: 12 },
+  skillNames: { flexShrink: 1, fontSize: 13, fontWeight: "700" },
   todoDot: { borderRadius: 3, height: 6, width: 6 },
   todoList: { gap: 9 },
   todoRow: { alignItems: "flex-start", flexDirection: "row", gap: 10 },
