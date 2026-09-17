@@ -158,7 +158,7 @@ export function OpencodeToolCall({
     <details className="group/tool text-sm">
       <summary className="text-foreground flex cursor-pointer list-none items-center gap-2 py-2 font-medium [&::-webkit-details-marker]:hidden">
         <span>Used {tools.length}</span>
-        <span className="text-muted-foreground">{getToolName(firstTool)}</span>
+        <span className="text-muted-foreground">{getToolNames(tools)}</span>
         <ChevronRight className="text-muted-foreground size-3 transition-transform group-open/tool:rotate-90" />
       </summary>
       <div className="space-y-1 pb-2 pl-4">
@@ -365,6 +365,10 @@ function getToolName(tool: ToolPart) {
   return title && title !== "Completed"
     ? title
     : `${tool.tool.charAt(0).toUpperCase()}${tool.tool.slice(1)}`;
+}
+
+function getToolNames(tools: ToolPart[]) {
+  return [...new Set(tools.map(getToolName))].join(", ");
 }
 
 function isEditTool(tool: ToolPart) {

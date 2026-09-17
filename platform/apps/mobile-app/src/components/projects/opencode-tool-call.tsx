@@ -106,7 +106,7 @@ export function OpencodeToolCall({
   return (
     <Collapsible
       label={`Used ${tools.length}`}
-      mutedLabel={getToolName(firstTool)}
+      mutedLabel={getToolNames(tools)}
     >
       <View style={styles.group}>
         {tools.map((tool) => (
@@ -475,6 +475,10 @@ function getToolName(tool: ToolPart) {
   return typeof title === "string" && title && title !== "Completed"
     ? title
     : `${tool.tool.charAt(0).toUpperCase()}${tool.tool.slice(1)}`;
+}
+
+function getToolNames(tools: ToolPart[]) {
+  return [...new Set(tools.map(getToolName))].join(", ");
 }
 
 function isShellTool(tool: ToolPart) {

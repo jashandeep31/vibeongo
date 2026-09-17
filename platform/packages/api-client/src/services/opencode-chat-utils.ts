@@ -47,12 +47,10 @@ export function groupConsecutiveOpencodeToolContent(
 
   for (const block of content) {
     const previous = grouped.at(-1);
-    const toolName = getGroupableToolName(block);
     if (
-      toolName &&
-      block.type === "tools" &&
+      isGroupableToolContent(block) &&
       previous?.type === "tools" &&
-      getGroupableToolName(previous) === toolName
+      isGroupableToolContent(previous)
     ) {
       grouped[grouped.length - 1] = {
         ...previous,
@@ -67,15 +65,15 @@ export function groupConsecutiveOpencodeToolContent(
   return changed ? grouped : content;
 }
 
-function getGroupableToolName(content: OpencodeChatContent) {
-  if (content.type !== "tools") return undefined;
-  const toolName = content.tools[0]?.tool;
-  if (!toolName || toolName === "question" || toolName === "todowrite") {
-    return undefined;
-  }
-  return content.tools.every((tool) => tool.tool === toolName)
-    ? toolName
-    : undefined;
+function isGroupableToolContent(
+  content: OpencodeChatContent,
+): content is Extract<OpencodeChatContent, { type: "tools" }> {
+  return (
+    content.type === "tools" &&
+    content.tools.every(
+      (tool) => tool.tool !== "question" && tool.tool !== "todowrite",
+    )
+  );
 }
 
 export function getSessionPromptSelection(
