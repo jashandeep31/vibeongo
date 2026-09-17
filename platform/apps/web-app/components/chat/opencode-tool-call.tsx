@@ -152,14 +152,38 @@ export function OpencodeToolCall({
     );
   }
 
+  if (tools.length === 1) return <GenericTool tool={firstTool} />;
+
   return (
     <details className="group/tool text-sm">
       <summary className="text-foreground flex cursor-pointer list-none items-center gap-2 py-2 font-medium [&::-webkit-details-marker]:hidden">
-        <span>{getToolName(firstTool)}</span>
+        <span>Used {tools.length}</span>
+        <span className="text-muted-foreground">{getToolName(firstTool)}</span>
         <ChevronRight className="text-muted-foreground size-3 transition-transform group-open/tool:rotate-90" />
       </summary>
+      <div className="space-y-1 pb-2 pl-4">
+        {tools.map((tool) => (
+          <GenericTool key={tool.id} tool={tool} />
+        ))}
+      </div>
+    </details>
+  );
+}
 
-      <ToolResult tool={firstTool} />
+function GenericTool({ tool }: { tool: ToolPart }) {
+  const command = isShellTool(tool) ? getStringInput(tool, "command") : "";
+  return (
+    <details className="group/tool-item text-sm">
+      <summary className="text-foreground flex cursor-pointer list-none items-center gap-2 py-2 font-medium [&::-webkit-details-marker]:hidden">
+        <span>{getToolName(tool)}</span>
+        {command ? (
+          <span className="text-muted-foreground min-w-0 truncate font-normal">
+            {command}
+          </span>
+        ) : null}
+        <ChevronRight className="text-muted-foreground size-3 shrink-0 transition-transform group-open/tool-item:rotate-90" />
+      </summary>
+      <ToolResult tool={tool} />
     </details>
   );
 }

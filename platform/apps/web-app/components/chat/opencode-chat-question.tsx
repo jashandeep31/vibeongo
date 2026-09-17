@@ -3,7 +3,11 @@
 import MarkdownRenderer from "@/components/markdown-renderer";
 import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
-import type { SnapshotFileDiff, ToolPart } from "@repo/api-client";
+import {
+  groupConsecutiveOpencodeToolContent,
+  type SnapshotFileDiff,
+  type ToolPart,
+} from "@repo/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { cn } from "@repo/ui/lib/utils";
 import {
@@ -60,7 +64,8 @@ export function OpencodeChatQuestion({
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
     .trim();
-  const firstEditGroupId = item.content.find(
+  const content = groupConsecutiveOpencodeToolContent(item.content);
+  const firstEditGroupId = content.find(
     (content) =>
       content.type === "tools" &&
       content.tools.every((tool) => isEditTool(tool)),
@@ -133,7 +138,7 @@ export function OpencodeChatQuestion({
         {item.content.length > 0 ? (
           <>
             <div className="grid grid-cols-1 gap-2">
-              {item.content.map((content) =>
+              {content.map((content) =>
                 content.type === "text" ? (
                   <MarkdownRenderer key={content.id} content={content.text} />
                 ) : content.type === "tools" ? (

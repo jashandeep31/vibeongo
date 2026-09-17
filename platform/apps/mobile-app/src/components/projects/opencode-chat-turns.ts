@@ -3,6 +3,7 @@ import {
   getOpencodeMessageText,
   getRevertedMessageLabel,
   getSessionPromptSelection,
+  groupConsecutiveOpencodeToolContent,
   type OpencodeChatContent,
   type OpencodeChatTurn,
   type OpencodeModelOption,
@@ -21,6 +22,7 @@ export type ChatTurn = OpencodeChatTurn;
 export type ToolPart = OpencodeToolPart;
 export const createChatTurns = createOpencodeChatTurns;
 export const getMessageText = getOpencodeMessageText;
+export const groupConsecutiveToolContent = groupConsecutiveOpencodeToolContent;
 
 // Owned by the screen; retain only the three most recently displayed chats.
 export function createChatTurnCache() {

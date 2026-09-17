@@ -39,6 +39,45 @@ export type OpencodeChatTurn = {
   durationMs: number | undefined;
 };
 
+export function groupConsecutiveOpencodeToolContent(
+  content: OpencodeChatContent[],
+) {
+  let changed = false;
+  const grouped: OpencodeChatContent[] = [];
+
+  for (const block of content) {
+    const previous = grouped.at(-1);
+    const toolName = getGroupableToolName(block);
+    if (
+      toolName &&
+      block.type === "tools" &&
+      previous?.type === "tools" &&
+      getGroupableToolName(previous) === toolName
+    ) {
+      grouped[grouped.length - 1] = {
+        ...previous,
+        tools: [...previous.tools, ...block.tools],
+      };
+      changed = true;
+      continue;
+    }
+    grouped.push(block);
+  }
+
+  return changed ? grouped : content;
+}
+
+function getGroupableToolName(content: OpencodeChatContent) {
+  if (content.type !== "tools") return undefined;
+  const toolName = content.tools[0]?.tool;
+  if (!toolName || toolName === "question" || toolName === "todowrite") {
+    return undefined;
+  }
+  return content.tools.every((tool) => tool.tool === toolName)
+    ? toolName
+    : undefined;
+}
+
 export function getSessionPromptSelection(
   data: OpencodeSessionData | undefined,
 ): OpencodePromptSelection {

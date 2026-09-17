@@ -99,17 +99,34 @@ export function OpencodeToolCall({
     return <ExplorationGroup tools={tools} />;
   }
 
-  return <GenericTool isStreaming={isStreaming} tool={firstTool} />;
+  if (tools.length === 1) {
+    return <GenericTool isStreaming={isStreaming} tool={firstTool} />;
+  }
+
+  return (
+    <Collapsible
+      label={`Used ${tools.length}`}
+      mutedLabel={getToolName(firstTool)}
+    >
+      <View style={styles.group}>
+        {tools.map((tool) => (
+          <GenericTool isStreaming={isStreaming} key={tool.id} tool={tool} />
+        ))}
+      </View>
+    </Collapsible>
+  );
 }
 
 function Collapsible({
   children,
   label,
+  mutedLabel,
   subtitle,
   defaultOpen = false,
 }: {
   children: React.ReactNode;
   label: string;
+  mutedLabel?: string;
   subtitle?: string;
   defaultOpen?: boolean;
 }) {
@@ -118,12 +135,19 @@ function Collapsible({
   return (
     <View>
       <Pressable
-        accessibilityLabel={`${open ? "Collapse" : "Expand"} ${label}`}
+        accessibilityLabel={`${open ? "Collapse" : "Expand"} ${label}${mutedLabel ? ` ${mutedLabel}` : ""}`}
         accessibilityRole="button"
         onPress={() => setOpen((value) => !value)}
         style={({ pressed }) => [styles.summary, pressed && styles.pressed]}
       >
         <ThemedText style={styles.summaryLabel}>{label}</ThemedText>
+        {mutedLabel ? (
+          <ThemedText
+            style={[styles.summaryLabel, { color: theme.textSecondary }]}
+          >
+            {mutedLabel}
+          </ThemedText>
+        ) : null}
         {subtitle ? (
           <ThemedText
             numberOfLines={1}
@@ -402,11 +426,13 @@ function GenericTool({
     <Collapsible
       label={getToolName(tool)}
       subtitle={
-        pending
-          ? state.status
-          : state.status === "error"
-            ? "error"
-            : "completed"
+        shell && command
+          ? command
+          : pending
+            ? state.status
+            : state.status === "error"
+              ? "error"
+              : "completed"
       }
     >
       <ScrollView

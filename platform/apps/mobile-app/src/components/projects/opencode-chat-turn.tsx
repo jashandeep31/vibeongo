@@ -7,6 +7,7 @@ import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
 import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import {
+  groupConsecutiveToolContent,
   isEditTool,
   type ChatContent,
   type ChatTurn,
@@ -35,7 +36,8 @@ function OpencodeChatTurnComponent({
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
     .trim();
-  const firstEditGroupId = item.content.find(
+  const content = groupConsecutiveToolContent(item.content);
+  const firstEditGroupId = content.find(
     (content) => content.type === "tools" && content.tools.every(isEditTool),
   )?.id;
 
@@ -95,7 +97,7 @@ function OpencodeChatTurnComponent({
       ) : null}
 
       <View style={styles.response}>
-        {item.content.map((content) => {
+        {content.map((content) => {
           return (
             <ChatContentBlock
               content={content}
