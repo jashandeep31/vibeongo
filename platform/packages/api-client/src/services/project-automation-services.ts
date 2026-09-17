@@ -66,6 +66,16 @@ export type CreateProjectAutomationResponse = {
   message: string;
 };
 
+export type UpdateProjectAutomationInput = {
+  id: ProjectAutomation["id"];
+  input: CreateProjectAutomationInput;
+};
+
+export type UpdateProjectAutomationResponse = {
+  message: string;
+  data: GetProjectAutomationResponse;
+};
+
 export type TriggerProjectAutomationResponse = {
   message: string;
 };
@@ -133,6 +143,21 @@ export const createProjectAutomation =
   ): Promise<CreateProjectAutomationResponse> => {
     const response = await apiClient.post(
       `/api/v1/project-automations`,
+      input,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
+export const updateProjectAutomation =
+  (apiClient: AxiosInstance) =>
+  async ({
+    id,
+    input,
+  }: UpdateProjectAutomationInput): Promise<UpdateProjectAutomationResponse> => {
+    const response = await apiClient.patch(
+      `/api/v1/project-automations/${id}`,
       input,
       { withCredentials: true },
     );

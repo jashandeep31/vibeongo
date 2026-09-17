@@ -55,7 +55,7 @@ export const createProjectAutomation = catchAsync(
       })
       .parse(req.body);
 
-    const project = await db
+    const [project] = await db
       .select()
       .from(projects)
       .where(
@@ -105,6 +105,85 @@ export const createProjectAutomation = catchAsync(
     res
       .status(200)
       .json({ message: "Project automation created successfully" });
+  },
+);
+
+export const updateProjectAutomation = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 401);
+
+    const { id } = z.object({ id: z.uuid() }).parse(req.params);
+    const projectAutomationData = projectAutomationSchema
+      .extend({ tasks: z.array(projectAutomationTaskSchema).min(1) })
+      .parse(req.body);
+
+    const [project] = await db
+      .select()
+      .from(projects)
+      .where(
+        and(
+          eq(projects.id, projectAutomationData.project_id),
+          eq(projects.user_id, user.id),
+        ),
+      );
+    if (!project) throw new AppError("Project not found", 404);
+
+    const result = await db.transaction(async (tx) => {
+      const [automation] = await tx
+        .select({ id: projectAutomations.id })
+        .from(projectAutomations)
+        .where(
+          and(
+            eq(projectAutomations.id, id),
+            eq(projectAutomations.user_id, user.id),
+          ),
+        )
+        .limit(1);
+
+      if (!automation) throw new AppError("Project automation not found", 404);
+
+      const [updatedAutomation] = await tx
+        .update(projectAutomations)
+        .set({
+          name: projectAutomationData.name,
+          description: projectAutomationData.description ?? null,
+          project_id: projectAutomationData.project_id,
+          cron_expression: projectAutomationData.cron_expression,
+          timezone: projectAutomationData.timezone,
+          updated_at: new Date(),
+        })
+        .where(eq(projectAutomations.id, id))
+        .returning();
+
+      if (!updatedAutomation)
+        throw new AppError("Failed to update project automation", 500);
+
+      await tx
+        .delete(projectAutomationTasks)
+        .where(eq(projectAutomationTasks.project_automation_id, id));
+
+      const updatedTasks = await tx
+        .insert(projectAutomationTasks)
+        .values(
+          projectAutomationData.tasks.map((task) => ({
+            project_automation_id: id,
+            path_from_code: task.path_from_code,
+            task_prompt: task.task_prompt,
+            agent: task.agent,
+            order_number: task.order_number,
+            model: task.model,
+          })),
+        )
+        .returning();
+
+      return { project_automation: updatedAutomation, tasks: updatedTasks };
+    });
+
+    res.status(200).json({
+      message: "Project automation updated successfully",
+      data: result,
+    });
   },
 );
 

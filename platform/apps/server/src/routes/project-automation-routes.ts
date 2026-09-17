@@ -4,6 +4,7 @@ import {
   createProjectAutomation,
   getProjectAutomation,
   getProjectAutomations,
+  updateProjectAutomation,
 } from "../controllers/project-automations/manage-project-automation.js";
 import { triggerProjectAutomationManually } from "../controllers/project-automations/trigger-project-automation.js";
 import {
@@ -18,7 +19,10 @@ routes
   .get(checkAuthorization(["all"]), getProjectAutomations)
   .post(checkAuthorization(["all"]), createProjectAutomation);
 
-routes.route("/:id").get(checkAuthorization(["all"]), getProjectAutomation);
+routes
+  .route("/:id")
+  .get(checkAuthorization(["all"]), getProjectAutomation)
+  .patch(checkAuthorization(["all"]), updateProjectAutomation);
 
 routes
   .route("/:id/runs")

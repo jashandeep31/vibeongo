@@ -82,6 +82,8 @@ export type {
   RateProjectAutomationRunInput,
   RateProjectAutomationRunResponse,
   TriggerProjectAutomationResponse,
+  UpdateProjectAutomationInput,
+  UpdateProjectAutomationResponse,
 } from "./services/project-automation-services.js";
 export type {
   SetForgejoPasswordPayload,

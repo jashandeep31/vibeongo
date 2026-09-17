@@ -20,6 +20,7 @@ import {
   Clock3,
   FolderCode,
   Loader2,
+  Pencil,
   Play,
 } from "lucide-react";
 import Link from "next/link";
@@ -118,18 +119,25 @@ export default function AutomationDetails({
             {automation.description || "No description provided."}
           </p>
         </div>
-        <Button
-          type="button"
-          onClick={runAutomation}
-          disabled={triggerAutomation.isPending}
-        >
-          {triggerAutomation.isPending ? (
-            <Loader2 className="animate-spin" />
-          ) : (
-            <Play />
-          )}
-          {triggerAutomation.isPending ? "Starting…" : "Run now"}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline">
+            <Link href={`/automations/${automation.id}/edit`}>
+              <Pencil /> Edit
+            </Link>
+          </Button>
+          <Button
+            type="button"
+            onClick={runAutomation}
+            disabled={triggerAutomation.isPending}
+          >
+            {triggerAutomation.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <Play />
+            )}
+            {triggerAutomation.isPending ? "Starting…" : "Run now"}
+          </Button>
+        </div>
       </header>
 
       <div className="text-muted-foreground mt-7 flex flex-wrap gap-x-6 gap-y-2 pb-7 text-sm">

@@ -58,6 +58,23 @@ export const useCreateProjectAutomation = () => {
   });
 };
 
+export const useUpdateProjectAutomation = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.projectAutomations.updateProjectAutomation,
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ["project-automations"] }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation", variables.id],
+        }),
+      ]);
+    },
+  });
+};
+
 export const useRateProjectAutomationRun = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();
