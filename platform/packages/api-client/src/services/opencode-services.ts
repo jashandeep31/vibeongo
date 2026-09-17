@@ -514,6 +514,26 @@ export function reduceOpencodeSessionData(
   }
 
   if (
+    event.type === "session.model.selected" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return {
+      ...current,
+      session: { ...current.session, model: event.properties.model },
+    };
+  }
+
+  if (
+    event.type === "session.agent.selected" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return {
+      ...current,
+      session: { ...current.session, agent: event.properties.agent },
+    };
+  }
+
+  if (
     event.type === "session.updated" &&
     event.properties.sessionID === sessionId
   ) {

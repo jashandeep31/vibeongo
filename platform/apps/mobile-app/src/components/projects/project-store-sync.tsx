@@ -218,6 +218,21 @@ function ProjectSessionRuntimeSync({
         } else {
           store.upsertSessionChat(sessionId, event.properties.info);
         }
+      } else if (
+        event.type === "session.model.selected" ||
+        event.type === "session.agent.selected"
+      ) {
+        const session = store
+          .getSessionChats(sessionId)
+          .find((item) => item.id === opencodeSessionId);
+        if (session) {
+          store.upsertSessionChat(sessionId, {
+            ...session,
+            ...(event.type === "session.model.selected"
+              ? { model: event.properties.model }
+              : { agent: event.properties.agent }),
+          });
+        }
       } else if (event.type === "session.deleted") {
         store.deleteSessionChat(sessionId, event.properties.sessionID);
       }
