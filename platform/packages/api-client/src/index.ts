@@ -4,6 +4,7 @@ import * as githubReposApi from "./services/github-repo-services.js";
 import * as instancesApi from "./services/instance-services.js";
 import * as instanceSlotsApi from "./services/instance-slot-services.js";
 import * as projectMetadataApi from "./services/project-metadata-services.js";
+import * as projectAutomationsApi from "./services/project-automation-services.js";
 import * as projectsApi from "./services/project-services.js";
 import * as projectSessionsApi from "./services/project-session-services.js";
 import * as sshKeysApi from "./services/ssh-key-services.js";
@@ -68,6 +69,16 @@ export type {
   ProjectWithSessions,
 } from "./services/project-services.js";
 export type {
+  CreateProjectAutomationInput,
+  CreateProjectAutomationResponse,
+  GetProjectAutomationResponse,
+  GetProjectAutomationsParams,
+  GetProjectAutomationsResponse,
+  ProjectAutomation,
+  ProjectAutomationTask,
+  TriggerProjectAutomationResponse,
+} from "./services/project-automation-services.js";
+export type {
   SetForgejoPasswordPayload,
   SetForgejoPasswordResponse,
   UserConfigValue,
@@ -91,6 +102,9 @@ export class MobileClient {
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
   instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
+  projectAutomations: ReturnType<
+    typeof bindApiModule<typeof projectAutomationsApi>
+  >;
   projects: ReturnType<typeof bindApiModule<typeof projectsApi>>;
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
@@ -110,6 +124,10 @@ export class MobileClient {
     this.instances = bindApiModule(instancesApi, this.apiClient);
     this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
+    this.projectAutomations = bindApiModule(
+      projectAutomationsApi,
+      this.apiClient,
+    );
     this.projects = bindApiModule(projectsApi, this.apiClient);
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
@@ -125,6 +143,9 @@ export class WebClient {
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
   instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
+  projectAutomations: ReturnType<
+    typeof bindApiModule<typeof projectAutomationsApi>
+  >;
   projects: ReturnType<typeof bindApiModule<typeof projectsApi>>;
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
@@ -142,6 +163,10 @@ export class WebClient {
     this.instances = bindApiModule(instancesApi, this.apiClient);
     this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
+    this.projectAutomations = bindApiModule(
+      projectAutomationsApi,
+      this.apiClient,
+    );
     this.projects = bindApiModule(projectsApi, this.apiClient);
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);

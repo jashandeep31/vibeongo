@@ -1,0 +1,93 @@
+import { projectAutomations, projectAutomationTasks } from "@repo/db";
+import {
+  projectAutomationSchema,
+  projectAutomationTaskSchema,
+  type z,
+} from "@repo/shared";
+import type { AxiosInstance } from "axios";
+
+export type ProjectAutomation = typeof projectAutomations.$inferSelect;
+export type ProjectAutomationTask = typeof projectAutomationTasks.$inferSelect;
+
+export type CreateProjectAutomationInput = z.infer<
+  typeof projectAutomationSchema
+> & {
+  tasks: z.infer<typeof projectAutomationTaskSchema>[];
+};
+
+export type GetProjectAutomationsParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetProjectAutomationsResponse = {
+  automations: ProjectAutomation[];
+  has_next: boolean;
+  page: number;
+};
+
+export type GetProjectAutomationResponse = {
+  project_automation: ProjectAutomation;
+  tasks: ProjectAutomationTask[];
+};
+
+export type CreateProjectAutomationResponse = {
+  message: string;
+};
+
+export type TriggerProjectAutomationResponse = {
+  message: string;
+};
+
+export const getProjectAutomations =
+  (apiClient: AxiosInstance) =>
+  async (
+    params: GetProjectAutomationsParams = {},
+  ): Promise<GetProjectAutomationsResponse> => {
+    const response = await apiClient.get(`/api/v1/project-automations`, {
+      params,
+      withCredentials: true,
+    });
+
+    return response.data.data;
+  };
+
+export const getProjectAutomation =
+  (apiClient: AxiosInstance) =>
+  async (
+    id: ProjectAutomation["id"],
+  ): Promise<GetProjectAutomationResponse> => {
+    const response = await apiClient.get(`/api/v1/project-automations/${id}`, {
+      withCredentials: true,
+    });
+
+    return response.data.data;
+  };
+
+export const createProjectAutomation =
+  (apiClient: AxiosInstance) =>
+  async (
+    input: CreateProjectAutomationInput,
+  ): Promise<CreateProjectAutomationResponse> => {
+    const response = await apiClient.post(
+      `/api/v1/project-automations`,
+      input,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
+export const triggerProjectAutomation =
+  (apiClient: AxiosInstance) =>
+  async (
+    id: ProjectAutomation["id"],
+  ): Promise<TriggerProjectAutomationResponse> => {
+    const response = await apiClient.post(
+      `/api/v1/project-automations/${id}/trigger`,
+      undefined,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
