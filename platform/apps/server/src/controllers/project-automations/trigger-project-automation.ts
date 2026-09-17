@@ -7,6 +7,7 @@ import {
   db,
   eq,
   projectAutomations,
+  projectAutomationRuns,
   projectAutomationTasks,
   projectSessions,
   projectSessionTasks,
@@ -65,6 +66,7 @@ export const triggerProjectAutomationManually = catchAsync(
           started_at: new Date(),
           user_id: user.id,
           overview: "",
+          category: "auto",
         })
         .returning();
 
@@ -82,6 +84,17 @@ export const triggerProjectAutomationManually = catchAsync(
           };
         }),
       );
+
+      await tx.insert(projectAutomationRuns).values({
+        project_automation_id: projectAutomation.id,
+        project_session_id: projectSession.id,
+      });
+
+      await tx
+        .update(projectAutomations)
+        .set({ last_run_at: new Date(), updated_at: new Date() })
+        .where(eq(projectAutomations.id, projectAutomation.id));
+
       return projectSession;
     });
 

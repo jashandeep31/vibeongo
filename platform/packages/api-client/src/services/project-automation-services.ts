@@ -1,4 +1,9 @@
-import { projectAutomations, projectAutomationTasks } from "@repo/db";
+import {
+  projectAutomationRuns,
+  projectAutomations,
+  projectAutomationTasks,
+  projectSessions,
+} from "@repo/db";
 import {
   projectAutomationSchema,
   projectAutomationTaskSchema,
@@ -8,6 +13,9 @@ import type { AxiosInstance } from "axios";
 
 export type ProjectAutomation = typeof projectAutomations.$inferSelect;
 export type ProjectAutomationTask = typeof projectAutomationTasks.$inferSelect;
+export type ProjectAutomationRun = typeof projectAutomationRuns.$inferSelect & {
+  project_session: typeof projectSessions.$inferSelect | null;
+};
 
 export type CreateProjectAutomationInput = z.infer<
   typeof projectAutomationSchema
@@ -29,6 +37,29 @@ export type GetProjectAutomationsResponse = {
 export type GetProjectAutomationResponse = {
   project_automation: ProjectAutomation;
   tasks: ProjectAutomationTask[];
+};
+
+export type GetProjectAutomationRunsParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetProjectAutomationRunsResponse = {
+  runs: ProjectAutomationRun[];
+  has_next: boolean;
+  page: number;
+};
+
+export type RateProjectAutomationRunInput = {
+  automationId: ProjectAutomation["id"];
+  runId: ProjectAutomationRun["id"];
+  rating: number;
+  feedback?: string;
+};
+
+export type RateProjectAutomationRunResponse = {
+  message: string;
+  data: typeof projectAutomationRuns.$inferSelect;
 };
 
 export type CreateProjectAutomationResponse = {
@@ -62,6 +93,37 @@ export const getProjectAutomation =
     });
 
     return response.data.data;
+  };
+
+export const getProjectAutomationRuns =
+  (apiClient: AxiosInstance) =>
+  async (
+    id: ProjectAutomation["id"],
+    params: GetProjectAutomationRunsParams = {},
+  ): Promise<GetProjectAutomationRunsResponse> => {
+    const response = await apiClient.get(
+      `/api/v1/project-automations/${id}/runs`,
+      { params, withCredentials: true },
+    );
+
+    return response.data.data;
+  };
+
+export const rateProjectAutomationRun =
+  (apiClient: AxiosInstance) =>
+  async ({
+    automationId,
+    runId,
+    rating,
+    feedback,
+  }: RateProjectAutomationRunInput): Promise<RateProjectAutomationRunResponse> => {
+    const response = await apiClient.patch(
+      `/api/v1/project-automations/${automationId}/runs/${runId}/rating`,
+      { rating, feedback },
+      { withCredentials: true },
+    );
+
+    return response.data;
   };
 
 export const createProjectAutomation =

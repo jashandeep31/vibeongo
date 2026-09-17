@@ -1,7 +1,10 @@
 "use client";
 
+import { NoAutomationRuns } from "@/components/no-automation-runs";
+import { AutomationRunRating } from "@/components/automation-run-rating";
 import {
   useGetProjectAutomation,
+  useGetProjectAutomationRuns,
   useTriggerProjectAutomation,
 } from "@repo/api-hooks";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
@@ -11,14 +14,16 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import axios from "axios";
 import {
   AlertCircle,
-  ArrowLeft,
   CalendarClock,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
   FolderCode,
   Loader2,
   Play,
 } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
 import { toast } from "sonner";
 
 const scheduleLabels: Record<string, string> = {
@@ -42,7 +47,12 @@ export default function AutomationDetails({
 }: {
   automationId: string;
 }) {
+  const [runsPage, setRunsPage] = useState(1);
   const automationQuery = useGetProjectAutomation(automationId);
+  const runsQuery = useGetProjectAutomationRuns(automationId, {
+    page: runsPage,
+    limit: 10,
+  });
   const triggerAutomation = useTriggerProjectAutomation();
 
   const runAutomation = () => {
@@ -64,10 +74,9 @@ export default function AutomationDetails({
   if (automationQuery.isLoading) {
     return (
       <div className="mx-auto w-full max-w-6xl space-y-6 px-5 py-8 sm:px-8 sm:py-12">
-        <Skeleton className="h-8 w-40" />
         <Skeleton className="h-10 w-72" />
-        <Skeleton className="h-40 w-full" />
-        <Skeleton className="h-64 w-full" />
+        <Skeleton className="h-20 w-full" />
+        <Skeleton className="h-48 w-full" />
       </div>
     );
   }
@@ -75,12 +84,6 @@ export default function AutomationDetails({
   if (automationQuery.isError || !automationQuery.data) {
     return (
       <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-        <Button asChild variant="ghost" size="sm" className="mb-6 -ml-2">
-          <Link href="/automations">
-            <ArrowLeft />
-            Back to automations
-          </Link>
-        </Button>
         <Alert variant="destructive">
           <AlertCircle />
           <AlertTitle>Automation could not be loaded</AlertTitle>
@@ -93,23 +96,18 @@ export default function AutomationDetails({
   }
 
   const { project_automation: automation, tasks } = automationQuery.data;
+  const runs = runsQuery.data?.runs ?? [];
+  const currentRunsPage = runsQuery.data?.page ?? runsPage;
   const schedule = automation.cron_expression
     ? (scheduleLabels[automation.cron_expression] ?? automation.cron_expression)
     : "Manual only";
 
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
-      <Button asChild variant="ghost" size="sm" className="-ml-2">
-        <Link href="/automations">
-          <ArrowLeft />
-          Back to automations
-        </Link>
-      </Button>
-
-      <header className="mt-6 flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+      <header className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-3">
-            <h1 className="text-3xl font-semibold tracking-tight">
+            <h1 className="text-2xl font-semibold tracking-tight">
               {automation.name}
             </h1>
             <Badge variant={automation.enabled ? "secondary" : "outline"}>
@@ -134,47 +132,109 @@ export default function AutomationDetails({
         </Button>
       </header>
 
-      <section className="mt-10 border-y py-7">
-        <h2 className="text-sm font-semibold">Details</h2>
-        <div className="mt-5 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-          <div>
-            <p className="text-muted-foreground flex items-center gap-2 text-xs">
-              <CalendarClock className="size-4" /> Schedule
+      <div className="text-muted-foreground mt-7 flex flex-wrap gap-x-6 gap-y-2 pb-7 text-sm">
+        <span className="flex items-center gap-2">
+          <CalendarClock className="size-4" /> {schedule}
+        </span>
+        <span className="flex items-center gap-2">
+          <Clock3 className="size-4" /> {automation.timezone || "—"}
+        </span>
+        <span>Created {formatDate(automation.created_at)}</span>
+        <span>
+          {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
+        </span>
+      </div>
+
+      <section className="py-7">
+        <h2 className="text-sm font-semibold">Run history</h2>
+
+        <div className="mt-4">
+          {runsQuery.isLoading ? (
+            <div className="space-y-3 py-5">
+              {Array.from({ length: 3 }, (_, index) => (
+                <Skeleton key={index} className="h-10 w-full" />
+              ))}
+            </div>
+          ) : runsQuery.isError ? (
+            <p className="text-destructive py-6 text-center text-sm">
+              Run history could not be loaded.
             </p>
-            <p className="mt-2 text-sm font-medium">{schedule}</p>
-          </div>
-          <div>
-            <p className="text-muted-foreground flex items-center gap-2 text-xs">
-              <Clock3 className="size-4" /> Timezone
-            </p>
-            <p className="mt-2 text-sm font-medium">
-              {automation.timezone || "—"}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Created</p>
-            <p className="mt-2 text-sm font-medium">
-              {formatDate(automation.created_at)}
-            </p>
-          </div>
-          <div>
-            <p className="text-muted-foreground text-xs">Tasks</p>
-            <p className="mt-2 text-sm font-medium">{tasks.length}</p>
-          </div>
+          ) : runs.length === 0 ? (
+            <NoAutomationRuns />
+          ) : (
+            <div className="space-y-3">
+              {runs.map((run) => (
+                <div
+                  key={run.id}
+                  className="flex flex-col gap-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                >
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">
+                      {run.project_session?.name ?? "Session removed"}
+                    </p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      {formatDate(run.created_at)}
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <AutomationRunRating
+                      automationId={automation.id}
+                      runId={run.id}
+                      currentRating={run.user_rating}
+                      currentFeedback={run.user_feedback}
+                    />
+                    {run.project_session ? (
+                      <Button asChild variant="ghost" size="sm">
+                        <Link
+                          href={`/projects/${automation.project_id}/sessions/${run.project_session.id}`}
+                        >
+                          View session
+                        </Link>
+                      </Button>
+                    ) : null}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+
+        {runs.length > 0 &&
+        (currentRunsPage > 1 || Boolean(runsQuery.data?.has_next)) ? (
+          <div className="mt-4 flex items-center justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Previous runs page"
+              disabled={runsQuery.isFetching || currentRunsPage <= 1}
+              onClick={() => setRunsPage(Math.max(1, currentRunsPage - 1))}
+            >
+              <ChevronLeft />
+            </Button>
+            <span className="text-muted-foreground min-w-16 text-center text-sm">
+              Page {currentRunsPage}
+            </span>
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Next runs page"
+              disabled={runsQuery.isFetching || !runsQuery.data?.has_next}
+              onClick={() => setRunsPage(currentRunsPage + 1)}
+            >
+              <ChevronRight />
+            </Button>
+          </div>
+        ) : null}
       </section>
 
-      <section className="py-8">
-        <div>
-          <h2 className="text-sm font-semibold">Tasks</h2>
-          <p className="text-muted-foreground mt-1 text-sm">
-            Tasks run in the order shown below.
-          </p>
-        </div>
+      <section className="py-7">
+        <h2 className="text-sm font-semibold">Tasks</h2>
 
-        <div className="mt-5 space-y-4">
+        <div className="mt-4 space-y-7">
           {tasks.map((task, index) => (
-            <article key={task.id} className="rounded-xl border p-5 sm:p-6">
+            <article key={task.id}>
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <div className="flex items-center gap-3">
                   <span className="bg-muted flex size-7 items-center justify-center rounded-full text-xs font-semibold">
@@ -191,11 +251,11 @@ export default function AutomationDetails({
                 ) : null}
               </div>
 
-              <div className="mt-5 flex items-center gap-2 text-sm">
+              <div className="mt-4 flex items-center gap-2 text-sm">
                 <FolderCode className="text-muted-foreground size-4" />
                 <code>{task.path_from_code}</code>
               </div>
-              <p className="mt-4 text-sm leading-6 whitespace-pre-wrap">
+              <p className="mt-3 text-sm leading-6 whitespace-pre-wrap">
                 {task.task_prompt}
               </p>
             </article>

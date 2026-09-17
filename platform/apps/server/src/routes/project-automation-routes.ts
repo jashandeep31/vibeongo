@@ -6,6 +6,10 @@ import {
   getProjectAutomations,
 } from "../controllers/project-automations/manage-project-automation.js";
 import { triggerProjectAutomationManually } from "../controllers/project-automations/trigger-project-automation.js";
+import {
+  getProjectAutomationRuns,
+  rateProjectAutomationRun,
+} from "../controllers/project-automations/project-automation-runs.js";
 
 const routes: Router = Router();
 
@@ -15,6 +19,14 @@ routes
   .post(checkAuthorization(["all"]), createProjectAutomation);
 
 routes.route("/:id").get(checkAuthorization(["all"]), getProjectAutomation);
+
+routes
+  .route("/:id/runs")
+  .get(checkAuthorization(["all"]), getProjectAutomationRuns);
+
+routes
+  .route("/:id/runs/:runId/rating")
+  .patch(checkAuthorization(["all"]), rateProjectAutomationRun);
 
 routes
   .route("/:id/trigger")

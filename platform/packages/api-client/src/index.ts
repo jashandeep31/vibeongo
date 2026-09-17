@@ -72,10 +72,15 @@ export type {
   CreateProjectAutomationInput,
   CreateProjectAutomationResponse,
   GetProjectAutomationResponse,
+  GetProjectAutomationRunsParams,
+  GetProjectAutomationRunsResponse,
   GetProjectAutomationsParams,
   GetProjectAutomationsResponse,
   ProjectAutomation,
+  ProjectAutomationRun,
   ProjectAutomationTask,
+  RateProjectAutomationRunInput,
+  RateProjectAutomationRunResponse,
   TriggerProjectAutomationResponse,
 } from "./services/project-automation-services.js";
 export type {
