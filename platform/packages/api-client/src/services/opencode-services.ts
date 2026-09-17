@@ -1474,10 +1474,11 @@ export async function steerOpencodeQueuedPrompt(
   password?: string,
 ) {
   const response = await fetch(
-    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(inboxId)}/steer`,
+    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(inboxId)}`,
     {
-      method: "POST",
+      method: "PATCH",
       headers: getOpencodeHeaders(accessToken, password),
+      body: JSON.stringify({ delivery: "steer" }),
     },
   );
   if (!response.ok) {
@@ -1570,7 +1571,9 @@ function normalizeQueuedPrompt(value: unknown): OpencodeQueuedPrompt[] {
     item.delivery !== "queue" ||
     typeof item.id !== "string" ||
     typeof item.sessionID !== "string" ||
-    typeof item.timeCreated !== "number" ||
+    !item.time ||
+    typeof item.time !== "object" ||
+    typeof (item.time as Record<string, unknown>).created !== "number" ||
     !payload ||
     typeof payload !== "object" ||
     typeof (payload as Record<string, unknown>).text !== "string"
@@ -1584,7 +1587,7 @@ function normalizeQueuedPrompt(value: unknown): OpencodeQueuedPrompt[] {
       sessionID: item.sessionID,
       prompt: payload as SessionInputAdmitted["prompt"],
       delivery: "queue",
-      timeCreated: item.timeCreated,
+      timeCreated: (item.time as { created: number }).created,
     },
   ];
 }
@@ -1915,9 +1918,6 @@ function normalizeV2Session(session: SessionInfo): Session {
     id: session.id,
     slug: session.id,
     projectID: session.projectID,
-    ...(session.location.workspaceID
-      ? { workspaceID: session.location.workspaceID }
-      : {}),
     directory: session.location.directory,
     ...(session.parentID ? { parentID: session.parentID } : {}),
     cost: session.cost,
