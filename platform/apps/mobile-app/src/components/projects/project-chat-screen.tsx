@@ -1423,7 +1423,25 @@ const ChatTimeline = memo(function ChatTimeline({
   }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
   const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
   const latestTurnId = turns.at(-1)?.id;
-  const reversedTurns = useMemo(() => [...turns].reverse(), [turns]);
+  const listRef = useRef<FlatList<(typeof turns)[number]>>(null);
+  const previousLatestTurnIdRef = useRef<string | undefined>(undefined);
+  const pendingTimelineScrollRef = useRef<{ animated: boolean } | undefined>({
+    animated: false,
+  });
+  const completePendingTimelineScroll = useCallback(() => {
+    const pending = pendingTimelineScrollRef.current;
+    if (!pending) return;
+    pendingTimelineScrollRef.current = undefined;
+    listRef.current?.scrollToEnd({ animated: pending.animated });
+  }, []);
+  useEffect(() => {
+    if (!latestTurnId || previousLatestTurnIdRef.current === latestTurnId)
+      return;
+    pendingTimelineScrollRef.current = {
+      animated: previousLatestTurnIdRef.current !== undefined,
+    };
+    previousLatestTurnIdRef.current = latestTurnId;
+  }, [latestTurnId]);
   const renderTurn = useCallback(
     ({ item: turn }: { item: (typeof turns)[number] }) => (
       <OpencodeChatTurn
@@ -1450,12 +1468,12 @@ const ChatTimeline = memo(function ChatTimeline({
         value={sessionQuery.isStreaming || isReverting || isRestoring}
       >
         <FlatList
-          inverted
+          ref={listRef}
           contentContainerStyle={[
             styles.messages,
-            { paddingTop: 150, paddingBottom: topInset },
+            { paddingTop: topInset, paddingBottom: 150 },
           ]}
-          data={reversedTurns}
+          data={turns}
           initialNumToRender={6}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
@@ -1470,7 +1488,7 @@ const ChatTimeline = memo(function ChatTimeline({
               </ThemedText>
             ) : null
           }
-          ListFooterComponent={
+          ListHeaderComponent={
             sessionQuery.hasOlderMessages ? (
               <Pressable
                 accessibilityLabel="Load earlier messages"
@@ -1508,6 +1526,7 @@ const ChatTimeline = memo(function ChatTimeline({
             ) : null
           }
           maxToRenderPerBatch={5}
+          onContentSizeChange={completePendingTimelineScroll}
           removeClippedSubviews={Platform.OS === "android"}
           renderItem={renderTurn}
           showsVerticalScrollIndicator={false}
