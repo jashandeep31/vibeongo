@@ -1,8 +1,23 @@
 import * as Clipboard from "expo-clipboard";
 import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
-import { createContext, memo, useContext, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, View } from "react-native";
+import {
+  createContext,
+  memo,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
+import {
+  ActivityIndicator,
+  Animated,
+  Dimensions,
+  Easing,
+  Pressable,
+  StyleSheet,
+  View,
+} from "react-native";
 
 import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
@@ -24,13 +39,16 @@ function OpencodeChatTurnComponent({
   isStreaming,
   isReverting,
   onRevert,
+  reserveBottomSpace = false,
 }: {
   item: ChatTurn;
   isStreaming: boolean;
   isReverting: boolean;
   onRevert: (id: string) => void;
+  reserveBottomSpace?: boolean;
 }) {
   const theme = useTheme();
+  const reservedHeight = useRef(new Animated.Value(0)).current;
   const [copied, setCopied] = useState<"question" | "answer" | null>(null);
   const answer = item.content
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
@@ -41,6 +59,19 @@ function OpencodeChatTurnComponent({
     (content) => content.type === "tools" && content.tools.every(isEditTool),
   )?.id;
 
+  useEffect(() => {
+    const animation = Animated.timing(reservedHeight, {
+      duration: 280,
+      easing: Easing.out(Easing.cubic),
+      toValue: reserveBottomSpace
+        ? Dimensions.get("window").height * 0.6
+        : 0,
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [reserveBottomSpace, reservedHeight]);
+
   const copy = async (kind: "question" | "answer", value: string) => {
     await Clipboard.setStringAsync(value);
     setCopied(kind);
@@ -48,7 +79,7 @@ function OpencodeChatTurnComponent({
   };
 
   return (
-    <View style={styles.turn}>
+    <Animated.View style={[styles.turn, { minHeight: reservedHeight }]}>
       {item.question || item.images.length > 0 ? (
         <View style={styles.questionGroup}>
           <View
@@ -147,15 +178,10 @@ function OpencodeChatTurnComponent({
         ) : null}
 
         {isStreaming ? (
-          <View style={styles.thinking}>
-            <ActivityIndicator size="small" />
-            <ThemedText themeColor="textSecondary">
-              Vibeongo is working…
-            </ThemedText>
-          </View>
+          <PulsingStatusText>Vibeongo is working…</PulsingStatusText>
         ) : null}
       </View>
-    </View>
+    </Animated.View>
   );
 }
 
@@ -166,6 +192,7 @@ export const OpencodeChatTurn = memo(
   (previous, next) =>
     previous.isStreaming === next.isStreaming &&
     previous.isReverting === next.isReverting &&
+    previous.reserveBottomSpace === next.reserveBottomSpace &&
     previous.onRevert === next.onRevert &&
     previous.item === next.item,
 );
@@ -221,10 +248,7 @@ const ChatContentBlock = memo(
       );
     }
     return isStreaming && content.active ? (
-      <View style={styles.thinking}>
-        <ActivityIndicator size="small" />
-        <ThemedText themeColor="textSecondary">Thinking…</ThemedText>
-      </View>
+      <PulsingStatusText>Thinking…</PulsingStatusText>
     ) : null;
   },
   (previous, next) =>
@@ -233,6 +257,43 @@ const ChatContentBlock = memo(
     (next.content.type !== "thinking" ||
       previous.isStreaming === next.isStreaming),
 );
+
+function PulsingStatusText({ children }: { children: string }) {
+  const theme = useTheme();
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(opacity, {
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          toValue: 0.45,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          duration: 900,
+          easing: Easing.inOut(Easing.ease),
+          toValue: 1,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [opacity]);
+
+  return (
+    <Animated.Text
+      style={[
+        styles.thinking,
+        { color: theme.textSecondary, opacity },
+      ]}
+    >
+      {children}
+    </Animated.Text>
+  );
+}
 
 function RevertButton({
   id,
@@ -340,9 +401,9 @@ const styles = StyleSheet.create({
   questionText: { fontSize: 15, lineHeight: 22 },
   response: { gap: 7 },
   thinking: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
+    fontSize: 13,
+    fontWeight: "500",
+    lineHeight: 20,
     marginTop: 4,
   },
   turn: { gap: 18 },

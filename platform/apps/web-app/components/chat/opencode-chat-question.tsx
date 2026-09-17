@@ -9,7 +9,6 @@ import {
   type ToolPart,
 } from "@repo/api-client";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
-import { cn } from "@repo/ui/lib/utils";
 import {
   Check,
   CircleAlert,
@@ -18,7 +17,7 @@ import {
   Sparkles,
   Undo2,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export type OpencodeChatTurn = {
   id: string;
@@ -60,6 +59,10 @@ export function OpencodeChatQuestion({
 }) {
   const [isCopied, setIsCopied] = useState(false);
   const [isQuestionCopied, setIsQuestionCopied] = useState(false);
+  const [reserveSpace, setReserveSpace] = useState(false);
+  useEffect(() => {
+    setReserveSpace(reserveBottomSpace);
+  }, [reserveBottomSpace]);
   const answer = item.content
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
@@ -73,10 +76,8 @@ export function OpencodeChatQuestion({
 
   return (
     <div
-      className={cn(
-        "flex flex-col gap-8",
-        reserveBottomSpace && "min-h-[42dvh] md:min-h-[60dvh]",
-      )}
+      className="flex flex-col gap-8 transition-[min-height] duration-[280ms] ease-out"
+      style={{ minHeight: reserveSpace ? "70dvh" : "0dvh" }}
     >
       {item.question || item.images.length > 0 ? (
         <div className="group/question flex flex-col items-end gap-2">

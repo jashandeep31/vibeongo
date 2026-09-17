@@ -1422,6 +1422,7 @@ const ChatTimeline = memo(function ChatTimeline({
     );
   }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
   const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
+  const latestTurnId = turns.at(-1)?.id;
   const reversedTurns = useMemo(() => [...turns].reverse(), [turns]);
   const renderTurn = useCallback(
     ({ item: turn }: { item: (typeof turns)[number] }) => (
@@ -1430,9 +1431,17 @@ const ChatTimeline = memo(function ChatTimeline({
         isStreaming={turn.id === activeTurnId}
         item={turn}
         onRevert={onRevert}
+        reserveBottomSpace={turn.id === latestTurnId && !activeQuestion}
       />
     ),
-    [activeTurnId, isReverting, onRevert, revertingId],
+    [
+      activeQuestion,
+      activeTurnId,
+      isReverting,
+      latestTurnId,
+      onRevert,
+      revertingId,
+    ],
   );
   if (!data) return null;
   return (
@@ -1498,9 +1507,6 @@ const ChatTimeline = memo(function ChatTimeline({
               </Pressable>
             ) : null
           }
-          maintainVisibleContentPosition={{
-            minIndexForVisible: 0,
-          }}
           maxToRenderPerBatch={5}
           removeClippedSubviews={Platform.OS === "android"}
           renderItem={renderTurn}
