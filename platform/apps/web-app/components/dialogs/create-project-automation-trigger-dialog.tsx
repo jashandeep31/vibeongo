@@ -30,6 +30,8 @@ type CreatedTrigger = {
   webhook_url: string;
 };
 
+type AutomationProvider = "sentry" | "custom";
+
 export function CreateProjectAutomationTriggerDialog({
   automationId,
   children,
@@ -39,7 +41,7 @@ export function CreateProjectAutomationTriggerDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
-  const [provider, setProvider] = useState<"sentry">("sentry");
+  const [provider, setProvider] = useState<AutomationProvider>("sentry");
   const [createdTrigger, setCreatedTrigger] = useState<CreatedTrigger | null>(
     null,
   );
@@ -180,7 +182,9 @@ export function CreateProjectAutomationTriggerDialog({
               <Select
                 value={provider}
                 onValueChange={(value) => {
-                  if (value === "sentry") setProvider(value);
+                  if (value === "sentry" || value === "custom") {
+                    setProvider(value);
+                  }
                 }}
                 disabled={createTrigger.isPending}
               >
@@ -189,6 +193,7 @@ export function CreateProjectAutomationTriggerDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="sentry">Sentry</SelectItem>
+                  <SelectItem value="custom">Custom webhook</SelectItem>
                 </SelectContent>
               </Select>
             </div>

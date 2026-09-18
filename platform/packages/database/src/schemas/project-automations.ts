@@ -56,7 +56,7 @@ export const projectAutomationRunSource = pgEnum(
 
 export const projectAutomationTriggerProviders = pgEnum(
   "project_automation_trigger_providers",
-  ["sentry"],
+  ["sentry", "custom"],
 );
 
 export const projectAutomationRuns = pgTable(
@@ -93,7 +93,9 @@ export const projectAutomationRuns = pgTable(
   },
   (table) => [
     check("rating_range_check", sql`${table.user_rating} BETWEEN 1 AND 5`),
-    unique("project_automation_runs_trigger_project_request_unique_id_unique").on(
+    unique(
+      "project_automation_runs_trigger_project_request_unique_id_unique",
+    ).on(
       table.project_automation_trigger_id,
       table.provider,
       table.project_request_unique_id,

@@ -11,6 +11,7 @@ import { useState } from "react";
 
 const providerLabels: Record<string, string> = {
   sentry: "Sentry",
+  custom: "Custom webhook",
 };
 
 const formatDate = (value: Date | string | null) => {

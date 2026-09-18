@@ -102,7 +102,7 @@ export type TriggerProjectAutomationResponse = {
 export type CreateProjectAutomationTriggerInput = {
   automationId: ProjectAutomation["id"];
   name: string;
-  provider: "sentry";
+  provider: "sentry" | "custom";
 };
 
 export type CreateProjectAutomationTriggerResponse = {

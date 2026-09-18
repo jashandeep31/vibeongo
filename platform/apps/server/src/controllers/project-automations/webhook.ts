@@ -61,6 +61,9 @@ export const projectAutomationWebhook = catchAsync(
       case "sentry":
         processedWebhook = processSentryWebhook(req.body);
         break;
+      case "custom":
+        processedWebhook = processCustomWebhook(req.body);
+        break;
       default:
         throw new AppError(
           `Unsupported project automation provider: ${projectAutomationTrigger.provider}`,
@@ -190,6 +193,33 @@ function processSentryWebhook(body: unknown): ProcessedWebhookPayload {
 
   if (!eventId) {
     throw new AppError("Sentry webhook event ID is required", 400);
+  }
+
+  return {
+    projectRequestUniqueId: eventId.trim(),
+    input: typeof body === "string" ? body : JSON.stringify(body ?? {}),
+  };
+}
+
+function processCustomWebhook(body: unknown): ProcessedWebhookPayload {
+  let payload: unknown = body;
+
+  if (typeof payload === "string") {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      throw new AppError("Invalid custom webhook payload", 400);
+    }
+  }
+
+  const payloadRecord =
+    payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>)
+      : null;
+  const eventId = payloadRecord?.event_id;
+
+  if (typeof eventId !== "string" || !eventId.trim()) {
+    throw new AppError("Custom webhook event ID is required", 400);
   }
 
   return {
