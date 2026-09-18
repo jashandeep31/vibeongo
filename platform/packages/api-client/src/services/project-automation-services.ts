@@ -2,6 +2,7 @@ import {
   projectAutomationRuns,
   projectAutomations,
   projectAutomationTasks,
+  projectAutomationTriggers,
   projectSessions,
   instances,
 } from "@repo/db";
@@ -14,6 +15,7 @@ import type { AxiosInstance } from "axios";
 
 export type ProjectAutomation = typeof projectAutomations.$inferSelect;
 export type ProjectAutomationTask = typeof projectAutomationTasks.$inferSelect;
+export type ProjectAutomationTrigger = typeof projectAutomationTriggers.$inferSelect;
 export type ProjectAutomationRun = typeof projectAutomationRuns.$inferSelect & {
   project_session:
     | (typeof projectSessions.$inferSelect & {
@@ -93,6 +95,55 @@ export type DeleteProjectAutomationResponse = {
 
 export type TriggerProjectAutomationResponse = {
   message: string;
+};
+
+export type CreateProjectAutomationTriggerInput = {
+  automationId: ProjectAutomation["id"];
+  name: string;
+};
+
+export type CreateProjectAutomationTriggerResponse = {
+  message: string;
+  data: {
+    trigger: Pick<
+      ProjectAutomationTrigger,
+      "id" | "name" | "project_automation_id" | "created_at"
+    >;
+    secret: string;
+    webhook_url: string;
+  };
+};
+
+export type GetProjectAutomationTriggersResponse = {
+  triggers: Array<
+    Pick<
+      ProjectAutomationTrigger,
+      | "id"
+      | "name"
+      | "project_automation_id"
+      | "lasted_triggered_at"
+      | "created_at"
+      | "updated_at"
+    >
+    & { webhook_url: string }
+  >;
+};
+
+export type RotateProjectAutomationTriggerTokenInput = {
+  automationId: ProjectAutomation["id"];
+  triggerId: ProjectAutomationTrigger["id"];
+};
+
+export type RotateProjectAutomationTriggerTokenResponse = {
+  message: string;
+  data: {
+    trigger: Pick<
+      ProjectAutomationTrigger,
+      "id" | "name" | "project_automation_id" | "updated_at"
+    >;
+    secret: string;
+    webhook_url: string;
+  };
 };
 
 export const getProjectAutomations =
@@ -200,6 +251,49 @@ export const triggerProjectAutomation =
   ): Promise<TriggerProjectAutomationResponse> => {
     const response = await apiClient.post(
       `/api/v1/project-automations/${id}/trigger`,
+      undefined,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
+export const createProjectAutomationTrigger =
+  (apiClient: AxiosInstance) =>
+  async ({
+    automationId,
+    name,
+  }: CreateProjectAutomationTriggerInput): Promise<CreateProjectAutomationTriggerResponse> => {
+    const response = await apiClient.post(
+      `/api/v1/project-automations/${automationId}/triggers`,
+      { name },
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
+export const getProjectAutomationTriggers =
+  (apiClient: AxiosInstance) =>
+  async (
+    id: ProjectAutomation["id"],
+  ): Promise<GetProjectAutomationTriggersResponse> => {
+    const response = await apiClient.get(
+      `/api/v1/project-automations/${id}/triggers`,
+      { withCredentials: true },
+    );
+
+    return response.data.data;
+  };
+
+export const rotateProjectAutomationTriggerToken =
+  (apiClient: AxiosInstance) =>
+  async ({
+    automationId,
+    triggerId,
+  }: RotateProjectAutomationTriggerTokenInput): Promise<RotateProjectAutomationTriggerTokenResponse> => {
+    const response = await apiClient.post(
+      `/api/v1/project-automations/${automationId}/triggers/${triggerId}/rotate-token`,
       undefined,
       { withCredentials: true },
     );

@@ -47,6 +47,19 @@ export const useGetProjectAutomationRuns = (
   });
 };
 
+export const useGetProjectAutomationTriggers = (
+  id: string | null,
+  enabled = true,
+) => {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ["project-automation-triggers", id!],
+    queryFn: () => client.projectAutomations.getProjectAutomationTriggers(id!),
+    enabled: enabled && Boolean(id),
+  });
+};
+
 export const useCreateProjectAutomation = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();
@@ -119,6 +132,44 @@ export const useTriggerProjectAutomation = () => {
           queryKey: ["projects", "with-sessions"],
         }),
         queryClient.invalidateQueries({ queryKey: ["instances"] }),
+      ]);
+    },
+  });
+};
+
+export const useCreateProjectAutomationTrigger = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.projectAutomations.createProjectAutomationTrigger,
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation", variables.automationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-automations"],
+        }),
+      ]);
+    },
+  });
+};
+
+export const useRotateProjectAutomationTriggerToken = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.projectAutomations.rotateProjectAutomationTriggerToken,
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation-triggers", variables.automationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation", variables.automationId],
+        }),
       ]);
     },
   });

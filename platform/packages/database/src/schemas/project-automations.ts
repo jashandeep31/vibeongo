@@ -95,6 +95,7 @@ export const projectAutomationTriggers = pgTable(
   "project_automation_triggers",
   {
     id: uuid().primaryKey().defaultRandom(),
+    name: varchar().notNull(),
     project_automation_id: uuid().references(() => projectAutomations.id, {
       onDelete: "cascade",
     }),

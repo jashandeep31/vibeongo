@@ -1,14 +1,19 @@
+import { randomBytes } from "node:crypto";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
+import { env } from "../../lib/env.js";
+import { hashToSHA256 } from "../../lib/sha256.js";
 import { Request, Response } from "express";
 import { z } from "@repo/shared";
 import {
   and,
   db,
   eq,
+  isNull,
   projectAutomations,
   projectAutomationRuns,
   projectAutomationTasks,
+  projectAutomationTriggers,
   projectSessions,
   projectSessionTasks,
 } from "@repo/db";
@@ -111,5 +116,65 @@ export const triggerProjectAutomationManually = catchAsync(
     });
 
     res.status(200).json({ message: "Project automation triggered" });
+  },
+);
+
+export const rotateProjectAutomationTriggerToken = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 401);
+
+    const { id: projectAutomationId, triggerId } = z
+      .object({ id: z.uuid(), triggerId: z.uuid() })
+      .parse(req.params);
+
+    const [trigger] = await db
+      .select({
+        id: projectAutomationTriggers.id,
+        name: projectAutomationTriggers.name,
+        project_automation_id: projectAutomationTriggers.project_automation_id,
+      })
+      .from(projectAutomationTriggers)
+      .innerJoin(
+        projectAutomations,
+        eq(projectAutomations.id, projectAutomationTriggers.project_automation_id),
+      )
+      .where(
+        and(
+          eq(projectAutomationTriggers.id, triggerId),
+          eq(projectAutomationTriggers.project_automation_id, projectAutomationId),
+          eq(projectAutomations.user_id, user.id),
+          isNull(projectAutomations.deleted_at),
+        ),
+      )
+      .limit(1);
+
+    if (!trigger) throw new AppError("Project automation trigger not found", 404);
+
+    const secret = `vgo_${randomBytes(32).toString("base64url")}`;
+    const webhookSecret = await hashToSHA256(secret);
+
+    const [updatedTrigger] = await db
+      .update(projectAutomationTriggers)
+      .set({ webhook_secret: webhookSecret, updated_at: new Date() })
+      .where(eq(projectAutomationTriggers.id, trigger.id))
+      .returning({
+        id: projectAutomationTriggers.id,
+        name: projectAutomationTriggers.name,
+        project_automation_id: projectAutomationTriggers.project_automation_id,
+        updated_at: projectAutomationTriggers.updated_at,
+      });
+
+    if (!updatedTrigger)
+      throw new AppError("Failed to rotate project automation trigger token", 500);
+
+    res.status(200).json({
+      message: "Project automation trigger token rotated successfully",
+      data: {
+        trigger: updatedTrigger,
+        secret,
+        webhook_url: `${env.BACKEND_URL.replace(/\/+$/, "")}/api/v1/webhook/project-automation/${updatedTrigger.id}`,
+      },
+    });
   },
 );

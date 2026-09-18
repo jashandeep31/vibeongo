@@ -3,10 +3,13 @@
 import { NoAutomationRuns } from "@/components/no-automation-runs";
 import { AutomationRunRating } from "@/components/automation-run-rating";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { CreateProjectAutomationTriggerDialog } from "@/components/dialogs/create-project-automation-trigger-dialog";
+import { RotateProjectAutomationTriggerDialog } from "@/components/dialogs/rotate-project-automation-trigger-dialog";
 import {
   useDeleteProjectAutomation,
   useGetProjectAutomation,
   useGetProjectAutomationRuns,
+  useGetProjectAutomationTriggers,
   useTriggerProjectAutomation,
 } from "@repo/api-hooks";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
@@ -19,11 +22,14 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
+  Copy,
   FolderCode,
   Loader2,
   Pencil,
   Play,
+  RefreshCw,
   Trash2,
+  Webhook,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -58,6 +64,7 @@ export default function AutomationDetails({
     page: runsPage,
     limit: 10,
   });
+  const triggersQuery = useGetProjectAutomationTriggers(automationId);
   const triggerAutomation = useTriggerProjectAutomation();
   const deleteAutomation = useDeleteProjectAutomation();
 
@@ -122,6 +129,7 @@ export default function AutomationDetails({
 
   const { project_automation: automation, tasks } = automationQuery.data;
   const runs = runsQuery.data?.runs ?? [];
+  const triggers = triggersQuery.data?.triggers ?? [];
   const currentRunsPage = runsQuery.data?.page ?? runsPage;
   const schedule = automation.cron_expression
     ? (scheduleLabels[automation.cron_expression] ?? automation.cron_expression)
@@ -195,6 +203,81 @@ export default function AutomationDetails({
           {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
         </span>
       </div>
+
+      <section className="border-border border-b py-7">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-semibold">Integrations</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              Webhooks that can trigger this automation.
+            </p>
+          </div>
+          <CreateProjectAutomationTriggerDialog automationId={automation.id}>
+            <Button type="button" variant="outline" size="sm">
+              <Webhook /> Add integration
+            </Button>
+          </CreateProjectAutomationTriggerDialog>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {triggersQuery.isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-20 w-full" />
+              <Skeleton className="h-20 w-full" />
+            </div>
+          ) : triggersQuery.isError ? (
+            <p className="text-destructive text-sm">
+              Integrations could not be loaded.
+            </p>
+          ) : triggers.length === 0 ? (
+            <p className="text-muted-foreground rounded-lg border border-dashed p-5 text-sm">
+              No integrations have been created yet.
+            </p>
+          ) : (
+            triggers.map((trigger) => (
+              <div
+                key={trigger.id}
+                className="bg-card rounded-lg border px-4 py-3"
+              >
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium">{trigger.name}</p>
+                    <p className="text-muted-foreground mt-1 text-xs">
+                      Created {formatDate(trigger.created_at)} · Last triggered{" "}
+                      {formatDate(trigger.lasted_triggered_at)}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        void navigator.clipboard.writeText(trigger.webhook_url);
+                        toast.success("Webhook URL copied");
+                      }}
+                    >
+                      <Copy /> Copy URL
+                    </Button>
+                    <RotateProjectAutomationTriggerDialog
+                      automationId={automation.id}
+                      triggerId={trigger.id}
+                      triggerName={trigger.name}
+                    >
+                      <Button type="button" variant="ghost" size="sm">
+                        <RefreshCw /> Rotate token
+                      </Button>
+                    </RotateProjectAutomationTriggerDialog>
+                  </div>
+                </div>
+                <code className="bg-muted text-muted-foreground mt-3 block overflow-x-auto rounded px-2 py-1.5 text-xs">
+                  {trigger.webhook_url}
+                </code>
+              </div>
+            ))
+          )}
+        </div>
+      </section>
 
       <section className="py-7">
         <h2 className="text-sm font-semibold">Tasks</h2>
