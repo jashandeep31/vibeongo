@@ -11,6 +11,7 @@ import {
   asc,
   userWalletTransactions,
   projectDomainRouting,
+  projectAutomationRuns,
   projectSessions,
   projects,
   sandboxTypes,
@@ -157,7 +158,10 @@ export const terminateInstanceAndChargeUsage = async ({
         updated_at: new Date(),
       })
       .where(eq(instanceSlots.instance_id, instanceId))
-      .returning({ category: instanceSlots.category });
+      .returning({
+        category: instanceSlots.category,
+        spined_up_by: instanceSlots.spun_up_by,
+      });
 
     if (!instanceToTerminate) return terminatedSlot;
 
@@ -173,6 +177,21 @@ export const terminateInstanceAndChargeUsage = async ({
             eq(projectSessions.id, instance.project_session_id),
             eq(projectSessions.user_id, userId),
             eq(projectSessions.category, "auto"),
+          ),
+        );
+    }
+
+    if (
+      instance.project_session_id &&
+      terminatedSlot?.spined_up_by === "automation"
+    ) {
+      await tx
+        .update(projectAutomationRuns)
+        .set({ status: "done", updated_at: new Date(), error: null })
+        .where(
+          eq(
+            projectAutomationRuns.project_session_id,
+            instance.project_session_id,
           ),
         );
     }

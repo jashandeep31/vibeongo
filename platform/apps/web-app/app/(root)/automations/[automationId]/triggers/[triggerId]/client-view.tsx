@@ -42,11 +42,10 @@ export default function TriggerDetails({
 }) {
   const [page, setPage] = useState(1);
   const automationQuery = useGetProjectAutomation(automationId);
-  const triggerQuery = useGetProjectAutomationTrigger(
-    automationId,
-    triggerId,
-    { page, limit: 10 },
-  );
+  const triggerQuery = useGetProjectAutomationTrigger(automationId, triggerId, {
+    page,
+    limit: 10,
+  });
 
   if (automationQuery.isLoading || triggerQuery.isLoading) {
     return (
@@ -85,7 +84,12 @@ export default function TriggerDetails({
     );
   }
 
-  const { trigger, runs, has_next: hasNext, page: currentPage } = triggerQuery.data;
+  const {
+    trigger,
+    runs,
+    has_next: hasNext,
+    page: currentPage,
+  } = triggerQuery.data;
   const automation = automationQuery.data.project_automation;
 
   const copyWebhookUrl = async () => {
@@ -185,9 +189,6 @@ export default function TriggerDetails({
             </p>
           ) : (
             runs.map((run) => {
-              const runtimeState = run.project_session?.instance?.state;
-              const status = runtimeState ?? run.status;
-
               return (
                 <div
                   key={run.id}
@@ -199,8 +200,12 @@ export default function TriggerDetails({
                       {formatDate(run.created_at)}
                     </p>
                   </div>
-                  <Badge variant={status === "running" ? "secondary" : "outline"}>
-                    {status}
+                  <Badge
+                    variant={
+                      run.status === "failed" ? "destructive" : "outline"
+                    }
+                  >
+                    {run.status}
                   </Badge>
                 </div>
               );

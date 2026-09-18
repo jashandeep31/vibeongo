@@ -7,10 +7,7 @@ const PROJECT_AUTOMATION_WEBHOOK_JOB_NAME =
   "process-project-automation-webhook" as const;
 
 export type ProjectAutomationWebhookJobData = {
-  automationId: string;
-  automationTriggerId: string;
-  automationTriggerRunId: string;
-  input: string;
+  automationRunId: string;
 };
 
 const projectAutomationWebhookQueue = new Queue<

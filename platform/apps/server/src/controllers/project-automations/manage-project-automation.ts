@@ -105,12 +105,6 @@ export const createProjectAutomation = catchAsync(
           };
         }),
       );
-
-      await tx.insert(projectAutomationRuns).values({
-        project_automation_id: projectAutomation.id,
-        created_at: new Date(),
-        updated_at: new Date(),
-      });
     });
 
     res

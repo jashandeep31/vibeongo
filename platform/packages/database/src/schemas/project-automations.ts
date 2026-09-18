@@ -7,7 +7,6 @@ import {
   integer,
   boolean,
   check,
-  jsonb,
   pgEnum,
 } from "drizzle-orm/pg-core";
 import {
@@ -46,7 +45,12 @@ export const projectAutomations = pgTable("project_automations", {
 
 export const projectAutomationRunsStatus = pgEnum(
   "project_automation_run_status",
-  ["queued", "running", "completed", "failed", "cancelled"],
+  ["queued", "working", "allocating", "done", "failed", "cancelled"],
+);
+
+export const projectAutomationRunSource = pgEnum(
+  "project_automation_run_source",
+  ["manual", "webhook", "schedule"],
 );
 
 export const projectAutomationRuns = pgTable(
@@ -57,10 +61,19 @@ export const projectAutomationRuns = pgTable(
     project_automation_id: uuid().references(() => projectAutomations.id, {
       onDelete: "cascade",
     }),
+    project_automation_trigger_id: uuid().references(
+      () => projectAutomationTriggers.id,
+      { onDelete: "set null" },
+    ),
+    source: projectAutomationRunSource().notNull(),
     status: projectAutomationRunsStatus().notNull().default("queued"),
-    project_session_id: uuid().references(() => projectSessions.id, {
-      onDelete: "set null",
-    }),
+    input: text(),
+    error: text(),
+    project_session_id: uuid()
+      .unique()
+      .references(() => projectSessions.id, {
+        onDelete: "set null",
+      }),
 
     user_feedback: varchar({}),
     user_rating: integer(),
@@ -105,43 +118,6 @@ export const projectAutomationTriggers = pgTable(
     webhook_secret: varchar().notNull(),
 
     lasted_triggered_at: timestamp().defaultNow().notNull(),
-    created_at: timestamp().defaultNow().notNull(),
-    updated_at: timestamp().defaultNow(),
-  },
-);
-
-export const projectAutomationTriggerRunsStatus = pgEnum(
-  "project_automation_trigger_run_status",
-  [
-    "queued",
-    "working",
-    "allocating",
-    "done",
-    "running",
-    "completed",
-    "failed",
-    "cancelled",
-  ],
-);
-
-export const projectAutomationTriggerRuns = pgTable(
-  "project_automation_trigger_runs",
-  {
-    id: uuid().primaryKey().defaultRandom(),
-    status: projectAutomationTriggerRunsStatus().notNull().default("queued"),
-
-    input: text().notNull(),
-    error: varchar({}),
-    project_session_id: uuid().references(() => projectSessions.id, {
-      onDelete: "set null",
-    }),
-    project_automation_trigger_id: uuid().references(
-      () => projectAutomationTriggers.id,
-      {
-        onDelete: "cascade",
-      },
-    ),
-
     created_at: timestamp().defaultNow().notNull(),
     updated_at: timestamp().defaultNow(),
   },

@@ -351,19 +351,13 @@ export default function AutomationDetails({
                   </div>
                   <div className="flex flex-col items-start gap-1 sm:items-end">
                     <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Badge variant="secondary">{run.source}</Badge>
                       <Badge
                         variant={
-                          run.project_session?.instance?.state === "running"
-                            ? "secondary"
-                            : "outline"
+                          run.status === "failed" ? "destructive" : "outline"
                         }
                       >
-                        {run.project_session?.instance?.state === "running"
-                          ? "Running"
-                          : run.project_session?.instance?.state ===
-                              "terminated"
-                            ? "Completed"
-                            : "Queued"}
+                        {run.status}
                       </Badge>
                       {run.project_session ? (
                         <Button asChild variant="ghost" size="sm">

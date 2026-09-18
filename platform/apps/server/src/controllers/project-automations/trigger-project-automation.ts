@@ -65,57 +65,88 @@ export const triggerProjectAutomationManually = catchAsync(
       timeZone: "UTC",
     });
 
-    const automatedProjectSession = await db.transaction(async (tx) => {
-      const [projectSession] = await tx
-        .insert(projectSessions)
-        .values({
-          project_id: projectAutomation.project_id,
-          name: `${projectAutomation.name} — Manual run (${readableTriggeredAt} UTC)`,
-          description: `This session was created by manually triggering the “${projectAutomation.name}” automation. The run started on ${readableTriggeredAt} UTC and includes the tasks configured for that automation.`,
-          started_at: triggeredAt,
-          user_id: user.id,
-          overview: "",
-          category: "auto",
-        })
-        .returning();
+    const { projectSession, automationRun } = await db.transaction(
+      async (tx) => {
+        const [projectSession] = await tx
+          .insert(projectSessions)
+          .values({
+            project_id: projectAutomation.project_id,
+            name: `${projectAutomation.name} — Manual run (${readableTriggeredAt} UTC)`,
+            description: `This session was created by manually triggering the “${projectAutomation.name}” automation. The run started on ${readableTriggeredAt} UTC and includes the tasks configured for that automation.`,
+            started_at: triggeredAt,
+            user_id: user.id,
+            overview: "",
+            category: "auto",
+          })
+          .returning();
 
-      if (!projectSession) throw new AppError("Project session not found", 404);
+        if (!projectSession)
+          throw new AppError("Project session not found", 404);
 
-      await tx.insert(projectSessionTasks).values(
-        tasks.map((t) => {
-          return {
+        await tx.insert(projectSessionTasks).values(
+          tasks.map((t) => {
+            return {
+              project_session_id: projectSession.id,
+              folder_name: t.path_from_code,
+              task: t.task_prompt,
+              agent: t.agent,
+              order_number: t.order_number,
+              model: t.model,
+            };
+          }),
+        );
+
+        const [automationRun] = await tx
+          .insert(projectAutomationRuns)
+          .values({
+            project_automation_id: projectAutomation.id,
             project_session_id: projectSession.id,
-            folder_name: t.path_from_code,
-            task: t.task_prompt,
-            agent: t.agent,
-            order_number: t.order_number,
-            model: t.model,
-          };
-        }),
-      );
+            source: "manual",
+            status: "allocating",
+          })
+          .returning({ id: projectAutomationRuns.id });
 
-      await tx.insert(projectAutomationRuns).values({
-        project_automation_id: projectAutomation.id,
-        project_session_id: projectSession.id,
+        if (!automationRun) {
+          throw new AppError("Failed to create project automation run", 500);
+        }
+
+        await tx
+          .update(projectAutomations)
+          .set({ last_run_at: new Date(), updated_at: new Date() })
+          .where(eq(projectAutomations.id, projectAutomation.id));
+
+        return { projectSession, automationRun };
+      },
+    );
+
+    try {
+      await scheduleAutomatedInstanceLaunch({
+        userId: user.id,
+        sessionId: projectSession.id,
+        spinedUpBy: "automation",
+        runtime: "sandbox",
+        category: "auto",
       });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to queue automation";
 
-      await tx
-        .update(projectAutomations)
-        .set({ last_run_at: new Date(), updated_at: new Date() })
-        .where(eq(projectAutomations.id, projectAutomation.id));
+      await db
+        .update(projectAutomationRuns)
+        .set({
+          status: "failed",
+          error: message.slice(0, 255),
+          updated_at: new Date(),
+        })
+        .where(eq(projectAutomationRuns.id, automationRun.id));
 
-      return projectSession;
+      throw error;
+    }
+
+    res.status(200).json({
+      message: "Project automation triggered",
+      data: { automation_run_id: automationRun.id },
     });
-
-    await scheduleAutomatedInstanceLaunch({
-      userId: user.id,
-      sessionId: automatedProjectSession.id,
-      spinedUpBy: "issue",
-      runtime: "sandbox",
-      category: "auto",
-    });
-
-    res.status(200).json({ message: "Project automation triggered" });
   },
 );
 
@@ -137,19 +168,26 @@ export const rotateProjectAutomationTriggerToken = catchAsync(
       .from(projectAutomationTriggers)
       .innerJoin(
         projectAutomations,
-        eq(projectAutomations.id, projectAutomationTriggers.project_automation_id),
+        eq(
+          projectAutomations.id,
+          projectAutomationTriggers.project_automation_id,
+        ),
       )
       .where(
         and(
           eq(projectAutomationTriggers.id, triggerId),
-          eq(projectAutomationTriggers.project_automation_id, projectAutomationId),
+          eq(
+            projectAutomationTriggers.project_automation_id,
+            projectAutomationId,
+          ),
           eq(projectAutomations.user_id, user.id),
           isNull(projectAutomations.deleted_at),
         ),
       )
       .limit(1);
 
-    if (!trigger) throw new AppError("Project automation trigger not found", 404);
+    if (!trigger)
+      throw new AppError("Project automation trigger not found", 404);
 
     const secret = `vgo_${randomBytes(32).toString("base64url")}`;
     const webhookSecret = await hashToSHA256(secret);
@@ -166,7 +204,10 @@ export const rotateProjectAutomationTriggerToken = catchAsync(
       });
 
     if (!updatedTrigger)
-      throw new AppError("Failed to rotate project automation trigger token", 500);
+      throw new AppError(
+        "Failed to rotate project automation trigger token",
+        500,
+      );
 
     res.status(200).json({
       message: "Project automation trigger token rotated successfully",

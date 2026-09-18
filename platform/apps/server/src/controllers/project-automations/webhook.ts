@@ -4,7 +4,7 @@ import {
   eq,
   isNull,
   projectAutomations,
-  projectAutomationTriggerRuns,
+  projectAutomationRuns,
   projectAutomationTriggers,
 } from "@repo/db";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -55,48 +55,46 @@ export const projectAutomationWebhook = catchAsync(
     if (!isAuthenticatedRequest) throw new AppError("Unauthorized", 401);
 
     const input =
-      typeof req.body === "string"
-        ? req.body
-        : JSON.stringify(req.body ?? {});
+      typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
 
-    const [triggerRun] = await db
-      .insert(projectAutomationTriggerRuns)
+    const [automationRun] = await db
+      .insert(projectAutomationRuns)
       .values({
+        project_automation_id: projectAutomationTrigger.project_automation_id,
         project_automation_trigger_id: projectAutomationTrigger.id,
+        source: "webhook",
+        status: "queued",
         input,
       })
-      .returning({ id: projectAutomationTriggerRuns.id });
+      .returning({ id: projectAutomationRuns.id });
 
-    if (!triggerRun) {
-      throw new AppError("Failed to create project automation trigger run", 500);
+    if (!automationRun) {
+      throw new AppError("Failed to create project automation run", 500);
     }
 
     try {
       await addProjectAutomationWebhookJob({
-        automationId: projectAutomationTrigger.project_automation_id,
-        automationTriggerId: projectAutomationTrigger.id,
-        automationTriggerRunId: triggerRun.id,
-        input,
+        automationRunId: automationRun.id,
       });
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Failed to queue webhook run";
 
       await db
-        .update(projectAutomationTriggerRuns)
+        .update(projectAutomationRuns)
         .set({
           status: "failed",
           error: message.slice(0, 255),
           updated_at: new Date(),
         })
-        .where(eq(projectAutomationTriggerRuns.id, triggerRun.id));
+        .where(eq(projectAutomationRuns.id, automationRun.id));
 
       throw error;
     }
 
     res.status(202).json({
       message: "Project automation webhook accepted",
-      data: { trigger_run_id: triggerRun.id },
+      data: { automation_run_id: automationRun.id },
     });
   },
 );

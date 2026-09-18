@@ -6,7 +6,7 @@ import {
   inArray,
   instances,
   isNull,
-  projectAutomationTriggerRuns,
+  projectAutomationRuns,
   projectAutomationTriggers,
   projectAutomations,
   projectSessions,
@@ -37,12 +37,18 @@ export const getProjectAutomationTrigger = catchAsync(async (req, res) => {
     .from(projectAutomationTriggers)
     .innerJoin(
       projectAutomations,
-      eq(projectAutomations.id, projectAutomationTriggers.project_automation_id),
+      eq(
+        projectAutomations.id,
+        projectAutomationTriggers.project_automation_id,
+      ),
     )
     .where(
       and(
         eq(projectAutomationTriggers.id, triggerId),
-        eq(projectAutomationTriggers.project_automation_id, projectAutomationId),
+        eq(
+          projectAutomationTriggers.project_automation_id,
+          projectAutomationId,
+        ),
         eq(projectAutomations.user_id, user.id),
         isNull(projectAutomations.deleted_at),
       ),
@@ -53,16 +59,21 @@ export const getProjectAutomationTrigger = catchAsync(async (req, res) => {
 
   const runRows = await db
     .select({
-      run: projectAutomationTriggerRuns,
+      run: projectAutomationRuns,
       project_session: projectSessions,
     })
-    .from(projectAutomationTriggerRuns)
+    .from(projectAutomationRuns)
     .leftJoin(
       projectSessions,
-      eq(projectSessions.id, projectAutomationTriggerRuns.project_session_id),
+      eq(projectSessions.id, projectAutomationRuns.project_session_id),
     )
-    .where(eq(projectAutomationTriggerRuns.project_automation_trigger_id, trigger.id))
-    .orderBy(desc(projectAutomationTriggerRuns.created_at))
+    .where(
+      and(
+        eq(projectAutomationRuns.source, "webhook"),
+        eq(projectAutomationRuns.project_automation_trigger_id, trigger.id),
+      ),
+    )
+    .orderBy(desc(projectAutomationRuns.created_at))
     .limit(limit + 1)
     .offset((page - 1) * limit);
 

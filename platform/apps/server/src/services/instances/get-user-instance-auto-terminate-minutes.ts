@@ -1,10 +1,10 @@
-import {
-  db,
-  eq,
-  userSettings,
-} from "@repo/db";
+import { db, eq, userSettings } from "@repo/db";
 
-export type InstanceAutoTerminateSetting = "issue" | "pr" | "manual";
+export type InstanceAutoTerminateSetting =
+  | "issue"
+  | "pr"
+  | "manual"
+  | "automation";
 
 const DEFAULT_AUTO_TERMINATE_MINUTES: Record<
   InstanceAutoTerminateSetting,
@@ -13,12 +13,15 @@ const DEFAULT_AUTO_TERMINATE_MINUTES: Record<
   issue: 30,
   pr: 30,
   manual: 120,
+  automation: 30,
 };
 
 export const getUserInstanceAutoTerminateMinutes = async (
   userId: string,
   setting: InstanceAutoTerminateSetting,
 ) => {
+  const settingsKey = setting === "automation" ? "issue" : setting;
+
   const [settings] = await db
     .select({
       issue: userSettings.default_issue_instance_auto_terminate_after_minutes,
@@ -28,5 +31,5 @@ export const getUserInstanceAutoTerminateMinutes = async (
     .from(userSettings)
     .where(eq(userSettings.user_id, userId));
 
-  return settings?.[setting] ?? DEFAULT_AUTO_TERMINATE_MINUTES[setting];
+  return settings?.[settingsKey] ?? DEFAULT_AUTO_TERMINATE_MINUTES[setting];
 };

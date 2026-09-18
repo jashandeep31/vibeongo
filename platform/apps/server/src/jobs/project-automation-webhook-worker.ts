@@ -8,7 +8,6 @@ import {
   projectAutomations,
   projectAutomationRuns,
   projectAutomationTasks,
-  projectAutomationTriggerRuns,
   projectAutomationTriggers,
   projectSessions,
   projectSessionTasks,
@@ -28,17 +27,9 @@ export const projectAutomationWebhookWorker =
       const startedAt = new Date();
 
       await db
-        .update(projectAutomationTriggerRuns)
+        .update(projectAutomationRuns)
         .set({ status: "working", updated_at: startedAt, error: null })
-        .where(
-          and(
-            eq(projectAutomationTriggerRuns.id, job.data.automationTriggerRunId),
-            eq(
-              projectAutomationTriggerRuns.project_automation_trigger_id,
-              job.data.automationTriggerId,
-            ),
-          ),
-        );
+        .where(eq(projectAutomationRuns.id, job.data.automationRunId));
 
       try {
         const [automation] = await db
@@ -48,19 +39,32 @@ export const projectAutomationWebhookWorker =
             project_id: projectAutomations.project_id,
             user_id: projectAutomations.user_id,
             trigger_name: projectAutomationTriggers.name,
+            trigger_id: projectAutomationTriggers.id,
+            input: projectAutomationRuns.input,
           })
-          .from(projectAutomations)
+          .from(projectAutomationRuns)
+          .innerJoin(
+            projectAutomations,
+            eq(
+              projectAutomations.id,
+              projectAutomationRuns.project_automation_id,
+            ),
+          )
           .innerJoin(
             projectAutomationTriggers,
             eq(
-              projectAutomationTriggers.project_automation_id,
-              projectAutomations.id,
+              projectAutomationTriggers.id,
+              projectAutomationRuns.project_automation_trigger_id,
             ),
           )
           .where(
             and(
-              eq(projectAutomations.id, job.data.automationId),
-              eq(projectAutomationTriggers.id, job.data.automationTriggerId),
+              eq(projectAutomationRuns.id, job.data.automationRunId),
+              eq(projectAutomationRuns.source, "webhook"),
+              eq(
+                projectAutomationTriggers.project_automation_id,
+                projectAutomations.id,
+              ),
               eq(projectAutomations.enabled, true),
               isNull(projectAutomations.deleted_at),
             ),
@@ -83,7 +87,7 @@ export const projectAutomationWebhookWorker =
           .orderBy(asc(projectAutomationTasks.order_number));
 
         const resolvedTasks = await resolveProjectAutomationWebhookTasksAgent({
-          input: job.data.input,
+          input: automation.input ?? "{}",
           tasks,
         });
 
@@ -121,24 +125,14 @@ export const projectAutomationWebhookWorker =
             })),
           );
 
-          await tx.insert(projectAutomationRuns).values({
-            project_automation_id: automation.id,
-            project_session_id: session.id,
-          });
-
           await tx
-            .update(projectAutomationTriggerRuns)
+            .update(projectAutomationRuns)
             .set({
               project_session_id: session.id,
               status: "allocating",
               updated_at: triggeredAt,
             })
-            .where(
-              eq(
-                projectAutomationTriggerRuns.id,
-                job.data.automationTriggerRunId,
-              ),
-            );
+            .where(eq(projectAutomationRuns.id, job.data.automationRunId));
 
           await tx
             .update(projectAutomations)
@@ -148,7 +142,7 @@ export const projectAutomationWebhookWorker =
           await tx
             .update(projectAutomationTriggers)
             .set({ lasted_triggered_at: triggeredAt, updated_at: triggeredAt })
-            .where(eq(projectAutomationTriggers.id, job.data.automationTriggerId));
+            .where(eq(projectAutomationTriggers.id, automation.trigger_id));
 
           return session;
         });
@@ -156,23 +150,22 @@ export const projectAutomationWebhookWorker =
         await scheduleAutomatedInstanceLaunch({
           userId: automation.user_id,
           sessionId: projectSession.id,
-          spinedUpBy: "issue",
+          spinedUpBy: "automation",
           runtime: "sandbox",
           category: "auto",
         });
-
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "Webhook processing failed";
 
         await db
-          .update(projectAutomationTriggerRuns)
+          .update(projectAutomationRuns)
           .set({
             status: "failed",
             error: message.slice(0, 255),
             updated_at: new Date(),
           })
-          .where(eq(projectAutomationTriggerRuns.id, job.data.automationTriggerRunId));
+          .where(eq(projectAutomationRuns.id, job.data.automationRunId));
 
         throw error;
       }

@@ -86,7 +86,6 @@ export type {
   ProjectAutomationRun,
   ProjectAutomationTask,
   ProjectAutomationTrigger,
-  ProjectAutomationTriggerRun,
   RateProjectAutomationRunInput,
   RateProjectAutomationRunResponse,
   RotateProjectAutomationTriggerTokenInput,

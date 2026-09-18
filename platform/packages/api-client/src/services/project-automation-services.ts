@@ -1,6 +1,5 @@
 import {
   projectAutomationRuns,
-  projectAutomationTriggerRuns,
   projectAutomations,
   projectAutomationTasks,
   projectAutomationTriggers,
@@ -16,7 +15,8 @@ import type { AxiosInstance } from "axios";
 
 export type ProjectAutomation = typeof projectAutomations.$inferSelect;
 export type ProjectAutomationTask = typeof projectAutomationTasks.$inferSelect;
-export type ProjectAutomationTrigger = typeof projectAutomationTriggers.$inferSelect;
+export type ProjectAutomationTrigger =
+  typeof projectAutomationTriggers.$inferSelect;
 export type ProjectAutomationRun = typeof projectAutomationRuns.$inferSelect & {
   project_session:
     | (typeof projectSessions.$inferSelect & {
@@ -24,15 +24,6 @@ export type ProjectAutomationRun = typeof projectAutomationRuns.$inferSelect & {
       })
     | null;
 };
-export type ProjectAutomationTriggerRun =
-  typeof projectAutomationTriggerRuns.$inferSelect & {
-    project_session:
-      | (typeof projectSessions.$inferSelect & {
-          instance: typeof instances.$inferSelect | null;
-        })
-      | null;
-  };
-
 export type CreateProjectAutomationInput = z.infer<
   typeof projectAutomationSchema
 > & {
@@ -104,6 +95,9 @@ export type DeleteProjectAutomationResponse = {
 
 export type TriggerProjectAutomationResponse = {
   message: string;
+  data: {
+    automation_run_id: ProjectAutomationRun["id"];
+  };
 };
 
 export type CreateProjectAutomationTriggerInput = {
@@ -133,8 +127,7 @@ export type GetProjectAutomationTriggersResponse = {
       | "lasted_triggered_at"
       | "created_at"
       | "updated_at"
-    >
-    & { webhook_url: string }
+    > & { webhook_url: string }
   >;
 };
 
@@ -170,7 +163,7 @@ export type GetProjectAutomationTriggerResponse = {
     | "created_at"
     | "updated_at"
   > & { webhook_url: string };
-  runs: ProjectAutomationTriggerRun[];
+  runs: ProjectAutomationRun[];
   has_next: boolean;
   page: number;
 };
