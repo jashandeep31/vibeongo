@@ -1,19 +1,17 @@
 import {
   and,
-  asc,
   db,
   eq,
   isNull,
   projectAutomations,
-  projectAutomationTasks,
   projectAutomationTriggers,
 } from "@repo/db";
-import { resolveProjectAutomationWebhookTasksAgent } from "../../ai/ai-agents/resolve-project-automation-webhook-tasks-agent.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { compareSHA256andReturnString } from "../../lib/sha256.js";
+import { addProjectAutomationWebhookJob } from "../../jobs/project-automation-webhook.js";
 export const projectAutomationWebhook = catchAsync(
   async (req: Request, res: Response) => {
     const projectAutomationTriggerId = z.uuid().parse(req.params.id);
@@ -55,25 +53,11 @@ export const projectAutomationWebhook = catchAsync(
     );
     if (!isAuthenticatedRequest) throw new AppError("Unauthorized", 401);
 
-    const tasks = await db
-      .select()
-      .from(projectAutomationTasks)
-      .where(
-        eq(
-          projectAutomationTasks.project_automation_id,
-          projectAutomationTrigger.project_automation_id,
-        ),
-      )
-      .orderBy(asc(projectAutomationTasks.order_number));
-
-    const input =
-      typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
-    const resolvedTasks = await resolveProjectAutomationWebhookTasksAgent({
-      input,
-      tasks,
+    await addProjectAutomationWebhookJob({
+      automationId: projectAutomationTrigger.project_automation_id,
+      automationTriggerId: projectAutomationTrigger.id,
     });
-    console.log("Resolved automation webhook tasks:", resolvedTasks);
 
-    res.status(200).json({ message: "Project automation webhook verified" });
+    res.status(202).json({ message: "Project automation webhook accepted" });
   },
 );
