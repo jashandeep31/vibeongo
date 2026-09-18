@@ -14,6 +14,7 @@ import {
 import { createProjectAutomationTrigger } from "../controllers/project-automations/create-project-automation-trigger.js";
 import { getProjectAutomationTriggers } from "../controllers/project-automations/get-project-automation-triggers.js";
 import { getProjectAutomationTrigger } from "../controllers/project-automations/get-project-automation-trigger.js";
+import { deleteProjectAutomationTrigger } from "../controllers/project-automations/delete-project-automation-trigger.js";
 import {
   getProjectAutomationRuns,
   rateProjectAutomationRun,
@@ -55,6 +56,7 @@ routes
 
 routes
   .route("/:id/triggers/:triggerId")
-  .get(checkAuthorization(["all"]), getProjectAutomationTrigger);
+  .get(checkAuthorization(["all"]), getProjectAutomationTrigger)
+  .delete(checkAuthorization(["all"]), deleteProjectAutomationTrigger);
 
 export const projectAutomationRoutes = routes;

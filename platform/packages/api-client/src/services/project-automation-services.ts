@@ -137,6 +137,10 @@ export type RotateProjectAutomationTriggerTokenInput = {
   triggerId: ProjectAutomationTrigger["id"];
 };
 
+export type DeleteProjectAutomationTriggerResponse = {
+  message: string;
+};
+
 export type RotateProjectAutomationTriggerTokenResponse = {
   message: string;
   data: {
@@ -319,6 +323,20 @@ export const rotateProjectAutomationTriggerToken =
     const response = await apiClient.post(
       `/api/v1/project-automations/${automationId}/triggers/${triggerId}/rotate-token`,
       undefined,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
+export const deleteProjectAutomationTrigger =
+  (apiClient: AxiosInstance) =>
+  async (
+    automationId: ProjectAutomation["id"],
+    triggerId: ProjectAutomationTrigger["id"],
+  ): Promise<DeleteProjectAutomationTriggerResponse> => {
+    const response = await apiClient.delete(
+      `/api/v1/project-automations/${automationId}/triggers/${triggerId}`,
       { withCredentials: true },
     );
 

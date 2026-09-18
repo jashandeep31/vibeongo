@@ -73,12 +73,7 @@ export const useGetProjectAutomationTrigger = (
   const client = useApiClient();
 
   return useQuery({
-    queryKey: [
-      "project-automation-trigger",
-      automationId,
-      triggerId,
-      params,
-    ],
+    queryKey: ["project-automation-trigger", automationId, triggerId, params],
     queryFn: () =>
       client.projectAutomations.getProjectAutomationTrigger(
         automationId!,
@@ -184,6 +179,9 @@ export const useCreateProjectAutomationTrigger = () => {
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({
+          queryKey: ["project-automation-triggers", variables.automationId],
+        }),
+        queryClient.invalidateQueries({
           queryKey: ["project-automation", variables.automationId],
         }),
         queryClient.invalidateQueries({
@@ -207,6 +205,38 @@ export const useRotateProjectAutomationTriggerToken = () => {
         }),
         queryClient.invalidateQueries({
           queryKey: ["project-automation", variables.automationId],
+        }),
+      ]);
+    },
+  });
+};
+
+export const useDeleteProjectAutomationTrigger = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: ({
+      automationId,
+      triggerId,
+    }: {
+      automationId: string;
+      triggerId: string;
+    }) =>
+      client.projectAutomations.deleteProjectAutomationTrigger(
+        automationId,
+        triggerId,
+      ),
+    onSuccess: async (_, variables) => {
+      await Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation-triggers", variables.automationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation", variables.automationId],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["project-automation-trigger", variables.automationId],
         }),
       ]);
     },

@@ -52,6 +52,7 @@ export const getProjectAutomationTrigger = catchAsync(async (req, res) => {
         ),
         eq(projectAutomations.user_id, user.id),
         isNull(projectAutomations.deleted_at),
+        isNull(projectAutomationTriggers.deleted_at),
       ),
     )
     .limit(1);

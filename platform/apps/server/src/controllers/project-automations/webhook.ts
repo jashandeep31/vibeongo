@@ -42,6 +42,7 @@ export const projectAutomationWebhook = catchAsync(
         and(
           eq(projectAutomationTriggers.id, projectAutomationTriggerId),
           isNull(projectAutomations.deleted_at),
+          isNull(projectAutomationTriggers.deleted_at),
         ),
       )
       .limit(1);

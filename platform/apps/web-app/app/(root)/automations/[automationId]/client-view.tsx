@@ -7,6 +7,7 @@ import { CreateProjectAutomationTriggerDialog } from "@/components/dialogs/creat
 import { RotateProjectAutomationTriggerDialog } from "@/components/dialogs/rotate-project-automation-trigger-dialog";
 import {
   useDeleteProjectAutomation,
+  useDeleteProjectAutomationTrigger,
   useGetProjectAutomation,
   useGetProjectAutomationRuns,
   useGetProjectAutomationTriggers,
@@ -72,6 +73,7 @@ export default function AutomationDetails({
   const triggersQuery = useGetProjectAutomationTriggers(automationId);
   const triggerAutomation = useTriggerProjectAutomation();
   const deleteAutomation = useDeleteProjectAutomation();
+  const deleteTrigger = useDeleteProjectAutomationTrigger();
 
   const handleDelete = () => {
     deleteAutomation.mutate(automationId, {
@@ -106,6 +108,27 @@ export default function AutomationDetails({
         );
       },
     });
+  };
+
+  const handleDeleteTrigger = (triggerId: string) => {
+    deleteTrigger.mutate(
+      { automationId: automation.id, triggerId },
+      {
+        onSuccess: ({ message }) => toast.success(message),
+        onError: (error) => {
+          const responseMessage = axios.isAxiosError<{ message?: unknown }>(
+            error,
+          )
+            ? error.response?.data?.message
+            : undefined;
+          toast.error(
+            typeof responseMessage === "string"
+              ? responseMessage
+              : "Could not delete the integration.",
+          );
+        },
+      },
+    );
   };
 
   if (automationQuery.isLoading) {
@@ -289,6 +312,22 @@ export default function AutomationDetails({
                         <RefreshCw /> Rotate token
                       </Button>
                     </RotateProjectAutomationTriggerDialog>
+                    <ConfirmationDialog
+                      title="Delete integration?"
+                      description="This will disable the webhook and stop it from accepting new events."
+                      confirmText="Delete integration"
+                      isDestructive
+                      onConfirm={() => handleDeleteTrigger(trigger.id)}
+                    >
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        disabled={deleteTrigger.isPending}
+                      >
+                        <Trash2 /> Delete
+                      </Button>
+                    </ConfirmationDialog>
                   </div>
                 </div>
                 <code className="bg-muted text-muted-foreground mt-3 block overflow-x-auto rounded px-2 py-1.5 text-xs">

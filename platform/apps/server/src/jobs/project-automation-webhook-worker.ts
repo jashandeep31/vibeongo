@@ -65,6 +65,7 @@ export const projectAutomationWebhookWorker =
                 projectAutomationTriggers.project_automation_id,
                 projectAutomations.id,
               ),
+              isNull(projectAutomationTriggers.deleted_at),
               eq(projectAutomations.enabled, true),
               isNull(projectAutomations.deleted_at),
             ),

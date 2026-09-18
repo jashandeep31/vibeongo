@@ -41,6 +41,7 @@ export const getProjectAutomationTriggers = catchAsync(async (req, res) => {
         eq(projectAutomations.id, id),
         eq(projectAutomations.user_id, user.id),
         isNull(projectAutomations.deleted_at),
+        isNull(projectAutomationTriggers.deleted_at),
       ),
     )
     .orderBy(desc(projectAutomationTriggers.created_at));

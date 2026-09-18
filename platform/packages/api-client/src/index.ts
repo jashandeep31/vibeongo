@@ -74,6 +74,7 @@ export type {
   CreateProjectAutomationTriggerInput,
   CreateProjectAutomationTriggerResponse,
   DeleteProjectAutomationResponse,
+  DeleteProjectAutomationTriggerResponse,
   GetProjectAutomationResponse,
   GetProjectAutomationTriggerResponse,
   GetProjectAutomationTriggerRunsParams,

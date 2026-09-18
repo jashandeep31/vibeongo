@@ -1,8 +1,10 @@
 "use client";
 
 import { RotateProjectAutomationTriggerDialog } from "@/components/dialogs/rotate-project-automation-trigger-dialog";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { AutomationRunRow } from "@/components/automation-run-row";
 import {
+  useDeleteProjectAutomationTrigger,
   useGetProjectAutomation,
   useGetProjectAutomationTrigger,
 } from "@repo/api-hooks";
@@ -18,9 +20,11 @@ import {
   ChevronRight,
   Clipboard,
   FolderCode,
+  Trash2,
   Webhook,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -42,11 +46,13 @@ export default function TriggerDetails({
   triggerId: string;
 }) {
   const [page, setPage] = useState(1);
+  const router = useRouter();
   const automationQuery = useGetProjectAutomation(automationId);
   const triggerQuery = useGetProjectAutomationTrigger(automationId, triggerId, {
     page,
     limit: 10,
   });
+  const deleteTrigger = useDeleteProjectAutomationTrigger();
 
   if (automationQuery.isLoading || triggerQuery.isLoading) {
     return (
@@ -102,6 +108,30 @@ export default function TriggerDetails({
     }
   };
 
+  const handleDelete = () => {
+    deleteTrigger.mutate(
+      { automationId, triggerId },
+      {
+        onSuccess: ({ message }) => {
+          toast.success(message);
+          router.push(`/automations/${automationId}`);
+        },
+        onError: (error) => {
+          const responseMessage = axios.isAxiosError<{ message?: unknown }>(
+            error,
+          )
+            ? error.response?.data?.message
+            : undefined;
+          toast.error(
+            typeof responseMessage === "string"
+              ? responseMessage
+              : "Could not delete the integration.",
+          );
+        },
+      },
+    );
+  };
+
   return (
     <div className="mx-auto w-full max-w-6xl px-5 py-8 sm:px-8 sm:py-12">
       <Button asChild variant="ghost" size="sm" className="-ml-2">
@@ -133,6 +163,21 @@ export default function TriggerDetails({
               Rotate token
             </Button>
           </RotateProjectAutomationTriggerDialog>
+          <ConfirmationDialog
+            title="Delete integration?"
+            description="This will disable the webhook and stop it from accepting new events."
+            confirmText="Delete integration"
+            isDestructive
+            onConfirm={handleDelete}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteTrigger.isPending}
+            >
+              <Trash2 /> Delete
+            </Button>
+          </ConfirmationDialog>
         </div>
       </header>
 

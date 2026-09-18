@@ -134,6 +134,7 @@ export const projectAutomationTriggers = pgTable(
     // will store in the database in the hashed format
     webhook_secret: varchar().notNull(),
     provider: projectAutomationTriggerProviders().notNull(),
+    deleted_at: timestamp(),
 
     lasted_triggered_at: timestamp().defaultNow().notNull(),
     created_at: timestamp().defaultNow().notNull(),
