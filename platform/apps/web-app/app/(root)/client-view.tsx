@@ -201,19 +201,21 @@ function SessionRow({
             </>
           ) : entry.state === "stopped" ? (
             <>
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                disabled={isResumePending || isArchivePending}
-                onClick={() => onResume(entry.session.id)}
-              >
-                {isResumePending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <Play />
-                )}
-              </Button>
+              {entry.session.category !== "auto" ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  disabled={isResumePending || isArchivePending}
+                  onClick={() => onResume(entry.session.id)}
+                >
+                  {isResumePending ? (
+                    <Loader2 className="animate-spin" />
+                  ) : (
+                    <Play />
+                  )}
+                </Button>
+              ) : null}
               <SessionActionsDropdown
                 sessionName={entry.session.name}
                 isArchivePending={isArchivePending}

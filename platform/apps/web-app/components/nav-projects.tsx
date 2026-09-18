@@ -483,17 +483,19 @@ function ProjectSessionNavItem({
           ) : null}
           {!isInstancePending && !isInstanceError && !instance ? (
             <>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-xs"
-                aria-label={`Resume ${session.name}`}
-                title="Resume session"
-                disabled={isResumePending || isArchivePending}
-                onClick={() => onResume(session.id)}
-              >
-                <Play />
-              </Button>
+              {session.category !== "auto" ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  aria-label={`Resume ${session.name}`}
+                  title="Resume session"
+                  disabled={isResumePending || isArchivePending}
+                  onClick={() => onResume(session.id)}
+                >
+                  <Play />
+                </Button>
+              ) : null}
               <SessionActionsDropdown
                 sessionName={session.name}
                 isArchivePending={isArchivePending}

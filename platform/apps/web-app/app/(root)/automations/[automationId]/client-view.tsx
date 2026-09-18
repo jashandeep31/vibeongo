@@ -343,7 +343,8 @@ export default function AutomationDetails({
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
-                      {run.project_session?.name ?? "Session removed"}
+                      {run.project_session?.name ??
+                        `${automation.name} — ${run.source === "webhook" ? "Webhook" : run.source === "manual" ? "Manual" : "Scheduled"} run`}
                     </p>
                     <p className="text-muted-foreground mt-1 text-xs">
                       {formatDate(run.created_at)}
