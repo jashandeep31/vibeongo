@@ -2,6 +2,7 @@
 
 import { useGetProjectGithubReposById, useGetProjects } from "@repo/api-hooks";
 import type { CreateProjectAutomationInput } from "@repo/api-client";
+import { DEFAULT_MODELS, type DefaultModel } from "@/constants/models";
 import {
   projectAutomationSchema,
   projectAutomationTaskSchema,
@@ -9,6 +10,14 @@ import {
 } from "@repo/shared";
 import { Alert, AlertDescription } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
+import {
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxInput,
+  ComboboxItem,
+  ComboboxList,
+} from "@repo/ui/components/combobox";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import {
@@ -49,6 +58,73 @@ type Props = {
   cancelHref?: string;
   onSubmit: (values: CreateProjectAutomationInput) => Promise<void>;
 };
+
+function ModelCombobox({
+  id,
+  value,
+  onChange,
+  disabled,
+}: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [search, setSearch] = useState("");
+  const customValue = search.trim();
+  const selectedModel = DEFAULT_MODELS.find((model) => model.id === value);
+  const customSelectedModel: DefaultModel | undefined =
+    value && !selectedModel ? { id: value, provider: "custom" } : undefined;
+  const options = customSelectedModel
+    ? [...DEFAULT_MODELS, customSelectedModel]
+    : DEFAULT_MODELS;
+  const hasExactMatch = options.some(
+    (model) => model.id.toLowerCase() === customValue.toLowerCase(),
+  );
+  const customOption =
+    customValue && !hasExactMatch
+      ? { id: customValue, provider: "custom" }
+      : undefined;
+  const allOptions = customOption ? [...options, customOption] : options;
+  const normalizedSearch = customValue.toLowerCase();
+  const visibleOptions = allOptions.filter(
+    (model) =>
+      !normalizedSearch || model.id.toLowerCase().includes(normalizedSearch),
+  );
+  const selectedOption = allOptions.find((model) => model.id === value) ?? null;
+
+  return (
+    <Combobox<DefaultModel>
+      value={selectedOption}
+      onValueChange={(model) => onChange(model?.id ?? "")}
+      onInputValueChange={(inputValue, details) => {
+        setSearch(inputValue);
+        if (details.reason === "input-change") onChange(inputValue);
+      }}
+      itemToStringLabel={(model) => model.id}
+      itemToStringValue={(model) => model.id}
+      isItemEqualToValue={(a, b) => a?.id === b?.id}
+    >
+      <ComboboxInput
+        id={id}
+        placeholder="Search or enter a model ID"
+        disabled={disabled}
+        showClear
+      />
+      <ComboboxContent>
+        <ComboboxList>
+          {visibleOptions.map((model) => (
+            <ComboboxItem key={model.id} value={model}>
+              <span className="truncate">{model.id}</span>
+            </ComboboxItem>
+          ))}
+          <ComboboxEmpty>No matching models.</ComboboxEmpty>
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
+  );
+}
+
 const schema = projectAutomationSchema.extend({
   tasks: z.array(projectAutomationTaskSchema).min(1),
 });
@@ -394,7 +470,9 @@ export function ProjectAutomationForm({
               <div className="border-border bg-muted/10 rounded-xl border border-dashed p-4">
                 <p className="text-sm font-medium">Import task template</p>
                 <p className="text-muted-foreground mt-1 text-xs">
-                  Importing replaces only the tasks below. Your automation details and schedule stay unchanged. Choose a repository path for each imported task.
+                  Importing replaces only the tasks below. Your automation
+                  details and schedule stay unchanged. Choose a repository path
+                  for each imported task.
                 </p>
                 <div className="mt-3 flex flex-wrap gap-2">
                   {automationTemplates.map((item) => (
@@ -553,15 +631,10 @@ export function ProjectAutomationForm({
                           (optional)
                         </span>
                       </Label>
-                      <Input
+                      <ModelCombobox
                         id={`task-model-${task.id}`}
                         value={task.model}
-                        onChange={(event) =>
-                          updateTask(task.id, { model: event.target.value })
-                        }
-                        placeholder="e.g. gpt-5.2"
-                        minLength={2}
-                        maxLength={100}
+                        onChange={(model) => updateTask(task.id, { model })}
                         disabled={isPending}
                       />
                     </div>
