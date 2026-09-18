@@ -23,11 +23,20 @@ import {
 } from "@repo/ui/components/empty";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import axios from "axios";
-import { Bot, CalendarClock, Loader2, Play, Plus } from "lucide-react";
+import {
+  Bot,
+  CalendarClock,
+  FolderCode,
+  Loader2,
+  Play,
+  Plus,
+} from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
 export default function AutomationsPage() {
+  const router = useRouter();
   const automationsQuery = useGetProjectAutomations();
   const triggerAutomation = useTriggerProjectAutomation();
   const automations = automationsQuery.data?.automations ?? [];
@@ -101,38 +110,58 @@ export default function AutomationsPage() {
         ) : (
           <section className="mt-8 grid gap-4 md:grid-cols-2">
             {automations.map((automation) => (
-              <Card key={automation.id}>
-                <CardHeader className="gap-2">
+              <Card
+                key={automation.id}
+                role="link"
+                tabIndex={0}
+                className="group hover:border-primary/50 hover:bg-muted/20 focus-visible:ring-ring cursor-pointer overflow-hidden transition-colors focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:outline-none"
+                onClick={() => router.push(`/automations/${automation.id}`)}
+                onKeyDown={(event) => {
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    router.push(`/automations/${automation.id}`);
+                  }
+                }}
+              >
+                <CardHeader className="gap-4">
                   <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="truncate">
-                      <Link
-                        href={`/automations/${automation.id}`}
-                        className="hover:underline"
-                      >
+                    <div className="min-w-0 space-y-1">
+                      <CardTitle className="truncate text-base">
                         {automation.name}
-                      </Link>
-                    </CardTitle>
+                      </CardTitle>
+                      <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-xs">
+                        <FolderCode className="size-3.5 shrink-0" />
+                        <span className="truncate">
+                          {automation.project_name}
+                        </span>
+                      </div>
+                    </div>
                     <Badge
                       variant={automation.enabled ? "secondary" : "outline"}
+                      className="shrink-0"
                     >
                       {automation.enabled ? "Enabled" : "Disabled"}
                     </Badge>
                   </div>
-                  <CardDescription>
+                  <CardDescription className="line-clamp-2 min-h-10">
                     {automation.description || "No description provided."}
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between gap-4">
+                <CardContent className="flex items-center justify-between gap-4 border-t pt-4">
                   <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-sm">
                     <CalendarClock className="size-4 shrink-0" />
-                    <span className="truncate font-mono">
+                    <span className="truncate font-mono text-xs">
                       {automation.cron_expression || "Manual only"}
                     </span>
                   </div>
                   <Button
                     type="button"
                     size="sm"
-                    onClick={() => runAutomation(automation.id)}
+                    onClick={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      runAutomation(automation.id);
+                    }}
                     disabled={triggerAutomation.isPending}
                   >
                     {triggerAutomation.isPending &&

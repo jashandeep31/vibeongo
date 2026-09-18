@@ -29,13 +29,19 @@ export type GetProjectAutomationsParams = {
 };
 
 export type GetProjectAutomationsResponse = {
-  automations: ProjectAutomation[];
+  automations: Array<
+    ProjectAutomation & {
+      project_name: string;
+    }
+  >;
   has_next: boolean;
   page: number;
 };
 
 export type GetProjectAutomationResponse = {
-  project_automation: ProjectAutomation;
+  project_automation: ProjectAutomation & {
+    project_name: string;
+  };
   tasks: ProjectAutomationTask[];
 };
 
@@ -74,6 +80,10 @@ export type UpdateProjectAutomationInput = {
 export type UpdateProjectAutomationResponse = {
   message: string;
   data: GetProjectAutomationResponse;
+};
+
+export type DeleteProjectAutomationResponse = {
+  message: string;
 };
 
 export type TriggerProjectAutomationResponse = {
@@ -159,6 +169,19 @@ export const updateProjectAutomation =
     const response = await apiClient.patch(
       `/api/v1/project-automations/${id}`,
       input,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
+export const deleteProjectAutomation =
+  (apiClient: AxiosInstance) =>
+  async (
+    id: ProjectAutomation["id"],
+  ): Promise<DeleteProjectAutomationResponse> => {
+    const response = await apiClient.delete(
+      `/api/v1/project-automations/${id}`,
       { withCredentials: true },
     );
 

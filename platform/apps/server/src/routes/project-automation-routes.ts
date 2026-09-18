@@ -2,6 +2,7 @@ import { Router } from "express";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
 import {
   createProjectAutomation,
+  deleteProjectAutomation,
   getProjectAutomation,
   getProjectAutomations,
   updateProjectAutomation,
@@ -22,7 +23,8 @@ routes
 routes
   .route("/:id")
   .get(checkAuthorization(["all"]), getProjectAutomation)
-  .patch(checkAuthorization(["all"]), updateProjectAutomation);
+  .patch(checkAuthorization(["all"]), updateProjectAutomation)
+  .delete(checkAuthorization(["all"]), deleteProjectAutomation);
 
 routes
   .route("/:id/runs")

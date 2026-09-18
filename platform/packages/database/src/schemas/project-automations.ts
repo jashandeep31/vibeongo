@@ -37,6 +37,7 @@ export const projectAutomations = pgTable("project_automations", {
   // timzone is of user
   timezone: varchar(),
 
+  deleted_at: timestamp(),
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });

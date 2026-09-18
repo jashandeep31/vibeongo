@@ -12,10 +12,7 @@ import {
   projectSessions,
   projectSessionTasks,
 } from "@repo/db";
-import {
-  checkAndLaunchInstance,
-  scheduleAutomatedInstanceLaunch,
-} from "../../services/instances/check-and-queue-instance-launch.js";
+import { scheduleAutomatedInstanceLaunch } from "../../services/instances/check-and-queue-instance-launch.js";
 
 export const triggerProjectAutomationManually = catchAsync(
   async (req: Request, res: Response) => {
@@ -56,14 +53,21 @@ export const triggerProjectAutomationManually = catchAsync(
     if (!projectAutomation)
       throw new AppError("Project automation not found", 404);
 
+    const triggeredAt = new Date();
+    const readableTriggeredAt = triggeredAt.toLocaleString("en-US", {
+      dateStyle: "medium",
+      timeStyle: "short",
+      timeZone: "UTC",
+    });
+
     const automatedProjectSession = await db.transaction(async (tx) => {
       const [projectSession] = await tx
         .insert(projectSessions)
         .values({
           project_id: projectAutomation.project_id,
-          name: "Manual " + projectAutomation.name + new Date().toISOString(),
-          description: `Manual ${projectAutomation.name} session created at ${new Date().toISOString()}`,
-          started_at: new Date(),
+          name: `${projectAutomation.name} — Manual run (${readableTriggeredAt} UTC)`,
+          description: `This session was created by manually triggering the “${projectAutomation.name}” automation. The run started on ${readableTriggeredAt} UTC and includes the tasks configured for that automation.`,
+          started_at: triggeredAt,
           user_id: user.id,
           overview: "",
           category: "auto",

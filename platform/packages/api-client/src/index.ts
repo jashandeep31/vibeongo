@@ -71,6 +71,7 @@ export type {
 export type {
   CreateProjectAutomationInput,
   CreateProjectAutomationResponse,
+  DeleteProjectAutomationResponse,
   GetProjectAutomationResponse,
   GetProjectAutomationRunsParams,
   GetProjectAutomationRunsResponse,

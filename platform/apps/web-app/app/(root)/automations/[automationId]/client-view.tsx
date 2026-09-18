@@ -2,7 +2,9 @@
 
 import { NoAutomationRuns } from "@/components/no-automation-runs";
 import { AutomationRunRating } from "@/components/automation-run-rating";
+import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
+  useDeleteProjectAutomation,
   useGetProjectAutomation,
   useGetProjectAutomationRuns,
   useTriggerProjectAutomation,
@@ -22,8 +24,10 @@ import {
   Loader2,
   Pencil,
   Play,
+  Trash2,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -48,6 +52,7 @@ export default function AutomationDetails({
 }: {
   automationId: string;
 }) {
+  const router = useRouter();
   const [runsPage, setRunsPage] = useState(1);
   const automationQuery = useGetProjectAutomation(automationId);
   const runsQuery = useGetProjectAutomationRuns(automationId, {
@@ -55,6 +60,26 @@ export default function AutomationDetails({
     limit: 10,
   });
   const triggerAutomation = useTriggerProjectAutomation();
+  const deleteAutomation = useDeleteProjectAutomation();
+
+  const handleDelete = () => {
+    deleteAutomation.mutate(automationId, {
+      onSuccess: ({ message }) => {
+        toast.success(message);
+        router.push("/automations");
+      },
+      onError: (error) => {
+        const responseMessage = axios.isAxiosError<{ message?: unknown }>(error)
+          ? error.response?.data?.message
+          : undefined;
+        toast.error(
+          typeof responseMessage === "string"
+            ? responseMessage
+            : "Could not delete the automation.",
+        );
+      },
+    });
+  };
 
   const runAutomation = () => {
     triggerAutomation.mutate(automationId, {
@@ -118,8 +143,32 @@ export default function AutomationDetails({
           <p className="text-muted-foreground mt-2 max-w-3xl text-sm">
             {automation.description || "No description provided."}
           </p>
+          <div className="text-muted-foreground mt-3 flex items-center gap-2 text-sm">
+            <FolderCode className="size-4" />
+            <span>{automation.project_name}</span>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          <ConfirmationDialog
+            title="Delete automation?"
+            description="This automation will no longer appear in your automations and cannot be restored."
+            confirmText="Delete automation"
+            isDestructive
+            onConfirm={handleDelete}
+          >
+            <Button
+              type="button"
+              variant="outline"
+              disabled={deleteAutomation.isPending}
+            >
+              {deleteAutomation.isPending ? (
+                <Loader2 className="animate-spin" />
+              ) : (
+                <Trash2 />
+              )}
+              Delete
+            </Button>
+          </ConfirmationDialog>
           <Button asChild variant="outline">
             <Link href={`/automations/${automation.id}/edit`}>
               <Pencil /> Edit

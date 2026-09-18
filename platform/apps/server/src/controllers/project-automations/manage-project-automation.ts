@@ -11,6 +11,8 @@ import {
   customQuery,
   db,
   eq,
+  getTableColumns,
+  isNull,
   and,
   asc,
   projectAutomations,
@@ -27,9 +29,18 @@ export const getProjectAutomations = catchAsync(
     const { page, limit } = commonFilterSchema.parse(req.query);
 
     const query = db
-      .select()
+      .select({
+        ...getTableColumns(projectAutomations),
+        project_name: projects.name,
+      })
       .from(projectAutomations)
-      .where(eq(projectAutomations.user_id, user.id))
+      .innerJoin(projects, eq(projects.id, projectAutomations.project_id))
+      .where(
+        and(
+          eq(projectAutomations.user_id, user.id),
+          isNull(projectAutomations.deleted_at),
+        ),
+      )
       .$dynamic();
 
     const projectAutomationsResponse = await customQuery(query, page, limit);
@@ -137,6 +148,7 @@ export const updateProjectAutomation = catchAsync(
           and(
             eq(projectAutomations.id, id),
             eq(projectAutomations.user_id, user.id),
+            isNull(projectAutomations.deleted_at),
           ),
         )
         .limit(1);
@@ -153,7 +165,13 @@ export const updateProjectAutomation = catchAsync(
           timezone: projectAutomationData.timezone,
           updated_at: new Date(),
         })
-        .where(eq(projectAutomations.id, id))
+        .where(
+          and(
+            eq(projectAutomations.id, id),
+            eq(projectAutomations.user_id, user.id),
+            isNull(projectAutomations.deleted_at),
+          ),
+        )
         .returning();
 
       if (!updatedAutomation)
@@ -201,6 +219,7 @@ export const getProjectAutomation = catchAsync(
     const projectAutomationWithTasks = await db
       .select()
       .from(projectAutomations)
+      .innerJoin(projects, eq(projects.id, projectAutomations.project_id))
       .leftJoin(
         projectAutomationTasks,
         eq(projectAutomationTasks.project_automation_id, projectAutomations.id),
@@ -209,6 +228,7 @@ export const getProjectAutomation = catchAsync(
         and(
           eq(projectAutomations.id, id),
           eq(projectAutomations.user_id, user.id),
+          isNull(projectAutomations.deleted_at),
         ),
       )
       .orderBy(asc(projectAutomationTasks.order_number));
@@ -218,11 +238,45 @@ export const getProjectAutomation = catchAsync(
 
     res.status(200).json({
       data: {
-        project_automation: projectAutomationWithTasks[0].project_automations,
+        project_automation: {
+          ...projectAutomationWithTasks[0].project_automations,
+          project_name: projectAutomationWithTasks[0].projects.name,
+        },
         tasks: projectAutomationWithTasks.flatMap((row) =>
           row.project_automation_tasks ? [row.project_automation_tasks] : [],
         ),
       },
+    });
+  },
+);
+
+export const deleteProjectAutomation = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("User not found", 401);
+
+    const { id } = z.object({ id: z.uuid() }).parse(req.params);
+
+    const [deletedAutomation] = await db
+      .update(projectAutomations)
+      .set({
+        deleted_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where(
+        and(
+          eq(projectAutomations.id, id),
+          eq(projectAutomations.user_id, user.id),
+          isNull(projectAutomations.deleted_at),
+        ),
+      )
+      .returning({ id: projectAutomations.id });
+
+    if (!deletedAutomation)
+      throw new AppError("Project automation not found", 404);
+
+    res.status(200).json({
+      message: "Project automation deleted successfully",
     });
   },
 );

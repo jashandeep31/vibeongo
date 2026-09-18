@@ -75,6 +75,21 @@ export const useUpdateProjectAutomation = () => {
   });
 };
 
+export const useDeleteProjectAutomation = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.projectAutomations.deleteProjectAutomation,
+    onSuccess: async (_, id) => {
+      queryClient.removeQueries({ queryKey: ["project-automation", id] });
+      await queryClient.invalidateQueries({
+        queryKey: ["project-automations"],
+      });
+    },
+  });
+};
+
 export const useRateProjectAutomationRun = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();
