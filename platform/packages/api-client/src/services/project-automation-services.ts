@@ -3,6 +3,7 @@ import {
   projectAutomations,
   projectAutomationTasks,
   projectSessions,
+  instances,
 } from "@repo/db";
 import {
   projectAutomationSchema,
@@ -14,7 +15,11 @@ import type { AxiosInstance } from "axios";
 export type ProjectAutomation = typeof projectAutomations.$inferSelect;
 export type ProjectAutomationTask = typeof projectAutomationTasks.$inferSelect;
 export type ProjectAutomationRun = typeof projectAutomationRuns.$inferSelect & {
-  project_session: typeof projectSessions.$inferSelect | null;
+  project_session:
+    | (typeof projectSessions.$inferSelect & {
+        instance: typeof instances.$inferSelect | null;
+      })
+    | null;
 };
 
 export type CreateProjectAutomationInput = z.infer<

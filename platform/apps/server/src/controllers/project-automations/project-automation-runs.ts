@@ -3,6 +3,8 @@ import {
   db,
   desc,
   eq,
+  inArray,
+  instances,
   projectAutomationRuns,
   projectAutomations,
   projectSessions,
@@ -42,11 +44,40 @@ export const getProjectAutomationRuns = catchAsync(async (req, res) => {
     .limit(limit + 1)
     .offset((page - 1) * limit);
 
+  const sessionIds = rows
+    .map(({ project_session }) => project_session?.id)
+    .filter((sessionId): sessionId is string => Boolean(sessionId));
+  const instanceRows = sessionIds.length
+    ? await db
+        .select()
+        .from(instances)
+        .where(inArray(instances.project_session_id, sessionIds))
+        .orderBy(desc(instances.created_at))
+    : [];
+  const latestInstanceBySession = new Map<
+    string,
+    typeof instances.$inferSelect
+  >();
+
+  for (const instance of instanceRows) {
+    if (
+      instance.project_session_id &&
+      !latestInstanceBySession.has(instance.project_session_id)
+    ) {
+      latestInstanceBySession.set(instance.project_session_id, instance);
+    }
+  }
+
   res.status(200).json({
     data: {
       runs: rows.slice(0, limit).map(({ run, project_session }) => ({
         ...run,
-        project_session,
+        project_session: project_session
+          ? {
+              ...project_session,
+              instance: latestInstanceBySession.get(project_session.id) ?? null,
+            }
+          : null,
       })),
       has_next: rows.length > limit,
       page,

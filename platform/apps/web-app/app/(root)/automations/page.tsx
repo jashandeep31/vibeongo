@@ -62,12 +62,9 @@ export default function AutomationsPage() {
       <main className="mx-auto w-full max-w-6xl px-5 py-8 md:px-8 md:py-10">
         <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-xl font-semibold tracking-tight">
+            <h1 className="text-3xl font-semibold tracking-tight">
               Automations
             </h1>
-            <p className="text-muted-foreground mt-1 text-sm">
-              Schedule agent tasks for your projects.
-            </p>
           </div>
           <Button asChild>
             <Link href="/automations/create">

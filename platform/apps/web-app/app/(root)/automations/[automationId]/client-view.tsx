@@ -19,7 +19,6 @@ import {
   CalendarClock,
   ChevronLeft,
   ChevronRight,
-  Clock3,
   FolderCode,
   Loader2,
   Pencil,
@@ -143,10 +142,6 @@ export default function AutomationDetails({
           <p className="text-muted-foreground mt-2 max-w-3xl text-sm">
             {automation.description || "No description provided."}
           </p>
-          <div className="text-muted-foreground mt-3 flex items-center gap-2 text-sm">
-            <FolderCode className="size-4" />
-            <span>{automation.project_name}</span>
-          </div>
         </div>
         <div className="flex items-center gap-2">
           <ConfirmationDialog
@@ -194,13 +189,46 @@ export default function AutomationDetails({
           <CalendarClock className="size-4" /> {schedule}
         </span>
         <span className="flex items-center gap-2">
-          <Clock3 className="size-4" /> {automation.timezone || "—"}
+          <FolderCode className="size-4" /> {automation.project_name}
         </span>
-        <span>Created {formatDate(automation.created_at)}</span>
         <span>
           {tasks.length} {tasks.length === 1 ? "task" : "tasks"}
         </span>
       </div>
+
+      <section className="py-7">
+        <h2 className="text-sm font-semibold">Tasks</h2>
+
+        <div className="mt-4 space-y-7">
+          {tasks.map((task, index) => (
+            <article key={task.id}>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="flex min-w-0 items-center gap-3">
+                  <span className="bg-muted flex size-7 items-center justify-center rounded-full text-xs font-semibold">
+                    {index + 1}
+                  </span>
+                  <Badge variant="outline" className="capitalize">
+                    {task.agent.replaceAll("-", " ")}
+                  </Badge>
+                  <div className="text-muted-foreground flex min-w-0 items-center gap-2 text-sm">
+                    <FolderCode className="size-4 shrink-0" />
+                    <code className="truncate">{task.path_from_code}</code>
+                  </div>
+                </div>
+                {task.model ? (
+                  <span className="text-muted-foreground font-mono text-xs">
+                    {task.model}
+                  </span>
+                ) : null}
+              </div>
+
+              <p className="text-muted-foreground mt-3 pl-10 text-sm leading-6 whitespace-pre-wrap">
+                {task.task_prompt}
+              </p>
+            </article>
+          ))}
+        </div>
+      </section>
 
       <section className="py-7">
         <h2 className="text-sm font-semibold">Run history</h2>
@@ -223,7 +251,7 @@ export default function AutomationDetails({
               {runs.map((run) => (
                 <div
                   key={run.id}
-                  className="flex flex-col gap-3 py-2 sm:flex-row sm:items-center sm:justify-between"
+                  className="bg-card hover:bg-muted/20 flex flex-col gap-3 rounded-lg border px-4 py-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div className="min-w-0">
                     <p className="truncate text-sm font-medium">
@@ -233,22 +261,38 @@ export default function AutomationDetails({
                       {formatDate(run.created_at)}
                     </p>
                   </div>
-                  <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex flex-col items-start gap-1 sm:items-end">
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <Badge
+                        variant={
+                          run.project_session?.instance?.state === "running"
+                            ? "secondary"
+                            : "outline"
+                        }
+                      >
+                        {run.project_session?.instance?.state === "running"
+                          ? "Running"
+                          : run.project_session?.instance?.state ===
+                              "terminated"
+                            ? "Completed"
+                            : "Queued"}
+                      </Badge>
+                      {run.project_session ? (
+                        <Button asChild variant="ghost" size="sm">
+                          <Link
+                            href={`/projects/${automation.project_id}/sessions/${run.project_session.id}`}
+                          >
+                            View session
+                          </Link>
+                        </Button>
+                      ) : null}
+                    </div>
                     <AutomationRunRating
                       automationId={automation.id}
                       runId={run.id}
                       currentRating={run.user_rating}
                       currentFeedback={run.user_feedback}
                     />
-                    {run.project_session ? (
-                      <Button asChild variant="ghost" size="sm">
-                        <Link
-                          href={`/projects/${automation.project_id}/sessions/${run.project_session.id}`}
-                        >
-                          View session
-                        </Link>
-                      </Button>
-                    ) : null}
                   </div>
                 </div>
               ))}
@@ -284,40 +328,6 @@ export default function AutomationDetails({
             </Button>
           </div>
         ) : null}
-      </section>
-
-      <section className="py-7">
-        <h2 className="text-sm font-semibold">Tasks</h2>
-
-        <div className="mt-4 space-y-7">
-          {tasks.map((task, index) => (
-            <article key={task.id}>
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <span className="bg-muted flex size-7 items-center justify-center rounded-full text-xs font-semibold">
-                    {index + 1}
-                  </span>
-                  <Badge variant="outline" className="capitalize">
-                    {task.agent.replaceAll("-", " ")}
-                  </Badge>
-                </div>
-                {task.model ? (
-                  <span className="text-muted-foreground font-mono text-xs">
-                    {task.model}
-                  </span>
-                ) : null}
-              </div>
-
-              <div className="mt-4 flex items-center gap-2 text-sm">
-                <FolderCode className="text-muted-foreground size-4" />
-                <code>{task.path_from_code}</code>
-              </div>
-              <p className="mt-3 text-sm leading-6 whitespace-pre-wrap">
-                {task.task_prompt}
-              </p>
-            </article>
-          ))}
-        </div>
       </section>
     </div>
   );
