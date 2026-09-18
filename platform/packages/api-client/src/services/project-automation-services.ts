@@ -1,5 +1,6 @@
 import {
   projectAutomationRuns,
+  projectAutomationTriggerRuns,
   projectAutomations,
   projectAutomationTasks,
   projectAutomationTriggers,
@@ -144,6 +145,26 @@ export type RotateProjectAutomationTriggerTokenResponse = {
     secret: string;
     webhook_url: string;
   };
+};
+
+export type GetProjectAutomationTriggerRunsParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetProjectAutomationTriggerResponse = {
+  trigger: Pick<
+    ProjectAutomationTrigger,
+    | "id"
+    | "name"
+    | "project_automation_id"
+    | "lasted_triggered_at"
+    | "created_at"
+    | "updated_at"
+  > & { webhook_url: string };
+  runs: Array<typeof projectAutomationTriggerRuns.$inferSelect>;
+  has_next: boolean;
+  page: number;
 };
 
 export const getProjectAutomations =
@@ -299,4 +320,19 @@ export const rotateProjectAutomationTriggerToken =
     );
 
     return response.data;
+  };
+
+export const getProjectAutomationTrigger =
+  (apiClient: AxiosInstance) =>
+  async (
+    automationId: ProjectAutomation["id"],
+    triggerId: ProjectAutomationTrigger["id"],
+    params: GetProjectAutomationTriggerRunsParams = {},
+  ): Promise<GetProjectAutomationTriggerResponse> => {
+    const response = await apiClient.get(
+      `/api/v1/project-automations/${automationId}/triggers/${triggerId}`,
+      { params, withCredentials: true },
+    );
+
+    return response.data.data;
   };

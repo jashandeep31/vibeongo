@@ -2,6 +2,7 @@ import {
   and,
   db,
   eq,
+  isNull,
   projectAutomations,
   projectAutomationTriggers,
 } from "@repo/db";
@@ -14,11 +15,17 @@ export const projectAutomationWebhook = catchAsync(
   async (req: Request, res: Response) => {
     const projectAutomationTriggerId = z.uuid().parse(req.params.id);
 
-    const BEARER_TOKEN = req.headers.authorization;
-    if (!BEARER_TOKEN) throw new AppError("No authorization header", 401);
+    const authorizationHeader = req.headers.authorization?.trim();
+    const tokenHeader =
+      req.get("x-webhook-token")?.trim() ?? authorizationHeader;
+    const webhookToken = tokenHeader?.replace(/^Bearer\s+/i, "").trim();
+    if (!webhookToken) throw new AppError("No authorization header", 401);
 
-    const [projectAutomationTriggerWithAutomation] = await db
-      .select()
+    const [projectAutomationTrigger] = await db
+      .select({
+        id: projectAutomationTriggers.id,
+        webhook_secret: projectAutomationTriggers.webhook_secret,
+      })
       .from(projectAutomationTriggers)
       .innerJoin(
         projectAutomations,
@@ -27,25 +34,23 @@ export const projectAutomationWebhook = catchAsync(
           projectAutomationTriggers.project_automation_id,
         ),
       )
-      .where(and(eq(projectAutomationTriggers.id, projectAutomationTriggerId)));
+      .where(
+        and(
+          eq(projectAutomationTriggers.id, projectAutomationTriggerId),
+          isNull(projectAutomations.deleted_at),
+        ),
+      )
+      .limit(1);
 
-    //TODO: show this error in the trigger call too
-    if (!projectAutomationTriggerWithAutomation)
-      throw new Error("Automation not found");
+    if (!projectAutomationTrigger)
+      throw new AppError("Project automation trigger not found", 404);
 
-    const {
-      project_automations: projectAutomation,
-      project_automation_triggers: projectAutomationTrigger,
-    } = projectAutomationTriggerWithAutomation;
-
-    const isAuthenticatedRequest = compareSHA256andReturnString(
-      BEARER_TOKEN,
+    const isAuthenticatedRequest = await compareSHA256andReturnString(
+      webhookToken,
       projectAutomationTrigger.webhook_secret,
     );
     if (!isAuthenticatedRequest) throw new AppError("Unauthorized", 401);
 
-    // const { body } = req;
-
-    res.status(200).json({ message: "ok" });
+    res.status(200).json({ message: "Project automation webhook verified" });
   },
 );

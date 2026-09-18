@@ -117,7 +117,7 @@ export function CreateProjectAutomationTriggerDialog({
               </div>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor={`${nameId}-secret`}>Bearer secret</Label>
+              <Label htmlFor={`${nameId}-secret`}>Webhook token</Label>
               <div className="flex gap-2">
                 <Input
                   id={`${nameId}-secret`}
@@ -129,9 +129,9 @@ export function CreateProjectAutomationTriggerDialog({
                   type="button"
                   variant="outline"
                   size="icon"
-                  aria-label="Copy bearer secret"
+                  aria-label="Copy webhook token"
                   onClick={() =>
-                    void copyValue(createdTrigger.secret, "Bearer secret")
+                    void copyValue(createdTrigger.secret, "Webhook token")
                   }
                 >
                   <Copy />
@@ -139,9 +139,10 @@ export function CreateProjectAutomationTriggerDialog({
               </div>
             </div>
             <div className="bg-muted rounded-lg p-3 text-xs leading-5">
-              Send a POST request to the webhook URL with this header:
+              Send a POST request to the webhook URL with this header. Do not
+              add a <code>Bearer</code> prefix:
               <code className="mt-1 block break-all">
-                Authorization: Bearer {createdTrigger.secret}
+                Authorization: {createdTrigger.secret}
               </code>
             </div>
           </div>

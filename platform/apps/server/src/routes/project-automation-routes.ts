@@ -13,6 +13,7 @@ import {
 } from "../controllers/project-automations/trigger-project-automation.js";
 import { createProjectAutomationTrigger } from "../controllers/project-automations/create-project-automation-trigger.js";
 import { getProjectAutomationTriggers } from "../controllers/project-automations/get-project-automation-triggers.js";
+import { getProjectAutomationTrigger } from "../controllers/project-automations/get-project-automation-trigger.js";
 import {
   getProjectAutomationRuns,
   rateProjectAutomationRun,
@@ -51,5 +52,9 @@ routes
 routes
   .route("/:id/triggers/:triggerId/rotate-token")
   .post(checkAuthorization(["all"]), rotateProjectAutomationTriggerToken);
+
+routes
+  .route("/:id/triggers/:triggerId")
+  .get(checkAuthorization(["all"]), getProjectAutomationTrigger);
 
 export const projectAutomationRoutes = routes;

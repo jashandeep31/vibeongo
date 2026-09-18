@@ -61,9 +61,9 @@ export function RotateProjectAutomationTriggerDialog({
     if (!secret) return;
     try {
       await navigator.clipboard.writeText(secret);
-      toast.success("Bearer secret copied");
+      toast.success("Webhook token copied");
     } catch {
-      toast.error("Could not copy the bearer secret");
+      toast.error("Could not copy the webhook token");
     }
   };
 
@@ -81,14 +81,14 @@ export function RotateProjectAutomationTriggerDialog({
 
         {secret ? (
           <div className="space-y-3 py-2">
-            <p className="text-sm font-medium">New bearer secret</p>
+            <p className="text-sm font-medium">New webhook token</p>
             <div className="flex gap-2">
               <Input value={secret} readOnly className="font-mono text-xs" />
               <Button
                 type="button"
                 variant="outline"
                 size="icon"
-                aria-label="Copy bearer secret"
+                aria-label="Copy webhook token"
                 onClick={() => void copySecret()}
               >
                 <Copy />

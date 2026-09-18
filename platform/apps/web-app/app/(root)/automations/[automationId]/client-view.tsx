@@ -241,7 +241,12 @@ export default function AutomationDetails({
               >
                 <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
                   <div className="min-w-0">
-                    <p className="font-medium">{trigger.name}</p>
+                    <Link
+                      href={`/automations/${automation.id}/triggers/${trigger.id}`}
+                      className="font-medium underline-offset-4 hover:underline"
+                    >
+                      {trigger.name}
+                    </Link>
                     <p className="text-muted-foreground mt-1 text-xs">
                       Created {formatDate(trigger.created_at)} · Last triggered{" "}
                       {formatDate(trigger.lasted_triggered_at)}

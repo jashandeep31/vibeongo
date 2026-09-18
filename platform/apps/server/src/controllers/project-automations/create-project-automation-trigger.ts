@@ -63,7 +63,7 @@ export const createProjectAutomationTrigger = catchAsync(
       data: {
         trigger,
         secret,
-        webhook_url: `${env.BACKEND_URL.replace(/\/+$/, "")}/api/v1/webhook/project-automation/${trigger.id}`,
+        webhook_url: `${env.BACKEND_URL.replace(/\/+$/, "")}/v1/webhook/project-automation/${trigger.id}`,
       },
     });
   },

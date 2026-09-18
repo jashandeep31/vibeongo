@@ -60,6 +60,31 @@ export const useGetProjectAutomationTriggers = (
   });
 };
 
+export const useGetProjectAutomationTrigger = (
+  automationId: string | null,
+  triggerId: string | null,
+  params: { page?: number; limit?: number } = {},
+  enabled = true,
+) => {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: [
+      "project-automation-trigger",
+      automationId,
+      triggerId,
+      params,
+    ],
+    queryFn: () =>
+      client.projectAutomations.getProjectAutomationTrigger(
+        automationId!,
+        triggerId!,
+        params,
+      ),
+    enabled: enabled && Boolean(automationId) && Boolean(triggerId),
+  });
+};
+
 export const useCreateProjectAutomation = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();
