@@ -38,7 +38,6 @@ export const projectAutomations = pgTable("project_automations", {
   cron_expression: varchar(),
   // timzone is of user
   timezone: varchar(),
-  input_schema: jsonb().notNull().default("{}"),
 
   deleted_at: timestamp(),
   created_at: timestamp().defaultNow().notNull(),
@@ -91,3 +90,46 @@ export const projectAutomationTasks = pgTable("project_automation_tasks", {
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
+
+export const projectAutomationTriggers = pgTable(
+  "project_automation_triggers",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    project_automation_id: uuid().references(() => projectAutomations.id, {
+      onDelete: "cascade",
+    }),
+
+    // we will generate a secret key and return it back to the user
+    // will store in the database in the hashed format
+    webhook_secret: varchar().notNull(),
+
+    lasted_triggered_at: timestamp().defaultNow().notNull(),
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+);
+
+export const projectAutomationTriggerRunsStatus = pgEnum(
+  "project_automation_trigger_run_status",
+  ["queued", "running", "completed", "failed", "cancelled"],
+);
+
+export const projectAutomationTriggerRuns = pgTable(
+  "project_automation_trigger_runs",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    status: projectAutomationTriggerRunsStatus().notNull().default("queued"),
+
+    input: jsonb().notNull(),
+    error: varchar({}),
+    project_automation_trigger_id: uuid().references(
+      () => projectAutomationTriggers.id,
+      {
+        onDelete: "cascade",
+      },
+    ),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+);

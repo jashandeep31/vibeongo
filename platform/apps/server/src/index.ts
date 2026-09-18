@@ -39,6 +39,7 @@ import test from "./test.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import { findWebSession } from "./lib/auth-session.js";
+import { webhookRoutes } from "./routes/webhook-routes.js";
 
 const app = express();
 
@@ -109,6 +110,9 @@ app.use("/api/v1/internal", internalRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
+
+// webhooks routes
+app.use("/v1/webhook", webhookRoutes);
 
 Sentry.setupExpressErrorHandler(app);
 
