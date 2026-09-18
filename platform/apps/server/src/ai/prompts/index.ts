@@ -8,6 +8,7 @@ import {
 import { createTasksForPRIssueOrCommaentSystemPrompt } from "./create-tasks-for-pr-issue-or-comment-system-prompt.js";
 import { createProjectSessionAgentSystemPrompt } from "./create-session-agent-system-prompt.js";
 import { vibeongoSystemPrompt } from "./vibeongo-system-prompt.js";
+import { resolveProjectAutomationWebhookTasksSystemPrompt } from "./resolve-project-automation-webhook-tasks-system-prompt.js";
 
 export const PROMPT_TEXT_FILES_FOLDER_PATH = path.resolve(cwd(), "prompts");
 
@@ -29,5 +30,8 @@ export const prompts = {
   },
   createProjectSessionAgent: {
     systemPrompt: createProjectSessionAgentSystemPrompt,
+  },
+  resolveProjectAutomationWebhookTasks: {
+    systemPrompt: resolveProjectAutomationWebhookTasksSystemPrompt,
   },
 } as const;
