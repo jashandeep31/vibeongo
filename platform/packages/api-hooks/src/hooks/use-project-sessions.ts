@@ -22,6 +22,16 @@ export const useGetProjectSessions = (
   });
 };
 
+export const useGetProjectSession = (id: string | null, enabled = true) => {
+  const client = useApiClient();
+
+  return useQuery({
+    queryKey: ["project-session", id],
+    queryFn: () => client.projectSessions.getProjectSessionById(id!),
+    enabled: enabled && Boolean(id),
+  });
+};
+
 export const useCreateProjectSession = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();

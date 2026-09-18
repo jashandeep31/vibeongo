@@ -1,7 +1,7 @@
 "use client";
 
 import { NoAutomationRuns } from "@/components/no-automation-runs";
-import { AutomationRunRating } from "@/components/automation-run-rating";
+import { AutomationRunRow } from "@/components/automation-run-row";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateProjectAutomationTriggerDialog } from "@/components/dialogs/create-project-automation-trigger-dialog";
 import { RotateProjectAutomationTriggerDialog } from "@/components/dialogs/rotate-project-automation-trigger-dialog";
@@ -337,47 +337,7 @@ export default function AutomationDetails({
           ) : (
             <div className="space-y-3">
               {runs.map((run) => (
-                <div
-                  key={run.id}
-                  className="bg-card hover:bg-muted/20 flex flex-col gap-3 rounded-lg border px-4 py-3 shadow-sm transition-colors sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div className="min-w-0">
-                    <p className="truncate text-sm font-medium">
-                      {run.project_session?.name ??
-                        `${automation.name} — ${run.source === "webhook" ? "Webhook" : run.source === "manual" ? "Manual" : "Scheduled"} run`}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {formatDate(run.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex flex-col items-start gap-1 sm:items-end">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <Badge variant="secondary">{run.source}</Badge>
-                      <Badge
-                        variant={
-                          run.status === "failed" ? "destructive" : "outline"
-                        }
-                      >
-                        {run.status}
-                      </Badge>
-                      {run.project_session ? (
-                        <Button asChild variant="ghost" size="sm">
-                          <Link
-                            href={`/projects/${automation.project_id}/sessions/${run.project_session.id}`}
-                          >
-                            View session
-                          </Link>
-                        </Button>
-                      ) : null}
-                    </div>
-                    <AutomationRunRating
-                      automationId={automation.id}
-                      runId={run.id}
-                      currentRating={run.user_rating}
-                      currentFeedback={run.user_feedback}
-                    />
-                  </div>
-                </div>
+                <AutomationRunRow key={run.id} run={run} automation={automation} />
               ))}
             </div>
           )}

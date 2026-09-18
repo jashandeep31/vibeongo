@@ -1,6 +1,7 @@
 "use client";
 
 import { RotateProjectAutomationTriggerDialog } from "@/components/dialogs/rotate-project-automation-trigger-dialog";
+import { AutomationRunRow } from "@/components/automation-run-row";
 import {
   useGetProjectAutomation,
   useGetProjectAutomationTrigger,
@@ -188,28 +189,13 @@ export default function TriggerDetails({
               No runs have been received yet.
             </p>
           ) : (
-            runs.map((run) => {
-              return (
-                <div
-                  key={run.id}
-                  className="bg-card flex flex-col gap-3 rounded-lg border px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <div>
-                    <p className="font-mono text-xs">{run.id}</p>
-                    <p className="text-muted-foreground mt-1 text-xs">
-                      {formatDate(run.created_at)}
-                    </p>
-                  </div>
-                  <Badge
-                    variant={
-                      run.status === "failed" ? "destructive" : "outline"
-                    }
-                  >
-                    {run.status}
-                  </Badge>
-                </div>
-              );
-            })
+            runs.map((run) => (
+              <AutomationRunRow
+                key={run.id}
+                run={run}
+                automation={automation}
+              />
+            ))
           )}
         </div>
 

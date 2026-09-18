@@ -92,15 +92,12 @@ export const rateProjectAutomationRun = catchAsync(async (req, res) => {
   const { id, runId } = z
     .object({ id: z.uuid(), runId: z.uuid() })
     .parse(req.params);
-  const { rating, feedback } = z
-    .object({
-      rating: z.number().int().min(1).max(5),
-      feedback: z.string().trim().max(1000).optional(),
-    })
+  const { rating } = z
+    .object({ rating: z.number().int().min(1).max(5) })
     .parse(req.body);
 
   const [ownedRun] = await db
-    .select({ id: projectAutomationRuns.id })
+    .select({ id: projectAutomationRuns.id, status: projectAutomationRuns.status })
     .from(projectAutomationRuns)
     .innerJoin(
       projectAutomations,
@@ -116,12 +113,15 @@ export const rateProjectAutomationRun = catchAsync(async (req, res) => {
     .limit(1);
 
   if (!ownedRun) throw new AppError("Automation run not found", 404);
+  if (ownedRun.status !== "done" && ownedRun.status !== "failed") {
+    throw new AppError("Automation runs can only be rated after completion", 409);
+  }
 
   const [updatedRun] = await db
     .update(projectAutomationRuns)
     .set({
       user_rating: rating,
-      user_feedback: feedback || null,
+      user_feedback: null,
       updated_at: new Date(),
     })
     .where(eq(projectAutomationRuns.id, ownedRun.id))

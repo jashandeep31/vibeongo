@@ -2,6 +2,7 @@ import {
   instances,
   instanceRuntimeKind,
   projects,
+  projectSessionTasks,
   projectSessions,
 } from "@repo/db";
 import type { AxiosInstance } from "axios";
@@ -9,6 +10,11 @@ import type { AxiosInstance } from "axios";
 export type ProjectSession = typeof projectSessions.$inferSelect & {
   project_name: (typeof projects.$inferSelect)["name"];
   instances: (typeof instances.$inferSelect)[];
+};
+
+export type ProjectSessionDetails = typeof projectSessions.$inferSelect & {
+  instances: (typeof instances.$inferSelect)[];
+  tasks: (typeof projectSessionTasks.$inferSelect)[];
 };
 
 export type GetProjectSessionsParams = {
@@ -22,6 +28,10 @@ export type ProjectSessionsResponse = {
   data: ProjectSession[];
   page: number;
   hasNext: boolean;
+};
+
+export type GetProjectSessionResponse = {
+  data: ProjectSessionDetails;
 };
 
 export type ResumeProjectSessionInput = {
@@ -55,6 +65,16 @@ export const getProjectSessions =
   }: GetProjectSessionsParams = {}): Promise<ProjectSessionsResponse> => {
     const response = await apiClient.get(`/api/v1/project-sessions/`, {
       params: { projectId, page, limit, archived },
+      withCredentials: true,
+    });
+
+    return response.data;
+  };
+
+export const getProjectSessionById =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<GetProjectSessionResponse> => {
+    const response = await apiClient.get(`/api/v1/project-sessions/${id}`, {
       withCredentials: true,
     });
 

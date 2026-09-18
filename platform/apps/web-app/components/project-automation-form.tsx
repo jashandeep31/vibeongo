@@ -40,6 +40,7 @@ type DraftTask = {
   agent: Agent;
   model: string;
 };
+type AutomationTemplate = "dependency-maintenance" | "sentry-resolution";
 type Props = {
   mode: "create" | "edit";
   initialValues?: CreateProjectAutomationInput;
@@ -58,6 +59,87 @@ const blankTask = (id: number): DraftTask => ({
   agent: "build",
   model: "",
 });
+
+const automationTemplates: Array<{
+  value: Exclude<AutomationTemplate, "">;
+  label: string;
+  description: string;
+  name: string;
+  tasks: Array<{
+    path: string;
+    prompt: string;
+    agent: Agent;
+    model: string;
+  }>;
+}> = [
+  {
+    value: "dependency-maintenance",
+    label: "Dependency maintenance and PR",
+    description:
+      "Find outdated packages, update compatible versions, verify the changes, and prepare a detailed PR.",
+    name: "Dependency updates",
+    tasks: [
+      {
+        path: "",
+        prompt:
+          "Inspect the repository for outdated package dependencies. Identify current versions, available updates, breaking changes, and packages that cannot be updated safely.",
+        agent: "plan",
+        model: "",
+      },
+      {
+        path: "",
+        prompt:
+          "Update packages to the latest compatible versions. Run the repository's relevant tests, type checks, and lint checks, and leave incompatible or blocked packages unchanged with an explanation.",
+        agent: "build",
+        model: "",
+      },
+      {
+        path: "",
+        prompt:
+          "Review the dependency changes and create a pull request with a complete summary, testing results, updated packages, and a clear list of packages that remain outdated and why.",
+        agent: "pr-reviewer",
+        model: "",
+      },
+    ],
+  },
+  {
+    value: "sentry-resolution",
+    label: "Resolve a Sentry error",
+    description:
+      "Understand a Sentry issue, apply the Sentry template context, verify the fix, and prepare a detailed PR.",
+    name: "Resolve Sentry error",
+    tasks: [
+      {
+        path: "",
+        prompt:
+          "Get context about this project and investigate the reported Sentry error, including the stack trace, affected code path, recent changes, and likely root cause.",
+        agent: "plan",
+        model: "",
+      },
+      {
+        path: "",
+        prompt:
+          "Process the provided {{sentry}} template context and use it to implement a focused fix for the reported error. Keep the change scoped and document any assumptions.",
+        agent: "issue-resolver",
+        model: "",
+      },
+      {
+        path: "",
+        prompt:
+          "Verify that the Sentry error is fixed by running the relevant tests and reproducing the affected flow where possible. Check for regressions and capture the verification evidence.",
+        agent: "build",
+        model: "",
+      },
+      {
+        path: "",
+        prompt:
+          "Create a pull request with the Sentry issue details, root cause, implemented fix, verification results, and any remaining risks or follow-up work.",
+        agent: "pr-reviewer",
+        model: "",
+      },
+    ],
+  },
+];
 
 function Section({
   title,
@@ -122,6 +204,19 @@ export function ProjectAutomationForm({
     setTasks((current) =>
       current.map((task) => (task.id === id ? { ...task, ...patch } : task)),
     );
+
+  const applyTemplate = (value: AutomationTemplate) => {
+    const selected = automationTemplates.find((item) => item.value === value);
+    if (!selected) return;
+
+    setTasks(
+      selected.tasks.map((task, index) => ({
+        ...task,
+        id: index + 1,
+      })),
+    );
+    setNextTaskId(selected.tasks.length + 1);
+  };
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -295,6 +390,29 @@ export function ProjectAutomationForm({
           description="Tasks run in the order shown. At least one task is required."
         >
           <div className="space-y-5">
+            {!editing ? (
+              <div className="border-border bg-muted/10 rounded-xl border border-dashed p-4">
+                <p className="text-sm font-medium">Import task template</p>
+                <p className="text-muted-foreground mt-1 text-xs">
+                  Importing replaces only the tasks below. Your automation details and schedule stay unchanged. Choose a repository path for each imported task.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {automationTemplates.map((item) => (
+                    <Button
+                      key={item.value}
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => applyTemplate(item.value)}
+                      disabled={isPending}
+                      title={item.description}
+                    >
+                      {item.label}
+                    </Button>
+                  ))}
+                </div>
+              </div>
+            ) : null}
             {tasks.map((task, index) => (
               <div
                 key={task.id}

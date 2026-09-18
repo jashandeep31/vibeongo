@@ -67,7 +67,6 @@ export type RateProjectAutomationRunInput = {
   automationId: ProjectAutomation["id"];
   runId: ProjectAutomationRun["id"];
   rating: number;
-  feedback?: string;
 };
 
 export type RateProjectAutomationRunResponse = {
@@ -213,11 +212,10 @@ export const rateProjectAutomationRun =
     automationId,
     runId,
     rating,
-    feedback,
   }: RateProjectAutomationRunInput): Promise<RateProjectAutomationRunResponse> => {
     const response = await apiClient.patch(
       `/api/v1/project-automations/${automationId}/runs/${runId}/rating`,
-      { rating, feedback },
+      { rating },
       { withCredentials: true },
     );
 
