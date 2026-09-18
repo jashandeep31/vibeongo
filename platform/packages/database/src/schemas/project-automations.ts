@@ -7,6 +7,8 @@ import {
   integer,
   boolean,
   check,
+  jsonb,
+  pgEnum,
 } from "drizzle-orm/pg-core";
 import {
   projectSessions,
@@ -36,11 +38,17 @@ export const projectAutomations = pgTable("project_automations", {
   cron_expression: varchar(),
   // timzone is of user
   timezone: varchar(),
+  input_schema: jsonb().notNull().default("{}"),
 
   deleted_at: timestamp(),
   created_at: timestamp().defaultNow().notNull(),
   updated_at: timestamp().defaultNow(),
 });
+
+export const projectAutomationRunsStatus = pgEnum(
+  "project_automation_run_status",
+  ["queued", "running", "completed", "failed", "cancelled"],
+);
 
 export const projectAutomationRuns = pgTable(
   "project_automation_runs",
@@ -50,6 +58,7 @@ export const projectAutomationRuns = pgTable(
     project_automation_id: uuid().references(() => projectAutomations.id, {
       onDelete: "cascade",
     }),
+    status: projectAutomationRunsStatus().notNull().default("queued"),
     project_session_id: uuid().references(() => projectSessions.id, {
       onDelete: "set null",
     }),
