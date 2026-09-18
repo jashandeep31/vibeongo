@@ -102,6 +102,7 @@ export type TriggerProjectAutomationResponse = {
 export type CreateProjectAutomationTriggerInput = {
   automationId: ProjectAutomation["id"];
   name: string;
+  provider: "sentry";
 };
 
 export type CreateProjectAutomationTriggerResponse = {
@@ -109,7 +110,7 @@ export type CreateProjectAutomationTriggerResponse = {
   data: {
     trigger: Pick<
       ProjectAutomationTrigger,
-      "id" | "name" | "project_automation_id" | "created_at"
+      "id" | "name" | "provider" | "project_automation_id" | "created_at"
     >;
     secret: string;
     webhook_url: string;
@@ -122,6 +123,7 @@ export type GetProjectAutomationTriggersResponse = {
       ProjectAutomationTrigger,
       | "id"
       | "name"
+      | "provider"
       | "project_automation_id"
       | "lasted_triggered_at"
       | "created_at"
@@ -157,6 +159,7 @@ export type GetProjectAutomationTriggerResponse = {
     ProjectAutomationTrigger,
     | "id"
     | "name"
+    | "provider"
     | "project_automation_id"
     | "lasted_triggered_at"
     | "created_at"
@@ -283,10 +286,11 @@ export const createProjectAutomationTrigger =
   async ({
     automationId,
     name,
+    provider,
   }: CreateProjectAutomationTriggerInput): Promise<CreateProjectAutomationTriggerResponse> => {
     const response = await apiClient.post(
       `/api/v1/project-automations/${automationId}/triggers`,
-      { name },
+      { name, provider },
       { withCredentials: true },
     );
 

@@ -28,6 +28,7 @@ export const projectAutomationWebhook = catchAsync(
         id: projectAutomationTriggers.id,
         webhook_secret: projectAutomationTriggers.webhook_secret,
         project_automation_id: projectAutomations.id,
+        provider: projectAutomationTriggers.provider,
       })
       .from(projectAutomationTriggers)
       .innerJoin(
@@ -54,8 +55,18 @@ export const projectAutomationWebhook = catchAsync(
     );
     if (!isAuthenticatedRequest) throw new AppError("Unauthorized", 401);
 
-    const input =
-      typeof req.body === "string" ? req.body : JSON.stringify(req.body ?? {});
+    let processedWebhook: ProcessedWebhookPayload;
+
+    switch (projectAutomationTrigger.provider) {
+      case "sentry":
+        processedWebhook = processSentryWebhook(req.body);
+        break;
+      default:
+        throw new AppError(
+          `Unsupported project automation provider: ${projectAutomationTrigger.provider}`,
+          400,
+        );
+    }
 
     const [automationRun] = await db
       .insert(projectAutomationRuns)
@@ -64,12 +75,53 @@ export const projectAutomationWebhook = catchAsync(
         project_automation_trigger_id: projectAutomationTrigger.id,
         source: "webhook",
         status: "queued",
-        input,
+        provider: projectAutomationTrigger.provider,
+        project_request_unique_id: processedWebhook.projectRequestUniqueId,
+        input: processedWebhook.input,
+      })
+      .onConflictDoNothing({
+        target: [
+          projectAutomationRuns.project_automation_trigger_id,
+          projectAutomationRuns.provider,
+          projectAutomationRuns.project_request_unique_id,
+        ],
       })
       .returning({ id: projectAutomationRuns.id });
 
     if (!automationRun) {
-      throw new AppError("Failed to create project automation run", 500);
+      const [existingRun] = await db
+        .select({ id: projectAutomationRuns.id })
+        .from(projectAutomationRuns)
+        .where(
+          and(
+            eq(
+              projectAutomationRuns.project_automation_trigger_id,
+              projectAutomationTrigger.id,
+            ),
+            eq(
+              projectAutomationRuns.provider,
+              projectAutomationTrigger.provider,
+            ),
+            eq(
+              projectAutomationRuns.project_request_unique_id,
+              processedWebhook.projectRequestUniqueId,
+            ),
+          ),
+        )
+        .limit(1);
+
+      if (!existingRun) {
+        throw new AppError(
+          "Failed to find duplicate project automation run",
+          500,
+        );
+      }
+
+      res.status(202).json({
+        message: "Project automation webhook already accepted",
+        data: { automation_run_id: existingRun.id },
+      });
+      return;
     }
 
     try {
@@ -98,3 +150,50 @@ export const projectAutomationWebhook = catchAsync(
     });
   },
 );
+
+type ProcessedWebhookPayload = {
+  input: string;
+  projectRequestUniqueId: string;
+};
+
+function processSentryWebhook(body: unknown): ProcessedWebhookPayload {
+  let payload: unknown = body;
+
+  if (typeof payload === "string") {
+    try {
+      payload = JSON.parse(payload);
+    } catch {
+      throw new AppError("Invalid Sentry webhook payload", 400);
+    }
+  }
+
+  const payloadRecord =
+    payload && typeof payload === "object"
+      ? (payload as Record<string, unknown>)
+      : null;
+  const dataRecord =
+    payloadRecord?.data && typeof payloadRecord.data === "object"
+      ? (payloadRecord.data as Record<string, unknown>)
+      : null;
+  const eventRecord =
+    dataRecord?.event && typeof dataRecord.event === "object"
+      ? (dataRecord.event as Record<string, unknown>)
+      : null;
+  const eventId = [
+    payloadRecord?.event_id,
+    dataRecord?.event_id,
+    eventRecord?.event_id,
+  ].find(
+    (value): value is string =>
+      typeof value === "string" && value.trim().length > 0,
+  );
+
+  if (!eventId) {
+    throw new AppError("Sentry webhook event ID is required", 400);
+  }
+
+  return {
+    projectRequestUniqueId: eventId.trim(),
+    input: typeof body === "string" ? body : JSON.stringify(body ?? {}),
+  };
+}

@@ -1,4 +1,8 @@
-import type { ApiClient } from "@repo/api-client";
+import type {
+  ApiClient,
+  CreateProjectAutomationTriggerInput,
+  CreateProjectAutomationTriggerResponse,
+} from "@repo/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useApiClient } from "../api-client-context.js";
 
@@ -166,8 +170,17 @@ export const useCreateProjectAutomationTrigger = () => {
   const client = useApiClient();
   const queryClient = useQueryClient();
 
-  return useMutation({
-    mutationFn: client.projectAutomations.createProjectAutomationTrigger,
+  return useMutation<
+    CreateProjectAutomationTriggerResponse,
+    unknown,
+    CreateProjectAutomationTriggerInput
+  >({
+    mutationFn: ({ automationId, name, provider }) =>
+      client.projectAutomations.createProjectAutomationTrigger({
+        automationId,
+        name,
+        provider,
+      }),
     onSuccess: async (_, variables) => {
       await Promise.all([
         queryClient.invalidateQueries({

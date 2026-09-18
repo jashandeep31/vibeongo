@@ -13,6 +13,13 @@ import {
 } from "@repo/ui/components/dialog";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@repo/ui/components/select";
 import axios from "axios";
 import { Check, Copy, Loader2 } from "lucide-react";
 import { useId, useState, type FormEvent, type ReactNode } from "react";
@@ -32,6 +39,7 @@ export function CreateProjectAutomationTriggerDialog({
 }) {
   const [open, setOpen] = useState(false);
   const [name, setName] = useState("");
+  const [provider, setProvider] = useState<"sentry">("sentry");
   const [createdTrigger, setCreatedTrigger] = useState<CreatedTrigger | null>(
     null,
   );
@@ -42,6 +50,7 @@ export function CreateProjectAutomationTriggerDialog({
     setOpen(nextOpen);
     if (nextOpen) {
       setName("");
+      setProvider("sentry");
       setCreatedTrigger(null);
     }
   };
@@ -53,6 +62,7 @@ export function CreateProjectAutomationTriggerDialog({
       const response = await createTrigger.mutateAsync({
         automationId,
         name: name.trim(),
+        provider,
       });
       setCreatedTrigger(response.data);
       toast.success("Integration created");
@@ -164,6 +174,23 @@ export function CreateProjectAutomationTriggerDialog({
               <p className="text-muted-foreground text-xs">
                 Use 3–20 characters.
               </p>
+            </div>
+            <div className="grid gap-2 py-2">
+              <Label htmlFor={`${nameId}-provider`}>Provider</Label>
+              <Select
+                value={provider}
+                onValueChange={(value) => {
+                  if (value === "sentry") setProvider(value);
+                }}
+                disabled={createTrigger.isPending}
+              >
+                <SelectTrigger id={`${nameId}-provider`} className="w-full">
+                  <SelectValue placeholder="Choose a provider" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sentry">Sentry</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <DialogFooter className="mt-5">
               <Button

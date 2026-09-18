@@ -42,6 +42,10 @@ const scheduleLabels: Record<string, string> = {
   "0 0 * * 0": "Every week on Sunday",
 };
 
+const providerLabels: Record<string, string> = {
+  sentry: "Sentry",
+};
+
 const formatDate = (value: Date | string | null) => {
   if (!value) return "—";
   const date = new Date(value);
@@ -251,6 +255,17 @@ export default function AutomationDetails({
                       Created {formatDate(trigger.created_at)} · Last triggered{" "}
                       {formatDate(trigger.lasted_triggered_at)}
                     </p>
+                    <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+                      <Badge variant="outline">
+                        {providerLabels[trigger.provider] ?? trigger.provider}
+                      </Badge>
+                      <code
+                        className="text-muted-foreground"
+                        title={trigger.id}
+                      >
+                        ID: {trigger.id.slice(0, 8)}…
+                      </code>
+                    </div>
                   </div>
                   <div className="flex shrink-0 items-center gap-1">
                     <Button
@@ -337,7 +352,11 @@ export default function AutomationDetails({
           ) : (
             <div className="space-y-3">
               {runs.map((run) => (
-                <AutomationRunRow key={run.id} run={run} automation={automation} />
+                <AutomationRunRow
+                  key={run.id}
+                  run={run}
+                  automation={automation}
+                />
               ))}
             </div>
           )}

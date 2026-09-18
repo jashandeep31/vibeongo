@@ -8,6 +8,7 @@ import {
   boolean,
   check,
   pgEnum,
+  unique,
 } from "drizzle-orm/pg-core";
 import {
   projectSessions,
@@ -53,6 +54,11 @@ export const projectAutomationRunSource = pgEnum(
   ["manual", "webhook", "schedule"],
 );
 
+export const projectAutomationTriggerProviders = pgEnum(
+  "project_automation_trigger_providers",
+  ["sentry"],
+);
+
 export const projectAutomationRuns = pgTable(
   "project_automation_runs",
   {
@@ -61,10 +67,14 @@ export const projectAutomationRuns = pgTable(
     project_automation_id: uuid().references(() => projectAutomations.id, {
       onDelete: "cascade",
     }),
+
     project_automation_trigger_id: uuid().references(
       () => projectAutomationTriggers.id,
       { onDelete: "set null" },
     ),
+
+    provider: projectAutomationTriggerProviders(),
+    project_request_unique_id: varchar(),
     source: projectAutomationRunSource().notNull(),
     status: projectAutomationRunsStatus().notNull().default("queued"),
     input: text(),
@@ -83,6 +93,11 @@ export const projectAutomationRuns = pgTable(
   },
   (table) => [
     check("rating_range_check", sql`${table.user_rating} BETWEEN 1 AND 5`),
+    unique("project_automation_runs_trigger_project_request_unique_id_unique").on(
+      table.project_automation_trigger_id,
+      table.provider,
+      table.project_request_unique_id,
+    ),
   ],
 );
 
@@ -116,6 +131,7 @@ export const projectAutomationTriggers = pgTable(
     // we will generate a secret key and return it back to the user
     // will store in the database in the hashed format
     webhook_secret: varchar().notNull(),
+    provider: projectAutomationTriggerProviders().notNull(),
 
     lasted_triggered_at: timestamp().defaultNow().notNull(),
     created_at: timestamp().defaultNow().notNull(),

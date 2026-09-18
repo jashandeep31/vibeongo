@@ -29,6 +29,7 @@ export const getProjectAutomationTrigger = catchAsync(async (req, res) => {
     .select({
       id: projectAutomationTriggers.id,
       name: projectAutomationTriggers.name,
+      provider: projectAutomationTriggers.provider,
       project_automation_id: projectAutomationTriggers.project_automation_id,
       lasted_triggered_at: projectAutomationTriggers.lasted_triggered_at,
       created_at: projectAutomationTriggers.created_at,

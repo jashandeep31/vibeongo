@@ -1,6 +1,14 @@
 import { randomBytes } from "node:crypto";
 import { Request, Response } from "express";
-import { and, db, eq, isNull, projectAutomationTriggers, projectAutomations } from "@repo/db";
+import {
+  and,
+  db,
+  eq,
+  isNull,
+  projectAutomationTriggerProviders,
+  projectAutomationTriggers,
+  projectAutomations,
+} from "@repo/db";
 import { z } from "@repo/shared";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -15,13 +23,14 @@ export const createProjectAutomationTrigger = catchAsync(
     const { id: projectAutomationId } = z
       .object({ id: z.uuid() })
       .parse(req.params);
-    const { name } = z
+    const { name, provider } = z
       .object({
         name: z
           .string()
           .trim()
           .min(3, "Trigger name must be at least 3 characters")
           .max(20, "Trigger name must be at most 20 characters"),
+        provider: z.enum(projectAutomationTriggerProviders.enumValues),
       })
       .parse(req.body);
 
@@ -48,6 +57,7 @@ export const createProjectAutomationTrigger = catchAsync(
         name,
         project_automation_id: automation.id,
         webhook_secret: webhookSecret,
+        provider,
       })
       .returning({
         id: projectAutomationTriggers.id,
@@ -56,7 +66,8 @@ export const createProjectAutomationTrigger = catchAsync(
         created_at: projectAutomationTriggers.created_at,
       });
 
-    if (!trigger) throw new AppError("Failed to create project automation trigger", 500);
+    if (!trigger)
+      throw new AppError("Failed to create project automation trigger", 500);
 
     res.status(201).json({
       message: "Project automation trigger created successfully",
