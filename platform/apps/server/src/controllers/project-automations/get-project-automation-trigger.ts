@@ -3,10 +3,13 @@ import {
   db,
   desc,
   eq,
+  inArray,
+  instances,
   isNull,
   projectAutomationTriggerRuns,
   projectAutomationTriggers,
   projectAutomations,
+  projectSessions,
 } from "@repo/db";
 import { commonFilterSchema, z } from "@repo/shared";
 import { AppError } from "../../lib/app-error.js";
@@ -49,12 +52,43 @@ export const getProjectAutomationTrigger = catchAsync(async (req, res) => {
   if (!trigger) throw new AppError("Project automation trigger not found", 404);
 
   const runRows = await db
-    .select()
+    .select({
+      run: projectAutomationTriggerRuns,
+      project_session: projectSessions,
+    })
     .from(projectAutomationTriggerRuns)
+    .leftJoin(
+      projectSessions,
+      eq(projectSessions.id, projectAutomationTriggerRuns.project_session_id),
+    )
     .where(eq(projectAutomationTriggerRuns.project_automation_trigger_id, trigger.id))
     .orderBy(desc(projectAutomationTriggerRuns.created_at))
     .limit(limit + 1)
     .offset((page - 1) * limit);
+
+  const sessionIds = runRows
+    .map(({ project_session }) => project_session?.id)
+    .filter((sessionId): sessionId is string => Boolean(sessionId));
+  const instanceRows = sessionIds.length
+    ? await db
+        .select()
+        .from(instances)
+        .where(inArray(instances.project_session_id, sessionIds))
+        .orderBy(desc(instances.created_at))
+    : [];
+  const latestInstanceBySession = new Map<
+    string,
+    typeof instances.$inferSelect
+  >();
+
+  for (const instance of instanceRows) {
+    if (
+      instance.project_session_id &&
+      !latestInstanceBySession.has(instance.project_session_id)
+    ) {
+      latestInstanceBySession.set(instance.project_session_id, instance);
+    }
+  }
 
   const backendUrl = env.BACKEND_URL.replace(/\/+$/, "");
 
@@ -64,7 +98,15 @@ export const getProjectAutomationTrigger = catchAsync(async (req, res) => {
         ...trigger,
         webhook_url: `${backendUrl}/v1/webhook/project-automation/${trigger.id}`,
       },
-      runs: runRows.slice(0, limit),
+      runs: runRows.slice(0, limit).map(({ run, project_session }) => ({
+        ...run,
+        project_session: project_session
+          ? {
+              ...project_session,
+              instance: latestInstanceBySession.get(project_session.id) ?? null,
+            }
+          : null,
+      })),
       has_next: runRows.length > limit,
       page,
     },

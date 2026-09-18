@@ -4,6 +4,7 @@ import {
   eq,
   isNull,
   projectAutomations,
+  projectAutomationTriggerRuns,
   projectAutomationTriggers,
 } from "@repo/db";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -53,11 +54,49 @@ export const projectAutomationWebhook = catchAsync(
     );
     if (!isAuthenticatedRequest) throw new AppError("Unauthorized", 401);
 
-    await addProjectAutomationWebhookJob({
-      automationId: projectAutomationTrigger.project_automation_id,
-      automationTriggerId: projectAutomationTrigger.id,
-    });
+    const input =
+      typeof req.body === "string"
+        ? req.body
+        : JSON.stringify(req.body ?? {});
 
-    res.status(202).json({ message: "Project automation webhook accepted" });
+    const [triggerRun] = await db
+      .insert(projectAutomationTriggerRuns)
+      .values({
+        project_automation_trigger_id: projectAutomationTrigger.id,
+        input,
+      })
+      .returning({ id: projectAutomationTriggerRuns.id });
+
+    if (!triggerRun) {
+      throw new AppError("Failed to create project automation trigger run", 500);
+    }
+
+    try {
+      await addProjectAutomationWebhookJob({
+        automationId: projectAutomationTrigger.project_automation_id,
+        automationTriggerId: projectAutomationTrigger.id,
+        automationTriggerRunId: triggerRun.id,
+        input,
+      });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Failed to queue webhook run";
+
+      await db
+        .update(projectAutomationTriggerRuns)
+        .set({
+          status: "failed",
+          error: message.slice(0, 255),
+          updated_at: new Date(),
+        })
+        .where(eq(projectAutomationTriggerRuns.id, triggerRun.id));
+
+      throw error;
+    }
+
+    res.status(202).json({
+      message: "Project automation webhook accepted",
+      data: { trigger_run_id: triggerRun.id },
+    });
   },
 );

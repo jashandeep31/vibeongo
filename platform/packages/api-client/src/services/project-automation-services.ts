@@ -24,6 +24,14 @@ export type ProjectAutomationRun = typeof projectAutomationRuns.$inferSelect & {
       })
     | null;
 };
+export type ProjectAutomationTriggerRun =
+  typeof projectAutomationTriggerRuns.$inferSelect & {
+    project_session:
+      | (typeof projectSessions.$inferSelect & {
+          instance: typeof instances.$inferSelect | null;
+        })
+      | null;
+  };
 
 export type CreateProjectAutomationInput = z.infer<
   typeof projectAutomationSchema
@@ -162,7 +170,7 @@ export type GetProjectAutomationTriggerResponse = {
     | "created_at"
     | "updated_at"
   > & { webhook_url: string };
-  runs: Array<typeof projectAutomationTriggerRuns.$inferSelect>;
+  runs: ProjectAutomationTriggerRun[];
   has_next: boolean;
   page: number;
 };

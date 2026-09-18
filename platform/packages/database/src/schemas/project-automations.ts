@@ -112,7 +112,16 @@ export const projectAutomationTriggers = pgTable(
 
 export const projectAutomationTriggerRunsStatus = pgEnum(
   "project_automation_trigger_run_status",
-  ["queued", "running", "completed", "failed", "cancelled"],
+  [
+    "queued",
+    "working",
+    "allocating",
+    "done",
+    "running",
+    "completed",
+    "failed",
+    "cancelled",
+  ],
 );
 
 export const projectAutomationTriggerRuns = pgTable(
@@ -121,8 +130,11 @@ export const projectAutomationTriggerRuns = pgTable(
     id: uuid().primaryKey().defaultRandom(),
     status: projectAutomationTriggerRunsStatus().notNull().default("queued"),
 
-    input: jsonb().notNull(),
+    input: text().notNull(),
     error: varchar({}),
+    project_session_id: uuid().references(() => projectSessions.id, {
+      onDelete: "set null",
+    }),
     project_automation_trigger_id: uuid().references(
       () => projectAutomationTriggers.id,
       {

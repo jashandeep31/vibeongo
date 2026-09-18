@@ -9,6 +9,8 @@ const PROJECT_AUTOMATION_WEBHOOK_JOB_NAME =
 export type ProjectAutomationWebhookJobData = {
   automationId: string;
   automationTriggerId: string;
+  automationTriggerRunId: string;
+  input: string;
 };
 
 const projectAutomationWebhookQueue = new Queue<
@@ -30,11 +32,7 @@ export const addProjectAutomationWebhookJob = async (
     PROJECT_AUTOMATION_WEBHOOK_JOB_NAME,
     data,
     {
-      attempts: 3,
-      backoff: {
-        type: "exponential",
-        delay: 5_000,
-      },
+      attempts: 1,
       removeOnComplete: 100,
       removeOnFail: 500,
     },
