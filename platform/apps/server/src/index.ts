@@ -1,10 +1,10 @@
 import "./lib/sentry.js";
-import "./lib/cron.js";
 import "./jobs/repo-overview-worker.js";
 import "./jobs/sandbox-setup-worker.js";
 import "./jobs/user-onboarding-worker.js";
 import "./jobs/instance-termination-worker.js";
 import "./jobs/git-repo-access-token-revocation-worker.js";
+import "./jobs/project-automation-webhook-worker.js";
 
 import { createServer } from "node:http";
 
@@ -30,6 +30,7 @@ import { metadataRoutes } from "./routes/metadata-routes.js";
 import { miscellaneousRoutes } from "./routes/miscellaneous-routes.js";
 import { paymentRoutes } from "./routes/payment-routes.js";
 import { projectRoutes } from "./routes/project-routes.js";
+import { projectAutomationRoutes } from "./routes/project-automation-routes.js";
 import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 import { testRoutes } from "./routes/test-routes.js";
@@ -38,6 +39,7 @@ import test from "./test.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import { findWebSession } from "./lib/auth-session.js";
+import { webhookRoutes } from "./routes/webhook-routes.js";
 
 const app = express();
 
@@ -98,6 +100,7 @@ app.use("/", testRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
 app.use("/api/v1/projects", projectRoutes);
+app.use("/api/v1/project-automations", projectAutomationRoutes);
 app.use("/api/v1/instances", instanceRoutes);
 app.use("/api/v1/instance-slots", instanceSlotRoutes);
 app.use("/api/v1/metadata", metadataRoutes);
@@ -107,6 +110,9 @@ app.use("/api/v1/internal", internalRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
+
+// webhooks routes
+app.use("/v1/webhook", webhookRoutes);
 
 Sentry.setupExpressErrorHandler(app);
 

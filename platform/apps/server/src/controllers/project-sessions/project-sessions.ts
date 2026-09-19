@@ -333,6 +333,19 @@ export const resumeProjectSession = catchAsync(
       })
       .parse(req.body ?? {});
 
+    const [session] = await db
+      .select({ category: projectSessions.category })
+      .from(projectSessions)
+      .where(
+        and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
+      )
+      .limit(1);
+
+    if (!session) throw new AppError("Project session not found", 404);
+    if (session.category === "auto") {
+      throw new AppError("Automated sessions cannot be resumed manually", 409);
+    }
+
     const instance = await checkAndLaunchInstance({
       userId: user.id,
       sessionId: id,

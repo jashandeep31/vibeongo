@@ -15,6 +15,13 @@
       "when": 1789490881114,
       "tag": "0001_mighty_havok",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1789803856476,
+      "tag": "0002_majestic_william_stryker",
+      "breakpoints": true
     }
   ]
 }

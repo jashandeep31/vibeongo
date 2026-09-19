@@ -5,9 +5,11 @@ import {
   gitRepoAccessTokens,
   instances,
   instanceSlots,
+  inArray,
   isNull,
   lt,
   lte,
+  projectAutomationRuns,
   sql,
 } from "@repo/db";
 import cron from "node-cron";
@@ -85,7 +87,31 @@ cron.schedule(
             ),
           ),
         )
-        .returning({ id: instanceSlots.id });
+        .returning({
+          id: instanceSlots.id,
+          session_id: instanceSlots.session_id,
+          spun_up_by: instanceSlots.spun_up_by,
+        });
+
+      const automationSessionIds = recoveredSlots
+        .filter((slot) => slot.spun_up_by === "automation")
+        .map((slot) => slot.session_id);
+
+      if (automationSessionIds.length > 0) {
+        await db
+          .update(projectAutomationRuns)
+          .set({
+            status: "failed",
+            error: "Provisioning timed out before an instance was attached",
+            updated_at: new Date(),
+          })
+          .where(
+            inArray(
+              projectAutomationRuns.project_session_id,
+              automationSessionIds,
+            ),
+          );
+      }
 
       if (recoveredSlots.length > 0) {
         console.log(

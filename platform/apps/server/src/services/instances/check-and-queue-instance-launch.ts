@@ -6,6 +6,7 @@ import {
   eq,
   inArray,
   instanceSlots,
+  projectAutomationRuns,
   projectSessions,
   users,
   instanceSlotCategory,
@@ -35,6 +36,36 @@ type DispatchQueuedInstanceLaunchesInput = {
 };
 
 class InstanceCapacityUnavailableError extends Error {}
+
+const markInstanceSlotFailed = async (slotId: string, error: unknown) => {
+  const message = error instanceof Error ? error.message : "Unknown error";
+
+  await db.transaction(async (tx) => {
+    const [slot] = await tx
+      .update(instanceSlots)
+      .set({
+        status: "failed",
+        error: message,
+        updated_at: new Date(),
+      })
+      .where(eq(instanceSlots.id, slotId))
+      .returning({
+        session_id: instanceSlots.session_id,
+        spun_up_by: instanceSlots.spun_up_by,
+      });
+
+    if (slot?.spun_up_by === "automation") {
+      await tx
+        .update(projectAutomationRuns)
+        .set({
+          status: "failed",
+          error: message.slice(0, 255),
+          updated_at: new Date(),
+        })
+        .where(eq(projectAutomationRuns.project_session_id, slot.session_id));
+    }
+  });
+};
 
 export async function dispatchQueuedInstanceLaunches({
   userId,
@@ -290,14 +321,7 @@ export const checkAndLaunchInstance = async ({
 
     return instance;
   } catch (error) {
-    await db
-      .update(instanceSlots)
-      .set({
-        status: "failed",
-        error: error instanceof Error ? error.message : "Unknown error",
-        updated_at: new Date(),
-      })
-      .where(eq(instanceSlots.id, slot.id));
+    await markInstanceSlotFailed(slot.id, error);
 
     throw error;
   }
@@ -365,7 +389,7 @@ const spinUpInstanceFromSlot = async (slotId: string) => {
   });
 
   const spinedUpBy = z
-    .enum(["manual", "pr", "issue"])
+    .enum(["manual", "pr", "issue", "automation"])
     .default("manual")
     .parse(slot.spun_up_by);
 
@@ -397,14 +421,7 @@ export async function SpinUpInstanceFromSlot(slotId: string) {
   } catch (error) {
     if (error instanceof InstanceCapacityUnavailableError) return;
 
-    await db
-      .update(instanceSlots)
-      .set({
-        status: "failed",
-        error: error instanceof Error ? error.message : "Unknown error",
-        updated_at: new Date(),
-      })
-      .where(eq(instanceSlots.id, slotId));
+    await markInstanceSlotFailed(slotId, error);
 
     return;
   }

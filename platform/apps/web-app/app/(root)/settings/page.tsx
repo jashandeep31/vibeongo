@@ -1,6 +1,7 @@
 "use client";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { ModelCombobox } from "@/components/model-combobox";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
 import { logout } from "@/services/auth-services";
@@ -427,12 +428,13 @@ export default function SettingsPage() {
                 <span className="text-muted-foreground text-xs">
                   {row.label}
                 </span>
-                <Input
+                <ModelCombobox
+                  id={`default-model-${row.name}`}
                   value={modelForm[row.name]}
-                  onChange={(event) => {
+                  onChange={(value) => {
                     setModelForm((current) => ({
                       ...current,
-                      [row.name]: event.target.value,
+                      [row.name]: value,
                     }));
                     setIsModelFormDirty(true);
                   }}

@@ -31,6 +31,7 @@ import {
 } from "@repo/ui/components/sidebar-v2";
 import {
   BotMessageSquare,
+  CalendarClock,
   Ellipsis,
   Gauge,
   Github,
@@ -80,6 +81,11 @@ const navigation = [
     title: "Templates",
     url: "/templates",
     icon: LayoutTemplate,
+  },
+  {
+    title: "Automations",
+    url: "/automations",
+    icon: CalendarClock,
   },
   {
     title: "Wallet",

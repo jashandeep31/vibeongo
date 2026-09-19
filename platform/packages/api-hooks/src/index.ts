@@ -16,6 +16,7 @@ export * from "./hooks/use-opencode-mcp.js";
 export * from "./hooks/use-opencode-sessions.js";
 export * from "./hooks/use-opencode-status.js";
 export * from "./hooks/use-project-metadata.js";
+export * from "./hooks/use-project-automations.js";
 export * from "./hooks/use-project-sessions.js";
 export * from "./hooks/use-project.js";
 export * from "./hooks/use-runtime-settings.js";

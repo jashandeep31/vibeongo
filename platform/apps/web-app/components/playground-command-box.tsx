@@ -530,7 +530,8 @@ export function PlaygroundCommandBox() {
               <>
                 {selectedSession?.state !== "running" ? (
                   <CommandGroup heading={heading}>
-                    {selectedSession?.state === "stopped" ? (
+                    {selectedSession?.state === "stopped" &&
+                    selectedSession.session.category !== "auto" ? (
                       <CommandItem
                         value={`resume ${selectedSession.session.name}`}
                         disabled={resumeSession.isPending}
