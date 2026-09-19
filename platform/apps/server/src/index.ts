@@ -1,5 +1,4 @@
 import "./lib/sentry.js";
-import "./lib/cron.js";
 import "./jobs/repo-overview-worker.js";
 import "./jobs/sandbox-setup-worker.js";
 import "./jobs/user-onboarding-worker.js";

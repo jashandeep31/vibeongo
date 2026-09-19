@@ -7,8 +7,10 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
+    "dev:cron": "tsc-watch --onSuccess \"node dist/cron-worker.js\"",
     "build": "npx tsc",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "start:cron": "node dist/cron-worker.js"
   },
   "keywords": [],
   "author": "",
