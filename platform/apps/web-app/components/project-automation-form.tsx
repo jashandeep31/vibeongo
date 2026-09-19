@@ -2,7 +2,7 @@
 
 import { useGetProjectGithubReposById, useGetProjects } from "@repo/api-hooks";
 import type { CreateProjectAutomationInput } from "@repo/api-client";
-import { ModelCombobox } from "@/components/model-combobox";
+import { ModelPicker } from "@/components/model-picker";
 import {
   projectAutomationSchema,
   projectAutomationTaskSchema,
@@ -557,7 +557,7 @@ export function ProjectAutomationForm({
                           (optional)
                         </span>
                       </Label>
-                      <ModelCombobox
+                      <ModelPicker
                         id={`task-model-${task.id}`}
                         value={task.model}
                         onChange={(model) => updateTask(task.id, { model })}
