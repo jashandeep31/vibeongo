@@ -66,26 +66,22 @@ function showSettingsError(text1: string, text2?: string) {
 const themeOptions: Array<{
   value: ThemePreference;
   label: string;
-  description: string;
   icon: SymbolViewProps["name"];
 }> = [
   {
+    value: "system",
+    label: "System",
+    icon: { ios: "gearshape", android: "settings" },
+  },
+  {
     value: "light",
     label: "Light",
-    description: "Bright and clear.",
     icon: { ios: "sun.max", android: "light_mode" },
   },
   {
     value: "dark",
     label: "Dark",
-    description: "Easy on the eyes.",
     icon: { ios: "moon", android: "dark_mode" },
-  },
-  {
-    value: "system",
-    label: "System",
-    description: "Match your device.",
-    icon: { ios: "desktopcomputer", android: "devices" },
   },
 ];
 
@@ -347,7 +343,7 @@ export default function SettingsScreen() {
               icon={{ ios: "sun.max", android: "light_mode" }}
               title="Appearance"
             >
-              <View style={styles.optionList}>
+              <View style={styles.appearanceOptions}>
                 {themeOptions.map((option) => {
                   const selected = preference === option.value;
                   return (
@@ -357,9 +353,9 @@ export default function SettingsScreen() {
                       key={option.value}
                       onPress={() => void setPreference(option.value)}
                       style={({ pressed }) => [
-                        styles.option,
+                        styles.appearanceOption,
                         {
-                          backgroundColor: theme.backgroundElement,
+                          backgroundColor: theme.background,
                           borderColor: selected
                             ? theme.text
                             : theme.backgroundSelected,
@@ -367,28 +363,38 @@ export default function SettingsScreen() {
                         pressed && styles.pressed,
                       ]}
                     >
-                      <SymbolView
-                        name={option.icon}
-                        size={20}
-                        tintColor={theme.text}
-                      />
-                      <View style={styles.optionCopy}>
-                        <ThemedText style={styles.optionTitle}>
-                          {option.label}
-                        </ThemedText>
-                        <ThemedText
-                          style={styles.optionDescription}
-                          themeColor="textSecondary"
-                        >
-                          {option.description}
-                        </ThemedText>
-                      </View>
-                      {selected ? (
+                      <View
+                        style={[
+                          styles.appearanceIcon,
+                          {
+                            backgroundColor: selected
+                              ? theme.backgroundElement
+                              : theme.background,
+                          },
+                        ]}
+                      >
                         <SymbolView
-                          name={{ ios: "checkmark", android: "check" }}
-                          size={18}
-                          tintColor={theme.text}
-                          weight="semibold"
+                          name={option.icon}
+                          size={16}
+                          tintColor={
+                            selected ? theme.text : theme.textSecondary
+                          }
+                        />
+                      </View>
+                      <ThemedText
+                        style={[
+                          styles.appearanceLabel,
+                          !selected && { color: theme.textSecondary },
+                        ]}
+                      >
+                        {option.label}
+                      </ThemedText>
+                      {selected ? (
+                        <View
+                          style={[
+                            styles.selectedIndicator,
+                            { backgroundColor: theme.text },
+                          ]}
                         />
                       ) : null}
                     </Pressable>
@@ -1272,20 +1278,34 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 16, fontWeight: "700", lineHeight: 21 },
   sectionDescription: { fontSize: 13, lineHeight: 19, marginTop: 2 },
   sectionBody: { marginTop: 20 },
-  optionList: { gap: 10 },
-  option: {
+  appearanceIcon: {
     alignItems: "center",
     borderRadius: 13,
-    borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
-    gap: 12,
-    minHeight: 64,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
+    height: 26,
+    justifyContent: "center",
+    width: 26,
   },
-  optionCopy: { flex: 1 },
-  optionTitle: { fontSize: 14, fontWeight: "600" },
-  optionDescription: { fontSize: 12, lineHeight: 17 },
+  appearanceLabel: { fontSize: 12, fontWeight: "600" },
+  appearanceOption: {
+    aspectRatio: 1,
+    alignItems: "flex-start",
+    borderRadius: 16,
+    borderWidth: 2,
+    flex: 1,
+    gap: 20,
+    justifyContent: "space-between",
+    overflow: "hidden",
+    padding: 12,
+  },
+  appearanceOptions: { flexDirection: "row", gap: 10 },
+  selectedIndicator: {
+    borderRadius: 4,
+    bottom: 0,
+    height: 4,
+    left: 0,
+    position: "absolute",
+    right: 0,
+  },
   settingsRow: {
     alignItems: "center",
     flexDirection: "row",
