@@ -34,12 +34,20 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
 
 export function PlaygroundUserMenu() {
   const router = useRouter();
-  const { data: user, isLoading, isError } = useAuthenticatedUser();
+  const handleUnauthorized = useCallback(() => {
+    router.replace("/login");
+    router.refresh();
+  }, [router]);
+  const {
+    data: user,
+    isLoading,
+    isError,
+  } = useAuthenticatedUser(handleUnauthorized);
   const { isMobile, setOpenMobile } = useSidebar();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
