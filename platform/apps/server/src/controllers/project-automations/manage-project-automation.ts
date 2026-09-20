@@ -21,6 +21,7 @@ import {
   projects,
   projectAutomationRuns,
 } from "@repo/db";
+import { getNextAutomationRun } from "../../services/project-automations/get-next-automation-run.js";
 
 export const getProjectAutomations = catchAsync(
   async (req: Request, res: Response) => {
@@ -78,6 +79,14 @@ export const createProjectAutomation = catchAsync(
       );
     if (!project) throw new AppError("Project not found", 404);
 
+    const schedule = getProjectAutomationSchedule(
+      projectAutomationData.schedule_id,
+    );
+    const nextRunAt = getNextAutomationRun(
+      schedule.cronExpression,
+      projectAutomationData.timezone,
+    );
+
     await db.transaction(async (tx) => {
       const [projectAutomation] = await tx
         .insert(projectAutomations)
@@ -86,9 +95,8 @@ export const createProjectAutomation = catchAsync(
           description: projectAutomationData.description,
           user_id: user.id,
           project_id: projectAutomationData.project_id,
-          cron_expression: getProjectAutomationSchedule(
-            projectAutomationData.schedule_id,
-          ).cronExpression,
+          cron_expression: schedule.cronExpression,
+          next_run_at: nextRunAt,
           timezone: projectAutomationData.timezone,
         })
         .returning();
@@ -137,6 +145,14 @@ export const updateProjectAutomation = catchAsync(
       );
     if (!project) throw new AppError("Project not found", 404);
 
+    const schedule = getProjectAutomationSchedule(
+      projectAutomationData.schedule_id,
+    );
+    const nextRunAt = getNextAutomationRun(
+      schedule.cronExpression,
+      projectAutomationData.timezone,
+    );
+
     const result = await db.transaction(async (tx) => {
       const [automation] = await tx
         .select({ id: projectAutomations.id })
@@ -158,9 +174,8 @@ export const updateProjectAutomation = catchAsync(
           name: projectAutomationData.name,
           description: projectAutomationData.description ?? null,
           project_id: projectAutomationData.project_id,
-          cron_expression: getProjectAutomationSchedule(
-            projectAutomationData.schedule_id,
-          ).cronExpression,
+          cron_expression: schedule.cronExpression,
+          next_run_at: nextRunAt,
           timezone: projectAutomationData.timezone,
           updated_at: new Date(),
         })
@@ -260,6 +275,7 @@ export const deleteProjectAutomation = catchAsync(
       .update(projectAutomations)
       .set({
         deleted_at: new Date(),
+        next_run_at: null,
         updated_at: new Date(),
       })
       .where(

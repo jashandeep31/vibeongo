@@ -15,6 +15,28 @@ import {
 import cron from "node-cron";
 import { terminateInstanceAndChargeUsage } from "../services/instances/terminate-instance-and-charge-usage.js";
 import { addGitRepoAccessTokenRevocationJob } from "../jobs/git-repo-access-token-revocation.js";
+import {
+  claimDueProjectAutomations,
+  dispatchAutomationScheduleOutbox,
+} from "../services/project-automations/schedule-due-automations.js";
+
+cron.schedule(
+  "* * * * *",
+  async () => {
+    try {
+      const created = await claimDueProjectAutomations();
+      const delivered = await dispatchAutomationScheduleOutbox();
+      if (created > 0 || delivered > 0) {
+        console.log(
+          `Scheduled ${created} automation run(s); delivered ${delivered} queued run(s)`,
+        );
+      }
+    } catch (error) {
+      console.error("Could not schedule due project automations", error);
+    }
+  },
+  { name: "schedule-project-automations", noOverlap: true },
+);
 
 cron.schedule(
   "*/2 * * * *",

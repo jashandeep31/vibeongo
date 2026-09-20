@@ -29,8 +29,8 @@ export const projectAutomations = pgTable("project_automations", {
     .references(() => projects.id, { onDelete: "cascade" })
     .notNull(),
 
-  last_run_at: timestamp().defaultNow().notNull(),
-  next_run_at: timestamp().defaultNow().notNull(),
+  last_run_at: timestamp(),
+  next_run_at: timestamp(),
 
   enabled: boolean().notNull().default(true),
 
@@ -85,6 +85,8 @@ export const projectAutomationRuns = pgTable(
         onDelete: "set null",
       }),
 
+    scheduled_for: timestamp(),
+
     user_feedback: varchar({}),
     user_rating: integer(),
 
@@ -99,6 +101,29 @@ export const projectAutomationRuns = pgTable(
       table.project_automation_trigger_id,
       table.provider,
       table.project_request_unique_id,
+    ),
+    unique("project_automation_runs_automation_scheduled_for_unique").on(
+      table.project_automation_id,
+      table.scheduled_for,
+    ),
+  ],
+);
+
+export const automationScheduleOutbox = pgTable(
+  "automation_schedule_outbox",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    automation_run_id: uuid()
+      .references(() => projectAutomationRuns.id, { onDelete: "cascade" })
+      .notNull(),
+    delivered_at: timestamp(),
+    attempts: integer().notNull().default(0),
+    last_error: text(),
+    created_at: timestamp().defaultNow().notNull(),
+  },
+  (table) => [
+    unique("automation_schedule_outbox_automation_run_id_unique").on(
+      table.automation_run_id,
     ),
   ],
 );
