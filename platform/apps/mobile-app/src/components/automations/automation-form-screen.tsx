@@ -125,8 +125,8 @@ export function AutomationFormScreen({
     initialValues?.description ?? "",
   );
   const [projectId, setProjectId] = useState(initialValues?.project_id ?? "");
-  const [schedule, setSchedule] = useState(
-    initialValues?.cron_expression ?? "",
+  const [schedule, setSchedule] = useState<string>(
+    initialValues?.schedule_id ?? "manual",
   );
   const [timezone, setTimezone] = useState(initialValues?.timezone ?? "");
   const startingTasks = useMemo(
@@ -194,7 +194,7 @@ export function AutomationFormScreen({
       name: name.trim(),
       description: description.trim() || undefined,
       project_id: projectId,
-      cron_expression: schedule,
+      schedule_id: schedule,
       timezone,
       tasks: tasks.map((task, index) => ({
         path_from_code: task.path.trim(),
@@ -315,7 +315,7 @@ export function AutomationFormScreen({
                   value={schedule}
                 />
                 <ThemedText style={styles.help} themeColor="textSecondary">
-                  {schedule
+                  {schedule !== "manual"
                     ? "The automation will repeat automatically on this schedule."
                     : "This automation will only run when started manually."}
                 </ThemedText>

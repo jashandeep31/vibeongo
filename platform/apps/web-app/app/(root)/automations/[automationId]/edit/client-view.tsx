@@ -6,6 +6,7 @@ import {
   useUpdateProjectAutomation,
 } from "@repo/api-hooks";
 import type { CreateProjectAutomationInput } from "@repo/api-client";
+import { getProjectAutomationScheduleIdForCronExpression } from "@repo/shared";
 import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import axios from "axios";
@@ -53,7 +54,9 @@ export default function EditAutomation({
     name: automation.name,
     description: automation.description ?? undefined,
     project_id: automation.project_id,
-    cron_expression: automation.cron_expression ?? "",
+    schedule_id: getProjectAutomationScheduleIdForCronExpression(
+      automation.cron_expression,
+    ),
     timezone: automation.timezone ?? "",
     tasks: tasks.map((task, index) => ({
       path_from_code: task.path_from_code,

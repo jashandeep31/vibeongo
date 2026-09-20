@@ -1,11 +1,9 @@
 import type { ProjectAutomationRun } from "@repo/api-client";
+import { projectAutomationSchedules } from "@repo/shared";
 
-export const AUTOMATION_SCHEDULES = [
-  { id: "", label: "Manual only (no schedule)" },
-  { id: "0 0 * * *", label: "Every night at midnight" },
-  { id: "0 9 * * *", label: "Every day at 9:00 AM" },
-  { id: "0 0 * * 0", label: "Every week on Sunday" },
-] as const;
+export const AUTOMATION_SCHEDULES = projectAutomationSchedules.map(
+  (schedule) => ({ id: schedule.id, label: schedule.label }),
+);
 
 export const AUTOMATION_AGENTS = [
   { id: "build", label: "Build" },
@@ -22,8 +20,9 @@ export const PROVIDER_LABELS: Record<string, string> = {
 export function scheduleLabel(value: string | null) {
   if (!value) return "Manual only";
   return (
-    AUTOMATION_SCHEDULES.find((schedule) => schedule.id === value)?.label ??
-    value
+    projectAutomationSchedules.find(
+      (schedule) => schedule.cronExpression === value,
+    )?.label ?? value
   );
 }
 

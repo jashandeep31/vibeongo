@@ -3,6 +3,7 @@ import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
 import {
   commonFilterSchema,
+  getProjectAutomationSchedule,
   projectAutomationSchema,
   projectAutomationTaskSchema,
   z,
@@ -85,7 +86,9 @@ export const createProjectAutomation = catchAsync(
           description: projectAutomationData.description,
           user_id: user.id,
           project_id: projectAutomationData.project_id,
-          cron_expression: projectAutomationData.cron_expression,
+          cron_expression: getProjectAutomationSchedule(
+            projectAutomationData.schedule_id,
+          ).cronExpression,
           timezone: projectAutomationData.timezone,
         })
         .returning();
@@ -155,7 +158,9 @@ export const updateProjectAutomation = catchAsync(
           name: projectAutomationData.name,
           description: projectAutomationData.description ?? null,
           project_id: projectAutomationData.project_id,
-          cron_expression: projectAutomationData.cron_expression,
+          cron_expression: getProjectAutomationSchedule(
+            projectAutomationData.schedule_id,
+          ).cronExpression,
           timezone: projectAutomationData.timezone,
           updated_at: new Date(),
         })

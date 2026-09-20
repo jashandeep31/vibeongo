@@ -4,6 +4,7 @@ import { useGetProjectGithubReposById, useGetProjects } from "@repo/api-hooks";
 import type { CreateProjectAutomationInput } from "@repo/api-client";
 import { ModelPicker } from "@/components/model-picker";
 import {
+  projectAutomationSchedules,
   projectAutomationSchema,
   projectAutomationTaskSchema,
   z,
@@ -27,12 +28,10 @@ const agents = [
   { value: "issue-resolver", label: "Issue resolver" },
   { value: "pr-reviewer", label: "PR reviewer" },
 ] as const;
-const schedules = [
-  { value: "", label: "Manual only (no schedule)" },
-  { value: "0 0 * * *", label: "Every night at midnight" },
-  { value: "0 9 * * *", label: "Every day at 9:00 AM" },
-  { value: "0 0 * * 0", label: "Every week on Sunday" },
-] as const;
+const schedules = projectAutomationSchedules.map((schedule) => ({
+  value: schedule.id,
+  label: schedule.label,
+}));
 type Agent = (typeof agents)[number]["value"];
 type DraftTask = {
   id: number;
@@ -177,8 +176,8 @@ export function ProjectAutomationForm({
     initialValues?.description ?? "",
   );
   const [projectId, setProjectId] = useState(initialValues?.project_id ?? "");
-  const [schedule, setSchedule] = useState(
-    initialValues?.cron_expression ?? "",
+  const [schedule, setSchedule] = useState<string>(
+    initialValues?.schedule_id ?? "manual",
   );
   const [timezone, setTimezone] = useState(initialValues?.timezone ?? "");
   const startingTasks = initialValues?.tasks.map((task, index) => ({
@@ -241,7 +240,7 @@ export function ProjectAutomationForm({
       name: name.trim(),
       description: description.trim() || undefined,
       project_id: projectId,
-      cron_expression: schedule,
+      schedule_id: schedule,
       timezone,
       tasks: tasks.map((task, index) => ({
         path_from_code: task.path.trim(),
@@ -378,7 +377,7 @@ export function ProjectAutomationForm({
               ))}
             </NativeSelect>
             <p className="text-muted-foreground text-xs">
-              {schedule
+              {schedule !== "manual"
                 ? "The automation will repeat automatically on this schedule."
                 : "This automation will only run when started manually."}
             </p>
