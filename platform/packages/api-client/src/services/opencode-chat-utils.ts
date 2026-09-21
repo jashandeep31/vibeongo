@@ -15,6 +15,48 @@ export type SessionPart = SessionMessage["parts"][number];
 export type OpencodeToolPart = Extract<SessionPart, { type: "tool" }>;
 export type SnapshotFileDiff = OpencodeSessionData["changes"][number];
 
+export function isOpencodeToolFailed(tool: OpencodeToolPart) {
+  if (tool.state.status === "error") return true;
+  if (tool.state.status !== "completed") return false;
+  const metadata = tool.state.metadata;
+  if (
+    (tool.tool === "shell" || tool.tool === "bash") &&
+    (metadata.timeout === true ||
+      (typeof metadata.exit === "number" && metadata.exit !== 0))
+  ) {
+    return true;
+  }
+  if (tool.tool !== "execute") return false;
+  if (metadata.error === true) return true;
+  const calls = metadata.toolCalls;
+  return (
+    Array.isArray(calls) &&
+    calls.some(
+      (call) =>
+        !!call &&
+        typeof call === "object" &&
+        !Array.isArray(call) &&
+        (call as Record<string, unknown>).status === "error",
+    )
+  );
+}
+
+export function getOpencodeToolOutput(tool: OpencodeToolPart) {
+  if (tool.state.status === "completed") return tool.state.output;
+  if (tool.state.status === "error") return tool.state.error;
+  if (tool.state.status === "running") {
+    const output = tool.state.metadata?.output;
+    return typeof output === "string" ? output : "";
+  }
+  return "";
+}
+
+export function getOpencodeToolAttachments(tool: OpencodeToolPart) {
+  return tool.state.status === "completed"
+    ? (tool.state.attachments ?? [])
+    : [];
+}
+
 export type OpencodeToolRenderGroup = {
   kind: "files" | "skills" | "tool";
   tools: OpencodeToolPart[];
@@ -139,7 +181,20 @@ function getToolInputString(
 
 export type OpencodeChatContent =
   | { id: string; type: "text"; text: string }
-  | { id: string; type: "notice"; text: string }
+  | {
+      id: string;
+      type: "notice";
+      text: string;
+      kind?: Extract<SessionPart, { type: "text" }>["noticeKind"];
+    }
+  | {
+      id: string;
+      type: "reasoning";
+      text: string;
+      active: boolean;
+      durationMs?: number;
+    }
+  | { id: string; type: "interruption"; text: string }
   | { id: string; type: "tools"; tools: OpencodeToolPart[] }
   | { id: string; type: "thinking"; active: boolean }
   | {
@@ -280,43 +335,62 @@ export function createOpencodeChatTurns(
   const modelsById = new Map(
     models.map((model) => [`${model.providerID}/${model.modelID}`, model]),
   );
-  const turns: OpencodeChatTurn[] = messages
-    .filter((message) => message.info.role === "user")
-    .map((message) => ({
-      id: message.info.id,
-      question: getOpencodeUserMessage(message.parts).text,
-      files: getOpencodeUserMessage(message.parts).files,
-      images: message.parts.flatMap((part) =>
-        part.type === "file" && part.mime.startsWith("image/")
-          ? [
-              {
-                id: part.id,
-                url: part.url,
-                name: part.filename ?? "Attached image",
-              },
-            ]
-          : [],
-      ),
-      summaryDiffs:
-        typeof message.info.summary === "object" && message.info.summary
-          ? message.info.summary.diffs
-          : [],
-      content: [],
-      agent: undefined,
-      provider: undefined,
-      model: undefined,
-      durationMs: undefined,
-    }));
-  const turnsByMessageId = new Map(turns.map((turn) => [turn.id, turn]));
+  const turns: OpencodeChatTurn[] = [];
+  const createTurn = (
+    id: string,
+    message?: SessionMessage,
+  ): OpencodeChatTurn => ({
+    id,
+    question: message ? getOpencodeUserMessage(message.parts).text : "",
+    files: message ? getOpencodeUserMessage(message.parts).files : [],
+    images: (message?.parts ?? []).flatMap((part) =>
+      part.type === "file" && part.mime.startsWith("image/")
+        ? [
+            {
+              id: part.id,
+              url: part.url,
+              name: part.filename ?? "Attached image",
+            },
+          ]
+        : [],
+    ),
+    summaryDiffs:
+      message &&
+      typeof message.info.summary === "object" &&
+      message.info.summary
+        ? message.info.summary.diffs
+        : [],
+    content: [],
+    agent: undefined,
+    provider: undefined,
+    model: undefined,
+    durationMs: undefined,
+  });
+  const turnsByMessageId = new Map<string, OpencodeChatTurn>();
   const latestTodoByTurnId = new Map<string, ToolPart>();
   const seenPartIdsByTurnId = new Map<string, Set<string>>();
   const seenTextByTurnId = new Map<string, Set<string>>();
 
   for (const message of messages) {
+    if (message.info.role === "user") {
+      const existing = turnsByMessageId.get(message.info.id);
+      const hydrated = createTurn(message.info.id, message);
+      if (existing) Object.assign(existing, hydrated);
+      else {
+        turns.push(hydrated);
+        turnsByMessageId.set(hydrated.id, hydrated);
+      }
+      continue;
+    }
     if (message.info.role !== "assistant") continue;
 
-    const turn = turnsByMessageId.get(message.info.parentID);
-    if (!turn) continue;
+    let turn = turnsByMessageId.get(message.info.parentID);
+    if (!turn) {
+      const id = message.info.parentID || `timeline:${message.info.id}`;
+      turn = createTurn(id);
+      turns.push(turn);
+      turnsByMessageId.set(id, turn);
+    }
     const seenPartIds = seenPartIdsByTurnId.get(turn.id) ?? new Set<string>();
     seenPartIdsByTurnId.set(turn.id, seenPartIds);
     const seenText = seenTextByTurnId.get(turn.id) ?? new Set<string>();
@@ -326,8 +400,20 @@ export function createOpencodeChatTurns(
       if (seenPartIds.has(part.id)) continue;
       seenPartIds.add(part.id);
 
-      if (part.type === "reasoning" && !part.time?.end) {
-        turn.content.push({ id: part.id, type: "thinking", active: true });
+      if (part.type === "reasoning") {
+        if (part.text.trim()) {
+          turn.content.push({
+            id: part.id,
+            type: "reasoning",
+            text: part.text,
+            active: !part.time?.end,
+            ...(part.time?.end
+              ? { durationMs: part.time.end - part.time.start }
+              : {}),
+          });
+        } else if (!part.time?.end) {
+          turn.content.push({ id: part.id, type: "thinking", active: true });
+        }
       }
 
       if (part.type === "text" && !part.ignored && part.text.trim()) {
@@ -336,7 +422,12 @@ export function createOpencodeChatTurns(
         seenText.add(normalizedText);
         turn.content.push(
           part.display === "notice"
-            ? { id: part.id, type: "notice", text: part.text }
+            ? {
+                id: part.id,
+                type: "notice",
+                text: part.text,
+                kind: part.noticeKind,
+              }
             : { id: part.id, type: "text", text: part.text },
         );
       }
@@ -375,7 +466,13 @@ export function createOpencodeChatTurns(
       }
     }
 
-    if (message.info.error) {
+    if (message.info.error && isInterruptedError(message.info.error)) {
+      turn.content.push({
+        id: `${message.info.id}-interrupted`,
+        type: "interruption",
+        text: "Interrupted",
+      });
+    } else if (message.info.error) {
       turn.content.push({
         id: `${message.info.id}-error`,
         type: "error",
@@ -416,6 +513,16 @@ export function createOpencodeChatTurns(
   }
 
   return turns;
+}
+
+function isInterruptedError(error: {
+  code: string;
+  title: string;
+  message: string;
+}) {
+  return /abort|interrupt/i.test(
+    `${error.code} ${error.title} ${error.message}`,
+  );
 }
 
 function isFileChangeTool(tool: OpencodeToolPart) {

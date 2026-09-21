@@ -202,9 +202,45 @@ export function reduceOpencodeMessages(
         event.id ?? `${nativeType}:${event.created ?? Date.now()}`,
         isInstructionUpdate
           ? getInstructionUpdateLabel(native)
-          : syntheticDescription,
+          : syntheticDescription!,
         event.created,
         "notice",
+        isInstructionUpdate ? "system" : "synthetic",
+      );
+    }
+
+    if (
+      nativeType === "session.skill.activated" &&
+      typeof native.name === "string"
+    ) {
+      return appendTimelineText(
+        messages,
+        sessionId,
+        event.id ?? `skill:${String(native.id ?? native.name)}`,
+        `Skill ${native.name}`,
+        event.created,
+        "notice",
+        "skill",
+      );
+    }
+
+    if (nativeType === "session.moved") {
+      const location = recordValue(native.location);
+      const directory =
+        typeof location?.directory === "string"
+          ? location.directory
+          : undefined;
+      if (!directory) return messages;
+      const subpath =
+        typeof native.subpath === "string" ? `/${native.subpath}` : "";
+      return appendTimelineText(
+        messages,
+        sessionId,
+        event.id ?? `location:${event.created ?? Date.now()}`,
+        `Moved to ${directory}${subpath}`,
+        event.created,
+        "notice",
+        "location",
       );
     }
 
@@ -246,7 +282,7 @@ export function reduceOpencodeMessages(
                   start:
                     tool.state.status === "running"
                       ? tool.state.time.start
-                      : event.created ?? Date.now(),
+                      : (event.created ?? Date.now()),
                   end: event.created ?? Date.now(),
                 },
               }
@@ -258,7 +294,7 @@ export function reduceOpencodeMessages(
                   start:
                     tool.state.status === "running"
                       ? tool.state.time.start
-                      : event.created ?? Date.now(),
+                      : (event.created ?? Date.now()),
                   end: event.created ?? Date.now(),
                 },
               },
@@ -272,7 +308,7 @@ export function reduceOpencodeMessages(
         `compaction:${
           typeof native.inputID === "string"
             ? native.inputID
-            : event.id ?? event.created ?? Date.now()
+            : (event.id ?? event.created ?? Date.now())
         }`,
         typeof native.recent === "string" && native.recent
           ? native.recent
@@ -594,7 +630,8 @@ export function reduceOpencodeMessages(
               ...message,
               info: {
                 ...message.info,
-                error: message.info.error ?? normalizeOpencodeError(native.error),
+                error:
+                  message.info.error ?? normalizeOpencodeError(native.error),
                 finish: message.info.finish ?? "error",
                 retry: undefined,
                 time: {
@@ -764,12 +801,18 @@ function appendTimelineText(
   text: string,
   created = Date.now(),
   display?: "notice",
+  noticeKind?: Extract<Extract<Part, { type: "text" }>["noticeKind"], string>,
+  parentIDOverride?: string,
 ) {
   if (messages.some((message) => message.info.id === id)) return messages;
-  const parentID = messages.findLast(
-    (message) => message.info.role === "user",
-  )?.info.id;
-  if (!parentID) return messages;
+  const previous = messages.at(-1);
+  const parentID =
+    parentIDOverride ??
+    (previous?.info.role === "assistant"
+      ? previous.info.parentID
+      : previous?.info.role === "user"
+        ? previous.info.id
+        : undefined);
   return [
     ...messages,
     {
@@ -778,7 +821,7 @@ function appendTimelineText(
         sessionID: sessionId,
         role: "assistant" as const,
         time: { created },
-        parentID,
+        parentID: parentID ?? "",
         modelID: "",
         providerID: "",
         mode: "system",
@@ -795,6 +838,7 @@ function appendTimelineText(
           type: "text" as const,
           synthetic: true,
           ...(display ? { display } : {}),
+          ...(noticeKind ? { noticeKind } : {}),
           text,
         },
       ],
@@ -827,6 +871,9 @@ function appendTimelineTool(
     messageID,
     "",
     input.occurredAt,
+    undefined,
+    undefined,
+    `timeline:${messageID}`,
   );
   return withMessage.map((message) =>
     message.info.id === messageID
@@ -1019,7 +1066,8 @@ function recordValue(value: unknown) {
 function arrayRecords(value: unknown) {
   return Array.isArray(value)
     ? value.filter(
-        (item): item is Record<string, unknown> => recordValue(item) !== undefined,
+        (item): item is Record<string, unknown> =>
+          recordValue(item) !== undefined,
       )
     : [];
 }
@@ -1113,8 +1161,7 @@ export function reduceOpencodeSessionData(
       return {
         ...current,
         session,
-        ...(nativeType === "session.revert.committed" &&
-        boundary
+        ...(nativeType === "session.revert.committed" && boundary
           ? {
               messages: current.messages.filter(
                 (message) => message.info.id < boundary,
@@ -1179,8 +1226,30 @@ export function reduceOpencodeSessionData(
 
   const messages = reduceOpencodeMessages(current.messages, event, sessionId);
   if (messages !== current.messages) {
+    const selectedSession =
+      event.type === "session.model.selected"
+        ? {
+            ...current.session,
+            model: event.properties.model as NonNullable<Session["model"]>,
+          }
+        : event.type === "session.agent.selected"
+          ? {
+              ...current.session,
+              agent: event.properties.agent as string,
+            }
+          : event.type === "session.moved" &&
+              recordValue(event.properties.location) &&
+              typeof recordValue(event.properties.location)?.directory ===
+                "string"
+            ? {
+                ...current.session,
+                directory: recordValue(event.properties.location)!
+                  .directory as string,
+              }
+            : current.session;
     return {
       ...current,
+      session: selectedSession,
       messages,
       ...(event.type === "message.updated" &&
       (event.properties.info as Message).role === "user"
@@ -1211,7 +1280,14 @@ export function reduceOpencodeSessionData(
             executionOutcome: "failed",
             executionError: normalizeOpencodeError(event.properties.error),
           }
-        : { executionOutcome: "succeeded", executionError: undefined }),
+        : {
+            executionOutcome:
+              event.properties.outcome === "failed" ||
+              event.properties.outcome === "interrupted"
+                ? event.properties.outcome
+                : "succeeded",
+            executionError: undefined,
+          }),
     };
   }
 
@@ -1237,6 +1313,20 @@ export function reduceOpencodeSessionData(
       session: {
         ...current.session,
         agent: event.properties.agent as string,
+      },
+    };
+  }
+
+  if (
+    event.type === "session.usage.updated" &&
+    event.properties.sessionID === sessionId
+  ) {
+    return {
+      ...current,
+      session: {
+        ...current.session,
+        cost: event.properties.cost as number,
+        tokens: event.properties.tokens as NonNullable<Session["tokens"]>,
       },
     };
   }
@@ -2823,12 +2913,34 @@ function normalizeV2Session(session: SessionInfo): Session {
 
 function normalizeV2Messages(session: Session, messages: SessionMessageInfo[]) {
   const normalized: Array<{ info: Message; parts: Part[] }> = [];
-  let currentUserMessageId: string | undefined;
+  let currentTimelineParentId: string | undefined;
+  const firstAgentSwitch = messages.find(
+    (
+      message,
+    ): message is Extract<SessionMessageInfo, { type: "agent-switched" }> =>
+      message.type === "agent-switched",
+  );
+  const firstModelSwitch = messages.find(
+    (
+      message,
+    ): message is Extract<SessionMessageInfo, { type: "model-switched" }> =>
+      message.type === "model-switched",
+  );
+  let agent = firstAgentSwitch?.previous ?? session.agent ?? "";
+  let model = firstModelSwitch?.previous ?? session.model;
 
   for (const message of messages) {
-    if (message.type === "user") currentUserMessageId = message.id;
-    const item = normalizeV2Message(session, message, currentUserMessageId);
+    if (message.type === "user") currentTimelineParentId = message.id;
+    const item = normalizeV2Message(session, message, currentTimelineParentId, {
+      agent,
+      model,
+    });
     if (item) normalized.push(item);
+    if (message.type === "shell") {
+      currentTimelineParentId = `timeline:${message.id}`;
+    }
+    if (message.type === "agent-switched") agent = message.agent;
+    if (message.type === "model-switched") model = message.model;
   }
 
   return normalized;
@@ -2850,6 +2962,10 @@ function normalizeV2Message(
   session: Session,
   message: SessionMessageInfo,
   parentID?: string,
+  selection: {
+    agent: string;
+    model: { id: string; providerID: string; variant?: string } | undefined;
+  } = { agent: session.agent ?? "", model: session.model },
 ): { info: Message; parts: Part[] } | undefined {
   if (message.type === "user") {
     const info: Message = {
@@ -2857,11 +2973,13 @@ function normalizeV2Message(
       sessionID: session.id,
       role: "user",
       time: message.time,
-      agent: session.agent ?? "",
+      agent: selection.agent,
       model: {
-        providerID: session.model?.providerID ?? "",
-        modelID: session.model?.id ?? "",
-        ...(session.model?.variant ? { variant: session.model.variant } : {}),
+        providerID: selection.model?.providerID ?? "",
+        modelID: selection.model?.id ?? "",
+        ...(selection.model?.variant
+          ? { variant: selection.model.variant }
+          : {}),
       },
     };
     const parts: Part[] = [
@@ -2891,24 +3009,23 @@ function normalizeV2Message(
   }
 
   if (message.type !== "assistant") {
-    if (!parentID) return undefined;
     const info: Message = {
       id: message.id,
       sessionID: session.id,
       role: "assistant",
       time: message.time,
-      parentID,
-      modelID: session.model?.id ?? "",
-      providerID: session.model?.providerID ?? "",
+      parentID: parentID ?? "",
+      modelID: selection.model?.id ?? "",
+      providerID: selection.model?.providerID ?? "",
       mode: "system",
-      agent: session.agent ?? "",
+      agent: selection.agent,
       path: { cwd: session.directory, root: session.directory },
       cost: 0,
       tokens: emptyTokenUsage(),
     };
     if (message.type === "shell") {
       return {
-        info,
+        info: { ...info, parentID: `timeline:${message.id}` },
         parts: [
           {
             id: `${message.id}:shell`,
@@ -2937,6 +3054,8 @@ function normalizeV2Message(
             messageID: message.id,
             type: "text",
             synthetic: true,
+            display: "notice",
+            noticeKind: "compaction",
             text:
               message.status === "running"
                 ? "Compacting conversation context…"
@@ -2961,19 +3080,29 @@ function normalizeV2Message(
             messageID: message.id,
             type: "text",
             synthetic: true,
-            ...((message.type === "system" || message.type === "synthetic")
-              ? { display: "notice" as const }
-              : {}),
+            display: "notice" as const,
+            noticeKind: message.type,
             text:
               message.type === "system"
-                ? message.description ?? "Instructions updated"
+                ? (message.description ?? "Instructions updated")
                 : message.type === "synthetic"
-                  ? message.description ?? ""
-                : message.text,
+                  ? (message.description ?? "")
+                  : `Skill ${message.name}`,
           },
         ],
       };
     }
+    if (message.type === "location-switched") {
+      const subpath = message.subpath ? `/${message.subpath}` : "";
+      return timelineNotice(
+        info,
+        message.id,
+        `Moved to ${message.location.directory}${subpath}`,
+        "location",
+      );
+    }
+    // Idle messages delimit execution turns but intentionally have no row.
+    if (message.type === "idle") return undefined;
     return undefined;
   }
   const info = {
@@ -3000,9 +3129,7 @@ function normalizeV2Message(
     ...(message.providerState
       ? { providerState: message.providerState as Record<string, unknown> }
       : {}),
-    ...(message.error
-      ? { error: normalizeOpencodeError(message.error) }
-      : {}),
+    ...(message.error ? { error: normalizeOpencodeError(message.error) } : {}),
     ...(message.retry
       ? {
           retry: {
@@ -3026,6 +3153,9 @@ function normalizeV2Message(
         messageID: message.id,
         type: "text",
         text: content.text,
+        ...(content.state
+          ? { metadata: content.state as Record<string, unknown> }
+          : {}),
       };
     }
     if (content.type === "reasoning") {
@@ -3035,6 +3165,9 @@ function normalizeV2Message(
         messageID: message.id,
         type: "reasoning",
         text: content.text,
+        ...(content.state
+          ? { metadata: content.state as Record<string, unknown> }
+          : {}),
         time: {
           start: content.time?.created ?? message.time.created,
           ...(content.time?.completed ? { end: content.time.completed } : {}),
@@ -3055,14 +3188,33 @@ function normalizeV2Message(
       providerResultState: content.providerResultState as
         | Record<string, unknown>
         | undefined,
-      state: normalizeV2ToolState(
-        content.state,
-        content.time.created,
-        content.name,
-      ),
+      state: normalizeV2ToolState(content.state, content.time, content.name),
     } as Part;
   });
   return { info, parts };
+}
+
+function timelineNotice(
+  info: Extract<Message, { role: "assistant" }>,
+  id: string,
+  text: string,
+  noticeKind: Extract<Extract<Part, { type: "text" }>["noticeKind"], string>,
+) {
+  return {
+    info,
+    parts: [
+      {
+        id: `${id}:notice`,
+        sessionID: info.sessionID,
+        messageID: id,
+        type: "text" as const,
+        synthetic: true,
+        display: "notice" as const,
+        noticeKind,
+        text,
+      },
+    ],
+  };
 }
 
 function emptyTokenUsage() {
@@ -3092,12 +3244,39 @@ function normalizeV2ShellState(
   if (message.status !== "exited") {
     return { status: "error", input, error: `Shell ${message.status}`, time };
   }
+  if (typeof message.exit === "number" && message.exit !== 0) {
+    return {
+      status: "error",
+      input,
+      error: message.output?.output || `Shell exited with code ${message.exit}`,
+      metadata: {
+        exit: message.exit,
+        ...(message.output
+          ? {
+              cursor: message.output.cursor,
+              size: message.output.size,
+              truncated: message.output.truncated,
+            }
+          : {}),
+      },
+      time,
+    };
+  }
   return {
     status: "completed",
     input,
     output: message.output?.output ?? "",
     title: "Shell",
-    metadata: message.exit === undefined ? {} : { exit: message.exit },
+    metadata: {
+      ...(message.exit === undefined ? {} : { exit: message.exit }),
+      ...(message.output
+        ? {
+            cursor: message.output.cursor,
+            size: message.output.size,
+            truncated: message.output.truncated,
+          }
+        : {}),
+    },
     attachments: [],
     time,
   };
@@ -3112,7 +3291,7 @@ function normalizeV2ToolState(
       ? ToolState
       : never
     : never,
-  created: number,
+  time: { created: number; ran?: number; completed?: number },
   toolName: string,
 ) {
   if (state.status === "streaming") {
@@ -3123,7 +3302,7 @@ function normalizeV2ToolState(
       status: "running" as const,
       input: state.input,
       metadata: state.metadata,
-      time: { start: created },
+      time: { start: time.created, ...(time.ran ? { ran: time.ran } : {}) },
     };
   }
   if (state.status === "error") {
@@ -3135,7 +3314,7 @@ function normalizeV2ToolState(
       structuredError: error,
       metadata: state.metadata,
       content: state.content as Array<Record<string, unknown>> | undefined,
-      time: { start: created, end: created },
+      time: { start: time.created, end: time.completed ?? time.created },
     };
   }
   const text = state.content
@@ -3152,7 +3331,7 @@ function normalizeV2ToolState(
         : `${toolName.charAt(0).toUpperCase()}${toolName.slice(1)}`,
     metadata: state.metadata ?? {},
     content: state.content as Array<Record<string, unknown>>,
-    time: { start: created, end: created },
+    time: { start: time.created, end: time.completed ?? time.created },
     attachments: state.content.flatMap((item, index) =>
       item.type === "file"
         ? [

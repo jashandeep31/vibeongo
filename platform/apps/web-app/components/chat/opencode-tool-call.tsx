@@ -3,7 +3,10 @@
 import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import {
   deriveOpencodeToolFileDiff,
+  getOpencodeToolAttachments,
+  getOpencodeToolOutput,
   groupOpencodeToolsForRendering,
+  isOpencodeToolFailed,
   type SnapshotFileDiff,
   type ToolPart,
 } from "@repo/api-client";
@@ -66,6 +69,10 @@ export function OpencodeToolCall({
     if (todos.length > 0) return <TodoList tool={firstTool} todos={todos} />;
   }
 
+  if (tools.length === 1 && isOpencodeToolFailed(firstTool)) {
+    return <ToolError tool={firstTool} />;
+  }
+
   const isEditGroup = tools.every((tool) => isEditTool(tool));
   if (isEditGroup) {
     return <FileChangeGroup summaryDiffs={summaryDiffs} tools={tools} />;
@@ -76,6 +83,9 @@ export function OpencodeToolCall({
     return (
       <div className="space-y-1 py-1 text-sm">
         {tools.map((tool) => {
+          if (isOpencodeToolFailed(tool)) {
+            return <ToolError key={tool.id} tool={tool} />;
+          }
           const url = getSafeWebUrl(getStringInput(tool, "url"));
 
           return (
@@ -217,7 +227,7 @@ function getFileChangeTitle(tools: ToolPart[]) {
 }
 
 function ToolItem({ tool }: { tool: ToolPart }) {
-  if (tool.state.status === "error") return <ToolError tool={tool} />;
+  if (isOpencodeToolFailed(tool)) return <ToolError tool={tool} />;
   if (tool.tool === "webfetch") {
     const url = getSafeWebUrl(getStringInput(tool, "url"));
     return (
@@ -376,7 +386,7 @@ function ToolError({ tool }: { tool: ToolPart }) {
   const message =
     tool.state.status === "error"
       ? tool.state.error.replace(/^Error:\s*/i, "")
-      : "Tool failed";
+      : getEffectiveToolFailure(tool);
   return (
     <div
       role="alert"
@@ -388,6 +398,15 @@ function ToolError({ tool }: { tool: ToolPart }) {
       </div>
     </div>
   );
+}
+
+function getEffectiveToolFailure(tool: ToolPart) {
+  const metadata = getMetadata(tool);
+  if (metadata.timeout === true) return "Command timed out";
+  if (typeof metadata.exit === "number") {
+    return `Command exited with code ${metadata.exit}`;
+  }
+  return getToolOutput(tool) || "Tool failed";
 }
 
 function FormattedToolOutput({ output }: { output: string }) {
@@ -492,6 +511,7 @@ function EditStatus({ tool }: { tool: ToolPart }) {
 }
 
 function ExplorationResult({ tool }: { tool: ToolPart }) {
+  if (isOpencodeToolFailed(tool)) return <ToolError tool={tool} />;
   if (tool.tool === "glob") {
     return (
       <div className="flex min-w-0 items-center gap-2">
@@ -508,11 +528,14 @@ function ExplorationResult({ tool }: { tool: ToolPart }) {
   const name = path.split("/").filter(Boolean).at(-1) ?? "Unknown file";
 
   return (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="shrink-0 font-medium">Read</span>
-      <span className="text-muted-foreground truncate" title={path}>
-        {name}
-      </span>
+    <div>
+      <div className="flex min-w-0 items-center gap-2">
+        <span className="shrink-0 font-medium">Read</span>
+        <span className="text-muted-foreground truncate" title={path}>
+          {name}
+        </span>
+      </div>
+      <ToolAttachments tool={tool} />
     </div>
   );
 }
@@ -558,10 +581,13 @@ function ToolResult({ tool }: { tool: ToolPart }) {
           : "Running…";
 
     return (
-      <pre className="border-border max-h-72 overflow-auto rounded-lg border p-4 font-mono text-xs leading-6 whitespace-pre-wrap">
-        {command ? `$ ${command}\n\n` : ""}
-        {result}
-      </pre>
+      <>
+        <pre className="border-border max-h-72 overflow-auto rounded-lg border p-4 font-mono text-xs leading-6 whitespace-pre-wrap">
+          {command ? `$ ${command}\n\n` : ""}
+          {result}
+        </pre>
+        <ToolAttachments tool={tool} />
+      </>
     );
   }
 
@@ -583,8 +609,40 @@ function ToolResult({ tool }: { tool: ToolPart }) {
       {state.status === "pending" || state.status === "running" ? (
         <div className="text-muted-foreground text-xs">Running…</div>
       ) : null}
+      <ToolAttachments tool={tool} />
     </div>
   );
+}
+
+function ToolAttachments({ tool }: { tool: ToolPart }) {
+  const attachments = getOpencodeToolAttachments(tool);
+  if (attachments.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2 py-2">
+      {attachments.map((file) =>
+        file.mime.startsWith("image/") && isSafeImageUrl(file.url) ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            key={file.id}
+            src={file.url}
+            alt={file.filename ?? "Tool attachment"}
+            className="max-h-64 max-w-full rounded-lg object-contain"
+          />
+        ) : (
+          <span
+            key={file.id}
+            className="border-border bg-muted/30 rounded-md border px-2 py-1 text-xs"
+          >
+            {file.filename ?? file.mime}
+          </span>
+        ),
+      )}
+    </div>
+  );
+}
+
+function isSafeImageUrl(url: string) {
+  return /^(?:https?:|blob:|data:image\/)/i.test(url);
 }
 
 function getToolName(tool: ToolPart) {
@@ -644,11 +702,7 @@ function isToolPending(tool: ToolPart) {
 }
 
 function getToolOutput(tool: ToolPart) {
-  if (tool.state.status === "completed")
-    return normalizeConsoleText(tool.state.output);
-  if (tool.state.status === "error")
-    return normalizeConsoleText(tool.state.error);
-  return "";
+  return normalizeConsoleText(getOpencodeToolOutput(tool));
 }
 
 function normalizeConsoleText(value: string) {

@@ -5,6 +5,7 @@ import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import { OpencodeToolCall } from "@/components/chat/opencode-tool-call";
 import {
   groupConsecutiveOpencodeToolContent,
+  type OpencodeChatContent,
   type SnapshotFileDiff,
   type ToolPart,
 } from "@repo/api-client";
@@ -25,25 +26,7 @@ export type OpencodeChatTurn = {
   files: Array<{ id: string; path: string }>;
   images: Array<{ id: string; url: string; name: string }>;
   summaryDiffs: SnapshotFileDiff[];
-  content: Array<
-    | { id: string; type: "text"; text: string }
-    | { id: string; type: "tools"; tools: ToolPart[] }
-    | { id: string; type: "thinking"; active: boolean }
-    | {
-        id: string;
-        type: "retry";
-        attempt: number;
-        message: string;
-        at: number;
-      }
-    | {
-        id: string;
-        type: "error";
-        title: string;
-        message: string;
-        statusCode?: number;
-      }
-  >;
+  content: OpencodeChatContent[];
   agent?: string;
   model?: string;
   durationMs?: number;
@@ -149,6 +132,29 @@ export function OpencodeChatQuestion({
               {content.map((content) =>
                 content.type === "text" ? (
                   <MarkdownRenderer key={content.id} content={content.text} />
+                ) : content.type === "reasoning" ? (
+                  <details
+                    key={content.id}
+                    open={content.active}
+                    className="group/reasoning text-sm"
+                  >
+                    <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
+                      {content.active ? (
+                        <Loader2 className="size-3.5 animate-spin" />
+                      ) : (
+                        <Sparkles className="size-3.5" />
+                      )}
+                      <span>{getReasoningHeading(content.text)}</span>
+                      {content.durationMs !== undefined ? (
+                        <span className="text-xs">
+                          {formatDuration(content.durationMs)}
+                        </span>
+                      ) : null}
+                    </summary>
+                    <div className="border-border/60 ml-1 border-l py-2 pl-4 opacity-80">
+                      <MarkdownRenderer content={content.text} />
+                    </div>
+                  </details>
                 ) : content.type === "notice" ? (
                   <div
                     key={content.id}
@@ -156,6 +162,16 @@ export function OpencodeChatQuestion({
                     role="status"
                   >
                     {content.text}
+                  </div>
+                ) : content.type === "interruption" ? (
+                  <div
+                    key={content.id}
+                    className="text-muted-foreground flex items-center gap-3 py-2 text-xs"
+                    role="status"
+                  >
+                    <span className="bg-border h-px flex-1" />
+                    <span>{content.text}</span>
+                    <span className="bg-border h-px flex-1" />
                   </div>
                 ) : content.type === "tools" ? (
                   <OpencodeToolCall
@@ -246,6 +262,13 @@ export function OpencodeChatQuestion({
       </div>
     </div>
   );
+}
+
+function getReasoningHeading(text: string) {
+  const heading = text.match(/^\s{0,3}#{1,6}[ \t]+(.+?)\s*$/m)?.[1];
+  const strong = text.match(/^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/m)?.[1];
+  const value = (heading ?? strong ?? "Thought").replace(/[*_~`]+/g, "").trim();
+  return value.length > 72 ? `${value.slice(0, 69)}…` : value;
 }
 
 function StreamingIndicator() {

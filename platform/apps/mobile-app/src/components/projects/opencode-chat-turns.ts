@@ -66,11 +66,15 @@ export function createChatTurnSelector() {
     previousModels = models;
     const groups = new Map<string, SessionMessage[]>();
     for (const message of messages) {
-      if (message.info.role === "user") groups.set(message.info.id, [message]);
-    }
-    for (const message of messages) {
-      if (message.info.role === "assistant")
-        groups.get(message.info.parentID)?.push(message);
+      if (message.info.role === "user") {
+        const existing = groups.get(message.info.id) ?? [];
+        groups.set(message.info.id, [message, ...existing]);
+        continue;
+      }
+      const id = message.info.parentID || `timeline:${message.info.id}`;
+      const group = groups.get(id);
+      if (group) group.push(message);
+      else groups.set(id, [message]);
     }
     const next = new Map<
       string,

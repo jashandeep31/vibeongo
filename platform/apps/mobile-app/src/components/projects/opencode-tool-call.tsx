@@ -1,4 +1,5 @@
 import * as Linking from "expo-linking";
+import { Image } from "expo-image";
 import { SymbolView } from "expo-symbols";
 import { useState } from "react";
 import {
@@ -20,7 +21,10 @@ import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 import {
   deriveOpencodeToolFileDiff,
+  getOpencodeToolAttachments,
+  getOpencodeToolOutput,
   groupOpencodeToolsForRendering,
+  isOpencodeToolFailed,
 } from "@repo/api-client";
 
 type TodoItem = {
@@ -66,6 +70,10 @@ export function OpencodeToolCall({
   if (firstTool.tool === "todowrite") {
     const todos = getTodos(firstTool);
     if (todos.length > 0) return <TodoList todos={todos} />;
+  }
+
+  if (tools.length === 1 && isOpencodeToolFailed(firstTool)) {
+    return <ToolError tool={firstTool} />;
   }
 
   if (tools.every(isEditTool)) {
@@ -183,7 +191,7 @@ function ToolItem({
   isStreaming: boolean;
   tool: ToolPart;
 }) {
-  if (tool.state.status === "error") return <ToolError tool={tool} />;
+  if (isOpencodeToolFailed(tool)) return <ToolError tool={tool} />;
   if (tool.tool === "webfetch") return <WebfetchResult tool={tool} />;
   if (tool.tool === "read" || tool.tool === "glob") {
     return <ExplorationResult tool={tool} />;
@@ -315,7 +323,7 @@ function ToolError({ tool }: { tool: ToolPart }) {
   const message =
     tool.state.status === "error"
       ? tool.state.error.replace(/^Error:\s*/i, "")
-      : "Tool failed";
+      : getEffectiveToolFailure(tool);
   return (
     <StatusCard
       icon="xmark.circle"
@@ -323,6 +331,15 @@ function ToolError({ tool }: { tool: ToolPart }) {
       message={message}
     />
   );
+}
+
+function getEffectiveToolFailure(tool: ToolPart) {
+  const metadata = getMetadata(tool);
+  if (metadata.timeout === true) return "Command timed out";
+  if (typeof metadata.exit === "number") {
+    return `Command exited with code ${metadata.exit}`;
+  }
+  return getToolOutput(tool) || "Tool failed";
 }
 
 function FormattedToolOutput({ output }: { output: string }) {
@@ -557,6 +574,7 @@ function EditStatus({
 
 function WebfetchResult({ tool }: { tool: ToolPart }) {
   const theme = useTheme();
+  if (isOpencodeToolFailed(tool)) return <ToolError tool={tool} />;
   const url = getSafeWebUrl(getStringInput(tool, "url"));
   return (
     <Pressable
@@ -610,22 +628,26 @@ function ExplorationGroup({ tools }: { tools: ToolPart[] }) {
 
 function ExplorationResult({ tool }: { tool: ToolPart }) {
   const theme = useTheme();
+  if (isOpencodeToolFailed(tool)) return <ToolError tool={tool} />;
   const path = getToolFile(tool).replace(/\/+$/, "");
   const value =
     tool.tool === "glob"
       ? `pattern=${getStringInput(tool, "pattern")}`
       : path.split("/").filter(Boolean).at(-1) || "Unknown file";
   return (
-    <View style={styles.inlineResult}>
-      <ThemedText style={styles.summaryLabel}>
-        {tool.tool === "glob" ? "Glob" : "Read"}
-      </ThemedText>
-      <ThemedText
-        numberOfLines={1}
-        style={[styles.inlineValue, { color: theme.textSecondary }]}
-      >
-        {value}
-      </ThemedText>
+    <View>
+      <View style={styles.inlineResult}>
+        <ThemedText style={styles.summaryLabel}>
+          {tool.tool === "glob" ? "Glob" : "Read"}
+        </ThemedText>
+        <ThemedText
+          numberOfLines={1}
+          style={[styles.inlineValue, { color: theme.textSecondary }]}
+        >
+          {value}
+        </ThemedText>
+      </View>
+      <ToolAttachments tool={tool} />
     </View>
   );
 }
@@ -664,37 +686,64 @@ function GenericTool({
               : "completed"
       }
     >
-      <ScrollView
-        horizontal
-        style={[
-          styles.codeBlock,
-          {
-            backgroundColor: theme.backgroundElement,
-            borderColor: theme.backgroundSelected,
-          },
-        ]}
-      >
-        <ThemedText
-          selectable
+      <View>
+        <ScrollView
+          horizontal
           style={[
-            styles.codeText,
-            state.status === "error" && styles.errorText,
+            styles.codeBlock,
+            {
+              backgroundColor: theme.backgroundElement,
+              borderColor: theme.backgroundSelected,
+            },
           ]}
         >
-          {shell
-            ? `${command ? `$ ${command}\n\n` : ""}${result}`
-            : `${JSON.stringify(state.input, null, 2)}${
-                state.status === "completed"
-                  ? `\n\n${state.output}`
-                  : state.status === "error"
-                    ? `\n\n${state.error}`
-                    : pending
-                      ? "\n\nRunning…"
-                      : "\n\nDone"
-              }`}
-        </ThemedText>
-      </ScrollView>
+          <ThemedText
+            selectable
+            style={[
+              styles.codeText,
+              state.status === "error" && styles.errorText,
+            ]}
+          >
+            {shell
+              ? `${command ? `$ ${command}\n\n` : ""}${result}`
+              : `${JSON.stringify(state.input, null, 2)}${
+                  state.status === "completed"
+                    ? `\n\n${state.output}`
+                    : state.status === "error"
+                      ? `\n\n${state.error}`
+                      : pending
+                        ? "\n\nRunning…"
+                        : "\n\nDone"
+                }`}
+          </ThemedText>
+        </ScrollView>
+        <ToolAttachments tool={tool} />
+      </View>
     </Collapsible>
+  );
+}
+
+function ToolAttachments({ tool }: { tool: ToolPart }) {
+  const attachments = getOpencodeToolAttachments(tool);
+  if (attachments.length === 0) return null;
+  return (
+    <View style={styles.attachments}>
+      {attachments.map((file) =>
+        file.mime.startsWith("image/") ? (
+          <Image
+            accessibilityLabel={file.filename ?? "Tool attachment"}
+            contentFit="contain"
+            key={file.id}
+            source={{ uri: file.url }}
+            style={styles.attachmentImage}
+          />
+        ) : (
+          <ThemedText key={file.id} style={styles.attachmentLabel}>
+            {file.filename ?? file.mime}
+          </ThemedText>
+        ),
+      )}
+    </View>
   );
 }
 
@@ -749,11 +798,7 @@ function isToolPending(tool: ToolPart) {
 }
 
 function getToolOutput(tool: ToolPart) {
-  if (tool.state.status === "completed")
-    return normalizeConsoleText(tool.state.output);
-  if (tool.state.status === "error")
-    return normalizeConsoleText(tool.state.error);
-  return "";
+  return normalizeConsoleText(getOpencodeToolOutput(tool));
 }
 
 function normalizeConsoleText(value: string) {
@@ -957,6 +1002,15 @@ const styles = StyleSheet.create({
     minHeight: 38,
     paddingHorizontal: 10,
   },
+  attachmentImage: { borderRadius: 10, height: 180, width: "100%" },
+  attachmentLabel: {
+    borderRadius: 6,
+    borderWidth: StyleSheet.hairlineWidth,
+    fontSize: 11,
+    paddingHorizontal: 8,
+    paddingVertical: 5,
+  },
+  attachments: { gap: 7, paddingTop: 8 },
   card: {
     borderRadius: 12,
     borderWidth: StyleSheet.hairlineWidth,

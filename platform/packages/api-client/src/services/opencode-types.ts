@@ -90,9 +90,7 @@ export type AssistantMessage = {
   providerState?: Record<string, unknown> | undefined;
   error?: OpencodeError | undefined;
   retry?: { attempt: number; at: number; error: OpencodeError } | undefined;
-  snapshot?:
-    | { start?: string; end?: string; files?: string[] }
-    | undefined;
+  snapshot?: { start?: string; end?: string; files?: string[] } | undefined;
   summary?: { title?: string; body?: string; diffs: SnapshotFileDiff[] };
 };
 
@@ -106,6 +104,12 @@ export type TextPart = PartBase & {
   synthetic?: boolean;
   /** Render as a compact transcript notice rather than assistant prose. */
   display?: "notice";
+  noticeKind?:
+    | "system"
+    | "synthetic"
+    | "skill"
+    | "location"
+    | "compaction";
   ignored?: boolean;
   time?: { start: number; end?: number };
   metadata?: Record<string, unknown>;

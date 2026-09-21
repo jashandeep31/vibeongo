@@ -292,6 +292,15 @@ function ProjectSessionRuntimeSync({
       if (!opencodeSessionId) return;
       applyQueryEvents(opencodeSessionId, [event]);
 
+      if (
+        event.type === "session.message.content.updated" ||
+        event.type === "session.moved" ||
+        event.type === "session.permissions" ||
+        event.type === "session.viewed"
+      ) {
+        resyncSessionAfterMissingEvent(opencodeSessionId);
+      }
+
       if (event.type === "session.status") {
         store.setChatStatus(
           sessionId,

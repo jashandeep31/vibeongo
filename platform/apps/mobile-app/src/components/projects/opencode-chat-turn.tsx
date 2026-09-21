@@ -204,8 +204,12 @@ const ChatContentBlock = memo(
     isStreaming: boolean;
     summaryDiffs?: SnapshotFileDiff[];
   }) {
+    const theme = useTheme();
     if (content.type === "text") {
       return <NativeMarkdown content={content.text} />;
+    }
+    if (content.type === "reasoning") {
+      return <ReasoningBlock content={content} />;
     }
     if (content.type === "notice") {
       return (
@@ -221,6 +225,27 @@ const ChatContentBlock = memo(
           summaryDiffs={summaryDiffs}
           tools={content.tools}
         />
+      );
+    }
+    if (content.type === "interruption") {
+      return (
+        <View style={styles.interruption}>
+          <View
+            style={[
+              styles.interruptionLine,
+              { backgroundColor: theme.backgroundSelected },
+            ]}
+          />
+          <ThemedText style={{ color: theme.textSecondary, fontSize: 11 }}>
+            {content.text}
+          </ThemedText>
+          <View
+            style={[
+              styles.interruptionLine,
+              { backgroundColor: theme.backgroundSelected },
+            ]}
+          />
+        </View>
       );
     }
     if (content.type === "error") {
@@ -276,6 +301,53 @@ const ChatContentBlock = memo(
     (next.content.type !== "thinking" ||
       previous.isStreaming === next.isStreaming),
 );
+
+function ReasoningBlock({
+  content,
+}: {
+  content: Extract<ChatContent, { type: "reasoning" }>;
+}) {
+  const theme = useTheme();
+  const [open, setOpen] = useState(content.active);
+  const heading = getReasoningHeading(content.text);
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`${open ? "Collapse" : "Expand"} reasoning`}
+        onPress={() => setOpen((value) => !value)}
+        style={styles.reasoningHeader}
+      >
+        {content.active ? <ActivityIndicator size="small" /> : null}
+        <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
+          {heading}
+        </ThemedText>
+        {content.durationMs !== undefined ? (
+          <ThemedText style={{ color: theme.textSecondary, fontSize: 11 }}>
+            {formatDuration(content.durationMs)}
+          </ThemedText>
+        ) : null}
+      </Pressable>
+      {open ? (
+        <View
+          style={[
+            styles.reasoningBody,
+            { borderColor: theme.backgroundSelected },
+          ]}
+        >
+          <NativeMarkdown content={content.text} />
+        </View>
+      ) : null}
+    </View>
+  );
+}
+
+function getReasoningHeading(text: string) {
+  const heading = text.match(/^\s{0,3}#{1,6}[ \t]+(.+?)\s*$/m)?.[1];
+  const strong = text.match(/^\s*(?:\*\*|__)(.+?)(?:\*\*|__)\s*$/m)?.[1];
+  const value = (heading ?? strong ?? "Thought").replace(/[*_~`]+/g, "").trim();
+  return value.length > 72 ? `${value.slice(0, 69)}…` : value;
+}
 
 function PulsingStatusText({ children }: { children: string }) {
   const theme = useTheme();
@@ -404,6 +476,13 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 30,
   },
+  interruption: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 9,
+    paddingVertical: 5,
+  },
+  interruptionLine: { flex: 1, height: StyleSheet.hairlineWidth },
   image: { borderRadius: 10, height: 112, width: 112 },
   images: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   metadata: {
@@ -414,6 +493,18 @@ const styles = StyleSheet.create({
   },
   notice: { fontSize: 13, lineHeight: 20, marginTop: 2 },
   pressed: { opacity: 0.65 },
+  reasoningBody: {
+    borderLeftWidth: StyleSheet.hairlineWidth,
+    marginLeft: 5,
+    paddingLeft: 12,
+    paddingVertical: 6,
+  },
+  reasoningHeader: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 7,
+    paddingVertical: 4,
+  },
   questionGroup: { alignItems: "flex-end", gap: 2 },
   questionText: { fontSize: 15, lineHeight: 22 },
   response: { gap: 7 },

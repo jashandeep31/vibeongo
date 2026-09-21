@@ -4,12 +4,16 @@ import { OpencodeComposer } from "@/components/chat/opencode-composer";
 import { useOpencodeInventory } from "@repo/api-hooks";
 import { useStartOpencodeSession } from "@repo/api-hooks";
 import { useUserSettings } from "@repo/api-hooks";
-import type { OpencodePromptSelection } from "@repo/api-client";
+import {
+  findOpencodeFiles,
+  type OpencodeFileReference,
+  type OpencodePromptSelection,
+} from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { ChevronRight, Terminal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 export function NewOpencodeChat({
   chatId,
@@ -56,7 +60,24 @@ export function NewOpencodeChat({
       inventory?.agents[0]?.id,
   };
 
-  const handleSubmit = (text: string, files: File[]) => {
+  const searchFiles = useCallback(
+    (query: string) =>
+      findOpencodeFiles(
+        chatId,
+        serverUrl,
+        accessToken,
+        query,
+        directory,
+        password,
+      ),
+    [accessToken, chatId, directory, password, serverUrl],
+  );
+
+  const handleSubmit = (
+    text: string,
+    files: File[],
+    fileReferences: OpencodeFileReference[],
+  ) => {
     startSession.mutate({
       chatId,
       serverUrl,
@@ -65,6 +86,7 @@ export function NewOpencodeChat({
       directory,
       text,
       files,
+      fileReferences,
       selection: effectiveSelection,
       onSessionCreated: (sessionId) => {
         const params = new URLSearchParams({ serverUrl });
@@ -111,6 +133,7 @@ export function NewOpencodeChat({
           }}
           selection={effectiveSelection}
           onSelectionChange={setSelection}
+          searchFiles={searchFiles}
           autoFocus
           focusOnTyping
           trailingControl={
