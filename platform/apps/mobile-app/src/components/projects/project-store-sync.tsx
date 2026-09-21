@@ -16,6 +16,7 @@ import {
   type Event,
   type OpencodeSessionData,
   type Session,
+  type SessionStatus,
 } from "@repo/api-client";
 import {
   useProjectsStore,
@@ -273,12 +274,18 @@ function ProjectSessionRuntimeSync({
           store.upsertSessionChat(sessionId, {
             ...session,
             ...(event.type === "session.model.selected"
-              ? { model: event.properties.model }
-              : { agent: event.properties.agent }),
+              ? {
+                  model: event.properties.model as NonNullable<
+                    Session["model"]
+                  >,
+                }
+              : { agent: event.properties.agent as string }),
           });
         }
       } else if (event.type === "session.deleted") {
-        store.deleteSessionChat(sessionId, event.properties.sessionID);
+        if (event.properties.sessionID) {
+          store.deleteSessionChat(sessionId, event.properties.sessionID);
+        }
         void sessionsQuery.refetch();
       }
 
@@ -289,8 +296,10 @@ function ProjectSessionRuntimeSync({
         store.setChatStatus(
           sessionId,
           opencodeSessionId,
-          event.properties.status,
+          event.properties.status as SessionStatus,
         );
+      } else if (event.type === "session.execution.started") {
+        store.setChatStatus(sessionId, opencodeSessionId, { type: "busy" });
       } else if (isSessionCompletionEvent(event)) {
         store.setChatStatus(sessionId, opencodeSessionId, { type: "idle" });
       }
@@ -562,7 +571,7 @@ function isSessionCompletionEvent(event: Event) {
     event.type === "session.execution.failed" ||
     event.type === "session.execution.interrupted" ||
     (event.type === "session.status" &&
-      event.properties.status?.type === "idle")
+      (event.properties.status as SessionStatus | undefined)?.type === "idle")
   );
 }
 
@@ -697,8 +706,9 @@ function isIncrementalMessageEventMissingContext(
     event.type === "message.part.updated" &&
     event.properties.sessionID === sessionId
   ) {
+    const part = event.properties.part as { messageID?: string };
     return !session.messages.some(
-      (message) => message.info.id === event.properties.part.messageID,
+      (message) => message.info.id === part.messageID,
     );
   }
 

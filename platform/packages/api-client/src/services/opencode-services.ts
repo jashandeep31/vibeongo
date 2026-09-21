@@ -17,7 +17,9 @@ import type {
   SnapshotFileDiff,
   WebSearchProvider,
   WebSearchRequest,
+  OpencodeError,
 } from "./opencode-types.js";
+import { normalizeOpencodeError } from "./opencode-errors.js";
 import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
@@ -41,6 +43,8 @@ export type OpencodeSessionData = {
   changes: SnapshotFileDiff[];
   optimistic?: boolean;
   promptError?: string | undefined;
+  executionError?: OpencodeError | undefined;
+  executionOutcome?: "succeeded" | "failed" | "interrupted" | undefined;
   messagePage?:
     | {
         hasOlder: boolean;
@@ -136,6 +140,7 @@ export function reduceOpencodeMessages(
       typeof native.inboxID === "string"
     ) {
       const queued = queuedStreamMessages.get(native.inboxID);
+      queuedStreamMessages.delete(native.inboxID);
       if (
         queued?.sessionID === sessionId &&
         !messages.some((message) => message.info.id === native.inboxID)
@@ -163,6 +168,147 @@ export function reduceOpencodeMessages(
           },
         ];
       }
+    }
+
+    if (
+      nativeType === "session.inbox.cancelled" &&
+      typeof native.inboxID === "string"
+    ) {
+      queuedStreamMessages.delete(native.inboxID);
+      return messages.filter(
+        (message) =>
+          message.info.id !== native.inboxID &&
+          message.info.id !== `optimistic:${native.inboxID}`,
+      );
+    }
+
+    if (
+      (nativeType === "session.instructions.updated" ||
+        nativeType === "session.synthetic") &&
+      typeof native.text === "string" &&
+      native.text.trim()
+    ) {
+      return appendTimelineText(
+        messages,
+        sessionId,
+        event.id ?? `${nativeType}:${event.created ?? Date.now()}`,
+        native.text,
+        event.created,
+      );
+    }
+
+    if (nativeType === "session.shell.started") {
+      const shell = recordValue(native.shell);
+      if (!shell || typeof shell.id !== "string") return messages;
+      return appendTimelineTool(
+        messages,
+        sessionId,
+        event.id ?? `shell:${shell.id}`,
+        {
+          id: shell.id,
+          name: "shell",
+          input: {
+            command: typeof shell.command === "string" ? shell.command : "",
+          },
+          ...(event.created === undefined ? {} : { occurredAt: event.created }),
+        },
+      );
+    }
+
+    if (nativeType === "session.shell.ended") {
+      const shell = recordValue(native.shell);
+      if (!shell || typeof shell.id !== "string") return messages;
+      return updateTimelineTool(messages, shell.id, (tool) => ({
+        ...tool,
+        state:
+          shell.status === "exited"
+            ? {
+                status: "completed",
+                input: tool.state.input,
+                output:
+                  typeof recordValue(native.output)?.output === "string"
+                    ? String(recordValue(native.output)?.output)
+                    : "",
+                title: "Shell",
+                metadata: { exit: shell.exit },
+                time: {
+                  start:
+                    tool.state.status === "running"
+                      ? tool.state.time.start
+                      : event.created ?? Date.now(),
+                  end: event.created ?? Date.now(),
+                },
+              }
+            : {
+                status: "error",
+                input: tool.state.input,
+                error: `Shell ${String(shell.status ?? "failed")}`,
+                time: {
+                  start:
+                    tool.state.status === "running"
+                      ? tool.state.time.start
+                      : event.created ?? Date.now(),
+                  end: event.created ?? Date.now(),
+                },
+              },
+      }));
+    }
+
+    if (nativeType === "session.compaction.started") {
+      return appendTimelineText(
+        messages,
+        sessionId,
+        `compaction:${
+          typeof native.inputID === "string"
+            ? native.inputID
+            : event.id ?? event.created ?? Date.now()
+        }`,
+        typeof native.recent === "string" && native.recent
+          ? native.recent
+          : "Compacting conversation context…",
+        event.created,
+      );
+    }
+
+    if (
+      nativeType === "session.compaction.delta" ||
+      nativeType === "session.compaction.ended" ||
+      nativeType === "session.compaction.failed"
+    ) {
+      const text =
+        nativeType === "session.compaction.failed"
+          ? normalizeOpencodeError(native.error).message
+          : String(native.text ?? "");
+      const target = messages.findLast((message) =>
+        message.info.id.startsWith("compaction:"),
+      );
+      if (!target) return messages;
+      return messages.map((message) =>
+        message.info.id === target.info.id
+          ? {
+              ...message,
+              info:
+                message.info.role === "assistant" &&
+                nativeType === "session.compaction.failed"
+                  ? {
+                      ...message.info,
+                      error: normalizeOpencodeError(native.error),
+                    }
+                  : message.info,
+              parts: message.parts.map((part) =>
+                part.type === "text"
+                  ? {
+                      ...part,
+                      text:
+                        nativeType === "session.compaction.delta"
+                          ? `${part.text}${text}`
+                          : text || part.text,
+                    }
+                  : part,
+              ),
+            }
+          : message,
+      );
     }
 
     if (
@@ -195,6 +341,11 @@ export function reduceOpencodeMessages(
                   modelID: model?.id ?? message.info.modelID,
                   providerID: model?.providerID ?? message.info.providerID,
                   ...(model?.variant ? { variant: model.variant } : {}),
+                  time: { created: started },
+                  error: undefined,
+                  retry: undefined,
+                  finish: undefined,
+                  rawFinish: undefined,
                 },
               }
             : message,
@@ -251,7 +402,7 @@ export function reduceOpencodeMessages(
                           messageID: native.assistantMessageID as string,
                           type: "reasoning" as const,
                           text: "",
-                          time: { start: Date.now() },
+                          time: { start: event.created ?? Date.now() },
                         }
                       : {
                           id: partID,
@@ -290,11 +441,68 @@ export function reduceOpencodeMessages(
                         : `${part.text}${String(native.delta ?? "")}`,
                       ...(part.type === "reasoning" &&
                       nativeType.endsWith(".ended")
-                        ? { time: { ...part.time, end: Date.now() } }
+                        ? {
+                            time: {
+                              ...part.time,
+                              end: event.created ?? Date.now(),
+                            },
+                          }
                         : {}),
                     }
                   : part,
               ),
+            }
+          : message,
+      );
+    }
+
+    if (
+      nativeType.startsWith("session.tool.") &&
+      typeof native.assistantMessageID === "string" &&
+      typeof native.id === "string"
+    ) {
+      return reduceV2ToolEvent(messages, event, sessionId);
+    }
+
+    if (
+      nativeType === "session.step.streamed" &&
+      typeof native.assistantMessageID === "string"
+    ) {
+      return messages.map((message) =>
+        message.info.id === native.assistantMessageID &&
+        message.info.role === "assistant"
+          ? {
+              ...message,
+              info: {
+                ...message.info,
+                time: {
+                  ...message.info.time,
+                  streamed: event.created ?? Date.now(),
+                },
+              },
+            }
+          : message,
+      );
+    }
+
+    if (
+      nativeType === "session.retry.scheduled" &&
+      typeof native.assistantMessageID === "string"
+    ) {
+      return messages.map((message) =>
+        message.info.id === native.assistantMessageID &&
+        message.info.role === "assistant"
+          ? {
+              ...message,
+              info: {
+                ...message.info,
+                retry: {
+                  attempt:
+                    typeof native.attempt === "number" ? native.attempt : 1,
+                  at: typeof native.at === "number" ? native.at : Date.now(),
+                  error: normalizeOpencodeError(native.error),
+                },
+              },
             }
           : message,
       );
@@ -312,11 +520,77 @@ export function reduceOpencodeMessages(
               ...message,
               info: {
                 ...message.info,
-                time: { ...message.info.time, completed: Date.now() },
-                cost: typeof native.cost === "number" ? native.cost : 0,
+                time: {
+                  ...message.info.time,
+                  completed: event.created ?? Date.now(),
+                },
+                cost:
+                  typeof native.cost === "number"
+                    ? native.cost
+                    : message.info.cost,
                 ...(native.tokens && typeof native.tokens === "object"
                   ? { tokens: native.tokens as typeof message.info.tokens }
                   : {}),
+                ...(typeof native.finish === "string"
+                  ? { finish: native.finish }
+                  : nativeType === "session.step.failed"
+                    ? { finish: "error" }
+                    : {}),
+                ...(typeof native.rawFinish === "string"
+                  ? { rawFinish: native.rawFinish }
+                  : {}),
+                ...(native.providerState &&
+                typeof native.providerState === "object"
+                  ? {
+                      providerState: native.providerState as Record<
+                        string,
+                        unknown
+                      >,
+                    }
+                  : {}),
+                ...(nativeType === "session.step.failed"
+                  ? { error: normalizeOpencodeError(native.error) }
+                  : {}),
+                retry: undefined,
+                snapshot: {
+                  ...message.info.snapshot,
+                  ...(typeof native.snapshot === "string"
+                    ? { end: native.snapshot }
+                    : {}),
+                  ...(Array.isArray(native.files)
+                    ? {
+                        files: native.files.filter(
+                          (file): file is string => typeof file === "string",
+                        ),
+                      }
+                    : {}),
+                },
+              },
+            }
+          : message,
+      );
+    }
+
+    if (nativeType === "session.execution.failed") {
+      const assistant = messages.findLast(
+        (message) => message.info.role === "assistant",
+      );
+      if (!assistant) return messages;
+      return messages.map((message) =>
+        message.info.id === assistant.info.id &&
+        message.info.role === "assistant"
+          ? {
+              ...message,
+              info: {
+                ...message.info,
+                error: message.info.error ?? normalizeOpencodeError(native.error),
+                finish: message.info.finish ?? "error",
+                retry: undefined,
+                time: {
+                  ...message.info.time,
+                  completed:
+                    message.info.time.completed ?? event.created ?? Date.now(),
+                },
               },
             }
           : message,
@@ -328,22 +602,23 @@ export function reduceOpencodeMessages(
     event.type === "message.updated" &&
     event.properties.sessionID === sessionId
   ) {
+    const info = event.properties.info as Message;
     const currentMessages =
-      event.properties.info.role === "user"
+      info.role === "user"
         ? messages.filter(
             (message) => !message.info.id.startsWith("optimistic:"),
           )
         : messages;
     const messageIndex = currentMessages.findIndex(
-      (message) => message.info.id === event.properties.info.id,
+      (message) => message.info.id === info.id,
     );
     const nextMessages = [...currentMessages];
 
     if (messageIndex === -1) {
-      nextMessages.push({ info: event.properties.info, parts: [] });
+      nextMessages.push({ info, parts: [] });
     } else {
       nextMessages[messageIndex] = {
-        info: event.properties.info,
+        info,
         parts: nextMessages[messageIndex]?.parts ?? [],
       };
     }
@@ -355,7 +630,7 @@ export function reduceOpencodeMessages(
     event.type === "message.part.updated" &&
     event.properties.sessionID === sessionId
   ) {
-    const updatedPart = event.properties.part;
+    const updatedPart = event.properties.part as Part;
     return messages.map((message) => {
       if (message.info.id !== updatedPart.messageID) return message;
 
@@ -378,7 +653,12 @@ export function reduceOpencodeMessages(
     event.type === "message.part.delta" &&
     event.properties.sessionID === sessionId
   ) {
-    const { messageID, partID, field, delta } = event.properties;
+    const { messageID, partID, field, delta } = event.properties as {
+      messageID: string;
+      partID: string;
+      field: string;
+      delta: string;
+    };
     return messages.map((message) => {
       if (message.info.id !== messageID) return message;
 
@@ -426,6 +706,303 @@ export function reduceOpencodeMessages(
   return messages;
 }
 
+function reduceV2ToolEvent(
+  messages: OpencodeSessionData["messages"],
+  event: Event,
+  sessionId: string,
+) {
+  const native = event.properties;
+  const assistantMessageID = native.assistantMessageID as string;
+  const toolID = native.id as string;
+  const occurredAt = event.created ?? Date.now();
+
+  return messages.map((message) => {
+    if (message.info.id !== assistantMessageID) return message;
+
+    const existing = message.parts.find(
+      (part) => part.type === "tool" && part.id === toolID,
+    );
+    const fallback = {
+      id: toolID,
+      sessionID: sessionId,
+      messageID: assistantMessageID,
+      type: "tool" as const,
+      callID: toolID,
+      tool: typeof native.name === "string" ? native.name : "tool",
+      state: {
+        status: "pending" as const,
+        input: {},
+        raw: "",
+      },
+    };
+    const tool = existing?.type === "tool" ? existing : fallback;
+    const updated = reduceV2ToolPart(tool, event, occurredAt);
+    return {
+      ...message,
+      parts: existing
+        ? message.parts.map((part) => (part.id === toolID ? updated : part))
+        : [...message.parts, updated],
+    };
+  });
+}
+
+function appendTimelineText(
+  messages: OpencodeSessionData["messages"],
+  sessionId: string,
+  id: string,
+  text: string,
+  created = Date.now(),
+) {
+  if (messages.some((message) => message.info.id === id)) return messages;
+  const parentID = messages.findLast(
+    (message) => message.info.role === "user",
+  )?.info.id;
+  if (!parentID) return messages;
+  return [
+    ...messages,
+    {
+      info: {
+        id,
+        sessionID: sessionId,
+        role: "assistant" as const,
+        time: { created },
+        parentID,
+        modelID: "",
+        providerID: "",
+        mode: "system",
+        agent: "",
+        path: { cwd: "", root: "" },
+        cost: 0,
+        tokens: emptyTokenUsage(),
+      },
+      parts: [
+        {
+          id: `${id}:text`,
+          sessionID: sessionId,
+          messageID: id,
+          type: "text" as const,
+          synthetic: true,
+          text,
+        },
+      ],
+    },
+  ];
+}
+
+function appendTimelineTool(
+  messages: OpencodeSessionData["messages"],
+  sessionId: string,
+  messageID: string,
+  input: {
+    id: string;
+    name: string;
+    input: Record<string, unknown>;
+    occurredAt?: number;
+  },
+) {
+  const withMessage = appendTimelineText(
+    messages,
+    sessionId,
+    messageID,
+    "",
+    input.occurredAt,
+  );
+  return withMessage.map((message) =>
+    message.info.id === messageID
+      ? {
+          ...message,
+          parts: [
+            {
+              id: input.id,
+              sessionID: sessionId,
+              messageID,
+              type: "tool" as const,
+              callID: input.id,
+              tool: input.name,
+              state: {
+                status: "running" as const,
+                input: input.input,
+                time: { start: input.occurredAt ?? Date.now() },
+              },
+            },
+          ],
+        }
+      : message,
+  );
+}
+
+function updateTimelineTool(
+  messages: OpencodeSessionData["messages"],
+  toolID: string,
+  update: (
+    tool: Extract<Part, { type: "tool" }>,
+  ) => Extract<Part, { type: "tool" }>,
+) {
+  return messages.map((message) => ({
+    ...message,
+    parts: message.parts.map((part) =>
+      part.type === "tool" && part.id === toolID ? update(part) : part,
+    ),
+  }));
+}
+
+function reduceV2ToolPart(
+  tool: Extract<Part, { type: "tool" }>,
+  event: Event,
+  occurredAt: number,
+): Extract<Part, { type: "tool" }> {
+  const native = event.properties;
+  if (event.type === "session.tool.input.started") {
+    return {
+      ...tool,
+      tool: typeof native.name === "string" ? native.name : tool.tool,
+      state: { status: "pending", input: {}, raw: "" },
+    };
+  }
+  if (event.type === "session.tool.input.delta") {
+    return tool.state.status === "pending"
+      ? {
+          ...tool,
+          state: {
+            ...tool.state,
+            raw: `${tool.state.raw}${String(native.delta ?? "")}`,
+          },
+        }
+      : tool;
+  }
+  if (event.type === "session.tool.input.ended") {
+    return {
+      ...tool,
+      state: {
+        status: "pending",
+        input: parseToolInput(native.text),
+        raw: typeof native.text === "string" ? native.text : "",
+      },
+    };
+  }
+  if (event.type === "session.tool.called") {
+    return {
+      ...tool,
+      executed: native.executed === true,
+      providerState: recordValue(native.state),
+      state: {
+        status: "running",
+        input: recordValue(native.input) ?? {},
+        metadata: {},
+        time: { start: occurredAt, ran: occurredAt },
+      },
+    };
+  }
+  if (event.type === "session.tool.progress") {
+    if (tool.state.status !== "running") return tool;
+    return {
+      ...tool,
+      state: {
+        ...tool.state,
+        metadata: recordValue(native.metadata) ?? {},
+      },
+    };
+  }
+  if (event.type === "session.tool.success") {
+    const content = arrayRecords(native.content);
+    const input =
+      tool.state.status === "pending" ? tool.state.input : tool.state.input;
+    return {
+      ...tool,
+      executed: native.executed === true || tool.executed === true,
+      providerResultState: recordValue(native.resultState),
+      state: {
+        status: "completed",
+        input,
+        output: content
+          .flatMap((item) =>
+            item.type === "text" && typeof item.text === "string"
+              ? [item.text]
+              : [],
+          )
+          .join("\n"),
+        title: tool.tool,
+        metadata: recordValue(native.metadata) ?? {},
+        content,
+        attachments: content.flatMap((item, index) =>
+          item.type === "file" &&
+          typeof item.uri === "string" &&
+          typeof item.mime === "string"
+            ? [
+                {
+                  id: `${tool.id}:attachment:${index}`,
+                  sessionID: tool.sessionID,
+                  messageID: tool.messageID,
+                  type: "file" as const,
+                  mime: item.mime,
+                  url: item.uri,
+                  ...(typeof item.name === "string"
+                    ? { filename: item.name }
+                    : {}),
+                },
+              ]
+            : [],
+        ),
+        time: {
+          start:
+            tool.state.status === "running"
+              ? tool.state.time.start
+              : occurredAt,
+          end: occurredAt,
+        },
+      },
+    };
+  }
+  if (event.type === "session.tool.failed") {
+    const error = normalizeOpencodeError(native.error);
+    return {
+      ...tool,
+      executed: native.executed === true || tool.executed === true,
+      providerResultState: recordValue(native.resultState),
+      state: {
+        status: "error",
+        input: tool.state.input,
+        error: error.message,
+        structuredError: error,
+        metadata: recordValue(native.metadata),
+        content: arrayRecords(native.content),
+        time: {
+          start:
+            tool.state.status === "running"
+              ? tool.state.time.start
+              : occurredAt,
+          end: occurredAt,
+        },
+      },
+    };
+  }
+  return tool;
+}
+
+function parseToolInput(value: unknown): Record<string, unknown> {
+  if (typeof value !== "string") return {};
+  try {
+    const parsed: unknown = JSON.parse(value);
+    return recordValue(parsed) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function recordValue(value: unknown) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
+}
+
+function arrayRecords(value: unknown) {
+  return Array.isArray(value)
+    ? value.filter(
+        (item): item is Record<string, unknown> => recordValue(item) !== undefined,
+      )
+    : [];
+}
+
 export function reduceOpencodeSessionData(
   current: OpencodeSessionData,
   event: Event,
@@ -467,14 +1044,63 @@ export function reduceOpencodeSessionData(
       };
     }
     if (nativeType === "session.execution.started") {
-      return { ...current, status: { type: "busy" } };
+      return {
+        ...current,
+        status: { type: "busy" },
+        executionError: undefined,
+        executionOutcome: undefined,
+      };
     }
     if (
       nativeType === "session.execution.succeeded" ||
       nativeType === "session.execution.failed" ||
       nativeType === "session.execution.interrupted"
     ) {
-      return { ...current, status: { type: "idle" } };
+      return {
+        ...current,
+        messages: reduceOpencodeMessages(current.messages, event, sessionId),
+        status: { type: "idle" },
+        executionOutcome:
+          nativeType === "session.execution.succeeded"
+            ? "succeeded"
+            : nativeType === "session.execution.failed"
+              ? "failed"
+              : "interrupted",
+        ...(nativeType === "session.execution.failed"
+          ? { executionError: normalizeOpencodeError(native.error) }
+          : { executionError: undefined }),
+      };
+    }
+    if (nativeType === "session.revert.staged") {
+      const revert = recordValue(native.revert);
+      return revert && typeof revert.messageID === "string"
+        ? {
+            ...current,
+            session: {
+              ...current.session,
+              revert: revert as NonNullable<Session["revert"]>,
+            },
+          }
+        : current;
+    }
+    if (
+      nativeType === "session.revert.cleared" ||
+      nativeType === "session.revert.committed"
+    ) {
+      const { revert: _revert, ...session } = current.session;
+      const boundary = typeof native.to === "string" ? native.to : undefined;
+      return {
+        ...current,
+        session,
+        ...(nativeType === "session.revert.committed" &&
+        boundary
+          ? {
+              messages: current.messages.filter(
+                (message) => message.info.id < boundary,
+              ),
+            }
+          : {}),
+      };
     }
   }
 
@@ -508,7 +1134,7 @@ export function reduceOpencodeSessionData(
     event.type === "question.asked" &&
     event.properties.sessionID === sessionId
   ) {
-    const question = event.properties;
+    const question = event.properties as unknown as QuestionRequest;
     return {
       ...current,
       questions: [
@@ -536,7 +1162,7 @@ export function reduceOpencodeSessionData(
       ...current,
       messages,
       ...(event.type === "message.updated" &&
-      event.properties.info.role === "user"
+      (event.properties.info as Message).role === "user"
         ? { optimistic: false, promptError: undefined }
         : {}),
     };
@@ -546,14 +1172,26 @@ export function reduceOpencodeSessionData(
     event.type === "session.status" &&
     event.properties.sessionID === sessionId
   ) {
-    return { ...current, status: event.properties.status };
+    return {
+      ...current,
+      status: event.properties.status as SessionStatus,
+    };
   }
 
   if (
     (event.type === "session.idle" || event.type === "session.error") &&
     event.properties.sessionID === sessionId
   ) {
-    return { ...current, status: { type: "idle" } };
+    return {
+      ...current,
+      status: { type: "idle" },
+      ...(event.type === "session.error"
+        ? {
+            executionOutcome: "failed",
+            executionError: normalizeOpencodeError(event.properties.error),
+          }
+        : { executionOutcome: "succeeded", executionError: undefined }),
+    };
   }
 
   if (
@@ -562,7 +1200,10 @@ export function reduceOpencodeSessionData(
   ) {
     return {
       ...current,
-      session: { ...current.session, model: event.properties.model },
+      session: {
+        ...current.session,
+        model: event.properties.model as NonNullable<Session["model"]>,
+      },
     };
   }
 
@@ -572,7 +1213,10 @@ export function reduceOpencodeSessionData(
   ) {
     return {
       ...current,
-      session: { ...current.session, agent: event.properties.agent },
+      session: {
+        ...current.session,
+        agent: event.properties.agent as string,
+      },
     };
   }
 
@@ -580,14 +1224,17 @@ export function reduceOpencodeSessionData(
     event.type === "session.updated" &&
     event.properties.sessionID === sessionId
   ) {
-    return { ...current, session: event.properties.info };
+    return { ...current, session: event.properties.info as Session };
   }
 
   if (
     event.type === "session.diff" &&
     event.properties.sessionID === sessionId
   ) {
-    return { ...current, changes: event.properties.diff };
+    return {
+      ...current,
+      changes: event.properties.diff as SnapshotFileDiff[],
+    };
   }
 
   return current;
@@ -2094,6 +2741,8 @@ function getStreamEventPayload(streamedEvent: unknown): Event | undefined {
     // reducers consume the same projected event payload as `properties`.
     return {
       type: event.type,
+      ...(typeof event.id === "string" ? { id: event.id } : {}),
+      ...(typeof event.created === "number" ? { created: event.created } : {}),
       properties,
     } as Event;
   }
@@ -2220,7 +2869,84 @@ function normalizeV2Message(
     return { info, parts };
   }
 
-  if (message.type !== "assistant") return undefined;
+  if (message.type !== "assistant") {
+    if (!parentID) return undefined;
+    const info: Message = {
+      id: message.id,
+      sessionID: session.id,
+      role: "assistant",
+      time: message.time,
+      parentID,
+      modelID: session.model?.id ?? "",
+      providerID: session.model?.providerID ?? "",
+      mode: "system",
+      agent: session.agent ?? "",
+      path: { cwd: session.directory, root: session.directory },
+      cost: 0,
+      tokens: emptyTokenUsage(),
+    };
+    if (message.type === "shell") {
+      return {
+        info,
+        parts: [
+          {
+            id: `${message.id}:shell`,
+            sessionID: session.id,
+            messageID: message.id,
+            type: "tool",
+            callID: message.shellID,
+            tool: "shell",
+            state: normalizeV2ShellState(message),
+          },
+        ],
+      };
+    }
+    if (message.type === "compaction") {
+      return {
+        info: {
+          ...info,
+          ...(message.status === "failed"
+            ? { error: normalizeOpencodeError(message.error) }
+            : {}),
+        },
+        parts: [
+          {
+            id: `${message.id}:compaction`,
+            sessionID: session.id,
+            messageID: message.id,
+            type: "text",
+            synthetic: true,
+            text:
+              message.status === "running"
+                ? "Compacting conversation context…"
+                : message.status === "completed"
+                  ? message.summary || "Conversation context compacted."
+                  : "Conversation compaction failed.",
+          },
+        ],
+      };
+    }
+    if (
+      message.type === "system" ||
+      message.type === "synthetic" ||
+      message.type === "skill"
+    ) {
+      return {
+        info,
+        parts: [
+          {
+            id: `${message.id}:text`,
+            sessionID: session.id,
+            messageID: message.id,
+            type: "text",
+            synthetic: true,
+            text: message.type === "skill" ? message.text : message.text,
+          },
+        ],
+      };
+    }
+    return undefined;
+  }
   const info = {
     id: message.id,
     sessionID: session.id,
@@ -2241,6 +2967,23 @@ function normalizeV2Message(
     },
     ...(message.model.variant ? { variant: message.model.variant } : {}),
     ...(message.finish ? { finish: message.finish } : {}),
+    ...(message.rawFinish ? { rawFinish: message.rawFinish } : {}),
+    ...(message.providerState
+      ? { providerState: message.providerState as Record<string, unknown> }
+      : {}),
+    ...(message.error
+      ? { error: normalizeOpencodeError(message.error) }
+      : {}),
+    ...(message.retry
+      ? {
+          retry: {
+            attempt: message.retry.attempt,
+            at: message.retry.at,
+            error: normalizeOpencodeError(message.retry.error),
+          },
+        }
+      : {}),
+    ...(message.snapshot ? { snapshot: message.snapshot } : {}),
   } as Message;
   const parts = message.content.map((content, index): Part => {
     const contentId =
@@ -2276,6 +3019,13 @@ function normalizeV2Message(
       type: "tool",
       callID: contentId,
       tool: content.name,
+      executed: content.executed,
+      providerState: content.providerState as
+        | Record<string, unknown>
+        | undefined,
+      providerResultState: content.providerResultState as
+        | Record<string, unknown>
+        | undefined,
       state: normalizeV2ToolState(
         content.state,
         content.time.created,
@@ -2284,6 +3034,44 @@ function normalizeV2Message(
     } as Part;
   });
   return { info, parts };
+}
+
+function emptyTokenUsage() {
+  return {
+    input: 0,
+    output: 0,
+    reasoning: 0,
+    cache: { read: 0, write: 0 },
+  };
+}
+
+function normalizeV2ShellState(
+  message: Extract<SessionMessageInfo, { type: "shell" }>,
+): Extract<Part, { type: "tool" }>["state"] {
+  const input = { command: message.command };
+  if (message.status === "running") {
+    return {
+      status: "running",
+      input,
+      time: { start: message.time.created },
+    };
+  }
+  const time = {
+    start: message.time.created,
+    end: message.time.completed ?? message.time.created,
+  };
+  if (message.status !== "exited") {
+    return { status: "error", input, error: `Shell ${message.status}`, time };
+  }
+  return {
+    status: "completed",
+    input,
+    output: message.output?.output ?? "",
+    title: "Shell",
+    metadata: message.exit === undefined ? {} : { exit: message.exit },
+    attachments: [],
+    time,
+  };
 }
 
 function normalizeV2ToolState(
@@ -2310,11 +3098,14 @@ function normalizeV2ToolState(
     };
   }
   if (state.status === "error") {
+    const error = normalizeOpencodeError(state.error);
     return {
       status: "error" as const,
       input: state.input,
-      error: state.error.message,
+      error: error.message,
+      structuredError: error,
       metadata: state.metadata,
+      content: state.content as Array<Record<string, unknown>> | undefined,
       time: { start: created, end: created },
     };
   }
@@ -2331,6 +3122,7 @@ function normalizeV2ToolState(
         ? "Shell"
         : `${toolName.charAt(0).toUpperCase()}${toolName.slice(1)}`,
     metadata: state.metadata ?? {},
+    content: state.content as Array<Record<string, unknown>>,
     time: { start: created, end: created },
     attachments: state.content.flatMap((item, index) =>
       item.type === "file"

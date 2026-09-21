@@ -33,9 +33,15 @@ import {
 } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
+  Alert,
+  AlertDescription,
+  AlertTitle,
+} from "@repo/ui/components/alert";
+import {
   ArrowDown,
   ChevronRight,
   Check,
+  CircleAlert,
   FolderOpen,
   GripVertical,
   Loader2,
@@ -114,6 +120,9 @@ export function OpencodeSessionChat({
   const turns = useMemo(
     () => createOpencodeChatTurns(visibleMessages, inventory?.models),
     [inventory?.models, visibleMessages],
+  );
+  const hasInlineExecutionError = messages.some(
+    (message) => message.info.role === "assistant" && message.info.error,
   );
   const revertedQuestions = useMemo(
     () =>
@@ -464,6 +473,24 @@ export function OpencodeSessionChat({
                   Load earlier messages
                 </Button>
               </div>
+            ) : null}
+            {rawResponse.executionError && !hasInlineExecutionError ? (
+              <Alert
+                variant="destructive"
+                role="alert"
+                aria-live="assertive"
+              >
+                <CircleAlert />
+                <AlertTitle>
+                  {rawResponse.executionError.title}
+                  {rawResponse.executionError.statusCode
+                    ? ` (${rawResponse.executionError.statusCode})`
+                    : ""}
+                </AlertTitle>
+                <AlertDescription className="break-words whitespace-pre-wrap">
+                  {rawResponse.executionError.message}
+                </AlertDescription>
+              </Alert>
             ) : null}
             {turns.length === 0 &&
             revertedQuestions.length === 0 &&

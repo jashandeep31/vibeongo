@@ -1,4 +1,5 @@
 import type { ToolPart } from "./opencode-types.js";
+import { normalizeOpencodeError } from "./opencode-errors.js";
 
 import { getOpencodeUserMessage } from "./opencode-services.js";
 import type {
@@ -140,6 +141,13 @@ export type OpencodeChatContent =
   | { id: string; type: "text"; text: string }
   | { id: string; type: "tools"; tools: OpencodeToolPart[] }
   | { id: string; type: "thinking"; active: boolean }
+  | {
+      id: string;
+      type: "retry";
+      attempt: number;
+      message: string;
+      at: number;
+    }
   | {
       id: string;
       type: "error";
@@ -366,7 +374,17 @@ export function createOpencodeChatTurns(
       turn.content.push({
         id: `${message.info.id}-error`,
         type: "error",
-        ...getChatError(message.info.error),
+        ...normalizeOpencodeError(message.info.error),
+      });
+    }
+
+    if (message.info.retry) {
+      turn.content.push({
+        id: `${message.info.id}-retry-${message.info.retry.attempt}`,
+        type: "retry",
+        attempt: message.info.retry.attempt,
+        message: message.info.retry.error.message,
+        at: message.info.retry.at,
       });
     }
 
@@ -397,40 +415,4 @@ export function createOpencodeChatTurns(
 
 function isFileChangeTool(tool: OpencodeToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
-}
-
-function getChatError(error: { name: string; data: unknown }) {
-  const data =
-    error.data && typeof error.data === "object"
-      ? (error.data as Record<string, unknown>)
-      : {};
-  const statusCode =
-    typeof data.statusCode === "number" ? data.statusCode : undefined;
-  return {
-    title: getChatErrorTitle(error.name),
-    message:
-      typeof data.message === "string"
-        ? data.message
-        : "OpenCode could not complete this request.",
-    ...(statusCode === undefined ? {} : { statusCode }),
-  };
-}
-
-function getChatErrorTitle(name: string) {
-  switch (name) {
-    case "ProviderAuthError":
-      return "Provider authentication failed";
-    case "ContextOverflowError":
-      return "Context limit exceeded";
-    case "ContentFilterError":
-      return "Response blocked";
-    case "MessageOutputLengthError":
-      return "Response was too long";
-    case "MessageAbortedError":
-      return "Request was stopped";
-    case "StructuredOutputError":
-      return "Invalid structured response";
-    default:
-      return "OpenCode request failed";
-  }
 }

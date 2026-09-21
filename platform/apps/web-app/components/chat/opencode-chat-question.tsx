@@ -31,6 +31,13 @@ export type OpencodeChatTurn = {
     | { id: string; type: "thinking"; active: boolean }
     | {
         id: string;
+        type: "retry";
+        attempt: number;
+        message: string;
+        at: number;
+      }
+    | {
+        id: string;
         type: "error";
         title: string;
         message: string;
@@ -162,6 +169,16 @@ export function OpencodeChatQuestion({
                     <AlertTitle>
                       {content.title}
                       {content.statusCode ? ` (${content.statusCode})` : ""}
+                    </AlertTitle>
+                    <AlertDescription className="break-words whitespace-pre-wrap">
+                      {content.message}
+                    </AlertDescription>
+                  </Alert>
+                ) : content.type === "retry" ? (
+                  <Alert key={content.id} className="my-2 py-3" role="status">
+                    <Loader2 className="animate-spin" />
+                    <AlertTitle>
+                      Retrying request (attempt {content.attempt})
                     </AlertTitle>
                     <AlertDescription className="break-words whitespace-pre-wrap">
                       {content.message}

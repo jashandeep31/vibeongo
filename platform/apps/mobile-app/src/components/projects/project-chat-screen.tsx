@@ -1282,7 +1282,9 @@ function createChatShellSelector() {
       previous.changes.length === data.changes.length &&
       previous.promptError === data.promptError &&
       sameItems(previous.messages, messages) &&
-      sameItems(previous.questions, data.questions)
+      sameItems(previous.questions, data.questions) &&
+      sameItems(previous.permissions, data.permissions) &&
+      sameItems(previous.webSearchRequests, data.webSearchRequests)
     ) {
       return previous;
     }
@@ -1345,6 +1347,8 @@ function createTimelineDataSelector() {
       previous.session.agent === data.session.agent &&
       previous.session.revert?.messageID === data.session.revert?.messageID &&
       previous.status.type === data.status.type &&
+      previous.executionError === data.executionError &&
+      previous.executionOutcome === data.executionOutcome &&
       previous.messagePage?.hasOlder === data.messagePage?.hasOlder &&
       previous.messagePage?.cursor === data.messagePage?.cursor &&
       sameItems(previous.messages, messages) &&
@@ -1420,6 +1424,13 @@ const ChatTimeline = memo(function ChatTimeline({
     () => selectTurns(data?.messages ?? [], models),
     [data?.messages, models, selectTurns],
   );
+  const hasInlineExecutionError = useMemo(
+    () =>
+      (data?.messages ?? []).some(
+        (message) => message.info.role === "assistant" && message.info.error,
+      ),
+    [data?.messages],
+  );
   useEffect(() => {
     if (!sessionQuery.data) return;
     const store = useSessionChatsStore.getState();
@@ -1432,7 +1443,9 @@ const ChatTimeline = memo(function ChatTimeline({
     store.setChatAttention(
       projectSessionId,
       opencodeSessionId,
-      sessionQuery.data.questions.length > 0,
+      sessionQuery.data.questions.length > 0 ||
+        sessionQuery.data.permissions.length > 0 ||
+        sessionQuery.data.webSearchRequests.length > 0,
     );
   }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
   const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
@@ -1672,29 +1685,67 @@ const ChatTimeline = memo(function ChatTimeline({
             ) : null
           }
           ListHeaderComponent={
-            sessionQuery.hasOlderMessages ? (
-              <Pressable
-                accessibilityLabel="Load earlier messages"
-                accessibilityRole="button"
-                disabled={sessionQuery.isLoadingOlder}
-                onPress={() => void loadOlderMessages()}
-                style={({ pressed }) => [
-                  styles.loadEarlierButton,
-                  {
-                    backgroundColor: theme.backgroundElement,
-                    borderColor: theme.backgroundSelected,
-                  },
-                  pressed && styles.pressed,
-                ]}
-              >
-                {sessionQuery.isLoadingOlder ? (
-                  <ActivityIndicator size="small" />
-                ) : (
-                  <ThemedText style={styles.loadEarlierText}>
-                    Load earlier messages
-                  </ThemedText>
-                )}
-              </Pressable>
+            sessionQuery.hasOlderMessages ||
+            (data.executionError && !hasInlineExecutionError) ? (
+              <View style={styles.timelineHeader}>
+                {sessionQuery.hasOlderMessages ? (
+                  <Pressable
+                    accessibilityLabel="Load earlier messages"
+                    accessibilityRole="button"
+                    disabled={sessionQuery.isLoadingOlder}
+                    onPress={() => void loadOlderMessages()}
+                    style={({ pressed }) => [
+                      styles.loadEarlierButton,
+                      {
+                        backgroundColor: theme.backgroundElement,
+                        borderColor: theme.backgroundSelected,
+                      },
+                      pressed && styles.pressed,
+                    ]}
+                  >
+                    {sessionQuery.isLoadingOlder ? (
+                      <ActivityIndicator size="small" />
+                    ) : (
+                      <ThemedText style={styles.loadEarlierText}>
+                        Load earlier messages
+                      </ThemedText>
+                    )}
+                  </Pressable>
+                ) : null}
+                {data.executionError && !hasInlineExecutionError ? (
+                  <View
+                    accessibilityLiveRegion="assertive"
+                    accessibilityRole="alert"
+                    style={[
+                      styles.executionError,
+                      {
+                        backgroundColor: "rgba(239,68,68,0.08)",
+                        borderColor: "#ef4444",
+                      },
+                    ]}
+                  >
+                    <SymbolView
+                      name={{
+                        ios: "exclamationmark.circle",
+                        android: "error_outline",
+                      }}
+                      size={18}
+                      tintColor="#ef4444"
+                    />
+                    <View style={styles.executionErrorBody}>
+                      <ThemedText style={styles.executionErrorTitle}>
+                        {data.executionError.title}
+                        {data.executionError.statusCode
+                          ? ` (${data.executionError.statusCode})`
+                          : ""}
+                      </ThemedText>
+                      <ThemedText style={styles.executionErrorMessage}>
+                        {data.executionError.message}
+                      </ThemedText>
+                    </View>
+                  </View>
+                ) : null}
+              </View>
             ) : null
           }
           maxToRenderPerBatch={5}
@@ -1857,6 +1908,29 @@ const styles = StyleSheet.create({
   loadEarlierText: {
     fontSize: 12,
     fontWeight: "600",
+  },
+  timelineHeader: {
+    gap: 12,
+  },
+  executionError: {
+    alignItems: "flex-start",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 10,
+    padding: 12,
+  },
+  executionErrorBody: {
+    flex: 1,
+    gap: 4,
+  },
+  executionErrorTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+  },
+  executionErrorMessage: {
+    fontSize: 12,
+    lineHeight: 18,
   },
   messages: {
     gap: 28,

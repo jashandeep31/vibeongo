@@ -44,12 +44,21 @@ export type Session = {
   };
 };
 
-type TokenUsage = {
+export type TokenUsage = {
   total?: number;
   input: number;
   output: number;
   reasoning: number;
   cache: { read: number; write: number };
+};
+
+export type OpencodeError = {
+  code: string;
+  title: string;
+  message: string;
+  statusCode?: number;
+  providerID?: string;
+  retryable?: boolean;
 };
 
 export type UserMessage = {
@@ -66,7 +75,7 @@ export type AssistantMessage = {
   id: string;
   sessionID: string;
   role: "assistant";
-  time: { created: number; completed?: number };
+  time: { created: number; streamed?: number; completed?: number };
   parentID: string;
   modelID: string;
   providerID: string;
@@ -76,8 +85,14 @@ export type AssistantMessage = {
   cost: number;
   tokens: TokenUsage;
   variant?: string;
-  finish?: string;
-  error?: { name: string; data: unknown };
+  finish?: string | undefined;
+  rawFinish?: string | undefined;
+  providerState?: Record<string, unknown> | undefined;
+  error?: OpencodeError | undefined;
+  retry?: { attempt: number; at: number; error: OpencodeError } | undefined;
+  snapshot?:
+    | { start?: string; end?: string; files?: string[] }
+    | undefined;
   summary?: { title?: string; body?: string; diffs: SnapshotFileDiff[] };
 };
 
@@ -130,8 +145,8 @@ export type ToolState =
       status: "running";
       input: Record<string, unknown>;
       title?: string;
-      metadata?: Record<string, unknown>;
-      time: { start: number };
+      metadata?: Record<string, unknown> | undefined;
+      time: { start: number; ran?: number };
     }
   | {
       status: "completed";
@@ -141,13 +156,16 @@ export type ToolState =
       metadata: Record<string, unknown>;
       time: { start: number; end: number; compacted?: number };
       attachments?: FilePart[];
+      content?: Array<Record<string, unknown>>;
     }
   | {
       status: "error";
       input: Record<string, unknown>;
       error: string;
-      metadata?: Record<string, unknown>;
+      structuredError?: OpencodeError | undefined;
+      metadata?: Record<string, unknown> | undefined;
       time: { start: number; end: number };
+      content?: Array<Record<string, unknown>>;
     };
 
 export type ToolPart = PartBase & {
@@ -156,6 +174,9 @@ export type ToolPart = PartBase & {
   tool: string;
   state: ToolState;
   metadata?: Record<string, unknown>;
+  executed?: boolean;
+  providerState?: Record<string, unknown> | undefined;
+  providerResultState?: Record<string, unknown> | undefined;
 };
 
 export type Part =
@@ -229,11 +250,15 @@ export type WebSearchRequest = {
   metadata?: Record<string, unknown>;
 };
 
+export type EventProperties = Record<string, unknown> & {
+  sessionID?: string;
+};
+
 export type Event = {
   type: string;
-  // Events are normalized at the SSE boundary. Their payload varies by event
-  // discriminator and intentionally retains the legacy reducer contract.
-  properties: any;
+  id?: string;
+  created?: number;
+  properties: EventProperties;
 };
 
 export type SessionInputAdmitted = {

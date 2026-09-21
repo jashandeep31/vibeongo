@@ -244,6 +244,21 @@ const ChatContentBlock = memo(
         </View>
       );
     }
+    if (content.type === "retry") {
+      return (
+        <View style={styles.errorCard}>
+          <ActivityIndicator size="small" />
+          <View style={styles.errorBody}>
+            <ThemedText style={styles.errorTitle}>
+              Retrying request (attempt {content.attempt})
+            </ThemedText>
+            <ThemedText style={styles.errorMessage}>
+              {content.message}
+            </ThemedText>
+          </View>
+        </View>
+      );
+    }
     return isStreaming && content.active ? (
       <PulsingStatusText>Thinking…</PulsingStatusText>
     ) : null;

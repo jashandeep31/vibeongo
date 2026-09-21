@@ -227,7 +227,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
         return;
       }
 
-      if (eventType === "filesystem.changed") {
+      if (eventType === "filesystem.changed" || eventType === "file.edited") {
         const active = activeChatRef.current;
         if (active.projectSessionId === sessionId && active.opencodeSessionId) {
           window.clearTimeout(filesystemRefreshTimerRef.current);
@@ -275,6 +275,10 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
         (event.type === "session.status" ||
           event.type === "session.idle" ||
           event.type === "session.error" ||
+          event.type === "session.execution.started" ||
+          event.type === "session.execution.succeeded" ||
+          event.type === "session.execution.failed" ||
+          event.type === "session.execution.interrupted" ||
           event.type === "session.deleted")
       ) {
         statusEventVersionsRef.current.set(
@@ -309,12 +313,36 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
           chatsStore.upsertSessionChat(sessionId, {
             ...session,
             ...(event.type === "session.model.selected"
-              ? { model: event.properties.model }
-              : { agent: event.properties.agent }),
+              ? {
+                  model: event.properties.model as NonNullable<
+                    Session["model"]
+                  >,
+                }
+              : { agent: event.properties.agent as string }),
           });
         }
       } else if (event.type === "session.deleted") {
-        chatsStore.deleteSessionChat(sessionId, event.properties.sessionID);
+        if (event.properties.sessionID) {
+          chatsStore.deleteSessionChat(sessionId, event.properties.sessionID);
+        }
+      }
+
+      if (opencodeSessionId) {
+        if (
+          event.type === "question.asked" ||
+          event.type === "permission.asked" ||
+          event.type === "form.created"
+        ) {
+          chatsStore.setChatAttention(sessionId, opencodeSessionId, true);
+        } else if (
+          event.type === "question.replied" ||
+          event.type === "question.rejected" ||
+          event.type === "permission.replied" ||
+          event.type === "form.replied" ||
+          event.type === "form.cancelled"
+        ) {
+          chatsStore.setChatAttention(sessionId, opencodeSessionId, false);
+        }
       }
 
       const isRootChat = opencodeSessionId
@@ -326,10 +354,16 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       if (opencodeSessionId && isRootChat) {
         if (
           event.type === "message.updated" &&
-          event.properties.info.role === "assistant" &&
-          event.properties.info.time.completed
+          (event.properties.info as { role?: string; time?: { completed?: number } })
+            .role === "assistant" &&
+          (event.properties.info as { time?: { completed?: number } }).time
+            ?.completed
         ) {
-          const completionKey = `${opencodeSessionId}:${event.properties.info.id}:${event.properties.info.time.completed}`;
+          const info = event.properties.info as {
+            id?: string;
+            time?: { completed?: number };
+          };
+          const completionKey = `${opencodeSessionId}:${info.id}:${info.time?.completed}`;
           if (!handledCompletedAnswersRef.current.has(completionKey)) {
             handledCompletedAnswersRef.current.add(completionKey);
             markAnswerUnreadIfNotViewing(
@@ -368,21 +402,98 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
           chatsStore.setChatStatus(
             sessionId,
             opencodeSessionId,
-            event.properties.status,
+            event.properties.status as import("@repo/api-client").SessionStatus,
           );
+        } else if (event.type === "session.execution.started") {
+          chatsStore.setChatStatus(sessionId, opencodeSessionId, {
+            type: "busy",
+          });
         } else if (
           event.type === "session.idle" ||
-          event.type === "session.error"
+          event.type === "session.error" ||
+          isTerminalExecutionEvent(event)
         ) {
           chatsStore.setChatStatus(sessionId, opencodeSessionId, {
             type: "idle",
           });
         }
+
+        if (isTerminalExecutionEvent(event)) {
+          const completionKey = `${opencodeSessionId}:${event.id ?? event.type}:${event.created ?? ""}`;
+          if (!handledCompletedAnswersRef.current.has(completionKey)) {
+            handledCompletedAnswersRef.current.add(completionKey);
+            markAnswerUnreadIfNotViewing(
+              chatsStore,
+              activeChatRef.current,
+              sessionId,
+              opencodeSessionId,
+            );
+          }
+        }
       }
 
-      if (event.type === "session.idle" && opencodeSessionId) {
+      if (
+        opencodeSessionId &&
+        (event.type === "session.idle" ||
+          isTerminalExecutionEvent(event) ||
+          event.type === "session.revert.committed")
+      ) {
         void queryClient.invalidateQueries({
-          queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+          queryKey: [
+            "opencode",
+            "session",
+            sessionId,
+            opencodeSessionId,
+            serverUrl,
+          ],
+          exact: true,
+        });
+      }
+
+      if (
+        opencodeSessionId &&
+        (event.type === "session.inbox.enqueued" ||
+          event.type === "session.inbox.delivered" ||
+          event.type === "session.inbox.cancelled" ||
+          event.type === "session.inbox.delivery.changed")
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "queue", opencodeSessionId, serverUrl],
+          exact: true,
+        });
+      }
+
+      if (
+        opencodeSessionId &&
+        (event.type === "session.message.content.updated" ||
+          event.type === "session.moved" ||
+          event.type === "session.permissions" ||
+          event.type === "session.viewed")
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: [
+            "opencode",
+            "session",
+            sessionId,
+            opencodeSessionId,
+            serverUrl,
+          ],
+          exact: true,
+        });
+      }
+
+      if (
+        event.type === "provider.updated" ||
+        event.type === "config.updated" ||
+        event.type === "agent.updated" ||
+        event.type === "command.updated" ||
+        event.type === "mcp.status.changed" ||
+        event.type === "mcp.resources.changed" ||
+        event.type === "mcp.tools.changed"
+      ) {
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "inventory", sessionId, serverUrl],
+          exact: true,
         });
       }
 
@@ -417,6 +528,25 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
                 queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],
                 exact: true,
               });
+              void queryClient.invalidateQueries({
+                queryKey: ["opencode", "inventory", sessionId, serverUrl],
+                exact: true,
+              });
+              const active = activeChatRef.current;
+              if (
+                active.projectSessionId === sessionId &&
+                active.opencodeSessionId
+              ) {
+                void queryClient.invalidateQueries({
+                  queryKey: [
+                    "opencode",
+                    "queue",
+                    active.opencodeSessionId,
+                    serverUrl,
+                  ],
+                  exact: true,
+                });
+              }
               resyncActiveChat();
             },
           );
@@ -584,6 +714,14 @@ function getEventSessionId(event: Event) {
     | undefined;
   const sessionID = properties?.sessionID;
   return typeof sessionID === "string" ? sessionID : undefined;
+}
+
+function isTerminalExecutionEvent(event: Event) {
+  return (
+    event.type === "session.execution.succeeded" ||
+    event.type === "session.execution.failed" ||
+    event.type === "session.execution.interrupted"
+  );
 }
 
 function sessionFromCreatedEvent(event: Event): Session | undefined {

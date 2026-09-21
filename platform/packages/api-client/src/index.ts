@@ -13,11 +13,13 @@ import * as walletApi from "./services/wallet-services.js";
 
 export * from "./services/opencode-services.js";
 export * from "./services/opencode-chat-utils.js";
+export * from "./services/opencode-errors.js";
 export type {
   AssistantMessage,
   Event,
   FilePart,
   Message,
+  OpencodeError,
   Part,
   PermissionRequest,
   QuestionAnswer,
