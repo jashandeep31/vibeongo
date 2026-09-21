@@ -21,7 +21,7 @@ set -euo pipefail
 APP="vibeongo"
 BINARY_PATH="/usr/local/bin/$APP"
 
-${""}
+${downloadBinary}
 
 if [[ "$(cat /proc/1/comm)" == "systemd" ]]; then
   sudo tee /etc/systemd/system/vibeongo.service > /dev/null <<EOF

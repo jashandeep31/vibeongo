@@ -63,6 +63,7 @@ type OpencodeComposerProps = {
   onChangeFileReferences?: (references: OpencodeFileReference[]) => void;
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
+  onOpenChats?: () => void;
   onOpenTerminal?: () => void;
   onStop?: () => void;
   providerConnection?: OpencodeProviderConnection;
@@ -146,6 +147,7 @@ export function OpencodeComposer({
   onChangeFileReferences,
   onChangeText,
   onNewChat,
+  onOpenChats,
   onOpenTerminal,
   onStop,
   providerConnection,
@@ -335,6 +337,7 @@ export function OpencodeComposer({
           inventory={inventory}
           onChange={onChangeSelection}
           onNewChat={onNewChat}
+          onOpenChats={onOpenChats}
           onOpenTerminal={onOpenTerminal}
           providerConnection={providerConnection}
           selection={selection}
@@ -529,6 +532,7 @@ const PromptSelectors = memo(function PromptSelectors({
   inventory,
   onChange,
   onNewChat,
+  onOpenChats,
   onOpenTerminal,
   providerConnection,
   selection,
@@ -537,6 +541,7 @@ const PromptSelectors = memo(function PromptSelectors({
   inventory?: OpencodeInventory;
   onChange: (selection: OpencodePromptSelection) => void;
   onNewChat?: () => void;
+  onOpenChats?: () => void;
   onOpenTerminal?: () => void;
   providerConnection?: OpencodeProviderConnection;
   selection: OpencodePromptSelection;
@@ -652,6 +657,14 @@ const PromptSelectors = memo(function PromptSelectors({
         showsHorizontalScrollIndicator={false}
         style={styles.pillsScroller}
       >
+        {onOpenChats ? (
+          <IconPill
+            disabled={disabled}
+            icon={{ ios: "bubble.left.and.bubble.right", android: "forum" }}
+            label="Open session chats"
+            onPress={onOpenChats}
+          />
+        ) : null}
         <SelectorPill
           disabled={disabled || (!providers.length && !providerConnection)}
           icon={{ ios: "brain", android: "psychology" }}
@@ -774,6 +787,39 @@ function SelectorPill({
           tintColor={theme.textSecondary}
         />
       ) : null}
+    </Pressable>
+  );
+}
+
+function IconPill({
+  disabled,
+  icon,
+  label,
+  onPress,
+}: {
+  disabled?: boolean;
+  icon: Parameters<typeof SymbolView>[0]["name"];
+  label: string;
+  onPress: () => void;
+}) {
+  const theme = useTheme();
+  return (
+    <Pressable
+      accessibilityLabel={label}
+      accessibilityRole="button"
+      disabled={disabled}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.iconPill,
+        {
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.backgroundSelected,
+        },
+        disabled && styles.disabled,
+        pressed && styles.pressed,
+      ]}
+    >
+      <SymbolView name={icon} size={16} tintColor={theme.textSecondary} />
     </Pressable>
   );
 }
@@ -1064,6 +1110,14 @@ const styles = StyleSheet.create({
     height: 38,
     maxWidth: 220,
     paddingHorizontal: 14,
+  },
+  iconPill: {
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 34,
+    justifyContent: "center",
+    width: 34,
   },
   pills: {
     gap: 8,

@@ -36,17 +36,17 @@ import {
   ActivityIndicator,
   Animated,
   Alert,
-  Easing,
   FlatList,
-  Dimensions,
   Keyboard,
-  PanResponder,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   TextInput,
   View,
+  type LayoutChangeEvent,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent,
 } from "react-native";
 
 import {
@@ -81,9 +81,15 @@ import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import { useInstanceExpiryWarning } from "@/components/projects/instance-expiry-countdown";
 
-type SwipePreview = { chatId: string; offset: -1 | 1 };
+type ChatScrollState = {
+  contentHeight: number;
+  distanceFromBottom: number;
+  offset: number;
+  viewportHeight: number;
+};
 const CHAT_CACHE_TIME = 30 * 60 * 1_000;
-const ignoreChatRevert = () => {};
+const CHAT_SCROLL_STATE_LIMIT = 50;
+const chatScrollStates = new Map<string, ChatScrollState>();
 
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
@@ -93,21 +99,10 @@ export function ProjectChatScreen() {
   const turnCache = useMemo(() => createChatTurnCache(), []);
   const theme = useTheme();
   const router = useRouter();
-  const [chatTransitionDistance, setChatTransitionDistance] = useState(
-    () => Dimensions.get("window").width,
+  const [composerHeight, setComposerHeight] = useState<number>(
+    PAGE_CHROME.bottom.composerFadeInset,
   );
-  useEffect(() => {
-    const subscription = Dimensions.addEventListener("change", ({ window }) => {
-      setChatTransitionDistance((width) =>
-        width === window.width ? width : window.width,
-      );
-    });
-    return () => subscription.remove();
-  }, []);
   const focusedChatIdsRef = useRef(new Set<string>());
-  const chatTransitionX = useRef(new Animated.Value(0)).current;
-  const isChatTransitioningRef = useRef(false);
-  const chatTransitionEntryXRef = useRef<number | null>(null);
   const params = useLocalSearchParams<{
     chatId?: string | string[];
     projectId?: string | string[];
@@ -116,6 +111,17 @@ export function ProjectChatScreen() {
   const projectSessionId = firstParam(params.projectSessionId);
   const projectId = firstParam(params.projectId);
   const opencodeSessionId = firstParam(params.chatId);
+  const chatScrollKey = `${projectSessionId}:${opencodeSessionId}`;
+  const saveChatScrollState = useCallback(
+    (key: string, state: ChatScrollState) => {
+      chatScrollStates.delete(key);
+      chatScrollStates.set(key, state);
+      if (chatScrollStates.size > CHAT_SCROLL_STATE_LIMIT) {
+        chatScrollStates.delete(chatScrollStates.keys().next().value!);
+      }
+    },
+    [],
+  );
   const openTerminal = useCallback(() => {
     Keyboard.dismiss();
     router.push({
@@ -123,9 +129,6 @@ export function ProjectChatScreen() {
       params: { projectId, projectSessionId },
     });
   }, [projectId, projectSessionId, router]);
-  const sessionChatCount = useSessionChatsStore(
-    (store) => store.chatsBySessionId[projectSessionId]?.length ?? 0,
-  );
   const runtime = useProjectRuntime(projectSessionId);
   const isInstanceExpiring = useInstanceExpiryWarning(
     runtime.instance?.terminates_at,
@@ -254,10 +257,10 @@ export function ProjectChatScreen() {
     runtime.password,
   );
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
+  const [isSessionChatSwitcherOpen, setIsSessionChatSwitcherOpen] =
+    useState(false);
   const [isForkDrawerOpen, setIsForkDrawerOpen] = useState(false);
-  const isKeyboardVisibleRef = useRef(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
-  const [swipePreview, setSwipePreview] = useState<SwipePreview | null>(null);
   const data = sessionQuery.data;
   const searchFiles = useCallback(
     (query: string) =>
@@ -378,183 +381,6 @@ export function ProjectChatScreen() {
   };
 
   useEffect(() => {
-    const show = Keyboard.addListener("keyboardDidShow", () => {
-      isKeyboardVisibleRef.current = true;
-    });
-    const hide = Keyboard.addListener("keyboardDidHide", () => {
-      isKeyboardVisibleRef.current = false;
-    });
-    return () => {
-      show.remove();
-      hide.remove();
-    };
-  }, []);
-
-  const getRelativeChat = useCallback(
-    (offset: -1 | 1) => {
-      const sessionChats =
-        useSessionChatsStore.getState().chatsBySessionId[projectSessionId] ??
-        [];
-      if (sessionChats.length < 2) return undefined;
-      const currentIndex = sessionChats.findIndex(
-        (chat) => chat.id === opencodeSessionId,
-      );
-      const baseIndex = currentIndex >= 0 ? currentIndex : 0;
-      return sessionChats[
-        (baseIndex + offset + sessionChats.length) % sessionChats.length
-      ];
-    },
-    [opencodeSessionId, projectSessionId, sessionChatCount],
-  );
-
-  const showRelativeChatPreview = useCallback(
-    (offset: -1 | 1) => {
-      const nextChat = getRelativeChat(offset);
-      if (!nextChat) return;
-      setSwipePreview((current) =>
-        current?.chatId === nextChat.id && current.offset === offset
-          ? current
-          : { chatId: nextChat.id, offset },
-      );
-    },
-    [getRelativeChat],
-  );
-
-  const switchRelativeChat = useCallback(
-    (offset: -1 | 1) => {
-      if (isChatTransitioningRef.current) return;
-      const nextChat = getRelativeChat(offset);
-      if (!nextChat) return;
-
-      showRelativeChatPreview(offset);
-      isChatTransitioningRef.current = true;
-      const exitX =
-        offset === 1 ? -chatTransitionDistance : chatTransitionDistance;
-      chatTransitionX.stopAnimation();
-      Animated.timing(chatTransitionX, {
-        duration: 190,
-        easing: Easing.inOut(Easing.cubic),
-        toValue: exitX,
-        useNativeDriver: true,
-      }).start(({ finished }) => {
-        if (!finished) {
-          isChatTransitioningRef.current = false;
-          setSwipePreview(null);
-          return;
-        }
-
-        chatTransitionEntryXRef.current = -exitX;
-        // This is the same screen with a different chat id. Updating the route
-        // params avoids triggering a second native stack transition.
-        router.setParams({ chatId: nextChat.id });
-      });
-    },
-    [
-      chatTransitionX,
-      chatTransitionDistance,
-      getRelativeChat,
-      router,
-      showRelativeChatPreview,
-    ],
-  );
-
-  useEffect(() => {
-    const entryX = chatTransitionEntryXRef.current;
-    if (
-      !sessionQuery.data ||
-      sessionQuery.data.session.id !== opencodeSessionId ||
-      entryX === null
-    )
-      return;
-
-    chatTransitionEntryXRef.current = null;
-    if (swipePreview?.chatId === opencodeSessionId) {
-      // Both lists start at the latest turn; no history layout/scroll is needed.
-      const frame = requestAnimationFrame(() => {
-        chatTransitionX.setValue(0);
-        setSwipePreview(null);
-        isChatTransitioningRef.current = false;
-      });
-      return () => cancelAnimationFrame(frame);
-    }
-
-    chatTransitionX.setValue(entryX);
-    requestAnimationFrame(() =>
-      Animated.timing(chatTransitionX, {
-        duration: 240,
-        easing: Easing.out(Easing.cubic),
-        toValue: 0,
-        useNativeDriver: true,
-      }).start(() => {
-        isChatTransitioningRef.current = false;
-      }),
-    );
-  }, [chatTransitionX, opencodeSessionId, sessionQuery.data, swipePreview]);
-
-  useEffect(() => {
-    if (!sessionQuery.error) return;
-    chatTransitionEntryXRef.current = null;
-    chatTransitionX.setValue(0);
-    setSwipePreview(null);
-    isChatTransitioningRef.current = false;
-  }, [sessionQuery.error, chatTransitionX]);
-
-  const pageSwipeResponder = useMemo(
-    () =>
-      PanResponder.create({
-        onMoveShouldSetPanResponderCapture: (_, gesture) =>
-          !isKeyboardVisibleRef.current &&
-          sessionChatCount > 1 &&
-          !isChatTransitioningRef.current &&
-          Math.abs(gesture.dx) > 8 &&
-          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
-        onMoveShouldSetPanResponder: (_, gesture) =>
-          !isKeyboardVisibleRef.current &&
-          sessionChatCount > 1 &&
-          !isChatTransitioningRef.current &&
-          Math.abs(gesture.dx) > 8 &&
-          Math.abs(gesture.dx) > Math.abs(gesture.dy) * 1.15,
-        onPanResponderGrant: () => chatTransitionX.stopAnimation(),
-        onPanResponderMove: (_, gesture) => {
-          showRelativeChatPreview(gesture.dx < 0 ? 1 : -1);
-          chatTransitionX.setValue(
-            Math.max(
-              -chatTransitionDistance * 0.34,
-              Math.min(chatTransitionDistance * 0.34, gesture.dx * 0.72),
-            ),
-          );
-        },
-        onPanResponderRelease: (_, gesture) => {
-          if (gesture.dx < -42) switchRelativeChat(1);
-          else if (gesture.dx > 42) switchRelativeChat(-1);
-          else {
-            Animated.spring(chatTransitionX, {
-              damping: 18,
-              stiffness: 220,
-              toValue: 0,
-              useNativeDriver: true,
-            }).start(() => setSwipePreview(null));
-          }
-        },
-        onPanResponderTerminate: () =>
-          Animated.spring(chatTransitionX, {
-            damping: 18,
-            stiffness: 220,
-            toValue: 0,
-            useNativeDriver: true,
-          }).start(() => setSwipePreview(null)),
-        onShouldBlockNativeResponder: () => true,
-      }),
-    [
-      chatTransitionX,
-      chatTransitionDistance,
-      sessionChatCount,
-      showRelativeChatPreview,
-      switchRelativeChat,
-    ],
-  );
-
-  useEffect(() => {
     useSessionChatsStore
       .getState()
       .setChatUnread(projectSessionId, opencodeSessionId, false);
@@ -610,7 +436,10 @@ export function ProjectChatScreen() {
       setIsManuallyRefreshing(false);
     }
   }, [inventoryQuery.refetch, isManuallyRefreshing, sessionQuery.resync]);
-  const openChatSwitcher = useCallback(() => setIsChatSwitcherOpen(true), []);
+  const openChatSwitcher = useCallback(() => {
+    Keyboard.dismiss();
+    setIsChatSwitcherOpen(true);
+  }, []);
 
   if (runtime.isPending && !data) {
     return (
@@ -693,64 +522,42 @@ export function ProjectChatScreen() {
           >
             {({ topInset }) => (
               <>
-                <View style={styles.chatPreviewViewport}>
-                  {swipePreview ? (
-                    <Animated.View
-                      pointerEvents="none"
-                      style={[
-                        styles.adjacentChatPreview,
-                        { backgroundColor: theme.background },
-                        {
-                          transform: [
-                            {
-                              translateX: Animated.add(
-                                chatTransitionX,
-                                swipePreview.offset * chatTransitionDistance,
-                              ),
-                            },
-                          ],
-                        },
-                      ]}
-                    >
-                      <AdjacentChatPreview
-                        accessToken={runtime.accessToken}
-                        chatId={swipePreview.chatId}
-                        models={inventoryQuery.data?.models}
-                        password={runtime.password}
-                        projectSessionId={projectSessionId}
-                        serverUrl={runtime.serverUrl}
-                        topInset={topInset}
-                        turnCache={turnCache}
-                      />
-                    </Animated.View>
-                  ) : null}
-
-                  <Animated.View
-                    style={[
-                      styles.chatPreview,
-                      { backgroundColor: theme.background },
-                      { transform: [{ translateX: chatTransitionX }] },
-                    ]}
-                    {...pageSwipeResponder.panHandlers}
-                  >
-                    <ChatTimeline
-                      turnCache={turnCache}
-                      projectSessionId={projectSessionId}
-                      opencodeSessionId={opencodeSessionId}
-                      serverUrl={runtime.serverUrl}
-                      accessToken={runtime.accessToken}
-                      password={runtime.password}
-                      models={inventoryQuery.data?.models}
-                      topInset={topInset}
-                      isReverting={revertSession.isPending}
-                      revertingId={revertSession.variables}
-                      isRestoring={restoreMessage.isPending}
-                      onRevert={revertTurn}
-                    />
-                  </Animated.View>
+                <View
+                  style={[
+                    styles.chatArea,
+                    { backgroundColor: theme.background },
+                  ]}
+                >
+                  <ChatTimeline
+                    bottomInset={Math.max(
+                      PAGE_CHROME.bottom.composerFadeInset,
+                      composerHeight + 16,
+                    )}
+                    key={opencodeSessionId}
+                    chatScrollKey={chatScrollKey}
+                    initialScrollState={chatScrollStates.get(chatScrollKey)}
+                    turnCache={turnCache}
+                    projectSessionId={projectSessionId}
+                    opencodeSessionId={opencodeSessionId}
+                    serverUrl={runtime.serverUrl}
+                    accessToken={runtime.accessToken}
+                    password={runtime.password}
+                    models={inventoryQuery.data?.models}
+                    topInset={topInset}
+                    isReverting={revertSession.isPending}
+                    revertingId={revertSession.variables}
+                    isRestoring={restoreMessage.isPending}
+                    onRevert={revertTurn}
+                    onScrollStateChange={saveChatScrollState}
+                  />
                 </View>
 
-                <View style={styles.composerOuter}>
+                <View
+                  onLayout={(event) =>
+                    setComposerHeight(event.nativeEvent.layout.height)
+                  }
+                  style={styles.composerOuter}
+                >
                   <View
                     pointerEvents="none"
                     style={[
@@ -842,6 +649,10 @@ export function ProjectChatScreen() {
                       onChangeSelection={setSelection}
                       key={opencodeSessionId}
                       onNewChat={openNewChat}
+                      onOpenChats={() => {
+                        Keyboard.dismiss();
+                        setIsSessionChatSwitcherOpen(true);
+                      }}
                       onOpenTerminal={openTerminal}
                       selection={selection}
                       searchFiles={searchFiles}
@@ -855,6 +666,9 @@ export function ProjectChatScreen() {
       </>
       <ProjectChatSwitcherDrawer
         current={{ opencodeSessionId, projectId, projectSessionId }}
+        newChatDirectoriesBySessionId={{
+          [projectSessionId]: data.session.directory,
+        }}
         onClose={() => setIsChatSwitcherOpen(false)}
         onDelete={(target) => {
           const remove = () =>
@@ -921,6 +735,43 @@ export function ProjectChatScreen() {
         onSelect={selectChat}
         visible={isChatSwitcherOpen}
       />
+      <ProjectChatSwitcherDrawer
+        current={{ opencodeSessionId, projectId, projectSessionId }}
+        newChatDirectoriesBySessionId={{
+          [projectSessionId]: data.session.directory,
+        }}
+        onClose={() => setIsSessionChatSwitcherOpen(false)}
+        onDelete={(target) => {
+          const remove = () =>
+            deleteSession.mutate(target.opencodeSessionId, {
+              onError: (error) =>
+                Alert.alert("Could not delete chat", error.message),
+              onSuccess: () => {
+                setIsSessionChatSwitcherOpen(false);
+                if (target.opencodeSessionId === opencodeSessionId) {
+                  router.setParams({
+                    chatId: "new",
+                    directory: data.session.directory,
+                  });
+                }
+              },
+            });
+          Alert.alert("Delete chat?", "This removes the chat from OpenCode.", [
+            { text: "Cancel", style: "cancel" },
+            { text: "Delete", style: "destructive", onPress: remove },
+          ]);
+        }}
+        onNewChat={() => {
+          setIsSessionChatSwitcherOpen(false);
+          openNewChat();
+        }}
+        onSelect={(target) => {
+          setIsSessionChatSwitcherOpen(false);
+          selectChat(target);
+        }}
+        scopeProjectSessionId={projectSessionId}
+        visible={isSessionChatSwitcherOpen}
+      />
       <OpencodeForkDrawer
         messages={data.messages}
         onClose={() => setIsForkDrawerOpen(false)}
@@ -943,6 +794,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   directory,
   onChangeSelection,
   onNewChat,
+  onOpenChats,
   onOpenTerminal,
   onProviderConnected,
   password,
@@ -960,6 +812,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   directory: string;
   onChangeSelection: (selection: OpencodePromptSelection) => void;
   onNewChat: () => void;
+  onOpenChats: () => void;
   onOpenTerminal: () => void;
   onProviderConnected: () => Promise<void>;
   password?: string;
@@ -1381,6 +1234,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         isSubmitting={sendPrompt.isPending || queuePrompt.isPending}
         onChangeSelection={onChangeSelection}
         onNewChat={onNewChat}
+        onOpenChats={onOpenChats}
         onOpenTerminal={onOpenTerminal}
         onStop={isStreaming ? stopStreaming : undefined}
         onSubmit={submit}
@@ -1505,6 +1359,9 @@ function createTimelineDataSelector() {
 }
 
 const ChatTimeline = memo(function ChatTimeline({
+  bottomInset,
+  chatScrollKey,
+  initialScrollState,
   turnCache,
   projectSessionId,
   opencodeSessionId,
@@ -1517,7 +1374,11 @@ const ChatTimeline = memo(function ChatTimeline({
   revertingId,
   isRestoring,
   onRevert,
+  onScrollStateChange,
 }: {
+  bottomInset: number;
+  chatScrollKey: string;
+  initialScrollState?: ChatScrollState;
   turnCache: ReturnType<typeof createChatTurnCache>;
   projectSessionId: string;
   opencodeSessionId: string;
@@ -1530,6 +1391,7 @@ const ChatTimeline = memo(function ChatTimeline({
   revertingId?: string;
   isRestoring: boolean;
   onRevert: (id: string) => void;
+  onScrollStateChange: (key: string, state: ChatScrollState) => void;
 }) {
   const theme = useTheme();
   const selectTimelineData = useMemo(() => createTimelineDataSelector(), []);
@@ -1576,20 +1438,152 @@ const ChatTimeline = memo(function ChatTimeline({
   const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
   const latestTurnId = turns.at(-1)?.id;
   const listRef = useRef<FlatList<(typeof turns)[number]>>(null);
+  const initialScrollStateRef = useRef(initialScrollState);
+  const isPositioningRef = useRef(true);
+  const positioningFrameRef = useRef<number | undefined>(undefined);
+  const positioningVersionRef = useRef(0);
+  const prependAnchorRef = useRef<
+    | {
+        contentHeight: number;
+        offset: number;
+      }
+    | undefined
+  >(undefined);
+  const scrollMetricsRef = useRef({
+    contentHeight: 0,
+    offset: initialScrollState?.offset ?? 0,
+    viewportHeight: 0,
+  });
+  const [isPositioned, setIsPositioned] = useState(false);
   const [isTimelineKeyboardVisible, setIsTimelineKeyboardVisible] = useState(
     () => Keyboard.isVisible(),
   );
   const keyboardScrollTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
-  const previousLatestTurnIdRef = useRef<string | undefined>(undefined);
-  const pendingTimelineScrollRef = useRef<{ animated: boolean } | undefined>({
-    animated: false,
-  });
-  const completePendingTimelineScroll = useCallback(() => {
-    const pending = pendingTimelineScrollRef.current;
-    if (!pending) return;
-    pendingTimelineScrollRef.current = undefined;
-    listRef.current?.scrollToEnd({ animated: pending.animated });
+  const scrollToLatest = useCallback((animated: boolean) => {
+    listRef.current?.scrollToEnd({ animated });
   }, []);
+  const getRestoredOffset = useCallback(() => {
+    const metrics = scrollMetricsRef.current;
+    const maximumOffset = Math.max(
+      0,
+      metrics.contentHeight - metrics.viewportHeight,
+    );
+    const saved = initialScrollStateRef.current;
+    if (!saved) return maximumOffset;
+    if (saved.distanceFromBottom <= 24) {
+      return Math.max(0, maximumOffset - saved.distanceFromBottom);
+    }
+    return Math.min(saved.offset, maximumOffset);
+  }, []);
+  const positionTimeline = useCallback(() => {
+    const metrics = scrollMetricsRef.current;
+    if (
+      !isPositioningRef.current ||
+      metrics.viewportHeight <= 0 ||
+      metrics.contentHeight <= 0
+    ) {
+      return;
+    }
+
+    const version = ++positioningVersionRef.current;
+    if (positioningFrameRef.current !== undefined) {
+      cancelAnimationFrame(positioningFrameRef.current);
+    }
+    const applyPosition = () => {
+      const offset = getRestoredOffset();
+      scrollMetricsRef.current.offset = offset;
+      listRef.current?.scrollToOffset({ animated: false, offset });
+    };
+    applyPosition();
+    positioningFrameRef.current = requestAnimationFrame(() => {
+      applyPosition();
+      positioningFrameRef.current = requestAnimationFrame(() => {
+        if (
+          !isPositioningRef.current ||
+          positioningVersionRef.current !== version
+        ) {
+          return;
+        }
+        applyPosition();
+        isPositioningRef.current = false;
+        positioningFrameRef.current = undefined;
+        setIsPositioned(true);
+      });
+    });
+  }, [getRestoredOffset]);
+  const saveCurrentScrollState = useCallback(() => {
+    if (isPositioningRef.current) return;
+    const metrics = scrollMetricsRef.current;
+    if (metrics.viewportHeight <= 0 || metrics.contentHeight <= 0) return;
+    onScrollStateChange(chatScrollKey, {
+      ...metrics,
+      distanceFromBottom: Math.max(
+        0,
+        metrics.contentHeight - metrics.viewportHeight - metrics.offset,
+      ),
+    });
+  }, [chatScrollKey, onScrollStateChange]);
+  const handleTimelineLayout = useCallback(
+    (event: LayoutChangeEvent) => {
+      scrollMetricsRef.current.viewportHeight = event.nativeEvent.layout.height;
+      positionTimeline();
+    },
+    [positionTimeline],
+  );
+  const handleTimelineContentSizeChange = useCallback(
+    (_width: number, height: number) => {
+      const prependAnchor = prependAnchorRef.current;
+      scrollMetricsRef.current.contentHeight = height;
+      if (prependAnchor && height > prependAnchor.contentHeight) {
+        const offset =
+          prependAnchor.offset + (height - prependAnchor.contentHeight);
+        prependAnchorRef.current = undefined;
+        scrollMetricsRef.current.offset = offset;
+        listRef.current?.scrollToOffset({ animated: false, offset });
+        return;
+      }
+      positionTimeline();
+    },
+    [positionTimeline],
+  );
+  const handleTimelineScroll = useCallback(
+    (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+      const { contentOffset, contentSize, layoutMeasurement } =
+        event.nativeEvent;
+      scrollMetricsRef.current = {
+        contentHeight: contentSize.height,
+        offset: Math.max(0, contentOffset.y),
+        viewportHeight: layoutMeasurement.height,
+      };
+      saveCurrentScrollState();
+    },
+    [saveCurrentScrollState],
+  );
+  const loadOlderMessages = useCallback(async () => {
+    if (sessionQuery.isLoadingOlder) return;
+    prependAnchorRef.current = {
+      contentHeight: scrollMetricsRef.current.contentHeight,
+      offset: scrollMetricsRef.current.offset,
+    };
+    try {
+      await sessionQuery.loadOlder();
+    } catch (error: unknown) {
+      prependAnchorRef.current = undefined;
+      Alert.alert(
+        "Could not load earlier messages",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    }
+  }, [sessionQuery.isLoadingOlder, sessionQuery.loadOlder]);
+  useEffect(
+    () => () => {
+      if (positioningFrameRef.current !== undefined) {
+        cancelAnimationFrame(positioningFrameRef.current);
+      }
+      saveCurrentScrollState();
+    },
+    [saveCurrentScrollState],
+  );
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", () => {
       setIsTimelineKeyboardVisible(true);
@@ -1597,7 +1591,7 @@ const ChatTimeline = memo(function ChatTimeline({
         clearTimeout(keyboardScrollTimerRef.current);
       }
       keyboardScrollTimerRef.current = setTimeout(
-        () => listRef.current?.scrollToEnd({ animated: true }),
+        () => scrollToLatest(true),
         320,
       );
     });
@@ -1611,30 +1605,19 @@ const ChatTimeline = memo(function ChatTimeline({
         clearTimeout(keyboardScrollTimerRef.current);
       }
     };
-  }, []);
+  }, [scrollToLatest]);
   useEffect(() => {
     if (!latestTurnId || !isTimelineKeyboardVisible) return;
     if (keyboardScrollTimerRef.current) {
       clearTimeout(keyboardScrollTimerRef.current);
     }
-    keyboardScrollTimerRef.current = setTimeout(
-      () => listRef.current?.scrollToEnd({ animated: true }),
-      80,
-    );
+    keyboardScrollTimerRef.current = setTimeout(() => scrollToLatest(true), 80);
     return () => {
       if (keyboardScrollTimerRef.current) {
         clearTimeout(keyboardScrollTimerRef.current);
       }
     };
-  }, [isTimelineKeyboardVisible, latestTurnId]);
-  useEffect(() => {
-    if (!latestTurnId || previousLatestTurnIdRef.current === latestTurnId)
-      return;
-    pendingTimelineScrollRef.current = {
-      animated: previousLatestTurnIdRef.current !== undefined,
-    };
-    previousLatestTurnIdRef.current = latestTurnId;
-  }, [latestTurnId]);
+  }, [isTimelineKeyboardVisible, latestTurnId, scrollToLatest]);
   const renderTurn = useCallback(
     ({ item: turn }: { item: (typeof turns)[number] }) => (
       <OpencodeChatTurn
@@ -1668,12 +1651,13 @@ const ChatTimeline = memo(function ChatTimeline({
       >
         <FlatList
           ref={listRef}
+          accessibilityElementsHidden={!isPositioned}
           contentContainerStyle={[
             styles.messages,
-            { paddingTop: topInset, paddingBottom: 150 },
+            { paddingTop: topInset, paddingBottom: bottomInset },
           ]}
           data={turns}
-          initialNumToRender={6}
+          initialNumToRender={Math.max(1, turns.length)}
           keyboardDismissMode="interactive"
           keyboardShouldPersistTaps="handled"
           key={opencodeSessionId}
@@ -1693,18 +1677,7 @@ const ChatTimeline = memo(function ChatTimeline({
                 accessibilityLabel="Load earlier messages"
                 accessibilityRole="button"
                 disabled={sessionQuery.isLoadingOlder}
-                onPress={() =>
-                  void sessionQuery
-                    .loadOlder()
-                    .catch((error: unknown) =>
-                      Alert.alert(
-                        "Could not load earlier messages",
-                        error instanceof Error
-                          ? error.message
-                          : "Please try again.",
-                      ),
-                    )
-                }
+                onPress={() => void loadOlderMessages()}
                 style={({ pressed }) => [
                   styles.loadEarlierButton,
                   {
@@ -1725,96 +1698,21 @@ const ChatTimeline = memo(function ChatTimeline({
             ) : null
           }
           maxToRenderPerBatch={5}
-          onContentSizeChange={completePendingTimelineScroll}
+          onContentSizeChange={handleTimelineContentSizeChange}
+          onLayout={handleTimelineLayout}
+          onScroll={handleTimelineScroll}
+          pointerEvents={isPositioned ? "auto" : "none"}
           removeClippedSubviews={Platform.OS === "android"}
           renderItem={renderTurn}
           showsVerticalScrollIndicator={false}
+          scrollEventThrottle={16}
+          style={{ opacity: isPositioned ? 1 : 0 }}
           windowSize={5}
         />
       </ChatRevertDisabledContext.Provider>
     </>
   );
 });
-
-function AdjacentChatPreview({
-  accessToken,
-  chatId,
-  models,
-  password,
-  projectSessionId,
-  serverUrl,
-  topInset,
-  turnCache,
-}: {
-  accessToken: string;
-  chatId: string;
-  models?: OpencodeModelOption[];
-  password?: string;
-  projectSessionId: string;
-  serverUrl: string;
-  topInset: number;
-  turnCache: ReturnType<typeof createChatTurnCache>;
-}) {
-  const sessionQuery = useOpencodeSession({
-    chatId: projectSessionId,
-    sessionId: chatId,
-    serverUrl,
-    accessToken,
-    password,
-    messageLimit: OPENCODE_MESSAGE_PAGE_SIZE,
-    refetchOnMount: false,
-    gcTime: CHAT_CACHE_TIME,
-  });
-  const selectTurns = useMemo(
-    () => turnCache(JSON.stringify([projectSessionId, serverUrl, chatId])),
-    [chatId, projectSessionId, serverUrl, turnCache],
-  );
-  const turns = useMemo(() => {
-    const messages = sessionQuery.data?.messages ?? [];
-    const revertMessageId = sessionQuery.data?.session.revert?.messageID;
-    const revertIndex = revertMessageId
-      ? messages.findIndex((message) => message.info.id === revertMessageId)
-      : -1;
-    return selectTurns(
-      revertIndex < 0 ? messages : messages.slice(0, revertIndex),
-      models,
-    );
-  }, [models, selectTurns, sessionQuery.data]);
-  const reversedTurns = useMemo(() => [...turns].reverse(), [turns]);
-  const renderTurn = useCallback(
-    ({ item }: { item: (typeof turns)[number] }) => (
-      <OpencodeChatTurn
-        isReverting={false}
-        isStreaming={false}
-        item={item}
-        onRevert={ignoreChatRevert}
-      />
-    ),
-    [],
-  );
-  return (
-    <FlatList
-      inverted
-      data={reversedTurns}
-      initialNumToRender={6}
-      maxToRenderPerBatch={5}
-      windowSize={5}
-      contentContainerStyle={[
-        styles.messages,
-        { paddingTop: 150, paddingBottom: topInset },
-      ]}
-      keyExtractor={(turn) => turn.id}
-      removeClippedSubviews={Platform.OS === "android"}
-      renderItem={renderTurn}
-      ListEmptyComponent={
-        <View style={styles.adjacentPreviewLoading}>
-          <ActivityIndicator size="small" />
-        </View>
-      }
-      showsVerticalScrollIndicator={false}
-    />
-  );
-}
 
 function RevertedMessagesPanel({
   chatId,
@@ -1912,28 +1810,7 @@ function RevertedMessagesPanel({
 }
 
 const styles = StyleSheet.create({
-  adjacentChatPreview: {
-    bottom: 0,
-    left: 0,
-    position: "absolute",
-    right: 0,
-    top: 0,
-  },
-  adjacentMessages: {
-    flexGrow: 1,
-  },
-  adjacentPreviewLoading: {
-    alignItems: "center",
-    flex: 1,
-    justifyContent: "center",
-  },
-  chatPreview: {
-    flex: 1,
-  },
-  chatPreviewViewport: {
-    flex: 1,
-    overflow: "hidden",
-  },
+  chatArea: { flex: 1 },
   composerOuter: {
     backgroundColor: "transparent",
     bottom: 0,
@@ -2089,11 +1966,6 @@ const styles = StyleSheet.create({
   },
   screen: {
     flex: 1,
-  },
-  thinking: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
   },
   disabled: { opacity: 0.4 },
 });

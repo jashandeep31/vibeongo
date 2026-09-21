@@ -26,17 +26,21 @@ export type NewProjectChatTarget = {
 
 export function ProjectChatSwitcherDrawer({
   current,
+  newChatDirectoriesBySessionId,
   onClose,
   onDelete,
   onNewChat,
   onSelect,
+  scopeProjectSessionId,
   visible,
 }: {
-  current: ProjectChatTarget;
+  current?: ProjectChatTarget;
+  newChatDirectoriesBySessionId?: Record<string, string | undefined>;
   onClose: () => void;
   onDelete?: (target: ProjectChatTarget) => void;
   onNewChat: (target: NewProjectChatTarget) => void;
   onSelect: (target: ProjectChatTarget) => void;
+  scopeProjectSessionId?: string;
   visible: boolean;
 }) {
   const theme = useTheme();
@@ -49,6 +53,14 @@ export function ProjectChatSwitcherDrawer({
   const statuses = useSessionChatsStore((store) => store.statusesBySessionId);
   const unread = useSessionChatsStore((store) => store.unreadBySessionId);
   const attention = useSessionChatsStore((store) => store.attentionBySessionId);
+  const scopedSession = scopeProjectSessionId
+    ? sessions.find((entry) => entry.session.id === scopeProjectSessionId)
+    : undefined;
+  const scopedProject = scopedSession
+    ? projects.find(
+        (project) => project.id === scopedSession.session.project_id,
+      )
+    : undefined;
 
   return (
     <Modal
@@ -70,10 +82,13 @@ export function ProjectChatSwitcherDrawer({
           visible={visible}
           style={[
             styles.drawer,
+            scopeProjectSessionId && styles.compactDrawer,
             {
               backgroundColor: theme.background,
               borderColor: theme.backgroundSelected,
-              paddingBottom: Math.max(insets.bottom, 16),
+              paddingBottom: scopeProjectSessionId
+                ? Math.max(insets.bottom, 8)
+                : Math.max(insets.bottom, 16),
             },
           ]}
         >
@@ -84,89 +99,116 @@ export function ProjectChatSwitcherDrawer({
             ]}
           />
           <View style={styles.header}>
-            <ThemedText style={styles.title}>Projects</ThemedText>
+            <ThemedText style={styles.title}>
+              {scopeProjectSessionId
+                ? `${scopedProject?.name ?? "Project"} | ${scopedSession?.session.name ?? "Session"}`
+                : "Projects"}
+            </ThemedText>
           </View>
 
           <ScrollView
-            contentContainerStyle={styles.content}
+            contentContainerStyle={[
+              styles.content,
+              scopeProjectSessionId && styles.compactContent,
+            ]}
             showsVerticalScrollIndicator={false}
+            style={scopeProjectSessionId ? styles.compactScroll : undefined}
           >
             {projects.map((project) => {
               const projectSessions = sessions.filter(
-                (entry) => entry.session.project_id === project.id,
+                (entry) =>
+                  entry.session.project_id === project.id &&
+                  (!scopeProjectSessionId ||
+                    entry.session.id === scopeProjectSessionId),
               );
+              if (scopeProjectSessionId && projectSessions.length === 0) {
+                return null;
+              }
               return (
                 <View
                   key={project.id}
                   style={[
                     styles.project,
+                    scopeProjectSessionId && styles.compactProject,
                     { borderColor: theme.backgroundSelected },
                   ]}
                 >
-                  <View style={styles.projectHeader}>
-                    <SymbolView
-                      name={{ ios: "folder", android: "folder" }}
-                      size={16}
-                      tintColor={theme.textSecondary}
-                    />
-                    <ThemedText numberOfLines={1} style={styles.projectName}>
-                      {project.name}
-                    </ThemedText>
-                  </View>
+                  {!scopeProjectSessionId ? (
+                    <View style={styles.projectHeader}>
+                      <SymbolView
+                        name={{ ios: "folder", android: "folder" }}
+                        size={16}
+                        tintColor={theme.textSecondary}
+                      />
+                      <ThemedText numberOfLines={1} style={styles.projectName}>
+                        {project.name}
+                      </ThemedText>
+                    </View>
+                  ) : null}
 
                   {projectSessions.map((entry) => {
                     const session = entry.session;
                     const running = entry.state === "running";
                     const chats = chatsBySessionId[session.id] ?? [];
+                    const newChatDirectory =
+                      chats[0]?.directory ??
+                      newChatDirectoriesBySessionId?.[session.id];
                     return (
                       <View key={session.id}>
-                        <View style={styles.sessionRow}>
-                          <SymbolView
-                            name={{
-                              ios: running ? "chevron.down" : "chevron.right",
-                              android: running
-                                ? "keyboard_arrow_down"
-                                : "chevron_right",
-                            }}
-                            size={14}
-                            tintColor={theme.textSecondary}
-                          />
-                          <ThemedText
-                            numberOfLines={1}
-                            style={styles.sessionName}
-                            themeColor="textSecondary"
-                          >
-                            {session.name}
-                          </ThemedText>
-                          <View
-                            accessibilityLabel={
-                              running
-                                ? "Running"
-                                : entry.state === "processing"
-                                  ? "Starting"
-                                  : "Stopped"
-                            }
-                            style={[
-                              styles.statusDot,
-                              {
-                                backgroundColor: running
-                                  ? "#10b981"
+                        {!scopeProjectSessionId ? (
+                          <View style={styles.sessionRow}>
+                            <SymbolView
+                              name={{
+                                ios: running ? "chevron.down" : "chevron.right",
+                                android: running
+                                  ? "keyboard_arrow_down"
+                                  : "chevron_right",
+                              }}
+                              size={14}
+                              tintColor={theme.textSecondary}
+                            />
+                            <ThemedText
+                              numberOfLines={1}
+                              style={styles.sessionName}
+                              themeColor="textSecondary"
+                            >
+                              {session.name}
+                            </ThemedText>
+                            <View
+                              accessibilityLabel={
+                                running
+                                  ? "Running"
                                   : entry.state === "processing"
-                                    ? "#f59e0b"
-                                    : theme.textSecondary,
-                                opacity: entry.state === "stopped" ? 0.45 : 1,
-                              },
-                            ]}
-                          />
-                        </View>
+                                    ? "Starting"
+                                    : "Stopped"
+                              }
+                              style={[
+                                styles.statusDot,
+                                {
+                                  backgroundColor: running
+                                    ? "#10b981"
+                                    : entry.state === "processing"
+                                      ? "#f59e0b"
+                                      : theme.textSecondary,
+                                  opacity: entry.state === "stopped" ? 0.45 : 1,
+                                },
+                              ]}
+                            />
+                          </View>
+                        ) : null}
 
                         {running ? (
-                          chats.length ? (
-                            <View style={styles.chats}>
+                          chats.length || newChatDirectory ? (
+                            <View
+                              style={[
+                                styles.chats,
+                                scopeProjectSessionId && styles.compactChats,
+                              ]}
+                            >
                               {chats.map((chat) => {
                                 const selected =
-                                  current.projectSessionId === session.id &&
-                                  current.opencodeSessionId === chat.id;
+                                  current?.projectSessionId === session.id &&
+                                  current?.opencodeSessionId === chat.id;
                                 const busy =
                                   statuses[session.id]?.[chat.id]?.type !==
                                     "idle" &&
@@ -284,13 +326,13 @@ export function ProjectChatSwitcherDrawer({
                                   </Pressable>
                                 );
                               })}
-                              {chats[0]?.directory ? (
+                              {newChatDirectory ? (
                                 <Pressable
                                   accessibilityLabel={`New chat in ${session.name}`}
                                   accessibilityRole="button"
                                   onPress={() =>
                                     onNewChat({
-                                      directory: chats[0]?.directory ?? "",
+                                      directory: newChatDirectory,
                                       projectId: project.id,
                                       projectSessionId: session.id,
                                     })
@@ -370,6 +412,15 @@ const styles = StyleSheet.create({
     width: 30,
   },
   content: { paddingBottom: 48, paddingTop: 18 },
+  compactChats: { marginBottom: 0, paddingLeft: 0 },
+  compactContent: { paddingBottom: 4, paddingTop: 8 },
+  compactDrawer: { height: undefined, maxHeight: "60%" },
+  compactProject: {
+    borderBottomWidth: 0,
+    marginBottom: 0,
+    paddingBottom: 0,
+  },
+  compactScroll: { flexGrow: 0 },
   drawer: {
     alignSelf: "center",
     borderTopLeftRadius: 26,

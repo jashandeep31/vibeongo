@@ -3,6 +3,7 @@ import {
   type OpencodePromptSelection,
 } from "@repo/api-client";
 import {
+  useDeleteOpencodeSession,
   useOpencodeInventory,
   useOpencodeProjectDirectories,
   useStartOpencodeSession,
@@ -13,6 +14,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useCallback, useEffect, useState } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Keyboard,
   Pressable,
   StyleSheet,
@@ -24,6 +26,11 @@ import {
   OpencodeComposerController,
 } from "@/components/projects/opencode-composer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
+import {
+  ProjectChatSwitcherDrawer,
+  type NewProjectChatTarget,
+  type ProjectChatTarget,
+} from "@/components/projects/project-chat-switcher-drawer";
 import { ProjectWorkspaceTopBar } from "@/components/projects/project-workspace-top-bar";
 import { ThemedText } from "@/components/themed-text";
 import { PageChromeLayout } from "@/components/page-chrome";
@@ -96,6 +103,15 @@ export function NewProjectChatScreen() {
   const resolvedDirectory = directory || directoriesQuery.data?.[0]?.worktree;
   const { data: userSettings } = useUserSettings();
   const startSession = useStartOpencodeSession();
+  const deleteSession = useDeleteOpencodeSession({
+    chatId: projectSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
+  const [isSessionChatSwitcherOpen, setIsSessionChatSwitcherOpen] =
+    useState(false);
   const [selection, setSelection] = useState<OpencodePromptSelection>(() => ({
     agent: inheritedAgent || undefined,
     model: inheritedModel || undefined,
@@ -168,6 +184,38 @@ export function NewProjectChatScreen() {
     }
 
     router.replace("/");
+  };
+
+  const openChatSwitcher = () => {
+    Keyboard.dismiss();
+    setIsChatSwitcherOpen(true);
+  };
+
+  const selectChat = (target: ProjectChatTarget) => {
+    setIsChatSwitcherOpen(false);
+    router.replace({
+      pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
+      params: {
+        chatId: target.opencodeSessionId,
+        projectId: target.projectId,
+        projectSessionId: target.projectSessionId,
+      },
+    });
+  };
+
+  const selectNewChat = (target: NewProjectChatTarget) => {
+    setIsChatSwitcherOpen(false);
+    if (
+      target.projectId === projectId &&
+      target.projectSessionId === projectSessionId
+    ) {
+      router.setParams({ chatId: "new", directory: target.directory });
+      return;
+    }
+    router.replace({
+      pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
+      params: { ...target, chatId: "new" },
+    });
   };
 
   const submit = (draft: ComposerDraft, restore: () => void) => {
@@ -248,6 +296,7 @@ export function NewProjectChatScreen() {
                 inventoryQuery.isFetching || directoriesQuery.isFetching
               }
               onBack={goBack}
+              onOpenSwitcher={openChatSwitcher}
               onRefresh={() => {
                 void Promise.allSettled([
                   inventoryQuery.refetch(),
@@ -300,6 +349,10 @@ export function NewProjectChatScreen() {
                 inventory={inventoryQuery.data}
                 isSubmitting={startSession.isPending}
                 onChangeSelection={setSelection}
+                onOpenChats={() => {
+                  Keyboard.dismiss();
+                  setIsSessionChatSwitcherOpen(true);
+                }}
                 onOpenTerminal={openTerminal}
                 onSubmit={submit}
                 placeholder="Describe the task…"
@@ -324,6 +377,44 @@ export function NewProjectChatScreen() {
             </View>
           )}
         </PageChromeLayout>
+        <ProjectChatSwitcherDrawer
+          newChatDirectoriesBySessionId={{
+            [projectSessionId]: resolvedDirectory,
+          }}
+          onClose={() => setIsChatSwitcherOpen(false)}
+          onNewChat={selectNewChat}
+          onSelect={selectChat}
+          visible={isChatSwitcherOpen}
+        />
+        <ProjectChatSwitcherDrawer
+          newChatDirectoriesBySessionId={{
+            [projectSessionId]: resolvedDirectory,
+          }}
+          onClose={() => setIsSessionChatSwitcherOpen(false)}
+          onDelete={(target) => {
+            const remove = () =>
+              deleteSession.mutate(target.opencodeSessionId, {
+                onError: (error) =>
+                  Alert.alert("Could not delete chat", error.message),
+                onSuccess: () => setIsSessionChatSwitcherOpen(false),
+              });
+            Alert.alert(
+              "Delete chat?",
+              "This removes the chat from OpenCode.",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Delete", style: "destructive", onPress: remove },
+              ],
+            );
+          }}
+          onNewChat={() => setIsSessionChatSwitcherOpen(false)}
+          onSelect={(target) => {
+            setIsSessionChatSwitcherOpen(false);
+            selectChat(target);
+          }}
+          scopeProjectSessionId={projectSessionId}
+          visible={isSessionChatSwitcherOpen}
+        />
       </>
     </View>
   );
