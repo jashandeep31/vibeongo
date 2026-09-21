@@ -98,7 +98,7 @@ npm run dev`,
     environment:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: app
+      POSTGRES_DB: default
     ports:
       - "5432:5432"
     volumes:
@@ -147,7 +147,7 @@ volumes:
         name: ".env",
         path: "/blogging-website",
         content:
-          "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/app\n",
+          "DATABASE_URL=postgresql://postgres:postgres@localhost:5432/default\n",
       },
     ],
   },

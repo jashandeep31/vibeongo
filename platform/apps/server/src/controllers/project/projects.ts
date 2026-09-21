@@ -17,6 +17,7 @@ import {
   instances,
   gitRepos,
   projectSessions,
+  projectAutomations,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -372,6 +373,16 @@ export const deleteProjectById = catchAsync(
           archived: true,
         })
         .where(eq(projectSessions.project_id, updatedProject.id));
+
+      await tx
+        .update(projectAutomations)
+        .set({
+          enabled: false,
+          deleted_at: new Date(),
+          next_run_at: null,
+          updated_at: new Date(),
+        })
+        .where(eq(projectAutomations.project_id, updatedProject.id));
 
       return updatedProject;
     });
