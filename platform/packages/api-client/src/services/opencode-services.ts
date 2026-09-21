@@ -2680,14 +2680,15 @@ export async function rejectOpencodeQuestion(
   password?: string,
 ) {
   const response = await fetch(
-    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/form/${encodeURIComponent(requestId)}/cancel`,
+    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/form/${encodeURIComponent(requestId)}`,
     {
-      method: "POST",
+      method: "DELETE",
       headers: getOpencodeHeaders(accessToken, password),
     },
   );
   if (!response.ok) {
-    throw new Error("Could not dismiss the OpenCode question");
+    const detail = await response.text();
+    throw new Error(detail || "Could not dismiss the OpenCode question");
   }
 }
 
