@@ -26,10 +26,6 @@ import {
 } from "./proxy-auth.js";
 
 const clients = new Map<string, OpenCodeClient>();
-const queuedStreamMessages = new Map<
-  string,
-  { sessionID: string; text: string }
->();
 const OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
 const OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS = 5_000;
 
@@ -94,43 +90,40 @@ export function reduceOpencodeMessages(
       const messageID = native.inboxID;
       if (
         item?.type === "user" &&
-        item.delivery === "queue" &&
         typeof messageID === "string"
       ) {
-        queuedStreamMessages.set(messageID, {
-          sessionID: sessionId,
-          text: item.payload?.text ?? "",
-        });
-        return messages;
-      }
-      if (
-        item?.type === "user" &&
-        item.delivery !== "queue" &&
-        typeof messageID === "string"
-      ) {
+        const message = {
+          info: {
+            id: messageID,
+            sessionID: sessionId,
+            role: "user" as const,
+            time: { created: event.created ?? Date.now() },
+            agent: "",
+            model: { providerID: "", modelID: "" },
+          },
+          parts: [
+            {
+              id: `${messageID}:text`,
+              sessionID: sessionId,
+              messageID,
+              type: "text" as const,
+              text: item.payload?.text ?? "",
+            },
+          ],
+        };
+        const existingIndex = messages.findIndex(
+          (entry) => entry.info.id === messageID,
+        );
+        if (existingIndex >= 0) {
+          return messages.map((entry, index) =>
+            index === existingIndex ? message : entry,
+          );
+        }
         return [
           ...messages.filter(
             (message) => !message.info.id.startsWith("optimistic:"),
           ),
-          {
-            info: {
-              id: messageID,
-              sessionID: sessionId,
-              role: "user" as const,
-              time: { created: Date.now() },
-              agent: "",
-              model: { providerID: "", modelID: "" },
-            },
-            parts: [
-              {
-                id: `${messageID}:text`,
-                sessionID: sessionId,
-                messageID,
-                type: "text" as const,
-                text: item.payload?.text ?? "",
-              },
-            ],
-          },
+          message,
         ];
       }
     }
@@ -139,42 +132,31 @@ export function reduceOpencodeMessages(
       nativeType === "session.inbox.delivered" &&
       typeof native.inboxID === "string"
     ) {
-      const queued = queuedStreamMessages.get(native.inboxID);
-      queuedStreamMessages.delete(native.inboxID);
-      if (
-        queued?.sessionID === sessionId &&
-        !messages.some((message) => message.info.id === native.inboxID)
-      ) {
-        return [
-          ...messages,
-          {
-            info: {
-              id: native.inboxID,
-              sessionID: sessionId,
-              role: "user" as const,
-              time: { created: Date.now() },
-              agent: "",
-              model: { providerID: "", modelID: "" },
+      const deliveredIndex = messages.findIndex(
+        (message) => message.info.id === native.inboxID,
+      );
+      if (deliveredIndex < 0) return messages;
+      const delivered = messages[deliveredIndex]!;
+      return [
+        ...messages.slice(0, deliveredIndex),
+        ...messages.slice(deliveredIndex + 1),
+        {
+          ...delivered,
+          info: {
+            ...delivered.info,
+            time: {
+              ...delivered.info.time,
+              created: event.created ?? Date.now(),
             },
-            parts: [
-              {
-                id: `${native.inboxID}:text`,
-                sessionID: sessionId,
-                messageID: native.inboxID,
-                type: "text" as const,
-                text: queued.text,
-              },
-            ],
           },
-        ];
-      }
+        },
+      ];
     }
 
     if (
       nativeType === "session.inbox.cancelled" &&
       typeof native.inboxID === "string"
     ) {
-      queuedStreamMessages.delete(native.inboxID);
       return messages.filter(
         (message) =>
           message.info.id !== native.inboxID &&
