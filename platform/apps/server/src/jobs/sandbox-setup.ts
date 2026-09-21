@@ -23,7 +23,7 @@ sandboxSetupQueue.on("error", (error) => {
 export const addSandboxSetupJob = async (data: SandboxSetupJobData) => {
   await sandboxSetupQueue.add("sandbox-setup-job", data, {
     jobId: `${data.provider}-${data.sandboxId}`,
-    attempts: 3,
+    attempts: 1,
     backoff: {
       type: "exponential",
       delay: 5_000,
