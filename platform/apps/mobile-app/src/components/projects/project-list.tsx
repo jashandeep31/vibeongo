@@ -303,7 +303,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   };
 
   if (
-    projectsQuery.isPending ||
+    (projectsQuery.isPending && projects.length === 0) ||
     (Boolean(projectsQuery.data?.length) && projects.length === 0)
   ) {
     return (
@@ -314,7 +314,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     );
   }
 
-  if (projectsQuery.isError) {
+  if (projectsQuery.isError && projects.length === 0) {
     return (
       <View style={[styles.centeredState, { paddingTop: topInset + 72 }]}>
         <ThemedText style={styles.emptyTitle}>
@@ -852,9 +852,10 @@ const SessionExpiryWarning = memo(function SessionExpiryWarning({
       const remaining = getInstanceRemainingMs(terminatesAt, current);
       if (remaining === null || remaining <= 0) return;
       // Wake when the warning becomes visible; only then tick each second.
-      const delay = remaining > INSTANCE_EXPIRY_WARNING_MS
-        ? remaining - INSTANCE_EXPIRY_WARNING_MS
-        : Math.min(1000, remaining);
+      const delay =
+        remaining > INSTANCE_EXPIRY_WARNING_MS
+          ? remaining - INSTANCE_EXPIRY_WARNING_MS
+          : Math.min(1000, remaining);
       timer = setTimeout(update, Math.min(delay, 2_147_483_647));
     };
     update();

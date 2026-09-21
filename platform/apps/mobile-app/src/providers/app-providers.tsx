@@ -20,6 +20,27 @@ import { useTheme } from "@/hooks/use-theme";
 import { createApiClient } from "@/lib/api-client";
 import { getAccessToken, subscribeAccessToken } from "@/lib/auth";
 
+function getTokenSubject(token: string | null) {
+  if (!token) return "";
+  try {
+    const payload = token.split(".")[1];
+    if (!payload) return "";
+    const normalized = payload.replace(/-/g, "+").replace(/_/g, "/");
+    const padded = normalized.padEnd(
+      normalized.length + ((4 - (normalized.length % 4)) % 4),
+      "=",
+    );
+    const parsed = JSON.parse(atob(padded)) as {
+      id?: unknown;
+      sub?: unknown;
+    };
+    if (typeof parsed.sub === "string") return parsed.sub;
+    return typeof parsed.id === "string" ? parsed.id : "";
+  } catch {
+    return "";
+  }
+}
+
 type ReactNativeWebSocketConstructor = new (
   url: string,
   protocols?: string[],
@@ -91,7 +112,10 @@ export function AppProviders({ children }: { children: ReactNode }) {
     <ApiClientProvider client={apiClient}>
       <QueryClientProvider client={queryClient}>
         <WebSocketProvider createSocket={createAuthenticatedSocket}>
-          <ProjectStoreSync enabled={Boolean(accessToken)} />
+          <ProjectStoreSync
+            cacheOwnerId={getTokenSubject(accessToken)}
+            enabled={Boolean(accessToken)}
+          />
           {children}
         </WebSocketProvider>
       </QueryClientProvider>

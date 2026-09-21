@@ -29,6 +29,10 @@ import { useCallback, useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 import { useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
+import {
+  loadProjectMetadataCache,
+  saveProjectMetadataCache,
+} from "@/lib/project-metadata-cache";
 
 function getConfigValue(config: unknown, key: string) {
   if (!config || typeof config !== "object" || Array.isArray(config)) {
@@ -554,7 +558,13 @@ function isSessionCompletionEvent(event: Event) {
   );
 }
 
-export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
+export function ProjectStoreSync({
+  cacheOwnerId,
+  enabled,
+}: {
+  cacheOwnerId: string;
+  enabled: boolean;
+}) {
   const pathname = usePathname();
   const { chatId } = useGlobalSearchParams<{
     chatId?: string | string[];
@@ -563,6 +573,40 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
   const sessions = useSessionsStore((store) => store.sessions);
   const addAllProjects = useProjectsStore((store) => store.addAllProjects);
   const addAllSessions = useSessionsStore((store) => store.addAllSessions);
+  const authoritativeDataRef = useRef(projectsWithSessions);
+  authoritativeDataRef.current = projectsWithSessions;
+
+  useEffect(() => {
+    if (!enabled || !cacheOwnerId) return;
+    let cancelled = false;
+
+    void loadProjectMetadataCache(cacheOwnerId).then((cached) => {
+      if (
+        cancelled ||
+        !cached ||
+        authoritativeDataRef.current ||
+        useProjectsStore.getState().projects.length > 0
+      ) {
+        return;
+      }
+
+      addAllProjects(cached.projects);
+      addAllSessions(
+        cached.sessions.map((session) => ({
+          session,
+          instance: null,
+          state: "processing" as const,
+          instanceSyncState: "pending" as const,
+        })),
+      );
+    });
+
+    return () => {
+      cancelled = true;
+      addAllProjects([]);
+      addAllSessions([]);
+    };
+  }, [addAllProjects, addAllSessions, cacheOwnerId, enabled]);
 
   useEffect(() => {
     if (!projectsWithSessions) return;
@@ -594,7 +638,15 @@ export function ProjectStoreSync({ enabled }: { enabled: boolean }) {
         }),
       ),
     );
-  }, [addAllProjects, addAllSessions, projectsWithSessions]);
+
+    saveProjectMetadataCache(
+      cacheOwnerId,
+      projectsWithSessions.map(
+        ({ sessions: _sessions, ...project }) => project,
+      ),
+      projectsWithSessions.flatMap((project) => project.sessions),
+    );
+  }, [addAllProjects, addAllSessions, cacheOwnerId, projectsWithSessions]);
 
   const legacyActiveChatMatch = pathname.match(
     /^\/projects\/[^/]+\/sessions\/([^/]+)\/chats\/([^/]+)/,

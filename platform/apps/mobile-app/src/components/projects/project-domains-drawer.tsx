@@ -67,17 +67,7 @@ export function ProjectDomainsButton({
       if (left.is_editable !== right.is_editable) {
         return Number(right.is_editable) - Number(left.is_editable);
       }
-
-      const leftChangedAt = new Date(
-        left.updated_at ?? left.created_at,
-      ).getTime();
-      const rightChangedAt = new Date(
-        right.updated_at ?? right.created_at,
-      ).getTime();
-      return (
-        rightChangedAt - leftChangedAt ||
-        left.domain.localeCompare(right.domain)
-      );
+      return left.domain.localeCompare(right.domain);
     },
   );
   const needsAssignment = Boolean(
