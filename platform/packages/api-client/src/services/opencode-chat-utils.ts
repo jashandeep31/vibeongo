@@ -301,6 +301,7 @@ export function createOpencodeChatTurns(
   const turnsByMessageId = new Map(turns.map((turn) => [turn.id, turn]));
   const latestTodoByTurnId = new Map<string, ToolPart>();
   const seenPartIdsByTurnId = new Map<string, Set<string>>();
+  const seenTextByTurnId = new Map<string, Set<string>>();
 
   for (const message of messages) {
     if (message.info.role !== "assistant") continue;
@@ -309,6 +310,8 @@ export function createOpencodeChatTurns(
     if (!turn) continue;
     const seenPartIds = seenPartIdsByTurnId.get(turn.id) ?? new Set<string>();
     seenPartIdsByTurnId.set(turn.id, seenPartIds);
+    const seenText = seenTextByTurnId.get(turn.id) ?? new Set<string>();
+    seenTextByTurnId.set(turn.id, seenText);
 
     for (const part of message.parts) {
       if (seenPartIds.has(part.id)) continue;
@@ -319,6 +322,9 @@ export function createOpencodeChatTurns(
       }
 
       if (part.type === "text" && !part.ignored && part.text.trim()) {
+        const normalizedText = part.text.trim();
+        if (seenText.has(normalizedText)) continue;
+        seenText.add(normalizedText);
         turn.content.push({ id: part.id, type: "text", text: part.text });
       }
 

@@ -11,7 +11,7 @@
     "check-types": "next typegen && tsc --noEmit"
   },
   "dependencies": {
-    "@opencode/client": "^2.0.5",
+    "@opencode/client": "^2.0.11",
     "@repo/api-client": "workspace:*",
     "@repo/api-hooks": "workspace:*",
     "@repo/app-store": "workspace:*",
