@@ -149,6 +149,14 @@ export function OpencodeChatQuestion({
               {content.map((content) =>
                 content.type === "text" ? (
                   <MarkdownRenderer key={content.id} content={content.text} />
+                ) : content.type === "notice" ? (
+                  <div
+                    key={content.id}
+                    className="text-muted-foreground py-1 text-sm"
+                    role="status"
+                  >
+                    {content.text}
+                  </div>
                 ) : content.type === "tools" ? (
                   <OpencodeToolCall
                     key={content.id}

@@ -139,6 +139,7 @@ function getToolInputString(
 
 export type OpencodeChatContent =
   | { id: string; type: "text"; text: string }
+  | { id: string; type: "notice"; text: string }
   | { id: string; type: "tools"; tools: OpencodeToolPart[] }
   | { id: string; type: "thinking"; active: boolean }
   | {
@@ -333,7 +334,11 @@ export function createOpencodeChatTurns(
         const normalizedText = part.text.trim();
         if (seenText.has(normalizedText)) continue;
         seenText.add(normalizedText);
-        turn.content.push({ id: part.id, type: "text", text: part.text });
+        turn.content.push(
+          part.display === "notice"
+            ? { id: part.id, type: "notice", text: part.text }
+            : { id: part.id, type: "text", text: part.text },
+        );
       }
 
       if (part.type === "tool") {

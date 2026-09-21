@@ -207,6 +207,13 @@ const ChatContentBlock = memo(
     if (content.type === "text") {
       return <NativeMarkdown content={content.text} />;
     }
+    if (content.type === "notice") {
+      return (
+        <ThemedText style={[styles.notice, { color: theme.textSecondary }]}>
+          {content.text}
+        </ThemedText>
+      );
+    }
     if (content.type === "tools") {
       return (
         <OpencodeToolCall
@@ -405,6 +412,7 @@ const styles = StyleSheet.create({
     gap: 5,
     marginLeft: "auto",
   },
+  notice: { fontSize: 13, lineHeight: 20, marginTop: 2 },
   pressed: { opacity: 0.65 },
   questionGroup: { alignItems: "flex-end", gap: 2 },
   questionText: { fontSize: 15, lineHeight: 22 },

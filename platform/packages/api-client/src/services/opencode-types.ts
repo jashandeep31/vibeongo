@@ -104,6 +104,8 @@ export type TextPart = PartBase & {
   type: "text";
   text: string;
   synthetic?: boolean;
+  /** Render as a compact transcript notice rather than assistant prose. */
+  display?: "notice";
   ignored?: boolean;
   time?: { start: number; end?: number };
   metadata?: Record<string, unknown>;

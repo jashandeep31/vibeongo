@@ -188,12 +188,23 @@ export function reduceOpencodeMessages(
       typeof native.text === "string" &&
       native.text.trim()
     ) {
+      const isInstructionUpdate = nativeType === "session.instructions.updated";
+      const syntheticDescription =
+        typeof native.description === "string" && native.description.trim()
+          ? native.description
+          : undefined;
+      // Synthetic text is model context (such as an AGENTS.md body), not
+      // assistant prose. OpenCode's transcript displays its description.
+      if (!isInstructionUpdate && !syntheticDescription) return messages;
       return appendTimelineText(
         messages,
         sessionId,
         event.id ?? `${nativeType}:${event.created ?? Date.now()}`,
-        native.text,
+        isInstructionUpdate
+          ? getInstructionUpdateLabel(native)
+          : syntheticDescription,
         event.created,
+        "notice",
       );
     }
 
@@ -752,6 +763,7 @@ function appendTimelineText(
   id: string,
   text: string,
   created = Date.now(),
+  display?: "notice",
 ) {
   if (messages.some((message) => message.info.id === id)) return messages;
   const parentID = messages.findLast(
@@ -782,11 +794,20 @@ function appendTimelineText(
           messageID: id,
           type: "text" as const,
           synthetic: true,
+          ...(display ? { display } : {}),
           text,
         },
       ],
     },
   ];
+}
+
+function getInstructionUpdateLabel(native: Record<string, unknown>) {
+  const delta = recordValue(native.delta);
+  const keys = delta ? Object.keys(delta) : [];
+  return keys.length > 0
+    ? `Instructions updated: ${keys.join(", ")}`
+    : "Instructions updated";
 }
 
 function appendTimelineTool(
@@ -2940,7 +2961,15 @@ function normalizeV2Message(
             messageID: message.id,
             type: "text",
             synthetic: true,
-            text: message.type === "skill" ? message.text : message.text,
+            ...((message.type === "system" || message.type === "synthetic")
+              ? { display: "notice" as const }
+              : {}),
+            text:
+              message.type === "system"
+                ? message.description ?? "Instructions updated"
+                : message.type === "synthetic"
+                  ? message.description ?? ""
+                : message.text,
           },
         ],
       };
