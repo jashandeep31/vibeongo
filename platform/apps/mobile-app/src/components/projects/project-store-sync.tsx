@@ -240,6 +240,14 @@ function ProjectSessionRuntimeSync({
       const opencodeSessionId = getEventSessionId(event);
       const store = useSessionChatsStore.getState();
 
+      if (event.type === "location.shutdown") {
+        void sessionsQuery.refetch();
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "session", sessionId],
+        });
+        return;
+      }
+
       if (
         event.type === "session.created" ||
         event.type === "session.updated"

@@ -216,6 +216,17 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       const chatsStore = useSessionChatsStore.getState();
       const eventType = (event as { type: string }).type;
 
+      if (eventType === "location.shutdown") {
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],
+          exact: true,
+        });
+        void queryClient.invalidateQueries({
+          queryKey: ["opencode", "session", sessionId],
+        });
+        return;
+      }
+
       if (eventType === "filesystem.changed") {
         const active = activeChatRef.current;
         if (active.projectSessionId === sessionId && active.opencodeSessionId) {

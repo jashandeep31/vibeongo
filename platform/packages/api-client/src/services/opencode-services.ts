@@ -169,6 +169,8 @@ export function reduceOpencodeMessages(
       nativeType === "session.step.started" &&
       typeof native.assistantMessageID === "string"
     ) {
+      const started =
+        typeof native.started === "number" ? native.started : Date.now();
       const model = native.model as
         | { id?: string; providerID?: string; variant?: string }
         | undefined;
@@ -205,7 +207,7 @@ export function reduceOpencodeMessages(
             id: native.assistantMessageID,
             sessionID: sessionId,
             role: "assistant" as const,
-            time: { created: Date.now() },
+            time: { created: started },
             parentID: parentID ?? "",
             modelID: model?.id ?? "",
             providerID: model?.providerID ?? "",
@@ -684,6 +686,7 @@ type OpencodeForm = {
     description?: string;
     options?: Array<{ label: string; value: string; description?: string }>;
     custom?: boolean;
+    hidden?: boolean;
   }>;
 };
 
@@ -1165,7 +1168,9 @@ function normalizeV2Form(form: OpencodeForm): OpencodeSessionForms {
     return { questions: [], webSearchRequests: [] };
   }
   const fields = form.fields.filter(
-    (field) => field.type === "string" || field.type === "multiselect",
+    (field) =>
+      !field.hidden &&
+      (field.type === "string" || field.type === "multiselect"),
   );
   if (!fields.length) return { questions: [], webSearchRequests: [] };
   return {
