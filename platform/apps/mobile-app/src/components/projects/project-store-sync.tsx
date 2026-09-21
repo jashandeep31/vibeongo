@@ -8,7 +8,9 @@ import {
 import {
   getOpencodePassword,
   getOpencodeQuestions,
+  getOpencodeSessionRaw,
   getOpencodeSessionStatuses,
+  OPENCODE_MESSAGE_PAGE_SIZE,
   reduceOpencodeSessionData,
   streamOpencodeEvents,
   type Event,
@@ -23,7 +25,7 @@ import {
 } from "@repo/app-store";
 import { fetch as expoFetch } from "expo/fetch";
 import { useGlobalSearchParams, usePathname } from "expo-router";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 import { useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
@@ -89,6 +91,50 @@ function ProjectSessionRuntimeSync({
     password,
     isOpencodeRunning,
   );
+  const prefetchChatMessages = useCallback(
+    async (chats = sessionsQuery.data ?? []) => {
+      if (!isOpencodeRunning || !serverUrl || !accessToken || !password) return;
+
+      let nextIndex = 0;
+      const prefetchNext = async () => {
+        while (nextIndex < chats.length) {
+          const chat = chats[nextIndex++];
+          if (!chat) continue;
+          await queryClient.prefetchQuery({
+            queryKey: ["opencode", "session", sessionId, chat.id, serverUrl],
+            queryFn: () =>
+              getOpencodeSessionRaw(
+                sessionId,
+                chat.id,
+                serverUrl,
+                accessToken,
+                password,
+                OPENCODE_MESSAGE_PAGE_SIZE,
+              ),
+            gcTime: 30 * 60 * 1_000,
+            staleTime: 30 * 60 * 1_000,
+          });
+        }
+      };
+
+      await Promise.all(
+        Array.from({ length: Math.min(3, chats.length) }, prefetchNext),
+      );
+    },
+    [
+      accessToken,
+      isOpencodeRunning,
+      password,
+      queryClient,
+      serverUrl,
+      sessionId,
+      sessionsQuery.data,
+    ],
+  );
+
+  useEffect(() => {
+    void prefetchChatMessages();
+  }, [prefetchChatMessages]);
 
   useEffect(() => {
     setTerminalWorkspace(sessionId, {
@@ -402,7 +448,11 @@ function ProjectSessionRuntimeSync({
       if (state !== "active") return;
       void instancesQuery.refetch();
       if (instance) void statusQuery.refetch();
-      if (isOpencodeRunning) void sessionsQuery.refetch();
+      if (isOpencodeRunning) {
+        void sessionsQuery
+          .refetch()
+          .then((result) => prefetchChatMessages(result.data ?? []));
+      }
     });
 
     return () => subscription.remove();
@@ -410,6 +460,7 @@ function ProjectSessionRuntimeSync({
     instance,
     instancesQuery.refetch,
     isOpencodeRunning,
+    prefetchChatMessages,
     sessionsQuery.refetch,
     statusQuery.refetch,
   ]);
