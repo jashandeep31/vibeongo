@@ -190,12 +190,14 @@ export function OpencodeSessionChat({
     password,
   });
   const editQueuedPrompt = useEditOpencodeQueuedPrompt({
+    chatId,
     sessionId,
     serverUrl,
     accessToken,
     password,
   });
   const reorderQueuedPrompts = useReorderOpencodeQueuedPrompts({
+    chatId,
     sessionId,
     serverUrl,
     accessToken,

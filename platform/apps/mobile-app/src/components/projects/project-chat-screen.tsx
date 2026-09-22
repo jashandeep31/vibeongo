@@ -1,7 +1,9 @@
 import {
   findOpencodeFiles,
   OPENCODE_MESSAGE_PAGE_SIZE,
+  visibleTimelineMessages,
   type OpencodePromptSelection,
+  type OpencodeQueuedPrompt,
   type QuestionAnswer,
   type OpencodeSessionData,
   type OpencodeInventory,
@@ -15,7 +17,6 @@ import {
   useEditOpencodeQueuedPrompt,
   useForkOpencodeSession,
   useOpencodeInventory,
-  useOpencodeQueuedPrompts,
   useOpencodeSession,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
@@ -644,6 +645,8 @@ export function ProjectChatScreen() {
                       }}
                       password={runtime.password}
                       promptError={data.promptError}
+                      pendingInbox={data.pendingInbox}
+                      isStreaming={data.status.type !== "idle"}
                       serverUrl={runtime.serverUrl}
                       sessionId={opencodeSessionId}
                       onChangeSelection={setSelection}
@@ -799,6 +802,8 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   onProviderConnected,
   password,
   promptError,
+  pendingInbox,
+  isStreaming,
   searchFiles,
   selection,
   serverUrl,
@@ -817,17 +822,14 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   onProviderConnected: () => Promise<void>;
   password?: string;
   promptError?: string;
+  pendingInbox: OpencodeSessionData["pendingInbox"];
+  isStreaming: boolean;
   searchFiles: (query: string) => Promise<string[]>;
   selection: OpencodePromptSelection;
   serverUrl: string;
   sessionId: string;
 }) {
   const theme = useTheme();
-  const isStreaming = useSessionChatsStore(
-    (store) =>
-      store.statusesBySessionId[chatId]?.[sessionId]?.type !== "idle" &&
-      Boolean(store.statusesBySessionId[chatId]?.[sessionId]),
-  );
   const sendPrompt = useSendOpencodePrompt({
     chatId,
     sessionId,
@@ -842,12 +844,13 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
     accessToken,
     password,
   });
-  const { data: queuedPrompts = [] } = useOpencodeQueuedPrompts({
-    sessionId,
-    serverUrl,
-    accessToken,
-    password,
-  });
+  const queuedPrompts = useMemo(
+    () =>
+      pendingInbox.filter(
+        (item): item is OpencodeQueuedPrompt => item.delivery === "queue",
+      ),
+    [pendingInbox],
+  );
   const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
     useState(false);
   const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
@@ -873,12 +876,14 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
     password,
   });
   const editQueuedPrompt = useEditOpencodeQueuedPrompt({
+    chatId,
     sessionId,
     serverUrl,
     accessToken,
     password,
   });
   const reorderQueuedPrompts = useReorderOpencodeQueuedPrompts({
+    chatId,
     sessionId,
     serverUrl,
     accessToken,
@@ -1262,7 +1267,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
 });
 
 // The shell observes only fields that can change its chrome and bottom controls.
-// Session timestamps, assistant parts, and status events stay in the timeline.
+// Session timestamps and assistant parts stay in the timeline.
 function createChatShellSelector() {
   let previous: OpencodeSessionData | undefined;
   return (data: OpencodeSessionData): OpencodeSessionData => {
@@ -1279,12 +1284,14 @@ function createChatShellSelector() {
       previous.session.model?.providerID === data.session.model?.providerID &&
       previous.session.model?.id === data.session.model?.id &&
       previous.session.model?.variant === data.session.model?.variant &&
+      previous.status.type === data.status.type &&
       previous.changes.length === data.changes.length &&
       previous.promptError === data.promptError &&
       sameItems(previous.messages, messages) &&
       sameItems(previous.questions, data.questions) &&
       sameItems(previous.permissions, data.permissions) &&
-      sameItems(previous.webSearchRequests, data.webSearchRequests)
+      sameItems(previous.webSearchRequests, data.webSearchRequests) &&
+      sameItems(previous.pendingInbox, data.pendingInbox)
     ) {
       return previous;
     }
@@ -1292,7 +1299,6 @@ function createChatShellSelector() {
       ...data,
       messages,
       changes: data.changes,
-      status: { type: "idle" },
     };
     return previous;
   };
@@ -1307,12 +1313,16 @@ function sameItems<T>(previous: T[], next: T[]) {
 
 function getVisibleMessages(data: OpencodeSessionData) {
   const revertMessageId = data.session.revert?.messageID;
-  if (!revertMessageId) return data.messages;
+  if (!revertMessageId) {
+    return visibleTimelineMessages(data.messages, data.pendingInbox);
+  }
 
   const revertIndex = data.messages.findIndex(
     (message) => message.info.id === revertMessageId,
   );
-  return revertIndex < 0 ? data.messages : data.messages.slice(0, revertIndex);
+  const messages =
+    revertIndex < 0 ? data.messages : data.messages.slice(0, revertIndex);
+  return visibleTimelineMessages(messages, data.pendingInbox);
 }
 
 function getCompletedMessages(data: OpencodeSessionData) {
