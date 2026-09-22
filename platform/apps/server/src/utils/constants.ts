@@ -79,7 +79,9 @@ npm run dev`,
       initialScript: "",
       finalScript: `cd /home/ubuntu/code/blogging-website
 npm install
-npm run db:migrate`,
+npm run db:migrate
+npm run db:seed
+`,
       devScript: `cd /home/ubuntu/code/blogging-website
 npm run dev`,
       config: {
