@@ -18,12 +18,12 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "@types/node": "^22.15.3",
-    "tsc-watch": "^7.2.0",
-    "vitest": "^4.0.18"
+    "@types/node": "^22.20.4",
+    "tsc-watch": "^7.2.1",
+    "vitest": "^4.1.11"
   },
   "dependencies": {
     "@repo/db": "workspace:*",
-    "zod": "^4.3.6"
+    "zod": "^4.6.5"
   }
 }
