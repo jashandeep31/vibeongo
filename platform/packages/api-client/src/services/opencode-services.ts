@@ -2367,31 +2367,7 @@ export async function queueOpencodePrompt(
   );
   if (!session) throw new Error("OpenCode session not found");
 
-  const client = getOpencodeClient(
-    chatId,
-    serverUrl,
-    accessToken,
-    password,
-    session.directory,
-  );
   const model = parseModelSelection(selection.model);
-  if (model) {
-    await client.session.switchModel({
-      sessionID: sessionId,
-      model: {
-        id: model.modelID,
-        providerID: model.providerID,
-        ...(selection.variant ? { variant: selection.variant } : {}),
-      },
-    });
-  }
-  if (selection.agent) {
-    await client.session.switchAgent({
-      sessionID: sessionId,
-      agent: selection.agent,
-    });
-  }
-
   const files = [
     ...fileReferences.map((reference) => {
       const start = text.indexOf(reference.mention);
@@ -2419,7 +2395,20 @@ export async function queueOpencodePrompt(
   return postV2Prompt(serverUrl, accessToken, password, sessionId, {
     text,
     ...(files.length ? { files } : {}),
+    metadata: {
+      ...(selection.agent ? { agent: selection.agent } : {}),
+      ...(model
+        ? {
+            model: {
+              id: model.modelID,
+              providerID: model.providerID,
+              ...(selection.variant ? { variant: selection.variant } : {}),
+            },
+          }
+        : {}),
+    },
     delivery: "queue",
+    resume: false,
   });
 }
 
@@ -2464,34 +2453,6 @@ async function postV2Prompt(
   return body.data;
 }
 
-export async function getOpencodeQueuedPrompts(
-  sessionId: string,
-  serverUrl: string,
-  accessToken: string,
-  password?: string,
-): Promise<OpencodeQueuedPrompt[]> {
-  const response = await fetch(
-    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox`,
-    {
-      cache: "no-store",
-      headers: getOpencodeHeaders(accessToken, password),
-    },
-  );
-  if (!response.ok) {
-    throw new Error(
-      `Could not load queued OpenCode prompts: ${response.status}`,
-    );
-  }
-
-  const body = (await response.json()) as { data?: unknown };
-  if (!Array.isArray(body.data)) return [];
-  return body.data
-    .flatMap(normalizePendingInboxItem)
-    .filter(
-      (item): item is OpencodeQueuedPrompt => item.delivery === "queue",
-    );
-}
-
 export async function cancelOpencodeQueuedPrompt(
   sessionId: string,
   inboxId: string,
@@ -2521,20 +2482,17 @@ export async function steerOpencodeQueuedPrompt(
   accessToken: string,
   password?: string,
 ) {
-  const response = await fetch(
-    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox/${encodeURIComponent(inboxId)}`,
-    {
-      method: "PATCH",
-      headers: getOpencodeHeaders(accessToken, password),
-      body: JSON.stringify({ delivery: "steer" }),
-    },
+  const client = getOpencodeClient(
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
   );
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(
-      detail || `Could not steer queued OpenCode prompt: ${response.status}`,
-    );
-  }
+  await client.session.inbox.update({
+    sessionID: sessionId,
+    inboxID: inboxId,
+    delivery: "steer",
+  });
 }
 
 export async function reorderOpencodeQueuedPrompts(

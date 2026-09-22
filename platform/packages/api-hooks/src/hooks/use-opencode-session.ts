@@ -10,7 +10,6 @@ import {
   forkOpencodeSession,
   getOpencodeInventory,
   getOpencodeWebSearchProviders,
-  getOpencodeQueuedPrompts,
   getOpencodeSessionMessagePage,
   getOpencodeSessionRaw,
   rejectOpencodeQuestion,
@@ -325,25 +324,6 @@ export const useSendOpencodePrompt = ({
   });
 };
 
-export const useOpencodeQueuedPrompts = ({
-  sessionId,
-  serverUrl,
-  accessToken,
-  password,
-}: {
-  sessionId: string;
-  serverUrl: string;
-  accessToken: string;
-  password?: string;
-}) =>
-  useQuery({
-    queryKey: ["opencode", "queue", sessionId, serverUrl],
-    queryFn: () =>
-      getOpencodeQueuedPrompts(sessionId, serverUrl, accessToken, password),
-    enabled: !!sessionId && !!serverUrl && !!accessToken && !!password,
-    refetchInterval: 1_000,
-  });
-
 export const useQueueOpencodePrompt = ({
   chatId,
   sessionId,
@@ -358,7 +338,6 @@ export const useQueueOpencodePrompt = ({
   password?: string;
 }) => {
   const queryClient = useQueryClient();
-  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
   const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
   return useMutation({
     mutationFn: async ({
@@ -396,10 +375,7 @@ export const useQueueOpencodePrompt = ({
       );
     },
     onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
-      ]),
+      queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
   });
 };
 
@@ -417,7 +393,6 @@ export const useCancelOpencodeQueuedPrompt = ({
   password?: string;
 }) => {
   const queryClient = useQueryClient();
-  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
   const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
   return useMutation({
     mutationFn: (inboxId: string) =>
@@ -429,10 +404,7 @@ export const useCancelOpencodeQueuedPrompt = ({
         password,
       ),
     onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
-        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
-      ]),
+      queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
   });
 };
 
@@ -450,7 +422,6 @@ export const useSteerOpencodeQueuedPrompt = ({
   password?: string;
 }) => {
   const queryClient = useQueryClient();
-  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
   const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
   return useMutation({
     mutationFn: (inboxId: string) =>
@@ -462,10 +433,7 @@ export const useSteerOpencodeQueuedPrompt = ({
         password,
       ),
     onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
-        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
-      ]),
+      queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
   });
 };
 
@@ -483,7 +451,6 @@ export const useReorderOpencodeQueuedPrompts = ({
   password?: string;
 }) => {
   const queryClient = useQueryClient();
-  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
   const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
   return useMutation({
     mutationFn: ({
@@ -502,10 +469,7 @@ export const useReorderOpencodeQueuedPrompts = ({
         password,
       ),
     onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
-      ]),
+      queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
   });
 };
 
@@ -523,7 +487,6 @@ export const useEditOpencodeQueuedPrompt = ({
   password?: string;
 }) => {
   const queryClient = useQueryClient();
-  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
   const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
   return useMutation({
     mutationFn: ({
@@ -545,10 +508,7 @@ export const useEditOpencodeQueuedPrompt = ({
         password,
       ),
     onSuccess: () =>
-      Promise.all([
-        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
-        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
-      ]),
+      queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
   });
 };
 

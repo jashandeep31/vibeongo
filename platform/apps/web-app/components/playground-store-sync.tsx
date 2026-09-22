@@ -404,7 +404,13 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
           event.type === "session.inbox.delivery.changed")
       ) {
         void queryClient.invalidateQueries({
-          queryKey: ["opencode", "queue", opencodeSessionId, serverUrl],
+          queryKey: [
+            "opencode",
+            "session",
+            sessionId,
+            opencodeSessionId,
+            serverUrl,
+          ],
           exact: true,
         });
       }
