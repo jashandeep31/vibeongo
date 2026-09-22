@@ -271,7 +271,7 @@ function getReasoningHeading(text: string) {
   return value.length > 72 ? `${value.slice(0, 69)}…` : value;
 }
 
-function StreamingIndicator() {
+export function StreamingIndicator() {
   return (
     <div
       role="status"

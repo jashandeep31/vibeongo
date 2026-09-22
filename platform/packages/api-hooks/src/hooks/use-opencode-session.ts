@@ -358,7 +358,8 @@ export const useQueueOpencodePrompt = ({
   password?: string;
 }) => {
   const queryClient = useQueryClient();
-  const queryKey = ["opencode", "queue", sessionId, serverUrl];
+  const queueQueryKey = ["opencode", "queue", sessionId, serverUrl];
+  const sessionQueryKey = ["opencode", "session", chatId, sessionId, serverUrl];
   return useMutation({
     mutationFn: async ({
       text,
@@ -394,7 +395,11 @@ export const useQueueOpencodePrompt = ({
         password,
       );
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: sessionQueryKey }),
+        queryClient.invalidateQueries({ queryKey: queueQueryKey }),
+      ]),
   });
 };
 

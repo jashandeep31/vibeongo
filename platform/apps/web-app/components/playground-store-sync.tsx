@@ -6,9 +6,7 @@ import { useOpencodeSessions } from "@repo/api-hooks";
 import { useGetProjectsWithSessions } from "@repo/api-hooks";
 import {
   getOpencodePassword,
-  getOpencodeSessionMessages,
   getOpencodeSessionStatuses,
-  reduceOpencodeMessages,
   reduceOpencodeSessionData,
   streamOpencodeEvents,
   type Event,
@@ -106,45 +104,6 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
 
     let disposed = false;
 
-    const hydrateMessages = async () => {
-      await Promise.all(
-        opencodeSessions.map(async (opencodeSession) => {
-          try {
-            const messages = await getOpencodeSessionMessages(
-              sessionId,
-              opencodeSession,
-              serverUrl,
-              accessToken,
-              opencodePassword,
-            );
-            if (disposed) return;
-
-            useSessionChatsStore
-              .getState()
-              .setChatMessages(sessionId, opencodeSession.id, messages);
-            queryClient.setQueriesData<OpencodeSessionData>(
-              {
-                queryKey: [
-                  "opencode",
-                  "session",
-                  sessionId,
-                  opencodeSession.id,
-                ],
-              },
-              (current) => (current ? { ...current, messages } : current),
-            );
-          } catch (error) {
-            if (!disposed) {
-              console.error(
-                `Could not sync messages for OpenCode session ${opencodeSession.id}`,
-                error,
-              );
-            }
-          }
-        }),
-      );
-    };
-
     const hydrateStatuses = async () => {
       const eventVersions = new Map(
         opencodeSessions.map((opencodeSession) => [
@@ -189,7 +148,6 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       }
     };
 
-    void hydrateMessages();
     void hydrateStatuses();
 
     return () => {
@@ -375,22 +333,10 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
           }
         }
 
-        const currentMessages = chatsStore.getChatMessages(
-          sessionId,
-          opencodeSessionId,
-        );
-        const messages = reduceOpencodeMessages(
-          currentMessages,
-          event,
-          opencodeSessionId,
-        );
-        if (messages !== currentMessages) {
-          chatsStore.setChatMessages(sessionId, opencodeSessionId, messages);
-        }
-
         queryClient.setQueriesData<OpencodeSessionData>(
           {
             queryKey: ["opencode", "session", sessionId, opencodeSessionId],
+            exact: false,
           },
           (current) =>
             current

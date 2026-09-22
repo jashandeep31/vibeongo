@@ -15,6 +15,35 @@ export type SessionPart = SessionMessage["parts"][number];
 export type OpencodeToolPart = Extract<SessionPart, { type: "tool" }>;
 export type SnapshotFileDiff = OpencodeSessionData["changes"][number];
 
+/** Project pending inbox state into the visible persistent transcript. */
+export function visibleTimelineMessages(
+  messages: OpencodeSessionData["messages"],
+  pendingInbox: OpencodeSessionData["pendingInbox"] = [],
+  revertMessageId?: string,
+): OpencodeSessionData["messages"] {
+  const queued = new Set(
+    pendingInbox
+      .filter((item) => item.delivery === "queue")
+      .map((item) => item.id),
+  );
+  const steers = new Set(
+    pendingInbox
+      .filter((item) => item.delivery === "steer")
+      .map((item) => item.id),
+  );
+  if (!queued.size && !steers.size && !revertMessageId) return messages;
+  const visible = messages.filter(
+    (message) =>
+      !queued.has(message.info.id) &&
+      (!revertMessageId || message.info.id < revertMessageId),
+  );
+  if (!steers.size) return visible;
+  return [
+    ...visible.filter((message) => !steers.has(message.info.id)),
+    ...visible.filter((message) => steers.has(message.info.id)),
+  ];
+}
+
 export function isOpencodeToolFailed(tool: OpencodeToolPart) {
   if (tool.state.status === "error") return true;
   if (tool.state.status !== "completed") return false;

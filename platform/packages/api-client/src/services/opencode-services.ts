@@ -26,12 +26,20 @@ import {
 } from "./proxy-auth.js";
 
 const clients = new Map<string, OpenCodeClient>();
-const queuedStreamMessages = new Map<
-  string,
-  { sessionID: string; text: string; created: number }
->();
 const OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
 const OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS = 5_000;
+
+export type OpencodePendingInboxItem = {
+  id: string;
+  sessionID: string;
+  prompt: SessionInputAdmitted["prompt"] & {
+    agents?: unknown[];
+    metadata?: Record<string, unknown>;
+    skills?: unknown[];
+  };
+  delivery: "queue" | "steer";
+  timeCreated: number;
+};
 
 export type OpencodeSessionData = {
   session: Session;
@@ -41,6 +49,7 @@ export type OpencodeSessionData = {
   permissions: PermissionRequest[];
   webSearchRequests: WebSearchRequest[];
   changes: SnapshotFileDiff[];
+  pendingInbox: OpencodePendingInboxItem[];
   optimistic?: boolean;
   promptError?: string | undefined;
   executionError?: OpencodeError | undefined;
@@ -96,17 +105,8 @@ export function reduceOpencodeMessages(
         item?.type === "user" &&
         typeof messageID === "string"
       ) {
-        // Match OpenCode's timeline projection: queued inbox items stay in the
-        // queue UI and are hidden from the transcript until they are delivered.
-        if (item.delivery === "queue") {
-          queuedStreamMessages.set(messageID, {
-            sessionID: sessionId,
-            text: item.payload?.text ?? "",
-            created: event.created ?? Date.now(),
-          });
-          return messages;
-        }
-        queuedStreamMessages.delete(messageID);
+        // Match OpenCode's data model: admit the user message immediately and
+        // let the timeline projection hide it while its inbox delivery is queue.
         const message = {
           info: {
             id: messageID,
@@ -147,38 +147,10 @@ export function reduceOpencodeMessages(
       nativeType === "session.inbox.delivered" &&
       typeof native.inboxID === "string"
     ) {
-      const queued = queuedStreamMessages.get(native.inboxID);
-      queuedStreamMessages.delete(native.inboxID);
       const deliveredIndex = messages.findIndex(
         (message) => message.info.id === native.inboxID,
       );
-      if (deliveredIndex < 0) {
-        if (!queued || queued.sessionID !== sessionId) return messages;
-        return [
-          ...messages.filter(
-            (message) => !message.info.id.startsWith("optimistic:"),
-          ),
-          {
-            info: {
-              id: native.inboxID,
-              sessionID: sessionId,
-              role: "user" as const,
-              time: { created: event.created ?? queued.created },
-              agent: "",
-              model: { providerID: "", modelID: "" },
-            },
-            parts: [
-              {
-                id: `${native.inboxID}:text`,
-                sessionID: sessionId,
-                messageID: native.inboxID,
-                type: "text" as const,
-                text: queued.text,
-              },
-            ],
-          },
-        ];
-      }
+      if (deliveredIndex < 0) return messages;
       const delivered = messages[deliveredIndex]!;
       return [
         ...messages.slice(0, deliveredIndex),
@@ -200,7 +172,6 @@ export function reduceOpencodeMessages(
       nativeType === "session.inbox.cancelled" &&
       typeof native.inboxID === "string"
     ) {
-      queuedStreamMessages.delete(native.inboxID);
       return messages.filter(
         (message) =>
           message.info.id !== native.inboxID &&
@@ -1106,6 +1077,62 @@ export function reduceOpencodeSessionData(
   const nativeType = (event as { type: string }).type;
   const native = event.properties as unknown as Record<string, unknown>;
   if (native.sessionID === sessionId) {
+    if (nativeType === "session.inbox.enqueued") {
+      const item = recordValue(native.item);
+      const id = native.inboxID;
+      const payload = recordValue(item?.payload);
+      if (
+        item?.type === "user" &&
+        typeof id === "string" &&
+        typeof payload?.text === "string" &&
+        (item.delivery === "queue" || item.delivery === "steer")
+      ) {
+        const pending: OpencodePendingInboxItem = {
+          id,
+          sessionID: sessionId,
+          prompt: payload as OpencodePendingInboxItem["prompt"],
+          delivery: item.delivery,
+          timeCreated: event.created ?? Date.now(),
+        };
+        return {
+          ...current,
+          pendingInbox: [
+            ...(current.pendingInbox ?? []).filter(
+              (pending) => pending.id !== id,
+            ),
+            pending,
+          ],
+          messages: reduceOpencodeMessages(current.messages, event, sessionId),
+        };
+      }
+    }
+    if (
+      (nativeType === "session.inbox.delivered" ||
+        nativeType === "session.inbox.cancelled") &&
+      typeof native.inboxID === "string"
+    ) {
+      return {
+        ...current,
+        pendingInbox: (current.pendingInbox ?? []).filter(
+          (pending) => pending.id !== native.inboxID,
+        ),
+        messages: reduceOpencodeMessages(current.messages, event, sessionId),
+      };
+    }
+    if (
+      nativeType === "session.inbox.delivery.changed" &&
+      typeof native.inboxID === "string" &&
+      (native.delivery === "queue" || native.delivery === "steer")
+    ) {
+      return {
+        ...current,
+        pendingInbox: (current.pendingInbox ?? []).map((pending) =>
+          pending.id === native.inboxID
+            ? { ...pending, delivery: native.delivery as "queue" | "steer" }
+            : pending,
+        ),
+      };
+    }
     if (nativeType === "form.created") {
       const form = normalizeV2Form(native as unknown as OpencodeForm);
       if (!form.questions.length && !form.webSearchRequests.length) {
@@ -1446,16 +1473,8 @@ export type OpencodePromptSelection = {
   agent?: string;
 };
 
-export type OpencodeQueuedPrompt = {
-  id: string;
-  sessionID: string;
-  prompt: SessionInputAdmitted["prompt"] & {
-    agents?: unknown[];
-    metadata?: Record<string, unknown>;
-    skills?: unknown[];
-  };
+export type OpencodeQueuedPrompt = OpencodePendingInboxItem & {
   delivery: "queue";
-  timeCreated: number;
 };
 
 type OpencodeForm = {
@@ -1583,7 +1602,7 @@ export async function getOpencodeSessionRaw(
     password,
     session.directory,
   );
-  const [messagesResult, forms, permissions, activeResult, changes] =
+  const [messagesResult, forms, permissions, activeResult, changes, inbox] =
     await Promise.all([
       client.message.list({
         sessionID: sessionId,
@@ -1612,6 +1631,7 @@ export async function getOpencodeSessionRaw(
             return session.summary?.diffs ?? [];
           }
         }),
+      getOpencodePendingInbox(serverUrl, accessToken, password, sessionId),
     ]);
 
   const rawMessages = [...messagesResult.data];
@@ -1652,12 +1672,32 @@ export async function getOpencodeSessionRaw(
     permissions: permissions.map(normalizePermissionRequest),
     webSearchRequests: forms.webSearchRequests,
     changes,
+    pendingInbox: inbox,
     messagePage: {
       hasOlder,
       ...(hasOlder && nextCursor ? { cursor: nextCursor } : {}),
       oldestMessageId: messages[0]?.info.id,
     },
   };
+}
+
+async function getOpencodePendingInbox(
+  serverUrl: string,
+  accessToken: string,
+  password: string | undefined,
+  sessionId: string,
+): Promise<OpencodePendingInboxItem[]> {
+  const response = await fetch(
+    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/inbox`,
+    {
+      cache: "no-store",
+      headers: getOpencodeHeaders(accessToken, password),
+    },
+  );
+  if (!response.ok) return [];
+  const body = (await response.json()) as { data?: unknown };
+  if (!Array.isArray(body.data)) return [];
+  return body.data.flatMap(normalizePendingInboxItem);
 }
 
 export async function getOpencodeSessionMessages(
@@ -2445,7 +2485,11 @@ export async function getOpencodeQueuedPrompts(
 
   const body = (await response.json()) as { data?: unknown };
   if (!Array.isArray(body.data)) return [];
-  return body.data.flatMap(normalizeQueuedPrompt);
+  return body.data
+    .flatMap(normalizePendingInboxItem)
+    .filter(
+      (item): item is OpencodeQueuedPrompt => item.delivery === "queue",
+    );
 }
 
 export async function cancelOpencodeQueuedPrompt(
@@ -2566,13 +2610,15 @@ export async function editOpencodeQueuedPrompt(
   }
 }
 
-function normalizeQueuedPrompt(value: unknown): OpencodeQueuedPrompt[] {
+function normalizePendingInboxItem(
+  value: unknown,
+): OpencodePendingInboxItem[] {
   if (!value || typeof value !== "object") return [];
   const item = value as Record<string, unknown>;
   const payload = item.payload;
   if (
     item.type !== "user" ||
-    item.delivery !== "queue" ||
+    (item.delivery !== "queue" && item.delivery !== "steer") ||
     typeof item.id !== "string" ||
     typeof item.sessionID !== "string" ||
     !item.time ||
@@ -2590,7 +2636,7 @@ function normalizeQueuedPrompt(value: unknown): OpencodeQueuedPrompt[] {
       id: item.id,
       sessionID: item.sessionID,
       prompt: payload as SessionInputAdmitted["prompt"],
-      delivery: "queue",
+      delivery: item.delivery,
       timeCreated: (item.time as { created: number }).created,
     },
   ];

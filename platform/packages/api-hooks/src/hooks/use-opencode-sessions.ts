@@ -132,6 +132,7 @@ export const useStartOpencodeSession = () => {
         questions: [],
         permissions: [],
         webSearchRequests: [],
+        pendingInbox: [],
         optimistic: true,
         messages: [
           {

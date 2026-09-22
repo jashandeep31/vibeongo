@@ -1,6 +1,9 @@
 "use client";
 
-import { OpencodeChatQuestion } from "@/components/chat/opencode-chat-question";
+import {
+  OpencodeChatQuestion,
+  StreamingIndicator,
+} from "@/components/chat/opencode-chat-question";
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { OpencodePermissionDock } from "@/components/chat/opencode-permission-dock";
 import { OpencodeWebSearchDock } from "@/components/chat/opencode-web-search-dock";
@@ -12,7 +15,6 @@ import {
   useCancelOpencodeQueuedPrompt,
   useEditOpencodeQueuedPrompt,
   useOpencodeInventory,
-  useOpencodeQueuedPrompts,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
   useReplyOpencodePermission,
@@ -27,7 +29,9 @@ import {
   findOpencodeFiles,
   getRevertedMessageLabel,
   getSessionPromptSelection,
+  visibleTimelineMessages,
   type OpencodePromptSelection,
+  type OpencodeQueuedPrompt,
   type OpencodeSessionData,
   type QuestionAnswer,
 } from "@repo/api-client";
@@ -117,9 +121,14 @@ export function OpencodeSessionChat({
       revertedMessages: messages.slice(revertIndex),
     };
   }, [messages, revertMessageId]);
+  const projectedMessages = useMemo(
+    () =>
+      visibleTimelineMessages(visibleMessages, rawResponse.pendingInbox ?? []),
+    [rawResponse.pendingInbox, visibleMessages],
+  );
   const turns = useMemo(
-    () => createOpencodeChatTurns(visibleMessages, inventory?.models),
-    [inventory?.models, visibleMessages],
+    () => createOpencodeChatTurns(projectedMessages, inventory?.models),
+    [inventory?.models, projectedMessages],
   );
   const hasInlineExecutionError = messages.some(
     (message) => message.info.role === "assistant" && message.info.error,
@@ -151,12 +160,13 @@ export function OpencodeSessionChat({
     accessToken,
     password,
   });
-  const { data: queuedPrompts = [] } = useOpencodeQueuedPrompts({
-    sessionId,
-    serverUrl,
-    accessToken,
-    password,
-  });
+  const queuedPrompts = useMemo(
+    () =>
+      (rawResponse.pendingInbox ?? []).filter(
+        (item): item is OpencodeQueuedPrompt => item.delivery === "queue",
+      ),
+    [rawResponse.pendingInbox],
+  );
   const [areQueuedPromptsExpanded, setAreQueuedPromptsExpanded] =
     useState(false);
   const [draggedQueuedPromptId, setDraggedQueuedPromptId] = useState<
@@ -270,7 +280,7 @@ export function OpencodeSessionChat({
   const [composerHeight, setComposerHeight] = useState(200);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const composerRef = useRef<HTMLDivElement>(null);
-  const latestContentKey = `${turns.at(-1)?.id ?? ""}:${activeQuestion?.id ?? ""}`;
+  const latestContentKey = `${turns.at(-1)?.id ?? ""}:${turns.at(-1)?.content.length ?? 0}:${activeQuestion?.id ?? ""}`;
   const previousLatestContentKeyRef = useRef("");
   const effectiveSelection: OpencodePromptSelection = {
     model:
@@ -526,6 +536,9 @@ export function OpencodeSessionChat({
                 }
               />
             ))}
+            {isStreaming && turns.length === 0 ? (
+              <StreamingIndicator />
+            ) : null}
           </div>
         </div>
       </div>
@@ -607,6 +620,7 @@ export function OpencodeSessionChat({
               request={activeQuestion}
               isSubmitting={answerQuestion.isPending}
               isDismissing={rejectQuestion.isPending}
+              isStreaming={isStreaming}
               onSubmit={submitQuestionAnswer}
               onDismiss={dismissQuestion}
             />

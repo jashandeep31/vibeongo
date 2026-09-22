@@ -13,12 +13,14 @@ export function OpencodeQuestionPrompt({
   request,
   isSubmitting,
   isDismissing,
+  isStreaming,
   onSubmit,
   onDismiss,
 }: {
   request: QuestionRequest;
   isSubmitting: boolean;
   isDismissing: boolean;
+  isStreaming: boolean;
   onSubmit: (requestId: string, answers: QuestionAnswer[]) => void;
   onDismiss: (requestId: string) => void;
 }) {
@@ -111,6 +113,12 @@ export function OpencodeQuestionPrompt({
         proceed();
       }}
     >
+      {isStreaming ? (
+        <div className="text-muted-foreground flex items-center gap-2 border-b px-4 py-2.5 text-xs md:px-5">
+          <Loader2 className="size-3 animate-spin" />
+          <span>Vibeongo paused to ask you a question</span>
+        </div>
+      ) : null}
       <div className="max-h-[55svh] overflow-y-auto p-4 md:p-5">
         <div className="mb-5 flex items-center justify-between gap-4">
           <span className="text-sm font-medium">
