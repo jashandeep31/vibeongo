@@ -439,8 +439,8 @@ importers:
   apps/web-app:
     dependencies:
       '@opencode/client':
-        specifier: ^2.0.14
-        version: 2.0.14(effect@4.0.0-rc.112)
+        specifier: ^2.0.15
+        version: 2.0.15(effect@4.0.0-rc.112)
       '@repo/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -533,8 +533,8 @@ importers:
   packages/api-client:
     dependencies:
       '@opencode/client':
-        specifier: ^2.0.14
-        version: 2.0.14(effect@4.0.0-rc.112)
+        specifier: ^2.0.15
+        version: 2.0.15(effect@4.0.0-rc.112)
       '@repo/db':
         specifier: workspace:*
         version: link:../database
@@ -2648,8 +2648,8 @@ packages:
     resolution: {integrity: sha512-da6KbdNCV5sr1/txD896V+6W0iamFWrvVl8cHkBSPT+YlvmT3DwXa4jxZnQc+gnuTEqSWbBeoSZYTayXH9wXcw==}
     engines: {node: '>= 20'}
 
-  '@opencode/client@2.0.14':
-    resolution: {integrity: sha512-9RQGQM8cfxz9/qBUfCp+l2KQoVh418+XNpYHAMMTtstVRQjvQN2r5FO1Rc4U4tM1zAbtaSZZ4vGgE4Pi+tGlJQ==}
+  '@opencode/client@2.0.15':
+    resolution: {integrity: sha512-Lu3Pb6Z/lJ797VryQrsdqEgVBXjtYZWOxLNZKyBUDgXhO/GpzOpXi1H1Uo4g+qWrH8LwUISDBdxHHOWJy5HcqQ==}
     peerDependencies:
       effect: 4.0.0-rc.112
       solid-js: '>=1.9.0'
@@ -2659,11 +2659,11 @@ packages:
       solid-js:
         optional: true
 
-  '@opencode/protocol@2.0.14':
-    resolution: {integrity: sha512-erI+XbxKSR3/IBnqDzJ8SU8j/qc684mfVmn0HQvPgNSKFEeCLI2x40U47SBZFAhoXeJl4EsOZveUhZfiOIpDuw==}
+  '@opencode/protocol@2.0.15':
+    resolution: {integrity: sha512-fFi3VYdgNQzT4TswfKGul7DzseOyhA4b/hE/elUe3xxm5iki4tP/pjT8CU3rRWX8sK/75ICr36NAUhSayFtJuw==}
 
-  '@opencode/schema@2.0.14':
-    resolution: {integrity: sha512-iOCtHO05361ybsx0+ETRPYEbBqgDuNhVvbuHM1p1tfE95ZrdxK2imDpA3wEHsNAIibD2mBj8+Sjjs8msJ5Zy6g==}
+  '@opencode/schema@2.0.15':
+    resolution: {integrity: sha512-D0JDwF4uTNmFA2MyiSnZ5DlT/t2PF1EEwVbRPulB/Ppcss/z5Fcn6VybHrapki2bKDVQu1Mnn8zBW3G6KP5I6g==}
 
   '@opentelemetry/api-logs@0.220.0':
     resolution: {integrity: sha512-CmVa4ImJ+ynfrPMNaAXHET6Bhb44SwzmfyVJFq9ni2jgXJR/l7C6gfVFddNmHP+ZOkP9cf4f9DBe68qVLTHc9w==}
@@ -11624,19 +11624,19 @@ snapshots:
       '@octokit/request-error': 7.1.2
       '@octokit/webhooks-methods': 6.0.0
 
-  '@opencode/client@2.0.14(effect@4.0.0-rc.112)':
+  '@opencode/client@2.0.15(effect@4.0.0-rc.112)':
     dependencies:
-      '@opencode/protocol': 2.0.14
-      '@opencode/schema': 2.0.14
+      '@opencode/protocol': 2.0.15
+      '@opencode/schema': 2.0.15
     optionalDependencies:
       effect: 4.0.0-rc.112
 
-  '@opencode/protocol@2.0.14':
+  '@opencode/protocol@2.0.15':
     dependencies:
-      '@opencode/schema': 2.0.14
+      '@opencode/schema': 2.0.15
       effect: 4.0.0-rc.112
 
-  '@opencode/schema@2.0.14':
+  '@opencode/schema@2.0.15':
     dependencies:
       '@standard-schema/spec': 1.1.0
       effect: 4.0.0-rc.112

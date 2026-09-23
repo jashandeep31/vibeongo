@@ -53,6 +53,7 @@ import {
   BotMessageSquare,
   Trash2,
 } from "lucide-react";
+import { Blocks } from "loading-dev";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -361,8 +362,9 @@ function ProjectSessionNavItem({
                             }}
                           >
                             {isProcessing ? (
-                              <Loader2
-                                className="animate-spin"
+                              <Blocks
+                                duration={1570}
+                                size={10}
                                 aria-label="Chat is processing"
                               />
                             ) : (

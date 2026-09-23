@@ -19,6 +19,7 @@ import {
   Undo2,
 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { Blocks } from "loading-dev";
 
 export type OpencodeChatTurn = {
   id: string;
@@ -140,7 +141,7 @@ export function OpencodeChatQuestion({
                   >
                     <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
                       {content.active ? (
-                        <Loader2 className="size-3.5 animate-spin" />
+                        <Blocks duration={1570} size={10} />
                       ) : (
                         <Sparkles className="size-3.5" />
                       )}
@@ -280,10 +281,7 @@ export function StreamingIndicator() {
       className="group/working text-muted-foreground mt-4 flex w-fit cursor-help items-center gap-2 text-sm"
       title="Credit eater. It's me, OpenCode."
     >
-      <span className="relative flex size-5 items-center justify-center">
-        <span className="bg-primary/20 absolute inset-0 animate-ping rounded-full" />
-        <Sparkles className="text-primary relative size-4 animate-pulse" />
-      </span>
+      <Blocks duration={1570} size={10} />
       <span className="grid overflow-hidden">
         <span className="col-start-1 row-start-1 transition-all duration-200 group-hover/working:translate-y-1 group-hover/working:opacity-0">
           Vibeongo is working…
