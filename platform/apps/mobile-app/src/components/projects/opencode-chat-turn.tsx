@@ -308,7 +308,7 @@ function ReasoningBlock({
   content: Extract<ChatContent, { type: "reasoning" }>;
 }) {
   const theme = useTheme();
-  const [open, setOpen] = useState(content.active);
+  const [open, setOpen] = useState(false);
   const heading = getReasoningHeading(content.text);
   return (
     <View>

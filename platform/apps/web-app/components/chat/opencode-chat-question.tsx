@@ -136,7 +136,6 @@ export function OpencodeChatQuestion({
                 ) : content.type === "reasoning" ? (
                   <details
                     key={content.id}
-                    open={content.active}
                     className="group/reasoning text-sm"
                   >
                     <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
