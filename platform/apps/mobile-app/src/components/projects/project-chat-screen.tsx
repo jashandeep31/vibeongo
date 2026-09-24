@@ -932,6 +932,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         queuePrompt.isPending
       )
         return;
+      Keyboard.dismiss();
       const input = {
         text,
         files: [],
