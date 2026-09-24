@@ -5,14 +5,19 @@ import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import {
   ChevronRight,
+  FolderOpen,
   LoaderCircle,
   Plus,
+  Settings2,
   Terminal as TerminalIcon,
   Trash2,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
+import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { TerminalDirectoryDialog } from "@/components/terminal-directory-dialog";
 import { WebTerminal } from "@/components/web-terminal";
@@ -35,6 +40,7 @@ function getTerminalSessionLabel(session: WebTerminalSession) {
 }
 
 export function ProjectTerminalPage({
+  projectId,
   projectSessionId,
 }: {
   projectId: string;
@@ -380,16 +386,42 @@ export function ProjectTerminalPage({
 
           <section className="order-1 flex min-h-0 min-w-0 flex-col bg-black md:order-none">
             <div className="bg-background text-foreground flex min-h-10 shrink-0 items-center gap-3 border-b px-3 py-2">
-              <div className="ml-auto flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <span className="truncate text-sm font-medium">
                   {selectedTerminalLabel}
                 </span>
                 {terminal.latencyMs !== null ? (
                   <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
-                    {terminal.latencyMs} ms
+                    {terminal.latencyMs}ms
                   </span>
                 ) : null}
-                <ConnectionStatus status={combinedSocketStatus} />
+                <div className="ml-auto flex shrink-0 items-center gap-2">
+                  <Button asChild size="icon-sm" variant="outline">
+                    <Link
+                      href={`/projects/${projectId}/sessions/${projectSessionId}/files`}
+                      aria-label="Open files"
+                      title="Open files"
+                    >
+                      <FolderOpen />
+                    </Link>
+                  </Button>
+                  <Button asChild size="icon-sm" variant="outline">
+                    <Link
+                      href={`/projects/${projectId}/sessions/${projectSessionId}/settings`}
+                      aria-label="Session settings"
+                      title="Session settings"
+                    >
+                      <Settings2 />
+                    </Link>
+                  </Button>
+                  <ConnectionStatus status={combinedSocketStatus} />
+                  <RuntimePulseMenu projectSessionId={projectSessionId} />
+                  <ProjectDomainsDialog
+                    projectId={projectId}
+                    projectSessionId={projectSessionId}
+                    iconOnly
+                  />
+                </div>
               </div>
             </div>
             <div className="min-h-0 flex-1">
