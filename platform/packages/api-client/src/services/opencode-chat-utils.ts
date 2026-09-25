@@ -370,7 +370,12 @@ export function createOpencodeChatTurns(
     message?: SessionMessage,
   ): OpencodeChatTurn => ({
     id,
-    question: message ? getOpencodeUserMessage(message.parts).text : "",
+    question: message
+      ? getOpencodeUserMessage(
+          message.parts,
+          message.info.role === "user" ? message.info.metadata : undefined,
+        ).text
+      : "",
     files: message ? getOpencodeUserMessage(message.parts).files : [],
     images: (message?.parts ?? []).flatMap((part) =>
       part.type === "file" && part.mime.startsWith("image/")

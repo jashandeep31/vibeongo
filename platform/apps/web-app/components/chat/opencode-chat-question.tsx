@@ -14,6 +14,7 @@ import {
   Check,
   CircleAlert,
   Copy,
+  FileText,
   Loader2,
   Sparkles,
   Undo2,
@@ -70,7 +71,7 @@ export function OpencodeChatQuestion({
       className="flex flex-col gap-8 transition-[min-height] duration-[280ms] ease-out"
       style={{ minHeight: reserveSpace ? "70dvh" : "0dvh" }}
     >
-      {item.question || item.images.length > 0 ? (
+      {item.question || item.images.length > 0 || item.files.length > 0 ? (
         <div className="group/question flex flex-col items-end gap-2">
           <div className="bg-muted text-foreground border-border max-w-[90%] space-y-2 rounded-2xl border p-2 text-base leading-relaxed break-all shadow-sm md:max-w-[55%]">
             {item.images.length > 0 ? (
@@ -83,6 +84,22 @@ export function OpencodeChatQuestion({
                     alt={image.name}
                     className="max-h-72 max-w-full rounded-xl object-contain"
                   />
+                ))}
+              </div>
+            ) : null}
+            {item.files.length > 0 ? (
+              <div className="flex flex-wrap gap-2">
+                {item.files.map((file) => (
+                  <span
+                    key={file.id}
+                    className="border-border bg-background/70 flex max-w-full items-center gap-2 rounded-lg border px-2 py-1 text-sm"
+                    title={file.path}
+                  >
+                    <FileText className="text-muted-foreground size-4 shrink-0" />
+                    <span className="min-w-0 truncate">
+                      {file.path.split("/").at(-1) ?? file.path}
+                    </span>
+                  </span>
                 ))}
               </div>
             ) : null}

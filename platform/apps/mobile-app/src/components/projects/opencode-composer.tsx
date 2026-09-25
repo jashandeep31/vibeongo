@@ -232,23 +232,36 @@ export function OpencodeComposer({
             continue;
           }
           const extension = asset.name.split(".").at(-1)?.toLowerCase() ?? "";
-          const imageMime = IMAGE_MIME_BY_EXTENSION[extension];
           const bytes = new Uint8Array(await file.arrayBuffer());
+          const imageMime = IMAGE_MIME_BY_EXTENSION[extension];
           const isImage = !!imageMime;
-          if (!isImage) {
-            // OpenCode V2 passes UTF-8 text through to the model, but omits binary documents.
-            const content = new TextDecoder("utf-8", { fatal: true }).decode(
-              bytes,
-            );
-            if (
-              /\u0000|[\u0001-\u0008\u000b\u000c\u000e-\u001f]/.test(content) ||
-              content.startsWith("%PDF-")
-            ) {
-              rejected.push(asset.name);
-              continue;
+          const isPdf =
+            bytes.length >= 5 &&
+            bytes[0] === 0x25 &&
+            bytes[1] === 0x50 &&
+            bytes[2] === 0x44 &&
+            bytes[3] === 0x46 &&
+            bytes[4] === 0x2d;
+          let isText = false;
+          if (!isImage && !isPdf) {
+            try {
+              const content = new TextDecoder("utf-8", { fatal: true }).decode(
+                bytes,
+              );
+              isText = !/\u0000|[\u0001-\u0008\u000b\u000c\u000e-\u001f]/.test(
+                content,
+              );
+            } catch {
+              // Binary files are staged on the OpenCode server for the agent's tools.
             }
           }
-          const mimeType = imageMime ?? "text/plain";
+          const mimeType =
+            imageMime ??
+            (isPdf
+              ? "application/pdf"
+              : isText
+                ? "text/plain"
+                : "application/octet-stream");
           const base64 =
             Platform.OS === "web" && asset.base64
               ? asset.base64.split(",")[1]
@@ -260,7 +273,13 @@ export function OpencodeComposer({
           selected.push({
             id: `${Date.now()}-${index}-${asset.name}`,
             uri: asset.uri,
-            type: isImage ? "image" : "text",
+            type: isImage
+              ? "image"
+              : isPdf
+                ? "pdf"
+                : isText
+                  ? "text"
+                  : "file",
             name: asset.name,
             mimeType,
             sizeBytes: size,
@@ -274,7 +293,7 @@ export function OpencodeComposer({
       if (rejected.length) {
         Alert.alert(
           "Some files were not attached",
-          "OpenCode supports UTF-8 text and PNG, JPEG, GIF, or WebP images, up to 20 MiB each and five attachments per prompt.",
+          "Attachments must be 20 MiB or smaller, with up to five per prompt.",
         );
       }
     } catch (error) {

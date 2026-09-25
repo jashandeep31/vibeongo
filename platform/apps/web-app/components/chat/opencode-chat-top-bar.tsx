@@ -200,7 +200,10 @@ function OpencodeSessionActions({
     );
 
     return userMessages.flatMap((message, index) => {
-      const text = getOpencodeUserMessage(message.parts).text;
+      const text = getOpencodeUserMessage(
+        message.parts,
+        message.info.role === "user" ? message.info.metadata : undefined,
+      ).text;
       const hasCompletedAnswer = session.messages.some(
         (candidate) =>
           candidate.info.role === "assistant" &&

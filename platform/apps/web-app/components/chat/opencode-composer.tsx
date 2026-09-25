@@ -44,12 +44,16 @@ import {
   type KeyboardEvent,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 
 type LocalAttachment = {
   id: string;
   file: File;
-  previewUrl: string;
+  previewUrl?: string;
 };
+
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 type OpencodeComposerProps = {
   onSubmit: (
@@ -149,7 +153,7 @@ export function OpencodeComposer({
   useEffect(
     () => () => {
       attachmentsRef.current.forEach((attachment) => {
-        URL.revokeObjectURL(attachment.previewUrl);
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
       });
     },
     [],
@@ -236,22 +240,26 @@ export function OpencodeComposer({
     setActiveFileMention(null);
     setFileReferences([]);
     attachments.forEach((attachment) => {
-      URL.revokeObjectURL(attachment.previewUrl);
+      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
     });
     setAttachments([]);
     onSubmitSuccess?.();
   };
 
   const addAttachments = (files: File[]) => {
-    const images = files.filter((file) => file.type.startsWith("image/"));
-    if (!images.length) return;
-
-    setAttachments((current) => [
-      ...current,
-      ...images.map((file) => ({
+    const accepted = files.filter((file) => file.size <= MAX_ATTACHMENT_BYTES);
+    const selected = accepted.slice(0, MAX_ATTACHMENTS - attachments.length);
+    if (selected.length !== files.length) {
+      toast.error("Attach up to five files, each 20 MiB or smaller.");
+    }
+    setAttachments([
+      ...attachments,
+      ...selected.map((file) => ({
         id: crypto.randomUUID(),
         file,
-        previewUrl: URL.createObjectURL(file),
+        previewUrl: file.type.startsWith("image/")
+          ? URL.createObjectURL(file)
+          : undefined,
       })),
     ]);
   };
@@ -262,8 +270,9 @@ export function OpencodeComposer({
   };
 
   const handlePaste = (event: ClipboardEvent<HTMLTextAreaElement>) => {
+    if (disabled) return;
     const files = Array.from(event.clipboardData.files);
-    if (!files.some((file) => file.type.startsWith("image/"))) return;
+    if (files.length === 0) return;
     event.preventDefault();
     addAttachments(files);
   };
@@ -271,6 +280,7 @@ export function OpencodeComposer({
   const handleDrop = (event: DragEvent<HTMLFormElement>) => {
     event.preventDefault();
     setIsDraggingAttachment(false);
+    if (disabled) return;
     addAttachments(Array.from(event.dataTransfer.files));
   };
 
@@ -278,7 +288,7 @@ export function OpencodeComposer({
     setAttachments((current) =>
       current.filter((attachment) => {
         if (attachment.id !== id) return true;
-        URL.revokeObjectURL(attachment.previewUrl);
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
         return false;
       }),
     );
@@ -373,6 +383,38 @@ export function OpencodeComposer({
         isDraggingAttachment ? "ring-primary/50 ring-2" : ""
       }`}
     >
+      {attachments.length > 0 ? (
+        <div className="flex flex-wrap gap-3 px-1">
+          {attachments.map((attachment) => (
+            <div key={attachment.id} className="relative">
+              {attachment.previewUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={attachment.previewUrl}
+                  alt={attachment.file.name}
+                  className="size-20 rounded-xl border object-cover"
+                />
+              ) : (
+                <div className="bg-muted flex h-20 w-36 items-center gap-2 rounded-xl border px-3 text-sm">
+                  <File className="text-muted-foreground size-5 shrink-0" />
+                  <span className="min-w-0 truncate" title={attachment.file.name}>
+                    {attachment.file.name}
+                  </span>
+                </div>
+              )}
+              <button
+                type="button"
+                aria-label={`Remove ${attachment.file.name}`}
+                onClick={() => removeAttachment(attachment.id)}
+                className="bg-foreground text-background absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full"
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+        </div>
+      ) : null}
+
       <div className="flex min-w-0 [scrollbar-width:none] items-center gap-2 overflow-x-auto [&::-webkit-scrollbar]:hidden">
         {inventory?.models.length || providerConnection ? (
           <Popover open={isModelPickerOpen} onOpenChange={setIsModelPickerOpen}>
@@ -575,33 +617,9 @@ export function OpencodeComposer({
         />
       ) : null}
 
-      {attachments.length > 0 ? (
-        <div className="flex flex-wrap gap-3 px-1">
-          {attachments.map((attachment) => (
-            <div key={attachment.id} className="relative">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={attachment.previewUrl}
-                alt={attachment.file.name}
-                className="size-20 rounded-xl border object-cover"
-              />
-              <button
-                type="button"
-                aria-label={`Remove ${attachment.file.name}`}
-                onClick={() => removeAttachment(attachment.id)}
-                className="bg-foreground text-background absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full"
-              >
-                <X className="size-3.5" />
-              </button>
-            </div>
-          ))}
-        </div>
-      ) : null}
-
       <input
         ref={fileInputRef}
         type="file"
-        accept="image/*"
         className="hidden"
         multiple
         tabIndex={-1}
@@ -644,7 +662,7 @@ export function OpencodeComposer({
           type="button"
           variant="secondary"
           size="icon"
-          disabled={disabled}
+          disabled={disabled || attachments.length >= MAX_ATTACHMENTS}
           className="size-12 shrink-0 rounded-full border"
           aria-label="Add an attachment"
           onClick={() => fileInputRef.current?.click()}

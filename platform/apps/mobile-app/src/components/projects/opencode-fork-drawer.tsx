@@ -27,7 +27,10 @@ export function OpencodeForkDrawer({
   const insets = useSafeAreaInsets();
   const questions = messages.flatMap((message) => {
     if (message.info.role !== "user") return [];
-    const text = getOpencodeUserMessage(message.parts).text;
+    const text = getOpencodeUserMessage(
+      message.parts,
+      message.info.role === "user" ? message.info.metadata : undefined,
+    ).text;
     return text ? [{ id: message.info.id, text }] : [];
   });
 

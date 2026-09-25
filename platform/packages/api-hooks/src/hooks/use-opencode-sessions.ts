@@ -13,6 +13,7 @@ import {
 import { useSessionChatsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { toOpencodeUploadAttachment } from "./opencode-upload-attachment.js";
 
 export const useOpencodeSessions = (
   chatId: string,
@@ -103,14 +104,8 @@ export const useStartOpencodeSession = () => {
       const modelID = modelParts.join("/") || session.model?.id || "";
       const optimisticMessageId = `optimistic:${session.id}`;
       const now = Date.now();
-      const fileAttachments: UploadAttachment[] = await Promise.all(
-        files.map(async (file) => ({
-          type: "image" as const,
-          name: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          dataUrl: await fileToDataUrl(file),
-        })),
+      const fileAttachments = await Promise.all(
+        files.map(toOpencodeUploadAttachment),
       );
       const attachments = [...directAttachments, ...fileAttachments];
       const optimisticSession: OpencodeSessionData = {
@@ -242,12 +237,3 @@ export const useStartOpencodeSession = () => {
     },
   });
 };
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}

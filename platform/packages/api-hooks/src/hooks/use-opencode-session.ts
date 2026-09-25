@@ -37,6 +37,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { toOpencodeUploadAttachment } from "./opencode-upload-attachment.js";
 
 export const useOpencodeSession = ({
   chatId,
@@ -294,14 +295,8 @@ export const useSendOpencodePrompt = ({
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
     }) => {
-      const fileAttachments: UploadAttachment[] = await Promise.all(
-        files.map(async (file) => ({
-          type: "image" as const,
-          name: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          dataUrl: await fileToDataUrl(file),
-        })),
+      const fileAttachments = await Promise.all(
+        files.map(toOpencodeUploadAttachment),
       );
 
       return sendOpencodePrompt(
@@ -353,14 +348,8 @@ export const useQueueOpencodePrompt = ({
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
     }) => {
-      const attachments: UploadAttachment[] = await Promise.all(
-        files.map(async (file) => ({
-          type: "image" as const,
-          name: file.name,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          dataUrl: await fileToDataUrl(file),
-        })),
+      const attachments = await Promise.all(
+        files.map(toOpencodeUploadAttachment),
       );
       return queueOpencodePrompt(
         chatId,
@@ -949,14 +938,3 @@ export const useOpencodeInventory = (
     retryDelay: 1_000,
     staleTime: 60_000,
   });
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-
-    reader.onload = () => resolve(String(reader.result));
-    reader.onerror = () => reject(reader.error);
-
-    reader.readAsDataURL(file);
-  });
-}

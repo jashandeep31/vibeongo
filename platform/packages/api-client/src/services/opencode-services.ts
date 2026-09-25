@@ -65,7 +65,10 @@ export type OpencodeSessionData = {
 
 // File references are expanded into synthetic Read context by OpenCode.
 // That context belongs to the model, not the displayed user question.
-export function getOpencodeUserMessage(parts: Part[]) {
+export function getOpencodeUserMessage(
+  parts: Part[],
+  metadata?: Record<string, unknown>,
+) {
   let text = parts
     .flatMap((part) =>
       part.type === "text" && !part.ignored && !part.synthetic
@@ -73,6 +76,22 @@ export function getOpencodeUserMessage(parts: Part[]) {
         : [],
     )
     .join("\n\n");
+  if (typeof metadata?.displayText === "string") {
+    text = metadata.displayText;
+  } else {
+    // Older uploads put server paths in the visible prompt text. Hide only lines
+    // that match a file attachment in that same message.
+    const uploadedPaths = new Set(
+      parts.flatMap((part) =>
+        part.type === "file" && part.url.startsWith("file://")
+          ? [`Attached file: \`${decodeURIComponent(part.url.slice(7))}\``]
+          : [],
+      ),
+    );
+    const lines = text.split("\n");
+    while (uploadedPaths.has(lines.at(-1) ?? "")) lines.pop();
+    text = lines.join("\n");
+  }
   const files = parts.flatMap((part) => {
     if (part.type !== "file" || part.mime.startsWith("image/")) return [];
     const path =
@@ -81,7 +100,17 @@ export function getOpencodeUserMessage(parts: Part[]) {
         : (part.filename ?? part.url);
     return [{ id: part.id, path }];
   });
-  return { text: text.trim(), files };
+  const attachedFiles = Array.isArray(metadata?.attachments)
+    ? metadata.attachments.flatMap((attachment) => {
+        if (!attachment || typeof attachment !== "object") return [];
+        const item = attachment as Record<string, unknown>;
+        if (typeof item.path !== "string" || typeof item.name !== "string") {
+          return [];
+        }
+        return [{ id: `attachment:${item.path}`, path: item.name }];
+      })
+    : [];
+  return { text: text.trim(), files: [...files, ...attachedFiles] };
 }
 
 export function reduceOpencodeMessages(
@@ -96,7 +125,7 @@ export function reduceOpencodeMessages(
       const item = native.item as
         | {
             type?: string;
-            payload?: { text?: string };
+            payload?: { text?: string; metadata?: Record<string, unknown> };
             delivery?: "steer" | "queue";
           }
         | undefined;
@@ -115,6 +144,9 @@ export function reduceOpencodeMessages(
             time: { created: event.created ?? Date.now() },
             agent: "",
             model: { providerID: "", modelID: "" },
+            ...(item.payload?.metadata
+              ? { metadata: item.payload.metadata }
+              : {}),
           },
           parts: [
             {
@@ -1405,7 +1437,7 @@ export function reduceOpencodeSessionData(
 }
 
 export type UploadAttachment = {
-  type: "image" | "text";
+  type: "image" | "text" | "pdf" | "file";
   name: string;
   mimeType: string;
   sizeBytes: number;
@@ -2299,6 +2331,11 @@ export async function sendOpencodePrompt(
     password,
     session.directory,
   );
+  const preparedAttachments = await prepareOpencodeAttachments(
+    client,
+    session.directory,
+    attachments,
+  );
   const files = [
     ...fileReferences.map((reference) => {
       const start = text.indexOf(reference.mention);
@@ -2318,10 +2355,7 @@ export async function sendOpencodePrompt(
         },
       };
     }),
-    ...attachments.map((attachment) => ({
-      uri: attachment.dataUrl,
-      name: attachment.name,
-    })),
+    ...preparedAttachments.files,
   ];
   const model = parseModelSelection(selection.model);
   if (model) {
@@ -2341,8 +2375,13 @@ export async function sendOpencodePrompt(
     });
   }
   await postV2Prompt(serverUrl, accessToken, password, sessionId, {
-    text,
+    text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
     ...(files.length ? { files } : {}),
+    metadata: {
+      displayText: text,
+      comments: [],
+      attachments: preparedAttachments.attachments,
+    },
     delivery: "steer",
   });
 }
@@ -2368,6 +2407,18 @@ export async function queueOpencodePrompt(
   if (!session) throw new Error("OpenCode session not found");
 
   const model = parseModelSelection(selection.model);
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    session.directory,
+  );
+  const preparedAttachments = await prepareOpencodeAttachments(
+    client,
+    session.directory,
+    attachments,
+  );
   const files = [
     ...fileReferences.map((reference) => {
       const start = text.indexOf(reference.mention);
@@ -2387,15 +2438,15 @@ export async function queueOpencodePrompt(
         },
       };
     }),
-    ...attachments.map((attachment) => ({
-      uri: attachment.dataUrl,
-      name: attachment.name,
-    })),
+    ...preparedAttachments.files,
   ];
   return postV2Prompt(serverUrl, accessToken, password, sessionId, {
-    text,
+    text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
     ...(files.length ? { files } : {}),
     metadata: {
+      displayText: text,
+      comments: [],
+      attachments: preparedAttachments.attachments,
       ...(selection.agent ? { agent: selection.agent } : {}),
       ...(model
         ? {
@@ -2410,6 +2461,59 @@ export async function queueOpencodePrompt(
     delivery: "queue",
     resume: false,
   });
+}
+
+async function prepareOpencodeAttachments(
+  client: ReturnType<typeof getOpencodeClient>,
+  directory: string,
+  attachments: UploadAttachment[],
+) {
+  const temporaryRoot = attachments.some(
+    (attachment) => attachment.type === "file",
+  )
+    ? (await client.server.info()).paths.tmp
+    : undefined;
+  const prepared = await Promise.all(
+    attachments.map(async (attachment, index) => {
+      if (attachment.type !== "file") {
+        return {
+          file: { uri: attachment.dataUrl, name: attachment.name },
+          reference: undefined,
+          attachment: undefined,
+        };
+      }
+      const encoded = attachment.dataUrl.split(",", 2)[1];
+      if (!encoded || !temporaryRoot) {
+        throw new Error(`Could not upload ${attachment.name}`);
+      }
+      const bytes = Uint8Array.from(atob(encoded), (character) =>
+        character.charCodeAt(0),
+      );
+      const name =
+        attachment.name.split(/[\\/]/).at(-1)?.replace(/[`\r\n]/g, "_") ||
+        "attachment";
+      const path = `${temporaryRoot}/uploads/${Date.now()}-${Math.random().toString(36).slice(2)}-${index}/${name}`;
+      const uploaded = await client.file.write({
+        location: { directory },
+        path,
+        payload: bytes,
+      });
+      return {
+        file: undefined,
+        reference: `Attached file: \`${uploaded.data.path}\``,
+        attachment: { name, mime: attachment.mimeType, path: uploaded.data.path },
+      };
+    }),
+  );
+  return {
+    files: prepared.flatMap((item) => (item.file ? [item.file] : [])),
+    references: prepared.flatMap((item) =>
+      item.reference ? [item.reference] : [],
+    ),
+    attachments: prepared.flatMap((item) =>
+      item.attachment ? [item.attachment] : [],
+    ),
+  };
 }
 
 async function postV2Prompt(
@@ -3012,6 +3116,7 @@ function normalizeV2Message(
           ? { variant: selection.model.variant }
           : {}),
       },
+      ...(message.metadata ? { metadata: message.metadata } : {}),
     };
     const parts: Part[] = [
       {

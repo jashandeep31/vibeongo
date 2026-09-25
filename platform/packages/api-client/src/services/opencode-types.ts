@@ -68,6 +68,7 @@ export type UserMessage = {
   time: { created: number };
   agent: string;
   model: { providerID: string; modelID: string; variant?: string };
+  metadata?: Record<string, unknown>;
   summary?: { title?: string; body?: string; diffs: SnapshotFileDiff[] };
 };
 
