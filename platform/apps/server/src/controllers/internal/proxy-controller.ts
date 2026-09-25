@@ -1,6 +1,8 @@
 import {
+  and,
   db,
   eq,
+  gt,
   instanceProvidersEnum,
   instanceTypes,
   instances,
@@ -9,6 +11,7 @@ import {
   routingAllowedIps,
   sandboxProvidersEnums,
   sandboxTypes,
+  sql,
 } from "@repo/db";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
@@ -17,6 +20,7 @@ import { env } from "../../lib/env.js";
 import { DaytonaClient } from "../../providers/client/daytona-client.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
 import { VercelSandboxClient } from "../../providers/client/vercel-sandbox-client.js";
+import { AppError } from "../../lib/app-error.js";
 
 const daytonaClient = new DaytonaClient();
 const e2bClient = new E2BClient();
@@ -88,7 +92,13 @@ async function handleInstanceProxyUrl({
       routingAllowedIps,
       eq(routingAllowedIps.routing_id, projectDomainRouting.id),
     )
-    .where(eq(instances.id, instanceId));
+    .where(
+      and(
+        eq(instances.id, instanceId),
+        eq(instances.state, "running"),
+        gt(instances.terminates_at, sql`NOW()`),
+      ),
+    );
 
   const [row] = result;
   if (!row?.instances) {
@@ -134,7 +144,13 @@ async function handleCustomProxyUrl(domain: string, res: Response) {
       routingAllowedIps,
       eq(routingAllowedIps.routing_id, projectDomainRouting.id),
     )
-    .where(eq(proxyDomains.domain, subdomain));
+    .where(
+      and(
+        eq(proxyDomains.domain, subdomain),
+        eq(instances.state, "running"),
+        gt(instances.terminates_at, sql`NOW()`),
+      ),
+    );
 
   const [row] = result;
   const proxyDomain = row?.proxy_domains;
@@ -263,11 +279,22 @@ async function handleDaytonaClientProxyUrl({
   providerInstanceId,
   provider,
 }: ProxyTargetOptions): Promise<ProxyTargetResponse> {
-  const signedUrl = await daytonaClient.getSignedPreviewUrl({
-    sandboxId: providerInstanceId,
-    port: targetPort,
-    expiresInSeconds: 60 * 5,
-  });
+  let signedUrl: Awaited<ReturnType<DaytonaClient["getSignedPreviewUrl"]>>;
+  try {
+    signedUrl = await daytonaClient.getSignedPreviewUrl({
+      sandboxId: providerInstanceId,
+      port: targetPort,
+      expiresInSeconds: 60 * 5,
+    });
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      error.name === "DaytonaNotFoundError"
+    ) {
+      throw new AppError("Instance sandbox not found", 404);
+    }
+    throw error;
+  }
 
   return {
     targetUrl: signedUrl.url,

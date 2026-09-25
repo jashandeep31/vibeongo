@@ -11,6 +11,13 @@ import (
 	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
+	"golang.org/x/sync/singleflight"
+)
+
+const (
+	resolvedProxyTTL = 4 * time.Minute
+	notFoundTTL      = 5 * time.Minute
+	resolveErrorTTL  = 10 * time.Second
 )
 
 type Proxy struct {
@@ -42,13 +49,18 @@ type ProxyInfo struct {
 }
 
 type ProxyManager struct {
-	mu      sync.RWMutex
-	proxies map[string]*Proxy
+	mu       sync.RWMutex
+	proxies  map[string]*Proxy
+	failures map[string]time.Time
+	resolves singleflight.Group
+	resolve  func(string) (*Proxy, int, error)
 }
 
 func NewProxyManager() *ProxyManager {
 	pm := &ProxyManager{
-		proxies: make(map[string]*Proxy),
+		proxies:  make(map[string]*Proxy),
+		failures: make(map[string]time.Time),
+		resolve:  getProxyFromServerCall,
 	}
 	// running the cleanup in bg
 	go pm.cleanup()
@@ -78,23 +90,48 @@ func (pm *ProxyManager) AddProxy(domain string, target string, allowedIPs []stri
 func (pm *ProxyManager) GetProxyByHost(host string) (*Proxy, bool) {
 	pm.mu.RLock()
 	p, ok := pm.proxies[host]
+	failureUntil := pm.failures[host]
 	pm.mu.RUnlock()
-	if ok {
+	if ok && time.Now().Before(p.ExpiresAt) {
 		return p, true
 	}
-
-	proxy, err := getProxyFromServerCall(host)
-	if err != nil {
-		slog.Warn("failed to resolve proxy host", "host", host, "error", err)
+	if time.Now().Before(failureUntil) {
 		return nil, false
 	}
-	pm.mu.Lock()
-	defer pm.mu.Unlock()
-	if p, ok := pm.proxies[host]; ok {
-		return p, true
+
+	value, _, _ := pm.resolves.Do(host, func() (any, error) {
+		pm.mu.RLock()
+		cached := pm.proxies[host]
+		failureUntil := pm.failures[host]
+		pm.mu.RUnlock()
+		if cached != nil && time.Now().Before(cached.ExpiresAt) {
+			return cached, nil
+		}
+		if time.Now().Before(failureUntil) {
+			return nil, nil
+		}
+
+		proxy, status, err := pm.resolve(host)
+		pm.mu.Lock()
+		defer pm.mu.Unlock()
+		if err != nil {
+			ttl := resolveErrorTTL
+			if status == http.StatusNotFound {
+				ttl = notFoundTTL
+			}
+			pm.failures[host] = time.Now().Add(ttl)
+			delete(pm.proxies, host)
+			slog.Warn("failed to resolve proxy host", "host", host, "error", err)
+			return nil, nil
+		}
+		delete(pm.failures, host)
+		pm.proxies[host] = proxy
+		return proxy, nil
+	})
+	if value == nil {
+		return nil, false
 	}
-	pm.proxies[host] = proxy
-	return proxy, true
+	return value.(*Proxy), true
 }
 
 type Response struct {
@@ -114,7 +151,7 @@ type Response struct {
 }
 
 // Getting the proxy details from the server if not present locally
-func getProxyFromServerCall(host string) (*Proxy, error) {
+func getProxyFromServerCall(host string) (*Proxy, int, error) {
 	apiClient := httpclient.Client{BaseURL: os.Getenv("PROXY_SERVER_URL")}
 	var parsedResponse Response
 
@@ -127,23 +164,27 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		&parsedResponse,
 	)
 	if err != nil {
-		return nil, fmt.Errorf("request failed: %w", err)
+		status := 0
+		if resp != nil {
+			status = resp.StatusCode
+		}
+		return nil, status, fmt.Errorf("request failed: %w", err)
 	}
 
 	if resp == nil {
-		return nil, fmt.Errorf("nil response from server")
+		return nil, 0, fmt.Errorf("nil response from server")
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		return nil, resp.StatusCode, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
 	}
 
 	if parsedResponse.Data.Domain == "" {
-		return nil, fmt.Errorf("invalid response: missing domain")
+		return nil, resp.StatusCode, fmt.Errorf("invalid response: missing domain")
 	}
 
 	target, err := parseTarget(parsedResponse.Data.Target.TargetURL)
 	if err != nil {
-		return nil, err
+		return nil, resp.StatusCode, err
 	}
 
 	allowedIPs := make([]string, 0, len(parsedResponse.Data.AllowedIPs))
@@ -163,8 +204,8 @@ func getProxyFromServerCall(host string) (*Proxy, error) {
 		PreviewToken: parsedResponse.Data.Target.Token,
 		Protected:    parsedResponse.Data.Protected,
 		AccessToken:  parsedResponse.Data.AccessToken,
-		ExpiresAt:    time.Now().Add(5 * time.Minute),
-	}, nil
+		ExpiresAt:    time.Now().Add(resolvedProxyTTL),
+	}, resp.StatusCode, nil
 }
 
 func parseTarget(raw string) (*url.URL, error) {
@@ -186,6 +227,7 @@ func (pm *ProxyManager) InvalidateProxy(host string) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 	delete(pm.proxies, host)
+	delete(pm.failures, host)
 }
 
 // Cleanup the expired proxies
@@ -198,6 +240,11 @@ func (pm *ProxyManager) cleanup() {
 		for host, p := range pm.proxies {
 			if now.After(p.ExpiresAt) {
 				delete(pm.proxies, host)
+			}
+		}
+		for host, until := range pm.failures {
+			if now.After(until) {
+				delete(pm.failures, host)
 			}
 		}
 		pm.mu.Unlock()
