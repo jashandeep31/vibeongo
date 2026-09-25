@@ -13,6 +13,7 @@ export interface ProjectTerminalDomRef extends DOMImperativeFactory {
   reset: () => void;
   setInputEnabled: DOMImperativeFactory[string];
   setPanMode: DOMImperativeFactory[string];
+  setSelectionMode: DOMImperativeFactory[string];
   write: DOMImperativeFactory[string];
   zoomIn: () => void;
   zoomOut: () => void;
@@ -42,6 +43,7 @@ export default function ProjectTerminalDom({
   onInput,
   onReady,
   onResize,
+  onSelectionChange,
   preview = false,
   ref,
   terminalTheme,
@@ -50,6 +52,7 @@ export default function ProjectTerminalDom({
   onInput: (data: string) => Promise<void>;
   onReady: () => Promise<void>;
   onResize: (rows: number, cols: number) => Promise<void>;
+  onSelectionChange?: (selection: string) => Promise<void>;
   preview?: boolean;
   ref: unknown;
   terminalTheme?: TerminalTheme;
@@ -63,16 +66,19 @@ export default function ProjectTerminalDom({
   const isReplayingRef = useRef(false);
   const operationQueueRef = useRef<TerminalOperation[]>([]);
   const panModeRef = useRef(false);
+  const selectionModeRef = useRef(false);
   const terminalRef = useRef<Terminal | null>(null);
   const terminalThemeRef = useRef(resolvedTerminalTheme);
   const refitTerminalRef = useRef<() => void>(() => {});
   const onInputRef = useRef(onInput);
   const onReadyRef = useRef(onReady);
   const onResizeRef = useRef(onResize);
+  const onSelectionChangeRef = useRef(onSelectionChange);
 
   onInputRef.current = onInput;
   onReadyRef.current = onReady;
   onResizeRef.current = onResize;
+  onSelectionChangeRef.current = onSelectionChange;
   terminalThemeRef.current = resolvedTerminalTheme;
 
   const drainOperations = () => {
@@ -92,6 +98,7 @@ export default function ProjectTerminalDom({
 
     if (operation.type === "reset") {
       terminal.reset();
+      void onSelectionChangeRef.current?.("");
       finish();
       return;
     }
@@ -99,6 +106,7 @@ export default function ProjectTerminalDom({
     if (operation.type === "replace") {
       isReplayingRef.current = true;
       terminal.reset();
+      void onSelectionChangeRef.current?.("");
     }
     if (!operation.data) {
       finish();
@@ -115,7 +123,7 @@ export default function ProjectTerminalDom({
   const applyInputMode = () => {
     if (terminalRef.current) {
       terminalRef.current.options.disableStdin =
-        !inputEnabledRef.current || panModeRef.current;
+        !inputEnabledRef.current || panModeRef.current || selectionModeRef.current;
     }
   };
 
@@ -148,6 +156,18 @@ export default function ProjectTerminalDom({
           hostRef.current?.classList.toggle("pan-mode", enabled);
           applyInputMode();
           if (enabled) terminalRef.current?.textarea?.blur();
+        }
+      },
+      setSelectionMode: (...args) => {
+        const enabled = args[0];
+        if (typeof enabled !== "boolean") return;
+        selectionModeRef.current = enabled;
+        applyInputMode();
+        if (!enabled) {
+          terminalRef.current?.clearSelection();
+          void onSelectionChangeRef.current?.("");
+        } else {
+          terminalRef.current?.textarea?.blur();
         }
       },
       write: (...args) => {
@@ -266,11 +286,67 @@ export default function ProjectTerminalDom({
       if (isReplayingRef.current) return;
       void onInputRef.current(data);
     });
+    const selectionSubscription = terminal.onSelectionChange(() => {
+      void onSelectionChangeRef.current?.(terminal.getSelection());
+    });
     const resizeObserver = new ResizeObserver(scheduleFit);
     let panLastY: number | null = null;
     let panRemainder = 0;
     const focusTerminal = () => {
-      if (!panModeRef.current) terminal.focus();
+      if (!panModeRef.current && !selectionModeRef.current) terminal.focus();
+    };
+    let selectionAnchor: { col: number; row: number } | null = null;
+    const selectionCell = (touch: Touch) => {
+      const bounds = (host.querySelector<HTMLElement>(".xterm-screen") ?? host)
+        .getBoundingClientRect();
+      const rowHeight = Math.max(
+        1,
+        host.querySelector<HTMLElement>(".xterm-rows > div")
+          ?.getBoundingClientRect().height ?? 16,
+      );
+      const cellWidth = Math.max(1, bounds.width / terminal.cols);
+      return {
+        col: Math.max(
+          0,
+          Math.min(terminal.cols - 1, Math.floor((touch.clientX - bounds.left) / cellWidth)),
+        ),
+        row:
+          terminal.buffer.active.viewportY +
+          Math.max(
+            0,
+            Math.min(terminal.rows - 1, Math.floor((touch.clientY - bounds.top) / rowHeight)),
+          ),
+      };
+    };
+    const startSelection = (event: TouchEvent) => {
+      if (!selectionModeRef.current || event.touches.length !== 1) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      selectionAnchor = selectionCell(event.touches[0]);
+      terminal.clearSelection();
+    };
+    const moveSelection = (event: TouchEvent) => {
+      if (!selectionModeRef.current || !selectionAnchor || event.touches.length !== 1) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      const current = selectionCell(event.touches[0]);
+      const anchorIndex = selectionAnchor.row * terminal.cols + selectionAnchor.col;
+      const currentIndex = current.row * terminal.cols + current.col;
+      const start = Math.min(anchorIndex, currentIndex);
+      terminal.select(
+        start % terminal.cols,
+        Math.floor(start / terminal.cols),
+        Math.abs(currentIndex - anchorIndex) + 1,
+      );
+    };
+    const endSelection = () => {
+      selectionAnchor = null;
+    };
+    const finishSelection = (event: TouchEvent) => {
+      if (!selectionModeRef.current) return;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      endSelection();
     };
     const startPan = (event: TouchEvent) => {
       if (!panModeRef.current || event.touches.length !== 1) return;
@@ -307,6 +383,22 @@ export default function ProjectTerminalDom({
     resizeObserver.observe(preview ? viewport : host);
     window.addEventListener("resize", scheduleFit);
     host.addEventListener("pointerdown", focusTerminal);
+    host.addEventListener("touchstart", startSelection, {
+      capture: true,
+      passive: false,
+    });
+    host.addEventListener("touchmove", moveSelection, {
+      capture: true,
+      passive: false,
+    });
+    host.addEventListener("touchend", finishSelection, {
+      capture: true,
+      passive: false,
+    });
+    host.addEventListener("touchcancel", finishSelection, {
+      capture: true,
+      passive: false,
+    });
     host.addEventListener("touchstart", startPan, {
       capture: true,
       passive: false,
@@ -325,12 +417,17 @@ export default function ProjectTerminalDom({
       cancelAnimationFrame(fitFrame);
       window.removeEventListener("resize", scheduleFit);
       host.removeEventListener("pointerdown", focusTerminal);
+      host.removeEventListener("touchstart", startSelection, true);
+      host.removeEventListener("touchmove", moveSelection, true);
+      host.removeEventListener("touchend", finishSelection, true);
+      host.removeEventListener("touchcancel", finishSelection, true);
       host.removeEventListener("touchstart", startPan, true);
       host.removeEventListener("touchmove", movePan, true);
       host.removeEventListener("touchend", endPan, true);
       host.removeEventListener("touchcancel", endPan, true);
       resizeObserver.disconnect();
       dataSubscription.dispose();
+      selectionSubscription.dispose();
       operationQueueRef.current = [];
       isDrainingRef.current = false;
       isReplayingRef.current = false;

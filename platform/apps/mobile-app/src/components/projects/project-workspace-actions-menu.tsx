@@ -29,14 +29,14 @@ export function ProjectWorkspaceActionsMenu({
   onFiles: () => void;
   onFork?: () => void;
   onMcp?: () => void;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   onSettings: () => void;
   visible: boolean;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const itemCount = 3 + (onMcp ? 1 : 0) + (onFork ? 1 : 0);
+  const itemCount = 2 + (onRefresh ? 1 : 0) + (onMcp ? 1 : 0) + (onFork ? 1 : 0);
   const menuHeight = itemCount * 45 + 10;
   const menuTop = Math.max(
     insets.top + 8,
@@ -97,13 +97,15 @@ export function ProjectWorkspaceActionsMenu({
               onPress={act(onMcp)}
             />
           ) : null}
-          <MenuItem
-            disabled={isRefreshing}
-            icon={{ ios: "arrow.clockwise", android: "refresh" }}
-            label={isRefreshing ? "Refreshing chat…" : "Refresh chat"}
-            onPress={act(onRefresh)}
-            pending={isRefreshing}
-          />
+          {onRefresh ? (
+            <MenuItem
+              disabled={isRefreshing}
+              icon={{ ios: "arrow.clockwise", android: "refresh" }}
+              label={isRefreshing ? "Refreshing chat…" : "Refresh chat"}
+              onPress={act(onRefresh)}
+              pending={isRefreshing}
+            />
+          ) : null}
         </View>
       </View>
     </Modal>

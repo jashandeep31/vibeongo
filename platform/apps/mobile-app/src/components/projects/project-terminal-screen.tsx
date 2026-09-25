@@ -71,9 +71,11 @@ export function ProjectTerminalScreen() {
   const { width: windowWidth } = useWindowDimensions();
   const terminalCardSize = Math.floor((Math.min(windowWidth, 560) - 48) / 2);
   const params = useLocalSearchParams<{
+    chatId?: string | string[];
     projectId?: string | string[];
     projectSessionId?: string | string[];
   }>();
+  const chatId = firstParam(params.chatId);
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
   const [isCreatingTerminal, setIsCreatingTerminal] = useState(false);
@@ -112,7 +114,7 @@ export function ProjectTerminalScreen() {
     router.push({
       pathname:
         "/projects/[projectId]/sessions/[projectSessionId]/terminal/[terminalId]",
-      params: { projectId, projectSessionId, terminalId },
+      params: { chatId, projectId, projectSessionId, terminalId },
     });
   };
 

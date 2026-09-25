@@ -127,9 +127,9 @@ export function ProjectChatScreen() {
     Keyboard.dismiss();
     router.push({
       pathname: "/projects/[projectId]/sessions/[projectSessionId]/terminal",
-      params: { projectId, projectSessionId },
+      params: { chatId: opencodeSessionId, projectId, projectSessionId },
     });
-  }, [projectId, projectSessionId, router]);
+  }, [opencodeSessionId, projectId, projectSessionId, router]);
   const runtime = useProjectRuntime(projectSessionId);
   const isInstanceExpiring = useInstanceExpiryWarning(
     runtime.instance?.terminates_at,

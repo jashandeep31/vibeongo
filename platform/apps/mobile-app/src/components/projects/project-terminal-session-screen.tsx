@@ -1,9 +1,11 @@
 import {
   EMPTY_TERMINAL_WORKSPACE,
+  useSessionChatsStore,
   useTerminalWorkspaceStore,
 } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
+import * as Clipboard from "expo-clipboard";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -14,14 +16,14 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
+  TextInput,
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { ProjectDomainsButton } from "@/components/projects/project-domains-drawer";
-import { ConfirmationDrawer } from "@/components/confirmation-drawer";
-import { PageChromeLayout, PageHeader } from "@/components/page-chrome";
+import { PageChromeLayout } from "@/components/page-chrome";
 import { ProjectTerminalSwitcherDrawer } from "@/components/projects/project-terminal-switcher-drawer";
+import { ProjectWorkspaceTopBar } from "@/components/projects/project-workspace-top-bar";
 import ProjectTerminalDom, {
   type ProjectTerminalDomRef,
 } from "@/components/projects/project-terminal.dom";
@@ -30,7 +32,7 @@ import { Fonts } from "@/constants/theme";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
 import { useVibeongoTermV2 } from "@/hooks/use-vibeongo-term-v2";
-import { killVibeongoTerminalSession } from "@/hooks/use-vibeongo-ws-v2";
+import { useInstanceExpiryWarning } from "@/components/projects/instance-expiry-countdown";
 
 const TERMINAL_DOM_PROPS: import("expo/dom").DOMProps = {
   bounces: false,
@@ -72,6 +74,7 @@ export function ProjectTerminalSessionScreen() {
   const router = useRouter();
   const theme = useTheme();
   const params = useLocalSearchParams<{
+    chatId?: string | string[];
     projectId?: string | string[];
     projectSessionId?: string | string[];
     terminalId?: string | string[];
@@ -79,6 +82,11 @@ export function ProjectTerminalSessionScreen() {
   const projectId = firstParam(params.projectId);
   const projectSessionId = firstParam(params.projectSessionId);
   const terminalId = firstParam(params.terminalId);
+  const chatId = firstParam(params.chatId);
+  const latestChatId = useSessionChatsStore(
+    (store) => store.chatsBySessionId[projectSessionId]?.[0]?.id ?? "",
+  );
+  const reviewChatId = chatId || latestChatId;
   const terminalWorkspace = useTerminalWorkspaceStore(
     (store) => store.workspaces[projectSessionId] ?? EMPTY_TERMINAL_WORKSPACE,
   );
@@ -88,6 +96,9 @@ export function ProjectTerminalSessionScreen() {
   const terminalSession =
     terminalWorkspace.terminalSessions[terminalSessionIndex];
   const runtime = useProjectRuntime(projectSessionId);
+  const isInstanceExpiring = useInstanceExpiryWarning(
+    runtime.instance?.terminates_at,
+  );
   const runtimeUrl = runtime.instance
     ? `https://3101-${runtime.instance.id}${runtime.instance.proxy_domain}`
     : "";
@@ -100,9 +111,12 @@ export function ProjectTerminalSessionScreen() {
   const awaitingBufferReplayRef = useRef(false);
   const [controlActive, setControlActive] = useState(false);
   const [panMode, setPanMode] = useState(false);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedText, setSelectedText] = useState("");
+  const [drafts, setDrafts] = useState<Record<string, string>>({});
+  const composerFocusedRef = useRef(false);
+  const sendingDraftRef = useRef(false);
   const [switcherVisible, setSwitcherVisible] = useState(false);
-  const [isKillingTerminal, setIsKillingTerminal] = useState(false);
-  const [killConfirmationVisible, setKillConfirmationVisible] = useState(false);
   const [terminalReady, setTerminalReady] = useState(false);
   const [keyboardOverlap, setKeyboardOverlap] = useState(0);
   const terminal = useVibeongoTermV2({
@@ -118,11 +132,17 @@ export function ProjectTerminalSessionScreen() {
     runtimeUrl,
     sessionId: terminalId,
   });
+  const draft = drafts[terminalId] ?? "";
+
+  useEffect(() => {
+    sendingDraftRef.current = false;
+    setSelectedText("");
+  }, [terminalId]);
 
   const goBack = () => {
     router.dismissTo({
       pathname: "/projects/[projectId]/sessions/[projectSessionId]/terminal",
-      params: { projectId, projectSessionId },
+      params: { chatId, projectId, projectSessionId },
     });
   };
 
@@ -136,38 +156,12 @@ export function ProjectTerminalSessionScreen() {
       pathname:
         "/projects/[projectId]/sessions/[projectSessionId]/terminal/[terminalId]",
       params: {
+        chatId,
         projectId,
         projectSessionId,
         terminalId: nextTerminalId,
       },
     });
-  };
-
-  const killTerminal = async () => {
-    if (isKillingTerminal || !terminalId) return;
-    setIsKillingTerminal(true);
-    try {
-      await killVibeongoTerminalSession({
-        accessToken: runtime.accessToken,
-        localToken,
-        runtimeUrl,
-        terminalId,
-      });
-      goBack();
-    } catch (error) {
-      setKillConfirmationVisible(false);
-      Alert.alert(
-        "Could not kill terminal",
-        error instanceof Error ? error.message : "Please try again.",
-      );
-    } finally {
-      setIsKillingTerminal(false);
-    }
-  };
-
-  const openKillConfirmation = () => {
-    Keyboard.dismiss();
-    setKillConfirmationVisible(true);
   };
 
   useEffect(
@@ -197,9 +191,11 @@ export function ProjectTerminalSessionScreen() {
         terminalSizeRef.current.cols,
         terminalSizeRef.current.rows,
       );
-      terminalRef.current?.focus();
+      if (!selectionMode && !panMode && !composerFocusedRef.current) {
+        terminalRef.current?.focus();
+      }
     }
-  }, [terminal.sendResize, terminal.status]);
+  }, [panMode, selectionMode, terminal.sendResize, terminal.status]);
 
   const updateKeyboardOverlap = useCallback(() => {
     const keyboardTop = keyboardTopRef.current;
@@ -268,6 +264,47 @@ export function ProjectTerminalSessionScreen() {
     terminalRef.current?.focus();
   };
 
+  const submitDraft = () => {
+    if (
+      sendingDraftRef.current ||
+      terminal.status !== "connected" ||
+      !draft.trim()
+    ) return;
+    sendingDraftRef.current = true;
+    const sent = terminal.sendInput(`${draft}\r`);
+    if (sent) {
+      setDrafts((current) => ({ ...current, [terminalId]: "" }));
+    } else {
+      Alert.alert("Could not send to terminal", "Check the connection and try again.");
+      sendingDraftRef.current = false;
+    }
+  };
+
+  const updateSelectionMode = (enabled: boolean) => {
+    if (enabled && panMode) {
+      terminalRef.current?.setPanMode(false);
+      setPanMode(false);
+    }
+    terminalRef.current?.setSelectionMode(enabled);
+    setSelectionMode(enabled);
+    if (enabled) Keyboard.dismiss();
+    else setSelectedText("");
+  };
+
+  const copySelection = async () => {
+    if (!selectedText) return;
+    try {
+      await Clipboard.setStringAsync(selectedText);
+      updateSelectionMode(false);
+    } catch {
+      Alert.alert("Could not copy text", "Please try again.");
+    }
+  };
+
+  const handleSelectionChange = useCallback(async (selection: string) => {
+    setSelectedText(selection);
+  }, []);
+
   const sendSize = useCallback(
     async (rows: number, cols: number) => {
       terminalSizeRef.current = { cols, rows };
@@ -282,6 +319,7 @@ export function ProjectTerminalSessionScreen() {
   }, []);
 
   const updatePanMode = (enabled: boolean) => {
+    if (enabled && selectionMode) updateSelectionMode(false);
     const terminalDom = terminalRef.current;
     if (typeof terminalDom?.setPanMode !== "function") return;
     terminalDom.setPanMode(enabled);
@@ -342,8 +380,6 @@ export function ProjectTerminalSessionScreen() {
     : terminalId.length > 12
       ? `${terminalId.slice(0, 8)}…`
       : terminalId;
-  const terminalAction = terminalSession?.kind === "tmux" ? "Detach" : "Kill";
-
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
@@ -351,102 +387,32 @@ export function ProjectTerminalSessionScreen() {
     >
       <PageChromeLayout
         top={
-          <PageHeader
-            accessibilityLabel={`${terminalLabel}, ${terminal.status}`}
+          <ProjectWorkspaceTopBar
+            instanceId={runtime.instance.id}
+            isExpiring={isInstanceExpiring}
             onBack={goBack}
-            onTitlePress={() => {
+            onOpenSwitcher={() => {
               Keyboard.dismiss();
               setSwitcherVisible(true);
             }}
-            right={
-              <View
-                style={[
-                  styles.headerActions,
-                  { backgroundColor: theme.backgroundElement },
-                ]}
-              >
-                <Pressable
-                  accessibilityLabel={`${terminalAction} terminal`}
-                  accessibilityRole="button"
-                  disabled={isKillingTerminal}
-                  onPress={openKillConfirmation}
-                  style={({ pressed }) => [
-                    styles.headerAction,
-                    isKillingTerminal && styles.disabled,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  {isKillingTerminal ? (
-                    <ActivityIndicator color="#ef4444" size="small" />
-                  ) : (
-                    <SymbolView
-                      name={{ ios: "trash", android: "delete" }}
-                      size={18}
-                      tintColor="#ef4444"
-                    />
-                  )}
-                </Pressable>
-                <Pressable
-                  accessibilityLabel="Monitor VPS"
-                  accessibilityRole="button"
-                  onPress={() =>
-                    router.push({
-                      pathname:
-                        "/projects/[projectId]/sessions/[projectSessionId]/settings",
-                      params: { projectId, projectSessionId },
-                    })
-                  }
-                  style={({ pressed }) => [
-                    styles.headerAction,
-                    pressed && styles.pressed,
-                  ]}
-                >
-                  <SymbolView
-                    name={{
-                      ios: "waveform.path.ecg",
-                      android: "monitor_heart",
-                    }}
-                    size={19}
-                    tintColor={theme.textSecondary}
-                  />
-                </Pressable>
-                <ProjectDomainsButton
-                  instanceId={runtime.instance.id}
-                  opencodePassword={runtime.password}
-                  projectId={projectId}
-                />
-              </View>
-            }
+            opencodePassword={runtime.password}
+            projectId={projectId}
+            projectSessionId={projectSessionId}
+            showMcp={false}
+            opencodeSessionId={reviewChatId}
+            switcherAccessibilityLabel="Switch terminal"
+            terminatesAt={runtime.instance.terminates_at}
             title={terminalLabel}
-            titleLeading={
+            titleTrailing={
               <>
                 <View
                   style={[styles.statusDot, { backgroundColor: statusColor }]}
                 />
-                <SymbolView
-                  name={{ ios: "apple.terminal", android: "terminal" }}
-                  size={15}
-                  tintColor={theme.textSecondary}
-                />
-              </>
-            }
-            titleTextStyle={styles.headerTitle}
-            titleTrailing={
-              <>
                 <ThemedText style={styles.latency} themeColor="textSecondary">
                   {terminal.latencyMs === null ? "--" : terminal.latencyMs} ms
                 </ThemedText>
-                <SymbolView
-                  name={{
-                    ios: "chevron.down",
-                    android: "keyboard_arrow_down",
-                  }}
-                  size={14}
-                  tintColor={theme.textSecondary}
-                />
               </>
             }
-            titleVariant="pill"
           />
         }
       >
@@ -470,6 +436,7 @@ export function ProjectTerminalSessionScreen() {
                 onInput={sendInput}
                 onReady={markTerminalReady}
                 onResize={sendSize}
+                onSelectionChange={handleSelectionChange}
                 ref={terminalRef}
                 terminalTheme={{
                   background: theme.background,
@@ -484,14 +451,59 @@ export function ProjectTerminalSessionScreen() {
               horizontal
               keyboardShouldPersistTaps="always"
               showsHorizontalScrollIndicator={false}
-              style={[
-                styles.keyBar,
-                {
-                  backgroundColor: theme.background,
-                  borderTopColor: theme.backgroundSelected,
-                },
-              ]}
+              style={[styles.keyBar, { backgroundColor: theme.background }]}
             >
+              <Pressable
+                accessibilityLabel={
+                  selectionMode ? "Cancel terminal selection" : "Select terminal text"
+                }
+                accessibilityRole="button"
+                accessibilityState={{ selected: selectionMode }}
+                onPress={() => updateSelectionMode(!selectionMode)}
+                style={({ pressed }) => [
+                  styles.key,
+                  {
+                    backgroundColor: selectionMode
+                      ? theme.backgroundSelected
+                      : theme.backgroundElement,
+                    borderColor: theme.backgroundSelected,
+                  },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "text.cursor", android: "text_fields" }}
+                  size={15}
+                  tintColor={theme.textSecondary}
+                />
+                <ThemedText style={styles.keyLabel}>
+                  {selectionMode ? "Cancel" : "Select"}
+                </ThemedText>
+              </Pressable>
+              {selectionMode ? (
+                <Pressable
+                  accessibilityLabel="Copy selected terminal text"
+                  accessibilityRole="button"
+                  disabled={!selectedText}
+                  onPress={() => void copySelection()}
+                  style={({ pressed }) => [
+                    styles.key,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
+                    !selectedText && styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "doc.on.doc", android: "content_copy" }}
+                    size={15}
+                    tintColor={theme.textSecondary}
+                  />
+                  <ThemedText style={styles.keyLabel}>Copy</ThemedText>
+                </Pressable>
+              ) : null}
               <Pressable
                 accessibilityLabel={
                   panMode
@@ -502,22 +514,20 @@ export function ProjectTerminalSessionScreen() {
                 accessibilityState={{ selected: panMode }}
                 onPress={() => updatePanMode(!panMode)}
                 style={({ pressed }) => [
-                  styles.key,
+                  styles.iconPill,
                   {
                     backgroundColor: panMode
-                      ? theme.text
+                      ? theme.backgroundSelected
                       : theme.backgroundElement,
-                    borderColor: panMode
-                      ? theme.text
-                      : theme.backgroundSelected,
+                    borderColor: theme.backgroundSelected,
                   },
                   pressed && styles.pressed,
                 ]}
               >
                 <SymbolView
                   name={{ ios: "hand.draw", android: "pan_tool" }}
-                  size={17}
-                  tintColor={panMode ? theme.background : theme.text}
+                  size={18}
+                  tintColor={theme.textSecondary}
                 />
               </Pressable>
               <Pressable
@@ -539,25 +549,16 @@ export function ProjectTerminalSessionScreen() {
                   styles.key,
                   {
                     backgroundColor: controlActive
-                      ? theme.text
+                      ? theme.backgroundSelected
                       : theme.backgroundElement,
-                    borderColor: controlActive
-                      ? theme.text
-                      : theme.backgroundSelected,
+                    borderColor: theme.backgroundSelected,
                   },
                   (terminal.status !== "connected" || panMode) &&
                     styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >
-                <ThemedText
-                  style={[
-                    styles.keyLabel,
-                    controlActive && { color: theme.background },
-                  ]}
-                >
-                  Ctrl
-                </ThemedText>
+                <ThemedText style={styles.keyLabel}>Ctrl</ThemedText>
               </Pressable>
               {[
                 ["Esc", "\u001b"],
@@ -623,6 +624,67 @@ export function ProjectTerminalSessionScreen() {
                 </Pressable>
               ))}
             </ScrollView>
+            <View
+              style={[
+                styles.composerArea,
+                { backgroundColor: theme.background },
+              ]}
+            >
+              <View
+                style={[
+                  styles.composer,
+                  {
+                    backgroundColor: theme.backgroundElement,
+                    borderColor: theme.backgroundSelected,
+                  },
+                ]}
+              >
+                <TextInput
+                  accessibilityLabel="Text to send to terminal"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={terminal.status === "connected"}
+                  onBlur={() => {
+                    composerFocusedRef.current = false;
+                  }}
+                  onChangeText={(value) => {
+                    sendingDraftRef.current = false;
+                    setDrafts((current) => ({
+                      ...current,
+                      [terminalId]: value.replace(/[\r\n]+/g, " "),
+                    }));
+                  }}
+                  onFocus={() => {
+                    composerFocusedRef.current = true;
+                  }}
+                  onSubmitEditing={submitDraft}
+                  placeholder="Send to terminal"
+                  placeholderTextColor={theme.textSecondary}
+                  returnKeyType="send"
+                  style={[styles.composerInput, { color: theme.text }]}
+                  value={draft}
+                />
+                <Pressable
+                  accessibilityLabel="Send to terminal"
+                  accessibilityRole="button"
+                  disabled={terminal.status !== "connected" || !draft.trim()}
+                  onPress={submitDraft}
+                  style={({ pressed }) => [
+                    styles.composerSend,
+                    { backgroundColor: theme.text },
+                    (terminal.status !== "connected" || !draft.trim()) &&
+                      styles.disabled,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "arrow.up", android: "arrow_upward" }}
+                    size={17}
+                    tintColor={theme.background}
+                  />
+                </Pressable>
+              </View>
+            </View>
             {keyboardOverlap > 0 ? (
               <View pointerEvents="none" style={{ height: keyboardOverlap }} />
             ) : null}
@@ -638,22 +700,6 @@ export function ProjectTerminalSessionScreen() {
         projectSessionId={projectSessionId}
         runtimeUrl={runtimeUrl}
         visible={switcherVisible}
-      />
-      <ConfirmationDrawer
-        confirmLabel={`${terminalAction} terminal`}
-        description={
-          terminalSession?.kind === "tmux"
-            ? "The web terminal will detach. The tmux session and its commands will keep running."
-            : "The shell and any running command in this terminal will be stopped."
-        }
-        destructive
-        isConfirming={isKillingTerminal}
-        onCancel={() => {
-          if (!isKillingTerminal) setKillConfirmationVisible(false);
-        }}
-        onConfirm={() => void killTerminal()}
-        title={`${terminalAction} this terminal?`}
-        visible={killConfirmationVisible}
       />
     </SafeAreaView>
   );
@@ -691,61 +737,58 @@ function TerminalStateScreen({
 }
 
 const styles = StyleSheet.create({
-  disabled: { opacity: 0.5 },
-  header: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  headerAction: {
-    alignItems: "center",
-    height: 42,
-    justifyContent: "center",
-    width: 42,
-  },
-  headerActions: {
-    alignItems: "center",
-    borderRadius: 24,
-    flexDirection: "row",
-    height: 44,
-    overflow: "hidden",
-  },
-  headerButton: {
-    alignItems: "center",
-    borderRadius: 22,
-    height: 44,
-    justifyContent: "center",
-    width: 44,
-  },
-  headerTitle: {
-    flexShrink: 1,
-    fontFamily: Fonts.mono,
-    fontSize: 12,
-    fontWeight: "700",
-  },
-  headerTitleWrap: {
-    alignItems: "center",
-    borderRadius: 18,
+  composer: {
+    alignItems: "flex-end",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
     flexDirection: "row",
-    gap: 6,
-    height: 40,
-    justifyContent: "center",
+    gap: 10,
+    minHeight: 50,
     minWidth: 0,
-    paddingHorizontal: 10,
+    padding: 6,
   },
-  key: {
+  composerArea: {
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+  },
+  composerInput: {
+    flex: 1,
+    fontFamily: Fonts.mono,
+    fontSize: 15,
+    lineHeight: 21,
+    minHeight: 36,
+    minWidth: 0,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  composerSend: {
     alignItems: "center",
-    borderRadius: 8,
-    borderWidth: StyleSheet.hairlineWidth,
+    borderRadius: 18,
     height: 36,
     justifyContent: "center",
-    minWidth: 48,
-    paddingHorizontal: 12,
+    width: 36,
   },
-  keyBar: { borderTopWidth: StyleSheet.hairlineWidth, flexGrow: 0 },
+  disabled: { opacity: 0.5 },
+  key: {
+    alignItems: "center",
+    borderRadius: 20,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 6,
+    height: 38,
+    justifyContent: "center",
+    paddingHorizontal: 14,
+  },
+  iconPill: {
+    alignItems: "center",
+    borderRadius: 999,
+    borderWidth: StyleSheet.hairlineWidth,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  keyBar: { flexGrow: 0 },
   keyLabel: { fontSize: 12, fontWeight: "700" },
   keys: { gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
   latency: { fontFamily: Fonts.mono, fontSize: 10 },

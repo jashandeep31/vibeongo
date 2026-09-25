@@ -39,7 +39,9 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   opencodePassword,
   projectId,
   projectSessionId,
+  showMcp = true,
   showReview = true,
+  switcherAccessibilityLabel = "Switch chat",
   terminatesAt,
   title,
   titleTrailing,
@@ -53,12 +55,14 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   onBack: () => void;
   onOpenSwitcher?: () => void;
   onForkChat?: () => void;
-  onRefresh: () => void;
+  onRefresh?: () => void;
   opencodeSessionId?: string;
   opencodePassword?: string;
   projectId: string;
   projectSessionId: string;
+  showMcp?: boolean;
   showReview?: boolean;
+  switcherAccessibilityLabel?: string;
   terminatesAt?: Date | number | string | null;
   title: string;
   titleTrailing?: ReactNode;
@@ -136,7 +140,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   return (
     <>
       <PageHeader
-        accessibilityLabel="Switch chat"
+        accessibilityLabel={switcherAccessibilityLabel}
         onBack={onBack}
         onTitlePress={onOpenSwitcher}
         right={
@@ -158,15 +162,19 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
                   projectId={projectId}
                   projectSessionId={projectSessionId}
                 />
-                <ProjectMcpButton
-                  disabled={!connection}
-                  onPress={() => setMcpVisible(true)}
-                />
+                {showMcp ? (
+                  <ProjectMcpButton
+                    disabled={!connection}
+                    onPress={() => setMcpVisible(true)}
+                  />
+                ) : null}
                 {domainsAction}
-                <RefreshButton
-                  isRefreshing={isRefreshing}
-                  onRefresh={onRefresh}
-                />
+                {onRefresh ? (
+                  <RefreshButton
+                    isRefreshing={isRefreshing}
+                    onRefresh={onRefresh}
+                  />
+                ) : null}
               </>
             ) : (
               <Pressable
@@ -230,7 +238,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
           onClose={() => setActionsAnchorY(null)}
           onFiles={openFiles}
           onFork={onForkChat}
-          onMcp={connection ? () => setMcpVisible(true) : undefined}
+          onMcp={showMcp && connection ? () => setMcpVisible(true) : undefined}
           onRefresh={onRefresh}
           onSettings={openSettings}
           visible={actionsAnchorY !== null}
