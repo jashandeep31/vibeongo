@@ -35,6 +35,7 @@
     "@types/ws": "^8.18.1",
     "@vercel/sandbox": "^3.3.0",
     "ai": "^7.0.111",
+    "assemblyai": "^4.41.5",
     "axios": "^1.20.0",
     "bullmq": "^5.81.5",
     "cookie": "^2.0.1",
@@ -48,6 +49,7 @@
     "grammy": "^1.46.0",
     "iovalkey": "^0.3.3",
     "jsonwebtoken": "^9.0.3",
+    "multer": "^2.4.0",
     "node-cron": "^4.6.0",
     "octokit": "^5.0.5",
     "unique-names-generator": "^4.7.1",
@@ -58,6 +60,7 @@
     "@types/cookie": "^1.0.0",
     "@types/cookie-parser": "^1.4.10",
     "@types/jsonwebtoken": "^9.0.10",
+    "@types/multer": "^2.2.0",
     "tsc-watch": "^7.2.1"
   }
 }

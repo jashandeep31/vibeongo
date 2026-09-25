@@ -57,6 +57,7 @@ const envSchema = z.object({
   OPENROUTER_API_ENDPOINT: z.string().default("https://openrouter.ai/api/v1"),
   FORGEJO_TOKEN: z.string(),
   FORGEJO_URL: z.string(),
+  ASSEMBLYAI_API_KEY: z.string(),
 });
 
 const parsed = envSchema.safeParse(process.env);
