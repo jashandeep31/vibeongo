@@ -104,6 +104,7 @@ export function ProjectTerminalSessionScreen() {
     : "";
   const localToken = getLocalToken(runtime.instance?.config);
   const terminalRef = useRef<ProjectTerminalDomRef>(null);
+  const composerInputRef = useRef<TextInput>(null);
   const terminalAreaRef = useRef<View>(null);
   const terminalSizeRef = useRef({ cols: 80, rows: 24 });
   const keyboardTopRef = useRef<number | null>(null);
@@ -274,6 +275,7 @@ export function ProjectTerminalSessionScreen() {
     const sent = terminal.sendInput(`${draft}\r`);
     if (sent) {
       setDrafts((current) => ({ ...current, [terminalId]: "" }));
+      requestAnimationFrame(() => composerInputRef.current?.focus());
     } else {
       Alert.alert("Could not send to terminal", "Check the connection and try again.");
       sendingDraftRef.current = false;
@@ -625,10 +627,7 @@ export function ProjectTerminalSessionScreen() {
               ))}
             </ScrollView>
             <View
-              style={[
-                styles.composerArea,
-                { backgroundColor: theme.background },
-              ]}
+              style={[styles.composerArea, { backgroundColor: theme.background }]}
             >
               <View
                 style={[
@@ -660,8 +659,10 @@ export function ProjectTerminalSessionScreen() {
                   onSubmitEditing={submitDraft}
                   placeholder="Send to terminal"
                   placeholderTextColor={theme.textSecondary}
+                  ref={composerInputRef}
                   returnKeyType="send"
                   style={[styles.composerInput, { color: theme.text }]}
+                  submitBehavior="submit"
                   value={draft}
                 />
                 <Pressable
@@ -750,7 +751,8 @@ const styles = StyleSheet.create({
   },
   composerArea: {
     paddingHorizontal: 10,
-    paddingVertical: 8,
+    paddingBottom: 8,
+    paddingTop: 3,
   },
   composerInput: {
     flex: 1,
@@ -790,7 +792,12 @@ const styles = StyleSheet.create({
   },
   keyBar: { flexGrow: 0 },
   keyLabel: { fontSize: 12, fontWeight: "700" },
-  keys: { gap: 8, paddingHorizontal: 10, paddingVertical: 8 },
+  keys: {
+    gap: 8,
+    paddingBottom: 3,
+    paddingHorizontal: 10,
+    paddingTop: 8,
+  },
   latency: { fontFamily: Fonts.mono, fontSize: 10 },
   pressed: { opacity: 0.68 },
   screen: { flex: 1 },
