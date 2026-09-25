@@ -3,16 +3,23 @@
   "version": "1.0.0",
   "description": "",
   "type": "module",
-  "main": "index.js",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "vitest",
-    "dev": "tsc-watch -p ./tsconfig.json --onSuccess \"node dist/src/index.js\"",
+    "dev": "tsc-watch -p ./tsconfig.json --onSuccess \"node dist/index.js\"",
     "build": "npx tsc -p ./tsconfig.json",
-    "start": "node dist/src/index.js"
+    "start": "node dist/index.js"
   },
   "exports": {
-    ".": "./dist/src/index.js",
-    "./money": "./dist/src/money.js"
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./money": {
+      "types": "./dist/money.d.ts",
+      "import": "./dist/money.js"
+    }
   },
   "keywords": [],
   "author": "",
