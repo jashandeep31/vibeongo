@@ -27,9 +27,9 @@ import { projectRoutes } from "./routes/project-routes.js";
 import { projectAutomationRoutes } from "./routes/project-automation-routes.js";
 import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
+import { speechTextRoutes } from "./routes/speech-text-routes.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
-import test from "./test.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import { findWebSession } from "./lib/auth-session.js";
@@ -104,6 +104,7 @@ app.use("/api/v1/internal", internalRoutes);
 app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
+app.use("/api/v1/speech-text", speechTextRoutes);
 
 // webhooks routes
 app.use("/v1/webhook", webhookRoutes);
@@ -224,7 +225,3 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 server.listen(env.PORT, () => {
   console.log(`Server is running at 🔥 ${env.PORT}`);
 });
-
-if (env.NODE_ENV === "development") {
-  test();
-}

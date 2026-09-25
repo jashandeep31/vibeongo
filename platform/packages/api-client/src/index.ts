@@ -7,6 +7,7 @@ import * as projectMetadataApi from "./services/project-metadata-services.js";
 import * as projectAutomationsApi from "./services/project-automation-services.js";
 import * as projectsApi from "./services/project-services.js";
 import * as projectSessionsApi from "./services/project-session-services.js";
+import * as speechTextApi from "./services/speech-text-services.js";
 import * as sshKeysApi from "./services/ssh-key-services.js";
 import * as usersApi from "./services/user-services.js";
 import * as walletApi from "./services/wallet-services.js";
@@ -126,6 +127,7 @@ export class MobileClient {
   >;
   projects: ReturnType<typeof bindApiModule<typeof projectsApi>>;
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
+  speechText: ReturnType<typeof bindApiModule<typeof speechTextApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
   users: ReturnType<typeof bindApiModule<typeof usersApi>>;
   wallet: ReturnType<typeof bindApiModule<typeof walletApi>>;
@@ -149,6 +151,7 @@ export class MobileClient {
     );
     this.projects = bindApiModule(projectsApi, this.apiClient);
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
+    this.speechText = bindApiModule(speechTextApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
     this.users = bindApiModule(usersApi, this.apiClient);
     this.wallet = bindApiModule(walletApi, this.apiClient);
@@ -167,6 +170,7 @@ export class WebClient {
   >;
   projects: ReturnType<typeof bindApiModule<typeof projectsApi>>;
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
+  speechText: ReturnType<typeof bindApiModule<typeof speechTextApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
   users: ReturnType<typeof bindApiModule<typeof usersApi>>;
   wallet: ReturnType<typeof bindApiModule<typeof walletApi>>;
@@ -188,6 +192,7 @@ export class WebClient {
     );
     this.projects = bindApiModule(projectsApi, this.apiClient);
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
+    this.speechText = bindApiModule(speechTextApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
     this.users = bindApiModule(usersApi, this.apiClient);
     this.wallet = bindApiModule(walletApi, this.apiClient);
