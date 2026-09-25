@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
@@ -61,35 +60,19 @@ func ModifyScripts(input io.Reader) error {
 		FinalScript:   *inputData.FinalScript,
 		DevScript:     *inputData.DevScript,
 	}
-
 	configPath, err := config.ResolveConfigPath()
 	if err != nil {
 		return fmt.Errorf("failed to resolve config path: %w", err)
 	}
 
-	configData, err := os.ReadFile(configPath)
-	if err != nil {
-		return fmt.Errorf("failed to read config: %w", err)
+	if err := config.UpdateConfigFile(func(document map[string]json.RawMessage) error {
+		document["initialScript"], _ = json.Marshal(parsedData.InitialScript)
+		document["finalScript"], _ = json.Marshal(parsedData.FinalScript)
+		document["devScript"], _ = json.Marshal(parsedData.DevScript)
+		return nil
+	}); err != nil {
+		return err
 	}
-
-	var configJSON map[string]json.RawMessage
-	if err := json.Unmarshal(configData, &configJSON); err != nil {
-		return fmt.Errorf("failed to parse config: %w", err)
-	}
-
-	configJSON["initialScript"], _ = json.Marshal(parsedData.InitialScript)
-	configJSON["finalScript"], _ = json.Marshal(parsedData.FinalScript)
-	configJSON["devScript"], _ = json.Marshal(parsedData.DevScript)
-
-	updatedConfig, err := json.MarshalIndent(configJSON, "", "  ")
-	if err != nil {
-		return fmt.Errorf("failed to encode updated config: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, append(updatedConfig, '\n'), 0o600); err != nil {
-		return fmt.Errorf("failed to write config: %w", err)
-	}
-
 	fmt.Printf("Updated scripts in %s\n", configPath)
 
 	return nil

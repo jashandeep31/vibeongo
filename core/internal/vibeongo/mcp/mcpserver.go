@@ -17,7 +17,7 @@ type withConfigHandler[In any] func(ctx context.Context, req *mcp.CallToolReques
 
 func repositoryCredentialsNeedRenewal(cfg config.Config, now time.Time) bool {
 	for _, repo := range cfg.Repos {
-		if repo.Type != config.GitRepoTypeGitHub {
+		if repo.Type != config.GitRepoTypeGitHub && repo.Type != config.GitRepoTypeForgejo {
 			continue
 		}
 		if repo.ExpiresAt == nil || !now.Before(*repo.ExpiresAt) {

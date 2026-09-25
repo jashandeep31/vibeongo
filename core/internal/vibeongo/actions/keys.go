@@ -3,7 +3,6 @@ package actions
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
@@ -33,30 +32,15 @@ func RenewRepoCredentials() (config.Config, error) {
 		return config.Config{}, err
 	}
 
-	configPath, err := config.ResolveConfigPath()
-	if err != nil {
+	if err := config.UpdateConfigFile(func(document map[string]json.RawMessage) error {
+		repos, err := json.Marshal(renewed.Data.Repos)
+		if err != nil {
+			return fmt.Errorf("failed to encode renewed repositories: %w", err)
+		}
+		document["repos"] = repos
+		return nil
+	}); err != nil {
 		return config.Config{}, err
-	}
-
-	configBytes, err := os.ReadFile(configPath)
-	if err != nil {
-		return config.Config{}, fmt.Errorf("failed to read config: %w", err)
-	}
-
-	var configJSON map[string]any
-	if err := json.Unmarshal(configBytes, &configJSON); err != nil {
-		return config.Config{}, fmt.Errorf("failed to parse config JSON: %w", err)
-	}
-
-	configJSON["repos"] = renewed.Data.Repos
-
-	updatedConfig, err := json.MarshalIndent(configJSON, "", "  ")
-	if err != nil {
-		return config.Config{}, fmt.Errorf("failed to encode updated config: %w", err)
-	}
-
-	if err := os.WriteFile(configPath, append(updatedConfig, '\n'), 0o600); err != nil {
-		return config.Config{}, fmt.Errorf("failed to write updated config: %w", err)
 	}
 
 	refreshed, err := config.LoadAndValidate()
