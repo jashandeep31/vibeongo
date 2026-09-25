@@ -4,6 +4,7 @@ import type {
   OpencodePromptSelection,
   UploadAttachment,
 } from "@repo/api-client";
+import { useVoiceTranscription } from "@/components/projects/use-voice-transcription";
 import { BlurTargetView, BlurView } from "expo-blur";
 import { Image } from "expo-image";
 import * as ImagePicker from "expo-image-picker";
@@ -13,7 +14,9 @@ import {
   ActivityIndicator,
   Alert,
   FlatList,
+  Keyboard,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -161,21 +164,35 @@ export function OpencodeComposer({
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
+  const voice = useVoiceTranscription(value, onChangeText);
   const blurTargetRef = useRef<View>(null);
-  const [isMultiline, setIsMultiline] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
+  const [promptHeight, setPromptHeight] = useState(50);
   const [selectionEnd, setSelectionEnd] = useState(value.length);
   const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
   const [isSearchingFiles, setIsSearchingFiles] = useState(false);
   const activeFileMention = getActiveFileMention(value, selectionEnd);
+  const isExpanded = isFocused || value.length > 0;
+  const isVoiceActive = voice.state !== "idle";
   const submitDisabled =
     disabled ||
     submitDisabledProp ||
     isSubmitting ||
+    voice.state !== "idle" ||
     (!value.trim() && attachments.length === 0);
   const submit = () => {
     if (submitDisabled) return;
     onSubmit();
   };
+
+  useEffect(() => {
+    if (Platform.OS !== "android") return;
+    const subscription = Keyboard.addListener("keyboardDidHide", () => {
+      if (inputRef.current?.isFocused()) inputRef.current.blur();
+      setIsFocused(false);
+    });
+    return () => subscription.remove();
+  }, []);
   const pickImages = async () => {
     if (!onChangeAttachments || attachments.length >= 5) return;
     try {
@@ -290,6 +307,155 @@ export function OpencodeComposer({
     requestAnimationFrame(() => inputRef.current?.focus());
   };
 
+  const attachmentControl = onChangeAttachments ? (
+    <Pressable
+      accessibilityLabel="Add images"
+      accessibilityRole="button"
+      disabled={attachments.length >= 5}
+      onPress={() => void pickImages()}
+      style={({ pressed }) => [
+        styles.attachmentButton,
+        attachments.length >= 5 && styles.disabled,
+        pressed && styles.pressed,
+      ]}
+    >
+      <SymbolView
+        name={{ ios: "plus", android: "add" }}
+        size={23}
+        tintColor={theme.text}
+      />
+    </Pressable>
+  ) : null;
+
+  const actionControls = (
+    <View style={styles.actionControls}>
+      {Platform.OS !== "web" ? (
+        <Pressable
+          accessibilityLabel={
+            voice.state === "recording"
+              ? "Finish recording"
+              : voice.state === "error"
+                ? "Retry transcription"
+                : "Record voice prompt"
+          }
+          accessibilityRole="button"
+          disabled={
+            (disabled && voice.state === "idle") ||
+            (voice.state !== "idle" &&
+              voice.state !== "recording" &&
+              voice.state !== "error")
+          }
+          onPress={() =>
+            void (voice.state === "recording"
+              ? voice.stop()
+              : voice.state === "error"
+                ? voice.retry()
+                : voice.start())
+          }
+          style={({ pressed }) => [
+            styles.voiceButton,
+            voice.state === "recording" && styles.voiceButtonRecording,
+            ((disabled && voice.state === "idle") ||
+              (voice.state !== "idle" &&
+                voice.state !== "recording" &&
+                voice.state !== "error")) &&
+              styles.disabled,
+            pressed && styles.pressed,
+          ]}
+        >
+          {voice.state === "starting" ||
+          voice.state === "stopping" ||
+          voice.state === "canceling" ||
+          voice.state === "transcribing" ? (
+            <ActivityIndicator size="small" color={theme.text} />
+          ) : (
+            <SymbolView
+              name={
+                voice.state === "recording"
+                  ? { ios: "stop.fill", android: "stop" }
+                  : voice.state === "error"
+                    ? { ios: "arrow.clockwise", android: "refresh" }
+                    : { ios: "mic.fill", android: "mic" }
+              }
+              size={20}
+              tintColor={voice.state === "recording" ? "#ffffff" : theme.text}
+            />
+          )}
+        </Pressable>
+      ) : null}
+      {onStop ? (
+        <Pressable
+          accessibilityLabel="Stop response"
+          accessibilityRole="button"
+          disabled={isStopping}
+          onPress={onStop}
+          style={({ pressed }) => [
+            styles.sendButton,
+            styles.stopButton,
+            isStopping && styles.disabled,
+            pressed && styles.pressed,
+          ]}
+        >
+          {isStopping ? (
+            <ActivityIndicator color="#ffffff" size="small" />
+          ) : (
+            <SymbolView
+              name={{ ios: "stop.fill", android: "stop" }}
+              size={17}
+              tintColor="#ffffff"
+            />
+          )}
+        </Pressable>
+      ) : null}
+      <Pressable
+        accessibilityLabel={
+          isVoiceActive
+            ? "Cancel voice input"
+            : onStop
+              ? "Queue task"
+              : "Send prompt"
+        }
+        accessibilityRole="button"
+        disabled={
+          voice.state === "canceling" || (!isVoiceActive && submitDisabled)
+        }
+        onPress={isVoiceActive ? () => void voice.cancel() : submit}
+        style={({ pressed }) => [
+          styles.sendButton,
+          {
+            backgroundColor: isVoiceActive ? "#ffffff" : theme.text,
+            borderColor: isVoiceActive
+              ? theme.backgroundSelected
+              : "transparent",
+            borderWidth: isVoiceActive ? StyleSheet.hairlineWidth : 0,
+          },
+          !isVoiceActive && submitDisabled && styles.disabled,
+          pressed && styles.pressed,
+        ]}
+      >
+        {isVoiceActive ? (
+          voice.state === "canceling" ? (
+            <ActivityIndicator color="#000000" size="small" />
+          ) : (
+            <SymbolView
+              name={{ ios: "xmark", android: "close" }}
+              size={18}
+              tintColor="#000000"
+            />
+          )
+        ) : isSubmitting ? (
+          <ActivityIndicator color={theme.background} size="small" />
+        ) : (
+          <SymbolView
+            name={{ ios: "arrow.up", android: "arrow_upward" }}
+            size={17}
+            tintColor={theme.background}
+          />
+        )}
+      </Pressable>
+    </View>
+  );
+
   return (
     <View style={styles.composerArea}>
       {attachments.length ? (
@@ -347,7 +513,7 @@ export function OpencodeComposer({
         <View
           style={[
             styles.fileSuggestions,
-            { borderColor: theme.backgroundSelected },
+            { borderColor: theme.backgroundSelected, bottom: promptHeight + 8 },
           ]}
         >
           <BlurView
@@ -421,49 +587,30 @@ export function OpencodeComposer({
           )}
         </View>
       ) : null}
-      <View style={styles.promptRow}>
-        {onChangeAttachments ? (
-          <Pressable
-            accessibilityLabel="Add images"
-            accessibilityRole="button"
-            disabled={attachments.length >= 5}
-            onPress={() => void pickImages()}
-            style={({ pressed }) => [
-              styles.attachmentButton,
-              {
-                backgroundColor: theme.backgroundElement,
-                borderColor: theme.backgroundSelected,
-              },
-              attachments.length >= 5 && styles.disabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            <SymbolView
-              name={{ ios: "plus", android: "add" }}
-              size={23}
-              tintColor={theme.text}
-            />
-          </Pressable>
-        ) : null}
+      <View
+        style={styles.promptRow}
+        onLayout={(event) => setPromptHeight(event.nativeEvent.layout.height)}
+      >
         <View
           style={[
             styles.composer,
+            isExpanded && styles.composerExpanded,
             {
               backgroundColor: theme.backgroundElement,
               borderColor: theme.backgroundSelected,
-              borderRadius: isMultiline ? 24 : 999,
+              borderRadius: isExpanded ? 24 : 999,
             },
           ]}
         >
+          {!isExpanded ? attachmentControl : null}
           <TextInput
             accessibilityLabel={accessibilityLabel}
             autoFocus={autoFocus}
             editable={!disabled}
             multiline
-            onContentSizeChange={(event) =>
-              setIsMultiline(event.nativeEvent.contentSize.height > 42)
-            }
+            onBlur={() => setIsFocused(false)}
             onChangeText={changeText}
+            onFocus={() => setIsFocused(true)}
             onSelectionChange={(event) =>
               setSelectionEnd(event.nativeEvent.selection.end)
             }
@@ -471,56 +618,23 @@ export function OpencodeComposer({
             placeholder={placeholder}
             placeholderTextColor={theme.textSecondary}
             ref={inputRef}
-            style={[styles.input, { color: theme.text }]}
-            textAlignVertical="top"
+            style={[
+              styles.input,
+              isExpanded ? styles.inputExpanded : styles.inputCollapsed,
+              { color: theme.text },
+            ]}
+            textAlignVertical={isExpanded ? "top" : "center"}
             value={value}
           />
-          {onStop ? (
-            <Pressable
-              accessibilityLabel="Stop response"
-              accessibilityRole="button"
-              disabled={isStopping}
-              onPress={onStop}
-              style={({ pressed }) => [
-                styles.sendButton,
-                styles.stopButton,
-                isStopping && styles.disabled,
-                pressed && styles.pressed,
-              ]}
-            >
-              {isStopping ? (
-                <ActivityIndicator color="#ffffff" size="small" />
-              ) : (
-                <SymbolView
-                  name={{ ios: "stop.fill", android: "stop" }}
-                  size={17}
-                  tintColor="#ffffff"
-                />
-              )}
-            </Pressable>
-          ) : null}
-          <Pressable
-            accessibilityLabel={onStop ? "Queue task" : "Send prompt"}
-            accessibilityRole="button"
-            disabled={submitDisabled}
-            onPress={submit}
-            style={({ pressed }) => [
-              styles.sendButton,
-              { backgroundColor: theme.text },
-              submitDisabled && styles.disabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color={theme.background} size="small" />
-            ) : (
-              <SymbolView
-                name={{ ios: "arrow.up", android: "arrow_upward" }}
-                size={17}
-                tintColor={theme.background}
-              />
-            )}
-          </Pressable>
+          {isExpanded ? (
+            <View style={styles.expandedToolbar}>
+              {attachmentControl}
+              <View style={styles.toolbarSpacer} />
+              {actionControls}
+            </View>
+          ) : (
+            actionControls
+          )}
         </View>
       </View>
     </View>
@@ -985,13 +1099,26 @@ function SelectionSheet({
 }
 
 const styles = StyleSheet.create({
+  actionControls: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 0,
+    gap: 4,
+  },
+  voiceButton: {
+    alignItems: "center",
+    borderRadius: 999,
+    height: 38,
+    justifyContent: "center",
+    width: 38,
+  },
+  voiceButtonRecording: { backgroundColor: "#6b6b70" },
   attachmentButton: {
     alignItems: "center",
     borderRadius: 999,
-    borderWidth: StyleSheet.hairlineWidth,
-    height: 50,
+    height: 38,
     justifyContent: "center",
-    width: 50,
+    width: 38,
   },
   attachmentPreviews: { gap: 8, paddingHorizontal: 4 },
   attachmentPreviewScroller: {
@@ -1008,14 +1135,23 @@ const styles = StyleSheet.create({
     width: 44,
   },
   composer: {
-    alignItems: "flex-end",
+    alignItems: "center",
     borderWidth: StyleSheet.hairlineWidth,
     flex: 1,
     flexDirection: "row",
-    gap: 10,
-    minHeight: 50,
+    gap: 4,
+    minHeight: 52,
     minWidth: 0,
-    padding: 6,
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+  },
+  composerExpanded: {
+    alignItems: "stretch",
+    flexDirection: "column",
+    gap: 4,
+    paddingBottom: 6,
+    paddingHorizontal: 8,
+    paddingTop: 8,
   },
   composerArea: {
     gap: 8,
@@ -1046,7 +1182,6 @@ const styles = StyleSheet.create({
     lineHeight: 15,
   },
   fileSuggestions: {
-    bottom: 58,
     borderRadius: 10,
     borderWidth: StyleSheet.hairlineWidth,
     left: 0,
@@ -1069,11 +1204,26 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     lineHeight: 21,
-    maxHeight: 130,
-    minHeight: 36,
     minWidth: 0,
-    paddingHorizontal: 12,
-    paddingVertical: 7,
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+  },
+  inputCollapsed: {
+    height: 36,
+  },
+  inputExpanded: {
+    flex: 0,
+    maxHeight: 130,
+    minHeight: 64,
+    width: "100%",
+  },
+  expandedToolbar: {
+    alignItems: "center",
+    flexDirection: "row",
+    minHeight: 38,
+  },
+  toolbarSpacer: {
+    flex: 1,
   },
   option: {
     alignItems: "center",
