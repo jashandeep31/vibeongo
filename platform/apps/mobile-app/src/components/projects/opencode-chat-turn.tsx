@@ -78,7 +78,7 @@ function OpencodeChatTurnComponent({
 
   return (
     <Animated.View style={[styles.turn, { minHeight: reservedHeight }]}>
-      {item.question || item.images.length > 0 ? (
+      {item.question || item.images.length > 0 || item.files.length > 0 ? (
         <View style={styles.questionGroup}>
           <View
             style={[
@@ -99,6 +99,25 @@ function OpencodeChatTurnComponent({
                     source={{ uri: image.url }}
                     style={styles.image}
                   />
+                ))}
+              </View>
+            ) : null}
+            {item.files.length ? (
+              <View style={styles.attachedFiles}>
+                {item.files.map((file) => (
+                  <View key={file.id} style={styles.attachedFile}>
+                    <SymbolView
+                      name={{ ios: "doc.text", android: "description" }}
+                      size={15}
+                      tintColor={theme.textSecondary}
+                    />
+                    <ThemedText
+                      numberOfLines={1}
+                      style={styles.attachedFileName}
+                    >
+                      {file.path.split("/").at(-1) ?? file.path}
+                    </ThemedText>
+                  </View>
                 ))}
               </View>
             ) : null}
@@ -458,6 +477,9 @@ function formatDuration(durationMs?: number) {
 }
 
 const styles = StyleSheet.create({
+  attachedFile: { alignItems: "center", flexDirection: "row", gap: 6 },
+  attachedFileName: { flexShrink: 1, fontSize: 12 },
+  attachedFiles: { gap: 4 },
   disabled: { opacity: 0.35 },
   errorBody: { flex: 1, gap: 3 },
   errorCard: {

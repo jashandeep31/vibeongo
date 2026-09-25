@@ -6,8 +6,9 @@ import type {
 } from "@repo/api-client";
 import { useVoiceTranscription } from "@/components/projects/use-voice-transcription";
 import { BlurTargetView, BlurView } from "expo-blur";
+import * as DocumentPicker from "expo-document-picker";
+import { File as ExpoFile } from "expo-file-system";
 import { Image } from "expo-image";
-import * as ImagePicker from "expo-image-picker";
 import { SymbolView } from "expo-symbols";
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -38,6 +39,15 @@ type PickerKind = "provider" | "model" | "agent" | "variant";
 type PickerOption = { id: string; title: string; subtitle?: string };
 type ActiveFileMention = { end: number; query: string; start: number };
 const CONNECT_PROVIDER_OPTION = "__connect_provider__";
+const MAX_ATTACHMENTS = 5;
+const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
+const IMAGE_MIME_BY_EXTENSION: Record<string, string> = {
+  gif: "image/gif",
+  jpeg: "image/jpeg",
+  jpg: "image/jpeg",
+  png: "image/png",
+  webp: "image/webp",
+};
 
 function getActiveFileMention(value: string, cursor: number) {
   const match = value.slice(0, cursor).match(/(?:^|\s)@([^\s@]*)$/);
@@ -46,14 +56,14 @@ function getActiveFileMention(value: string, cursor: number) {
   return { end: cursor, query, start: cursor - query.length - 1 };
 }
 
-export type ComposerImageAttachment = UploadAttachment & {
+export type ComposerAttachment = UploadAttachment & {
   id: string;
   uri: string;
 };
 
 type OpencodeComposerProps = {
   accessibilityLabel: string;
-  attachments?: ComposerImageAttachment[];
+  attachments?: ComposerAttachment[];
   autoFocus?: boolean;
   disabled?: boolean;
   submitDisabled?: boolean;
@@ -62,7 +72,7 @@ type OpencodeComposerProps = {
   isSubmitting?: boolean;
   fileReferences?: OpencodeFileReference[];
   onChangeSelection: (selection: OpencodePromptSelection) => void;
-  onChangeAttachments?: (attachments: ComposerImageAttachment[]) => void;
+  onChangeAttachments?: (attachments: ComposerAttachment[]) => void;
   onChangeFileReferences?: (references: OpencodeFileReference[]) => void;
   onChangeText: (value: string) => void;
   onNewChat?: () => void;
@@ -78,7 +88,7 @@ type OpencodeComposerProps = {
 };
 
 export type ComposerDraft = {
-  attachments: ComposerImageAttachment[];
+  attachments: ComposerAttachment[];
   fileReferences: OpencodeFileReference[];
   text: string;
 };
@@ -101,7 +111,7 @@ function OpencodeComposerControllerComponent({
   ...props
 }: OpencodeComposerControllerProps) {
   const [text, setText] = useState("");
-  const [attachments, setAttachments] = useState<ComposerImageAttachment[]>([]);
+  const [attachments, setAttachments] = useState<ComposerAttachment[]>([]);
   const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
     [],
   );
@@ -193,54 +203,83 @@ export function OpencodeComposer({
     });
     return () => subscription.remove();
   }, []);
-  const pickImages = async () => {
-    if (!onChangeAttachments || attachments.length >= 5) return;
+  const pickFiles = async () => {
+    if (!onChangeAttachments || attachments.length >= MAX_ATTACHMENTS) return;
     try {
-      const permission =
-        await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (!permission.granted) {
-        Alert.alert(
-          "Photos permission needed",
-          "Allow photo access to attach images to this chat.",
-        );
-        return;
-      }
-
-      const result = await ImagePicker.launchImageLibraryAsync({
-        allowsMultipleSelection: true,
-        base64: true,
-        mediaTypes: ["images"],
-        orderedSelection: true,
-        quality: 0.85,
-        selectionLimit: Math.max(1, 5 - attachments.length),
+      const result = await DocumentPicker.getDocumentAsync({
+        base64: Platform.OS === "web",
+        copyToCacheDirectory: true,
+        multiple: true,
+        type: "*/*",
       });
       if (result.canceled) return;
 
-      const now = Date.now();
-      const selected = result.assets.flatMap((asset, index) => {
-        if (!asset.base64) return [];
-        const mimeType = asset.mimeType?.startsWith("image/")
-          ? asset.mimeType
-          : "image/jpeg";
-        return [
-          {
-            id: `${now}-${index}-${asset.assetId ?? asset.fileName ?? "image"}`,
+      const selected: ComposerAttachment[] = [];
+      const rejected: string[] = [];
+      for (const [index, asset] of result.assets.entries()) {
+        try {
+          if (selected.length + attachments.length >= MAX_ATTACHMENTS) {
+            rejected.push(asset.name);
+            continue;
+          }
+          const file =
+            Platform.OS === "web" && asset.file
+              ? asset.file
+              : new ExpoFile(asset.uri);
+          const size = asset.size ?? file.size;
+          if (size > MAX_ATTACHMENT_BYTES) {
+            rejected.push(asset.name);
+            continue;
+          }
+          const extension = asset.name.split(".").at(-1)?.toLowerCase() ?? "";
+          const imageMime = IMAGE_MIME_BY_EXTENSION[extension];
+          const bytes = new Uint8Array(await file.arrayBuffer());
+          const isImage = !!imageMime;
+          if (!isImage) {
+            // OpenCode V2 passes UTF-8 text through to the model, but omits binary documents.
+            const content = new TextDecoder("utf-8", { fatal: true }).decode(
+              bytes,
+            );
+            if (
+              /\u0000|[\u0001-\u0008\u000b\u000c\u000e-\u001f]/.test(content) ||
+              content.startsWith("%PDF-")
+            ) {
+              rejected.push(asset.name);
+              continue;
+            }
+          }
+          const mimeType = imageMime ?? "text/plain";
+          const base64 =
+            Platform.OS === "web" && asset.base64
+              ? asset.base64.split(",")[1]
+              : await new ExpoFile(asset.uri).base64();
+          if (!base64) {
+            rejected.push(asset.name);
+            continue;
+          }
+          selected.push({
+            id: `${Date.now()}-${index}-${asset.name}`,
             uri: asset.uri,
-            type: "image" as const,
-            name: asset.fileName ?? `image-${now}-${index + 1}.jpg`,
+            type: isImage ? "image" : "text",
+            name: asset.name,
             mimeType,
-            sizeBytes: asset.fileSize ?? 0,
-            dataUrl: `data:${mimeType};base64,${asset.base64}`,
-          },
-        ];
-      });
-      if (selected.length !== result.assets.length) {
-        Alert.alert("Could not attach an image", "Try selecting it again.");
+            sizeBytes: size,
+            dataUrl: `data:${mimeType};base64,${base64}`,
+          });
+        } catch {
+          rejected.push(asset.name);
+        }
       }
-      onChangeAttachments([...attachments, ...selected].slice(0, 5));
+      if (selected.length) onChangeAttachments([...attachments, ...selected]);
+      if (rejected.length) {
+        Alert.alert(
+          "Some files were not attached",
+          "OpenCode supports UTF-8 text and PNG, JPEG, GIF, or WebP images, up to 20 MiB each and five attachments per prompt.",
+        );
+      }
     } catch (error) {
       Alert.alert(
-        "Could not open photos",
+        "Could not attach files",
         error instanceof Error ? error.message : "Please try again.",
       );
     }
@@ -309,13 +348,13 @@ export function OpencodeComposer({
 
   const attachmentControl = onChangeAttachments ? (
     <Pressable
-      accessibilityLabel="Add images"
+      accessibilityLabel="Add attachment"
       accessibilityRole="button"
-      disabled={attachments.length >= 5}
-      onPress={() => void pickImages()}
+      disabled={attachments.length >= MAX_ATTACHMENTS}
+      onPress={() => void pickFiles()}
       style={({ pressed }) => [
         styles.attachmentButton,
-        attachments.length >= 5 && styles.disabled,
+        attachments.length >= MAX_ATTACHMENTS && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
@@ -468,12 +507,37 @@ export function OpencodeComposer({
         >
           {attachments.map((attachment) => (
             <View key={attachment.id} style={styles.previewWrap}>
-              <Image
-                accessibilityLabel={attachment.name}
-                contentFit="cover"
-                source={{ uri: attachment.uri }}
-                style={styles.previewImage}
-              />
+              {attachment.type === "image" ? (
+                <Image
+                  accessibilityLabel={attachment.name}
+                  contentFit="cover"
+                  source={{ uri: attachment.uri }}
+                  style={styles.previewImage}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.previewFile,
+                    {
+                      backgroundColor: theme.backgroundElement,
+                      borderColor: theme.backgroundSelected,
+                    },
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "doc.text", android: "description" }}
+                    size={20}
+                    tintColor={theme.textSecondary}
+                  />
+                  <ThemedText
+                    ellipsizeMode="middle"
+                    numberOfLines={2}
+                    style={styles.previewFileName}
+                  >
+                    {attachment.name}
+                  </ThemedText>
+                </View>
+              )}
               <Pressable
                 accessibilityLabel={`Remove ${attachment.name}`}
                 accessibilityRole="button"
@@ -1284,6 +1348,17 @@ const styles = StyleSheet.create({
     opacity: 0.6,
   },
   previewImage: { borderRadius: 10, height: 58, width: 58 },
+  previewFile: {
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 6,
+    height: 58,
+    paddingHorizontal: 8,
+    width: 148,
+  },
+  previewFileName: { flex: 1, fontSize: 11 },
   previewWrap: { paddingRight: 5, paddingTop: 5 },
   promptRow: {
     alignItems: "flex-end",

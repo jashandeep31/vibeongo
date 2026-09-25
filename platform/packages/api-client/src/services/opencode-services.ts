@@ -1405,7 +1405,7 @@ export function reduceOpencodeSessionData(
 }
 
 export type UploadAttachment = {
-  type: "image";
+  type: "image" | "text";
   name: string;
   mimeType: string;
   sizeBytes: number;
