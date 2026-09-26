@@ -29,6 +29,12 @@ importers:
 
   apps/cli:
     dependencies:
+      '@repo/api-client':
+        specifier: workspace:^
+        version: link:../../packages/api-client
+      '@repo/shared':
+        specifier: workspace:^
+        version: link:../../packages/shared
       '@types/node':
         specifier: ^26.6.3
         version: 26.6.3

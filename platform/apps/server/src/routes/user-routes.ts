@@ -36,7 +36,9 @@ routes
   .post(checkAuthorization(["user"]), createApiKey)
   .get(checkAuthorization(["user"]), getApiKeys);
 
-routes.route("/api-keys/:id").delete(checkAuthorization(["user"]), revokeApiKey);
+routes
+  .route("/api-keys/:id")
+  .delete(checkAuthorization(["user"]), revokeApiKey);
 
 routes
   .route("/api-keys/:id/rotate")
@@ -51,7 +53,9 @@ routes
   .route("/settings")
   .get(checkAuthorization(["user"]), getUserSettings)
   .put(checkAuthorization(["user"]), updateUserSettings);
-routes.route("/metadata").get(checkAuthorization(["user"]), getUserMetadata);
+routes
+  .route("/metadata")
+  .get(checkAuthorization(["user", "api_key"]), getUserMetadata);
 
 routes
   .route("/forgejo/password")
@@ -67,7 +71,9 @@ routes
   .get(checkAuthorization(["user"]), getUserConfig)
   .put(checkAuthorization(["user"]), updateUserConfig);
 
-routes.route("/wallet").get(checkAuthorization(["user"]), getUserWallet);
+routes
+  .route("/wallet")
+  .get(checkAuthorization(["user", "api_key"]), getUserWallet);
 routes
   .route("/credit-grants")
   .get(checkAuthorization(["user"]), getUserCreditGrants);
