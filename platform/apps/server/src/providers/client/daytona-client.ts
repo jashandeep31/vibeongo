@@ -22,13 +22,18 @@ export class DaytonaClient {
     instanceType,
     terminatedAfterInMinutes,
   }: CreateInstanceProps) {
-    const sandbox = await daytona.create({
-      snapshot: instanceType,
-      // resources: { cpu: 2, memory: 4, disk: 8 },
-      public: false,
-      ttlMinutes: terminatedAfterInMinutes,
-      networkBlockAll: false,
-    });
+    const sandbox = await daytona.create(
+      {
+        snapshot: instanceType,
+        // resources: { cpu: 2, memory: 4, disk: 8 },
+        public: false,
+        ttlMinutes: terminatedAfterInMinutes,
+        networkBlockAll: false,
+      },
+      {
+        timeout: 30,
+      },
+    );
 
     await addSandboxSetupJob({
       provider: "daytona",
