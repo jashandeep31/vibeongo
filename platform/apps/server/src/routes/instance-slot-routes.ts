@@ -5,7 +5,7 @@ import { checkAuthorization } from "../middlewares/check-authorization.js";
 
 const routes: Router = Router();
 
-routes.route("/usage").get(checkAuthorization(["all"]), getInstanceSlotUsage);
-routes.route("/").get(checkAuthorization(["all"]), getUserInstanceSlots);
+routes.route("/usage").get(checkAuthorization(["user"]), getInstanceSlotUsage);
+routes.route("/").get(checkAuthorization(["user"]), getUserInstanceSlots);
 
 export const instanceSlotRoutes = routes;

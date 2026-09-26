@@ -33,48 +33,48 @@ const routes: Router = Router();
 
 routes
   .route("/api-keys")
-  .post(checkAuthorization(["all"]), createApiKey)
-  .get(checkAuthorization(["all"]), getApiKeys);
+  .post(checkAuthorization(["user"]), createApiKey)
+  .get(checkAuthorization(["user"]), getApiKeys);
 
-routes.route("/api-keys/:id").delete(checkAuthorization(["all"]), revokeApiKey);
+routes.route("/api-keys/:id").delete(checkAuthorization(["user"]), revokeApiKey);
 
 routes
   .route("/api-keys/:id/rotate")
-  .post(checkAuthorization(["all"]), rotateApiKey);
+  .post(checkAuthorization(["user"]), rotateApiKey);
 
 routes
   .route("/ssh-keys")
-  .post(checkAuthorization(["all"]), createSshKey)
-  .get(checkAuthorization(["all"]), getSshKeys);
+  .post(checkAuthorization(["user"]), createSshKey)
+  .get(checkAuthorization(["user"]), getSshKeys);
 
 routes
   .route("/settings")
-  .get(checkAuthorization(["all"]), getUserSettings)
-  .put(checkAuthorization(["all"]), updateUserSettings);
-routes.route("/metadata").get(checkAuthorization(["all"]), getUserMetadata);
+  .get(checkAuthorization(["user"]), getUserSettings)
+  .put(checkAuthorization(["user"]), updateUserSettings);
+routes.route("/metadata").get(checkAuthorization(["user"]), getUserMetadata);
 
 routes
   .route("/forgejo/password")
-  .put(checkAuthorization(["all"]), setForgejoPassword);
+  .put(checkAuthorization(["user"]), setForgejoPassword);
 
 routes
   .route("/configs")
-  .get(checkAuthorization(["all"]), getUserConfigs)
-  .post(checkAuthorization(["all"]), createUserConfig);
+  .get(checkAuthorization(["user"]), getUserConfigs)
+  .post(checkAuthorization(["user"]), createUserConfig);
 
 routes
   .route("/configs/:configType")
-  .get(checkAuthorization(["all"]), getUserConfig)
-  .put(checkAuthorization(["all"]), updateUserConfig);
+  .get(checkAuthorization(["user"]), getUserConfig)
+  .put(checkAuthorization(["user"]), updateUserConfig);
 
-routes.route("/wallet").get(checkAuthorization(["all"]), getUserWallet);
+routes.route("/wallet").get(checkAuthorization(["user"]), getUserWallet);
 routes
   .route("/credit-grants")
-  .get(checkAuthorization(["all"]), getUserCreditGrants);
+  .get(checkAuthorization(["user"]), getUserCreditGrants);
 
 routes
   .route("/ssh-keys/:id")
-  .delete(checkAuthorization(["all"]), deleteSshKey)
-  .post(checkAuthorization(["all"]), updateSshKey);
+  .delete(checkAuthorization(["user"]), deleteSshKey)
+  .post(checkAuthorization(["user"]), updateSshKey);
 
 export const userRoutes = routes;

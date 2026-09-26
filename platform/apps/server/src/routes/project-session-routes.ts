@@ -15,23 +15,23 @@ const routes: Router = Router();
 
 routes
   .route("/")
-  .get(checkAuthorization(["all"]), getUserProjectSessions)
-  .post(checkAuthorization(["all"]), createProjectSession);
+  .get(checkAuthorization(["user"]), getUserProjectSessions)
+  .post(checkAuthorization(["user"]), createProjectSession);
 routes
   .route("/:id")
-  .post(checkAuthorization(["all"]), resumeProjectSession)
-  .get(checkAuthorization(["all"]), getProjectSessionById);
-// .delete(checkAuthorization(["all"]), archiveProjectSession);
+  .post(checkAuthorization(["user"]), resumeProjectSession)
+  .get(checkAuthorization(["user"]), getProjectSessionById);
+// .delete(checkAuthorization(["user"]), archiveProjectSession);
 
 routes
   .route("/:id/archive")
-  .post(checkAuthorization(["all"]), archiveProjectSession);
+  .post(checkAuthorization(["user"]), archiveProjectSession);
 
 routes
   .route("/:id/tasks")
-  .post(checkAuthorization(["all"]), addTaskToProjectSession);
+  .post(checkAuthorization(["user"]), addTaskToProjectSession);
 routes
   .route("/:id/tasks/:taskId")
-  .patch(checkAuthorization(["all"]), updateProjectSessionTask)
-  .delete(checkAuthorization(["all"]), deleteProjectSessionTask);
+  .patch(checkAuthorization(["user"]), updateProjectSessionTask)
+  .delete(checkAuthorization(["user"]), deleteProjectSessionTask);
 export const projectSessionRoutes = routes;

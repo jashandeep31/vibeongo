@@ -5,7 +5,7 @@ import { env } from "../lib/env.js";
 import { clearSessionCookie } from "../lib/session-cookie.js";
 import { findWebSession } from "../lib/auth-session.js";
 
-const userRolesArray = [...userRoles.enumValues, "all"] as const;
+const userRolesArray = [...userRoles.enumValues, "api"] as const;
 type UserRole = (typeof userRolesArray)[number];
 
 const failedToAuthenticate = (res: Response) => {
@@ -45,13 +45,11 @@ function appBasedAuthenticator(
   authorizationHeader: string,
   allowedRoles: UserRole[],
 ) {
-  const [scheme, token, ...extraParts] = authorizationHeader.trim().split(/\s+/);
+  const [scheme, token, ...extraParts] = authorizationHeader
+    .trim()
+    .split(/\s+/);
 
-  if (
-    scheme?.toLowerCase() !== "bearer" ||
-    !token ||
-    extraParts.length > 0
-  ) {
+  if (scheme?.toLowerCase() !== "bearer" || !token || extraParts.length > 0) {
     return failedToAuthenticate(res);
   }
 
@@ -85,13 +83,7 @@ function webBasedAuthenticator(
     return failedToAuthenticate(res);
   }
 
-  return authenticateWebSessionOrLegacyJwt(
-    req,
-    res,
-    next,
-    token,
-    allowedRoles,
-  );
+  return authenticateWebSessionOrLegacyJwt(req, res, next, token, allowedRoles);
 }
 
 async function authenticateToken(
@@ -146,7 +138,7 @@ async function authenticateUser(
     return failedToAuthenticate(res);
   }
 
-  if (!allowedRoles.includes("all") && !allowedRoles.includes(user.role)) {
+  if (!allowedRoles.includes(user.role)) {
     return res.status(403).json({
       error: "not authorized",
     });

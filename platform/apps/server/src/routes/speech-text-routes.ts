@@ -9,7 +9,7 @@ const routes: Router = Router();
 
 routes.post(
   "/transcriptions",
-  checkAuthorization(["all"]),
+  checkAuthorization(["user"]),
   receiveAudio,
   transcribeAudio,
 );
