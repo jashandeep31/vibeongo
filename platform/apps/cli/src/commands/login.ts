@@ -1,41 +1,23 @@
+import { Effect } from "effect";
 import { createApiClient } from "../lib/api-client.js";
+import { CliError } from "../lib/cli-error.js";
 import { setKey } from "../lib/keychain.js";
 import { readApiKey } from "../lib/read-api-key.js";
 
-export async function login(): Promise<void> {
-  let key: string;
-  try {
-    key = await readApiKey();
-  } catch {
-    console.error("Login cancelled.");
-    process.exitCode = 1;
-    return;
-  }
+export function login() {
+  return Effect.gen(function* () {
+    const key = yield* readApiKey;
+    if (!key.startsWith("vog_")) {
+      return yield* Effect.fail(new CliError("API key must start with vog_."));
+    }
 
-  if (!key.startsWith("vog_")) {
-    console.error("API key must start with vog_.");
-    process.exitCode = 1;
-    return;
-  }
+    const client = createApiClient(key);
+    const metadata = yield* Effect.tryPromise({
+      try: () => client.users.getUserMetadata(),
+      catch: () => new CliError("Login failed. The API key could not be verified."),
+    });
 
-  const client = createApiClient(key);
-  let username: string;
-  try {
-    const metadata = await client.users.getUserMetadata();
-    username = metadata.username;
-  } catch {
-    console.error("Login failed. The API key could not be verified.");
-    process.exitCode = 1;
-    return;
-  }
-
-  try {
-    await setKey(key);
-    console.log(`Logged in as ${username}.`);
-  } catch {
-    console.error(
-      "The API key was verified, but could not be saved to the system keychain.",
-    );
-    process.exitCode = 1;
-  }
+    yield* setKey(key);
+    yield* Effect.sync(() => console.log(`Logged in as ${metadata.username}.`));
+  });
 }

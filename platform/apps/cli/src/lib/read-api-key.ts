@@ -1,7 +1,14 @@
 import { stdin, stdout } from "node:process";
 import { createInterface, emitKeypressEvents } from "node:readline";
+import { Effect } from "effect";
+import { CliError } from "./cli-error.js";
 
-export async function readApiKey(): Promise<string> {
+export const readApiKey = Effect.tryPromise({
+  try: readApiKeyFromStdin,
+  catch: () => new CliError("Login cancelled."),
+});
+
+async function readApiKeyFromStdin(): Promise<string> {
   if (!stdin.isTTY || !stdout.isTTY) {
     const readline = createInterface({ input: stdin, output: stdout });
     try {

@@ -18,6 +18,7 @@
     "@repo/shared": "workspace:^",
     "@types/node": "^26.6.3",
     "commander": "12.1.0",
+    "effect": "4.0.0-rc.117",
     "keytar": "7.9.0"
   }
 }
