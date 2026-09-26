@@ -174,6 +174,7 @@ export function OpencodeComposer({
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
+  const restoreInputFocusAfterRecordingRef = useRef(false);
   const voice = useVoiceTranscription(value, onChangeText);
   const blurTargetRef = useRef<View>(null);
   const [isFocused, setIsFocused] = useState(false);
@@ -203,6 +204,12 @@ export function OpencodeComposer({
     });
     return () => subscription.remove();
   }, []);
+  useEffect(() => {
+    if (voice.state !== "recording" || !restoreInputFocusAfterRecordingRef.current)
+      return;
+    restoreInputFocusAfterRecordingRef.current = false;
+    inputRef.current?.focus();
+  }, [voice.state]);
   const pickFiles = async () => {
     if (!onChangeAttachments || attachments.length >= MAX_ATTACHMENTS) return;
     try {
@@ -397,12 +404,19 @@ export function OpencodeComposer({
                 : "Record voice prompt"
           }
           accessibilityRole="button"
+          focusable={false}
           disabled={
             (disabled && voice.state === "idle") ||
             (voice.state !== "idle" &&
               voice.state !== "recording" &&
               voice.state !== "error")
           }
+          onPressIn={() => {
+            if (voice.state === "idle") {
+              restoreInputFocusAfterRecordingRef.current =
+                (inputRef.current?.isFocused() ?? false) || isFocused;
+            }
+          }}
           onPress={() =>
             void (voice.state === "recording"
               ? voice.stop()
