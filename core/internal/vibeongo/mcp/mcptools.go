@@ -10,6 +10,7 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -277,7 +278,7 @@ func runGitCommand(ctx context.Context, req *mcp.CallToolRequest, input gitComma
 		return nil, nil, fmt.Errorf("git operation %q is not allowed", operation)
 	}
 
-	workspaceRoot := filepath.Clean("/home/ubuntu/code")
+	workspaceRoot := filepath.Clean(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code"))
 	repoDir := filepath.Clean(filepath.Join(workspaceRoot, repo.FolderName))
 	relativeRepoDir, err := filepath.Rel(workspaceRoot, repoDir)
 	if err != nil || relativeRepoDir == "." || relativeRepoDir == ".." ||

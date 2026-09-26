@@ -16,7 +16,7 @@ func ProvisionFx(cfg *config.FxConfig) error {
 	}
 	fmt.Println("Setting up fx")
 	authJSON := cfg.AuthJSON
-	authDir := "/home/ubuntu/.fx"
+	authDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.fx")
 	if err := os.MkdirAll(authDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create fx auth directory: %w", err)
 	}
@@ -36,7 +36,7 @@ func ProvisionCodex(cfg *config.CodexConfig) error {
 
 	authJSON := cfg.AuthJSON
 
-	authDir := "/home/ubuntu/.codex"
+	authDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.codex")
 	if err := os.MkdirAll(authDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create opencode auth directory: %w", err)
 	}
@@ -55,7 +55,7 @@ func ProvisionPi(cfg *config.PiConfig) error {
 		return nil
 	}
 	authJSON := cfg.AuthJSON
-	authDir := "/home/ubuntu/.pi/agent"
+	authDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.pi/agent")
 	if err := os.MkdirAll(authDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create opencode auth directory: %w", err)
 	}
@@ -71,7 +71,7 @@ func ProvisionPi(cfg *config.PiConfig) error {
 func ProvisionT3Code(cfg config.Config) error {
 	fmt.Println("Adding the projects to the t3")
 	for _, repo := range cfg.Repos {
-		projectFolderPath := filepath.Join("/home/ubuntu/code", repo.FolderName)
+		projectFolderPath := filepath.Join(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code"), repo.FolderName)
 		if err := os.MkdirAll(projectFolderPath, 0o755); err != nil {
 			return fmt.Errorf("failed to create project directory %q: %w", projectFolderPath, err)
 		}
@@ -96,7 +96,7 @@ func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	fmt.Println("opencode config is running ")
 	authJSON := cfg.AuthJSON
 
-	authDir := "/home/ubuntu/.local/share/opencode"
+	authDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.local/share/opencode")
 	if err := os.MkdirAll(authDir, 0o755); err != nil {
 		return fmt.Errorf("failed to create opencode auth directory: %w", err)
 	}

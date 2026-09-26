@@ -33,7 +33,7 @@ func startWebServerLocked() error {
 		return fmt.Errorf("opencode is not configured")
 	}
 
-	const projectDir = "/home/ubuntu/code"
+	projectDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 	if err := validateOpencodePassword(cfg.InstanceConfig.OpencodePassword); err != nil {
 		return err
 	}

@@ -28,17 +28,17 @@ func ExecuteSetupScript() error {
 	}
 	defer os.Remove(tempScriptFile.Name())
 
-	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
-	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
+	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	exec.Command("mkdir", "-p", path).Run()
+	exec.Command("sudo", "chown", "-R", utils.CurrentUser.Username+":"+utils.CurrentUser.Username, path).Run()
 
-	script := `#!/usr/bin/env bash
-source /home/ubuntu/.bashrc
-export NVM_DIR="/home/ubuntu/.nvm"
+	script := utils.ReplaceUsernamePlaceholder(`#!/usr/bin/env bash
+source /home/_USERNAME_/.bashrc
+export NVM_DIR="/home/_USERNAME_/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 echo "initial script is running"
-`
+`)
 	script = script + cfg.InitialScript
-	path := "/home/ubuntu/code"
 	if _, err := tempScriptFile.Write([]byte(script)); err != nil {
 		return err
 	}
@@ -80,17 +80,17 @@ func ExecuteFinalScript() error {
 	}
 	defer os.Remove(tempScriptFile.Name())
 
-	exec.Command("mkdir", "-p", "/home/ubuntu/code").Run()
-	exec.Command("sudo", "chown", "-R", "ubuntu:ubuntu", "/home/ubuntu/code").Run()
+	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	exec.Command("mkdir", "-p", path).Run()
+	exec.Command("sudo", "chown", "-R", utils.CurrentUser.Username+":"+utils.CurrentUser.Username, path).Run()
 
-	script := `#!/usr/bin/env bash
-source /home/ubuntu/.bashrc
-export NVM_DIR="/home/ubuntu/.nvm"
+	script := utils.ReplaceUsernamePlaceholder(`#!/usr/bin/env bash
+source /home/_USERNAME_/.bashrc
+export NVM_DIR="/home/_USERNAME_/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 echo "final script is running"
-`
+`)
 	script = script + cfg.FinalScript
-	path := "/home/ubuntu/code"
 	if _, err := tempScriptFile.Write([]byte(script)); err != nil {
 		return err
 	}
@@ -127,6 +127,7 @@ func ExecuteDevScript() error {
 
 	_ = utils.KilltmuxSession("dev")
 	sessionStarted := false
+	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 
 	for i, part := range parts {
 		if strings.TrimSpace(part) == "" {
@@ -134,14 +135,14 @@ func ExecuteDevScript() error {
 		}
 
 		if !sessionStarted {
-			if err := utils.StartTmuxSession("dev", "/home/ubuntu/code", part); err != nil {
+			if err := utils.StartTmuxSession("dev", path, part); err != nil {
 				return err
 			}
 			sessionStarted = true
 			continue
 		}
 
-		if err := utils.RunCommandInTmuxSessionInDir("dev", "/home/ubuntu/code", part); err != nil {
+		if err := utils.RunCommandInTmuxSessionInDir("dev", path, part); err != nil {
 			return fmt.Errorf("run dev script in tmux window task-%d: %w", i, err)
 		}
 	}

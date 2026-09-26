@@ -1,31 +1,19 @@
 package handlers
 
 import (
-	"fmt"
 	"io"
 	"io/fs"
 	"net/http"
 	"os"
-	"os/user"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/git-pkgs/gitignore"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/labstack/echo/v5"
 	"github.com/sahilm/fuzzy"
 )
-
-var currentUser *user.User
-
-func init() {
-	var err error
-
-	currentUser, err = user.Current()
-	if err != nil {
-		panic(err)
-	}
-}
 
 type FileType string
 
@@ -51,7 +39,7 @@ type FileListResponse struct {
 func GetListOfDirsAndFiles(c *echo.Context) error {
 	requestPath := c.QueryParam("path")
 	if requestPath == "" {
-		requestPath = fmt.Sprintf("/home/%s/code", currentUser.Username)
+		requestPath = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 	}
 
 	entries, err := os.ReadDir(requestPath)
@@ -274,7 +262,7 @@ func SearchFiles(c *echo.Context) error {
 
 	basePath := strings.TrimSpace(c.QueryParam("path"))
 	if basePath == "" {
-		basePath = fmt.Sprintf("/home/%s/code", currentUser.Username)
+		basePath = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 	}
 	basePath = filepath.Clean(basePath)
 

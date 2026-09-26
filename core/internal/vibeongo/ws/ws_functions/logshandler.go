@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
 func LogsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex) {
@@ -19,7 +20,7 @@ func LogsHandler(ctx context.Context, conn *websocket.Conn, writeMu *sync.Mutex)
 		case <-ctx.Done():
 			return
 		case <-logT.C:
-			content, err := os.ReadFile("/home/ubuntu/.logs/vibeongo.log")
+			content, err := os.ReadFile(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.logs/vibeongo.log"))
 			if err != nil {
 				content = []byte("Hi how are you")
 			}

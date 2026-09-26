@@ -9,6 +9,7 @@ import (
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
 func ProvisionProjectFiles() error {
@@ -41,7 +42,7 @@ func ProvisionProjectFiles() error {
 		return fmt.Errorf("failed to get project files")
 	}
 
-	basePath := "/home/ubuntu/code"
+	basePath := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 	for _, file := range res.Files {
 		fmt.Println("clonning", file.Name, "at", file.Path)
 		dirPath := path.Join(basePath, file.Path)

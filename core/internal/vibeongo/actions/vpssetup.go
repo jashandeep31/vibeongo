@@ -9,12 +9,11 @@ import (
 )
 
 func InitializeWorkspace(cfg config.Config) error {
-	script := `#!/usr/bin/env bash
-source /home/ubuntu/.bashrc`
+	script := utils.ReplaceUsernamePlaceholder(`#!/usr/bin/env bash
+source /home/_USERNAME_/.bashrc`)
 
 	// Modifying script to clone the git repos at the required locations
 	utils.AppendToBashScript(&script, GenerateGitCloneScript(cfg.Repos))
-	// cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-lc", script)
 	cmd := utils.ExecCommand(utils.SudoUbuntuLoginShell, script)
 
 	// Direct cmd output need better way to handle logs

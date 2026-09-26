@@ -11,14 +11,14 @@ import (
 )
 
 func InitializeRepositories(cfg config.Config) error {
-	script := `source /home/ubuntu/.bashrc
+	script := utils.ReplaceUsernamePlaceholder(`source /home/_USERNAME_/.bashrc
 # nvm
-export NVM_DIR="/home/ubuntu/.nvm"
+export NVM_DIR="/home/_USERNAME_/.nvm"
 [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
 node -v 
 npm -v
-`
-	path := "/home/ubuntu/code"
+`)
+	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 
 	for _, repo := range cfg.Repos {
 		projectFolderPath := filepath.Join(path, repo.FolderName)
@@ -29,7 +29,7 @@ npm -v
 		}
 	}
 	fmt.Println(script)
-	cmd := exec.Command("sudo", "-u", "ubuntu", "bash", "-l", "-c", script)
+	cmd := exec.Command("sudo", "-u", utils.CurrentUser.Username, "bash", "-l", "-c", script)
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

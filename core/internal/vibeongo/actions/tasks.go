@@ -49,19 +49,20 @@ func MarkTask(cmd *cobra.Command, args []string) error {
 func ExecuteTasks(cfg config.Config) error {
 	fmt.Println("Working on tasks")
 	utils.KilltmuxSession("tasks")
+	homeDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_")
+	codeDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 
 	var tmuxScript strings.Builder
 	tmuxScript.WriteString("#!/usr/bin/env bash\n")
-	tmuxScript.WriteString("source /home/ubuntu/.bashrc\n")
-	tmuxScript.WriteString("export HOME=/home/ubuntu\n")
-	tmuxScript.WriteString("export PATH=/home/ubuntu/.opencode/bin:/home/ubuntu/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\n\n")
+	fmt.Fprintf(&tmuxScript, "source %s/.bashrc\n", homeDir)
+	fmt.Fprintf(&tmuxScript, "export HOME=%s\n", homeDir)
+	fmt.Fprintf(&tmuxScript, "export PATH=%s/.opencode/bin:%s/.local/bin:/usr/local/bin:/usr/bin:/bin:$PATH\n\n", homeDir, homeDir)
 	usedFolderPaths := map[string]bool{}
 
 	for _, task := range cfg.Tasks {
 		singleLineString := strings.ReplaceAll(task.Task, "\n", " ")
 
-		fmt.Fprintf(&tmuxScript, "cd /home/ubuntu/code/%s\n",
-			task.FolderName)
+		fmt.Fprintf(&tmuxScript, "cd %s/%s\n", codeDir, task.FolderName)
 
 		if usedFolderPaths[task.FolderName] {
 			fmt.Fprintf(&tmuxScript, "opencode run --continue %s%s%s\n",
@@ -85,7 +86,7 @@ func ExecuteTasks(cfg config.Config) error {
 		fmt.Fprintf(&tmuxScript, "vibeongo terminate\n\n")
 	}
 	fmt.Println(tmuxScript.String())
-	if err := utils.StartTmuxSession("tasks", "/home/ubuntu/code", tmuxScript.String()); err != nil {
+	if err := utils.StartTmuxSession("tasks", codeDir, tmuxScript.String()); err != nil {
 		return err
 	}
 

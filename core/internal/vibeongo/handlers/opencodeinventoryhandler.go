@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/labstack/echo/v5"
 )
 
@@ -17,7 +18,7 @@ var opencodeModelNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+/[A-Za-z0-9_.-
 func OpencodeInventoryHandler(c *echo.Context) error {
 	startTime := time.Now()
 	opencodeModelsCmd := exec.Command(
-		"/home/ubuntu/.opencode/bin/opencode",
+		utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.opencode/bin/opencode"),
 		"models",
 		"--verbose",
 	)

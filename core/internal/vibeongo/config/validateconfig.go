@@ -6,6 +6,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
 type Config struct {
@@ -152,7 +154,7 @@ func validateConfig(file []byte) (Config, error) {
 	return cfg, nil
 }
 
-var configPath = filepath.Join("/home/ubuntu/.config/vibeongo", "config.json")
+var configPath = filepath.Join(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.config/vibeongo"), "config.json")
 
 func ResolveConfigPath() (string, error) {
 	if _, err := os.Stat(configPath); err == nil {

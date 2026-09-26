@@ -12,7 +12,7 @@ import (
 // GenerateGitCloneScript returns a script that clones each configured Git repository.
 func GenerateGitCloneScript(gitRepos []config.GitRepoConfig) string {
 	script := ``
-	path := "/home/ubuntu/code"
+	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
 
 	for _, repo := range gitRepos {
 		projectFolderPath := filepath.Join(path, repo.FolderName)

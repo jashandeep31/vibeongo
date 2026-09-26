@@ -17,20 +17,20 @@ func ExecCommand(t commandType, script string) *exec.Cmd {
 	case SudoUbuntuInterativeShell:
 		return exec.Command(
 			"sudo",
-			"-iu", "ubuntu",
+			"-iu", CurrentUser.Username,
 			"bash", "-ic",
 			script,
 		)
 	case SudoShellScriptFile:
 		return exec.Command(
 			"sudo",
-			"-iu", "ubuntu",
+			"-iu", CurrentUser.Username,
 			"bash", script,
 		)
 	case SudoUbuntuLoginShell:
 		return exec.Command(
 			"sudo",
-			"-u", "ubuntu",
+			"-u", CurrentUser.Username,
 			"bash", "-lc",
 			script,
 		)
