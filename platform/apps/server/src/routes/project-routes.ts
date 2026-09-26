@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { createProject } from "../controllers/project/create-project.js";
+import { getProjectOverview } from "../controllers/project/project-overview.js";
 import {
   createProjectFromTemplate,
   getProjectTemplates,
@@ -46,6 +47,9 @@ routes
 routes
   .route("/with-sessions")
   .get(checkAuthorization(["user"]), getProjectsWithSessions);
+routes
+  .route("/overview")
+  .get(checkAuthorization(["user", "api_key"]), getProjectOverview);
 routes
   .route("/demo-projects")
   .get(checkAuthorization(["user"]), getDemoProjects);

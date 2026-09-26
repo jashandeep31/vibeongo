@@ -1,20 +1,14 @@
 import { formatInternalMoney } from "@repo/shared/money";
 import { Effect } from "effect";
-import { createApiClient } from "../lib/api-client.js";
 import { CliError } from "../lib/cli-error.js";
-import { getKey } from "../lib/keychain.js";
+import { getAuthenticatedClient } from "./authenticated-client.js";
 
 export function getWalletBalance() {
   return Effect.gen(function* () {
-    const key = yield* getKey();
-    if (!key) {
-      return yield* Effect.fail(
-        new CliError("Not logged in. Run vibeongo login first."),
-      );
-    }
+    const client = yield* getAuthenticatedClient();
 
     const response = yield* Effect.tryPromise({
-      try: () => createApiClient(key).wallet.getWallet(),
+      try: () => client.wallet.getWallet(),
       catch: () =>
         new CliError(
           "Could not get wallet. Check the server connection or run vibeongo login again.",

@@ -28,6 +28,8 @@ import {
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { checkAndLaunchInstance } from "../../services/instances/check-and-queue-instance-launch.js";
 
+const MAX_ACTIVE_SESSIONS_PER_PROJECT = 8;
+
 export const createProjectSession = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
@@ -44,23 +46,52 @@ export const createProjectSession = catchAsync(
       })
       .parse(req.body);
 
-    const [project] = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.user_id, user.id)));
+    const session = await db.transaction(async (tx) => {
+      const [project] = await tx
+        .select({ id: projects.id })
+        .from(projects)
+        .where(
+          and(
+            eq(projects.id, projectId),
+            eq(projects.user_id, user.id),
+            eq(projects.deleted, false),
+          ),
+        )
+        .for("update");
 
-    if (!project) throw new AppError("Project not found", 404);
+      if (!project) throw new AppError("Project not found", 404);
 
-    const [session] = await db
-      .insert(projectSessions)
-      .values({
-        name: sessionName,
-        description: sessionDescription || "",
-        user_id: user.id,
-        project_id: project.id,
-        category: "manual",
-      })
-      .returning();
+      const [result] = await tx
+        .select({ count: sql<number>`count(*)::int` })
+        .from(projectSessions)
+        .where(
+          and(
+            eq(projectSessions.project_id, project.id),
+            eq(projectSessions.user_id, user.id),
+            eq(projectSessions.archived, false),
+          ),
+        );
+
+      if ((result?.count ?? 0) >= MAX_ACTIVE_SESSIONS_PER_PROJECT) {
+        throw new AppError(
+          `You can have up to ${MAX_ACTIVE_SESSIONS_PER_PROJECT} active sessions in one project. Archive an existing session before creating another.`,
+          409,
+        );
+      }
+
+      const [createdSession] = await tx
+        .insert(projectSessions)
+        .values({
+          name: sessionName,
+          description: sessionDescription || "",
+          user_id: user.id,
+          project_id: project.id,
+          category: "manual",
+        })
+        .returning();
+
+      return createdSession;
+    });
 
     if (!session) throw new AppError("Failed to create project session", 500);
 

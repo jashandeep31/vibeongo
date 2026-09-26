@@ -71,12 +71,17 @@ export type {
 export type {
   CreateProjectFromTemplateInput,
   DemoProject,
+  GetProjectOverviewParams,
+  GetProjectOverviewResponse,
   ImportDemoProjectInput,
   Project,
   ProjectConfigForEdit,
   ProjectDomains,
   ProjectFile,
   ProjectGithubRepo,
+  ProjectOverview,
+  ProjectOverviewInstance,
+  ProjectOverviewSession,
   ProjectTemplate,
   ProjectWithSessions,
 } from "./services/project-services.js";

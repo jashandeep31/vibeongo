@@ -18,6 +18,48 @@ export type ProjectWithSessions = Project & {
   sessions: (typeof projectSessions.$inferSelect)[];
 };
 
+export type ProjectOverviewInstance = Pick<
+  typeof instances.$inferSelect,
+  | "id"
+  | "project_id"
+  | "project_session_id"
+  | "name"
+  | "state"
+  | "runtime_kind"
+  | "started_at"
+  | "terminates_at"
+>;
+
+export type ProjectOverviewSession = Pick<
+  typeof projectSessions.$inferSelect,
+  | "id"
+  | "project_id"
+  | "name"
+  | "description"
+  | "category"
+  | "started_at"
+  | "created_at"
+> & { instances: ProjectOverviewInstance[] };
+
+export type ProjectOverview = Pick<
+  Project,
+  "id" | "name" | "description" | "created_at"
+> & {
+  sessions: ProjectOverviewSession[];
+};
+
+export type GetProjectOverviewParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetProjectOverviewResponse = {
+  data: ProjectOverview[];
+  page: number;
+  limit: number;
+  hasNext: boolean;
+};
+
 export type DemoProject = {
   reponame: string;
   ownername: string;
@@ -123,6 +165,18 @@ export const getProjects =
     });
 
     return response.data.data;
+  };
+
+export const getProjectOverview =
+  (apiClient: AxiosInstance) =>
+  async (
+    params: GetProjectOverviewParams = {},
+  ): Promise<GetProjectOverviewResponse> => {
+    const response = await apiClient.get(`/api/v1/projects/overview`, {
+      params,
+      withCredentials: true,
+    });
+    return response.data;
   };
 
 export const getDemoProjects =
