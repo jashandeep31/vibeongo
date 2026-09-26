@@ -29,6 +29,13 @@
       "when": 1789887996384,
       "tag": "0003_harsh_lyja",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1790411400254,
+      "tag": "0004_nebulous_beast",
+      "breakpoints": true
     }
   ]
 }
