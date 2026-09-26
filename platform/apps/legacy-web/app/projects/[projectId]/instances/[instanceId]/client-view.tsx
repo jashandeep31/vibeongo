@@ -212,7 +212,7 @@ export default function ClientView({ instanceId }: { instanceId: string }) {
     ? `https://${vibeongoDomain}`
     : null;
   const sshCommand = instance?.public_ip
-    ? `ssh ubuntu@${String(Instance_IP)}`
+    ? `ssh vibe@${String(Instance_IP)}`
     : null;
   const opencodePassword = getOpencodePassword(instance?.config);
   const vibeongoLocalToken = getVibeongoLocalToken(instance?.config);

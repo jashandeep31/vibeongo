@@ -1,4 +1,7 @@
-import type { ProjectGithubRepo } from "@repo/api-client";
+import {
+  getRuntimeRepositoryDirectory,
+  type ProjectGithubRepo,
+} from "@repo/api-client";
 import { SymbolView } from "expo-symbols";
 import {
   ActivityIndicator,
@@ -22,11 +25,6 @@ type RepositoryDrawerProps = {
   repositories: ProjectGithubRepo[];
   visible: boolean;
 };
-
-function getRepositoryDirectory(fullName: string) {
-  const name = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
-  return `/home/ubuntu/code/${name}`;
-}
 
 export function RepositoryDrawer({
   error,
@@ -94,7 +92,7 @@ export function RepositoryDrawer({
               </ThemedText>
             ) : null}
             {repositories.map((repository) => {
-              const directory = getRepositoryDirectory(repository.full_name);
+              const directory = getRuntimeRepositoryDirectory(repository.full_name);
               return (
                 <Pressable
                   accessibilityRole="button"

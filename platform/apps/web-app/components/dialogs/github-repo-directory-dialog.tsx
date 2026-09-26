@@ -1,6 +1,9 @@
 "use client";
 
-import type { ProjectGithubRepo } from "@repo/api-client";
+import {
+  getRuntimeRepositoryDirectory,
+  type ProjectGithubRepo,
+} from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
@@ -20,14 +23,6 @@ type GithubRepoDirectoryDialogProps = {
   isError: boolean;
   onSelect: (directory: string) => void;
 };
-
-function getRepoName(fullName: string) {
-  return fullName.split("/").filter(Boolean).at(-1) ?? fullName;
-}
-
-function getRepoDirectory(fullName: string) {
-  return `/home/ubuntu/code/${getRepoName(fullName)}`;
-}
 
 export function GithubRepoDirectoryDialog({
   open,
@@ -64,7 +59,7 @@ export function GithubRepoDirectoryDialog({
             </p>
           ) : null}
           {repos.map((repo) => {
-            const directory = getRepoDirectory(repo.full_name);
+            const directory = getRuntimeRepositoryDirectory(repo.full_name);
 
             return (
               <button

@@ -31,7 +31,7 @@ const setupE2BSandbox = async (sandboxId: string, userData: string) => {
   await sandbox.commands.run(
     `echo '${encodedUserData}' | base64 -d > setup.sh && chmod +x setup.sh && ./setup.sh`,
     {
-      user: "ubuntu",
+      user: "vibe",
       timeoutMs: SETUP_TIMEOUT_MS,
       onStdout: (data: string): void => {
         process.stdout.write(data);
@@ -47,17 +47,17 @@ const setupDaytonaSandbox = async (sandboxId: string, userData: string) => {
     `
 set -euo pipefail
 
-printf '%s' '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh
-chmod 700 /home/ubuntu/setup.sh
-chown ubuntu:ubuntu /home/ubuntu/setup.sh
+printf '%s' '${encodedUserData}' | base64 -d > /home/vibe/setup.sh
+chmod 700 /home/vibe/setup.sh
+chown vibe:vibe /home/vibe/setup.sh
 
-runuser -u ubuntu -- bash -lc '
+runuser -u vibe -- bash -lc '
   sudo apt install jq -y
   echo "Running as: $(whoami)"
   echo "Home: $HOME"
 
   cd "$HOME"
-  bash /home/ubuntu/setup.sh
+  bash /home/vibe/setup.sh
 '
 `,
     undefined,
@@ -80,10 +80,10 @@ const setupVercelSandbox = async (sandboxId: string, userData: string) => {
   const encodedUserData = encodeUserData(userData);
   const setup = await sandbox.runCommand({
     cmd: "bash",
-    cwd: "/home/ubuntu",
+    cwd: "/home/vibe",
     args: [
       "-lc",
-      `echo '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh && chmod +x /home/ubuntu/setup.sh && /home/ubuntu/setup.sh`,
+      `echo '${encodedUserData}' | base64 -d > /home/vibe/setup.sh && chmod +x /home/vibe/setup.sh && /home/vibe/setup.sh`,
     ],
     timeoutMs: SETUP_TIMEOUT_MS,
   });

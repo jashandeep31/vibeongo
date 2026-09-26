@@ -156,7 +156,7 @@ export function ProjectSessionSettingsPage({
     ? new Date(instance.started_at).getTime()
     : Number.NaN;
   const sshCommand = instance?.public_ip
-    ? `ssh ubuntu@${instance.public_ip}`
+    ? `ssh vibe@${instance.public_ip}`
     : "";
 
   const copyValue = async (kind: "ip" | "ssh", value: string) => {

@@ -22,7 +22,7 @@ If the config is not compeltely configured then after updating the config ask th
 
 # VPS Environment
 
-Assume every VPS starts with Ubuntu, username `ubuntu`, home directory `/home/ubuntu`, and code directory `/home/ubuntu/code`. Docker is installed but has no containers. Node.js v24, Neovim, curl, and basic tools are available.
+Assume every VPS starts with Linux, username `vibe`, home directory `/home/vibe`, and code directory `/home/vibe/code`. Docker is installed but has no containers. Node.js v24, Neovim, curl, and basic tools are available.
 
 Do not assume anything else. If additional tools like databases, languages, or package managers are required, include them in `initialScript` or ask the user.
 
@@ -39,7 +39,7 @@ Always recommend VPS configurations with extra RAM and resources to support AI c
 All repositories are located at:
 
 ```text
-/home/ubuntu/code/REPO_NAME
+/home/vibe/code/REPO_NAME
 ```
 
 Always change into the repository directory before running any commands.
@@ -47,7 +47,7 @@ Always change into the repository directory before running any commands.
 Example:
 
 ```bash
-cd /home/ubuntu/code/my-project
+cd /home/vibe/code/my-project
 ```
 
 Never assume the current directory.
@@ -140,7 +140,7 @@ This script runs after repositories are cloned and repository setup scripts fini
 
 
 ```
-cd /home/ubuntu/code/REPO_NAME
+cd /home/vibe/code/REPO_NAME
 make devbuild
 ```
 
@@ -157,10 +157,10 @@ This script starts the development environment. It runs last in a tmux session. 
 Example:
 
 ```bash
-cd /home/ubuntu/code/backend
+cd /home/vibe/code/backend
 npm run dev
 ---
-cd /home/ubuntu/code/frontend
+cd /home/vibe/code/frontend
 npm run dev
 ```
 
@@ -271,7 +271,7 @@ If required information is missing, ask the user before generating the configura
 
 
 # Projectfile path 
-Repositories are cloned under `/home/ubuntu/code/`. Project file paths must start after `/home/ubuntu/code/`, so include the repository name as the first path segment. For example, if the repository is `my-app` and the file is in its `app` folder, use `/my-app/app`. Do not include `/home/ubuntu/code` in project file paths.
+Repositories are cloned under `/home/vibe/code/`. Project file paths must start after `/home/vibe/code/`, so include the repository name as the first path segment. For example, if the repository is `my-app` and the file is in its `app` folder, use `/my-app/app`. Do not include `/home/vibe/code` in project file paths.
 
 
 
@@ -295,7 +295,7 @@ When the user asks to change, add, fix, redesign, investigate, review, or otherw
 ## Repository context
 
 - Each repository has a `full_name` in the form `owner/repository-name`.
-- Its workspace path is `/home/ubuntu/code/repository-name`, where `repository-name` is the final segment of `full_name`.
+- Its workspace path is `/home/vibe/code/repository-name`, where `repository-name` is the final segment of `full_name`.
 - Include the selected repository's `full_name` and workspace path in every proposed task.
 - Use only repository IDs returned by `getProjectRepositories`; never invent a repository ID.
 - Never invent a repository, path, technology, file, or architecture detail.

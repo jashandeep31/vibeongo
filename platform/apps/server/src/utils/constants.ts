@@ -23,9 +23,9 @@ export const demoReposToFork = [
       name: "portfolio",
       description: "A Next.js portfolio website.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/portfolio
+      finalScript: `cd "$HOME/code/portfolio"
 npm install`,
-      devScript: `cd /home/ubuntu/code/portfolio
+      devScript: `cd "$HOME/code/portfolio"
 npm run dev`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
@@ -77,12 +77,12 @@ npm run dev`,
       description:
         "A Next.js blogging website backed by PostgreSQL and Drizzle.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/blogging-website
+      finalScript: `cd "$HOME/code/blogging-website"
 npm install
 npm run db:migrate
 npm run db:seed
 `,
-      devScript: `cd /home/ubuntu/code/blogging-website
+      devScript: `cd "$HOME/code/blogging-website"
 npm run dev`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
@@ -162,9 +162,9 @@ volumes:
       name: "env-manager",
       description: "A Next.js tool for comparing environment variable files.",
       initialScript: "",
-      finalScript: `cd /home/ubuntu/code/env-manager
+      finalScript: `cd "$HOME/code/env-manager"
 npm install`,
-      devScript: `cd /home/ubuntu/code/env-manager
+      devScript: `cd "$HOME/code/env-manager"
 npm run dev`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
