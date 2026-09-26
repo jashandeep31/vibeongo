@@ -31,7 +31,7 @@ export class DaytonaClient {
         networkBlockAll: false,
       },
       {
-        timeout: 30,
+        timeout: 180,
       },
     );
 
