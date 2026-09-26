@@ -9,6 +9,7 @@ import {
   bigint,
   text,
   uniqueIndex,
+  index,
 } from "drizzle-orm/pg-core";
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
@@ -42,7 +43,10 @@ export const accountStatus = pgEnum("account_status", [
 
 export const accounts = pgTable("accounts", {
   id: uuid().unique().defaultRandom(),
-  user_id: uuid().references(() => users.id).notNull().unique(),
+  user_id: uuid()
+    .references(() => users.id)
+    .notNull()
+    .unique(),
 
   provider: accountProviders().notNull(),
   provider_account_id: varchar({ length: 255 }).notNull().unique(),
@@ -58,15 +62,28 @@ export const accounts = pgTable("accounts", {
   updated_at: timestamp().defaultNow(),
 });
 
-export const usersApiKeys = pgTable("users_api_keys", {
-  id: uuid().unique().defaultRandom(),
-  user_id: uuid().references(() => users.id),
+export const USER_API_KEY_PREFIX = "vog_";
 
-  expires_at: timestamp().defaultNow(),
+export const usersApiKeys = pgTable(
+  "users_api_keys",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    user_id: uuid()
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
 
-  created_at: timestamp().defaultNow().notNull(),
-  updated_at: timestamp().defaultNow(),
-});
+    key_hash: varchar({ length: 64 }).notNull().unique(),
+    name: varchar({ length: 255 }).notNull(),
+
+    expires_at: timestamp(),
+    revoked_at: timestamp(),
+    last_used_at: timestamp(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow().notNull(),
+  },
+  (table) => [index("users_api_keys_user_id_idx").on(table.user_id)],
+);
 
 export const userLoginMethodEnum = pgEnum("user_login_method_enum", ["github"]);
 export const userLoginLogs = pgTable("user_login_logs", {
