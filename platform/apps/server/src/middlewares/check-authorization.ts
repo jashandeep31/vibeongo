@@ -1,12 +1,24 @@
-import { accounts, db, eq, userRoles, users } from "@repo/db";
+import {
+  accounts,
+  and,
+  db,
+  eq,
+  gt,
+  isNull,
+  or,
+  USER_API_KEY_PREFIX,
+  userRoles,
+  users,
+  usersApiKeys,
+} from "@repo/db";
+import { createHash } from "node:crypto";
 import { NextFunction, Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { env } from "../lib/env.js";
 import { clearSessionCookie } from "../lib/session-cookie.js";
 import { findWebSession } from "../lib/auth-session.js";
 
-const userRolesArray = [...userRoles.enumValues, "all"] as const;
-type UserRole = (typeof userRolesArray)[number];
+type AllowedCredential = (typeof userRoles.enumValues)[number] | "api_key";
 
 const failedToAuthenticate = (res: Response) => {
   clearSessionCookie(res);
@@ -15,7 +27,7 @@ const failedToAuthenticate = (res: Response) => {
   });
 };
 
-export const checkAuthorization = (allowedRoles: UserRole[]) => {
+export const checkAuthorization = (allowedRoles: AllowedCredential[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const sessionToken: unknown = req.cookies?.session;
     const authorizationHeader = req.get("authorization");
@@ -43,19 +55,67 @@ function appBasedAuthenticator(
   res: Response,
   next: NextFunction,
   authorizationHeader: string,
-  allowedRoles: UserRole[],
+  allowedRoles: AllowedCredential[],
 ) {
-  const [scheme, token, ...extraParts] = authorizationHeader.trim().split(/\s+/);
+  const [scheme, token, ...extraParts] = authorizationHeader
+    .trim()
+    .split(/\s+/);
+
+  if (scheme?.toLowerCase() !== "bearer" || !token || extraParts.length > 0) {
+    return failedToAuthenticate(res);
+  }
+
+  if (token.startsWith(USER_API_KEY_PREFIX)) {
+    return authenticateApiKey(req, res, next, token, allowedRoles);
+  }
+
+  return authenticateToken(req, res, next, token, allowedRoles);
+}
+
+async function authenticateApiKey(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+  token: string,
+  allowedRoles: AllowedCredential[],
+) {
+  const tokenHash = createHash("sha256").update(token).digest("hex");
+  const now = new Date();
+
+  const [apiKey] = await db
+    .update(usersApiKeys)
+    .set({ last_used_at: now })
+    .where(
+      and(
+        eq(usersApiKeys.key_hash, tokenHash),
+        isNull(usersApiKeys.revoked_at),
+        or(isNull(usersApiKeys.expires_at), gt(usersApiKeys.expires_at, now)),
+      ),
+    )
+    .returning({ userId: usersApiKeys.user_id });
+
+  if (!apiKey) return failedToAuthenticate(res);
+
+  if (!allowedRoles.includes("api_key")) {
+    return res.status(403).json({ error: "not authorized" });
+  }
+
+  const [userAndAccountRow] = await db
+    .select({ user: users, account: accounts })
+    .from(users)
+    .innerJoin(accounts, eq(accounts.user_id, users.id))
+    .where(eq(users.id, apiKey.userId));
 
   if (
-    scheme?.toLowerCase() !== "bearer" ||
-    !token ||
-    extraParts.length > 0
+    !userAndAccountRow ||
+    !userAndAccountRow.account.verified ||
+    userAndAccountRow.account.status !== "active"
   ) {
     return failedToAuthenticate(res);
   }
 
-  return authenticateToken(req, res, next, token, allowedRoles);
+  req.user = userAndAccountRow.user;
+  next();
 }
 
 async function authenticateWebSessionOrLegacyJwt(
@@ -63,7 +123,7 @@ async function authenticateWebSessionOrLegacyJwt(
   res: Response,
   next: NextFunction,
   token: string,
-  allowedRoles: UserRole[],
+  allowedRoles: AllowedCredential[],
 ) {
   const session = await findWebSession(token);
   if (session) {
@@ -79,19 +139,13 @@ function webBasedAuthenticator(
   res: Response,
   next: NextFunction,
   token: unknown,
-  allowedRoles: UserRole[],
+  allowedRoles: AllowedCredential[],
 ) {
   if (typeof token !== "string") {
     return failedToAuthenticate(res);
   }
 
-  return authenticateWebSessionOrLegacyJwt(
-    req,
-    res,
-    next,
-    token,
-    allowedRoles,
-  );
+  return authenticateWebSessionOrLegacyJwt(req, res, next, token, allowedRoles);
 }
 
 async function authenticateToken(
@@ -99,7 +153,7 @@ async function authenticateToken(
   res: Response,
   next: NextFunction,
   token: string,
-  allowedRoles: UserRole[],
+  allowedRoles: AllowedCredential[],
 ) {
   let id: string;
 
@@ -127,7 +181,7 @@ async function authenticateUser(
   res: Response,
   next: NextFunction,
   id: string,
-  allowedRoles: UserRole[],
+  allowedRoles: AllowedCredential[],
 ) {
   const [userAndAccountRow] = await db
     .select({ user: users, account: accounts })
@@ -146,7 +200,7 @@ async function authenticateUser(
     return failedToAuthenticate(res);
   }
 
-  if (!allowedRoles.includes("all") && !allowedRoles.includes(user.role)) {
+  if (user.role !== "admin" && !allowedRoles.includes(user.role)) {
     return res.status(403).json({
       error: "not authorized",
     });

@@ -6,6 +6,7 @@ export {
   useQueryClient,
 } from "@tanstack/react-query";
 export * from "./api-client-context.js";
+export * from "./hooks/use-api-keys.js";
 export * from "./hooks/use-chats.js";
 export * from "./hooks/use-github-repos.js";
 export * from "./hooks/use-instance.js";

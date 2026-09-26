@@ -75,7 +75,7 @@ app.use(
 
 // --- Health Check Route (For dev purposes) ---
 const START_TIME = Date.now();
-app.get("/", checkAuthorization(["all"]), (_req: Request, res: Response) => {
+app.get("/", checkAuthorization(["user"]), (_req: Request, res: Response) => {
   const diffMs = Date.now() - START_TIME;
   const totalSeconds = Math.floor(diffMs / 1000);
   const hours = Math.floor(totalSeconds / 3600);

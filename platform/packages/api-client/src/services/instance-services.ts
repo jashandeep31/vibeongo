@@ -1,5 +1,22 @@
 import type { AxiosInstance } from "axios";
 import { instances, instanceState } from "@repo/db";
+import { createInstanceSchema, type z } from "@repo/shared";
+
+export type CreateInstanceInput = z.input<typeof createInstanceSchema>;
+
+export type CreateInstanceResponse = {
+  message: string;
+  data: { sessionId: string };
+};
+
+export const createInstance =
+  (apiClient: AxiosInstance) =>
+  async (input: CreateInstanceInput): Promise<CreateInstanceResponse> => {
+    const response = await apiClient.post(`/api/v1/instances`, input, {
+      withCredentials: true,
+    });
+    return response.data;
+  };
 
 export type GetInstancesFilters = {
   projectId?: string;

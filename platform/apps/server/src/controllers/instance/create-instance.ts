@@ -10,15 +10,18 @@ export const createInstance = catchAsync(
     if (!user) throw new AppError("Authnatication is required", 400);
 
     const input = createInstanceSchema.parse(req.body);
-    await createProjectSessionInstance({
+    const { projectSession } = await createProjectSessionInstance({
       userId: user.id,
       input,
       runtime: input.runtime,
+      sessionCategory: "auto",
+      terminateSetting: "automation",
       assign_domains: true,
     });
 
     res.status(201).json({
-      message: "Successfully had created the project intance",
+      message: "Automated project session created and instance queued",
+      data: { sessionId: projectSession.id },
     });
   },
 );

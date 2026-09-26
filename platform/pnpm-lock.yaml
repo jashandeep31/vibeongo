@@ -89,7 +89,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.112)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
+        version: 5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.117)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
       '@repo/db':
         specifier: workspace:*
         version: link:../../packages/database
@@ -452,7 +452,7 @@ importers:
     dependencies:
       '@opencode/client':
         specifier: ^2.0.16
-        version: 2.0.16(effect@4.0.0-rc.112)
+        version: 2.0.16(effect@4.0.0-rc.117)
       '@repo/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -546,7 +546,7 @@ importers:
     dependencies:
       '@opencode/client':
         specifier: ^2.0.16
-        version: 2.0.16(effect@4.0.0-rc.112)
+        version: 2.0.16(effect@4.0.0-rc.117)
       '@repo/db':
         specifier: workspace:*
         version: link:../database
@@ -5541,6 +5541,9 @@ packages:
 
   effect@4.0.0-rc.112:
     resolution: {integrity: sha512-wXxwuh1Ywnv4cPRM3Wfa0vDwuOHnZ1TsTgHJkG9XgzND6inhBH9n1vBxhg3iIXOia/OrpmvVmd3lrD4vq6bF3A==}
+
+  effect@4.0.0-rc.117:
+    resolution: {integrity: sha512-UUyi9QiOW4nySFIBM3KnYbNMd9EZliOdKfBcyLD0mPMPheO2fkuXS5y0opjWc9oqzlJxPQICEGm8gGw3kh9j/w==}
 
   electron-to-chromium@1.5.434:
     resolution: {integrity: sha512-7EeFW9OLf1NN9NKQP9xdOE/XKqjxv7JDPP6AEAkHli11+Fae1OaLoNuAf13hQv1PPNtuES0pLQSPk2+fS3s8ww==}
@@ -11181,7 +11184,7 @@ snapshots:
       protobufjs: 7.6.6
       yargs: 17.7.3
 
-  '@hookform/resolvers@5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.112)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)':
+  '@hookform/resolvers@5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.117)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.88.0(react@19.3.0)
@@ -11189,7 +11192,7 @@ snapshots:
       '@sinclair/typebox': 0.34.52
       '@standard-schema/spec': 1.1.0
       ajv: 8.20.0
-      effect: 4.0.0-rc.112
+      effect: 4.0.0-rc.117
       zod: 4.6.5
 
   '@humanfs/core@0.19.2':
@@ -11638,12 +11641,12 @@ snapshots:
       '@octokit/request-error': 7.1.2
       '@octokit/webhooks-methods': 6.0.0
 
-  '@opencode/client@2.0.16(effect@4.0.0-rc.112)':
+  '@opencode/client@2.0.16(effect@4.0.0-rc.117)':
     dependencies:
       '@opencode/protocol': 2.0.16
       '@opencode/schema': 2.0.16
     optionalDependencies:
-      effect: 4.0.0-rc.112
+      effect: 4.0.0-rc.117
 
   '@opencode/protocol@2.0.16':
     dependencies:
@@ -13523,7 +13526,7 @@ snapshots:
 
   '@types/pg@8.23.1':
     dependencies:
-      '@types/node': 22.20.4
+      '@types/node': 26.6.2
       pg-protocol: 1.16.0
       pg-types: 2.2.0
 
@@ -14833,6 +14836,9 @@ snapshots:
     dependencies:
       fast-check: 4.10.2
       msgpackr: 2.1.0
+
+  effect@4.0.0-rc.117:
+    optional: true
 
   electron-to-chromium@1.5.434: {}
 

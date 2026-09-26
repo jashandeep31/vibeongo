@@ -1,5 +1,7 @@
 import { Router } from "express";
 import { createProject } from "../controllers/project/create-project.js";
+import { getProjectOverview } from "../controllers/project/project-overview.js";
+import { getProjectWithDetails } from "../controllers/project/project-with-details.js";
 import {
   createProjectFromTemplate,
   getProjectTemplates,
@@ -35,63 +37,69 @@ const routes: Router = Router();
 
 routes
   .route("/")
-  .post(checkAuthorization(["all"]), createProject)
-  .get(checkAuthorization(["all"]), getProjects);
+  .post(checkAuthorization(["user"]), createProject)
+  .get(checkAuthorization(["user"]), getProjects);
 routes
   .route("/from-template")
-  .post(checkAuthorization(["all"]), createProjectFromTemplate);
+  .post(checkAuthorization(["user"]), createProjectFromTemplate);
 routes
   .route("/templates")
-  .get(checkAuthorization(["all"]), getProjectTemplates);
+  .get(checkAuthorization(["user"]), getProjectTemplates);
 routes
   .route("/with-sessions")
-  .get(checkAuthorization(["all"]), getProjectsWithSessions);
+  .get(checkAuthorization(["user"]), getProjectsWithSessions);
+routes
+  .route("/overview")
+  .get(checkAuthorization(["user", "api_key"]), getProjectOverview);
 routes
   .route("/demo-projects")
-  .get(checkAuthorization(["all"]), getDemoProjects);
+  .get(checkAuthorization(["user"]), getDemoProjects);
 routes
   .route("/demo-projects/import")
-  .post(checkAuthorization(["all"]), importDemoProjects);
+  .post(checkAuthorization(["user"]), importDemoProjects);
 routes
   .route("/:id")
-  .get(checkAuthorization(["all"]), getProjectById)
-  .patch(checkAuthorization(["all"]), updateProjectById)
-  .delete(checkAuthorization(["all"]), deleteProjectById);
+  .get(checkAuthorization(["user"]), getProjectById)
+  .patch(checkAuthorization(["user"]), updateProjectById)
+  .delete(checkAuthorization(["user"]), deleteProjectById);
 routes
   .route("/:id/get-project-config")
-  .get(checkAuthorization(["all"]), getProjectConfigForEdit);
+  .get(checkAuthorization(["user"]), getProjectConfigForEdit);
+routes
+  .route("/:id/details")
+  .get(checkAuthorization(["user", "api_key"]), getProjectWithDetails);
 
 routes
   .route("/:id/domains")
-  .get(checkAuthorization(["all"]), getProjectDomainsById);
+  .get(checkAuthorization(["user"]), getProjectDomainsById);
 routes
   .route("/:id/github-repos")
-  .get(checkAuthorization(["all"]), getProjectGithubReposById);
+  .get(checkAuthorization(["user"]), getProjectGithubReposById);
 routes
   .route("/:id/domains/:domainId")
-  .patch(checkAuthorization(["all"]), updateProxyDomain);
+  .patch(checkAuthorization(["user"]), updateProxyDomain);
 routes
   .route("/:id/routing/target-instance")
-  .patch(checkAuthorization(["all"]), updateProjectRoutingTargetInstance);
+  .patch(checkAuthorization(["user"]), updateProjectRoutingTargetInstance);
 
 routes
   .route("/:id/allowed-ips")
-  .post(checkAuthorization(["all"]), addAllowedIPToProject);
+  .post(checkAuthorization(["user"]), addAllowedIPToProject);
 routes
   .route("/:id/allowed-ips/:ipId")
-  .delete(checkAuthorization(["all"]), deleteAllowedIPFromProject);
+  .delete(checkAuthorization(["user"]), deleteAllowedIPFromProject);
 
 routes
   .route("/:id/allowed-ips")
-  .delete(checkAuthorization(["all"]), deleteMultipleIpFromProject);
+  .delete(checkAuthorization(["user"]), deleteMultipleIpFromProject);
 
 routes
   .route("/:id/project-files")
-  .get(checkAuthorization(["all"]), getProjectFiles)
-  .post(checkAuthorization(["all"]), createProjectFile);
+  .get(checkAuthorization(["user"]), getProjectFiles)
+  .post(checkAuthorization(["user"]), createProjectFile);
 routes
   .route("/:id/project-files/:fileId")
-  .patch(checkAuthorization(["all"]), updateProjectFile)
-  .delete(checkAuthorization(["all"]), deleteProjectFile);
+  .patch(checkAuthorization(["user"]), updateProjectFile)
+  .delete(checkAuthorization(["user"]), deleteProjectFile);
 
 export const projectRoutes = routes;

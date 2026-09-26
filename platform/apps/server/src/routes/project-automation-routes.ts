@@ -24,39 +24,39 @@ const routes: Router = Router();
 
 routes
   .route("/")
-  .get(checkAuthorization(["all"]), getProjectAutomations)
-  .post(checkAuthorization(["all"]), createProjectAutomation);
+  .get(checkAuthorization(["user"]), getProjectAutomations)
+  .post(checkAuthorization(["user"]), createProjectAutomation);
 
 routes
   .route("/:id")
-  .get(checkAuthorization(["all"]), getProjectAutomation)
-  .patch(checkAuthorization(["all"]), updateProjectAutomation)
-  .delete(checkAuthorization(["all"]), deleteProjectAutomation);
+  .get(checkAuthorization(["user"]), getProjectAutomation)
+  .patch(checkAuthorization(["user"]), updateProjectAutomation)
+  .delete(checkAuthorization(["user"]), deleteProjectAutomation);
 
 routes
   .route("/:id/runs")
-  .get(checkAuthorization(["all"]), getProjectAutomationRuns);
+  .get(checkAuthorization(["user"]), getProjectAutomationRuns);
 
 routes
   .route("/:id/runs/:runId/rating")
-  .patch(checkAuthorization(["all"]), rateProjectAutomationRun);
+  .patch(checkAuthorization(["user"]), rateProjectAutomationRun);
 
 routes
   .route("/:id/trigger")
-  .post(checkAuthorization(["all"]), triggerProjectAutomationManually);
+  .post(checkAuthorization(["user"]), triggerProjectAutomationManually);
 
 routes
   .route("/:id/triggers")
-  .get(checkAuthorization(["all"]), getProjectAutomationTriggers)
-  .post(checkAuthorization(["all"]), createProjectAutomationTrigger);
+  .get(checkAuthorization(["user"]), getProjectAutomationTriggers)
+  .post(checkAuthorization(["user"]), createProjectAutomationTrigger);
 
 routes
   .route("/:id/triggers/:triggerId/rotate-token")
-  .post(checkAuthorization(["all"]), rotateProjectAutomationTriggerToken);
+  .post(checkAuthorization(["user"]), rotateProjectAutomationTriggerToken);
 
 routes
   .route("/:id/triggers/:triggerId")
-  .get(checkAuthorization(["all"]), getProjectAutomationTrigger)
-  .delete(checkAuthorization(["all"]), deleteProjectAutomationTrigger);
+  .get(checkAuthorization(["user"]), getProjectAutomationTrigger)
+  .delete(checkAuthorization(["user"]), deleteProjectAutomationTrigger);
 
 export const projectAutomationRoutes = routes;

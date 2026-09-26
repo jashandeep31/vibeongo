@@ -2,6 +2,7 @@ import {
   gitRepos,
   instances,
   instanceRegions,
+  instanceTypes,
   projectDomainRouting,
   projectFileData,
   projectFiles,
@@ -9,6 +10,7 @@ import {
   projectSessions,
   proxyDomains,
   routingAllowedIps,
+  sandboxTypes,
 } from "@repo/db";
 import { projectConfigValidator, type z } from "@repo/shared";
 import type { AxiosInstance } from "axios";
@@ -16,6 +18,90 @@ import type { AxiosInstance } from "axios";
 export type Project = typeof projects.$inferSelect;
 export type ProjectWithSessions = Project & {
   sessions: (typeof projectSessions.$inferSelect)[];
+};
+
+export type ProjectOverviewInstance = Pick<
+  typeof instances.$inferSelect,
+  | "id"
+  | "project_id"
+  | "project_session_id"
+  | "name"
+  | "state"
+  | "runtime_kind"
+  | "started_at"
+  | "terminates_at"
+>;
+
+export type ProjectOverviewSession = Pick<
+  typeof projectSessions.$inferSelect,
+  | "id"
+  | "project_id"
+  | "name"
+  | "description"
+  | "category"
+  | "started_at"
+  | "created_at"
+> & { instances: ProjectOverviewInstance[] };
+
+export type ProjectOverview = Pick<
+  Project,
+  "id" | "name" | "description" | "created_at"
+> & {
+  sessions: ProjectOverviewSession[];
+};
+
+export type GetProjectOverviewParams = {
+  page?: number;
+  limit?: number;
+};
+
+export type GetProjectOverviewResponse = {
+  data: ProjectOverview[];
+  page: number;
+  limit: number;
+  hasNext: boolean;
+};
+
+export type ProjectWithDetails = Pick<
+  Project,
+  "id" | "name" | "description" | "overview"
+> & {
+  createdAt: Project["created_at"];
+  updatedAt: Project["updated_at"];
+  deployment: {
+    vm:
+      | (Pick<
+          typeof instanceTypes.$inferSelect,
+          "id" | "name" | "provider" | "cpu" | "ram" | "region_id"
+        > & { region_name: string | null })
+      | null;
+    sandbox:
+      | (Pick<
+          typeof sandboxTypes.$inferSelect,
+          "id" | "name" | "provider" | "cpu" | "ram"
+        > & { region_id: string | null; region_name: string | null })
+      | null;
+  };
+  repositories: Array<
+    Pick<
+      typeof gitRepos.$inferSelect,
+      "id" | "full_name" | "type" | "public" | "overview"
+    > & { setupScriptConfigured: boolean }
+  >;
+  sshKeys: Array<{ id: string; name: string }>;
+  configuration: {
+    ports: z.infer<typeof projectConfigValidator>["config"]["ports"];
+    packages: Array<
+      | { name: "docker"; containers: string[] }
+      | { name: "opencode"; useUserConfig: boolean; model: string }
+      | { name: "codex" | "pi" | "fx"; useUserConfig: boolean }
+    >;
+  };
+  scripts: {
+    initialConfigured: boolean;
+    finalConfigured: boolean;
+    devConfigured: boolean;
+  };
 };
 
 export type DemoProject = {
@@ -122,6 +208,28 @@ export const getProjects =
       withCredentials: true,
     });
 
+    return response.data.data;
+  };
+
+export const getProjectOverview =
+  (apiClient: AxiosInstance) =>
+  async (
+    params: GetProjectOverviewParams = {},
+  ): Promise<GetProjectOverviewResponse> => {
+    const response = await apiClient.get(`/api/v1/projects/overview`, {
+      params,
+      withCredentials: true,
+    });
+    return response.data;
+  };
+
+export const getProjectWithDetails =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<ProjectWithDetails> => {
+    const response = await apiClient.get(
+      `/api/v1/projects/${encodeURIComponent(id)}/details`,
+      { withCredentials: true },
+    );
     return response.data.data;
   };
 

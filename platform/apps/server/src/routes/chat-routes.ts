@@ -8,10 +8,10 @@ import {
 
 const routes: Router = Router();
 
-routes.route("/").get(checkAuthorization(["all"]), getUserChats);
+routes.route("/").get(checkAuthorization(["user"]), getUserChats);
 routes
   .route("/:id")
-  .patch(checkAuthorization(["all"]), renameChat)
-  .delete(checkAuthorization(["all"]), deleteChat);
+  .patch(checkAuthorization(["user"]), renameChat)
+  .delete(checkAuthorization(["user"]), deleteChat);
 
 export const chatRoutes = routes;

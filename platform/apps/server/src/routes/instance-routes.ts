@@ -11,11 +11,11 @@ import { terminateByIdInstance } from "../controllers/instance/terminate-by-id-i
 const routes: Router = Router();
 routes
   .route("/")
-  .post(checkAuthorization(["all"]), createInstance)
-  .get(checkAuthorization(["all"]), getUserInstances);
+  .post(checkAuthorization(["user", "api_key"]), createInstance)
+  .get(checkAuthorization(["user"]), getUserInstances);
 routes
   .route("/:id")
-  .get(checkAuthorization(["all"]), getInstanceById)
-  .post(checkAuthorization(["all"]), terminateByIdInstance)
-  .patch(checkAuthorization(["all"]), updateInstanceById);
+  .get(checkAuthorization(["user"]), getInstanceById)
+  .post(checkAuthorization(["user"]), terminateByIdInstance)
+  .patch(checkAuthorization(["user"]), updateInstanceById);
 export const instanceRoutes = routes;

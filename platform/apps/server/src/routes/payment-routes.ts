@@ -6,6 +6,6 @@ const routes: Router = Router();
 
 routes
   .route("/add-credits")
-  .post(checkAuthorization(["all"]), getDodoPaymentCheckoutUrl);
+  .post(checkAuthorization(["user"]), getDodoPaymentCheckoutUrl);
 
 export const paymentRoutes = routes;

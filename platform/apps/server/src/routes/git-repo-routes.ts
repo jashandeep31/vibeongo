@@ -21,46 +21,46 @@ import {
 const routes: Router = Router();
 routes
   .route("/")
-  .post(checkAuthorization(["all"]), createGithubRepo)
-  .get(checkAuthorization(["all"]), getUserGitRepos);
+  .post(checkAuthorization(["user"]), createGithubRepo)
+  .get(checkAuthorization(["user"]), getUserGitRepos);
 
 routes
   .route("/forgejo")
-  .post(checkAuthorization(["all"]), createForgejoRepoController);
+  .post(checkAuthorization(["user"]), createForgejoRepoController);
 
 routes
   .route("/access-tokens")
-  .get(checkAuthorization(["all"]), getUserGitRepoAccessTokens);
+  .get(checkAuthorization(["user"]), getUserGitRepoAccessTokens);
 
 routes
   .route("/access-tokens/:id")
-  .delete(checkAuthorization(["all"]), revokeUserGitRepoAccessToken);
+  .delete(checkAuthorization(["user"]), revokeUserGitRepoAccessToken);
 
 routes
   .route("/:id/activity")
-  .get(checkAuthorization(["all"]), getGitRepoPrOrIssues);
+  .get(checkAuthorization(["user"]), getGitRepoPrOrIssues);
 
 routes
   .route("/:id/activity/:type/:number")
-  .get(checkAuthorization(["all"]), getGitRepoPrOrIssueDetails);
+  .get(checkAuthorization(["user"]), getGitRepoPrOrIssueDetails);
 
 routes
   .route("/:id")
-  .get(checkAuthorization(["all"]), getGitRepoById)
-  .delete(checkAuthorization(["all"]), deleteGithubRepo)
-  .post(checkAuthorization(["all"]), updateGithubRepoById);
+  .get(checkAuthorization(["user"]), getGitRepoById)
+  .delete(checkAuthorization(["user"]), deleteGithubRepo)
+  .post(checkAuthorization(["user"]), updateGithubRepoById);
 
 routes
   .route("/:id/issue/:issueNumber")
-  .post(checkAuthorization(["all"]), workOnIssueByIssueId);
+  .post(checkAuthorization(["user"]), workOnIssueByIssueId);
 routes
   .route("/:id/pull-request/:prNumber")
-  .post(checkAuthorization(["all"]), workOnPullRequestByPrNumber);
+  .post(checkAuthorization(["user"]), workOnPullRequestByPrNumber);
 
 routes
   .route("/:id/schedule-overview")
   .post(
-    checkAuthorization(["all"]),
+    checkAuthorization(["user"]),
     (_req, _res, next) =>
       next(
         new AppError("Repository overview feature is currently disabled", 503, {
