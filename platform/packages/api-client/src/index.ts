@@ -41,6 +41,7 @@ export type {
 export * from "./services/proxy-auth.js";
 export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
+export * from "./services/runtime-paths.js";
 export type { Chat } from "./services/chat-services.js";
 export type {
   ApiKey,

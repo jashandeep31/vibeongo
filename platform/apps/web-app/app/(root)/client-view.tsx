@@ -29,7 +29,7 @@ import {
   useArchiveProjectSession,
   useResumeProjectSession,
 } from "@repo/api-hooks";
-import type { Chat } from "@repo/api-client";
+import { getRuntimeRepositoryDirectory, type Chat } from "@repo/api-client";
 import { useDeleteChat, useGetVibeongoChats } from "@repo/api-hooks";
 import {
   useProjectsStore,
@@ -63,11 +63,6 @@ import { toast } from "sonner";
 type SessionEntry = ReturnType<
   typeof useSessionsStore.getState
 >["sessions"][number];
-
-function getRepoDirectory(fullName: string) {
-  const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
-  return `/home/ubuntu/code/${repoName}`;
-}
 
 function getRunningSessionUrl(entry: SessionEntry, directory: string) {
   if (!entry.instance) return null;
@@ -137,7 +132,7 @@ function SessionRow({
     const [onlyRepo] = repos;
 
     if (result.isSuccess && repos.length === 1 && onlyRepo) {
-      openDirectory(getRepoDirectory(onlyRepo.full_name));
+      openDirectory(getRuntimeRepositoryDirectory(onlyRepo.full_name));
     } else {
       setIsRepoDialogOpen(true);
     }

@@ -1,4 +1,4 @@
-import type { Project } from "@repo/api-client";
+import { getRuntimeRepositoryDirectory, type Project } from "@repo/api-client";
 import {
   useArchiveProjectSession,
   useDeleteProject,
@@ -176,10 +176,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     if (repositories.length === 1) {
       const repository = repositories[0];
       if (!repository) return;
-      const name =
-        repository.full_name.split("/").filter(Boolean).at(-1) ??
-        repository.full_name;
-      openNewChat(`/home/ubuntu/code/${name}`);
+      openNewChat(getRuntimeRepositoryDirectory(repository.full_name));
       return;
     }
 

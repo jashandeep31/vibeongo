@@ -23,7 +23,11 @@ import {
   useResumeProjectSession,
 } from "@repo/api-hooks";
 import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
-import { getOpencodePassword, type Session } from "@repo/api-client";
+import {
+  getOpencodePassword,
+  getRuntimeRepositoryDirectory,
+  type Session,
+} from "@repo/api-client";
 import {
   Collapsible,
   CollapsibleContent,
@@ -181,11 +185,6 @@ function RunningSessionButtonContent({
   );
 }
 
-function getRepoDirectory(fullName: string) {
-  const repoName = fullName.split("/").filter(Boolean).at(-1) ?? fullName;
-  return `/home/ubuntu/code/${repoName}`;
-}
-
 function ProjectSessionNavItem({
   session,
   isResumePending,
@@ -261,7 +260,7 @@ function ProjectSessionNavItem({
     const [onlyRepo] = repos;
 
     if (result.isSuccess && repos.length === 1 && onlyRepo) {
-      handleRepoSelect(getRepoDirectory(onlyRepo.full_name));
+      handleRepoSelect(getRuntimeRepositoryDirectory(onlyRepo.full_name));
     } else {
       setIsRepoDialogOpen(true);
     }

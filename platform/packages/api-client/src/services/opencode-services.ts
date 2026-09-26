@@ -20,6 +20,7 @@ import type {
   OpencodeError,
 } from "./opencode-types.js";
 import { normalizeOpencodeError } from "./opencode-errors.js";
+import { isRuntimeRepositoryDirectory } from "./runtime-paths.js";
 import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
@@ -2057,7 +2058,7 @@ export async function createOpencodeSession(
   directory?: string,
   password?: string,
 ) {
-  if (directory && !/^\/home\/ubuntu\/code\/[A-Za-z0-9._-]+$/.test(directory)) {
+  if (directory && !isRuntimeRepositoryDirectory(directory)) {
     throw new Error("Invalid repository directory");
   }
 

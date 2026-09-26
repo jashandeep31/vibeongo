@@ -47,17 +47,17 @@ const setupDaytonaSandbox = async (sandboxId: string, userData: string) => {
     `
 set -euo pipefail
 
-printf '%s' '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh
-chmod 700 /home/ubuntu/setup.sh
-chown ubuntu:ubuntu /home/ubuntu/setup.sh
+printf '%s' '${encodedUserData}' | base64 -d > /home/vibe/setup.sh
+chmod 700 /home/vibe/setup.sh
+chown vibe:vibe /home/vibe/setup.sh
 
-runuser -u ubuntu -- bash -lc '
+runuser -u vibe -- bash -lc '
   sudo apt install jq -y
   echo "Running as: $(whoami)"
   echo "Home: $HOME"
 
   cd "$HOME"
-  bash /home/ubuntu/setup.sh
+  bash /home/vibe/setup.sh
 '
 `,
     undefined,
