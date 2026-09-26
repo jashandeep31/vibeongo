@@ -14,7 +14,7 @@ source /home/_USERNAME_/.bashrc`)
 
 	// Modifying script to clone the git repos at the required locations
 	utils.AppendToBashScript(&script, GenerateGitCloneScript(cfg.Repos))
-	cmd := utils.ExecCommand(utils.SudoUbuntuLoginShell, script)
+	cmd := utils.ExecCommand(utils.SudoLoginShell, script)
 
 	// Direct cmd output need better way to handle logs
 	cmd.Stdout = os.Stdout

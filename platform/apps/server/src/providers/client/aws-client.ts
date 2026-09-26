@@ -82,7 +82,7 @@ export class AWSClient {
       UserData: Buffer.from(userData).toString("base64"),
       BlockDeviceMappings: [
         {
-          DeviceName: "/dev/sda1", // root volume device name for Ubuntu AMIs
+          DeviceName: "/dev/sda1", // root volume device name for the configured AMI
           Ebs: {
             VolumeSize: 20, // GB
             VolumeType: "gp3",

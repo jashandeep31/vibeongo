@@ -129,7 +129,7 @@ export function RuntimePulseMenu({
   const cpuPercent = normalizePercent(runtime.stats?.cpu_percent);
   const memoryPercent = normalizePercent(runtime.stats?.used_percent);
   const sshCommand = instance.public_ip
-    ? `ssh ubuntu@${instance.public_ip}`
+    ? `ssh vibe@${instance.public_ip}`
     : null;
 
   const copyValue = async (kind: "ip" | "ssh", value: string | null) => {

@@ -76,7 +76,7 @@ func ProvisionT3Code(cfg config.Config) error {
 			return fmt.Errorf("failed to create project directory %q: %w", projectFolderPath, err)
 		}
 
-		cmd := utils.ExecCommand(utils.SudoUbuntuInterativeShell, "t3 project add "+projectFolderPath)
+		cmd := utils.ExecCommand(utils.SudoInteractiveShell, "t3 project add "+projectFolderPath)
 		output, err := cmd.Output()
 		if err != nil {
 			fmt.Println(err, "failed to add project to t3")

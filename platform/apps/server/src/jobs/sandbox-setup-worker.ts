@@ -80,10 +80,10 @@ const setupVercelSandbox = async (sandboxId: string, userData: string) => {
   const encodedUserData = encodeUserData(userData);
   const setup = await sandbox.runCommand({
     cmd: "bash",
-    cwd: "/home/ubuntu",
+    cwd: "/home/vibe",
     args: [
       "-lc",
-      `echo '${encodedUserData}' | base64 -d > /home/ubuntu/setup.sh && chmod +x /home/ubuntu/setup.sh && /home/ubuntu/setup.sh`,
+      `echo '${encodedUserData}' | base64 -d > /home/vibe/setup.sh && chmod +x /home/vibe/setup.sh && /home/vibe/setup.sh`,
     ],
     timeoutMs: SETUP_TIMEOUT_MS,
   });
