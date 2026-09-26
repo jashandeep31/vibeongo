@@ -14,11 +14,13 @@
     "typescript": "5.9.2"
   },
   "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
     "@repo/api-client": "workspace:^",
     "@repo/shared": "workspace:^",
     "@types/node": "^26.6.3",
     "commander": "12.1.0",
     "effect": "4.0.0-rc.117",
-    "keytar": "7.9.0"
+    "keytar": "7.9.0",
+    "zod": "^4.6.5"
   }
 }

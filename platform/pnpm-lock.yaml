@@ -29,6 +29,9 @@ importers:
 
   apps/cli:
     dependencies:
+      '@modelcontextprotocol/server':
+        specifier: ^2.1.0
+        version: 2.1.0
       '@repo/api-client':
         specifier: workspace:^
         version: link:../../packages/api-client
@@ -47,6 +50,9 @@ importers:
       keytar:
         specifier: 7.9.0
         version: 7.9.0
+      zod:
+        specifier: ^4.6.5
+        version: 4.6.5
     devDependencies:
       typescript:
         specifier: 5.9.2
@@ -114,7 +120,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.112)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
+        version: 5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.117)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
       '@repo/db':
         specifier: workspace:*
         version: link:../../packages/database
@@ -477,7 +483,7 @@ importers:
     dependencies:
       '@opencode/client':
         specifier: ^2.0.16
-        version: 2.0.16(effect@4.0.0-rc.112)
+        version: 2.0.16(effect@4.0.0-rc.117)
       '@repo/api-client':
         specifier: workspace:*
         version: link:../../packages/api-client
@@ -571,7 +577,7 @@ importers:
     dependencies:
       '@opencode/client':
         specifier: ^2.0.16
-        version: 2.0.16(effect@4.0.0-rc.112)
+        version: 2.0.16(effect@4.0.0-rc.117)
       '@repo/db':
         specifier: workspace:*
         version: link:../database
@@ -2421,6 +2427,14 @@ packages:
 
   '@mdx-js/mdx@3.1.1':
     resolution: {integrity: sha512-f6ZO2ifpwAQIpzGWaBQT2TXxPv6z3RBzQKpVftEWN78Vl/YweF1uwussDx8ECAXVtr3Rs89fKyG9YlzUs9DyGQ==}
+
+  '@modelcontextprotocol/core@2.1.0':
+    resolution: {integrity: sha512-YdFj5gMRHr0gYNAhTbQDgjLHiEJdIAUYxomhKseUNye7ZGlISQmUoLh2sveFFCiQ7j2YMffT1kgSND0FSfIFjQ==}
+    engines: {node: '>=20'}
+
+  '@modelcontextprotocol/server@2.1.0':
+    resolution: {integrity: sha512-FdvwZU5N03O77Suh35JqjAqq5R1ZTEPFtwu6N4BgBq28qrQtrCnpbLL5U2pwYCuE194jAw0xnlOVmIqhfoYuUQ==}
+    engines: {node: '>=20'}
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     resolution: {integrity: sha512-LCkGo6JDfaBhgST7UpPWgNgLINpcpabaHfyz5OBx75nUYxBsaEPxjnyNjWpeb/xBup/682QnBfRBy2/LvPutZQ==}
@@ -11295,7 +11309,7 @@ snapshots:
       protobufjs: 7.6.6
       yargs: 17.7.3
 
-  '@hookform/resolvers@5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.112)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)':
+  '@hookform/resolvers@5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.0-rc.117)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.88.0(react@19.3.0)
@@ -11303,7 +11317,7 @@ snapshots:
       '@sinclair/typebox': 0.34.52
       '@standard-schema/spec': 1.1.0
       ajv: 8.20.0
-      effect: 4.0.0-rc.112
+      effect: 4.0.0-rc.117
       zod: 4.6.5
 
   '@humanfs/core@0.19.2':
@@ -11509,6 +11523,15 @@ snapshots:
       vfile: 6.0.3
     transitivePeerDependencies:
       - supports-color
+
+  '@modelcontextprotocol/core@2.1.0':
+    dependencies:
+      zod: 4.6.5
+
+  '@modelcontextprotocol/server@2.1.0':
+    dependencies:
+      '@modelcontextprotocol/core': 2.1.0
+      zod: 4.6.5
 
   '@msgpackr-extract/msgpackr-extract-darwin-arm64@3.0.4':
     optional: true
@@ -11752,12 +11775,12 @@ snapshots:
       '@octokit/request-error': 7.1.2
       '@octokit/webhooks-methods': 6.0.0
 
-  '@opencode/client@2.0.16(effect@4.0.0-rc.112)':
+  '@opencode/client@2.0.16(effect@4.0.0-rc.117)':
     dependencies:
       '@opencode/protocol': 2.0.16
       '@opencode/schema': 2.0.16
     optionalDependencies:
-      effect: 4.0.0-rc.112
+      effect: 4.0.0-rc.117
 
   '@opencode/protocol@2.0.16':
     dependencies:
