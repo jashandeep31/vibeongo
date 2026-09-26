@@ -53,6 +53,7 @@
     "typescript": "~6.0.3"
   },
   "scripts": {
+    "postinstall": "if [ -n \"$EAS_BUILD\" ]; then cd ../.. && pnpm run build; fi",
     "start": "expo start",
     "reset-project": "node ./scripts/reset-project.js",
     "android": "expo run:android",
