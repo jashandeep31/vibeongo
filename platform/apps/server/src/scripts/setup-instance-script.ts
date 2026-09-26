@@ -15,14 +15,13 @@ export const setupInstanceScript = ({
   projectSessionId,
   instanceId,
   terminate = false,
-  username = "ubuntu",
+  username = "vibe",
 }: SetupInstanceScriptOptions): string => {
   return `#!/usr/bin/env bash
-set -euxo pipefail
-mkdir -p /home/ubuntu/.logs
-exec > /home/ubuntu/.logs/vibeongo.log 2>&1
-
+set -euo pipefail
 USER_HOME="/home/${username}"
+mkdir -p "$USER_HOME/.logs"
+exec > "$USER_HOME/.logs/vibeongo.log" 2>&1
 
 setup_ssh() {
   mkdir -p "$USER_HOME/.ssh"
@@ -38,7 +37,7 @@ setup_ssh
 # Create ${username} user script
 cat <<SCRIPT > /tmp/${username}-setup.sh
 #!/usr/bin/env bash
-set -euxo pipefail
+set -euo pipefail
 
 git config --global user.email "hi@jashan.dev"
 git config --global user.name "vibeongo"

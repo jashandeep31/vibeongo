@@ -24,6 +24,9 @@ BINARY_PATH="/usr/local/bin/$APP"
 ${downloadBinary}
 
 if [[ "$(cat /proc/1/comm)" == "systemd" ]]; then
+  SERVICE_USER="$(id -un)"
+  SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
+
   sudo tee /etc/systemd/system/vibeongo.service > /dev/null <<EOF
 [Unit]
 Description=Vibeongo Service
@@ -31,8 +34,8 @@ After=network.target
 
 [Service]
 Type=simple
-User=ubuntu
-Environment="HOME=/home/ubuntu"
+User=$SERVICE_USER
+Environment="HOME=$SERVICE_HOME"
 ExecStart=/usr/local/bin/vibeongo serve
 Restart=always
 RestartSec=3

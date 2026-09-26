@@ -31,7 +31,7 @@ const setupE2BSandbox = async (sandboxId: string, userData: string) => {
   await sandbox.commands.run(
     `echo '${encodedUserData}' | base64 -d > setup.sh && chmod +x setup.sh && ./setup.sh`,
     {
-      user: "ubuntu",
+      user: "vibe",
       timeoutMs: SETUP_TIMEOUT_MS,
       onStdout: (data: string): void => {
         process.stdout.write(data);
