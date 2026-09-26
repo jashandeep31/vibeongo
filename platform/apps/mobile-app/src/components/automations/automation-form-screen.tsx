@@ -395,7 +395,7 @@ export function AutomationFormScreen({
                         </ThemedText>
                       </Pressable>
                     </View>
-                    <Field label="Path from code dir">
+                    <Field label="Path from workspace">
                       <TextInput
                         autoCapitalize="none"
                         autoCorrect={false}

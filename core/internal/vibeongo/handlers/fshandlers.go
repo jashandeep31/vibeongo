@@ -39,7 +39,7 @@ type FileListResponse struct {
 func GetListOfDirsAndFiles(c *echo.Context) error {
 	requestPath := c.QueryParam("path")
 	if requestPath == "" {
-		requestPath = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+		requestPath = utils.WorkspaceDirectory()
 	}
 
 	entries, err := os.ReadDir(requestPath)
@@ -262,7 +262,7 @@ func SearchFiles(c *echo.Context) error {
 
 	basePath := strings.TrimSpace(c.QueryParam("path"))
 	if basePath == "" {
-		basePath = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+		basePath = utils.WorkspaceDirectory()
 	}
 	basePath = filepath.Clean(basePath)
 

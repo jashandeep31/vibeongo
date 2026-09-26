@@ -19,7 +19,7 @@ func NewT3Code() *T3Code {
 }
 
 func (c *T3Code) startT3CodePreLocked() error {
-	if err := utils.StartTmuxSession("t3Code", utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code"), "t3 serve --host 0.0.0.0 --no-browser"); err != nil {
+	if err := utils.StartTmuxSession("t3Code", utils.WorkspaceDirectory(), "t3 serve --host 0.0.0.0 --no-browser"); err != nil {
 		return fmt.Errorf("start t3 code tmux session: %w", err)
 	}
 	return nil

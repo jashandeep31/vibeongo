@@ -33,9 +33,9 @@ export const projectTemplates: Record<
       name: "basic-nextjs-project",
       description: "A bare-minimum Next.js app with PostgreSQL ready to use.",
       initialScript: "",
-      finalScript: `cd "$HOME/code/${repoName}"
+      finalScript: `cd "$HOME/workspace/${repoName}"
 npm install`,
-      devScript: `cd "$HOME/code/${repoName}"
+      devScript: `cd "$HOME/workspace/${repoName}"
 npm run dev`,
       config: {
         ports: [{ port: 3000, protocol: "TCP" }],
@@ -78,11 +78,11 @@ volumes:
       description:
         "A full-stack TypeScript project with Next.js and Express applications.",
       initialScript: "",
-      finalScript: `cd "$HOME/code/${repoName}/frontend"
+      finalScript: `cd "$HOME/workspace/${repoName}/frontend"
 npm install
 cd ../backend
 npm install`,
-      devScript: `cd "$HOME/code/${repoName}"
+      devScript: `cd "$HOME/workspace/${repoName}"
 npm run dev --prefix frontend & npm run dev --prefix backend & wait`,
       config: {
         ports: [
@@ -134,9 +134,9 @@ volumes:
       description:
         "A Turborepo workspace with Next.js web and documentation applications.",
       initialScript: "",
-      finalScript: `cd "$HOME/code/${repoName}"
+      finalScript: `cd "$HOME/workspace/${repoName}"
 pnpm install`,
-      devScript: `cd "$HOME/code/${repoName}"
+      devScript: `cd "$HOME/workspace/${repoName}"
 pnpm dev`,
       config: {
         ports: [

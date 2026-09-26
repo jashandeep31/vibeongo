@@ -50,7 +50,7 @@ func ExecuteTasks(cfg config.Config) error {
 	fmt.Println("Working on tasks")
 	utils.KilltmuxSession("tasks")
 	homeDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_")
-	codeDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	workspaceDir := utils.WorkspaceDirectory()
 
 	var tmuxScript strings.Builder
 	tmuxScript.WriteString("#!/usr/bin/env bash\n")
@@ -62,7 +62,7 @@ func ExecuteTasks(cfg config.Config) error {
 	for _, task := range cfg.Tasks {
 		singleLineString := strings.ReplaceAll(task.Task, "\n", " ")
 
-		fmt.Fprintf(&tmuxScript, "cd %s/%s\n", codeDir, task.FolderName)
+		fmt.Fprintf(&tmuxScript, "cd %s/%s\n", workspaceDir, task.FolderName)
 
 		if usedFolderPaths[task.FolderName] {
 			fmt.Fprintf(&tmuxScript, "opencode run --continue %s%s%s\n",
@@ -86,7 +86,7 @@ func ExecuteTasks(cfg config.Config) error {
 		fmt.Fprintf(&tmuxScript, "vibeongo terminate\n\n")
 	}
 	fmt.Println(tmuxScript.String())
-	if err := utils.StartTmuxSession("tasks", codeDir, tmuxScript.String()); err != nil {
+	if err := utils.StartTmuxSession("tasks", workspaceDir, tmuxScript.String()); err != nil {
 		return err
 	}
 

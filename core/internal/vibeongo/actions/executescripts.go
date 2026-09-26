@@ -28,7 +28,7 @@ func ExecuteSetupScript() error {
 	}
 	defer os.Remove(tempScriptFile.Name())
 
-	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	path := utils.WorkspaceDirectory()
 	exec.Command("mkdir", "-p", path).Run()
 	exec.Command("sudo", "chown", "-R", utils.CurrentUser.Username+":"+utils.CurrentUser.Username, path).Run()
 
@@ -80,7 +80,7 @@ func ExecuteFinalScript() error {
 	}
 	defer os.Remove(tempScriptFile.Name())
 
-	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	path := utils.WorkspaceDirectory()
 	exec.Command("mkdir", "-p", path).Run()
 	exec.Command("sudo", "chown", "-R", utils.CurrentUser.Username+":"+utils.CurrentUser.Username, path).Run()
 
@@ -127,7 +127,7 @@ func ExecuteDevScript() error {
 
 	_ = utils.KilltmuxSession("dev")
 	sessionStarted := false
-	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	path := utils.WorkspaceDirectory()
 
 	for i, part := range parts {
 		if strings.TrimSpace(part) == "" {

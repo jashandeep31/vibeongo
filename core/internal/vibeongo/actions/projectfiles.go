@@ -42,7 +42,7 @@ func ProvisionProjectFiles() error {
 		return fmt.Errorf("failed to get project files")
 	}
 
-	basePath := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	basePath := utils.WorkspaceDirectory()
 	for _, file := range res.Files {
 		fmt.Println("clonning", file.Name, "at", file.Path)
 		dirPath := path.Join(basePath, file.Path)

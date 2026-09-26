@@ -274,8 +274,8 @@ func handleFavoriteDirsList(conn *websocket.Conn, writeMu *sync.Mutex, stop <-ch
 
 func getListFavoriteDirs(homeDir string) ([]favoriteDir, error) {
 	dirs := make([]favoriteDir, 0)
-	codeDir := filepath.Join(homeDir, "code")
-	entries, err := os.ReadDir(codeDir)
+	workspaceDir := filepath.Join(homeDir, "workspace")
+	entries, err := os.ReadDir(workspaceDir)
 	if err != nil && !os.IsNotExist(err) {
 		return nil, err
 	}
@@ -284,7 +284,7 @@ func getListFavoriteDirs(homeDir string) ([]favoriteDir, error) {
 		if entry.IsDir() {
 			dirs = append(dirs, favoriteDir{
 				Name: entry.Name(),
-				Path: filepath.Join(codeDir, entry.Name()),
+				Path: filepath.Join(workspaceDir, entry.Name()),
 			})
 		}
 	}

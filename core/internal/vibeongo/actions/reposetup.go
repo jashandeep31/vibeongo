@@ -18,7 +18,7 @@ export NVM_DIR="/home/_USERNAME_/.nvm"
 node -v 
 npm -v
 `)
-	path := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code")
+	path := utils.WorkspaceDirectory()
 
 	for _, repo := range cfg.Repos {
 		projectFolderPath := filepath.Join(path, repo.FolderName)

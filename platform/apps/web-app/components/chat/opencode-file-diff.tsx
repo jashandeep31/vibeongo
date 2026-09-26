@@ -113,7 +113,7 @@ export function OpencodeFileDiff({
 export function normalizeOpencodeFilePath(file?: string) {
   const normalized = (file || "Unknown file").replaceAll("\\", "/");
   return normalized
-    .replace(/^\/home\/vibe\/code\/[^/]+\//, "")
+    .replace(/^\/home\/vibe\/(?:workspace|code)\/[^/]+\//, "")
     .replace(/^\.\//, "")
     .replace(/^\//, "");
 }

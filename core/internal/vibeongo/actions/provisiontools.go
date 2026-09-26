@@ -71,7 +71,7 @@ func ProvisionPi(cfg *config.PiConfig) error {
 func ProvisionT3Code(cfg config.Config) error {
 	fmt.Println("Adding the projects to the t3")
 	for _, repo := range cfg.Repos {
-		projectFolderPath := filepath.Join(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/code"), repo.FolderName)
+		projectFolderPath := filepath.Join(utils.WorkspaceDirectory(), repo.FolderName)
 		if err := os.MkdirAll(projectFolderPath, 0o755); err != nil {
 			return fmt.Errorf("failed to create project directory %q: %w", projectFolderPath, err)
 		}

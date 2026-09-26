@@ -443,7 +443,7 @@ export function ProjectAutomationForm({
                 <div className="grid gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor={`task-path-${task.id}`}>
-                      Path from code dir
+                      Path from workspace
                     </Label>
                     <Input
                       id={`task-path-${task.id}`}

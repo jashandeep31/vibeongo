@@ -8,7 +8,7 @@ export type OpencodeDiffRow = {
 export function normalizeOpencodeFilePath(file?: string) {
   return (file || "Unknown file")
     .replaceAll("\\", "/")
-    .replace(/^\/home\/vibe\/code\/[^/]+\//, "")
+    .replace(/^\/home\/vibe\/(?:workspace|code)\/[^/]+\//, "")
     .replace(/^\.\//, "")
     .replace(/^\//, "");
 }
