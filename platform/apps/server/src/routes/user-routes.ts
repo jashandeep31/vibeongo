@@ -22,11 +22,22 @@ import {
   updateUserConfig,
 } from "../controllers/user/config-controller.js";
 import { setForgejoPassword } from "../controllers/user/forgejo-controller.js";
-import { createApiKey } from "../controllers/user/api-keys-controller.js";
+import {
+  createApiKey,
+  getApiKeys,
+  revokeApiKey,
+} from "../controllers/user/api-keys-controller.js";
 
 const routes: Router = Router();
 
-routes.route("/api-keys").post(checkAuthorization(["all"]), createApiKey);
+routes
+  .route("/api-keys")
+  .post(checkAuthorization(["all"]), createApiKey)
+  .get(checkAuthorization(["all"]), getApiKeys);
+
+routes
+  .route("/api-keys/:id")
+  .delete(checkAuthorization(["all"]), revokeApiKey);
 
 routes
   .route("/ssh-keys")

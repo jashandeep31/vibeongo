@@ -3,6 +3,7 @@
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { ModelPicker } from "@/components/model-picker";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
+import { ApiKeysSettings } from "@/components/settings/api-keys-settings";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
 import { logout } from "@/services/auth-services";
 import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
@@ -586,6 +587,8 @@ export default function SettingsPage() {
           </div>
         )}
       </SettingsSection>
+
+      <ApiKeysSettings />
 
       <SettingsSection
         title="Forgejo password"

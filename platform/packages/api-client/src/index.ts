@@ -1,4 +1,5 @@
 import axios, { type AxiosInstance } from "axios";
+import * as apiKeysApi from "./services/api-key-services.js";
 import * as chatsApi from "./services/chat-services.js";
 import * as githubReposApi from "./services/github-repo-services.js";
 import * as instancesApi from "./services/instance-services.js";
@@ -41,6 +42,13 @@ export * from "./services/proxy-auth.js";
 export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
 export type { Chat } from "./services/chat-services.js";
+export type {
+  ApiKey,
+  CreateApiKeyInput,
+  CreateApiKeyResponse,
+  GetApiKeysParams,
+  GetApiKeysResponse,
+} from "./services/api-key-services.js";
 export type {
   GetInstanceSlotUsageResponse,
   GetInstanceSlotsFilters,
@@ -117,6 +125,7 @@ function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
 
 export class MobileClient {
   apiClient: AxiosInstance;
+  apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
@@ -140,6 +149,7 @@ export class MobileClient {
       },
     });
 
+    this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
@@ -160,6 +170,7 @@ export class MobileClient {
 
 export class WebClient {
   apiClient: AxiosInstance;
+  apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
@@ -181,6 +192,7 @@ export class WebClient {
       withCredentials: true,
     });
 
+    this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
