@@ -2,7 +2,12 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { StdioServerTransport } from "@modelcontextprotocol/server/stdio";
 import { Effect } from "effect";
 import { z } from "zod";
-import { getProjectOverview } from "./services/projects.js";
+import { createInstanceSchema } from "@repo/shared";
+import { createInstance } from "./services/instances.js";
+import {
+  getProjectOverview,
+  getProjectWithDetails,
+} from "./services/projects.js";
 import { getWalletBalance } from "./services/wallet.js";
 
 export async function startMcpServer(): Promise<void> {
@@ -49,6 +54,58 @@ export async function startMcpServer(): Promise<void> {
                 { type: "text" as const, text: JSON.stringify(overview) },
               ],
               structuredContent: overview,
+            }),
+            onFailure: (error) => ({
+              isError: true,
+              content: [{ type: "text" as const, text: error.message }],
+            }),
+          }),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "getProjectWithDetails",
+    {
+      description:
+        "Get a Vibeongo project's details, repositories, deployment options, and configured settings.",
+      inputSchema: z.object({ projectId: z.uuid() }),
+    },
+    ({ projectId }) =>
+      Effect.runPromise(
+        getProjectWithDetails(projectId).pipe(
+          Effect.match({
+            onSuccess: (details) => ({
+              content: [
+                { type: "text" as const, text: JSON.stringify(details) },
+              ],
+              structuredContent: details,
+            }),
+            onFailure: (error) => ({
+              isError: true,
+              content: [{ type: "text" as const, text: error.message }],
+            }),
+          }),
+        ),
+      ),
+  );
+
+  server.registerTool(
+    "create_instance",
+    {
+      description:
+        "Create an automated project session with repository tasks and queue a paid VM or sandbox instance. Use after the user has approved the project, tasks, and runtime.",
+      inputSchema: createInstanceSchema,
+    },
+    (input) =>
+      Effect.runPromise(
+        createInstance(input).pipe(
+          Effect.match({
+            onSuccess: (result) => ({
+              content: [
+                { type: "text" as const, text: JSON.stringify(result) },
+              ],
+              structuredContent: result,
             }),
             onFailure: (error) => ({
               isError: true,

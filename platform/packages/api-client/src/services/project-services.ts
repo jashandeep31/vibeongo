@@ -2,6 +2,7 @@ import {
   gitRepos,
   instances,
   instanceRegions,
+  instanceTypes,
   projectDomainRouting,
   projectFileData,
   projectFiles,
@@ -9,6 +10,7 @@ import {
   projectSessions,
   proxyDomains,
   routingAllowedIps,
+  sandboxTypes,
 } from "@repo/db";
 import { projectConfigValidator, type z } from "@repo/shared";
 import type { AxiosInstance } from "axios";
@@ -58,6 +60,48 @@ export type GetProjectOverviewResponse = {
   page: number;
   limit: number;
   hasNext: boolean;
+};
+
+export type ProjectWithDetails = Pick<
+  Project,
+  "id" | "name" | "description" | "overview"
+> & {
+  createdAt: Project["created_at"];
+  updatedAt: Project["updated_at"];
+  deployment: {
+    vm:
+      | (Pick<
+          typeof instanceTypes.$inferSelect,
+          "id" | "name" | "provider" | "cpu" | "ram" | "region_id"
+        > & { region_name: string | null })
+      | null;
+    sandbox:
+      | (Pick<
+          typeof sandboxTypes.$inferSelect,
+          "id" | "name" | "provider" | "cpu" | "ram"
+        > & { region_id: string | null; region_name: string | null })
+      | null;
+  };
+  repositories: Array<
+    Pick<
+      typeof gitRepos.$inferSelect,
+      "id" | "full_name" | "type" | "public" | "overview"
+    > & { setupScriptConfigured: boolean }
+  >;
+  sshKeys: Array<{ id: string; name: string }>;
+  configuration: {
+    ports: z.infer<typeof projectConfigValidator>["config"]["ports"];
+    packages: Array<
+      | { name: "docker"; containers: string[] }
+      | { name: "opencode"; useUserConfig: boolean; model: string }
+      | { name: "codex" | "pi" | "fx"; useUserConfig: boolean }
+    >;
+  };
+  scripts: {
+    initialConfigured: boolean;
+    finalConfigured: boolean;
+    devConfigured: boolean;
+  };
 };
 
 export type DemoProject = {
@@ -177,6 +221,16 @@ export const getProjectOverview =
       withCredentials: true,
     });
     return response.data;
+  };
+
+export const getProjectWithDetails =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<ProjectWithDetails> => {
+    const response = await apiClient.get(
+      `/api/v1/projects/${encodeURIComponent(id)}/details`,
+      { withCredentials: true },
+    );
+    return response.data.data;
   };
 
 export const getDemoProjects =

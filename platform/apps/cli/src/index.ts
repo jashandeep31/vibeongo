@@ -2,6 +2,7 @@ import { Command, InvalidArgumentError } from "commander";
 import { login } from "./commands/login.js";
 import { logout } from "./commands/logout.js";
 import { projects } from "./commands/projects.js";
+import { project } from "./commands/project.js";
 import { wallet } from "./commands/wallet.js";
 import { runCommand } from "./lib/run-command.js";
 import { startMcpServer } from "./mcp.js";
@@ -38,6 +39,10 @@ program
     positiveInteger(value, 20),
   )
   .action(runCommand(projects));
+program
+  .command("project <id>")
+  .description("Show project details and configured repositories")
+  .action(runCommand(project));
 program
   .command("mcp")
   .description("Start the Vibeongo MCP server over stdio")

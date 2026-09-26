@@ -1,26 +1,13 @@
-import type { GetProjectOverviewParams } from "@repo/api-client";
+import type { CreateInstanceInput } from "@repo/api-client";
 import { Effect } from "effect";
 import { CliError } from "../lib/cli-error.js";
 import { getAuthenticatedClient } from "./authenticated-client.js";
 
-export function getProjectOverview(params: GetProjectOverviewParams = {}) {
+export function createInstance(input: CreateInstanceInput) {
   return Effect.gen(function* () {
     const client = yield* getAuthenticatedClient();
     return yield* Effect.tryPromise({
-      try: () => client.projects.getProjectOverview(params),
-      catch: () =>
-        new CliError(
-          "Could not get projects. Check the server connection or run vibeongo login again.",
-        ),
-    });
-  });
-}
-
-export function getProjectWithDetails(id: string) {
-  return Effect.gen(function* () {
-    const client = yield* getAuthenticatedClient();
-    return yield* Effect.tryPromise({
-      try: () => client.projects.getProjectWithDetails(id),
+      try: () => client.instances.createInstance(input),
       catch: (error) => {
         if (
           typeof error === "object" &&
@@ -35,7 +22,7 @@ export function getProjectWithDetails(id: string) {
           }
         }
         return new CliError(
-          "Could not get project details. Check the server connection or your API key.",
+          "Could not create the instance. Check the server connection or your API key.",
         );
       },
     });

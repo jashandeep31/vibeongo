@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { createProject } from "../controllers/project/create-project.js";
 import { getProjectOverview } from "../controllers/project/project-overview.js";
+import { getProjectWithDetails } from "../controllers/project/project-with-details.js";
 import {
   createProjectFromTemplate,
   getProjectTemplates,
@@ -64,6 +65,9 @@ routes
 routes
   .route("/:id/get-project-config")
   .get(checkAuthorization(["user"]), getProjectConfigForEdit);
+routes
+  .route("/:id/details")
+  .get(checkAuthorization(["user", "api_key"]), getProjectWithDetails);
 
 routes
   .route("/:id/domains")

@@ -11,7 +11,7 @@ import { terminateByIdInstance } from "../controllers/instance/terminate-by-id-i
 const routes: Router = Router();
 routes
   .route("/")
-  .post(checkAuthorization(["user"]), createInstance)
+  .post(checkAuthorization(["user", "api_key"]), createInstance)
   .get(checkAuthorization(["user"]), getUserInstances);
 routes
   .route("/:id")

@@ -51,6 +51,10 @@ export type {
   RotateApiKeyResponse,
 } from "./services/api-key-services.js";
 export type {
+  CreateInstanceInput,
+  CreateInstanceResponse,
+} from "./services/instance-services.js";
+export type {
   GetInstanceSlotUsageResponse,
   GetInstanceSlotsFilters,
   GetInstanceSlotsResponse,
@@ -84,6 +88,7 @@ export type {
   ProjectOverviewSession,
   ProjectTemplate,
   ProjectWithSessions,
+  ProjectWithDetails,
 } from "./services/project-services.js";
 export type {
   CreateProjectAutomationInput,
