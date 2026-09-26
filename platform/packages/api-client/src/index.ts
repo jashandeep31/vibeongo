@@ -48,6 +48,7 @@ export type {
   CreateApiKeyResponse,
   GetApiKeysParams,
   GetApiKeysResponse,
+  RotateApiKeyResponse,
 } from "./services/api-key-services.js";
 export type {
   GetInstanceSlotUsageResponse,

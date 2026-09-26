@@ -1,7 +1,12 @@
 "use client";
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { useApiKeys, useCreateApiKey, useDeleteApiKey } from "@repo/api-hooks";
+import {
+  useApiKeys,
+  useCreateApiKey,
+  useDeleteApiKey,
+  useRotateApiKey,
+} from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
@@ -21,12 +26,51 @@ import {
   Copy,
   KeyRound,
   Plus,
+  RotateCw,
   Trash2,
 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { toast } from "sonner";
 
 const PAGE_SIZE = 10;
+
+function KeyReveal({
+  keyValue,
+  onDone,
+}: {
+  keyValue: string;
+  onDone: () => void;
+}) {
+  const copyKey = async () => {
+    try {
+      await navigator.clipboard.writeText(keyValue);
+      toast.success("API key copied");
+    } catch {
+      toast.error("Failed to copy API key");
+    }
+  };
+
+  return (
+    <div className="grid gap-4">
+      <div className="flex gap-2">
+        <Input
+          aria-label="New API key"
+          value={keyValue}
+          readOnly
+          className="font-mono text-xs"
+        />
+        <Button type="button" variant="outline" onClick={() => void copyKey()}>
+          <Copy /> Copy
+        </Button>
+      </div>
+      <DialogFooter>
+        <Button type="button" onClick={onDone}>
+          Done
+        </Button>
+      </DialogFooter>
+    </div>
+  );
+}
 
 function CreateApiKeyDialog() {
   const [open, setOpen] = useState(false);
@@ -57,16 +101,6 @@ function CreateApiKeyDialog() {
     }
   };
 
-  const copyKey = async () => {
-    if (!createdKey) return;
-    try {
-      await navigator.clipboard.writeText(createdKey);
-      toast.success("API key copied");
-    } catch {
-      toast.error("Failed to copy API key");
-    }
-  };
-
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
@@ -86,28 +120,10 @@ function CreateApiKeyDialog() {
           </DialogDescription>
         </DialogHeader>
         {createdKey ? (
-          <div className="grid gap-4">
-            <div className="flex gap-2">
-              <Input
-                aria-label="New API key"
-                value={createdKey}
-                readOnly
-                className="font-mono text-xs"
-              />
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => void copyKey()}
-              >
-                <Copy /> Copy
-              </Button>
-            </div>
-            <DialogFooter>
-              <Button type="button" onClick={() => handleOpenChange(false)}>
-                Done
-              </Button>
-            </DialogFooter>
-          </div>
+          <KeyReveal
+            keyValue={createdKey}
+            onDone={() => handleOpenChange(false)}
+          />
         ) : (
           <form
             onSubmit={(event) => void handleSubmit(event)}
@@ -134,6 +150,69 @@ function CreateApiKeyDialog() {
               </Button>
             </DialogFooter>
           </form>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function RotateApiKeyDialog({ id, name }: { id: string; name: string }) {
+  const [open, setOpen] = useState(false);
+  const [rotatedKey, setRotatedKey] = useState<string | null>(null);
+  const rotateApiKey = useRotateApiKey();
+
+  const handleOpenChange = (nextOpen: boolean) => {
+    if (!nextOpen && rotateApiKey.isPending) return;
+    setOpen(nextOpen);
+    if (!nextOpen) {
+      setRotatedKey(null);
+      rotateApiKey.reset();
+    }
+  };
+
+  const handleRotate = async () => {
+    try {
+      const result = await rotateApiKey.mutateAsync(id);
+      setRotatedKey(result.data.key);
+      toast.success("API key rotated");
+    } catch {
+      toast.error("Failed to rotate API key");
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label={`Rotate ${name}`}>
+          <RotateCw />
+        </Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>
+            {rotatedKey ? "Your replacement API key" : "Rotate API key?"}
+          </DialogTitle>
+          <DialogDescription>
+            {rotatedKey
+              ? "Copy this key now. You will not be able to see it again."
+              : `Replace the key for ${name}. The old key will stop working immediately.`}
+          </DialogDescription>
+        </DialogHeader>
+        {rotatedKey ? (
+          <KeyReveal
+            keyValue={rotatedKey}
+            onDone={() => handleOpenChange(false)}
+          />
+        ) : (
+          <DialogFooter showCloseButton>
+            <Button
+              type="button"
+              onClick={() => void handleRotate()}
+              disabled={rotateApiKey.isPending}
+            >
+              {rotateApiKey.isPending ? "Rotating..." : "Rotate key"}
+            </Button>
+          </DialogFooter>
         )}
       </DialogContent>
     </Dialog>
@@ -210,23 +289,26 @@ export function ApiKeysSettings() {
                           : "Active"}
                     </span>
                     {!key.revoked_at ? (
-                      <ConfirmationDialog
-                        title="Revoke API key?"
-                        description={`Revoke ${key.name}. Apps using this key will lose access.`}
-                        confirmText="Revoke"
-                        isDestructive
-                        onConfirm={() => void handleRevoke(key.id)}
-                      >
-                        <Button
-                          variant="ghost"
-                          size="icon-sm"
-                          className="text-destructive hover:text-destructive"
-                          aria-label={`Revoke ${key.name}`}
-                          disabled={deleteApiKey.isPending}
+                      <>
+                        <RotateApiKeyDialog id={key.id} name={key.name} />
+                        <ConfirmationDialog
+                          title="Revoke API key?"
+                          description={`Revoke ${key.name}. Apps using this key will lose access.`}
+                          confirmText="Revoke"
+                          isDestructive
+                          onConfirm={() => void handleRevoke(key.id)}
                         >
-                          <Trash2 />
-                        </Button>
-                      </ConfirmationDialog>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            className="text-destructive hover:text-destructive"
+                            aria-label={`Revoke ${key.name}`}
+                            disabled={deleteApiKey.isPending}
+                          >
+                            <Trash2 />
+                          </Button>
+                        </ConfirmationDialog>
+                      </>
                     ) : null}
                   </div>
                 </div>

@@ -29,3 +29,13 @@ export const useDeleteApiKey = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
   });
 };
+
+export const useRotateApiKey = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.apiKeys.rotateApiKey,
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["api-keys"] }),
+  });
+};

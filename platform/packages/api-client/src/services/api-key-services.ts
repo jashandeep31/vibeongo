@@ -22,6 +22,8 @@ export type CreateApiKeyResponse = {
   };
 };
 
+export type RotateApiKeyResponse = CreateApiKeyResponse;
+
 export type GetApiKeysParams = {
   page?: number;
   limit?: number;
@@ -51,5 +53,14 @@ export const deleteApiKey =
   (apiClient: AxiosInstance) =>
   async (id: string): Promise<{ message: string }> => {
     const response = await apiClient.delete(`/api/v1/users/api-keys/${id}`);
+    return response.data;
+  };
+
+export const rotateApiKey =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<RotateApiKeyResponse> => {
+    const response = await apiClient.post(
+      `/api/v1/users/api-keys/${id}/rotate`,
+    );
     return response.data;
   };

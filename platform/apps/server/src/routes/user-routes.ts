@@ -26,6 +26,7 @@ import {
   createApiKey,
   getApiKeys,
   revokeApiKey,
+  rotateApiKey,
 } from "../controllers/user/api-keys-controller.js";
 
 const routes: Router = Router();
@@ -35,9 +36,11 @@ routes
   .post(checkAuthorization(["all"]), createApiKey)
   .get(checkAuthorization(["all"]), getApiKeys);
 
+routes.route("/api-keys/:id").delete(checkAuthorization(["all"]), revokeApiKey);
+
 routes
-  .route("/api-keys/:id")
-  .delete(checkAuthorization(["all"]), revokeApiKey);
+  .route("/api-keys/:id/rotate")
+  .post(checkAuthorization(["all"]), rotateApiKey);
 
 routes
   .route("/ssh-keys")

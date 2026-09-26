@@ -22,14 +22,21 @@ const listApiKeysSchema = z.object({
   limit: z.coerce.number().int().min(1).max(100).default(10),
 });
 
+const API_KEY_LIFETIME_MS = 90 * 24 * 60 * 60 * 1000;
+
+function generateApiKey() {
+  const key = `${USER_API_KEY_PREFIX}${randomBytes(32).toString("base64url")}`;
+  const keyHash = createHash("sha256").update(key).digest("hex");
+  return { key, keyHash };
+}
+
 export const createApiKey = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
   if (!user) throw new AppError("Authentication is required", 401);
 
   const { name } = createApiKeySchema.parse(req.body);
-  const key = `${USER_API_KEY_PREFIX}${randomBytes(32).toString("base64url")}`;
-  const keyHash = createHash("sha256").update(key).digest("hex");
-  const expiresAt = new Date(Date.now() + 90 * 24 * 60 * 60 * 1000);
+  const { key, keyHash } = generateApiKey();
+  const expiresAt = new Date(Date.now() + API_KEY_LIFETIME_MS);
 
   const [createdKey] = await db
     .insert(usersApiKeys)
@@ -103,4 +110,51 @@ export const revokeApiKey = catchAsync(async (req: Request, res: Response) => {
   }
 
   res.status(200).json({ message: "API key revoked" });
+});
+
+export const rotateApiKey = catchAsync(async (req: Request, res: Response) => {
+  const user = req.user;
+  if (!user) throw new AppError("Authentication is required", 401);
+
+  const { id } = z.object({ id: z.uuid() }).parse(req.params);
+  const { key, keyHash } = generateApiKey();
+  const now = new Date();
+  const expiresAt = new Date(now.getTime() + API_KEY_LIFETIME_MS);
+
+  const [rotatedKey] = await db
+    .update(usersApiKeys)
+    .set({
+      key_hash: keyHash,
+      expires_at: expiresAt,
+      last_used_at: null,
+      updated_at: now,
+    })
+    .where(
+      and(
+        eq(usersApiKeys.id, id),
+        eq(usersApiKeys.user_id, user.id),
+        isNull(usersApiKeys.revoked_at),
+      ),
+    )
+    .returning({ id: usersApiKeys.id, name: usersApiKeys.name });
+
+  if (!rotatedKey) {
+    const [existingKey] = await db
+      .select({ revoked_at: usersApiKeys.revoked_at })
+      .from(usersApiKeys)
+      .where(and(eq(usersApiKeys.id, id), eq(usersApiKeys.user_id, user.id)))
+      .limit(1);
+    if (!existingKey) throw new AppError("API key not found", 404);
+    throw new AppError("Revoked API keys cannot be rotated", 409);
+  }
+
+  res.set("Cache-Control", "no-store");
+  res.status(200).json({
+    data: {
+      id: rotatedKey.id,
+      name: rotatedKey.name,
+      key,
+      expires_at: expiresAt,
+    },
+  });
 });
