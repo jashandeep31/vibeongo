@@ -8,6 +8,7 @@ node_modules/
 .env.*
 !.env.example
 
+/ssh-gateway
 api-server
 bootstrap-script
 # Temp and build artifacts
