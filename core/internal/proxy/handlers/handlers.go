@@ -40,7 +40,6 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string, token
 			r.URL.Scheme = proxyData.Target.Scheme
 			r.URL.Host = proxyData.Target.Host
 			r.Host = proxyData.Target.Host
-
 			applyProviderHeaders(r, proxyData)
 		},
 		ModifyResponse: func(response *http.Response) error {
@@ -172,6 +171,9 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 	if proxyData.Protected && !hasValidAccessToken {
 		return c.String(http.StatusUnauthorized, "401")
 	}
+	if proxyData.Provider == "boat" && proxyData.PreviewToken == "" {
+		return c.String(http.StatusBadGateway, "502")
+	}
 
 	ctx := context.WithValue(request.Context(), proxyDataContextKey{}, proxyData)
 	h.reverseProxy.ServeHTTP(c.Response(), request.WithContext(ctx))
@@ -209,7 +211,15 @@ func applyProviderHeaders(request *http.Request, proxyData *store.Proxy) {
 		handleDaytonaHeaders(request)
 	case "e2b":
 		handleE2BHeaders(request, proxyData.PreviewToken)
+	case "boat":
+		handleBoatQuery(request, proxyData.PreviewToken)
 	}
+}
+
+func handleBoatQuery(request *http.Request, previewToken string) {
+	query := request.URL.Query()
+	query.Set("_token", previewToken)
+	request.URL.RawQuery = query.Encode()
 }
 
 func handleDaytonaHeaders(request *http.Request) {
