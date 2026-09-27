@@ -20,11 +20,13 @@ import { env } from "../../lib/env.js";
 import { DaytonaClient } from "../../providers/client/daytona-client.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
 import { VercelSandboxClient } from "../../providers/client/vercel-sandbox-client.js";
+import { BoatClient } from "../../providers/client/boat-client.js";
 import { AppError } from "../../lib/app-error.js";
 
 const daytonaClient = new DaytonaClient();
 const e2bClient = new E2BClient();
 const vercelClient = new VercelSandboxClient();
+const boatClient = new BoatClient();
 
 // current regex can accepts all domains. needs to fix it
 // depending upon the future needs
@@ -251,7 +253,7 @@ async function getProxyTargetUrl(
     case "vercel":
       return handleVercelClientProxyUrl(options);
     case "boat":
-      throw new AppError("Boat sandbox proxy is not implemented", 501);
+      return handleBoatClientProxyUrl(options);
     case "aws":
       return handleEC2ClientProxyUrl(options);
     case "digitalocean":
@@ -320,6 +322,19 @@ async function handleVercelClientProxyUrl({
     token: "",
     provider,
   };
+}
+
+async function handleBoatClientProxyUrl({
+  targetPort,
+  providerInstanceId,
+  provider,
+}: ProxyTargetOptions): Promise<ProxyTargetResponse> {
+  const { targetUrl, token } = await boatClient.getPreviewTarget({
+    sandboxId: providerInstanceId,
+    port: targetPort,
+  });
+
+  return { targetUrl, token, provider };
 }
 
 async function handleEC2ClientProxyUrl({

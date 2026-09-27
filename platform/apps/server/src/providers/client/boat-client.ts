@@ -14,22 +14,17 @@ const boatSandboxClient = new BoatApi(
 );
 
 export class BoatClient {
-  async createInstance(
-    {
-      instanceName,
-      instanceType,
-      terminatedAfterInMinutes,
-    }: CreateInstanceProps,
-  ): Promise<CreateInstanceProviderResponse> {
+  async createInstance({
+    instanceName,
+    instanceType,
+    terminatedAfterInMinutes,
+  }: CreateInstanceProps): Promise<CreateInstanceProviderResponse> {
     const created = await boatSandboxClient.create({
       from: instanceType,
       ttlSeconds: terminatedAfterInMinutes * 60,
     });
-    const sandbox = await waitUntilReady(
-      boatSandboxClient,
-      created.sandbox.id,
-    );
-    const previewUrl = await this.getPreviewUrl({
+    const sandbox = await waitUntilReady(boatSandboxClient, created.sandbox.id);
+    const preview = await this.getPreviewTarget({
       sandboxId: sandbox.id,
       port: 3101,
     });
@@ -37,8 +32,8 @@ export class BoatClient {
     return {
       instanceId: sandbox.id,
       instanceName,
-      publicIPv4: previewUrl,
-      pvtIPv4: previewUrl,
+      publicIPv4: preview.targetUrl,
+      pvtIPv4: preview.targetUrl,
     };
   }
 
@@ -59,19 +54,26 @@ export class BoatClient {
     throw new AppError("Boat sandbox setup is not implemented", 501);
   }
 
-  async getPreviewUrl({
+  async getPreviewTarget({
     sandboxId,
     port,
   }: {
     sandboxId: string;
     port: number;
-  }): Promise<string> {
+  }): Promise<{ targetUrl: string; token: string }> {
     const hosted = await boatSandboxClient.hostPort({ sandboxId, port });
 
     if (!hosted.ok || !hosted.url) {
       throw new AppError("Boat sandbox preview URL is unavailable", 502);
     }
 
-    return hosted.url;
+    const target = new URL(hosted.url);
+    const token = target.searchParams.get("_token");
+    if (!token) {
+      throw new AppError("Boat sandbox preview token is unavailable", 502);
+    }
+    target.searchParams.delete("_token");
+
+    return { targetUrl: target.toString(), token };
   }
 }
