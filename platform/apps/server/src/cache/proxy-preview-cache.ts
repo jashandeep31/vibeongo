@@ -1,0 +1,59 @@
+import { redis } from "../lib/valkey.js";
+
+// Daytona URLs last 60 minutes. The 10-minute margin
+const PREVIEW_CACHE_TTL_SECONDS = 60 * 50;
+
+type PreviewProvider = "daytona" | "e2b";
+
+export type CachedProxyPreview = { url: string; token: string };
+
+const previewKey = (
+  provider: PreviewProvider,
+  sandboxId: string,
+  port: number,
+) => `proxy:preview:v1:${provider}:${encodeURIComponent(sandboxId)}:${port}`;
+
+export async function getCachedProxyPreview(
+  provider: PreviewProvider,
+  sandboxId: string,
+  port: number,
+): Promise<CachedProxyPreview | undefined> {
+  try {
+    const cached = await redis.get(previewKey(provider, sandboxId, port));
+    if (!cached) return;
+
+    const preview: unknown = JSON.parse(cached);
+    if (
+      typeof preview === "object" &&
+      preview !== null &&
+      "url" in preview &&
+      typeof preview.url === "string" &&
+      preview.url.length > 0 &&
+      "token" in preview &&
+      typeof preview.token === "string" &&
+      preview.token.length > 0
+    ) {
+      return { url: preview.url, token: preview.token };
+    }
+  } catch {
+    console.error("Failed to read cached proxy preview");
+  }
+}
+
+export async function cacheProxyPreview(
+  provider: PreviewProvider,
+  sandboxId: string,
+  port: number,
+  preview: CachedProxyPreview,
+): Promise<void> {
+  try {
+    await redis.set(
+      previewKey(provider, sandboxId, port),
+      JSON.stringify(preview),
+      "EX",
+      PREVIEW_CACHE_TTL_SECONDS,
+    );
+  } catch {
+    console.error("Failed to cache proxy preview");
+  }
+}
