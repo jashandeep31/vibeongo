@@ -19,6 +19,7 @@
     "@aws-sdk/client-cloudwatch": "^3.1137.0",
     "@aws-sdk/client-ec2": "^3.1137.0",
     "@aws-sdk/client-ses": "^3.1137.0",
+    "@boatdev/sdk": "^1.1.0",
     "@daytona/sdk": "^0.214.0",
     "@grammyjs/auto-retry": "^2.0.2",
     "@grammyjs/menu": "^1.5.0",

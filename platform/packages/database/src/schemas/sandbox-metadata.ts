@@ -13,6 +13,7 @@ export const sandboxProvidersEnums = pgEnum("sandbox_providers", [
   "e2b",
   "vercel",
   "daytona",
+  "boat",
 ]);
 
 export const sandboxRegions = pgTable("sandbox_regions", {

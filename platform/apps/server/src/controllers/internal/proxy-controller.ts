@@ -250,6 +250,8 @@ async function getProxyTargetUrl(
       return handleDaytonaClientProxyUrl(options);
     case "vercel":
       return handleVercelClientProxyUrl(options);
+    case "boat":
+      throw new AppError("Boat sandbox proxy is not implemented", 501);
     case "aws":
       return handleEC2ClientProxyUrl(options);
     case "digitalocean":
