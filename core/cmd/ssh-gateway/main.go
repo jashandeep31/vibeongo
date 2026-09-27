@@ -13,6 +13,7 @@ const port = "8002"
 
 func main() {
 	fmt.Println("Hello world from the ssh gateway!")
+	// go connectToWebSocket()
 
 	// config of ssh Server
 	// no authentication we will do this based on the clients username which will act as the token
@@ -23,7 +24,6 @@ func main() {
 	// Adding host key to the server
 	// Read this from a single file as restart with the same key will not work
 	hostKey, err := generateHostKey()
-	fmt.Println(hostKey)
 	if err != nil {
 		fmt.Println("Error adding host key:", err)
 		return
@@ -87,69 +87,8 @@ func handleConnection(conn net.Conn, config *ssh.ServerConfig) {
 func handleSession(channel ssh.Channel, requests <-chan *ssh.Request) {
 	defer channel.Close()
 
-	for req := range requests {
-		fmt.Println("SSH request:", req.Type)
+	connectToWebSocket(channel, requests)
 
-		switch req.Type {
-		case "pty-req":
-			fmt.Println("PTY requested")
-			req.Reply(true, nil)
-
-		case "shell":
-			fmt.Println("Shell requested")
-			req.Reply(true, nil)
-
-			// This should immediately appear on SSH client
-			_, err := channel.Write([]byte("\r\nWelcome to Vibeongo!\r\n$ "))
-			if err != nil {
-				fmt.Println("write error:", err)
-				return
-			}
-
-			// Now read input
-			buf := make([]byte, 1024)
-
-			for {
-				n, err := channel.Read(buf)
-				if err != nil {
-					fmt.Println("read error:", err)
-					return
-				}
-
-				fmt.Printf("received: %q\n", buf[:n])
-
-				// Send it back to SSH client
-				_, err = channel.Write(buf[:n])
-				if err != nil {
-					fmt.Println("write error:", err)
-					return
-				}
-			}
-
-		default:
-			fmt.Println("Unknown request:", req.Type)
-			req.Reply(false, nil)
-		}
-	}
-}
-
-func readInput(channel ssh.Channel) {
-	buffer := make([]byte, 1024)
-
-	for {
-		n, err := channel.Read(buffer)
-		if err != nil {
-			fmt.Println("channel closed:", err)
-			return
-		}
-
-		input := buffer[:n]
-
-		fmt.Printf("INPUT: %q\n", input)
-
-		// Echo it back to user's terminal
-		channel.Write(input)
-	}
 }
 
 func generateHostKey() (ssh.Signer, error) {
