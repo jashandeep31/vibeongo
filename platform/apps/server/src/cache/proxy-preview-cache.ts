@@ -1,9 +1,9 @@
 import { redis } from "../lib/valkey.js";
 
-// Daytona URLs last 60 minutes. The 10-minute margin
+// Daytona URLs last 60 minutes; expire cached previews 10 minutes earlier.
 const PREVIEW_CACHE_TTL_SECONDS = 60 * 50;
 
-type PreviewProvider = "daytona" | "e2b";
+type PreviewProvider = "daytona" | "e2b" | "boat";
 
 export type CachedProxyPreview = { url: string; token: string };
 

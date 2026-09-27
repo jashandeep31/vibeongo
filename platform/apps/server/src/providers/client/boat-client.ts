@@ -103,9 +103,23 @@ export class BoatClient {
       throw new AppError("Boat sandbox preview URL is unavailable", 502);
     }
     const target = new URL(hosted.url);
-    const token = target.searchParams.get("_token");
+    let response: Response;
+    try {
+      response = await fetch(target, {
+        method: "HEAD",
+        redirect: "manual",
+        signal: AbortSignal.timeout(10_000),
+      });
+    } catch {
+      throw new AppError("Boat sandbox preview authentication failed", 502);
+    }
+
+    const portAuthCookie = response.headers
+      .getSetCookie()
+      .find((cookie) => cookie.startsWith("_port_auth="));
+    const token = portAuthCookie?.split(";", 1)[0]?.slice("_port_auth=".length);
     if (!token) {
-      throw new AppError("Boat sandbox preview token is unavailable", 502);
+      throw new AppError("Boat sandbox preview cookie is unavailable", 502);
     }
     target.searchParams.delete("_token");
 

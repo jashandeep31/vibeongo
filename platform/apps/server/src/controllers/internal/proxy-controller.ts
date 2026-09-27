@@ -349,12 +349,21 @@ async function handleBoatClientProxyUrl({
   providerInstanceId,
   provider,
 }: ProxyTargetOptions): Promise<ProxyTargetResponse> {
-  const { targetUrl, token } = await boatClient.getPreviewTarget({
-    sandboxId: providerInstanceId,
-    port: targetPort,
-  });
+  let preview = await getCachedProxyPreview(
+    "boat",
+    providerInstanceId,
+    targetPort,
+  );
+  if (!preview) {
+    const { targetUrl, token } = await boatClient.getPreviewTarget({
+      sandboxId: providerInstanceId,
+      port: targetPort,
+    });
+    preview = { url: targetUrl, token };
+    await cacheProxyPreview("boat", providerInstanceId, targetPort, preview);
+  }
 
-  return { targetUrl, token, provider };
+  return { targetUrl: preview.url, token: preview.token, provider };
 }
 
 async function handleEC2ClientProxyUrl({
