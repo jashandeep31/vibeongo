@@ -212,14 +212,21 @@ func applyProviderHeaders(request *http.Request, proxyData *store.Proxy) {
 	case "e2b":
 		handleE2BHeaders(request, proxyData.PreviewToken)
 	case "boat":
-		handleBoatQuery(request, proxyData.PreviewToken)
+		handleBoatCookie(request, proxyData.PreviewToken)
 	}
 }
 
-func handleBoatQuery(request *http.Request, previewToken string) {
-	query := request.URL.Query()
-	query.Set("_token", previewToken)
-	request.URL.RawQuery = query.Encode()
+func handleBoatCookie(request *http.Request, previewToken string) {
+	// Boat accepts the resolved credential in _port_auth. Discard any value
+	// supplied by the caller while preserving cookies for the upstream app.
+	cookies := request.Cookies()
+	request.Header.Del("Cookie")
+	for _, cookie := range cookies {
+		if cookie.Name != "_port_auth" {
+			request.AddCookie(cookie)
+		}
+	}
+	request.AddCookie(&http.Cookie{Name: "_port_auth", Value: previewToken})
 }
 
 func handleDaytonaHeaders(request *http.Request) {
