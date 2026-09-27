@@ -8,6 +8,7 @@ import {
 } from "./sandbox-setup.js";
 import { env } from "../lib/env.js";
 import { redis } from "../lib/valkey.js";
+import { BoatClient } from "../providers/client/boat-client.js";
 
 const SETUP_TIMEOUT_MS = 1000 * 60 * 10;
 const daytona = new Daytona({
@@ -18,6 +19,7 @@ const vercelCredentials = {
   teamId: env.VERCEL_TEAM_ID,
   projectId: env.VERCEL_PROJECT_ID,
 };
+const boatClient = new BoatClient();
 
 const encodeUserData = (userData: string) =>
   Buffer.from(userData, "utf8").toString("base64");
@@ -112,6 +114,8 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
         return setupDaytonaSandbox(sandboxId, userData);
       case "vercel":
         return setupVercelSandbox(sandboxId, userData);
+      case "boat":
+        return boatClient.setupInstance(sandboxId, userData);
       default:
         provider satisfies never;
         throw new Error(`Unsupported sandbox provider: ${provider}`);

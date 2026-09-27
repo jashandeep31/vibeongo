@@ -4,7 +4,7 @@ import { redis } from "../lib/valkey.js";
 export const SANDBOX_SETUP_QUEUE_NAME = "sandbox-setup";
 
 export type SandboxSetupJobData = {
-  provider: "e2b" | "daytona" | "vercel";
+  provider: "e2b" | "daytona" | "vercel" | "boat";
   sandboxId: string;
   userData: string;
 };

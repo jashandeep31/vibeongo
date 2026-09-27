@@ -34,6 +34,7 @@ import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import { findWebSession } from "./lib/auth-session.js";
 import { webhookRoutes } from "./routes/webhook-routes.js";
+import test from "./test.js";
 
 const app = express();
 
@@ -221,6 +222,9 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+if (env.NODE_ENV === "development") {
+  await test();
+}
 // --- Server ---
 server.listen(env.PORT, () => {
   console.log(`Server is running at 🔥 ${env.PORT}`);
