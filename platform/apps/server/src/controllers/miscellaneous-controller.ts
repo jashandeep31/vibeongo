@@ -23,6 +23,41 @@ BINARY_PATH="/usr/local/bin/$APP"
 
 ${downloadBinary}
 
+OPENCODE_BIN="$HOME/.opencode/bin/opencode"
+echo "Waiting for OpenCode binary: $OPENCODE_BIN"
+for attempt in {1..41}; do
+  echo "OpenCode attempt $attempt/41 (running as $(id -un))"
+  for inspected_path in "$HOME/.opencode" "$HOME/.opencode/bin" "$OPENCODE_BIN"; do
+    if [[ -e "$inspected_path" || -L "$inspected_path" ]]; then
+      stat -Lc '%n: type=%F size=%s bytes owner=%U:%G mode=%a modified=%y' "$inspected_path" || ls -ld "$inspected_path" || true
+    else
+      echo "$inspected_path: missing"
+    fi
+  done
+  if [[ -e "$OPENCODE_BIN" ]] && command -v file > /dev/null 2>&1; then
+    file -L "$OPENCODE_BIN" || true
+  fi
+
+  if [[ -x "$OPENCODE_BIN" ]] && "$OPENCODE_BIN" --version; then
+    echo "OpenCode is executable on attempt $attempt/41"
+    break
+  fi
+
+  if [[ -e "$OPENCODE_BIN" ]]; then
+    echo "OpenCode is present but cannot run on attempt $attempt/41"
+  else
+    echo "OpenCode is missing on attempt $attempt/41"
+  fi
+  if [[ -e "$OPENCODE_BIN" ]] && command -v fuser > /dev/null 2>&1; then
+    fuser -v "$OPENCODE_BIN" 2>&1 || true
+  fi
+  if (( attempt == 41 )); then
+    echo "OpenCode is still unavailable after 120 seconds" >&2
+    exit 1
+  fi
+  sleep 3
+done
+
 if [[ "$(cat /proc/1/comm)" == "systemd" ]]; then
   if ! sudo systemctl is-active --quiet docker; then
     sudo systemctl start docker
