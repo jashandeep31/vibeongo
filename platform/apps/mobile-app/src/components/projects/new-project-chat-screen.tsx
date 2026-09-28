@@ -405,7 +405,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 24,
     justifyContent: "flex-end",
-    paddingBottom: 20,
+    paddingBottom: 10,
     paddingHorizontal: 20,
     zIndex: 2,
   },

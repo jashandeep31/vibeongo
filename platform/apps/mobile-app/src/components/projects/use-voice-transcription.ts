@@ -20,6 +20,11 @@ type VoiceState =
   | "error";
 
 const MAX_RECORDING_MS = 120_000;
+// Metering feeds the live waveform shown while recording.
+const RECORDING_OPTIONS = {
+  ...RecordingPresets.HIGH_QUALITY,
+  isMeteringEnabled: true,
+};
 
 function removeRecording(uri: string | null) {
   if (!uri) return;
@@ -36,7 +41,7 @@ export function useVoiceTranscription(
   onChangeText: (text: string) => void,
 ) {
   const client = useApiClient();
-  const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
+  const recorder = useAudioRecorder(RECORDING_OPTIONS);
   const recorderState = useAudioRecorderState(recorder, 250);
   const [state, setState] = useState<VoiceState>("idle");
   const stateRef = useRef<VoiceState>("idle");
@@ -223,6 +228,8 @@ export function useVoiceTranscription(
 
   return {
     state,
+    durationMillis: recorderState.durationMillis,
+    recorder,
     start,
     stop,
     cancel,

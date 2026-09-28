@@ -16,9 +16,12 @@ import {
   Easing,
   Pressable,
   StyleSheet,
+  type StyleProp,
+  type TextStyle,
   View,
 } from "react-native";
 
+import { BlocksLoader } from "@/components/blocks-loader";
 import { NativeMarkdown } from "@/components/native-markdown";
 import { ThemedText } from "@/components/themed-text";
 import {
@@ -194,7 +197,12 @@ function OpencodeChatTurnComponent({
         ) : null}
 
         {isStreaming ? (
-          <PulsingStatusText>Vibeongo is working…</PulsingStatusText>
+          <View style={styles.working}>
+            <BlocksLoader color={theme.textSecondary} />
+            <PulsingStatusText style={styles.workingText}>
+              Vibeongo is working…
+            </PulsingStatusText>
+          </View>
         ) : null}
       </View>
     </Animated.View>
@@ -337,7 +345,7 @@ function ReasoningBlock({
         onPress={() => setOpen((value) => !value)}
         style={styles.reasoningHeader}
       >
-        {content.active ? <ActivityIndicator size="small" /> : null}
+        {content.active ? <BlocksLoader color={theme.textSecondary} /> : null}
         <ThemedText style={{ color: theme.textSecondary, fontSize: 13 }}>
           {heading}
         </ThemedText>
@@ -368,7 +376,13 @@ function getReasoningHeading(text: string) {
   return value.length > 72 ? `${value.slice(0, 69)}…` : value;
 }
 
-function PulsingStatusText({ children }: { children: string }) {
+function PulsingStatusText({
+  children,
+  style,
+}: {
+  children: string;
+  style?: StyleProp<TextStyle>;
+}) {
   const theme = useTheme();
   const opacity = useRef(new Animated.Value(1)).current;
 
@@ -395,7 +409,7 @@ function PulsingStatusText({ children }: { children: string }) {
 
   return (
     <Animated.Text
-      style={[styles.thinking, { color: theme.textSecondary, opacity }]}
+      style={[styles.thinking, { color: theme.textSecondary, opacity }, style]}
     >
       {children}
     </Animated.Text>
@@ -544,6 +558,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   turn: { gap: 18 },
+  working: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 4,
+  },
+  workingText: { marginTop: 0 },
   turnActions: { flexDirection: "row" },
   userMessage: {
     borderRadius: 16,

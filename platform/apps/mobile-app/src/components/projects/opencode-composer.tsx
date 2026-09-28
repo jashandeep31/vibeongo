@@ -5,6 +5,7 @@ import type {
   UploadAttachment,
 } from "@repo/api-client";
 import { useVoiceTranscription } from "@/components/projects/use-voice-transcription";
+import { VoiceWaveform } from "@/components/projects/voice-waveform";
 import { BlurTargetView, BlurView } from "expo-blur";
 import * as DocumentPicker from "expo-document-picker";
 import { File as ExpoFile } from "expo-file-system";
@@ -14,6 +15,8 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
+  Animated,
+  Easing,
   FlatList,
   Keyboard,
   Modal,
@@ -54,6 +57,11 @@ function getActiveFileMention(value: string, cursor: number) {
   if (!match) return null;
   const query = match[1] ?? "";
   return { end: cursor, query, start: cursor - query.length - 1 };
+}
+
+function formatRecordingTime(durationMillis: number) {
+  const seconds = Math.floor(durationMillis / 1000);
+  return `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 export type ComposerAttachment = UploadAttachment & {
@@ -183,8 +191,12 @@ export function OpencodeComposer({
   const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
   const [isSearchingFiles, setIsSearchingFiles] = useState(false);
   const activeFileMention = getActiveFileMention(value, selectionEnd);
-  const isExpanded = isFocused || value.length > 0;
   const isVoiceActive = voice.state !== "idle";
+  // Voice input swaps the text field for a recording bar, which uses the
+  // single-row layout.
+  const isExpanded = (isFocused || value.length > 0) && !isVoiceActive;
+  const isRecording = voice.state === "recording";
+  const [recordingProgress] = useState(() => new Animated.Value(0));
   const submitDisabled =
     disabled ||
     submitDisabledProp ||
@@ -195,6 +207,19 @@ export function OpencodeComposer({
     if (submitDisabled) return;
     onSubmit();
   };
+
+  useEffect(() => {
+    // Background color can't use the native driver, so the icon swap shares
+    // the JS-driven value to stay in sync with it.
+    const animation = Animated.timing(recordingProgress, {
+      duration: 200,
+      easing: Easing.out(Easing.cubic),
+      toValue: isRecording ? 1 : 0,
+      useNativeDriver: false,
+    });
+    animation.start();
+    return () => animation.stop();
+  }, [isRecording, recordingProgress]);
 
   useEffect(() => {
     if (Platform.OS !== "android") return;
@@ -392,6 +417,56 @@ export function OpencodeComposer({
     </Pressable>
   ) : null;
 
+  const cancelVoiceControl = (
+    <Pressable
+      accessibilityLabel="Cancel voice input"
+      accessibilityRole="button"
+      disabled={voice.state === "canceling"}
+      onPress={() => void voice.cancel()}
+      style={({ pressed }) => [
+        styles.attachmentButton,
+        voice.state === "canceling" && styles.disabled,
+        pressed && styles.pressed,
+      ]}
+    >
+      <SymbolView
+        name={{ ios: "xmark", android: "close" }}
+        size={18}
+        tintColor={theme.text}
+      />
+    </Pressable>
+  );
+
+  const recordingStatus = (
+    <View
+      accessibilityLiveRegion="polite"
+      style={styles.recordingStatus}
+    >
+      {isRecording ? (
+        <VoiceWaveform color="#dc2626" recorder={voice.recorder} />
+      ) : (
+        <ThemedText
+          numberOfLines={1}
+          style={styles.recordingLabel}
+          themeColor="textSecondary"
+        >
+          {voice.state === "starting"
+            ? "Starting…"
+            : voice.state === "canceling"
+              ? "Canceling…"
+              : voice.state === "error"
+                ? "Couldn't transcribe"
+                : "Transcribing…"}
+        </ThemedText>
+      )}
+      {isRecording ? (
+        <ThemedText style={styles.recordingTime} themeColor="textSecondary">
+          {formatRecordingTime(voice.durationMillis)}
+        </ThemedText>
+      ) : null}
+    </View>
+  );
+
   const actionControls = (
     <View style={styles.actionControls}>
       {Platform.OS !== "web" ? (
@@ -426,7 +501,6 @@ export function OpencodeComposer({
           }
           style={({ pressed }) => [
             styles.voiceButton,
-            voice.state === "recording" && styles.voiceButtonRecording,
             ((disabled && voice.state === "idle") ||
               (voice.state !== "idle" &&
                 voice.state !== "recording" &&
@@ -435,27 +509,82 @@ export function OpencodeComposer({
             pressed && styles.pressed,
           ]}
         >
+          <Animated.View
+            pointerEvents="none"
+            style={[
+              styles.voiceButtonFill,
+              {
+                backgroundColor: recordingProgress.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["rgba(220, 38, 38, 0)", "rgba(220, 38, 38, 1)"],
+                }),
+              },
+            ]}
+          />
           {voice.state === "starting" ||
           voice.state === "stopping" ||
           voice.state === "canceling" ||
           voice.state === "transcribing" ? (
             <ActivityIndicator size="small" color={theme.text} />
           ) : (
-            <SymbolView
-              name={
-                voice.state === "recording"
-                  ? { ios: "stop.fill", android: "stop" }
-                  : voice.state === "error"
-                    ? { ios: "arrow.clockwise", android: "refresh" }
-                    : { ios: "mic.fill", android: "mic" }
-              }
-              size={20}
-              tintColor={voice.state === "recording" ? "#ffffff" : theme.text}
-            />
+            <>
+              <Animated.View
+                style={[
+                  styles.voiceIcon,
+                  {
+                    opacity: recordingProgress.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [1, 0],
+                    }),
+                    transform: [
+                      {
+                        scale: recordingProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [1, 0.5],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <SymbolView
+                  name={
+                    voice.state === "error"
+                      ? { ios: "arrow.clockwise", android: "refresh" }
+                      : { ios: "mic.fill", android: "mic" }
+                  }
+                  size={20}
+                  tintColor={theme.text}
+                />
+              </Animated.View>
+              <Animated.View
+                style={[
+                  styles.voiceIcon,
+                  {
+                    opacity: recordingProgress,
+                    transform: [
+                      {
+                        scale: recordingProgress.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [0.5, 1],
+                        }),
+                      },
+                    ],
+                  },
+                ]}
+              >
+                <SymbolView
+                  name={{ ios: "stop.fill", android: "stop" }}
+                  size={17}
+                  tintColor="#ffffff"
+                />
+              </Animated.View>
+            </>
           )}
         </Pressable>
       ) : null}
-      {onStop ? (
+      {/* Hidden during voice input so it isn't confused with the mic's ■. */}
+      {onStop && !isVoiceActive ? (
         <Pressable
           accessibilityLabel="Stop response"
           accessibilityRole="button"
@@ -480,42 +609,18 @@ export function OpencodeComposer({
         </Pressable>
       ) : null}
       <Pressable
-        accessibilityLabel={
-          isVoiceActive
-            ? "Cancel voice input"
-            : onStop
-              ? "Queue task"
-              : "Send prompt"
-        }
+        accessibilityLabel={onStop ? "Queue task" : "Send prompt"}
         accessibilityRole="button"
-        disabled={
-          voice.state === "canceling" || (!isVoiceActive && submitDisabled)
-        }
-        onPress={isVoiceActive ? () => void voice.cancel() : submit}
+        disabled={submitDisabled}
+        onPress={submit}
         style={({ pressed }) => [
           styles.sendButton,
-          {
-            backgroundColor: isVoiceActive ? "#ffffff" : theme.text,
-            borderColor: isVoiceActive
-              ? theme.backgroundSelected
-              : "transparent",
-            borderWidth: isVoiceActive ? StyleSheet.hairlineWidth : 0,
-          },
-          !isVoiceActive && submitDisabled && styles.disabled,
+          { backgroundColor: theme.text },
+          submitDisabled && styles.disabled,
           pressed && styles.pressed,
         ]}
       >
-        {isVoiceActive ? (
-          voice.state === "canceling" ? (
-            <ActivityIndicator color="#000000" size="small" />
-          ) : (
-            <SymbolView
-              name={{ ios: "xmark", android: "close" }}
-              size={18}
-              tintColor="#000000"
-            />
-          )
-        ) : isSubmitting ? (
+        {isSubmitting ? (
           <ActivityIndicator color={theme.background} size="small" />
         ) : (
           <SymbolView
@@ -693,13 +798,21 @@ export function OpencodeComposer({
             styles.composer,
             isExpanded && styles.composerExpanded,
             {
-              backgroundColor: theme.backgroundElement,
-              borderColor: theme.backgroundSelected,
+              backgroundColor: isVoiceActive
+                ? "rgba(220, 38, 38, 0.1)"
+                : theme.backgroundElement,
+              borderColor: isVoiceActive
+                ? "rgba(220, 38, 38, 0.35)"
+                : theme.backgroundSelected,
               borderRadius: isExpanded ? 24 : 999,
             },
           ]}
         >
-          {!isExpanded ? attachmentControl : null}
+          {isVoiceActive
+            ? cancelVoiceControl
+            : !isExpanded
+              ? attachmentControl
+              : null}
           <TextInput
             accessibilityLabel={accessibilityLabel}
             autoFocus={autoFocus}
@@ -719,10 +832,14 @@ export function OpencodeComposer({
               styles.input,
               isExpanded ? styles.inputExpanded : styles.inputCollapsed,
               { color: theme.text },
+              // Hidden but still mounted, so a focused field keeps the
+              // keyboard open while recording.
+              isVoiceActive && styles.inputHidden,
             ]}
             textAlignVertical={isExpanded ? "top" : "center"}
             value={value}
           />
+          {isVoiceActive ? recordingStatus : null}
           {isExpanded ? (
             <View style={styles.expandedToolbar}>
               {attachmentControl}
@@ -1209,7 +1326,23 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     width: 38,
   },
-  voiceButtonRecording: { backgroundColor: "#6b6b70" },
+  voiceButtonFill: {
+    borderRadius: 999,
+    bottom: 0,
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
+  voiceIcon: {
+    alignItems: "center",
+    bottom: 0,
+    justifyContent: "center",
+    left: 0,
+    position: "absolute",
+    right: 0,
+    top: 0,
+  },
   attachmentButton: {
     alignItems: "center",
     borderRadius: 999,
@@ -1308,6 +1441,22 @@ const styles = StyleSheet.create({
   inputCollapsed: {
     height: 36,
   },
+  inputHidden: {
+    height: 1,
+    opacity: 0,
+    position: "absolute",
+    width: 1,
+  },
+  recordingLabel: { flexShrink: 1, fontSize: 15, fontWeight: "500" },
+  recordingStatus: {
+    alignItems: "center",
+    flex: 1,
+    flexDirection: "row",
+    gap: 8,
+    minWidth: 0,
+    paddingHorizontal: 4,
+  },
+  recordingTime: { fontSize: 15, fontVariant: ["tabular-nums"] },
   inputExpanded: {
     flex: 0,
     maxHeight: 130,
