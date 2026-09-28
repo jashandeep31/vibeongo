@@ -7,8 +7,9 @@ import {
   useAudioRecorderState,
 } from "expo-audio";
 import { File } from "expo-file-system";
+import * as Haptics from "expo-haptics";
 import { useEffect, useRef, useState } from "react";
-import { Alert } from "react-native";
+import Toast from "react-native-toast-message";
 
 type VoiceState =
   | "idle"
@@ -24,6 +25,22 @@ const MAX_RECORDING_MS = 120_000;
 const RECORDING_OPTIONS = {
   ...RecordingPresets.HIGH_QUALITY,
   isMeteringEnabled: true,
+};
+
+// Haptics are unsupported on some platforms (web); feedback is best-effort.
+const vibrate = {
+  start: () =>
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(
+      () => {},
+    ),
+  stop: () =>
+    void Haptics.notificationAsync(
+      Haptics.NotificationFeedbackType.Success,
+    ).catch(() => {}),
+  cancel: () =>
+    void Haptics.notificationAsync(
+      Haptics.NotificationFeedbackType.Warning,
+    ).catch(() => {}),
 };
 
 function removeRecording(uri: string | null) {
@@ -83,10 +100,11 @@ export function useVoiceTranscription(
     } catch {
       if (!request.signal.aborted && mountedRef.current) {
         changeState("error");
-        Alert.alert(
-          "Could not transcribe recording",
-          "Tap the microphone to retry or Cancel to discard it.",
-        );
+        Toast.show({
+          type: "error",
+          text1: "Could not transcribe recording",
+          text2: "Tap ↻ to retry or × to discard it.",
+        });
       }
     } finally {
       if (requestRef.current === request) requestRef.current = null;
@@ -106,10 +124,11 @@ export function useVoiceTranscription(
       )
         return;
       if (!permission.granted) {
-        Alert.alert(
-          "Microphone permission needed",
-          "Allow microphone access to dictate a prompt.",
-        );
+        Toast.show({
+          type: "error",
+          text1: "Microphone permission needed",
+          text2: "Allow microphone access to dictate a prompt.",
+        });
         changeState("idle");
         return;
       }
@@ -132,6 +151,7 @@ export function useVoiceTranscription(
         return;
       recorder.record();
       changeState("recording");
+      vibrate.start();
     } catch {
       if (
         !mountedRef.current ||
@@ -140,13 +160,18 @@ export function useVoiceTranscription(
       )
         return;
       changeState("idle");
-      Alert.alert("Could not start recording", "Please try again.");
+      Toast.show({
+        type: "error",
+        text1: "Could not start recording",
+        text2: "Please try again.",
+      });
     }
   };
 
   const stop = async () => {
     if (stateRef.current !== "recording") return;
     changeState("stopping");
+    vibrate.stop();
     let stopPromise: Promise<void> | null = null;
     try {
       stopPromise = recorder.stop();
@@ -166,10 +191,11 @@ export function useVoiceTranscription(
     } catch {
       if (!mountedRef.current || !isCurrentState("stopping")) return;
       changeState("error");
-      Alert.alert(
-        "Could not save recording",
-        "Tap the microphone to try again or Cancel.",
-      );
+      Toast.show({
+        type: "error",
+        text1: "Could not save recording",
+        text2: "Tap ↻ to try again or × to discard it.",
+      });
     } finally {
       if (stopPromiseRef.current === stopPromise) stopPromiseRef.current = null;
     }
@@ -180,6 +206,7 @@ export function useVoiceTranscription(
     const previous = stateRef.current;
     startVersionRef.current += 1;
     changeState("canceling");
+    vibrate.cancel();
     requestRef.current?.abort();
     requestRef.current = null;
     if (previous === "recording") {
