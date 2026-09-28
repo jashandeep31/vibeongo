@@ -1,6 +1,7 @@
 import {
   findOpencodeFiles,
   OPENCODE_MESSAGE_PAGE_SIZE,
+  RUNTIME_WORKSPACE_DIRECTORY,
   visibleTimelineMessages,
   type OpencodePromptSelection,
   type OpencodeQueuedPrompt,
@@ -340,7 +341,7 @@ export function ProjectChatScreen() {
   const openNewChat = useCallback(() => {
     router.setParams({
       chatId: "new",
-      directory: data?.session.directory ?? "",
+      directory: RUNTIME_WORKSPACE_DIRECTORY,
       ...(selection.agent ? { agent: selection.agent } : {}),
       ...(selection.model ? { model: selection.model } : {}),
       ...(selection.variant ? { variant: selection.variant } : {}),
@@ -349,7 +350,6 @@ export function ProjectChatScreen() {
       returnProjectSessionId: projectSessionId,
     });
   }, [
-    data?.session.directory,
     opencodeSessionId,
     projectId,
     projectSessionId,
@@ -669,9 +669,6 @@ export function ProjectChatScreen() {
       </>
       <ProjectChatSwitcherDrawer
         current={{ opencodeSessionId, projectId, projectSessionId }}
-        newChatDirectoriesBySessionId={{
-          [projectSessionId]: data.session.directory,
-        }}
         onClose={() => setIsChatSwitcherOpen(false)}
         onDelete={(target) => {
           const remove = () =>
@@ -683,7 +680,7 @@ export function ProjectChatScreen() {
                 if (target.opencodeSessionId === opencodeSessionId) {
                   router.setParams({
                     chatId: "new",
-                    directory: data.session.directory,
+                    directory: RUNTIME_WORKSPACE_DIRECTORY,
                   });
                 }
               },
@@ -701,7 +698,7 @@ export function ProjectChatScreen() {
           ) {
             router.setParams({
               chatId: "new",
-              directory: target.directory,
+              directory: RUNTIME_WORKSPACE_DIRECTORY,
               returnOpencodeSessionId: opencodeSessionId,
               returnProjectId: projectId,
               returnProjectSessionId: projectSessionId,
@@ -716,6 +713,7 @@ export function ProjectChatScreen() {
             pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
             params: {
               ...target,
+              directory: RUNTIME_WORKSPACE_DIRECTORY,
               chatId: "new",
               returnOpencodeSessionId: opencodeSessionId,
               returnProjectId: projectId,
@@ -740,9 +738,6 @@ export function ProjectChatScreen() {
       />
       <ProjectChatSwitcherDrawer
         current={{ opencodeSessionId, projectId, projectSessionId }}
-        newChatDirectoriesBySessionId={{
-          [projectSessionId]: data.session.directory,
-        }}
         onClose={() => setIsSessionChatSwitcherOpen(false)}
         onDelete={(target) => {
           const remove = () =>
@@ -754,7 +749,7 @@ export function ProjectChatScreen() {
                 if (target.opencodeSessionId === opencodeSessionId) {
                   router.setParams({
                     chatId: "new",
-                    directory: data.session.directory,
+                    directory: RUNTIME_WORKSPACE_DIRECTORY,
                   });
                 }
               },

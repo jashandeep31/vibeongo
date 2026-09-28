@@ -3,6 +3,7 @@ import {
   useSessionChatsStore,
   useSessionsStore,
 } from "@repo/app-store";
+import { RUNTIME_WORKSPACE_DIRECTORY } from "@repo/api-client";
 import { SymbolView } from "expo-symbols";
 import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,7 +27,6 @@ export type NewProjectChatTarget = {
 
 export function ProjectChatSwitcherDrawer({
   current,
-  newChatDirectoriesBySessionId,
   onClose,
   onDelete,
   onNewChat,
@@ -35,7 +35,6 @@ export function ProjectChatSwitcherDrawer({
   visible,
 }: {
   current?: ProjectChatTarget;
-  newChatDirectoriesBySessionId?: Record<string, string | undefined>;
   onClose: () => void;
   onDelete?: (target: ProjectChatTarget) => void;
   onNewChat: (target: NewProjectChatTarget) => void;
@@ -150,9 +149,7 @@ export function ProjectChatSwitcherDrawer({
                     const session = entry.session;
                     const running = entry.state === "running";
                     const chats = chatsBySessionId[session.id] ?? [];
-                    const newChatDirectory =
-                      chats[0]?.directory ??
-                      newChatDirectoriesBySessionId?.[session.id];
+                    const newChatDirectory = RUNTIME_WORKSPACE_DIRECTORY;
                     return (
                       <View key={session.id}>
                         {!scopeProjectSessionId ? (

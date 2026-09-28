@@ -1,11 +1,11 @@
 import {
   findOpencodeFiles,
+  RUNTIME_WORKSPACE_DIRECTORY,
   type OpencodePromptSelection,
 } from "@repo/api-client";
 import {
   useDeleteOpencodeSession,
   useOpencodeInventory,
-  useOpencodeProjectDirectories,
   useStartOpencodeSession,
   useUserSettings,
 } from "@repo/api-hooks";
@@ -67,7 +67,6 @@ export function NewProjectChatScreen() {
       params: { projectId, projectSessionId },
     });
   }, [projectId, projectSessionId, router]);
-  const directory = firstParam(params.directory);
   const inheritedAgent = firstParam(params.agent);
   const inheritedModel = firstParam(params.model);
   const inheritedVariant = firstParam(params.variant);
@@ -94,13 +93,7 @@ export function NewProjectChatScreen() {
     runtime.accessToken,
     runtime.password,
   );
-  const directoriesQuery = useOpencodeProjectDirectories(
-    projectSessionId,
-    runtime.serverUrl,
-    runtime.accessToken,
-    runtime.password,
-  );
-  const resolvedDirectory = directory || directoriesQuery.data?.[0]?.worktree;
+  const resolvedDirectory = RUNTIME_WORKSPACE_DIRECTORY;
   const { data: userSettings } = useUserSettings();
   const startSession = useStartOpencodeSession();
   const deleteSession = useDeleteOpencodeSession({
@@ -292,17 +285,10 @@ export function NewProjectChatScreen() {
               }
               instanceId={runtime.instance.id}
               isExpiring={isInstanceExpiring}
-              isRefreshing={
-                inventoryQuery.isFetching || directoriesQuery.isFetching
-              }
+              isRefreshing={inventoryQuery.isFetching}
               onBack={goBack}
               onOpenSwitcher={openChatSwitcher}
-              onRefresh={() => {
-                void Promise.allSettled([
-                  inventoryQuery.refetch(),
-                  directoriesQuery.refetch(),
-                ]);
-              }}
+              onRefresh={() => void inventoryQuery.refetch()}
               opencodePassword={runtime.password}
               projectId={projectId}
               projectSessionId={projectSessionId}
@@ -378,18 +364,12 @@ export function NewProjectChatScreen() {
           )}
         </PageChromeLayout>
         <ProjectChatSwitcherDrawer
-          newChatDirectoriesBySessionId={{
-            [projectSessionId]: resolvedDirectory,
-          }}
           onClose={() => setIsChatSwitcherOpen(false)}
           onNewChat={selectNewChat}
           onSelect={selectChat}
           visible={isChatSwitcherOpen}
         />
         <ProjectChatSwitcherDrawer
-          newChatDirectoriesBySessionId={{
-            [projectSessionId]: resolvedDirectory,
-          }}
           onClose={() => setIsSessionChatSwitcherOpen(false)}
           onDelete={(target) => {
             const remove = () =>
