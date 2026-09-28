@@ -42,6 +42,7 @@ import Toast from "react-native-toast-message";
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
+import { ModelInput } from "@/components/model-input";
 import {
   PageChromeLayout,
   PageHeader,
@@ -485,21 +486,28 @@ export default function SettingsScreen() {
               <ServerSettingsState query={settingsQuery}>
                 <View style={styles.formFields}>
                   {modelRows.map((row) => (
-                    <LabeledInput
-                      editable={
-                        Boolean(userSettings) && !updateModelSettings.isPending
-                      }
-                      key={row.name}
-                      label={row.label}
-                      onChangeText={(value) => {
-                        setModelForm((current) => ({
-                          ...current,
-                          [row.name]: value,
-                        }));
-                        setIsModelFormDirty(true);
-                      }}
-                      value={modelForm[row.name]}
-                    />
+                    <View key={row.name} style={styles.labeledInput}>
+                      <ThemedText
+                        style={styles.inputLabel}
+                        themeColor="textSecondary"
+                      >
+                        {row.label}
+                      </ThemedText>
+                      <ModelInput
+                        editable={
+                          Boolean(userSettings) &&
+                          !updateModelSettings.isPending
+                        }
+                        onChangeText={(value) => {
+                          setModelForm((current) => ({
+                            ...current,
+                            [row.name]: value,
+                          }));
+                          setIsModelFormDirty(true);
+                        }}
+                        value={modelForm[row.name]}
+                      />
+                    </View>
                   ))}
                 </View>
                 <SaveButton
