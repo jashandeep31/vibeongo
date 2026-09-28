@@ -143,7 +143,7 @@ export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
 
 export type ProjectGithubRepo = Pick<
   typeof gitRepos.$inferSelect,
-  "id" | "full_name"
+  "id" | "full_name" | "type"
 >;
 
 export type ProjectFile = typeof projectFiles.$inferSelect & {

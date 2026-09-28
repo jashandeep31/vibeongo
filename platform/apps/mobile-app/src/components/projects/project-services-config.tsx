@@ -262,84 +262,66 @@ export function ProjectServicesConfig({
         </View>
       </ServiceCard>
 
-      <ServiceCard
-        icon={{ ios: "terminal", android: "terminal" }}
-        title="OpenCode"
+      <View
+        style={[
+          styles.agentGroup,
+          {
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.backgroundSelected,
+          },
+        ]}
       >
-        <AccountSwitch
+        <AgentRow
           disabled={disabled}
-          onValueChange={(useUserConfig) =>
+          icon={{ ios: "terminal", android: "terminal" }}
+          onChangeAuthJson={(authJson) =>
+            update({ opencode: { ...value.opencode, authJson } })
+          }
+          onChangeUseUserConfig={(useUserConfig) =>
             update({ opencode: { ...value.opencode, useUserConfig } })
           }
-          value={value.opencode.useUserConfig}
-        />
-        <FieldLabel label="AI model">
-          <ConfigInput
-            disabled={disabled}
-            onChangeText={(model) =>
-              update({ opencode: { ...value.opencode, model } })
-            }
-            placeholder="default"
-            value={value.opencode.model}
-          />
-        </FieldLabel>
-        {!value.opencode.useUserConfig ? (
-          <AuthJsonField
-            disabled={disabled}
-            onChangeText={(authJson) =>
-              update({ opencode: { ...value.opencode, authJson } })
-            }
-            serviceName="OpenCode"
-            value={value.opencode.authJson}
-          />
-        ) : null}
-      </ServiceCard>
-
-      <ServiceCard
-        icon={{ ios: "sparkles", android: "smart_toy" }}
-        title="Codex"
-      >
-        <AccountSwitch
+          title="OpenCode"
+          value={value.opencode}
+        >
+          <FieldLabel label="AI model">
+            <ConfigInput
+              disabled={disabled}
+              inset
+              onChangeText={(model) =>
+                update({ opencode: { ...value.opencode, model } })
+              }
+              placeholder="default"
+              value={value.opencode.model}
+            />
+          </FieldLabel>
+        </AgentRow>
+        <AgentDivider />
+        <AgentRow
           disabled={disabled}
-          onValueChange={(useUserConfig) =>
+          icon={{ ios: "sparkles", android: "smart_toy" }}
+          onChangeAuthJson={(authJson) =>
+            update({ codex: { ...value.codex, authJson } })
+          }
+          onChangeUseUserConfig={(useUserConfig) =>
             update({ codex: { ...value.codex, useUserConfig } })
           }
-          value={value.codex.useUserConfig}
+          title="Codex"
+          value={value.codex}
         />
-        {!value.codex.useUserConfig ? (
-          <AuthJsonField
-            disabled={disabled}
-            onChangeText={(authJson) =>
-              update({ codex: { ...value.codex, authJson } })
-            }
-            serviceName="Codex"
-            value={value.codex.authJson}
-          />
-        ) : null}
-      </ServiceCard>
-
-      <ServiceCard
-        icon={{ ios: "circle.dotted", android: "radio_button_checked" }}
-        title="Pi"
-      >
-        <AccountSwitch
+        <AgentDivider />
+        <AgentRow
           disabled={disabled}
-          onValueChange={(useUserConfig) =>
+          icon={{ ios: "circle.dotted", android: "radio_button_checked" }}
+          onChangeAuthJson={(authJson) =>
+            update({ pi: { ...value.pi, authJson } })
+          }
+          onChangeUseUserConfig={(useUserConfig) =>
             update({ pi: { ...value.pi, useUserConfig } })
           }
-          value={value.pi.useUserConfig}
+          title="Pi"
+          value={value.pi}
         />
-        {!value.pi.useUserConfig ? (
-          <AuthJsonField
-            disabled={disabled}
-            onChangeText={(authJson) =>
-              update({ pi: { ...value.pi, authJson } })
-            }
-            serviceName="Pi"
-            value={value.pi.authJson}
-          />
-        ) : null}
-      </ServiceCard>
+      </View>
     </View>
   );
 }
@@ -365,34 +347,73 @@ function ServiceCard({
   );
 }
 
-function AccountSwitch(props: {
+// One agent in the grouped list: the switch sits on the title row, and the
+// custom-auth details only appear when account settings are turned off.
+function AgentRow({
+  children,
+  disabled,
+  icon,
+  onChangeAuthJson,
+  onChangeUseUserConfig,
+  title,
+  value,
+}: {
+  children?: React.ReactNode;
   disabled: boolean;
-  onValueChange: (value: boolean) => void;
-  value: boolean;
+  icon: SymbolViewProps["name"];
+  onChangeAuthJson: (value: string) => void;
+  onChangeUseUserConfig: (value: boolean) => void;
+  title: string;
+  value: AuthConfig;
 }) {
+  const theme = useTheme();
   return (
-    <SwitchRow {...props} label="Use configuration from account settings" />
+    <View style={styles.agentRow}>
+      <View style={styles.agentHeader}>
+        <View
+          style={[
+            styles.agentIcon,
+            { backgroundColor: theme.backgroundSelected },
+          ]}
+        >
+          <SymbolView name={icon} size={15} tintColor={theme.text} />
+        </View>
+        <ThemedText style={styles.agentTitle}>{title}</ThemedText>
+        <Switch
+          accessibilityLabel={`Use ${title} configuration from account settings`}
+          disabled={disabled}
+          onValueChange={onChangeUseUserConfig}
+          value={value.useUserConfig}
+        />
+      </View>
+      {children || !value.useUserConfig ? (
+        <View style={styles.agentBody}>
+          {children}
+          {!value.useUserConfig ? (
+            <>
+              <ThemedText style={styles.agentHint} themeColor="textSecondary">
+                Custom auth for this project
+              </ThemedText>
+              <AuthJsonField
+                disabled={disabled}
+                onChangeText={onChangeAuthJson}
+                serviceName={title}
+                value={value.authJson}
+              />
+            </>
+          ) : null}
+        </View>
+      ) : null}
+    </View>
   );
 }
 
-function SwitchRow({
-  disabled,
-  label,
-  onValueChange,
-  value,
-}: {
-  disabled: boolean;
-  label: string;
-  onValueChange: (value: boolean) => void;
-  value: boolean;
-}) {
+function AgentDivider() {
+  const theme = useTheme();
   return (
-    <View style={styles.switchRow}>
-      <ThemedText style={styles.switchLabel} themeColor="textSecondary">
-        {label}
-      </ThemedText>
-      <Switch disabled={disabled} onValueChange={onValueChange} value={value} />
-    </View>
+    <View
+      style={[styles.agentDivider, { backgroundColor: theme.backgroundSelected }]}
+    />
   );
 }
 
@@ -428,6 +449,7 @@ function AuthJsonField({
           accessibilityLabel={`${serviceName} auth JSON`}
           autoCapitalize="none"
           disabled={disabled}
+          inset
           multiline
           onChangeText={onChangeText}
           placeholder={'{"token": "xyz..."}'}
@@ -458,10 +480,14 @@ function FieldLabel({
 
 function ConfigInput({
   disabled,
+  inset = false,
   style,
   ...props
 }: Omit<React.ComponentProps<typeof TextInput>, "editable"> & {
   disabled: boolean;
+  // Inside the filled agent list, use the page background so the field
+  // doesn't blend into the list.
+  inset?: boolean;
 }) {
   const theme = useTheme();
   return (
@@ -472,7 +498,7 @@ function ConfigInput({
       style={[
         styles.input,
         {
-          backgroundColor: theme.backgroundElement,
+          backgroundColor: inset ? theme.background : theme.backgroundElement,
           borderColor: theme.backgroundSelected,
           color: theme.text,
         },
@@ -561,13 +587,25 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
   },
   chipLabel: { fontSize: 12, fontWeight: "600" },
-  switchRow: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 12,
-    justifyContent: "space-between",
+  agentGroup: {
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    overflow: "hidden",
   },
-  switchLabel: { flex: 1, fontSize: 13 },
+  agentRow: { gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
+  agentHeader: { alignItems: "center", flexDirection: "row", gap: 10 },
+  agentIcon: {
+    alignItems: "center",
+    borderRadius: 8,
+    height: 28,
+    justifyContent: "center",
+    width: 28,
+  },
+  agentTitle: { flex: 1, fontSize: 15, fontWeight: "600" },
+  // Aligned with the title, past the 28px icon and 10px gap.
+  agentBody: { gap: 10, paddingLeft: 38 },
+  agentHint: { fontSize: 12 },
+  agentDivider: { height: StyleSheet.hairlineWidth, marginLeft: 52 },
   authField: { gap: 7 },
   authHeader: {
     alignItems: "center",
