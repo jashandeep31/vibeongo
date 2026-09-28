@@ -4,12 +4,12 @@ import type { PricingMetadata } from "@/services/instance-metadata-service";
 import PricingClientView from "./client-view";
 import { absoluteUrl, pageMetadata } from "@/lib/seo";
 
-export const revalidate = 86400;
+export const revalidate = 60;
 
 async function getPricingMetadata(): Promise<PricingMetadata> {
   async function getMetadata<T>(path: string): Promise<T> {
     const response = await fetch(`${BACKEND_URL}/api/v1/metadata/${path}`, {
-      next: { revalidate: 86400 },
+      next: { revalidate: 60 },
     });
     if (!response.ok) {
       throw new Error(`Unable to load pricing metadata: ${response.status}`);
@@ -46,7 +46,20 @@ async function getPricingMetadata(): Promise<PricingMetadata> {
     ),
   ]);
 
-  return { instances, sandboxes };
+  return {
+    instances: instances
+      .map(({ region, types }) => ({
+        region,
+        types: types.filter((type) => type.enabled === true),
+      }))
+      .filter(({ types }) => types.length > 0),
+    sandboxes: sandboxes
+      .map(({ region, types }) => ({
+        region,
+        types: types.filter((type) => type.enabled === true),
+      }))
+      .filter(({ types }) => types.length > 0),
+  };
 }
 
 export const metadata: Metadata = pageMetadata({
