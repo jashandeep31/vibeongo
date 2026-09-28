@@ -1,38 +1,70 @@
 import { BACKEND_URL } from "@/lib/constants";
 import { buttonVariants } from "@repo/ui/components/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@repo/ui/components/card";
 import { cn } from "@repo/ui/lib/utils";
 import { Github } from "lucide-react";
+import Image from "next/image";
+import Link from "next/link";
 
-export function GithubAuthCard() {
+const GITHUB_AUTH_URL = `${BACKEND_URL}/api/v1/auth/github?client_id=vibeongo-next`;
+
+const COPY = {
+  login: {
+    title: "Welcome back",
+    description: "Sign in to continue to AI Playground",
+    prompt: "New here?",
+    linkLabel: "Create an account",
+    linkHref: "/signup",
+  },
+  signup: {
+    title: "Create your account",
+    description: "Get started with AI Playground using GitHub",
+    prompt: "Already have an account?",
+    linkLabel: "Log in",
+    linkHref: "/login",
+  },
+} as const;
+
+export function GithubAuthCard({
+  mode = "login",
+}: {
+  mode?: keyof typeof COPY;
+}) {
+  const copy = COPY[mode];
+
   return (
-    <main className="bg-muted/20 flex min-h-svh items-center justify-center p-4">
-      <Card className="w-full max-w-sm py-6 shadow-sm">
-        <CardHeader className="text-center">
-          <CardTitle>Log in to AI Playground</CardTitle>
-          <CardDescription>
-            Continue with GitHub to access your projects and coding sessions.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <a
-            href={`${BACKEND_URL}/api/v1/auth/github?client_id=vibeongo-next`}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "lg" }),
-              "flex w-full items-center justify-center gap-2",
-            )}
+    <main className="bg-background flex min-h-svh items-center justify-center px-6">
+      <div className="flex w-full max-w-xs flex-col items-center text-center">
+        <Image
+          src="/vibeongologo.png"
+          alt="VibeOnGo"
+          width={40}
+          height={40}
+          className="mb-8 size-10 rounded-lg"
+        />
+        <h1 className="text-xl font-semibold tracking-tight">{copy.title}</h1>
+        <p className="text-muted-foreground mt-1.5 text-sm">
+          {copy.description}
+        </p>
+        <a
+          href={GITHUB_AUTH_URL}
+          className={cn(
+            buttonVariants({ size: "lg" }),
+            "mt-8 flex w-full items-center justify-center gap-2",
+          )}
+        >
+          <Github aria-hidden="true" />
+          <span>Continue with GitHub</span>
+        </a>
+        <p className="text-muted-foreground mt-6 text-xs">
+          {copy.prompt}{" "}
+          <Link
+            href={copy.linkHref}
+            className="text-foreground font-medium underline-offset-4 hover:underline"
           >
-            <Github aria-hidden="true" />
-            <span>Continue with GitHub</span>
-          </a>
-        </CardContent>
-      </Card>
+            {copy.linkLabel}
+          </Link>
+        </p>
+      </div>
     </main>
   );
 }
