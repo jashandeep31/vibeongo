@@ -24,6 +24,10 @@ BINARY_PATH="/usr/local/bin/$APP"
 ${downloadBinary}
 
 if [[ "$(cat /proc/1/comm)" == "systemd" ]]; then
+  if ! sudo systemctl is-active --quiet docker; then
+    sudo systemctl start docker
+  fi
+
   SERVICE_USER="$(id -un)"
   SERVICE_HOME="$(getent passwd "$SERVICE_USER" | cut -d: -f6)"
 
