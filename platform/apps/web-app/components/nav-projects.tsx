@@ -58,7 +58,7 @@ import {
 import { Blocks } from "loading-dev";
 import Link from "next/link";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { projects, projectSessions } from "@repo/db";
 import { toast } from "sonner";
 
@@ -93,7 +93,7 @@ function RunningSessionButtonContent({
   terminatesAt: string;
   needsDomainAssignment: boolean;
   isAutomated: boolean;
-}) {
+}): ReactElement {
   const expiresAt = new Date(terminatesAt).getTime();
   const [now, setNow] = useState(() => Date.now());
   const isTerminationSoon =
@@ -190,7 +190,7 @@ function ProjectSessionNavItem({
   onResume,
   onArchive,
   onNavigate,
-}: ProjectSessionNavItemProps) {
+}: ProjectSessionNavItemProps): ReactElement {
   const pathname = usePathname();
   const router = useRouter();
   const [chatToDelete, setChatToDelete] = useState<Session | null>(null);
@@ -465,7 +465,7 @@ function ProjectSessionNavItem({
   );
 }
 
-export function NavProjects({ projects }: { projects: Project[] }) {
+export function NavProjects({ projects }: { projects: Project[] }): ReactElement {
   const params = useParams<{ projectId?: string }>();
   const activeProjectId = params.projectId;
   const resumeSession = useResumeProjectSession();
