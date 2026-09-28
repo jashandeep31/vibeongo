@@ -32,6 +32,7 @@ const sandboxProviderOptions: Choice[] = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ];
 
 function getErrorMessage(error: unknown) {

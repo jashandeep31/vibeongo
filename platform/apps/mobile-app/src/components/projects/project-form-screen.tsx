@@ -107,17 +107,21 @@ function getRepoScriptWarnings(
       .map((repoName) => ({ kind: "missing" as const, repoName })),
   ];
 }
-type SandboxProvider = "e2b" | "vercel" | "daytona";
+type SandboxProvider = "e2b" | "vercel" | "daytona" | "boat";
 type Choice = { id: string; label: string; leading?: React.ReactNode };
 
 const sandboxProviderOptions: Choice[] = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ];
 
 const isSandboxProvider = (value: string): value is SandboxProvider =>
-  value === "e2b" || value === "vercel" || value === "daytona";
+  value === "e2b" ||
+  value === "vercel" ||
+  value === "daytona" ||
+  value === "boat";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error !== null && "response" in error) {
