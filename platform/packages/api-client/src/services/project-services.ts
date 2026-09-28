@@ -20,33 +20,13 @@ export type ProjectWithSessions = Project & {
   sessions: (typeof projectSessions.$inferSelect)[];
 };
 
-export type ProjectOverviewInstance = Pick<
-  typeof instances.$inferSelect,
-  | "id"
-  | "project_id"
-  | "project_session_id"
-  | "name"
-  | "state"
-  | "runtime_kind"
-  | "started_at"
-  | "terminates_at"
->;
+export type ProjectOverviewInstance = typeof instances.$inferSelect;
 
-export type ProjectOverviewSession = Pick<
-  typeof projectSessions.$inferSelect,
-  | "id"
-  | "project_id"
-  | "name"
-  | "description"
-  | "category"
-  | "started_at"
-  | "created_at"
-> & { instances: ProjectOverviewInstance[] };
+export type ProjectOverviewSession = typeof projectSessions.$inferSelect & {
+  instances: ProjectOverviewInstance[];
+};
 
-export type ProjectOverview = Pick<
-  Project,
-  "id" | "name" | "description" | "created_at"
-> & {
+export type ProjectOverview = Project & {
   sessions: ProjectOverviewSession[];
 };
 

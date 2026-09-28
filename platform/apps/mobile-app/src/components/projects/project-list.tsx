@@ -2,8 +2,7 @@ import { RUNTIME_WORKSPACE_DIRECTORY, type Project } from "@repo/api-client";
 import {
   useArchiveProjectSession,
   useDeleteProject,
-  useGetInstances,
-  useGetProjectsWithSessions,
+  useGetProjectOverview,
   useResumeProjectSession,
   useTerminateInstance,
 } from "@repo/api-hooks";
@@ -79,7 +78,9 @@ function getApiError(error: unknown) {
 export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const theme = useTheme();
   const router = useRouter();
-  const projectsQuery = useGetProjectsWithSessions();
+  // Shares the overview query ProjectStoreSync pages through and applies to
+  // the stores.
+  const projectsQuery = useGetProjectOverview();
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const chatsBySessionId = useSessionChatsStore(
@@ -121,10 +122,6 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const terminateInstance = useTerminateInstance(
     terminationTarget?.projectId ?? "",
     terminationTarget?.sessionId ?? "",
-  );
-  const instancesQuery = useGetInstances(
-    { state: "running", limit: 100 },
-    Boolean(projectsQuery.data),
   );
 
   const openNewChat = useCallback(
@@ -254,7 +251,9 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
 
   if (
     (projectsQuery.isPending && projects.length === 0) ||
-    (Boolean(projectsQuery.data?.length) && projects.length === 0)
+    ((projectsQuery.hasNextPage ||
+      Boolean(projectsQuery.data?.pages[0]?.data.length)) &&
+      projects.length === 0)
   ) {
     return (
       <View style={[styles.centeredState, { paddingTop: topInset + 72 }]}>
@@ -326,14 +325,9 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
         nestedScrollEnabled
         refreshControl={
           <RefreshControl
-            onRefresh={() => {
-              void Promise.all([
-                projectsQuery.refetch(),
-                instancesQuery.refetch(),
-              ]);
-            }}
+            onRefresh={() => void projectsQuery.refetch()}
             refreshing={
-              projectsQuery.isRefetching || instancesQuery.isRefetching
+              projectsQuery.isRefetching && !projectsQuery.isFetchingNextPage
             }
             tintColor={theme.textSecondary}
           />

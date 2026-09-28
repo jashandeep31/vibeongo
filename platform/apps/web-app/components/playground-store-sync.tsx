@@ -1,9 +1,8 @@
 "use client";
 
-import { useGetInstances } from "@repo/api-hooks";
 import { useOpencodeStatus } from "@repo/api-hooks";
 import { useOpencodeSessions } from "@repo/api-hooks";
-import { useGetProjectsWithSessions } from "@repo/api-hooks";
+import { useGetProjectOverview } from "@repo/api-hooks";
 import {
   getOpencodePassword,
   getOpencodeSessionStatuses,
@@ -11,6 +10,7 @@ import {
   streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
+  type ProjectOverviewInstance,
   type Session,
 } from "@repo/api-client";
 import {
@@ -20,9 +20,19 @@ import {
 } from "@repo/app-store";
 import { useQueryClient } from "@tanstack/react-query";
 import { useParams } from "next/navigation";
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef } from "react";
 
-function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
+function ProjectSessionRuntimeSync({
+  instance,
+  instanceSyncState,
+  sessionId,
+}: {
+  // The session's running instance from the overview; `undefined` when it
+  // has none.
+  instance: ProjectOverviewInstance | undefined;
+  instanceSyncState: "pending" | "error" | "success";
+  sessionId: string;
+}) {
   const queryClient = useQueryClient();
   const routeParams = useParams<{
     projectSessionId?: string;
@@ -40,16 +50,6 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   const handledCompletedAnswersRef = useRef(new Set<string>());
   const filesystemRefreshTimerRef = useRef<number | undefined>(undefined);
   const updateSession = useSessionsStore((store) => store.updateSession);
-  const {
-    data: instancesData,
-    isPending,
-    isError,
-  } = useGetInstances({
-    sessionId,
-    state: "running",
-    limit: 1,
-  });
-  const instance = instancesData?.data[0];
   const instanceConfig =
     instance?.config &&
     typeof instance.config === "object" &&
@@ -628,7 +628,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
   ]);
 
   useEffect(() => {
-    if (isPending) {
+    if (instanceSyncState === "pending") {
       updateSession(sessionId, { instanceSyncState: "pending" });
       return;
     }
@@ -637,7 +637,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       updateSession(sessionId, {
         instance: null,
         state: "stopped",
-        instanceSyncState: isError ? "error" : "success",
+        instanceSyncState,
       });
       return;
     }
@@ -647,14 +647,7 @@ function ProjectSessionRuntimeSync({ sessionId }: { sessionId: string }) {
       state: isOpencodeRunning ? "running" : "processing",
       instanceSyncState: "success",
     });
-  }, [
-    instance,
-    isError,
-    isOpencodeRunning,
-    isPending,
-    sessionId,
-    updateSession,
-  ]);
+  }, [instance, instanceSyncState, isOpencodeRunning, sessionId, updateSession]);
 
   return null;
 }
@@ -735,7 +728,37 @@ function markAnswerUnreadIfNotViewing(
 }
 
 export function PlaygroundStoreSync() {
-  const { data: projectsWithSessions } = useGetProjectsWithSessions();
+  const overviewQuery = useGetProjectOverview();
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = overviewQuery;
+  // The sidebar and home page list every project, so keep paging until the
+  // overview is complete and only apply it to the stores then.
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const overviewPages = overviewQuery.data?.pages;
+  const projectsWithSessions = useMemo(
+    () =>
+      overviewPages && !hasNextPage
+        ? overviewPages.flatMap((page) => page.data)
+        : undefined,
+    [hasNextPage, overviewPages],
+  );
+  const instancesBySessionId = useMemo(
+    () =>
+      new Map(
+        (projectsWithSessions ?? []).flatMap((project) =>
+          project.sessions.map(
+            (session) => [session.id, session.instances[0]] as const,
+          ),
+        ),
+      ),
+    [projectsWithSessions],
+  );
+  const instanceSyncState = projectsWithSessions
+    ? "success"
+    : overviewQuery.isError
+      ? "error"
+      : "pending";
   const sessions = useSessionsStore((store) => store.sessions);
   const addAllProjects = useProjectsStore((store) => store.addAllProjects);
   const addAllSessions = useSessionsStore((store) => store.addAllSessions);
@@ -759,7 +782,7 @@ export function PlaygroundStoreSync() {
 
     addAllSessions(
       projectsWithSessions.flatMap((project) =>
-        project.sessions.map((session) => {
+        project.sessions.map(({ instances: _instances, ...session }) => {
           const existing = existingSessions.get(session.id);
           return existing
             ? { ...existing, session }
@@ -775,6 +798,11 @@ export function PlaygroundStoreSync() {
   }, [addAllProjects, addAllSessions, projectsWithSessions]);
 
   return sessions.map(({ session }) => (
-    <ProjectSessionRuntimeSync key={session.id} sessionId={session.id} />
+    <ProjectSessionRuntimeSync
+      instance={instancesBySessionId.get(session.id)}
+      instanceSyncState={instanceSyncState}
+      key={session.id}
+      sessionId={session.id}
+    />
   ));
 }

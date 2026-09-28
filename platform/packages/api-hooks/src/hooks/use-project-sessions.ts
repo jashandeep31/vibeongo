@@ -75,6 +75,9 @@ export const useResumeProjectSession = () => {
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       void queryClient.invalidateQueries({ queryKey: ["instances"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
     },
   });
 };

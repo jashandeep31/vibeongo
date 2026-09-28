@@ -62,6 +62,9 @@ export const useUpdateInstanceTime = (sessionId: string) => {
     onSuccess: (instance) => {
       useSessionsStore.getState().updateSession(sessionId, { instance });
       queryClient.setQueryData(["instance", instance.id], instance);
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
       return queryClient.invalidateQueries({ queryKey: ["instances"] });
     },
   });

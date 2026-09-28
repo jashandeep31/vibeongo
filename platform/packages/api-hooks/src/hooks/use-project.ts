@@ -1,5 +1,10 @@
 import { useProjectsStore } from "@repo/app-store";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useApiClient } from "../api-client-context.js";
 
 export const useCreateGithubRepo = () => {
@@ -131,6 +136,27 @@ export const useGetProjectsWithSessions = (enabled = true) => {
   return useQuery({
     queryKey: ["projects", "with-sessions"],
     queryFn: client.projects.getProjectsWithSessions,
+    enabled,
+  });
+};
+
+// Projects with their non-archived sessions and running instances, one page
+// per request. Nested under the with-sessions key so every mutation that
+// invalidates it also refreshes the overview.
+export const useGetProjectOverview = (
+  { limit, enabled = true }: { limit?: number; enabled?: boolean } = {},
+) => {
+  const client = useApiClient();
+  return useInfiniteQuery({
+    queryKey: ["projects", "with-sessions", "overview", limit ?? null],
+    queryFn: ({ pageParam }) =>
+      client.projects.getProjectOverview({
+        page: pageParam,
+        ...(limit ? { limit } : {}),
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNext ? lastPage.page + 1 : undefined,
     enabled,
   });
 };
