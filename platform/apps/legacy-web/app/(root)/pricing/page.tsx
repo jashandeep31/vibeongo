@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { BACKEND_URL } from "@/lib/constants";
 import type { PricingMetadata } from "@/services/instance-metadata-service";
 import PricingClientView from "./client-view";
+import { absoluteUrl, pageMetadata } from "@/lib/seo";
 
 export const revalidate = 86400;
 
@@ -48,45 +49,24 @@ async function getPricingMetadata(): Promise<PricingMetadata> {
   return { instances, sandboxes };
 }
 
-export const metadata: Metadata = {
-  title: "Cloud Workspace Pricing — VibeOnGo",
+export const metadata: Metadata = pageMetadata({
+  title: "Cloud Workspace Pricing",
   description:
-    "Compare VibeOnGo virtual machine and sandbox pricing. Pay for cloud development workspaces on your schedule instead of keeping compute running around the clock.",
-  alternates: {
-    canonical: "https://vibeongo.com/pricing",
-  },
-  openGraph: {
-    type: "website",
-    locale: "en_US",
-    url: "https://vibeongo.com/pricing",
-    siteName: "VibeOnGo",
-    title: "Cloud Workspace Pricing — VibeOnGo",
-    description:
-      "Compare virtual machine and sandbox pricing for agent-ready cloud development workspaces.",
-  },
-  twitter: {
-    card: "summary",
-    title: "Cloud Workspace Pricing — VibeOnGo",
-    description:
-      "Compare virtual machine and sandbox pricing for agent-ready cloud development workspaces.",
-  },
-};
+    "Compare VibeOnGo virtual machine and sandbox pricing. Sandboxes bill per minute, VMs per hour, and auto-shutdown stops idle compute — pay for the work, not the waiting.",
+  path: "/pricing",
+});
 
 const pricingStructuredData = {
   "@context": "https://schema.org",
   "@graph": [
     {
       "@type": "WebPage",
-      "@id": "https://vibeongo.com/pricing#webpage",
-      url: "https://vibeongo.com/pricing",
+      "@id": absoluteUrl("/pricing#webpage"),
+      url: absoluteUrl("/pricing"),
       name: "Cloud Workspace Pricing — VibeOnGo",
       description:
         "Compare VibeOnGo virtual machine and sandbox pricing for cloud development workspaces.",
-      isPartOf: {
-        "@type": "WebSite",
-        name: "VibeOnGo",
-        url: "https://vibeongo.com",
-      },
+      isPartOf: { "@id": absoluteUrl("/#website") },
     },
     {
       "@type": "FAQPage",
@@ -96,7 +76,7 @@ const pricingStructuredData = {
           name: "How does VibeOnGo pricing work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Sandboxes are billed per second and virtual machines are billed per hour. The 30-day estimates assume 8 hours a day, 5 days a week. Prices include the VibeOnGo management charge.",
+            text: "Sandboxes are billed per started minute and virtual machines are billed per hour. The 30-day estimates assume 8 hours a day, 5 days a week. Prices include the VibeOnGo management charge.",
           },
         },
         {

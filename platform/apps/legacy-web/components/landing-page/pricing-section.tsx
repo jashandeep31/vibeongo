@@ -1,4 +1,5 @@
-import { CircleDollarSign } from "lucide-react";
+import { ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 const pricingPoints = [
   "Usage-based billing",
@@ -15,12 +16,12 @@ export function PricingSection() {
     >
       <div className="mx-auto grid max-w-7xl items-end gap-12 lg:grid-cols-2">
         <div>
-          <h2 className="mt-7 text-4xl leading-tight font-semibold tracking-[-0.045em] sm:text-6xl">
+          <h2 className="mt-7 text-4xl leading-[1.05] font-semibold tracking-[-0.045em] text-balance sm:text-6xl sm:leading-[1.02]">
             Pay for the work, not the waiting.
           </h2>
         </div>
         <div>
-          <p className="max-w-xl text-lg leading-8 text-white/70">
+          <p className="max-w-xl text-lg leading-8 text-pretty text-white/70">
             Choose a full VM or a disposable sandbox. Usage is metered while it
             runs, and automatic expiration helps stop idle compute from draining
             your wallet.
@@ -35,6 +36,12 @@ export function PricingSection() {
               </span>
             ))}
           </div>
+          <Link
+            href="/pricing"
+            className="mt-9 inline-flex h-12 items-center gap-2 rounded-full bg-white px-6 text-sm font-semibold text-[#5b5cf0] transition-transform hover:-translate-y-0.5"
+          >
+            See VM and sandbox prices <ArrowRight className="size-4" />
+          </Link>
         </div>
       </div>
     </section>

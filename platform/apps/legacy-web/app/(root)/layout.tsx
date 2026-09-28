@@ -1,6 +1,6 @@
 import React from "react";
 import { LandingNavbar } from "@/components/landing-navbar";
-import { LandingFooter } from "@/components/landing-footer";
+import { LandingFooter } from "@/components/landing-page/landing-footer";
 
 export default function layout({ children }: { children: React.ReactNode }) {
   return (

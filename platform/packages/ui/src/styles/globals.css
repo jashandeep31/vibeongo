@@ -185,3 +185,16 @@
     @apply font-sans;
   }
 }
+
+/* Legacy-web landing tokens. Values are defined in apps/legacy-web/app/globals.css
+   (light + .dark); they are registered here because only this file runs through Tailwind. */
+@theme inline {
+  --color-lp-canvas: var(--lp-canvas);
+  --color-lp-surface: var(--lp-surface);
+  --color-lp-muted: var(--lp-muted);
+  --color-lp-ink: var(--lp-ink);
+  --color-lp-on-ink: var(--lp-on-ink);
+  --color-lp-accent: var(--lp-accent);
+  --color-lp-accent-soft: var(--lp-accent-soft);
+  --color-lp-accent-tint: var(--lp-accent-tint);
+}

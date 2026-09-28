@@ -1,4 +1,13 @@
 import React from "react";
+import type { Metadata } from "next";
+import { LEGAL_LAST_UPDATED, pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Terms of Service",
+  description:
+    "The terms for using VibeOnGo: acceptable use, wallet and billing, warranties, limitation of liability and termination.",
+  path: "/terms",
+});
 
 export default function TermsOfService() {
   return (
@@ -8,7 +17,17 @@ export default function TermsOfService() {
           Terms of Service
         </h1>
         <div className="prose prose-invert prose-slate max-w-none space-y-6 text-muted-foreground">
-          <p>Last updated: {new Date().toLocaleDateString()}</p>
+          <p>
+            Last updated:{" "}
+            <time dateTime={LEGAL_LAST_UPDATED.terms}>
+              {new Date(LEGAL_LAST_UPDATED.terms).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: "UTC",
+              })}
+            </time>
+          </p>
 
           <section>
             <h2 className="text-2xl font-bold text-foreground">1. Acceptance of Terms</h2>
@@ -48,7 +67,7 @@ export default function TermsOfService() {
           <section>
             <h2 className="text-2xl font-bold text-foreground">4. No Warranties and Limitation of Liability</h2>
             <p>
-              VibeOnGo provides a platform "as is" without any promises or warranties.
+              VibeOnGo provides a platform &ldquo;as is&rdquo; without any promises or warranties.
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li><strong>AI-Generated Code:</strong> We take no responsibility for any code changes, bugs, or security vulnerabilities introduced by our AI assistants. Users are solely responsible for reviewing and validating all code.</li>

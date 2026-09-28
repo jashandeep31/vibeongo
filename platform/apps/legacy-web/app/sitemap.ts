@@ -1,23 +1,41 @@
 import type { MetadataRoute } from "next";
+import { LEGAL_LAST_UPDATED, absoluteUrl } from "@/lib/seo";
 
-const siteUrl = "https://vibeongo.com";
-
+// Only public marketing pages. App routes (dashboard, projects, chats, …)
+// redirect to app.vibeongo.com and are excluded in robots.ts.
 export default function sitemap(): MetadataRoute.Sitemap {
+  const now = new Date();
+
   return [
     {
-      url: `${siteUrl}/`,
+      url: absoluteUrl("/"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 1,
+      images: [absoluteUrl("/assets/hero.png"), absoluteUrl("/assets/app.png")],
     },
     {
-      url: `${siteUrl}/contact`,
+      url: absoluteUrl("/pricing"),
+      lastModified: now,
+      changeFrequency: "weekly",
+      priority: 0.9,
     },
     {
-      url: `${siteUrl}/pricing`,
+      url: absoluteUrl("/contact"),
+      changeFrequency: "yearly",
+      priority: 0.5,
     },
     {
-      url: `${siteUrl}/privacy`,
+      url: absoluteUrl("/privacy"),
+      lastModified: new Date(LEGAL_LAST_UPDATED.privacy),
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
     {
-      url: `${siteUrl}/terms`,
+      url: absoluteUrl("/terms"),
+      lastModified: new Date(LEGAL_LAST_UPDATED.terms),
+      changeFrequency: "yearly",
+      priority: 0.3,
     },
   ];
 }

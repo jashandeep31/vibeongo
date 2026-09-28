@@ -1,7 +1,16 @@
 import React from "react";
+import type { Metadata } from "next";
+import { pageMetadata } from "@/lib/seo";
 import { Mail, Twitter, Github } from "lucide-react";
 import Link from "next/link";
 import { Button } from "@repo/ui/components/button";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Contact",
+  description:
+    "Get in touch with the VibeOnGo team by email, on X or on GitHub — questions, feedback, bug reports and partnership requests welcome.",
+  path: "/contact",
+});
 
 export default function ContactPage() {
   const contactMethods = [

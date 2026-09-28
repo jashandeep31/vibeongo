@@ -1,4 +1,13 @@
 import React from "react";
+import type { Metadata } from "next";
+import { LEGAL_LAST_UPDATED, pageMetadata } from "@/lib/seo";
+
+export const metadata: Metadata = pageMetadata({
+  title: "Privacy Policy",
+  description:
+    "What VibeOnGo collects, how your code stays private, which third parties are involved and how to delete your data.",
+  path: "/privacy",
+});
 
 export default function PrivacyPolicy() {
   return (
@@ -8,7 +17,17 @@ export default function PrivacyPolicy() {
           Privacy Policy
         </h1>
         <div className="prose prose-invert prose-slate max-w-none space-y-6 text-muted-foreground">
-          <p>Last updated: {new Date().toLocaleDateString()}</p>
+          <p>
+            Last updated:{" "}
+            <time dateTime={LEGAL_LAST_UPDATED.privacy}>
+              {new Date(LEGAL_LAST_UPDATED.privacy).toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+                timeZone: "UTC",
+              })}
+            </time>
+          </p>
           
           <section>
             <h2 className="text-2xl font-bold text-foreground">1. Information We Collect</h2>
@@ -24,7 +43,7 @@ export default function PrivacyPolicy() {
           <section>
             <h2 className="text-2xl font-bold text-foreground">2. Code Privacy</h2>
             <p>
-              Your source code is <strong>never</strong> accessed, stored, or processed by VibeOnGo's central servers. When you start an environment:
+              Your source code is <strong>never</strong> accessed, stored, or processed by VibeOnGo&apos;s central servers. When you start an environment:
             </p>
             <ul className="list-disc pl-6 space-y-2">
               <li>The code is cloned directly from GitHub onto your dedicated EC2 instance.</li>
