@@ -40,6 +40,7 @@ const sandboxProviderOptions = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ] as const;
 
 function SelectField({

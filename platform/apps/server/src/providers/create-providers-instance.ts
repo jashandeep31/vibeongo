@@ -12,12 +12,14 @@ import { AWSClient } from "./client/aws-client.js";
 import { E2BClient } from "./client/e2b-client.js";
 import { DaytonaClient } from "./client/daytona-client.js";
 import { VercelSandboxClient } from "./client/vercel-sandbox-client.js";
+import { BoatClient } from "./client/boat-client.js";
 
 const digitaloceanClient = new DigitalOceanClient();
 const awsInstancesClient = new AWSClient();
 const e2bClient = new E2BClient();
 const daytonaClient = new DaytonaClient();
 const vercelClient = new VercelSandboxClient();
+const boatClient = new BoatClient();
 
 export const createProviderInstance = async (
   props: CreateProviderInstanceProps,
@@ -52,6 +54,8 @@ const createSandboxProviderInstance = async ({
       return daytonaClient.createInstance(instance);
     case "vercel":
       return vercelClient.createInstance(instance);
+    case "boat":
+      return boatClient.createInstance(instance);
     default:
       throw new AppError("Sandbox provider not found", 404);
   }

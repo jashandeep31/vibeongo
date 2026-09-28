@@ -40,7 +40,6 @@ func NewHandler(proxyStore *store.ProxyManager, version, buildTime string, token
 			r.URL.Scheme = proxyData.Target.Scheme
 			r.URL.Host = proxyData.Target.Host
 			r.Host = proxyData.Target.Host
-
 			applyProviderHeaders(r, proxyData)
 		},
 		ModifyResponse: func(response *http.Response) error {
@@ -172,6 +171,9 @@ func (h *Handler) ReverseProxy(c *echo.Context) error {
 	if proxyData.Protected && !hasValidAccessToken {
 		return c.String(http.StatusUnauthorized, "401")
 	}
+	if proxyData.Provider == "boat" && proxyData.PreviewToken == "" {
+		return c.String(http.StatusBadGateway, "502")
+	}
 
 	ctx := context.WithValue(request.Context(), proxyDataContextKey{}, proxyData)
 	h.reverseProxy.ServeHTTP(c.Response(), request.WithContext(ctx))
@@ -209,7 +211,25 @@ func applyProviderHeaders(request *http.Request, proxyData *store.Proxy) {
 		handleDaytonaHeaders(request)
 	case "e2b":
 		handleE2BHeaders(request, proxyData.PreviewToken)
+	case "boat":
+		handleBoatCookie(request, proxyData.PreviewToken)
+		if websocket.IsWebSocketUpgrade(request) {
+			request.Header.Del("Origin")
+		}
 	}
+}
+
+func handleBoatCookie(request *http.Request, previewToken string) {
+	// Boat accepts the resolved credential in _port_auth. Discard any value
+	// supplied by the caller while preserving cookies for the upstream app.
+	cookies := request.Cookies()
+	request.Header.Del("Cookie")
+	for _, cookie := range cookies {
+		if cookie.Name != "_port_auth" {
+			request.AddCookie(cookie)
+		}
+	}
+	request.AddCookie(&http.Cookie{Name: "_port_auth", Value: previewToken})
 }
 
 func handleDaytonaHeaders(request *http.Request) {

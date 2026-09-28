@@ -323,6 +323,9 @@ importers:
       '@aws-sdk/client-ses':
         specifier: ^3.1137.0
         version: 3.1137.0
+      '@boatdev/sdk':
+        specifier: ^1.1.0
+        version: 1.1.0
       '@daytona/sdk':
         specifier: ^0.214.0
         version: 0.214.0
@@ -1313,6 +1316,9 @@ packages:
     peerDependenciesMeta:
       '@types/react':
         optional: true
+
+  '@boatdev/sdk@1.1.0':
+    resolution: {integrity: sha512-t29/14CLkLccvjYluVZqBn5cecrg5QYGlN/hy7FUD1pJEb8stdp/8uNc0IDvSXBcktXeut9FuSFSOabVjnk8mA==}
 
   '@bufbuild/protobuf@2.15.0':
     resolution: {integrity: sha512-DAheWUkVr/SJTWCc+lg9dhY0eN4SaWlf4+bG1KzHeXbnqt0AfB/NX0Z+VunGlM1ki1B4zVvye27MpKh/svySUA==}
@@ -10370,6 +10376,8 @@ snapshots:
       use-sync-external-store: 1.7.0(react@19.3.0)
     optionalDependencies:
       '@types/react': 19.2.2
+
+  '@boatdev/sdk@1.1.0': {}
 
   '@bufbuild/protobuf@2.15.0': {}
 
