@@ -2,8 +2,10 @@ package store
 
 import (
 	"fmt"
+	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
@@ -11,7 +13,7 @@ import (
 
 type OpencodeWeb struct {
 	mu      sync.RWMutex
-	Running bool
+	started bool
 }
 
 func NewOpencodeWeb() *OpencodeWeb {
@@ -19,9 +21,26 @@ func NewOpencodeWeb() *OpencodeWeb {
 }
 
 func (o *OpencodeWeb) IsRunning() bool {
-	o.mu.RLock()
-	defer o.mu.RUnlock()
-	return o.Running
+	cfg, err := config.LoadAndValidate()
+	if err != nil {
+		return false
+	}
+	client := &http.Client{Timeout: time.Second}
+	return opencodeResponding(client, "http://127.0.0.1:4096/global/health", cfg.InstanceConfig.OpencodePassword)
+}
+
+func opencodeResponding(client *http.Client, url, password string) bool {
+	request, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		return false
+	}
+	request.SetBasicAuth("opencode", password)
+	response, err := client.Do(request)
+	if err != nil {
+		return false
+	}
+	defer response.Body.Close()
+	return response.StatusCode == http.StatusOK
 }
 
 func startWebServerLocked() error {
@@ -57,14 +76,14 @@ func validateOpencodePassword(password string) error {
 func (o *OpencodeWeb) StartWebServer() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
-	if o.Running {
+	if o.started {
 		return nil
 	}
 	err := startWebServerLocked()
 	if err != nil {
 		return err
 	}
-	o.Running = true
+	o.started = true
 	return nil
 }
 
@@ -72,16 +91,16 @@ func (o *OpencodeWeb) RestartWebServer() error {
 	o.mu.Lock()
 	defer o.mu.Unlock()
 
-	if !o.Running {
+	if !o.started {
 		return nil
 	}
 	_ = utils.KilltmuxSession("ops")
-	o.Running = false
+	o.started = false
 	err := startWebServerLocked()
 	if err != nil {
 		return err
 	}
-	o.Running = true
+	o.started = true
 	return nil
 }
 
@@ -92,6 +111,41 @@ func (o *OpencodeWeb) StopWebServer() error {
 	if err != nil {
 		return err
 	}
-	o.Running = false
+	o.started = false
+	return nil
+}
+
+// StartWebServerWithRetry checks the HTTP endpoint after startup and retries
+// the tmux process once if the endpoint is not responding.
+func (o *OpencodeWeb) StartWebServerWithRetry() error {
+	startErr := o.StartWebServer()
+	time.Sleep(2 * time.Second)
+	if o.IsRunning() {
+		return nil
+	}
+
+	o.mu.RLock()
+	started := o.started
+	o.mu.RUnlock()
+
+	var retryErr error
+	if started {
+		retryErr = o.RestartWebServer()
+	} else {
+		// A failed start may still have left the dedicated tmux session behind.
+		_ = utils.KilltmuxSession("ops")
+		retryErr = o.StartWebServer()
+	}
+	if retryErr != nil {
+		if startErr != nil {
+			return fmt.Errorf("opencode initial start failed: %v; retry failed: %w", startErr, retryErr)
+		}
+		return fmt.Errorf("opencode restart failed: %w", retryErr)
+	}
+
+	time.Sleep(2 * time.Second)
+	if !o.IsRunning() {
+		return fmt.Errorf("opencode health endpoint did not return 200 after retry")
+	}
 	return nil
 }

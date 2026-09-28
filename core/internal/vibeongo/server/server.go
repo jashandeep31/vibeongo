@@ -15,26 +15,14 @@ func Start() error {
 		return err
 	}
 
-	// go handlers.GetAllowedPortsTestfunc()
 	e := echo.New()
-
-	// spinning up the opencode web server
-	// openCode := store.NewOpencodeWeb()
-	// t3Code := store.NewT3Code()
 
 	tools := store.NewTools()
 
-	// NOTE: we are not using this option any more as this starting the opencode server before the complete setup causes the issue of not loading the folders of that project properly
-	// go func() {
-	// 	if err := openCode.StartWebServer(); err != nil {
-	// 		e.Logger.Error("failed to start opencode web server", "error", err)
-	// 	}
-	// }()
-	//
-	//
-	//NOTE: testing purposes remove this in the production
 	go func() {
-		tools.OpenCode.StartWebServer()
+		if err := tools.OpenCode.StartWebServerWithRetry(); err != nil {
+			e.Logger.Error("failed to start opencode web server", "error", err)
+		}
 	}()
 
 	// Allow requests from every origin. Echo reflects requested headers for
