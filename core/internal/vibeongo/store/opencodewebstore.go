@@ -16,6 +16,11 @@ type OpencodeWeb struct {
 	started bool
 }
 
+const (
+	opencodeReadyTimeout  = 5 * time.Second
+	opencodeReadyInterval = time.Second
+)
+
 func NewOpencodeWeb() *OpencodeWeb {
 	return &OpencodeWeb{}
 }
@@ -115,12 +120,24 @@ func (o *OpencodeWeb) StopWebServer() error {
 	return nil
 }
 
-// StartWebServerWithRetry checks the HTTP endpoint after startup and retries
-// the tmux process once if the endpoint is not responding.
+func waitForOpencodeReady(isRunning func() bool, timeout, interval time.Duration) bool {
+	deadline := time.Now().Add(timeout)
+	for {
+		if isRunning() {
+			return true
+		}
+		if !time.Now().Before(deadline) {
+			return false
+		}
+		time.Sleep(interval)
+	}
+}
+
+// StartWebServerWithRetry waits for the HTTP endpoint after startup and
+// restarts the tmux process once if it does not become ready.
 func (o *OpencodeWeb) StartWebServerWithRetry() error {
 	startErr := o.StartWebServer()
-	time.Sleep(2 * time.Second)
-	if o.IsRunning() {
+	if waitForOpencodeReady(o.IsRunning, opencodeReadyTimeout, opencodeReadyInterval) {
 		return nil
 	}
 
@@ -143,8 +160,7 @@ func (o *OpencodeWeb) StartWebServerWithRetry() error {
 		return fmt.Errorf("opencode restart failed: %w", retryErr)
 	}
 
-	time.Sleep(2 * time.Second)
-	if !o.IsRunning() {
+	if !waitForOpencodeReady(o.IsRunning, opencodeReadyTimeout, opencodeReadyInterval) {
 		return fmt.Errorf("opencode health endpoint did not return 200 after retry")
 	}
 	return nil

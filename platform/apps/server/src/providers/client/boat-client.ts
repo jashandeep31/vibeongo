@@ -59,7 +59,6 @@ export class BoatClient {
 
   async setupInstance(sandboxId: string, userData: string): Promise<void> {
     const encodedUserData = Buffer.from(userData, "utf8").toString("base64");
-    await new Promise((r) => setTimeout(r, 10_000));
     const started = await boatSandboxClient.command({
       sandboxId,
       command: `printf '%s' '${encodedUserData}' | base64 -d > /tmp/vibeongo-setup.sh && chmod 700 /tmp/vibeongo-setup.sh && sudo -n bash /tmp/vibeongo-setup.sh`,
