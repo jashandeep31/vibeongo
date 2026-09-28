@@ -1,0 +1,1 @@
+ALTER TYPE "public"."sandbox_providers" ADD VALUE 'boat';
