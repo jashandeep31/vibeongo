@@ -60,7 +60,7 @@ const navigation: NavigationItem[] = [
     href: "/limits",
   },
   {
-    title: "GitHub Repos",
+    title: "Git Repos",
     icon: { ios: "chevron.left.forwardslash.chevron.right", android: "code" },
     href: "/github-repos",
   },

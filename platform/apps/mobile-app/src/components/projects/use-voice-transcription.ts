@@ -1,5 +1,6 @@
 import { useApiClient } from "@repo/api-hooks";
 import {
+  getRecordingPermissionsAsync,
   RecordingPresets,
   requestRecordingPermissionsAsync,
   setAudioModeAsync,
@@ -116,7 +117,13 @@ export function useVoiceTranscription(
     const version = ++startVersionRef.current;
     changeState("starting");
     try {
-      const permission = await requestRecordingPermissionsAsync();
+      // On Android, requesting always launches the system permission
+      // activity, even when already granted, which steals window focus and
+      // dismisses the keyboard. Only request when not granted yet.
+      const current = await getRecordingPermissionsAsync();
+      const permission = current.granted
+        ? current
+        : await requestRecordingPermissionsAsync();
       if (
         !mountedRef.current ||
         !isCurrentState("starting") ||
