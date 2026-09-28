@@ -213,6 +213,9 @@ func applyProviderHeaders(request *http.Request, proxyData *store.Proxy) {
 		handleE2BHeaders(request, proxyData.PreviewToken)
 	case "boat":
 		handleBoatCookie(request, proxyData.PreviewToken)
+		if websocket.IsWebSocketUpgrade(request) {
+			request.Header.Del("Origin")
+		}
 	}
 }
 
