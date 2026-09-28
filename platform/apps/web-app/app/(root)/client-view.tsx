@@ -10,13 +10,11 @@ import {
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
-import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import {
   InstanceControlsDropdown,
   ProjectActionsDropdown,
   SessionActionsDropdown,
 } from "@/components/project-action-menus";
-import { useGetProjectGithubReposById } from "@repo/api-hooks";
 import { useAuthenticatedUser } from "@repo/api-hooks";
 import { useWebSocket } from "@repo/api-hooks";
 import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
@@ -29,7 +27,7 @@ import {
   useArchiveProjectSession,
   useResumeProjectSession,
 } from "@repo/api-hooks";
-import { getRuntimeRepositoryDirectory, type Chat } from "@repo/api-client";
+import { RUNTIME_WORKSPACE_DIRECTORY, type Chat } from "@repo/api-client";
 import { useDeleteChat, useGetVibeongoChats } from "@repo/api-hooks";
 import {
   useProjectsStore,
@@ -101,184 +99,139 @@ function SessionRow({
   onArchive: (sessionId: string) => void;
 }) {
   const router = useRouter();
-  const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
-  const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const serverUrl = getServerUrl(entry);
   const sessionUrl = `/projects/${entry.session.project_id}/sessions/${entry.session.id}`;
   const storedOpencodeSessions = useSessionChatsStore(
     (store) => store.chatsBySessionId[entry.session.id],
   );
   const opencodeSessions = storedOpencodeSessions ?? [];
-  const {
-    data: githubRepos,
-    isPending: isReposPending,
-    isError: isReposError,
-    refetch: refetchGithubRepos,
-  } = useGetProjectGithubReposById(entry.session.project_id, isRepoDialogOpen);
-
-  const openDirectory = (directory: string) => {
-    const runningUrl = getRunningSessionUrl(entry, directory);
+  const handleNewChat = () => {
+    const runningUrl = getRunningSessionUrl(entry, RUNTIME_WORKSPACE_DIRECTORY);
     if (!runningUrl) return;
-
-    setIsRepoDialogOpen(false);
     router.push(runningUrl);
   };
 
-  const handleNewChat = async () => {
-    setIsStartingNewChat(true);
-
-    const result = await refetchGithubRepos();
-    const repos = result.data ?? [];
-    const [onlyRepo] = repos;
-
-    if (result.isSuccess && repos.length === 1 && onlyRepo) {
-      openDirectory(getRuntimeRepositoryDirectory(onlyRepo.full_name));
-    } else {
-      setIsRepoDialogOpen(true);
-    }
-
-    setIsStartingNewChat(false);
-  };
-
   return (
-    <>
-      <div>
-        <div className="flex items-center gap-2 py-1">
-          <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left">
-            <ChevronRight
-              className={`text-muted-foreground size-4 shrink-0 ${
-                serverUrl ? "rotate-90" : ""
+    <div>
+      <div className="flex items-center gap-2 py-1">
+        <div className="flex min-w-0 flex-1 items-center gap-2 py-1 text-left">
+          <ChevronRight
+            className={`text-muted-foreground size-4 shrink-0 ${
+              serverUrl ? "rotate-90" : ""
+            }`}
+          />
+          <span className="min-w-0 flex-1">
+            <span
+              className="text-muted-foreground block truncate font-mono text-sm font-semibold capitalize"
+              title={entry.session.name}
+            >
+              {entry.session.name}
+            </span>
+          </span>
+          {entry.session.category === "auto" ? <AutomatedSessionBadge /> : null}
+          <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
+            <span
+              className={`size-1.5 rounded-full ${
+                entry.state === "running"
+                  ? "bg-emerald-500"
+                  : entry.state === "processing"
+                    ? "animate-pulse bg-amber-500"
+                    : "bg-muted-foreground/50"
               }`}
             />
-            <span className="min-w-0 flex-1">
-              <span
-                className="text-muted-foreground block truncate font-mono text-sm font-semibold capitalize"
-                title={entry.session.name}
-              >
-                {entry.session.name}
-              </span>
-            </span>
-            {entry.session.category === "auto" ? (
-              <AutomatedSessionBadge />
-            ) : null}
-            <span className="text-muted-foreground flex shrink-0 items-center gap-1.5 text-xs">
-              <span
-                className={`size-1.5 rounded-full ${
-                  entry.state === "running"
-                    ? "bg-emerald-500"
-                    : entry.state === "processing"
-                      ? "animate-pulse bg-amber-500"
-                      : "bg-muted-foreground/50"
-                }`}
-              />
-            </span>
-          </div>
-
-          {entry.instance ? (
-            <>
-              <Button
-                asChild
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`Open terminal for ${entry.session.name}`}
-                title="Open terminal"
-              >
-                <Link href={`${sessionUrl}/terminal`}>
-                  <Terminal />
-                </Link>
-              </Button>
-              <InstanceControlsDropdown
-                instance={entry.instance}
-                projectId={entry.session.project_id}
-                sessionId={entry.session.id}
-                sessionName={entry.session.name}
-              />
-            </>
-          ) : entry.state === "stopped" ? (
-            <>
-              {entry.session.category !== "auto" ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={isResumePending || isArchivePending}
-                  onClick={() => onResume(entry.session.id)}
-                >
-                  {isResumePending ? (
-                    <Loader2 className="animate-spin" />
-                  ) : (
-                    <Play />
-                  )}
-                </Button>
-              ) : null}
-              <SessionActionsDropdown
-                sessionName={entry.session.name}
-                isArchivePending={isArchivePending}
-                onArchive={() => onArchive(entry.session.id)}
-              />
-            </>
-          ) : (
-            <Button disabled variant="ghost" size="sm">
-              <Loader2 className="animate-spin" />
-              Starting
-            </Button>
-          )}
+          </span>
         </div>
 
-        {serverUrl ? (
-          <div className="space-y-1 py-3 pl-7">
-            {opencodeSessions.map((opencodeSession) => {
-              const params = new URLSearchParams({ serverUrl });
-              const url = `${sessionUrl}/chats/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
-
-              return (
-                <Button
-                  key={opencodeSession.id}
-                  asChild
-                  variant="ghost"
-                  size="sm"
-                  className="w-full justify-start"
-                >
-                  <Link href={url}>
-                    <BotMessageSquare />
-                    <span
-                      className="min-w-0 truncate"
-                      title={opencodeSession.title}
-                    >
-                      {opencodeSession.title}
-                    </span>
-                  </Link>
-                </Button>
-              );
-            })}
+        {entry.instance ? (
+          <>
             <Button
-              type="button"
+              asChild
               variant="ghost"
-              size="sm"
-              className="w-full justify-start"
-              disabled={isStartingNewChat}
-              onClick={handleNewChat}
+              size="icon-sm"
+              aria-label={`Open terminal for ${entry.session.name}`}
+              title="Open terminal"
             >
-              {isStartingNewChat ? (
-                <Loader2 className="animate-spin" />
-              ) : (
-                <Plus />
-              )}
-              New chat
+              <Link href={`${sessionUrl}/terminal`}>
+                <Terminal />
+              </Link>
             </Button>
-          </div>
-        ) : null}
+            <InstanceControlsDropdown
+              instance={entry.instance}
+              projectId={entry.session.project_id}
+              sessionId={entry.session.id}
+              sessionName={entry.session.name}
+            />
+          </>
+        ) : entry.state === "stopped" ? (
+          <>
+            {entry.session.category !== "auto" ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isResumePending || isArchivePending}
+                onClick={() => onResume(entry.session.id)}
+              >
+                {isResumePending ? (
+                  <Loader2 className="animate-spin" />
+                ) : (
+                  <Play />
+                )}
+              </Button>
+            ) : null}
+            <SessionActionsDropdown
+              sessionName={entry.session.name}
+              isArchivePending={isArchivePending}
+              onArchive={() => onArchive(entry.session.id)}
+            />
+          </>
+        ) : (
+          <Button disabled variant="ghost" size="sm">
+            <Loader2 className="animate-spin" />
+            Starting
+          </Button>
+        )}
       </div>
 
-      <GithubRepoDirectoryDialog
-        open={isRepoDialogOpen}
-        onOpenChange={setIsRepoDialogOpen}
-        repos={githubRepos ?? []}
-        isLoading={isReposPending}
-        isError={isReposError}
-        onSelect={openDirectory}
-      />
-    </>
+      {serverUrl ? (
+        <div className="space-y-1 py-3 pl-7">
+          {opencodeSessions.map((opencodeSession) => {
+            const params = new URLSearchParams({ serverUrl });
+            const url = `${sessionUrl}/chats/${encodeURIComponent(opencodeSession.id)}?${params.toString()}`;
+
+            return (
+              <Button
+                key={opencodeSession.id}
+                asChild
+                variant="ghost"
+                size="sm"
+                className="w-full justify-start"
+              >
+                <Link href={url}>
+                  <BotMessageSquare />
+                  <span
+                    className="min-w-0 truncate"
+                    title={opencodeSession.title}
+                  >
+                    {opencodeSession.title}
+                  </span>
+                </Link>
+              </Button>
+            );
+          })}
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start"
+            onClick={handleNewChat}
+          >
+            <Plus />
+            New chat
+          </Button>
+        </div>
+      ) : null}
+    </div>
   );
 }
 

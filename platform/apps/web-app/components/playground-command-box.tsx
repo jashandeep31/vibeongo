@@ -1,16 +1,13 @@
 "use client";
 
 import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
-import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
 } from "@/components/dialogs/project-session-runtime-dialog";
-import {
-  useGetProjectDomainsById,
-  useGetProjectGithubReposById,
-} from "@repo/api-hooks";
+import { useGetProjectDomainsById } from "@repo/api-hooks";
 import { useResumeProjectSession } from "@repo/api-hooks";
+import { RUNTIME_WORKSPACE_DIRECTORY } from "@repo/api-client";
 import {
   useProjectsStore,
   useSessionChatsStore,
@@ -153,9 +150,6 @@ export function PlaygroundCommandBox() {
   const [createSessionProjectId, setCreateSessionProjectId] = useState<
     string | null
   >(null);
-  const [repoDialogSessionId, setRepoDialogSessionId] = useState<string | null>(
-    null,
-  );
   const resumeSession = useResumeProjectSession();
   const view = viewStack.at(-1) ?? { kind: "projects" };
   const domainProjectId = view.kind === "domains" ? view.projectId : null;
@@ -164,17 +158,6 @@ export function PlaygroundCommandBox() {
     isPending: domainsPending,
     isError: domainsError,
   } = useGetProjectDomainsById(domainProjectId, open);
-  const repoDialogSession = repoDialogSessionId
-    ? sessions.find((entry) => entry.session.id === repoDialogSessionId)
-    : undefined;
-  const {
-    data: githubRepos,
-    isPending: reposPending,
-    isError: reposError,
-  } = useGetProjectGithubReposById(
-    repoDialogSession?.session.project_id ?? null,
-    repoDialogSessionId !== null,
-  );
 
   const domains = useMemo(
     () =>
@@ -311,17 +294,17 @@ export function PlaygroundCommandBox() {
     setOpen(true);
   };
 
-  const handleRepoSelect = (directory: string) => {
-    if (!repoDialogSession) return;
-
-    const serverUrl = getServerUrl(repoDialogSession);
+  const handleNewChat = (session: (typeof sessions)[number]) => {
+    const serverUrl = getServerUrl(session);
     if (!serverUrl) return;
 
-    const searchParams = new URLSearchParams({ serverUrl, directory });
+    const searchParams = new URLSearchParams({
+      serverUrl,
+      directory: RUNTIME_WORKSPACE_DIRECTORY,
+    });
     router.push(
-      `/projects/${encodeURIComponent(repoDialogSession.session.project_id)}/sessions/${encodeURIComponent(repoDialogSession.session.id)}?${searchParams.toString()}`,
+      `/projects/${encodeURIComponent(session.session.project_id)}/sessions/${encodeURIComponent(session.session.id)}?${searchParams.toString()}`,
     );
-    setRepoDialogSessionId(null);
     setOpen(false);
   };
 
@@ -585,10 +568,7 @@ export function PlaygroundCommandBox() {
                     <CommandItem
                       value={`new chat ${selectedSession.session.name}`}
                       disabled={!selectedSessionServerUrl}
-                      onSelect={() => {
-                        setRepoDialogSessionId(selectedSession.session.id);
-                        setOpen(false);
-                      }}
+                      onSelect={() => handleNewChat(selectedSession)}
                     >
                       <MessageSquarePlus />
                       New chat
@@ -762,19 +742,6 @@ export function PlaygroundCommandBox() {
           }}
         />
       ) : null}
-      <GithubRepoDirectoryDialog
-        open={repoDialogSessionId !== null}
-        onOpenChange={(nextOpen) => {
-          if (!nextOpen) {
-            setRepoDialogSessionId(null);
-            setOpen(true);
-          }
-        }}
-        repos={githubRepos ?? []}
-        isLoading={reposPending}
-        isError={reposError}
-        onSelect={handleRepoSelect}
-      />
     </>
   );
 }

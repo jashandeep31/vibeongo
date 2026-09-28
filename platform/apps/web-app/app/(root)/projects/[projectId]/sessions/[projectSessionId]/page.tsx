@@ -2,13 +2,15 @@
 
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
-import { useOpencodeProjectDirectories } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
-import { getOpencodePassword } from "@repo/api-client";
+import {
+  getOpencodePassword,
+  RUNTIME_WORKSPACE_DIRECTORY,
+} from "@repo/api-client";
 
 export default function NewOpencodeChatPage() {
   const { projectId, projectSessionId } = useParams<{
@@ -28,15 +30,8 @@ export default function NewOpencodeChatPage() {
   const accessToken = sessionEntry?.instance?.access_token ?? "";
   const opencodePassword = getOpencodePassword(sessionEntry?.instance?.config);
   const sessionName = sessionEntry?.session.name ?? "Session";
-  const requestedDirectory = searchParams.get("directory") ?? undefined;
-  const directories = useOpencodeProjectDirectories(
-    projectSessionId,
-    serverUrl,
-    accessToken,
-    opencodePassword,
-    Boolean(serverUrl && accessToken && opencodePassword),
-  );
-  const directory = requestedDirectory ?? directories.data?.[0]?.worktree;
+  const directory =
+    searchParams.get("directory") || RUNTIME_WORKSPACE_DIRECTORY;
 
   if (!serverUrl || !accessToken || !opencodePassword) {
     return (
