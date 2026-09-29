@@ -7,8 +7,11 @@ import {
   pushTokens,
 } from "@repo/db";
 import { Expo, type ExpoPushMessage } from "expo-server-sdk";
-
-const expo = new Expo();
+import {
+  addNotificationPushReceiptsJob,
+  type PushReceiptTicket,
+} from "../../jobs/notification-push-receipts.js";
+import { expo } from "../../lib/expo-push.js";
 
 /**
  * Sends a notification as a push to every enabled device of the user,
@@ -56,13 +59,20 @@ export const sendPushNotification = async (notificationId: string) => {
   if (!messages.length) return;
 
   const unregisteredTokens: string[] = [];
+  // accepted by expo, the final result from fcm/apns is read later
+  const acceptedTickets: PushReceiptTicket[] = [];
   for (const chunk of expo.chunkPushNotifications(messages)) {
     const tickets = await expo.sendPushNotificationsAsync(chunk);
 
     tickets.forEach((ticket, index) => {
-      if (ticket.status !== "error") return;
-
       const token = chunk[index]?.to;
+      if (ticket.status === "ok") {
+        if (typeof token === "string") {
+          acceptedTickets.push({ receiptId: ticket.id, token });
+        }
+        return;
+      }
+
       if (
         ticket.details?.error === "DeviceNotRegistered" &&
         typeof token === "string"
@@ -81,6 +91,13 @@ export const sendPushNotification = async (notificationId: string) => {
     await db
       .delete(pushTokens)
       .where(inArray(pushTokens.token, unregisteredTokens));
+  }
+
+  if (acceptedTickets.length) {
+    await addNotificationPushReceiptsJob({
+      notificationId: notification.id,
+      tickets: acceptedTickets,
+    });
   }
 
   const now = new Date();
