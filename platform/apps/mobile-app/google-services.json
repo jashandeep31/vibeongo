@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "591326073903",
+    "project_id": "vibeongo-31",
+    "storage_bucket": "vibeongo-31.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:591326073903:android:45a8ab89bdf132a68562da",
+        "android_client_info": {
+          "package_name": "com.vibeongo.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlNOvmg342G2QmV64DRiXyZwNstsJgMCo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:591326073903:android:cf6ab75f185777cf8562da",
+        "android_client_info": {
+          "package_name": "com.vibeongo.devapp"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDlNOvmg342G2QmV64DRiXyZwNstsJgMCo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
