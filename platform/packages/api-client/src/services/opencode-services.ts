@@ -20,10 +20,7 @@ import type {
   OpencodeError,
 } from "./opencode-types.js";
 import { normalizeOpencodeError } from "./opencode-errors.js";
-import {
-  isRuntimeRepositoryDirectory,
-  RUNTIME_WORKSPACE_DIRECTORY,
-} from "./runtime-paths.js";
+import { isRuntimeRepositoryDirectory } from "./runtime-paths.js";
 import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
@@ -2061,12 +2058,8 @@ export async function createOpencodeSession(
   directory?: string,
   password?: string,
 ) {
-  if (
-    directory &&
-    directory !== RUNTIME_WORKSPACE_DIRECTORY &&
-    !isRuntimeRepositoryDirectory(directory)
-  ) {
-    throw new Error("Invalid workspace directory");
+  if (directory && !isRuntimeRepositoryDirectory(directory)) {
+    throw new Error("Invalid repository directory");
   }
 
   const selectedDirectory =

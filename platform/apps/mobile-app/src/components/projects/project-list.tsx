@@ -1,7 +1,8 @@
-import { RUNTIME_WORKSPACE_DIRECTORY, type Project } from "@repo/api-client";
+import { getRuntimeRepositoryDirectory, type Project } from "@repo/api-client";
 import {
   useArchiveProjectSession,
   useDeleteProject,
+  useGetProjectGithubReposById,
   useGetProjectOverview,
   useResumeProjectSession,
   useTerminateInstance,
@@ -31,6 +32,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
 import { CreateProjectSessionDrawer } from "@/components/projects/create-project-session-drawer";
 import { ProjectActionsMenu } from "@/components/projects/project-actions-menu";
+import { RepositoryDrawer } from "@/components/projects/repository-drawer";
 import {
   SessionRuntimeDrawer,
   type SessionRuntime,
@@ -49,6 +51,11 @@ type TerminationTarget = {
   projectId: string;
   sessionId: string;
   sessionName: string;
+};
+
+type NewChatTarget = {
+  projectId: string;
+  sessionId: string;
 };
 
 type SessionActionTarget = {
@@ -109,6 +116,10 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const [terminatingInstanceId, setTerminatingInstanceId] = useState<
     string | null
   >(null);
+  const [newChatTarget, setNewChatTarget] = useState<NewChatTarget | null>(
+    null,
+  );
+  const [isRepositoryDrawerOpen, setIsRepositoryDrawerOpen] = useState(false);
   const [projectMenu, setProjectMenu] = useState<{
     project: Project;
     anchorY: number;
@@ -119,25 +130,61 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
   const [sessionToArchive, setSessionToArchive] =
     useState<SessionActionTarget | null>(null);
+  const repositoriesQuery = useGetProjectGithubReposById(
+    newChatTarget?.projectId ?? null,
+    Boolean(newChatTarget),
+  );
   const terminateInstance = useTerminateInstance(
     terminationTarget?.projectId ?? "",
     terminationTarget?.sessionId ?? "",
   );
 
   const openNewChat = useCallback(
-    (projectId: string, projectSessionId: string) => {
-      router.push({
-        pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
-        params: {
-          chatId: "new",
-          directory: RUNTIME_WORKSPACE_DIRECTORY,
-          projectId,
-          projectSessionId,
-        },
+    (directory: string) => {
+      if (!newChatTarget) return;
+
+      const target = newChatTarget;
+      setIsRepositoryDrawerOpen(false);
+      setNewChatTarget(null);
+      requestAnimationFrame(() => {
+        router.push({
+          pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
+          params: {
+            chatId: "new",
+            directory,
+            projectId: target.projectId,
+            projectSessionId: target.sessionId,
+          },
+        });
       });
     },
-    [router],
+    [newChatTarget, router],
   );
+
+  useEffect(() => {
+    if (!newChatTarget) return;
+    if (repositoriesQuery.isError) {
+      setIsRepositoryDrawerOpen(true);
+      return;
+    }
+    if (!repositoriesQuery.isSuccess) return;
+
+    const repositories = repositoriesQuery.data ?? [];
+    if (repositories.length === 1) {
+      const repository = repositories[0];
+      if (!repository) return;
+      openNewChat(getRuntimeRepositoryDirectory(repository.full_name));
+      return;
+    }
+
+    setIsRepositoryDrawerOpen(true);
+  }, [
+    newChatTarget,
+    openNewChat,
+    repositoriesQuery.data,
+    repositoriesQuery.isError,
+    repositoriesQuery.isSuccess,
+  ]);
 
   const handleRuntimeSelect = (runtime: SessionRuntime) => {
     if (!runtimeSessionId) return;
@@ -379,6 +426,9 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                     const isTerminating =
                       terminatingInstanceId === runningInstance?.id;
                     const opencodeChats = chatsBySessionId[session.id] ?? [];
+                    const isStartingNewChat =
+                      newChatTarget?.sessionId === session.id &&
+                      repositoriesQuery.isFetching;
 
                     return (
                       <View key={session.id}>
@@ -648,9 +698,14 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                             <Pressable
                               accessibilityLabel={`New chat in ${session.name}`}
                               accessibilityRole="button"
-                              onPress={() =>
-                                openNewChat(project.id, session.id)
-                              }
+                              disabled={Boolean(newChatTarget)}
+                              onPress={() => {
+                                setNewChatTarget({
+                                  projectId: project.id,
+                                  sessionId: session.id,
+                                });
+                                setIsRepositoryDrawerOpen(true);
+                              }}
                               style={({ pressed }) => [
                                 styles.chatRow,
                                 pressed && {
@@ -658,11 +713,15 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                                 },
                               ]}
                             >
-                              <SymbolView
-                                name={{ ios: "plus", android: "add" }}
-                                size={15}
-                                tintColor={theme.textSecondary}
-                              />
+                              {isStartingNewChat ? (
+                                <ActivityIndicator size="small" />
+                              ) : (
+                                <SymbolView
+                                  name={{ ios: "plus", android: "add" }}
+                                  size={15}
+                                  tintColor={theme.textSecondary}
+                                />
+                              )}
                               <ThemedText
                                 style={styles.newChatLabel}
                                 themeColor="textSecondary"
@@ -750,6 +809,17 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
         onConfirm={handleTerminate}
         title="Terminate this instance?"
         visible={isTerminationConfirmationOpen}
+      />
+      <RepositoryDrawer
+        error={repositoriesQuery.isError}
+        loading={repositoriesQuery.isPending}
+        onClose={() => {
+          setIsRepositoryDrawerOpen(false);
+          setNewChatTarget(null);
+        }}
+        onSelect={openNewChat}
+        repositories={repositoriesQuery.data ?? []}
+        visible={isRepositoryDrawerOpen}
       />
     </>
   );

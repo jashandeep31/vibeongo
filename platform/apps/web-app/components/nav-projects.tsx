@@ -2,6 +2,7 @@
 
 import { AutomatedSessionBadge } from "@/components/automated-session-badge";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
+import { GithubRepoDirectoryDialog } from "@/components/dialogs/github-repo-directory-dialog";
 import {
   ProjectSessionRuntimeDialog,
   type ProjectSessionRuntime,
@@ -14,6 +15,7 @@ import {
 } from "@/components/project-action-menus";
 import {
   useGetProjectDomainsById,
+  useGetProjectGithubReposById,
   useDeleteOpencodeSession,
 } from "@repo/api-hooks";
 import {
@@ -23,7 +25,7 @@ import {
 import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
 import {
   getOpencodePassword,
-  RUNTIME_WORKSPACE_DIRECTORY,
+  getRuntimeRepositoryDirectory,
   type Session,
 } from "@repo/api-client";
 import {
@@ -193,6 +195,8 @@ function ProjectSessionNavItem({
 }: ProjectSessionNavItemProps): ReactElement {
   const pathname = usePathname();
   const router = useRouter();
+  const [isRepoDialogOpen, setIsRepoDialogOpen] = useState(false);
+  const [isStartingNewChat, setIsStartingNewChat] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<Session | null>(null);
   const sessionEntry = useSessionsStore((store) =>
     store.sessions.find((entry) => entry.session.id === session.id),
@@ -231,11 +235,37 @@ function ProjectSessionNavItem({
     password: opencodePassword,
   });
 
-  const handleNewChat = () => {
-    const directory = RUNTIME_WORKSPACE_DIRECTORY;
+  const {
+    data: githubRepos,
+    isPending: isReposPending,
+    isError: isReposError,
+    refetch: refetchGithubRepos,
+  } = useGetProjectGithubReposById(
+    session.projectId,
+    isRepoDialogOpen && !!serverUrl,
+  );
+
+  const handleRepoSelect = (directory: string) => {
+    setIsRepoDialogOpen(false);
     const params = new URLSearchParams({ serverUrl, directory });
     router.push(`${sessionUrl}?${params.toString()}`);
     onNavigate();
+  };
+
+  const handleNewChat = async () => {
+    setIsStartingNewChat(true);
+
+    const result = await refetchGithubRepos();
+    const repos = result.data ?? [];
+    const [onlyRepo] = repos;
+
+    if (result.isSuccess && repos.length === 1 && onlyRepo) {
+      handleRepoSelect(getRuntimeRepositoryDirectory(onlyRepo.full_name));
+    } else {
+      setIsRepoDialogOpen(true);
+    }
+
+    setIsStartingNewChat(false);
   };
 
   const handleDeleteChat = () => {
@@ -379,8 +409,16 @@ function ProjectSessionNavItem({
                 })}
                 <SidebarMenuSubItem>
                   <SidebarMenuSubButton asChild size="sm">
-                    <button type="button" onClick={handleNewChat}>
-                      <Plus />
+                    <button
+                      type="button"
+                      disabled={isStartingNewChat}
+                      onClick={handleNewChat}
+                    >
+                      {isStartingNewChat ? (
+                        <Loader2 className="animate-spin" />
+                      ) : (
+                        <Plus />
+                      )}
                       <span>New chat</span>
                     </button>
                   </SidebarMenuSubButton>
@@ -389,6 +427,14 @@ function ProjectSessionNavItem({
             </CollapsibleContent>
           </SidebarMenuSubItem>
         </Collapsible>
+        <GithubRepoDirectoryDialog
+          open={isRepoDialogOpen}
+          onOpenChange={setIsRepoDialogOpen}
+          repos={githubRepos ?? []}
+          isLoading={isReposPending}
+          isError={isReposError}
+          onSelect={handleRepoSelect}
+        />
         <ConfirmationDialog
           open={chatToDelete !== null}
           onOpenChange={(open) => {
