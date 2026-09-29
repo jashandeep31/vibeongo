@@ -28,6 +28,7 @@ import { projectAutomationRoutes } from "./routes/project-automation-routes.js";
 import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 import { speechTextRoutes } from "./routes/speech-text-routes.js";
+import { notificationRoutes } from "./routes/notification-routes.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
@@ -106,6 +107,7 @@ app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
 app.use("/api/v1/speech-text", speechTextRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // webhooks routes
 app.use("/v1/webhook", webhookRoutes);
