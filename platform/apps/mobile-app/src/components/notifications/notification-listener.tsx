@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 import { showNotificationToast } from "@/lib/notification-toast";
+import { dismissNotificationFromTray } from "@/lib/notification-tray";
 
 type AppNotification = {
   id: string;
@@ -41,7 +42,10 @@ export function NotificationListener() {
       title: notification.title,
       body: notification.body,
       url: notification.payload?.url,
-      onOpen: () => markNotificationRead(notification.id),
+      onOpen: () => {
+        markNotificationRead(notification.id);
+        void dismissNotificationFromTray(notification.id);
+      },
     });
 
     sendJsonMessage({

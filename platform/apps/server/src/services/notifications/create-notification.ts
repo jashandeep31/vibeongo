@@ -1,4 +1,4 @@
-import { db, notifications, type Transaction } from "@repo/db";
+import { db, notifications } from "@repo/db";
 import { addNotificationPushJob } from "../../jobs/notification-push.js";
 import { redis } from "../../lib/valkey.js";
 
@@ -13,7 +13,7 @@ export type Notification = typeof notifications.$inferSelect;
 
 // schedules the push fallback and publishes the notification for realtime
 // delivery; works from any process (api or background worker)
-export const deliverNotification = async (notification: Notification) => {
+const deliverNotification = async (notification: Notification) => {
   await addNotificationPushJob({
     notificationId: notification.id,
     pushAfter: notification.push_after,
@@ -31,12 +31,11 @@ export const deliverNotification = async (notification: Notification) => {
 };
 
 /**
- * Creates a notification and delivers it over websocket.
- * When a `tx` is passed, delivery is skipped: call `deliverNotification`
- * after the transaction commits, so the client never sees an uncommitted row.
+ * Creates a notification and delivers it: in-app over websocket, and as a
+ * push if the user has not seen it by `push_after`. Call it after the
+ * event is committed, never inside a transaction.
  */
 export const createNotification = async ({
-  tx,
   userId,
   type,
   title,
@@ -44,7 +43,6 @@ export const createNotification = async ({
   payload,
   pushDelayMs = PUSH_FALLBACK_DELAY_MS,
 }: {
-  tx?: Transaction;
   userId: string;
   type: string;
   title: string;
@@ -52,7 +50,7 @@ export const createNotification = async ({
   payload?: Record<string, unknown>;
   pushDelayMs?: number;
 }) => {
-  const [notification] = await (tx ?? db)
+  const [notification] = await db
     .insert(notifications)
     .values({
       user_id: userId,
@@ -66,7 +64,7 @@ export const createNotification = async ({
 
   if (!notification) throw new Error("Notification was not created");
 
-  if (!tx) await deliverNotification(notification);
+  await deliverNotification(notification);
 
   return notification;
 };

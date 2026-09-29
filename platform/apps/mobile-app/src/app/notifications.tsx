@@ -24,6 +24,7 @@ import {
 } from "@/components/page-chrome";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
+import { clearNotificationTray } from "@/lib/notification-tray";
 
 const UNREAD_LIMIT = 100;
 const READ_LIMIT = 20;
@@ -60,6 +61,11 @@ export default function NotificationsScreen() {
 
   const unread = unreadQuery.data?.notifications;
 
+  // everything shown here counts as read, so the pushes can go
+  useEffect(() => {
+    void clearNotificationTray();
+  }, []);
+
   // opening the page marks everything as read
   useEffect(() => {
     if (!unread?.length) return;
@@ -70,6 +76,8 @@ export default function NotificationsScreen() {
       return next;
     });
     markAllRead();
+    // pushes that arrived while the page was open
+    void clearNotificationTray();
   }, [markAllRead, unread]);
 
   const notifications = useMemo(() => {

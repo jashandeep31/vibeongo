@@ -8,6 +8,7 @@ import { router, type Href } from "expo-router";
 import { useEffect, useRef } from "react";
 
 import { showNotificationToast } from "@/lib/notification-toast";
+import { dismissNotificationFromTray } from "@/lib/notification-tray";
 
 // a push that arrives while the app is open is shown as the in-app toast
 // instead of a system banner
@@ -44,6 +45,7 @@ export function PushNotificationHandler() {
       handledRef.current.add(id);
       // http instead of websocket, the socket may not be connected yet
       markReadRef.current(id);
+      void dismissNotificationFromTray(id);
       return true;
     };
 
