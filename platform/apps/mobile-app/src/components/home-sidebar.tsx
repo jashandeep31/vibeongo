@@ -12,7 +12,10 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useUserMetadata } from "@repo/api-hooks";
+import {
+  useUnreadNotificationCount,
+  useUserMetadata,
+} from "@repo/api-hooks";
 
 import { ThemedText } from "@/components/themed-text";
 import { useColorScheme } from "@/hooks/use-color-scheme";
@@ -38,6 +41,7 @@ type NavigationItem = {
     | "/demo-projects"
     | "/templates"
     | "/limits"
+    | "/notifications"
     | "/settings"
     | "/wallet";
   workspaceView?: "chats" | "projects";
@@ -53,6 +57,11 @@ const navigation: NavigationItem[] = [
     title: "New Chat",
     icon: { ios: "square.and.pencil", android: "edit_square" },
     workspaceView: "chats",
+  },
+  {
+    title: "Notifications",
+    icon: { ios: "bell", android: "notifications" },
+    href: "/notifications",
   },
   {
     title: "Limits",
@@ -105,6 +114,8 @@ export function HomeSidebar({
   const isDark = useColorScheme() === "dark";
   const router = useRouter();
   const userQuery = useUserMetadata();
+  const unreadCountQuery = useUnreadNotificationCount();
+  const hasUnreadNotifications = (unreadCountQuery.data ?? 0) > 0;
   const { width } = useWindowDimensions();
   const drawerWidth = Math.min(width * 0.94, 420);
   const translateX = useRef(new Animated.Value(-drawerWidth)).current;
@@ -258,6 +269,12 @@ export function HomeSidebar({
                   <ThemedText style={styles.navigationLabel}>
                     {item.title}
                   </ThemedText>
+                  {item.href === "/notifications" && hasUnreadNotifications ? (
+                    <View
+                      accessibilityLabel="Unread notifications"
+                      style={styles.unreadDot}
+                    />
+                  ) : null}
                   {item.comingSoon ? (
                     <ThemedText
                       style={styles.comingSoon}
@@ -392,6 +409,12 @@ const styles = StyleSheet.create({
   },
   navigationItemDisabled: {
     opacity: 0.42,
+  },
+  unreadDot: {
+    backgroundColor: "#ef4444",
+    borderRadius: 4,
+    height: 8,
+    width: 8,
   },
   comingSoon: {
     fontSize: 11,

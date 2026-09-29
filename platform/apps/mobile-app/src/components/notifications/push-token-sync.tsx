@@ -5,6 +5,7 @@ import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 
+import { subscribeNotificationPermissionChange } from "@/lib/notification-permission";
 import { setRegisteredPushToken } from "@/lib/push-token";
 
 const getProjectId = () =>
@@ -75,7 +76,15 @@ export function PushTokenSync() {
       if (state === "active") void sync();
     });
 
-    return () => subscription.remove();
+    // allowed from the in-app warning
+    const unsubscribePermission = subscribeNotificationPermissionChange(
+      () => void sync(),
+    );
+
+    return () => {
+      subscription.remove();
+      unsubscribePermission();
+    };
   }, []);
 
   return null;

@@ -120,6 +120,9 @@ export type {
   UpdateProjectAutomationResponse,
 } from "./services/project-automation-services.js";
 export type {
+  AppNotification,
+  GetNotificationsParams,
+  GetNotificationsResponse,
   PushToken,
   UpsertPushTokenInput,
 } from "./services/notification-services.js";

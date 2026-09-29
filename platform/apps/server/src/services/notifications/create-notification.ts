@@ -1,4 +1,5 @@
 import { and, db, eq, notifications, type Transaction } from "@repo/db";
+import { addNotificationPushJob } from "../../jobs/notification-push.js";
 import { sendToUser } from "../../websocket/user-sockets-store.js";
 
 // if the user does not read it within this time, fallback to push notification
@@ -6,8 +7,14 @@ const PUSH_FALLBACK_DELAY_MS = 60_000;
 
 type Notification = typeof notifications.$inferSelect;
 
-// sends the notification to the user's open sockets, if any
+// sends the notification to the user's open sockets, if any, and schedules
+// the push fallback in case the user does not read it in the app
 export const deliverNotification = async (notification: Notification) => {
+  await addNotificationPushJob({
+    notificationId: notification.id,
+    pushAfter: notification.push_after,
+  });
+
   const sent = sendToUser(notification.user_id, {
     type: "notification",
     data: notification,

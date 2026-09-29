@@ -16,6 +16,7 @@ import { usePathname } from "expo-router";
 
 import { SignedOutScreen } from "@/components/auth/signed-out-screen";
 import { NotificationListener } from "@/components/notifications/notification-listener";
+import { PushNotificationHandler } from "@/components/notifications/push-notification-handler";
 import { PushTokenSync } from "@/components/notifications/push-token-sync";
 import { ProjectStoreSync } from "@/components/projects/project-store-sync";
 import { useTheme } from "@/hooks/use-theme";
@@ -120,6 +121,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
           />
           <NotificationListener />
           <PushTokenSync />
+          <PushNotificationHandler />
           {children}
         </WebSocketProvider>
       </QueryClientProvider>

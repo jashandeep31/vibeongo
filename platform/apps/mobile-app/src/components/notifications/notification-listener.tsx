@@ -1,8 +1,12 @@
-import { useWebSocket } from "@repo/api-hooks";
-import { router, type Href } from "expo-router";
+import {
+  useMarkNotificationRead,
+  useQueryClient,
+  useWebSocket,
+} from "@repo/api-hooks";
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
-import Toast from "react-native-toast-message";
+
+import { showNotificationToast } from "@/lib/notification-toast";
 
 type AppNotification = {
   id: string;
@@ -18,59 +22,73 @@ const isAppNotification = (data: unknown): data is AppNotification =>
   typeof (data as AppNotification).id === "string" &&
   typeof (data as AppNotification).title === "string";
 
-// Shows notifications received over the websocket and marks them as read
-// once the user has seen them (app in foreground).
+// Shows notifications received over the websocket as a toast and tells the
+// server they were delivered (no push needed). They stay unread until the
+// toast is tapped or the notifications page is opened.
 export function NotificationListener() {
-  const { sendJsonMessage, subscribeJsonMessage } = useWebSocket();
+  const queryClient = useQueryClient();
+  const { sendJsonMessage, status, subscribeJsonMessage } = useWebSocket();
+  const { mutate: markNotificationRead } = useMarkNotificationRead();
   // notifications received while the app was not in the foreground
   const pendingRef = useRef<AppNotification[]>([]);
 
+  // unread count (sidebar dot) and the notifications page, if open
+  const refreshUnreadCount = () =>
+    queryClient.invalidateQueries({ queryKey: ["notifications"] });
+
+  const showNotification = (notification: AppNotification) => {
+    showNotificationToast({
+      title: notification.title,
+      body: notification.body,
+      url: notification.payload?.url,
+      onOpen: () => markNotificationRead(notification.id),
+    });
+
+    sendJsonMessage({
+      type: "notification-delivered",
+      data: { id: notification.id },
+    });
+  };
+  const showNotificationRef = useRef(showNotification);
+  showNotificationRef.current = showNotification;
+  const refreshUnreadCountRef = useRef(refreshUnreadCount);
+  refreshUnreadCountRef.current = refreshUnreadCount;
+
   useEffect(() => {
-    const showNotification = (notification: AppNotification) => {
-      const url = notification.payload?.url;
-
-      Toast.show({
-        type: "info",
-        text1: notification.title,
-        text2: notification.body ?? undefined,
-        onPress: () => {
-          Toast.hide();
-          if (typeof url === "string") router.push(url as Href);
-        },
-      });
-
-      sendJsonMessage({
-        type: "notification-read",
-        data: { id: notification.id },
-      });
-    };
-
     const unsubscribe = subscribeJsonMessage((message) => {
       if (message.type !== "notification" || !isAppNotification(message.data))
         return;
 
+      void refreshUnreadCountRef.current();
       if (AppState.currentState === "active") {
-        showNotification(message.data);
+        showNotificationRef.current(message.data);
       } else {
         pendingRef.current.push(message.data);
       }
     });
 
     const appStateSubscription = AppState.addEventListener("change", (state) => {
-      if (state !== "active" || !pendingRef.current.length) return;
+      if (state !== "active") return;
+      void refreshUnreadCountRef.current();
+      if (!pendingRef.current.length) return;
 
       const pending = pendingRef.current;
       pendingRef.current = [];
       // toast shows one at a time, so only the latest is visible
-      // but every pending notification counts as seen
-      for (const notification of pending) showNotification(notification);
+      for (const notification of pending) showNotificationRef.current(notification);
     });
 
     return () => {
       unsubscribe();
       appStateSubscription.remove();
     };
-  }, [sendJsonMessage, subscribeJsonMessage]);
+  }, [subscribeJsonMessage]);
+
+  // catch up after every (re)connect: notifications sent while offline
+  // show up in the unread count and on the notifications page
+  useEffect(() => {
+    if (status === "connected") void refreshUnreadCountRef.current();
+  }, [status]);
 
   return null;
 }
