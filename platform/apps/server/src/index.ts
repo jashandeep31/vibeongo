@@ -33,6 +33,7 @@ import { testRoutes } from "./routes/test-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
+import { startNotificationSubscriber } from "./websocket/notification-subscriber.js";
 import { findWebSession } from "./lib/auth-session.js";
 import { webhookRoutes } from "./routes/webhook-routes.js";
 import test from "./test.js";
@@ -178,6 +179,11 @@ const wsHeartbeat = setInterval(() => {
   }
 }, WS_HEARTBEAT_INTERVAL_MS);
 ws.on("close", () => clearInterval(wsHeartbeat));
+
+// deliver notifications created in any process to sockets held by this one
+startNotificationSubscriber().catch((error) => {
+  console.error("Could not start notification subscriber", error);
+});
 
 ws.on("connection", async (socket, req) => {
   socket.isAlive = true;

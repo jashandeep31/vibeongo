@@ -1,35 +1,33 @@
-import { and, db, eq, notifications, type Transaction } from "@repo/db";
+import { db, notifications, type Transaction } from "@repo/db";
 import { addNotificationPushJob } from "../../jobs/notification-push.js";
-import { sendToUser } from "../../websocket/user-sockets-store.js";
+import { redis } from "../../lib/valkey.js";
 
 // if the user does not read it within this time, fallback to push notification
 const PUSH_FALLBACK_DELAY_MS = 60_000;
 
-type Notification = typeof notifications.$inferSelect;
+// valkey pub/sub channel: the api process that holds the user's websocket
+// delivers it (see websocket/notification-subscriber.ts)
+export const NOTIFICATION_CHANNEL = "notifications";
 
-// sends the notification to the user's open sockets, if any, and schedules
-// the push fallback in case the user does not read it in the app
+export type Notification = typeof notifications.$inferSelect;
+
+// schedules the push fallback and publishes the notification for realtime
+// delivery; works from any process (api or background worker)
 export const deliverNotification = async (notification: Notification) => {
   await addNotificationPushJob({
     notificationId: notification.id,
     pushAfter: notification.push_after,
   });
 
-  const sent = sendToUser(notification.user_id, {
-    type: "notification",
-    data: notification,
-  });
-  if (!sent) return;
-
-  await db
-    .update(notifications)
-    .set({ status: "sent_ws", updated_at: new Date() })
-    .where(
-      and(
-        eq(notifications.id, notification.id),
-        eq(notifications.status, "queued"),
-      ),
+  try {
+    await redis.publish(NOTIFICATION_CHANNEL, JSON.stringify(notification));
+  } catch (error) {
+    // the push fallback still delivers it
+    console.error(
+      `Could not publish notification ${notification.id} for realtime delivery`,
+      error,
     );
+  }
 };
 
 /**
