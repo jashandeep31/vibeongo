@@ -1,10 +1,37 @@
-import { db, notifications, type Transaction } from "@repo/db";
+import { and, db, eq, notifications, type Transaction } from "@repo/db";
+import { sendToUser } from "../../websocket/user-sockets-store.js";
 
-// if the client does not ack within this time, fallback to push notification
+// if the user does not read it within this time, fallback to push notification
 const PUSH_FALLBACK_DELAY_MS = 60_000;
 
+type Notification = typeof notifications.$inferSelect;
+
+// sends the notification to the user's open sockets, if any
+export const deliverNotification = async (notification: Notification) => {
+  const sent = sendToUser(notification.user_id, {
+    type: "notification",
+    data: notification,
+  });
+  if (!sent) return;
+
+  await db
+    .update(notifications)
+    .set({ status: "sent_ws", updated_at: new Date() })
+    .where(
+      and(
+        eq(notifications.id, notification.id),
+        eq(notifications.status, "queued"),
+      ),
+    );
+};
+
+/**
+ * Creates a notification and delivers it over websocket.
+ * When a `tx` is passed, delivery is skipped: call `deliverNotification`
+ * after the transaction commits, so the client never sees an uncommitted row.
+ */
 export const createNotification = async ({
-  tx = db,
+  tx,
   userId,
   type,
   title,
@@ -12,7 +39,7 @@ export const createNotification = async ({
   payload,
   pushDelayMs = PUSH_FALLBACK_DELAY_MS,
 }: {
-  tx?: Transaction | typeof db;
+  tx?: Transaction;
   userId: string;
   type: string;
   title: string;
@@ -20,7 +47,7 @@ export const createNotification = async ({
   payload?: Record<string, unknown>;
   pushDelayMs?: number;
 }) => {
-  const [notification] = await tx
+  const [notification] = await (tx ?? db)
     .insert(notifications)
     .values({
       user_id: userId,
@@ -33,6 +60,8 @@ export const createNotification = async ({
     .returning();
 
   if (!notification) throw new Error("Notification was not created");
+
+  if (!tx) await deliverNotification(notification);
 
   return notification;
 };

@@ -164,7 +164,27 @@ function getWebSocketToken(req: {
   return parseCookies(cookies).session;
 }
 
+// heartbeat: ping every client, terminate the ones that did not pong since
+// the last ping (dead mobile connections never send a close frame)
+const WS_HEARTBEAT_INTERVAL_MS = 30_000;
+const wsHeartbeat = setInterval(() => {
+  for (const socket of ws.clients) {
+    if (!socket.isAlive) {
+      socket.terminate();
+      continue;
+    }
+    socket.isAlive = false;
+    socket.ping();
+  }
+}, WS_HEARTBEAT_INTERVAL_MS);
+ws.on("close", () => clearInterval(wsHeartbeat));
+
 ws.on("connection", async (socket, req) => {
+  socket.isAlive = true;
+  socket.on("pong", () => {
+    socket.isAlive = true;
+  });
+
   const token = getWebSocketToken(req);
   if (!token) {
     socket.close(4401, "Authentication required");

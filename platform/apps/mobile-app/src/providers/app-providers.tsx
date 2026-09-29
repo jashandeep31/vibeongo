@@ -15,6 +15,7 @@ import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { usePathname } from "expo-router";
 
 import { SignedOutScreen } from "@/components/auth/signed-out-screen";
+import { NotificationListener } from "@/components/notifications/notification-listener";
 import { ProjectStoreSync } from "@/components/projects/project-store-sync";
 import { useTheme } from "@/hooks/use-theme";
 import { createApiClient } from "@/lib/api-client";
@@ -116,6 +117,7 @@ export function AppProviders({ children }: { children: ReactNode }) {
             cacheOwnerId={getTokenSubject(accessToken)}
             enabled={Boolean(accessToken)}
           />
+          <NotificationListener />
           {children}
         </WebSocketProvider>
       </QueryClientProvider>
