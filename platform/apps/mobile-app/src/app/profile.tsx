@@ -1,4 +1,4 @@
-import { useUserMetadata } from "@repo/api-hooks";
+import { useDeletePushToken, useUserMetadata } from "@repo/api-hooks";
 import { formatInternalMoney } from "@repo/shared/money";
 import { Image } from "expo-image";
 import { useRouter } from "expo-router";
@@ -23,6 +23,12 @@ import {
 } from "@/components/page-chrome";
 import { useTheme } from "@/hooks/use-theme";
 import { clearAccessToken } from "@/lib/auth";
+import {
+  clearRegisteredPushToken,
+  getRegisteredPushToken,
+} from "@/lib/push-token";
+
+const PUSH_TOKEN_DELETE_TIMEOUT_MS = 5_000;
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -30,6 +36,7 @@ export default function ProfileScreen() {
   const { onTitleScroll, titleOpacity } = usePageTitleScrollFade();
   const userQuery = useUserMetadata();
   const [isSigningOut, setIsSigningOut] = useState(false);
+  const { mutateAsync: deletePushToken } = useDeletePushToken();
   const user = userQuery.data;
   const fullName = [user?.firstName, user?.lastName].filter(Boolean).join(" ");
   const displayName = fullName || user?.username || "Your profile";
@@ -38,6 +45,19 @@ export default function ProfileScreen() {
     if (isSigningOut) return;
     setIsSigningOut(true);
     try {
+      // stop push notifications for this user on this device, while the
+      // access token is still valid; never block sign out on it
+      const pushToken = await getRegisteredPushToken();
+      if (pushToken) {
+        await Promise.race([
+          deletePushToken(pushToken).catch(() => undefined),
+          new Promise((resolve) =>
+            setTimeout(resolve, PUSH_TOKEN_DELETE_TIMEOUT_MS),
+          ),
+        ]);
+        await clearRegisteredPushToken();
+      }
+
       router.replace("/");
       await clearAccessToken();
     } catch {

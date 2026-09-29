@@ -4,6 +4,7 @@ import * as chatsApi from "./services/chat-services.js";
 import * as githubReposApi from "./services/github-repo-services.js";
 import * as instancesApi from "./services/instance-services.js";
 import * as instanceSlotsApi from "./services/instance-slot-services.js";
+import * as notificationsApi from "./services/notification-services.js";
 import * as projectMetadataApi from "./services/project-metadata-services.js";
 import * as projectAutomationsApi from "./services/project-automation-services.js";
 import * as projectsApi from "./services/project-services.js";
@@ -119,6 +120,10 @@ export type {
   UpdateProjectAutomationResponse,
 } from "./services/project-automation-services.js";
 export type {
+  PushToken,
+  UpsertPushTokenInput,
+} from "./services/notification-services.js";
+export type {
   SetForgejoPasswordPayload,
   SetForgejoPasswordResponse,
   UserConfigValue,
@@ -142,6 +147,7 @@ export class MobileClient {
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
   instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
+  notifications: ReturnType<typeof bindApiModule<typeof notificationsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
   projectAutomations: ReturnType<
     typeof bindApiModule<typeof projectAutomationsApi>
@@ -166,6 +172,7 @@ export class MobileClient {
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
     this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
+    this.notifications = bindApiModule(notificationsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
     this.projectAutomations = bindApiModule(
       projectAutomationsApi,
@@ -187,6 +194,7 @@ export class WebClient {
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
   instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
+  notifications: ReturnType<typeof bindApiModule<typeof notificationsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
   projectAutomations: ReturnType<
     typeof bindApiModule<typeof projectAutomationsApi>
@@ -209,6 +217,7 @@ export class WebClient {
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
     this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
+    this.notifications = bindApiModule(notificationsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
     this.projectAutomations = bindApiModule(
       projectAutomationsApi,
