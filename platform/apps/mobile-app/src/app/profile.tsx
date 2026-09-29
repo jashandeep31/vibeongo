@@ -26,6 +26,7 @@ import { clearAccessToken } from "@/lib/auth";
 import {
   clearRegisteredPushToken,
   getRegisteredPushToken,
+  setPendingPushTokenUnregister,
 } from "@/lib/push-token";
 
 const PUSH_TOKEN_DELETE_TIMEOUT_MS = 5_000;
@@ -49,12 +50,17 @@ export default function ProfileScreen() {
       // access token is still valid; never block sign out on it
       const pushToken = await getRegisteredPushToken();
       if (pushToken) {
-        await Promise.race([
-          deletePushToken(pushToken).catch(() => undefined),
-          new Promise((resolve) =>
-            setTimeout(resolve, PUSH_TOKEN_DELETE_TIMEOUT_MS),
+        const deleted = await Promise.race([
+          deletePushToken(pushToken).then(
+            () => true,
+            () => false,
+          ),
+          new Promise<boolean>((resolve) =>
+            setTimeout(() => resolve(false), PUSH_TOKEN_DELETE_TIMEOUT_MS),
           ),
         ]);
+        // e.g. offline: retried without a login on the next launch
+        if (!deleted) await setPendingPushTokenUnregister(pushToken);
         await clearRegisteredPushToken();
       }
 

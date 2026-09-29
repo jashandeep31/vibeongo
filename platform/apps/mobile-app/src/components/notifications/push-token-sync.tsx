@@ -6,7 +6,11 @@ import { useEffect, useRef } from "react";
 import { AppState, Platform } from "react-native";
 
 import { subscribeNotificationPermissionChange } from "@/lib/notification-permission";
-import { setRegisteredPushToken } from "@/lib/push-token";
+import {
+  clearPendingPushTokenUnregister,
+  getPendingPushTokenUnregister,
+  setRegisteredPushToken,
+} from "@/lib/push-token";
 
 const getProjectId = () =>
   Constants.expoConfig?.extra?.eas?.projectId ?? Constants.easConfig?.projectId;
@@ -55,6 +59,12 @@ export function PushTokenSync() {
         const { data: token } = await Notifications.getExpoPushTokenAsync({
           projectId,
         });
+
+        // signed in again on this device: the token moves to this user,
+        // so the unregister left over from an offline sign out must not run
+        if ((await getPendingPushTokenUnregister()) === token) {
+          await clearPendingPushTokenUnregister();
+        }
 
         await upsertRef.current({
           token,

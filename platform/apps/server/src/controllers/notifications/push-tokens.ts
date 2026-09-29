@@ -65,3 +65,18 @@ export const deletePushToken = catchAsync(async (req, res) => {
 
   res.status(200).json({ message: "Push token deleted" });
 });
+
+// public: called by the mobile app after a sign out that could not reach the
+// server. The token itself proves the device, the only thing it allows is
+// stopping pushes to that device.
+// TODO: add rate limiting
+export const unregisterPushToken = catchAsync(async (req, res) => {
+  const { token } = z
+    .object({ token: z.string().min(1).max(255) })
+    .parse(req.body);
+
+  await db.delete(pushTokens).where(eq(pushTokens.token, token));
+
+  // same response whether or not the token existed
+  res.status(200).json({ message: "Push token unregistered" });
+});

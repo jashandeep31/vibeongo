@@ -2,6 +2,7 @@ import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 
 import { AppToastHost } from "@/components/app-toast";
+import { PendingPushTokenUnregister } from "@/components/notifications/pending-push-token-unregister";
 import { useTheme } from "@/hooks/use-theme";
 import { AppProviders } from "@/providers/app-providers";
 import { ThemePreferenceProvider } from "@/providers/theme-preference-provider";
@@ -30,6 +31,7 @@ function RootNavigator() {
         <StatusBar style="auto" />
       </AppProviders>
       <AppToastHost />
+      <PendingPushTokenUnregister />
     </>
   );
 }
