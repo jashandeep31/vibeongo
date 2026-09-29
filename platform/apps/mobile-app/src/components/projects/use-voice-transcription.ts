@@ -22,9 +22,14 @@ type VoiceState =
   | "error";
 
 const MAX_RECORDING_MS = 120_000;
+// Speech-grade AAC (mono, 16 kHz) keeps uploads small; the server only accepts
+// MP4 audio, so this stays on the AAC/.m4a preset rather than LOW_QUALITY.
 // Metering feeds the live waveform shown while recording.
 const RECORDING_OPTIONS = {
   ...RecordingPresets.HIGH_QUALITY,
+  sampleRate: 16000,
+  numberOfChannels: 1,
+  bitRate: 32000,
   isMeteringEnabled: true,
 };
 
