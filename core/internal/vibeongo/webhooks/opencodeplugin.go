@@ -3,6 +3,7 @@ package webhooks
 import (
 	"fmt"
 	"net/http"
+	"net/url"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
@@ -44,8 +45,15 @@ func OpenCodeEventsWebhook(c *echo.Context) error {
 
 	switch event.Type {
 	case OpencoodeEventSessionExecutionSucceeded:
-		// SendNotificationEvent( /*  */ )
-		// fmt.Println("OpenCodeEventsWebhook: session.execution.succeeded")
+		go func() {
+			if err := SendNotificationEvent(
+				"Task finished",
+				"Your agent has finished working. Open the session to review the changes.",
+				event.Data.SessionID,
+			); err != nil {
+				fmt.Println("OpenCodeEventsWebhook: failed to send notification:", err)
+			}
+		}()
 
 	case OpencoodeEventSessionExecutionFailed:
 		fmt.Println("OpenCodeEventsWebhook: session.execution.failed")
@@ -58,8 +66,25 @@ func OpenCodeEventsWebhook(c *echo.Context) error {
 	return nil
 }
 
-// API call to backend to send the notification to the user
-func SendNotificationEvent(sessionID string, title string, message string) error {
+type notificationRequest struct {
+	Title string `json:"title"`
+	Body  string `json:"body,omitempty"`
+	URL   string `json:"url,omitempty"`
+}
+
+// chatURL is the mobile app screen of the opencode chat, empty when unknown
+// so the platform falls back to the session screen
+func chatURL(cfg config.Config, opencodeSessionID string) string {
+	if cfg.ProjectID == "" || opencodeSessionID == "" {
+		return ""
+	}
+	return "/projects/" + url.PathEscape(cfg.ProjectID) +
+		"/sessions/" + url.PathEscape(cfg.SessionID) +
+		"/chat?chatId=" + url.QueryEscape(opencodeSessionID)
+}
+
+// API call to backend to send the notification to the owner of this instance
+func SendNotificationEvent(title string, body string, opencodeSessionID string) error {
 	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
@@ -67,12 +92,19 @@ func SendNotificationEvent(sessionID string, title string, message string) error
 	apiClient := httpclient.Client{BaseURL: cfg.ServerBaseURL}
 
 	headers := map[string]string{
-		"Authorization": cfg.InstanceConfig.SessionToken,
+		"Authorization": "Bearer " + cfg.InstanceConfig.SessionToken,
+		"X-Instance-Id": cfg.InstanceID,
 	}
 
-	_, err = apiClient.Post("/v1/notification/send", struct{}{}, headers, nil)
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err = apiClient.Post(
+		"/api/v1/notifications/runtime/sessions/"+cfg.SessionID,
+		notificationRequest{
+			Title: title,
+			Body:  body,
+			URL:   chatURL(cfg, opencodeSessionID),
+		},
+		headers,
+		nil,
+	)
+	return err
 }
