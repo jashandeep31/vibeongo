@@ -59,6 +59,46 @@ const formatNetworkUsage = (networkUsageInGb: number) =>
 const formatWalletAmount = (amount: number) =>
   `$${formatInternalMoney(amount)}`;
 
+// User-facing wallet description, e.g. "Sandbox · 45 min · $0.12 AI".
+const formatDuration = (uptimeInMin: number) => {
+  const hours = Math.floor(uptimeInMin / 60);
+  const minutes = uptimeInMin % 60;
+  if (!hours) return `${minutes} min`;
+  return minutes ? `${hours} h ${minutes} min` : `${hours} h`;
+};
+
+const formatDataSize = (sizeInGb: number) =>
+  sizeInGb >= 1
+    ? `${sizeInGb.toFixed(2)} GB`
+    : `${Math.max(1, Math.round(sizeInGb * 1024))} MB`;
+
+const formatAiCharges = (amount: number) => {
+  const dollars = amount / INTERNAL_MONEY_SCALE;
+  if (dollars >= 0.01) return `$${dollars.toFixed(2)}`;
+  if (dollars >= 0.001) return `$${dollars.toFixed(3)}`;
+  return "<$0.001";
+};
+
+const formatUsageDescription = ({
+  runtimeKind,
+  uptimeInMin,
+  networkOutInGb,
+  aiCharges,
+}: {
+  runtimeKind: string;
+  uptimeInMin: number;
+  networkOutInGb: number;
+  aiCharges: number;
+}) =>
+  [
+    runtimeKind === "vm" ? "VM" : "Sandbox",
+    formatDuration(uptimeInMin),
+    networkOutInGb > 0 && `${formatDataSize(networkOutInGb)} network`,
+    aiCharges > 0 && `${formatAiCharges(aiCharges)} AI`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
 const calculateTotalCostWithProfit = ({
   costEachMin,
   uptimeInMin,
@@ -254,7 +294,12 @@ export const terminateInstanceAndChargeUsage = async ({
       await tx.insert(userWalletTransactions).values({
         wallet_id: userWalletRow.id,
         transaction_type: "spent",
-        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  | AI Charges: ${formatInternalMoney(openrouterCharges)}`,
+        description: formatUsageDescription({
+          runtimeKind: instance.runtime_kind,
+          uptimeInMin,
+          networkOutInGb,
+          aiCharges: openrouterCharges,
+        }),
         raw_description: `Instance ${instanceId} ${instance.instance_type_id || instance.sandbox_type_id}  ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(networkOutInGb)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged. And openrouter charges ${openrouterCharges} `,
         amount: amountToUse,
         user_wallet_credit_id: creditWallet.id,
