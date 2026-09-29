@@ -2,6 +2,7 @@ import type { Request, Response } from "express";
 import { db, eq, userWallet } from "@repo/db";
 import { INTERNAL_MONEY_SCALE } from "@repo/shared";
 import { createStreamingToken } from "../../ai/speech-text/assemble-ai.js";
+import { consumeSpeechTokenRateLimit } from "../../cache/speech-token-rate-limit.js";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 
@@ -12,6 +13,16 @@ export const issueStreamingToken = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("Authorization is required", 401);
 
+    const limit = await consumeSpeechTokenRateLimit(user.id);
+    if (!limit.allowed) {
+      throw new AppError(
+        limit.reason === "cooldown"
+          ? "Too many voice requests. Please wait a moment and try again."
+          : "Hourly voice input limit reached. Please try again later.",
+        429,
+      );
+    }
+
     const [wallet] = await db
       .select({ balance: userWallet.balance })
       .from(userWallet)
@@ -19,8 +30,8 @@ export const issueStreamingToken = catchAsync(
 
     if (!wallet || wallet.balance < MIN_STREAMING_BALANCE) {
       throw new AppError(
-        "Voice transcription requires a balance of at least $0.10.",
-        402,
+        "Insufficient balance. Voice transcription requires at least $0.10.",
+        400,
       );
     }
 

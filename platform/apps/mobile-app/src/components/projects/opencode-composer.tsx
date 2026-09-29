@@ -443,7 +443,7 @@ export function OpencodeComposer({
       style={styles.recordingStatus}
     >
       {isRecording ? (
-        <VoiceWaveform color="#dc2626" recorder={voice.recorder} />
+        <VoiceWaveform color="#dc2626" meter={voice.meter} />
       ) : (
         <ThemedText
           numberOfLines={1}
