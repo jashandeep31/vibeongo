@@ -20,9 +20,9 @@ func Start() error {
 	tools := store.NewTools()
 
 	go func() {
-		if err := tools.OpenCode.StartWebServerWithRetry(); err != nil {
-			e.Logger.Error("failed to start opencode web server", "error", err)
-		}
+		// if err := tools.OpenCode.StartWebServerWithRetry(); err != nil {
+		// 	e.Logger.Error("failed to start opencode web server", "error", err)
+		// }
 	}()
 
 	// Allow requests from every origin. Echo reflects requested headers for
