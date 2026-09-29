@@ -21,6 +21,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
       priority: 0.9,
     },
     {
+      url: absoluteUrl("/app"),
+      lastModified: now,
+      changeFrequency: "monthly",
+      priority: 0.8,
+      images: [absoluteUrl("/assets/app.png")],
+    },
+    {
       url: absoluteUrl("/contact"),
       changeFrequency: "yearly",
       priority: 0.5,
