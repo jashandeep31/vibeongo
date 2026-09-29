@@ -23,3 +23,11 @@ export const transcribeSpeech = async (audio: Buffer): Promise<string> => {
 
   return text;
 };
+
+// AssemblyAI streaming tokens are single-use: each one opens exactly one
+export const createStreamingToken = async (): Promise<string> => {
+  return client.streaming.createTemporaryToken({
+    expires_in_seconds: 60,
+    max_session_duration_seconds: 180,
+  });
+};

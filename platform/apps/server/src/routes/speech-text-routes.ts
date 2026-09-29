@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { issueStreamingToken } from "../controllers/speech-text/create-streaming-token.js";
 import {
   receiveAudio,
   transcribeAudio,
@@ -12,6 +13,12 @@ routes.post(
   checkAuthorization(["user"]),
   receiveAudio,
   transcribeAudio,
+);
+
+routes.post(
+  "/streaming-token",
+  checkAuthorization(["user"]),
+  issueStreamingToken,
 );
 
 export const speechTextRoutes = routes;
