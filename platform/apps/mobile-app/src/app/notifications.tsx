@@ -28,6 +28,8 @@ import { clearNotificationTray } from "@/lib/notification-tray";
 
 const UNREAD_LIMIT = 100;
 const READ_LIMIT = 20;
+// space between the header and the first item
+const CONTENT_TOP_GAP = 18;
 
 function formatRelativeTime(value: Date | string) {
   const seconds = Math.max(
@@ -127,7 +129,23 @@ export default function NotificationsScreen() {
         }
       >
         {({ topInset }) => (
-          <View style={[styles.screen, { paddingTop: topInset }]}>
+          <ScrollView
+            contentContainerStyle={[
+              styles.content,
+              { paddingTop: topInset + CONTENT_TOP_GAP },
+            ]}
+            onScroll={onTitleScroll}
+            refreshControl={
+              <RefreshControl
+                onRefresh={refetch}
+                refreshing={unreadQuery.isRefetching || readQuery.isRefetching}
+                tintColor={theme.textSecondary}
+              />
+            }
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          >
+            <NotificationPermissionWarning style={styles.permissionWarning} />
             {isPending ? (
               <View style={styles.centeredState}>
                 <ActivityIndicator color={theme.textSecondary} />
@@ -156,64 +174,44 @@ export default function NotificationsScreen() {
                   </ThemedText>
                 </Pressable>
               </View>
+            ) : notifications.length === 0 ? (
+              <View style={styles.emptyState}>
+                <SymbolView
+                  name={{ ios: "bell", android: "notifications" }}
+                  size={26}
+                  tintColor={theme.textSecondary}
+                />
+                <ThemedText style={styles.emptyTitle}>
+                  You're all caught up
+                </ThemedText>
+                <ThemedText
+                  style={styles.emptyDescription}
+                  themeColor="textSecondary"
+                >
+                  Notifications about your tasks and automations show up here.
+                </ThemedText>
+              </View>
             ) : (
-              <ScrollView
-                contentContainerStyle={styles.content}
-                onScroll={onTitleScroll}
-                refreshControl={
-                  <RefreshControl
-                    onRefresh={refetch}
-                    refreshing={
-                      unreadQuery.isRefetching || readQuery.isRefetching
-                    }
-                    tintColor={theme.textSecondary}
-                  />
-                }
-                scrollEventThrottle={16}
-                showsVerticalScrollIndicator={false}
-              >
-                <NotificationPermissionWarning style={styles.permissionWarning} />
-                {notifications.length === 0 ? (
-                  <View style={styles.emptyState}>
-                    <SymbolView
-                      name={{ ios: "bell", android: "notifications" }}
-                      size={26}
-                      tintColor={theme.textSecondary}
+              sections.map((section) => (
+                <View key={section.title} style={styles.section}>
+                  <ThemedText
+                    style={styles.sectionTitle}
+                    themeColor="textSecondary"
+                  >
+                    {section.title}
+                  </ThemedText>
+                  {section.items.map((notification, index) => (
+                    <NotificationRow
+                      isNew={newIds.has(notification.id)}
+                      key={notification.id}
+                      notification={notification}
+                      showDivider={index > 0}
                     />
-                    <ThemedText style={styles.emptyTitle}>
-                      You're all caught up
-                    </ThemedText>
-                    <ThemedText
-                      style={styles.emptyDescription}
-                      themeColor="textSecondary"
-                    >
-                      Notifications about your tasks and automations show up
-                      here.
-                    </ThemedText>
-                  </View>
-                ) : (
-                  sections.map((section) => (
-                    <View key={section.title} style={styles.section}>
-                      <ThemedText
-                        style={styles.sectionTitle}
-                        themeColor="textSecondary"
-                      >
-                        {section.title}
-                      </ThemedText>
-                      {section.items.map((notification, index) => (
-                        <NotificationRow
-                          isNew={newIds.has(notification.id)}
-                          key={notification.id}
-                          notification={notification}
-                          showDivider={index > 0}
-                        />
-                      ))}
-                    </View>
-                  ))
-                )}
-              </ScrollView>
+                  ))}
+                </View>
+              ))
             )}
-          </View>
+          </ScrollView>
         )}
       </PageChromeLayout>
     </SafeAreaView>
@@ -278,7 +276,7 @@ function NotificationRow({
 
 const styles = StyleSheet.create({
   screen: { flex: 1 },
-  content: { paddingBottom: 48, paddingHorizontal: 20, paddingTop: 18 },
+  content: { paddingBottom: 48, paddingHorizontal: 20 },
   centeredState: {
     alignItems: "center",
     gap: 10,
