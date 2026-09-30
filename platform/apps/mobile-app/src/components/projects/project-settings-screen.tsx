@@ -35,7 +35,7 @@ import { Fonts } from "@/constants/theme";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import { useVibeongoRuntimeSocket } from "@/hooks/use-vibeongo-runtime-socket";
+import { useSessionRuntimeSocket } from "@/hooks/use-vibeongo-runtime-socket";
 import {
   formatInstanceTimeRemaining,
   getInstanceRemainingMs,
@@ -111,12 +111,7 @@ export function ProjectSettingsScreen() {
     runtime.instance?.config,
     "vibeongoLocalToken",
   );
-  const runtimeSocket = useVibeongoRuntimeSocket({
-    accessToken: runtime.accessToken,
-    enabled: Boolean(runtime.instance),
-    localToken,
-    runtimeUrl,
-  });
+  const runtimeSocket = useSessionRuntimeSocket(projectSessionId);
   const restartDevScript = useRestartDevScript({
     instanceId: runtimeInstanceId,
     runtimeUrl,

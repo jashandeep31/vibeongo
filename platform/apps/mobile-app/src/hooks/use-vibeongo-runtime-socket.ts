@@ -1,5 +1,20 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 
+import {
+  type FavoriteDir,
+  parseFavoriteDirs,
+  parseTerminalSessions,
+  parseTmuxSessions,
+  type TmuxSession,
+  type VibeongoTerminalSession,
+} from "@/hooks/use-vibeongo-ws-v2";
 import {
   createVibeongoWsV2Socket,
   requestVibeongoWsV2Token,
@@ -23,9 +38,11 @@ export type RuntimeSocketStats = {
 export type RuntimeSocketMessage = {
   activeId?: unknown;
   data?: unknown;
+  dirs?: unknown;
   hasBuffer?: unknown;
   ids?: unknown;
   sessionId?: unknown;
+  sessions?: unknown;
   type?: unknown;
 };
 
@@ -66,6 +83,16 @@ export function useVibeongoRuntimeSocket({
     null,
   );
   const [toolMessages, setToolMessages] = useState<RuntimeToolMessages>({});
+  // The server pushes the terminal workspace lists to every /v2/ws
+  // connection, whenever they change.
+  const [terminalSessions, setTerminalSessions] = useState<
+    VibeongoTerminalSession[]
+  >([]);
+  const [activeTerminalSessionId, setActiveTerminalSessionId] = useState<
+    string | null
+  >(null);
+  const [tmuxSessions, setTmuxSessions] = useState<TmuxSession[]>([]);
+  const [favoriteDirs, setFavoriteDirs] = useState<FavoriteDir[]>([]);
   const messageListenersRef = useRef(
     new Set<(message: RuntimeSocketMessage) => void>(),
   );
@@ -79,6 +106,10 @@ export function useVibeongoRuntimeSocket({
       setLogs("");
       setLastMessage(null);
       setToolMessages({});
+      setTerminalSessions([]);
+      setActiveTerminalSessionId(null);
+      setTmuxSessions([]);
+      setFavoriteDirs([]);
       return;
     }
 
@@ -141,6 +172,26 @@ export function useVibeongoRuntimeSocket({
         } catch {
           return;
         }
+        if (message.type === "terminalSessions") {
+          const sessions = parseTerminalSessions(message.sessions);
+          if (!sessions) return;
+          setTerminalSessions(sessions);
+          setActiveTerminalSessionId(
+            typeof message.activeId === "string" ? message.activeId : null,
+          );
+          return;
+        }
+        if (message.type === "tmuxSessions") {
+          const sessions = parseTmuxSessions(message.sessions);
+          if (sessions) setTmuxSessions(sessions);
+          return;
+        }
+        if (message.type === "favoriteDirs") {
+          const dirs = parseFavoriteDirs(message.dirs);
+          if (dirs) setFavoriteDirs(dirs);
+          return;
+        }
+
         if (message.type !== "terminal") {
           setLastMessage(message);
         }
@@ -186,6 +237,10 @@ export function useVibeongoRuntimeSocket({
     setLogs("");
     setLastMessage(null);
     setToolMessages({});
+    setTerminalSessions([]);
+    setActiveTerminalSessionId(null);
+    setTmuxSessions([]);
+    setFavoriteDirs([]);
     void connect();
 
     return () => {
@@ -193,7 +248,7 @@ export function useVibeongoRuntimeSocket({
       if (reconnectTimer) clearTimeout(reconnectTimer);
       reconnectAttemptRef.current = 0;
       socketRef.current = null;
-      socket?.close(1000, "Runtime screen unmounted");
+      socket?.close(1000, "Runtime socket disabled");
     };
   }, [accessToken, enabled, localToken, runtimeUrl]);
 
@@ -219,13 +274,84 @@ export function useVibeongoRuntimeSocket({
     [],
   );
 
-  return {
-    lastMessage,
-    logs,
-    sendJsonMessage,
-    stats,
-    status,
-    subscribeJsonMessage,
-    toolMessages,
+  return useMemo(
+    () => ({
+      activeTerminalSessionId,
+      favoriteDirs,
+      lastMessage,
+      logs,
+      sendJsonMessage,
+      stats,
+      status,
+      subscribeJsonMessage,
+      terminalSessions,
+      tmuxSessions,
+      toolMessages,
+    }),
+    [
+      activeTerminalSessionId,
+      favoriteDirs,
+      lastMessage,
+      logs,
+      sendJsonMessage,
+      stats,
+      status,
+      subscribeJsonMessage,
+      terminalSessions,
+      tmuxSessions,
+      toolMessages,
+    ],
+  );
+}
+
+export type RuntimeSocketSnapshot = ReturnType<
+  typeof useVibeongoRuntimeSocket
+>;
+
+const EMPTY_RUNTIME_SOCKET: RuntimeSocketSnapshot = {
+  activeTerminalSessionId: null,
+  favoriteDirs: [],
+  lastMessage: null,
+  logs: "",
+  sendJsonMessage: () => false,
+  stats: null,
+  status: "disconnected",
+  subscribeJsonMessage: () => () => {},
+  terminalSessions: [],
+  tmuxSessions: [],
+  toolMessages: {},
+};
+
+// ProjectStoreSync owns one runtime socket per project session and publishes
+// it here, so any screen of that session reads the same connection. It also
+// carries the terminal workspace lists (terminals, tmux, favourite folders).
+const runtimeSockets = new Map<string, RuntimeSocketSnapshot>();
+const runtimeSocketListeners = new Set<() => void>();
+
+export function publishRuntimeSocket(
+  projectSessionId: string,
+  snapshot: RuntimeSocketSnapshot | undefined,
+) {
+  if (snapshot) runtimeSockets.set(projectSessionId, snapshot);
+  else if (!runtimeSockets.delete(projectSessionId)) return;
+  runtimeSocketListeners.forEach((listener) => listener());
+}
+
+function subscribeRuntimeSockets(listener: () => void) {
+  runtimeSocketListeners.add(listener);
+  return () => {
+    runtimeSocketListeners.delete(listener);
   };
+}
+
+export function useSessionRuntimeSocket(projectSessionId: string) {
+  const getSnapshot = useCallback(
+    () => runtimeSockets.get(projectSessionId) ?? EMPTY_RUNTIME_SOCKET,
+    [projectSessionId],
+  );
+  return useSyncExternalStore(
+    subscribeRuntimeSockets,
+    getSnapshot,
+    getSnapshot,
+  );
 }

@@ -29,7 +29,10 @@ import { useGlobalSearchParams, usePathname } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState } from "react-native";
 
-import { useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
+import {
+  publishRuntimeSocket,
+  useVibeongoRuntimeSocket,
+} from "@/hooks/use-vibeongo-runtime-socket";
 import {
   loadProjectMetadataCache,
   saveProjectMetadataCache,
@@ -48,16 +51,16 @@ function ProjectSessionRuntimeSync({
   activeOpencodeSessionId,
   instance,
   instanceSyncState,
+  runtimeSocketEnabled,
   sessionId,
-  workspaceEnabled,
 }: {
   activeOpencodeSessionId: string;
   // The session's running instance from the overview; `undefined` when it
   // has none.
   instance: ProjectOverviewInstance | undefined;
   instanceSyncState: "pending" | "error" | "success";
+  runtimeSocketEnabled: boolean;
   sessionId: string;
-  workspaceEnabled: boolean;
 }) {
   const queryClient = useQueryClient();
   const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
@@ -71,12 +74,19 @@ function ProjectSessionRuntimeSync({
     : "";
   const accessToken = instance?.access_token ?? "";
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
-  const terminalWorkspace = useVibeongoWsV2({
+  const runtimeSocket = useVibeongoRuntimeSocket({
     accessToken,
-    enabled: Boolean(workspaceEnabled && instance && localToken && accessToken),
+    enabled: Boolean(runtimeSocketEnabled && instance),
     localToken,
     runtimeUrl,
   });
+  useEffect(() => {
+    publishRuntimeSocket(sessionId, runtimeSocket);
+  }, [runtimeSocket, sessionId]);
+  useEffect(
+    () => () => publishRuntimeSocket(sessionId, undefined),
+    [sessionId],
+  );
   const setTerminalWorkspace = useTerminalWorkspaceStore(
     (store) => store.setWorkspace,
   );
@@ -143,22 +153,23 @@ function ProjectSessionRuntimeSync({
 
   useEffect(() => {
     setTerminalWorkspace(sessionId, {
-      activeTerminalSessionId: terminalWorkspace.activeTerminalSessionId,
-      favoriteDirs: terminalWorkspace.favoriteDirs,
-      status: terminalWorkspace.status,
-      terminalSessionIds: terminalWorkspace.terminalSessionIds,
-      terminalSessions: terminalWorkspace.terminalSessions,
-      tmuxSessions: terminalWorkspace.tmuxSessions,
+      activeTerminalSessionId: runtimeSocket.activeTerminalSessionId,
+      favoriteDirs: runtimeSocket.favoriteDirs,
+      status: runtimeSocket.status,
+      terminalSessionIds: runtimeSocket.terminalSessions.map(
+        (session) => session.id,
+      ),
+      terminalSessions: runtimeSocket.terminalSessions,
+      tmuxSessions: runtimeSocket.tmuxSessions,
     });
   }, [
+    runtimeSocket.activeTerminalSessionId,
+    runtimeSocket.favoriteDirs,
+    runtimeSocket.status,
+    runtimeSocket.terminalSessions,
+    runtimeSocket.tmuxSessions,
     sessionId,
     setTerminalWorkspace,
-    terminalWorkspace.activeTerminalSessionId,
-    terminalWorkspace.favoriteDirs,
-    terminalWorkspace.status,
-    terminalWorkspace.terminalSessionIds,
-    terminalWorkspace.terminalSessions,
-    terminalWorkspace.tmuxSessions,
   ]);
 
   useEffect(() => {
@@ -719,8 +730,11 @@ export function ProjectStoreSync({
       ? workspaceChatId
       : ""
     : (legacyActiveChatMatch?.[2] ?? "");
-  const terminalWorkspaceMatch = pathname.match(
-    /^\/projects\/[^/]+\/sessions\/([^/]+)\/terminal(?:\/|$)/,
+  // The runtime socket (stats, logs, tool status, terminal lists) stays
+  // connected on every page of a project session: chats, files, terminal,
+  // settings, review.
+  const sessionRouteMatch = pathname.match(
+    /^\/projects\/[^/]+\/sessions\/([^/]+)(?:\/|$)/,
   );
 
   if (!enabled) return null;
@@ -733,8 +747,8 @@ export function ProjectStoreSync({
       instance={instancesBySessionId.get(session.id)}
       instanceSyncState={instanceSyncState}
       key={session.id}
+      runtimeSocketEnabled={sessionRouteMatch?.[1] === session.id}
       sessionId={session.id}
-      workspaceEnabled={terminalWorkspaceMatch?.[1] === session.id}
     />
   ));
 }
