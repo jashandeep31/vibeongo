@@ -66,8 +66,9 @@ export function NotificationListener() {
 
       void refreshUnreadCountRef.current();
       if (AppState.currentState === "active") {
-        // also for the chat being viewed (read, no toast)
-        playNotificationSound(message.data.id);
+        // silent for the chat being viewed (read, no toast)
+        if (!isViewingChat(message.data.payload?.url))
+          playNotificationSound(message.data.id);
         showNotificationRef.current(message.data);
       } else {
         pendingRef.current.push(message.data);
@@ -89,7 +90,7 @@ export function NotificationListener() {
       unsubscribe();
       appStateSubscription.remove();
     };
-  }, [subscribeJsonMessage]);
+  }, [isViewingChat, subscribeJsonMessage]);
 
   // catch up after every (re)connect: notifications sent while offline
   // show up in the unread count and on the notifications page

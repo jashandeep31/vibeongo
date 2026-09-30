@@ -80,15 +80,15 @@ export function PushNotificationHandler() {
           queryKey: UNREAD_NOTIFICATION_COUNT_QUERY_KEY,
         });
 
-        const id = getNotificationId(notification);
-        if (id) playNotificationSound(id);
-
         const { title, body, data } = notification.request.content;
-        // already looking at that chat: no toast, it counts as read
+        // already looking at that chat: no sound or toast, it counts as read
         if (isViewingChat(data?.url)) {
           markRead(notification);
           return;
         }
+
+        const id = getNotificationId(notification);
+        if (id) playNotificationSound(id);
 
         showNotificationToast({
           title: title ?? "Notification",

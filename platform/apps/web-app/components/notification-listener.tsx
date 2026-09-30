@@ -62,6 +62,16 @@ const decodePath = (path: string) => {
 const isCurrentPage = (url: string, pathname: string) =>
   decodePath(url.split("?")[0] ?? url) === decodePath(pathname);
 
+// the notification's chat is on screen: the tab is visible and on that page
+const isViewingChat = (notification: AppNotification, pathname: string) => {
+  const url = toWebUrl(notification.payload?.url);
+  return (
+    document.visibilityState === "visible" &&
+    url !== null &&
+    isCurrentPage(url, pathname)
+  );
+};
+
 function NotificationToast({
   notification,
   index,
@@ -230,8 +240,7 @@ export function NotificationListener() {
     markNotificationRead(notification.id);
 
     // already looking at that chat: nothing to announce
-    const url = toWebUrl(notification.payload?.url);
-    if (url && isCurrentPage(url, pathnameRef.current)) return;
+    if (isViewingChat(notification, pathnameRef.current)) return;
 
     setToasts((current) =>
       [notification, ...current].slice(0, MAX_VISIBLE_TOASTS),
@@ -246,8 +255,9 @@ export function NotificationListener() {
         return;
       if (seenIdsRef.current.has(message.data.id)) return;
       seenIdsRef.current.add(message.data.id);
-      // also for the chat being viewed (read, no toast) and for a hidden tab
-      playNotificationSound();
+      // silent for the chat being viewed (read, no toast), a hidden tab plays it
+      if (!isViewingChat(message.data, pathnameRef.current))
+        playNotificationSound();
 
       if (document.visibilityState === "visible") {
         showNotificationRef.current(message.data);
