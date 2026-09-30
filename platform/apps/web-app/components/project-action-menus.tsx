@@ -2,7 +2,11 @@
 
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
-import { useDeleteProject, useTerminateInstance } from "@repo/api-hooks";
+import {
+  useDeleteProject,
+  useSuspendInstance,
+  useTerminateInstance,
+} from "@repo/api-hooks";
 import { instances } from "@repo/db";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -21,6 +25,7 @@ import {
   Loader2,
   Pencil,
   Plus,
+  Snowflake,
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
@@ -228,6 +233,24 @@ export function InstanceControlsDropdown({
   const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
     useState(false);
   const terminateInstance = useTerminateInstance(projectId, sessionId);
+  const suspendInstance = useSuspendInstance(projectId, sessionId);
+  const isPending = terminateInstance.isPending || suspendInstance.isPending;
+
+  const handleSuspend = () => {
+    suspendInstance.mutate(instance.id, {
+      onSuccess: () => toast.success("Instance suspended"),
+      onError: (error) => {
+        const responseMessage = axios.isAxiosError<{ message?: unknown }>(error)
+          ? error.response?.data?.message
+          : undefined;
+        toast.error(
+          typeof responseMessage === "string"
+            ? responseMessage
+            : "Failed to suspend instance",
+        );
+      },
+    });
+  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -256,13 +279,9 @@ export function InstanceControlsDropdown({
                 : "Instance controls"
             }
             title="Instance controls"
-            disabled={terminateInstance.isPending}
+            disabled={isPending}
           >
-            {terminateInstance.isPending ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Ellipsis />
-            )}
+            {isPending ? <Loader2 className="animate-spin" /> : <Ellipsis />}
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-56">
@@ -277,9 +296,15 @@ export function InstanceControlsDropdown({
             </div>
           </div>
           <DropdownMenuSeparator />
+          {instance.runtime_kind === "sandbox" ? (
+            <DropdownMenuItem disabled={isPending} onSelect={handleSuspend}>
+              <Snowflake />
+              Suspend
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuItem
             variant="destructive"
-            disabled={terminateInstance.isPending}
+            disabled={isPending}
             onSelect={() => setIsTerminationConfirmationOpen(true)}
           >
             <Trash2 />

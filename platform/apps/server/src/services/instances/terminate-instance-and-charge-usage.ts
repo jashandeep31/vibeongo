@@ -330,22 +330,7 @@ export const terminateInstanceAndChargeUsage = async ({
   await queueInstanceGitTokenRevocations(instanceId);
 
   // Remove the routes and invalidate affected project proxies.
-  const updatedRoutings = await db
-    .update(projectDomainRouting)
-    .set({
-      target_instance_id: null,
-    })
-    .where(
-      and(
-        eq(projectDomainRouting.target_instance_id, instanceId),
-        eq(projectDomainRouting.user_id, userId),
-      ),
-    )
-    .returning();
-
-  for (const routing of updatedRoutings) {
-    await invalidateProjectProxiesByPid(routing.project_id);
-  }
+  await clearInstanceDomainRouting({ instanceId, userId });
 
   if (terminatedSlot) {
     try {
@@ -364,7 +349,32 @@ export const terminateInstanceAndChargeUsage = async ({
   return;
 };
 
-const queueInstanceGitTokenRevocations = async (instanceId: string) => {
+export const clearInstanceDomainRouting = async ({
+  instanceId,
+  userId,
+}: {
+  instanceId: string;
+  userId: string;
+}) => {
+  const updatedRoutings = await db
+    .update(projectDomainRouting)
+    .set({
+      target_instance_id: null,
+    })
+    .where(
+      and(
+        eq(projectDomainRouting.target_instance_id, instanceId),
+        eq(projectDomainRouting.user_id, userId),
+      ),
+    )
+    .returning();
+
+  for (const routing of updatedRoutings) {
+    await invalidateProjectProxiesByPid(routing.project_id);
+  }
+};
+
+export const queueInstanceGitTokenRevocations = async (instanceId: string) => {
   let tokens: Array<{ id: string }>;
 
   try {
@@ -491,28 +501,40 @@ const terminateSandboxInstance = async ({
     (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
 
+  const networkCharges = 0;
+
+  return {
+    networkCharges,
+    uptimeInMin,
+    totalCostWithProfit: calculateSandboxUsageCost({
+      pricePerSecond: sandbox.price_per_second,
+      uptimeInMin,
+    }),
+    networkOutInGb,
+  };
+};
+
+export const calculateSandboxUsageCost = ({
+  pricePerSecond,
+  uptimeInMin,
+}: {
+  pricePerSecond: number;
+  uptimeInMin: number;
+}) => {
   const MIN_CHARGE = Math.ceil(0.0001 * INTERNAL_MONEY_SCALE);
 
   // Step 1: convert stored price back to a real $/second value
-  const pricePerSecond = sandbox.price_per_second / INTERNAL_MONEY_SCALE;
+  const pricePerSecondInDollars = pricePerSecond / INTERNAL_MONEY_SCALE;
 
   // Step 2: all math in real dollars, no scaling yet
-  const costEachMin = pricePerSecond * 60;
+  const costEachMin = pricePerSecondInDollars * 60;
   const totalCost = costEachMin * uptimeInMin;
   const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
   const totalCostWithProfit = totalCost + profit; // still real dollars
 
   // Step 3: scale to the internal 10^7 integer representation.
   const scaled = Math.ceil(totalCostWithProfit * INTERNAL_MONEY_SCALE);
-  const total = scaled < MIN_CHARGE ? MIN_CHARGE : scaled;
-  const networkCharges = 0;
-
-  return {
-    networkCharges,
-    uptimeInMin,
-    totalCostWithProfit: total,
-    networkOutInGb,
-  };
+  return scaled < MIN_CHARGE ? MIN_CHARGE : scaled;
 };
 
 /**

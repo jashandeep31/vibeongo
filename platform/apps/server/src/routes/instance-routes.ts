@@ -7,6 +7,7 @@ import {
   updateInstanceById,
 } from "../controllers/instance/get-instances.js";
 import { terminateByIdInstance } from "../controllers/instance/terminate-by-id-instance.js";
+import { suspendByIdInstance } from "../controllers/instance/suspend-by-id-instance.js";
 
 const routes: Router = Router();
 routes
@@ -18,4 +19,7 @@ routes
   .get(checkAuthorization(["user"]), getInstanceById)
   .post(checkAuthorization(["user"]), terminateByIdInstance)
   .patch(checkAuthorization(["user"]), updateInstanceById);
+routes
+  .route("/:id/suspend")
+  .post(checkAuthorization(["user"]), suspendByIdInstance);
 export const instanceRoutes = routes;

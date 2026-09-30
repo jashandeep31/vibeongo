@@ -447,7 +447,9 @@ export function PlaygroundCommandBox() {
                               ? "Starting"
                               : entry.state === "running"
                                 ? "Running"
-                                : "Stopped"}
+                                : entry.state === "suspended"
+                                  ? "Suspended"
+                                  : "Stopped"}
                           </CommandShortcut>
                         </CommandItem>
                       );

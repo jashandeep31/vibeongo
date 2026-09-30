@@ -13,6 +13,14 @@ export class E2BClient {
     return true;
   }
 
+  async suspendInstance(instanceId: string) {
+    await Sandbox.pause(instanceId, {
+      apiKey: env.E2B_API_KEY,
+      keepMemory: true,
+    });
+    return true;
+  }
+
   async createInstance({
     instanceName,
     userData,

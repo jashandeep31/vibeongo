@@ -10,6 +10,8 @@ import {
   json,
   integer,
   boolean,
+  index,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { projects } from "./projects.js";
@@ -21,6 +23,7 @@ import { projectSessions } from "./project-sessions.js";
 export const instanceState = pgEnum("instance_state", [
   "running",
   "terminated",
+  "suspended",
 ]);
 
 export const instanceRuntimeKind = pgEnum("instance_runtime_kind", [
@@ -89,6 +92,42 @@ export const instances = pgTable(
   ],
 );
 
+export const instancePeriodKind = pgEnum("instance_period_kind", [
+  "running",
+  "suspended",
+]);
+
+export const instancePeriods = pgTable(
+  "instance_periods",
+  {
+    id: uuid().defaultRandom().primaryKey(),
+    instance_id: uuid()
+      .references(() => instances.id, { onDelete: "cascade" })
+      .notNull(),
+
+    kind: instancePeriodKind().notNull(),
+    started_at: timestamp().notNull().defaultNow(),
+    ended_at: timestamp(),
+
+    rate_per_second: bigint({ mode: "number" }).notNull(),
+    amount: bigint({ mode: "number" }),
+    charged_at: timestamp(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+  (table) => [
+    index("instance_periods_instance_id_idx").on(table.instance_id),
+    uniqueIndex("instance_periods_one_open_per_instance")
+      .on(table.instance_id)
+      .where(sql`${table.ended_at} IS NULL`),
+    check(
+      "instance_periods_ended_after_started",
+      sql`${table.ended_at} IS NULL OR ${table.ended_at} >= ${table.started_at}`,
+    ),
+  ],
+);
+
 export const instanceSlotStatus = pgEnum("instance_slot_status", [
   "queued",
   "provisioning",
@@ -98,6 +137,7 @@ export const instanceSlotStatus = pgEnum("instance_slot_status", [
   "terminated",
   "cancelled",
   "expired",
+  "suspended",
 ]);
 
 // Keep the deployed enum name until a database migration can rename it.

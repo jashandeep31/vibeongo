@@ -157,7 +157,9 @@ function SessionRow({
                     ? "bg-emerald-500"
                     : entry.state === "processing"
                       ? "animate-pulse bg-amber-500"
-                      : "bg-muted-foreground/50"
+                      : entry.state === "suspended"
+                        ? "bg-sky-500"
+                        : "bg-muted-foreground/50"
                 }`}
               />
             </span>
@@ -181,6 +183,26 @@ function SessionRow({
                 projectId={entry.session.project_id}
                 sessionId={entry.session.id}
                 sessionName={entry.session.name}
+              />
+            </>
+          ) : entry.state === "suspended" ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isArchivePending}
+                onClick={() =>
+                  toast.info("Resuming suspended sessions is not available yet")
+                }
+              >
+                <Play />
+                Resume
+              </Button>
+              <SessionActionsDropdown
+                sessionName={entry.session.name}
+                isArchivePending={isArchivePending}
+                onArchive={() => onArchive(entry.session.id)}
               />
             </>
           ) : entry.state === "stopped" ? (

@@ -617,7 +617,13 @@ export function ProjectStoreSync({
       new Map(
         (projectsWithSessions ?? []).flatMap((project) =>
           project.sessions.map(
-            (session) => [session.id, session.instances[0]] as const,
+            (session) =>
+              [
+                session.id,
+                session.instances.find(
+                  (instance) => instance.state === "running",
+                ),
+              ] as const,
           ),
         ),
       ),

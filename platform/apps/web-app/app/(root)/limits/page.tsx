@@ -45,6 +45,7 @@ const statusStyles: Record<
   terminated: "outline",
   cancelled: "outline",
   expired: "outline",
+  suspended: "secondary",
 };
 
 function formatDate(value: Date | string | null) {

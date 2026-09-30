@@ -35,6 +35,7 @@ const statusColors: Record<InstanceSlot["status"], string> = {
   terminated: "#64748b",
   cancelled: "#64748b",
   expired: "#64748b",
+  suspended: "#0284c7",
 };
 
 function formatDate(value: Date | string | null) {

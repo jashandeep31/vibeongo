@@ -493,7 +493,13 @@ function ProjectSessionNavItem({
                   aria-label={`Resume ${session.name}`}
                   title="Resume session"
                   disabled={isResumePending || isArchivePending}
-                  onClick={() => onResume(session.id)}
+                  onClick={() =>
+                    sessionEntry?.state === "suspended"
+                      ? toast.info(
+                          "Resuming suspended sessions is not available yet",
+                        )
+                      : onResume(session.id)
+                  }
                 >
                   <Play />
                 </Button>

@@ -69,7 +69,7 @@ export const getProjectOverview = catchAsync(
         .where(
           and(
             eq(instances.user_id, user.id),
-            eq(instances.state, "running"),
+            inArray(instances.state, ["running", "suspended"]),
             inArray(instances.project_id, projectIdsQuery),
           ),
         )
