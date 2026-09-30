@@ -1,20 +1,28 @@
 import { Request, Response } from "express";
 import { and, db, eq, userConfigs } from "@repo/db";
+import { opencodeCredentialsValidator } from "@repo/shared";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
 
 const userConfigTypeSchema = z.enum(["opencode", "codex", "pi", "fx"]);
+type UserConfigType = z.infer<typeof userConfigTypeSchema>;
 const userConfigSchema = z.record(z.string(), z.unknown());
+// Stored configs can still hold the old OpenCode auth.json object, so reads accept both shapes
+const storedUserConfigSchema = z.union([userConfigSchema, z.array(z.unknown())]);
+
+// OpenCode takes the `opencode auth export` array, the other tools take their auth file object
+const userConfigSchemaFor = (configType: UserConfigType) =>
+  configType === "opencode" ? opencodeCredentialsValidator : userConfigSchema;
 
 const createUserConfigSchema = z.object({
   configType: userConfigTypeSchema,
-  config: userConfigSchema,
+  config: z.unknown(),
 });
 
 const updateUserConfigSchema = z.object({
-  config: userConfigSchema,
+  config: z.unknown(),
 });
 
 const safeUserConfigSelection = {
@@ -66,7 +74,7 @@ export const getUserConfig = catchAsync(async (req: Request, res: Response) => {
     return;
   }
 
-  const config = userConfigSchema.parse(
+  const config = storedUserConfigSchema.parse(
     JSON.parse(
       decryptData({
         iv: configRow.iv,
@@ -94,6 +102,9 @@ export const createUserConfig = catchAsync(
     if (!user) throw new AppError("Authentication is required", 401);
 
     const parsedData = createUserConfigSchema.parse(req.body);
+    const userConfig = userConfigSchemaFor(parsedData.configType).parse(
+      parsedData.config,
+    );
     const [existingConfig] = await db
       .select({ id: userConfigs.id })
       .from(userConfigs)
@@ -108,7 +119,7 @@ export const createUserConfig = catchAsync(
       throw new AppError("This configuration already exists", 409);
     }
 
-    const encryptedConfig = encryptData(JSON.stringify(parsedData.config));
+    const encryptedConfig = encryptData(JSON.stringify(userConfig));
     const [config] = await db
       .insert(userConfigs)
       .values({
@@ -131,7 +142,8 @@ export const updateUserConfig = catchAsync(
 
     const configType = userConfigTypeSchema.parse(req.params.configType);
     const parsedData = updateUserConfigSchema.parse(req.body);
-    const encryptedConfig = encryptData(JSON.stringify(parsedData.config));
+    const userConfig = userConfigSchemaFor(configType).parse(parsedData.config);
+    const encryptedConfig = encryptData(JSON.stringify(userConfig));
 
     const [config] = await db
       .update(userConfigs)

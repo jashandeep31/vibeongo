@@ -58,6 +58,8 @@ for attempt in {1..41}; do
   sleep 3
 done
 
+"$BINARY_PATH" provision-opencode
+
 if [[ "$(cat /proc/1/comm)" == "systemd" ]]; then
   if ! sudo systemctl is-active --quiet docker; then
     sudo systemctl start docker

@@ -193,21 +193,16 @@ async function appendOpenRouterKeysToOpencodeConfig(
 
   if (!opencodePackage) return config;
 
-  const currentAuthJson = opencodePackage.config.auth_json;
-  const authJson =
-    currentAuthJson &&
-    typeof currentAuthJson === "object" &&
-    !Array.isArray(currentAuthJson)
-      ? currentAuthJson
-      : {};
-
-  opencodePackage.config.auth_json = {
-    ...authJson,
-    // openrouter: {
-    //   type: "api",
-    //   key: decryptedKey,
-    // },
-  };
+  // opencodePackage.config.auth_json = [
+  //   ...opencodePackage.config.auth_json,
+  //   {
+  //     id: `openrouter-${instanceId}`,
+  //     integrationID: "openrouter",
+  //     label: "openrouter",
+  //     active: true,
+  //     value: { type: "key", key: decryptedKey },
+  //   },
+  // ];
 
   return config;
 }

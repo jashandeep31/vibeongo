@@ -5,7 +5,12 @@ import { Checkbox } from "@repo/ui/components/checkbox";
 import { Input } from "@repo/ui/components/input";
 import { Label } from "@repo/ui/components/label";
 import { Textarea } from "@repo/ui/components/textarea";
-import { projectConfigValidator, type z } from "@repo/shared";
+import {
+  opencodeCredentialsValidator,
+  projectConfigValidator,
+  type OpencodeCredentials,
+  type z,
+} from "@repo/shared";
 import {
   Bot,
   CircleDot,
@@ -78,7 +83,6 @@ function formatAuthJson(value: unknown) {
   if (
     value &&
     typeof value === "object" &&
-    !Array.isArray(value) &&
     Object.keys(value).length === 0
   ) {
     return "";
@@ -132,6 +136,25 @@ function parseAuthJson(value: string, serviceName: string): AuthJson {
   }
 }
 
+function parseOpencodeCredentials(value: string): OpencodeCredentials {
+  if (!value.trim()) return [];
+
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(value);
+  } catch {
+    throw new Error("Invalid OpenCode auth JSON");
+  }
+
+  const result = opencodeCredentialsValidator.safeParse(parsed);
+  if (!result.success) {
+    throw new Error(
+      "OpenCode auth JSON must be the array printed by `opencode auth export`",
+    );
+  }
+  return result.data;
+}
+
 export function buildProjectPackages(
   value: ProjectServicesConfigValue,
 ): ProjectPackages {
@@ -148,8 +171,8 @@ export function buildProjectPackages(
       name: "opencode",
       config: {
         auth_json: value.opencode.useUserConfig
-          ? {}
-          : parseAuthJson(value.opencode.authJson, "OpenCode"),
+          ? []
+          : parseOpencodeCredentials(value.opencode.authJson),
         use_user_config: value.opencode.useUserConfig,
         model: value.opencode.model,
       },

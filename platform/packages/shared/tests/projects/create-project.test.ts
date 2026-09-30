@@ -40,13 +40,13 @@ describe("project config constraints", () => {
   test("strips the legacy OpenCode password option", () => {
     expect(
       opencodeConfigValidator.parse({
-        auth_json: {},
+        auth_json: [],
         use_user_config: true,
         model: "default",
         [["require", "Password"].join("")]: false,
       }),
     ).toEqual({
-      auth_json: {},
+      auth_json: [],
       use_user_config: true,
       model: "default",
     });

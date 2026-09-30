@@ -1,6 +1,7 @@
 package actions
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -86,27 +87,34 @@ func ProvisionT3Code(cfg config.Config) error {
 	return nil
 }
 
-// Setup the opencode auth.json file
+// ProvisionOpenCode imports the credentials (output of `opencode auth export`) with `opencode auth import`
 func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	if cfg == nil {
 		return nil
 	}
 
-	// opencode is pre-insatlled in the ami
-	fmt.Println("opencode config is running ")
-	authJSON := cfg.AuthJSON
-
-	authDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.local/share/opencode")
-	if err := os.MkdirAll(authDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create opencode auth directory: %w", err)
+	authJSON := bytes.TrimSpace(cfg.AuthJSON)
+	if len(authJSON) == 0 || string(authJSON) == "null" || string(authJSON) == "[]" {
+		fmt.Println("no opencode credentials to import")
+		return nil
 	}
 
-	authfilePath := filepath.Join(authDir, "auth.json")
-	if err := os.WriteFile(authfilePath, authJSON, 0o600); err != nil {
-		return fmt.Errorf("failed to write opencode auth.json: %w", err)
+	// opencode is pre-insatlled in the ami. OPENCODE_BIN overrides it for local testing
+	opencodeBin := os.Getenv("OPENCODE_BIN")
+	if opencodeBin == "" {
+		opencodeBin = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.opencode/bin/opencode")
 	}
 
-	fmt.Println("updated the auth.json")
+	fmt.Println("importing opencode credentials")
+	// --standalone avoids spawning the background service, credentials are passed on stdin so they never touch the disk
+	cmd := exec.Command(opencodeBin, "auth", "import", "--standalone")
+	cmd.Stdin = bytes.NewReader(authJSON)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to import opencode credentials: %w", err)
+	}
+
 	return nil
 }
 

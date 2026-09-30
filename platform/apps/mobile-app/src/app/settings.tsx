@@ -13,6 +13,7 @@ import {
   useUserSettings,
 } from "@repo/api-hooks";
 import { useQueryClient } from "@repo/api-hooks";
+import { opencodeCredentialsValidator } from "@repo/shared";
 import * as Linking from "expo-linking";
 import { useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
@@ -951,6 +952,24 @@ function IconButton({
   );
 }
 
+// OpenCode takes the `opencode auth export` array, the other tools a JSON object
+const emptyConfigText = (configType: ConfigType) =>
+  configType === "opencode" ? "[]" : "{}";
+
+const validateUserConfig = (
+  configType: ConfigType,
+  config: unknown,
+): string | null => {
+  if (configType === "opencode") {
+    return opencodeCredentialsValidator.safeParse(config).success
+      ? null
+      : "Paste the JSON array printed by `opencode auth export`.";
+  }
+  return config === null || typeof config !== "object" || Array.isArray(config)
+    ? "The configuration must be a JSON object."
+    : null;
+};
+
 function UserConfigDrawer({
   editor,
   onClose,
@@ -973,7 +992,10 @@ function UserConfigDrawer({
 
   useEffect(() => {
     if (!editor || !configQuery.isSuccess) return;
-    setConfigText(JSON.stringify(configQuery.data?.config ?? {}, null, 2));
+    const config = configQuery.data?.config;
+    setConfigText(
+      config ? JSON.stringify(config, null, 2) : emptyConfigText(editor.type),
+    );
   }, [configQuery.data, configQuery.isSuccess, editor]);
 
   const close = () => {
@@ -1002,12 +1024,9 @@ function UserConfigDrawer({
       setValidationError("Enter valid JSON before saving.");
       return;
     }
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed)
-    ) {
-      setValidationError("The configuration must be a JSON object.");
+    const configError = validateUserConfig(editor.type, parsed);
+    if (configError) {
+      setValidationError(configError);
       return;
     }
     setValidationError(null);

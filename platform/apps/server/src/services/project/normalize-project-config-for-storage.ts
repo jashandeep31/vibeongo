@@ -15,7 +15,7 @@ const createDefaultProjectPackages = (): ProjectPackage[] => [
   {
     name: "opencode",
     config: {
-      auth_json: {},
+      auth_json: [],
       use_user_config: true,
       model: "default",
     },
@@ -66,7 +66,7 @@ const removeEmbeddedAccountAuth = (
     case "opencode":
       return {
         ...projectPackage,
-        config: { ...projectPackage.config, auth_json: {} },
+        config: { ...projectPackage.config, auth_json: [] },
       };
     case "codex":
       return {

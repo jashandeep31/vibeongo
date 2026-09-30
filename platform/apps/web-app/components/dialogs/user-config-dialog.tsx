@@ -7,6 +7,7 @@ import {
 } from "@repo/api-hooks";
 import type { UserConfigValue } from "@repo/api-client";
 import type { userConfigs } from "@repo/db";
+import { opencodeCredentialsValidator } from "@repo/shared";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
@@ -23,8 +24,28 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
+type UserConfigType = (typeof userConfigs.$inferSelect)["config_type"];
+
+// OpenCode takes the `opencode auth export` array, the other tools a JSON object
+const emptyConfigText = (configType: UserConfigType) =>
+  configType === "opencode" ? "[]" : "{}";
+
+const validateUserConfig = (
+  configType: UserConfigType,
+  config: unknown,
+): string | null => {
+  if (configType === "opencode") {
+    return opencodeCredentialsValidator.safeParse(config).success
+      ? null
+      : "Paste the JSON array printed by `opencode auth export`.";
+  }
+  return config === null || typeof config !== "object" || Array.isArray(config)
+    ? "The configuration must be a JSON object."
+    : null;
+};
+
 type UserConfigDialogProps = {
-  configType: (typeof userConfigs.$inferSelect)["config_type"];
+  configType: UserConfigType;
   name: string;
   isConfigured: boolean;
 };
@@ -35,7 +56,7 @@ export function UserConfigDialog({
   isConfigured,
 }: UserConfigDialogProps) {
   const [open, setOpen] = useState(false);
-  const [configText, setConfigText] = useState("{}");
+  const [configText, setConfigText] = useState(emptyConfigText(configType));
   const [validationError, setValidationError] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const configQuery = useUserConfig(configType, open);
@@ -45,11 +66,14 @@ export function UserConfigDialog({
 
   useEffect(() => {
     if (!open || !configQuery.isSuccess) return;
-    setConfigText(JSON.stringify(configQuery.data?.config ?? {}, null, 2));
-  }, [configQuery.data, configQuery.isSuccess, open]);
+    const config = configQuery.data?.config;
+    setConfigText(
+      config ? JSON.stringify(config, null, 2) : emptyConfigText(configType),
+    );
+  }, [configQuery.data, configQuery.isSuccess, configType, open]);
 
   const clearConfig = () => {
-    setConfigText("{}");
+    setConfigText(emptyConfigText(configType));
     setValidationError(null);
     queryClient.removeQueries({
       queryKey: ["user-config", configType],
@@ -72,12 +96,9 @@ export function UserConfigDialog({
       return;
     }
 
-    if (
-      parsedConfig === null ||
-      typeof parsedConfig !== "object" ||
-      Array.isArray(parsedConfig)
-    ) {
-      setValidationError("The configuration must be a JSON object.");
+    const configError = validateUserConfig(configType, parsedConfig);
+    if (configError) {
+      setValidationError(configError);
       return;
     }
 

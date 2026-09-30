@@ -68,9 +68,6 @@ func ExecuteFinalScript() error {
 	if err != nil {
 		return err
 	}
-	if err := ProvisionOpenCode(cfg.OpenCode); err != nil {
-		return err
-	}
 	if err := ProvisionCodex(cfg.Codex); err != nil {
 		return err
 	}

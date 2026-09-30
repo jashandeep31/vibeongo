@@ -1,5 +1,9 @@
 import { and, db, eq, inArray, userConfigs } from "@repo/db";
-import { projectConfigValidator, z } from "@repo/shared";
+import {
+  opencodeCredentialsValidator,
+  projectConfigValidator,
+  z,
+} from "@repo/shared";
 import { decryptData } from "../../lib/encryption-decryption.js";
 
 type ProjectConfig = z.infer<typeof projectConfigValidator>["config"];
@@ -21,16 +25,26 @@ const isUserConfigurablePackage = (
   projectPackage.name === "pi" ||
   projectPackage.name === "fx";
 
+// Returns the package unchanged when the stored user config has the wrong shape,
+// so an old OpenCode auth.json object is never sent to the instance
 const replacePackageAuthJson = (
   projectPackage: UserConfigurablePackage,
-  authJson: UserConfigValue,
+  userConfig: unknown,
 ): UserConfigurablePackage => {
+  if (projectPackage.name === "opencode") {
+    const credentials = opencodeCredentialsValidator.safeParse(userConfig);
+    if (!credentials.success) return projectPackage;
+    return {
+      ...projectPackage,
+      config: { ...projectPackage.config, auth_json: credentials.data },
+    };
+  }
+
+  const parsedConfig = userConfigValueSchema.safeParse(userConfig);
+  if (!parsedConfig.success) return projectPackage;
+  const authJson: UserConfigValue = parsedConfig.data;
+
   switch (projectPackage.name) {
-    case "opencode":
-      return {
-        ...projectPackage,
-        config: { ...projectPackage.config, auth_json: authJson },
-      };
     case "codex":
       return {
         ...projectPackage,
@@ -79,17 +93,15 @@ export const resolveProjectUserConfigs = async (
       ),
     );
 
-  const decryptedConfigs = new Map<UserConfigType, UserConfigValue>();
+  const decryptedConfigs = new Map<UserConfigType, unknown>();
 
   for (const configRow of configRows) {
-    const decryptedConfig = userConfigValueSchema.parse(
-      JSON.parse(
-        decryptData({
-          iv: configRow.iv,
-          tag: configRow.tag,
-          encrypted: configRow.encrypted_config,
-        }),
-      ),
+    const decryptedConfig: unknown = JSON.parse(
+      decryptData({
+        iv: configRow.iv,
+        tag: configRow.tag,
+        encrypted: configRow.encrypted_config,
+      }),
     );
     decryptedConfigs.set(configRow.config_type, decryptedConfig);
   }
@@ -105,7 +117,7 @@ export const resolveProjectUserConfigs = async (
       }
 
       const userConfig = decryptedConfigs.get(projectPackage.name);
-      if (!userConfig) return projectPackage;
+      if (userConfig === undefined) return projectPackage;
 
       return replacePackageAuthJson(projectPackage, userConfig);
     }),

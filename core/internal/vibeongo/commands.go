@@ -189,10 +189,6 @@ func ProvissionToolsCmd() *cobra.Command {
 				return err
 			}
 
-			if err := actions.ProvisionOpenCode(cfg.OpenCode); err != nil {
-				return err
-			}
-
 			if err := actions.ProvisionFx(cfg.Fx); err != nil {
 				return err
 			}
@@ -213,6 +209,23 @@ func ProvissionToolsCmd() *cobra.Command {
 				return err
 			}
 			return nil
+		},
+	}
+}
+
+// ProvisionOpenCodeCmd installs and configures opencode
+func ProvisionOpenCodeCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "provision-opencode",
+		Short: "Provision opencode",
+		Long:  "Install and configure opencode using the settings from the project configuration.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.LoadAndValidate()
+			if err != nil {
+				return err
+			}
+			return actions.ProvisionOpenCode(cfg.OpenCode)
 		},
 	}
 }

@@ -37,7 +37,7 @@ npm run dev`,
           {
             name: "opencode",
             config: {
-              auth_json: {},
+              auth_json: [],
               use_user_config: true,
               model: "default",
             },
@@ -115,7 +115,7 @@ volumes:
           {
             name: "opencode",
             config: {
-              auth_json: {},
+              auth_json: [],
               use_user_config: true,
               model: "default",
             },
@@ -176,7 +176,7 @@ npm run dev`,
           {
             name: "opencode",
             config: {
-              auth_json: {},
+              auth_json: [],
               use_user_config: true,
               model: "default",
             },
