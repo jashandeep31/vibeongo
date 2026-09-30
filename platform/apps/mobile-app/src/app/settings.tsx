@@ -108,6 +108,11 @@ const configTypes = [
     name: "Pi",
     description: "Pi authentication configuration.",
   },
+  {
+    type: "claude",
+    name: "Claude Code",
+    description: "Claude Code authentication configuration.",
+  },
 ] as const;
 
 type ConfigType = (typeof configTypes)[number]["type"];
@@ -452,12 +457,15 @@ export default function SettingsScreen() {
                 icon={{ ios: "cpu", android: "smart_toy" }}
                 title="Tool configurations"
               >
-                {configTypes.map((config) => {
+                {configTypes.map((config, index) => {
                   const configured = (configsQuery.data ?? []).some(
                     (item) => item.config_type === config.type,
                   );
                   return (
-                    <SettingsRow key={config.type} last={config.type === "pi"}>
+                    <SettingsRow
+                      key={config.type}
+                      last={index === configTypes.length - 1}
+                    >
                       <View style={styles.rowCopy}>
                         <ThemedText style={styles.rowTitle}>
                           {config.name}

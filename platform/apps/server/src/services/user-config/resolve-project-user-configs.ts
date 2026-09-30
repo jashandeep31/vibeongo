@@ -8,7 +8,7 @@ import { decryptData } from "../../lib/encryption-decryption.js";
 
 type ProjectConfig = z.infer<typeof projectConfigValidator>["config"];
 type ProjectPackage = ProjectConfig["packages"][number];
-type UserConfigType = "opencode" | "codex" | "pi" | "fx";
+type UserConfigType = (typeof userConfigs.$inferSelect)["config_type"];
 type UserConfigurablePackage = Extract<
   ProjectPackage,
   { name: UserConfigType }
@@ -23,7 +23,8 @@ const isUserConfigurablePackage = (
   projectPackage.name === "opencode" ||
   projectPackage.name === "codex" ||
   projectPackage.name === "pi" ||
-  projectPackage.name === "fx";
+  projectPackage.name === "fx" ||
+  projectPackage.name === "claude";
 
 // Returns the package unchanged when the stored user config has the wrong shape,
 // so an old OpenCode auth.json object is never sent to the instance
@@ -56,6 +57,11 @@ const replacePackageAuthJson = (
         config: { ...projectPackage.config, auth_json: authJson },
       };
     case "fx":
+      return {
+        ...projectPackage,
+        config: { ...projectPackage.config, auth_json: authJson },
+      };
+    case "claude":
       return {
         ...projectPackage,
         config: { ...projectPackage.config, auth_json: authJson },

@@ -43,6 +43,11 @@ export const fxConfigValidator = z.object({
   use_user_config: z.boolean().default(true),
 });
 
+export const claudeConfigValidator = z.object({
+  auth_json: z.json().default({}),
+  use_user_config: z.boolean().default(true),
+});
+
 export const projectProviderValidator = z.enum(["aws", "digitalocean"]);
 export type ProjectProvider = z.infer<typeof projectProviderValidator>;
 
@@ -108,6 +113,10 @@ export const projectConfigValidator = z.object({
             name: z.literal("fx"),
             config: fxConfigValidator,
           }),
+          z.object({
+            name: z.literal("claude"),
+            config: claudeConfigValidator,
+          }),
         ]),
       )
       .default([
@@ -122,6 +131,10 @@ export const projectConfigValidator = z.object({
         },
         {
           name: "pi",
+          config: { auth_json: {}, use_user_config: true },
+        },
+        {
+          name: "claude",
           config: { auth_json: {}, use_user_config: true },
         },
       ]),

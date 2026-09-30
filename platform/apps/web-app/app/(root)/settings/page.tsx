@@ -90,6 +90,11 @@ const configTypes = [
     name: "FX",
     description: "FX authentication configuration.",
   },
+  {
+    type: "claude",
+    name: "Claude Code",
+    description: "Claude Code authentication configuration.",
+  },
 ] as const;
 
 function SettingsSection({

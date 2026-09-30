@@ -131,6 +131,7 @@ export const userConfigTypeEnum = pgEnum("user_config_type", [
   "codex",
   "pi",
   "fx",
+  "claude",
 ]);
 
 export const userConfigs = pgTable(

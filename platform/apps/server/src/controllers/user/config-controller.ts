@@ -6,13 +6,20 @@ import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
 
-const userConfigTypeSchema = z.enum(["opencode", "codex", "pi", "fx"]);
+const userConfigTypeSchema = z.enum([
+  "opencode",
+  "codex",
+  "pi",
+  "fx",
+  "claude",
+]);
 type UserConfigType = z.infer<typeof userConfigTypeSchema>;
 const userConfigSchema = z.record(z.string(), z.unknown());
-// Stored configs can still hold the old OpenCode auth.json object, so reads accept both shapes
-const storedUserConfigSchema = z.union([userConfigSchema, z.array(z.unknown())]);
+const storedUserConfigSchema = z.union([
+  userConfigSchema,
+  z.array(z.unknown()),
+]);
 
-// OpenCode takes the `opencode auth export` array, the other tools take their auth file object
 const userConfigSchemaFor = (configType: UserConfigType) =>
   configType === "opencode" ? opencodeCredentialsValidator : userConfigSchema;
 
@@ -153,6 +160,28 @@ export const updateUserConfig = catchAsync(
         encrypted_config: encryptedConfig.encryptedData,
         updated_at: new Date(),
       })
+      .where(
+        and(
+          eq(userConfigs.user_id, user.id),
+          eq(userConfigs.config_type, configType),
+        ),
+      )
+      .returning(safeUserConfigSelection);
+
+    if (!config) throw new AppError("User configuration not found", 404);
+
+    res.status(200).json({ data: config });
+  },
+);
+
+export const deleteUserConfig = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 401);
+
+    const configType = userConfigTypeSchema.parse(req.params.configType);
+    const [config] = await db
+      .delete(userConfigs)
       .where(
         and(
           eq(userConfigs.user_id, user.id),

@@ -63,6 +63,13 @@ npm run dev`,
               use_user_config: true,
             },
           },
+          {
+            name: "claude",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
         ],
       },
     },
@@ -141,6 +148,13 @@ volumes:
               use_user_config: true,
             },
           },
+          {
+            name: "claude",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
         ],
       },
     },
@@ -197,6 +211,13 @@ npm run dev`,
           },
           {
             name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "claude",
             config: {
               auth_json: {},
               use_user_config: true,

@@ -12,6 +12,7 @@ const supportedPackageNames = new Set([
   "codex",
   "pi",
   "fx",
+  "claude",
 ]);
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
