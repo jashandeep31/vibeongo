@@ -49,7 +49,6 @@ type OpenCodeEvent struct {
 // crafted title and body from the plugin, or the given defaults
 func (e OpenCodeEvent) notificationText(title string, body string) (string, string) {
 	if e.Notification == nil || strings.TrimSpace(e.Notification.Title) == "" {
-		fmt.Println("OpenCodeEventsWebhook: no crafted notification from plugin, using default text")
 		return title, body
 	}
 	return strings.TrimSpace(e.Notification.Title), strings.TrimSpace(e.Notification.Body)
@@ -67,8 +66,6 @@ func OpenCodeEventsWebhook(c *echo.Context) error {
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
-
-	fmt.Printf("OpenCodeEventsWebhook: received type=%s sessionID=%s notification=%+v\n", event.Type, event.Data.SessionID, event.Notification)
 
 	switch event.Type {
 	case OpencoodeEventSessionExecutionSucceeded:
@@ -129,7 +126,6 @@ func SendNotificationEvent(title string, body string, opencodeSessionID string) 
 		Body:  body,
 		URL:   chatURL(cfg, opencodeSessionID),
 	}
-	fmt.Printf("SendNotificationEvent: POST %s%s notification=%+v\n", cfg.ServerBaseURL, path, notification)
 
 	_, err = apiClient.Post(path, notification, headers, nil)
 	return err
