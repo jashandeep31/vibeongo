@@ -7,6 +7,7 @@ import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
 import { useIsViewingChat } from "@/hooks/use-is-viewing-chat";
+import { playNotificationSound } from "@/lib/notification-sound";
 import { showNotificationToast } from "@/lib/notification-toast";
 import { dismissNotificationFromTray } from "@/lib/notification-tray";
 
@@ -24,12 +25,11 @@ const isAppNotification = (data: unknown): data is AppNotification =>
   typeof (data as AppNotification).id === "string" &&
   typeof (data as AppNotification).title === "string";
 
-// Shows notifications received over the websocket as a toast and tells the
-// server they were delivered (no push needed). They stay unread until the
-// toast is tapped or the notifications page is opened.
+// Shows notifications received over the websocket as a toast and marks them
+// read, so no push is sent.
 export function NotificationListener() {
   const queryClient = useQueryClient();
-  const { sendJsonMessage, status, subscribeJsonMessage } = useWebSocket();
+  const { status, subscribeJsonMessage } = useWebSocket();
   const { mutate: markNotificationRead } = useMarkNotificationRead();
   const isViewingChat = useIsViewingChat();
   // notifications received while the app was not in the foreground
@@ -40,26 +40,18 @@ export function NotificationListener() {
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
 
   const showNotification = (notification: AppNotification) => {
-    // already looking at that chat: nothing to announce, it counts as read
+    // seen in the app counts as read, even if the toast is ignored
     // (which also cancels the push)
-    if (isViewingChat(notification.payload?.url)) {
-      markNotificationRead(notification.id);
-      return;
-    }
+    markNotificationRead(notification.id);
+
+    // already looking at that chat: nothing to announce
+    if (isViewingChat(notification.payload?.url)) return;
 
     showNotificationToast({
       title: notification.title,
       body: notification.body,
       url: notification.payload?.url,
-      onOpen: () => {
-        markNotificationRead(notification.id);
-        void dismissNotificationFromTray(notification.id);
-      },
-    });
-
-    sendJsonMessage({
-      type: "notification-delivered",
-      data: { id: notification.id },
+      onOpen: () => void dismissNotificationFromTray(notification.id),
     });
   };
   const showNotificationRef = useRef(showNotification);
@@ -74,6 +66,8 @@ export function NotificationListener() {
 
       void refreshUnreadCountRef.current();
       if (AppState.currentState === "active") {
+        // also for the chat being viewed (read, no toast)
+        playNotificationSound(message.data.id);
         showNotificationRef.current(message.data);
       } else {
         pendingRef.current.push(message.data);

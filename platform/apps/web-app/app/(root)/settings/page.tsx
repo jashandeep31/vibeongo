@@ -5,6 +5,10 @@ import { ModelPicker } from "@/components/model-picker";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { ApiKeysSettings } from "@/components/settings/api-keys-settings";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
+import {
+  isNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+} from "@/lib/notification-sound";
 import { logout } from "@/services/auth-services";
 import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
 import {
@@ -16,7 +20,9 @@ import {
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { Switch } from "@repo/ui/components/switch";
 import {
+  Bell,
   Bot,
   Check,
   ExternalLink,
@@ -94,26 +100,30 @@ function SettingsSection({
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   icon: typeof Settings2;
   action?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <section className="py-3 md:py-4">
-      <div className="flex items-start justify-between gap-4">
+      <div
+        className={`flex justify-between gap-4 ${children ? "items-start" : "items-center"}`}
+      >
         <div className="flex min-w-0 items-start gap-4">
           <Icon className="text-muted-foreground mt-1 size-4 shrink-0" />
           <div>
             <h2 className="font-semibold">{title}</h2>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {description}
-            </p>
+            {description ? (
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                {description}
+              </p>
+            ) : null}
           </div>
         </div>
         {action}
       </div>
-      <div className="mt-7 pl-0 md:pl-8">{children}</div>
+      {children ? <div className="mt-7 pl-0 md:pl-8">{children}</div> : null}
     </section>
   );
 }
@@ -149,6 +159,12 @@ export default function SettingsPage() {
   const [forgejoPasswordConfirmation, setForgejoPasswordConfirmation] =
     useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // stored in this browser only, read after mount to match the server render
+  useEffect(() => {
+    setSoundEnabled(isNotificationSoundEnabled());
+  }, []);
 
   useEffect(() => {
     if (!userSettings || isTelegramDirty) return;
@@ -338,6 +354,21 @@ export default function SettingsPage() {
           })}
         </div>
       </SettingsSection>
+
+      <SettingsSection
+        title="Notification sound"
+        icon={Bell}
+        action={
+          <Switch
+            aria-label="Notification sound"
+            checked={soundEnabled}
+            onCheckedChange={(checked) => {
+              setSoundEnabled(checked);
+              setNotificationSoundEnabled(checked);
+            }}
+          />
+        }
+      />
 
       <SettingsSection
         title="Tool configurations"

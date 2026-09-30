@@ -8,6 +8,7 @@ import { router, type Href } from "expo-router";
 import { useEffect, useRef } from "react";
 
 import { useIsViewingChat } from "@/hooks/use-is-viewing-chat";
+import { playNotificationSound } from "@/lib/notification-sound";
 import { showNotificationToast } from "@/lib/notification-toast";
 import { dismissNotificationFromTray } from "@/lib/notification-tray";
 
@@ -78,6 +79,9 @@ export function PushNotificationHandler() {
         void queryClient.invalidateQueries({
           queryKey: UNREAD_NOTIFICATION_COUNT_QUERY_KEY,
         });
+
+        const id = getNotificationId(notification);
+        if (id) playNotificationSound(id);
 
         const { title, body, data } = notification.request.content;
         // already looking at that chat: no toast, it counts as read

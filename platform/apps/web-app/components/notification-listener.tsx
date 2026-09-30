@@ -6,6 +6,8 @@ import { ArrowUpRightIcon, XIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef, useState } from "react";
 
+import { playNotificationSound } from "@/lib/notification-sound";
+
 type AppNotification = {
   id: string;
   type: string;
@@ -168,15 +170,14 @@ function NotificationToast({
 }
 
 // Shows notifications received over the websocket as a toast stack in the
-// top right corner and tells the server they were delivered, so no push is
-// sent. Only while the tab is visible: a hidden tab must not stop the push to
-// the phone. They stay unread until the toast is opened.
+// top right corner and marks them read, so no push is sent. Only while the
+// tab is visible: a hidden tab must not stop the push to the phone.
 export function NotificationListener() {
   const router = useRouter();
   const pathname = usePathname();
   const pathnameRef = useRef(pathname);
   pathnameRef.current = pathname;
-  const { sendJsonMessage, subscribeJsonMessage } = useWebSocket();
+  const { subscribeJsonMessage } = useWebSocket();
   const { mutate: markNotificationRead } = useMarkNotificationRead();
   // newest first
   const [toasts, setToasts] = useState<AppNotification[]>([]);
@@ -217,29 +218,24 @@ export function NotificationListener() {
     [],
   );
 
+  // already marked read when shown
   const open = (notification: AppNotification, url: string) => {
-    markNotificationRead(notification.id);
     dismiss(notification.id);
     router.push(url);
   };
 
   const showNotification = (notification: AppNotification) => {
-    // already looking at that chat: nothing to announce, it counts as read
+    // seen in the app counts as read, even if the toast is ignored
     // (which also cancels the push to the phone)
+    markNotificationRead(notification.id);
+
+    // already looking at that chat: nothing to announce
     const url = toWebUrl(notification.payload?.url);
-    if (url && isCurrentPage(url, pathnameRef.current)) {
-      markNotificationRead(notification.id);
-      return;
-    }
+    if (url && isCurrentPage(url, pathnameRef.current)) return;
 
     setToasts((current) =>
       [notification, ...current].slice(0, MAX_VISIBLE_TOASTS),
     );
-
-    sendJsonMessage({
-      type: "notification-delivered",
-      data: { id: notification.id },
-    });
   };
   const showNotificationRef = useRef(showNotification);
   showNotificationRef.current = showNotification;
@@ -250,6 +246,8 @@ export function NotificationListener() {
         return;
       if (seenIdsRef.current.has(message.data.id)) return;
       seenIdsRef.current.add(message.data.id);
+      // also for the chat being viewed (read, no toast) and for a hidden tab
+      playNotificationSound();
 
       if (document.visibilityState === "visible") {
         showNotificationRef.current(message.data);
