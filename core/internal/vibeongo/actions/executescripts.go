@@ -68,9 +68,6 @@ func ExecuteFinalScript() error {
 	if err != nil {
 		return err
 	}
-	if err := ProvisionCodex(cfg.Codex); err != nil {
-		return err
-	}
 	tempScriptFile, err := os.CreateTemp("", "temp-*.sh")
 	if err != nil {
 		return err

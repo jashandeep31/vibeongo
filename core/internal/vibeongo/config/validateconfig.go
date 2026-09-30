@@ -25,6 +25,7 @@ type Config struct {
 	Pi             *PiConfig       `json:"pi"`
 	Codex          *CodexConfig    `json:"codex"`
 	Fx             *FxConfig       `json:"fx"`
+	Claude         *ClaudeConfig   `json:"claude"`
 	Nvim           *NvimConfig     `json:"nvim"`
 	Tasks          []TaskConfig    `json:"tasks"`
 	InitialScript  string          `json:"initialScript"`
@@ -97,6 +98,10 @@ type FxConfig struct {
 	AuthJSON json.RawMessage `json:"auth_json"`
 }
 
+type ClaudeConfig struct {
+	AuthJSON json.RawMessage `json:"auth_json"`
+}
+
 type NvimConfig struct {
 	ConfigJSON json.RawMessage `json:"config_json"`
 }
@@ -141,6 +146,13 @@ func validateConfig(file []byte) (Config, error) {
 				return cfg, fmt.Errorf("error parsing pi package config: %w", err)
 			}
 			cfg.Pi = &piConfig
+
+		case "claude":
+			var claudeConfig ClaudeConfig
+			if err := json.Unmarshal(pkg.Config, &claudeConfig); err != nil {
+				return cfg, fmt.Errorf("error parsing claude package config: %w", err)
+			}
+			cfg.Claude = &claudeConfig
 
 		case "nvim":
 			var nvimConfig NvimConfig
