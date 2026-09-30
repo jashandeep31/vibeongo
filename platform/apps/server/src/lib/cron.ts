@@ -19,6 +19,7 @@ import {
   claimDueProjectAutomations,
   dispatchAutomationScheduleOutbox,
 } from "../services/project-automations/schedule-due-automations.js";
+import { cleanupNotifications } from "../services/notifications/cleanup-notifications.js";
 
 cron.schedule(
   "* * * * *",
@@ -188,4 +189,20 @@ cron.schedule(
     name: "revoke-expired-git-access-tokens",
     noOverlap: true,
   },
+);
+
+// daily at 03:00: remove stale push tokens and old notifications
+cron.schedule(
+  "0 3 * * *",
+  async () => {
+    try {
+      const deleted = await cleanupNotifications();
+      console.log(
+        `Notification cleanup: deleted ${deleted.pushTokens} push token(s) and ${deleted.notifications} notification(s)`,
+      );
+    } catch (error) {
+      console.error("Could not clean up notifications", error);
+    }
+  },
+  { name: "cleanup-notifications", noOverlap: true },
 );

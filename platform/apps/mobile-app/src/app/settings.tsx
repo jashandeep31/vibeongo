@@ -31,6 +31,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   View,
 } from "react-native";
@@ -51,6 +52,10 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  getNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+} from "@/lib/notification-sound";
 import {
   type ThemePreference,
   useThemePreference,
@@ -168,6 +173,27 @@ export default function SettingsScreen() {
   } | null>(null);
   const [sshEditor, setSshEditor] = useState<SshKey | "new" | null>(null);
   const [sshKeyToDelete, setSshKeyToDelete] = useState<SshKey | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void getNotificationSoundEnabled().then((enabled) => {
+      if (active) setSoundEnabled(enabled);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggleSound = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+    void setNotificationSoundEnabled(enabled).catch(() =>
+      showSettingsError(
+        "Could not save notification sound",
+        "Please try again.",
+      ),
+    );
+  };
 
   useEffect(() => {
     if (!userSettings || isTelegramDirty) return;
@@ -408,6 +434,18 @@ export default function SettingsScreen() {
                   })}
                 </View>
               </SettingsSection>
+
+              <SettingsSection
+                action={
+                  <Switch
+                    accessibilityLabel="Notification sound"
+                    onValueChange={toggleSound}
+                    value={soundEnabled}
+                  />
+                }
+                icon={{ ios: "bell", android: "notifications" }}
+                title="Notification sound"
+              />
 
               <SettingsSection
                 icon={{ ios: "cpu", android: "smart_toy" }}
@@ -729,14 +767,14 @@ function SettingsSection({
   description?: string;
   icon: SymbolViewProps["name"];
   action?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const theme = useTheme();
   return (
     <View
       style={[styles.section, { borderBottomColor: theme.backgroundSelected }]}
     >
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, !children && styles.centered]}>
         <SymbolView name={icon} size={19} tintColor={theme.textSecondary} />
         <View style={styles.sectionCopy}>
           <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
@@ -751,7 +789,7 @@ function SettingsSection({
         </View>
         {action}
       </View>
-      <View style={styles.sectionBody}>{children}</View>
+      {children ? <View style={styles.sectionBody}>{children}</View> : null}
     </View>
   );
 }
@@ -1288,6 +1326,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 48, paddingHorizontal: 20 },
   section: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 26 },
   sectionHeader: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  centered: { alignItems: "center" },
   sectionCopy: { flex: 1 },
   sectionTitle: { fontSize: 16, fontWeight: "700", lineHeight: 21 },
   sectionDescription: { fontSize: 13, lineHeight: 19, marginTop: 2 },

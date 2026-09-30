@@ -156,14 +156,17 @@ func validateConfig(file []byte) (Config, error) {
 
 var configPath = filepath.Join(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.config/vibeongo"), "config.json")
 
+// development reads config.json from the directory the server runs in,
+// production from the instance user's config dir
 func ResolveConfigPath() (string, error) {
-	if _, err := os.Stat(configPath); err == nil {
-		return configPath, nil
+	path := configPath
+	if utils.IsDevelopment() {
+		path = "config.json"
 	}
-	if _, err := os.Stat("config.json"); err == nil {
-		return "config.json", nil
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf("config not found at %s: %w", path, err)
 	}
-	return "", fmt.Errorf("config not found at %s", configPath)
+	return path, nil
 }
 
 func LoadAndValidate() (Config, error) {

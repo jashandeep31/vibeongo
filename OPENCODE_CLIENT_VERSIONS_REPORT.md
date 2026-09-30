@@ -1,63 +1,78 @@
-# OpenCode 2.0.16 → 2.0.18 integration report
+# OpenCode 2.0.18 → 2.0.20 integration report
 
-**Reviewed:** 2026-09-28  
+**Reviewed:** 2026-09-30  
 **Scope:** Vibeongo web app, `@repo/api-hooks`, `@repo/api-client`, and the OpenCode server launched by the Go runtime.  
-**Upstream baseline:** OpenCode repository release commits [`ac2426e103` (2.0.16)](https://github.com/anomalyco/opencode/commit/ac2426e103) through [`39021dfd67` (2.0.18)](https://github.com/anomalyco/opencode/commit/39021dfd67). [Full source comparison](https://github.com/anomalyco/opencode/compare/ac2426e103...39021dfd67).
+**Upstream baseline:** published npm packages `@opencode/client`, `@opencode/protocol` and `@opencode/schema` at 2.0.18 and 2.0.20, diffed file by file. Release notes: v2.0.19 and v2.0.20 ([comparison](https://github.com/anomalyco/opencode/compare/v2.0.19...v2.0.20)).  
+**Previous report:** 2.0.16 → 2.0.18 (2026-09-28). That upgrade was applied, and the lockfile pinned 2.0.18 before this change.
 
-## Executive assessment
+## Status
 
-**No required client API migration was found for Vibeongo's existing calls.** The generated Promise client changes between these release commits are additive: `server.pair`, `server.connect`, their response types, and an optional `signal` on shell information. Existing endpoints and the root `OpenCode.make` entry point used by Vibeongo are unchanged. This is a source-level compatibility assessment, not a completed runtime upgrade test.
+**Upgraded.** Both direct `@opencode/client` declarations are now `^2.0.20`, and `platform/pnpm-lock.yaml` resolves client, protocol and schema to 2.0.20. `tsc --noEmit` passes for `api-client`, `api-hooks` and `web-app`, and `api-client` builds. There has been no runtime smoke test against a 2.0.20 server binary yet.
 
-The highest value 2.0.18 fix for this integration is recovery of old compaction checkpoints containing image or file media. The most significant 2.0.17 change is one-time server pairing, but Vibeongo currently authenticates with its server password and that path remains accepted. Vibeongo's own OAuth tab openers need their own URL validation if it wants the 2.0.18 browser hardening.
+**Contract changes are additive.** Nothing was removed from, or renamed in, the Promise client, protocol or schema packages. The only lines that differ in existing types are new optional fields. The `effect` peer is still `4.0.0-rc.112`. The workspace resolves `rc.117`, which is the same unmet-peer warning we already had on 2.0.18.
 
-## Current Vibeongo integration
+**One semantic fix was applied.** It is described under [Connection `needs_auth` status](#connection-needs_auth-status-fixed).
 
-| Area | Current behavior | Upgrade implication |
+## Generated contract diff (2.0.18 → 2.0.20)
+
+| Package | Change | Vibeongo effect |
 | --- | --- | --- |
-| Dependency | [`platform/apps/web-app/package.json`](platform/apps/web-app/package.json) and [`platform/packages/api-client/package.json`](platform/packages/api-client/package.json) specify `@opencode/client: ^2.0.16`; [`platform/pnpm-lock.yaml`](platform/pnpm-lock.yaml) resolves both to 2.0.16, plus 2.0.16 protocol/schema. `api-hooks` depends on `api-client`, not directly on OpenCode. | Change both direct dependency declarations and regenerate the lockfile together for a reproducible 2.0.18 client upgrade. The caret permits a future 2.x install, but the committed lockfile currently pins 2.0.16. |
-| HTTP client | [`opencode-services.ts`](platform/packages/api-client/src/services/opencode-services.ts) owns the sole `@opencode/client` import and calls session, message, permission, VCS, provider/model/agent, integration/OAuth, file, web search, and MCP endpoints. It normalizes raw protocol data into local [`opencode-types.ts`](platform/packages/api-client/src/services/opencode-types.ts). | No called endpoint or input shape changed in the generated 2.0.16→2.0.18 Promise client diff. `api-hooks` and the web app consume the normalized layer. |
-| Server authentication | [`opencodewebstore.go`](core/internal/vibeongo/store/opencodewebstore.go) launches `opencode serve` with `OPENCODE_SERVER_PASSWORD`; [`opencode-services.ts`](platform/packages/api-client/src/services/opencode-services.ts) sends Basic `opencode:<password>`, and the Go health probe does likewise. | 2.0.17 adds signed pairing sessions but still accepts the configured password. Existing API access should continue. |
-| OpenCode Web launch | [`runtime-tool-card.tsx`](platform/apps/web-app/components/runtime-tool-card.tsx) opens the OpenCode URL and offers a copy-password action. | One-time connect links are optional UX work, not required for Vibeongo's API client. |
-| Streaming and transcript | [`opencode-services.ts`](platform/packages/api-client/src/services/opencode-services.ts) handles session events, pending inbox, shell events, and message pagination; [`playground-store-sync.tsx`](platform/apps/web-app/components/playground-store-sync.tsx) syncs them into the web app. | The release introduces no required event schema migration. Improvements to LLM delta order and compaction happen on the server side. |
+| `@opencode/client` (Promise) | Adds `credential.list()` → `CredentialEntry[]` and `credential.create(input)` → `CredentialEntry` (`GET`/`POST /api/credential`). `create` returns a conflict error if the ID already exists. With `activate: false` it does not replace the active credential. | Not used. `credential.list` returns **secret values**. If we ever call it, keep it server-side and never send its result to the browser. |
+| `@opencode/schema` `Connection` | Adds `Connection.Status = { status: "needs_auth", message, url? }` as optional `status` on both `CredentialInfo` and `EnvInfo`. | **Needed a fix** (see below). |
+| `@opencode/schema` `Session.StructuredError` | Adds optional `response: { body: string }`, which carries the provider's raw response body. It appears in session error events and in message errors. | Nothing breaks. `normalizeOpencodeError` ignores unknown fields. The server's improved `message` (it now parses AWS and RFC 9457 error bodies) comes through the existing `message` field automatically. |
+| `@opencode/schema` `Credential` | Adds `Credential.Entry` and `Credential.CreateInput`. | None. |
+| Client internals | Bundler chunk renames (`contract-*` → `shared-events-*`) and service/runtime internals. | None. We only import the root `OpenCode.make` entry point. |
 
-## Changes by release and effect on this project
+## Connection `needs_auth` status (fixed)
 
-### 2.0.17
+Starting with 2.0.20, an integration whose OpenCode Console SSO has expired, whose session was revoked, or whose plugin reports a sign-in problem **keeps its connection entry**, and that entry is marked `status.status === "needs_auth"`.
 
-| Change | Source-level detail | Vibeongo effect |
-| --- | --- | --- |
-| One-time pairing | Adds authenticated `POST /api/pair` and single-use `GET /auth/connect/:code`. Codes expire after five minutes. A browser redeeming a code receives an HTTP-only session cookie; an API client receives a token that can be used as the Basic password. Existing password authentication remains in [`server auth`](https://github.com/anomalyco/opencode/commit/eccf0b3b7b) and the [official app pairing change](https://github.com/anomalyco/opencode/commit/2caba90a9a). | **Optional integration.** Could replace the copy-password OpenCode Web flow with a short-lived link. It would require a protected Vibeongo endpoint/action to request a code and a UI flow; simply updating `@opencode/client` will not change the current UI. |
-| Browser API 401 behavior | Browser `fetch` failures no longer carry a Basic challenge; page navigation and non-browser clients still do. JSON unauthorized responses are returned during server startup as well. | Existing `Authorization` header calls should work. If credentials are missing or wrong, Vibeongo's error handling receives a JSON 401 without triggering the browser's native password dialog. Test this when upgrading the runtime binary. |
-| Shell signal | Shell information gains optional `signal` when a command is killed by a signal. [Upstream change](https://github.com/anomalyco/opencode/commit/e22c1622e0). | No parser break. Vibeongo currently reduces shell completion to status, exit code, and a generic failure message; it could show the signal for clearer diagnostics. |
-| Transcript and execution | Upstream adds TUI transcript verbosity and queued-prompt undo; fixes ordering of batched LLM text/reasoning deltas before the next block, thinking budgets, several media routes, and Console-hosted MCP registration. [Delta ordering change](https://github.com/anomalyco/opencode/commit/32d3535f66), [hosted MCP change](https://github.com/anomalyco/opencode/commit/6cd938e1e9). | TUI-only controls do not appear in Vibeongo automatically. Server-side event ordering and model fixes can improve Vibeongo sessions after the runtime binary is upgraded. Console-hosted MCP entries may appear through the existing `mcp.list` UI for accounts using that feature; no schema change was found in the generated client. |
+Before this change, [`getOpencodeProviderIntegrations`](platform/packages/api-client/src/services/opencode-services.ts) set `connected: integration.connections.length > 0`. On a 2.0.20 server, the provider dialog ([`opencode-provider-connect-dialog.tsx`](platform/apps/web-app/components/chat/opencode-provider-connect-dialog.tsx)) would then show a ✓ for a provider that can't actually run inference.
 
-### 2.0.18
+**Fix:** `connected` now counts only connections that are **not** `needs_auth`. A provider in that state shows the existing reconnect chevron, and selecting it runs the normal connect flow. The UI did not change.
 
-| Change | Source-level detail | Vibeongo effect |
-| --- | --- | --- |
-| Browser opener hardening | The shared OpenCode opener refuses URLs without HTTP(S), covering TUI/CLI/MCP OAuth launches. [Upstream change](https://github.com/anomalyco/opencode/commit/29ce49db0f). | This does **not** cover Vibeongo's own `window.open` calls for [MCP OAuth](platform/apps/web-app/components/chat/opencode-mcp-menu.tsx) and [provider OAuth](platform/apps/web-app/components/chat/opencode-provider-connect-dialog.tsx). Validate the returned URL's protocol as `http:` or `https:` before opening it if adopting the same protection. Remote MCP *configuration* URLs are already checked in `opencode-services.ts`; authorization URLs are separate. |
-| Legacy compaction media | Upgrades old media parts stored directly as `mediaType`/`data` into the newer nested media shape before validating a checkpoint. The upstream comment dates the legacy format to before 2.0.15. [Upstream fix](https://github.com/anomalyco/opencode/commit/041885d838). | Relevant to older OpenCode sessions with image/file attachments and compaction checkpoints. Server binary upgrade supplies the fix; changing the JS client alone does not. |
-| Generated client | No further Promise client contract change beyond the 2.0.17 pairing endpoints and optional shell signal. | No required changes in `api-hooks`, `api-client`, or web app call sites. |
+**Optional follow-up:** show a "Sign in required" marker with `status.message`, and open `status.url` when present, like the upstream TUI and App do. This would need new UI. It should validate the URL as `http:`/`https:` before calling `window.open` (see the open item below).
 
-## Official `packages/app` changes Vibeongo will not inherit automatically
+## Release notes relevant to Vibeongo
 
-The sibling OpenCode checkout's `packages/app` is its own Solid UI; Vibeongo's web app is a separate React UI. Between these release commits, the official app gained [provider account switching](https://github.com/anomalyco/opencode/commit/684721efb8) in settings, [undo of queued prompts back into the composer](https://github.com/anomalyco/opencode/commit/beeb14e910), and [clearer nested-session paths/tabs](https://github.com/anomalyco/opencode/commit/ad53e39d2e). It also replaced password-based app pairing with one-time links. These are optional feature-parity projects for Vibeongo, not SDK breaks. In particular, queued-prompt undo calls the existing inbox cancel API and reconstructs a draft in app code; upgrading the client package alone cannot add that interaction.
+### 2.0.19 (server-side; no client contract change)
 
-## Breaking-change verdict
+| Change | Vibeongo effect |
+| --- | --- |
+| Compaction rebuilt: a too-long request is retried at 70%, 50% and 35% of its size, then as trimmed text. The compaction buffer is 10% of the model limit, and max output tokens fit the remaining context. | Fewer `ContextOverflowError` session failures once the runtime binary is upgraded. The existing "Context limit exceeded" title still covers what is left. |
+| Child sessions and forks send the parent's session and affinity headers. System prompt reordered for prompt-cache reuse. | Better cache reuse for subagents. No client work. |
+| Shell tool env gains `AGENT=1`, `OPENCODE=1`, `AI_AGENT=opencode`, `OPENCODE_SESSION_ID`. | Scripts in Vibeongo workspaces can detect that an agent is running them. |
+| Invalid Google API keys are reported as auth errors instead of being retried. Gemini parallel tool calls are fixed. | Better errors and behavior once the binary is upgraded. |
+| `--session <unused-id>` creates the session. | CLI only. Vibeongo calls `session.create`. |
 
-1. **No removed or changed generated Promise client method** in the examined 2.0.16→2.0.18 release range. Existing Vibeongo calls should compile against 2.0.18.
-2. **No forced auth migration.** The OpenCode server continues to accept the configured Basic password. One-time pairing is additive. The 401 response behavior is observably different for browser requests, so verify the web app's expired or missing credential state.
-3. **No automatic runtime upgrade.** Vibeongo's Go service executes the OpenCode binary preinstalled in its image. The repository does not pin that binary's version in this integration path. A JS dependency upgrade alone will not deliver server-side fixes, and an image upgrade alone will leave the committed client at 2.0.16.
-4. **Vibeongo's own authorization URL opens remain outside upstream hardening.** This is an existing local gap highlighted by the new upstream change, not a new break introduced by 2.0.18.
+### 2.0.20
 
-## Recommended upgrade sequence and checks
+| Change | Vibeongo effect |
+| --- | --- |
+| Connection status / `needs_auth` (plugin API and OpenCode Console). | Handled in `api-client` (see above). |
+| Provider errors show the provider's real explanation, and the raw body is attached as `response.body`. | Error messages improve automatically. We don't show `response.body` yet. Showing it would need redaction (reuse `sanitizeOpencodeErrorMessage`) and a UI decision. |
+| Permission rejection with feedback applies to the whole batch of parallel asks, and the model continues. | Rejecting in Vibeongo's permission UI while several asks are pending no longer ends the step. Behavior change only; no code change. |
+| "Sign in with ChatGPT" OAuth method (token sharing, PKCE). ChatGPT-plan models report zero cost. | The new method appears in `integration.list` as an ordinary `oauth` method, and our dialog already lists OAuth methods generically. Zero-cost models may show $0 in any cost display. |
+| New credential endpoints. | Not used (see the contract diff above). |
+| SQLite DB files are owner-only (0600). | Check that the user running `opencode serve` in the runtime image owns its data directory. |
+| `opencode service set disabled true`, `auth export/import`, `opencode run` permission changes. | CLI only. Vibeongo launches `opencode serve` directly. |
 
-1. Update both direct `@opencode/client` declarations to 2.0.18, regenerate `platform/pnpm-lock.yaml`, and run `api-client` and web app TypeScript checks. `api-hooks` needs no direct dependency edit.
-2. Record and upgrade the OpenCode binary in the runtime image to 2.0.18. Confirm `opencode --version` inside that image; the repository currently treats the binary as preinstalled.
-3. Smoke test one server against Vibeongo: authenticated health/status, list/create session, send prompt and receive SSE events, queued input, model inventory, MCP list/OAuth, and OpenCode Web sign-in. Include a wrong-password request to verify JSON 401 handling.
-4. If historical sessions exist, open one with a pre-2.0.15 image/file compaction checkpoint to verify the 2.0.18 recovery fix. This is conditional on having such a fixture.
-5. Add HTTP(S) validation at both Vibeongo OAuth `window.open` call sites. Consider one-time OpenCode Web pairing as a separate UX change if avoiding password copy is desired.
+## Current Vibeongo integration (unchanged)
 
-## Scope note on the pasted 1.18.33 notes
+| Area | Behavior |
+| --- | --- |
+| Dependency | `@opencode/client ^2.0.20` in [`web-app`](platform/apps/web-app/package.json) and [`api-client`](platform/packages/api-client/package.json). `api-hooks` depends on `api-client`, not directly on OpenCode. |
+| HTTP client | [`opencode-services.ts`](platform/packages/api-client/src/services/opencode-services.ts) is the only file that imports `@opencode/client`. It normalizes responses into [`opencode-types.ts`](platform/packages/api-client/src/services/opencode-types.ts). |
+| Server auth | [`opencodewebstore.go`](core/internal/vibeongo/store/opencodewebstore.go) launches `opencode serve` with `OPENCODE_SERVER_PASSWORD`. The client sends Basic `opencode:<password>`. This is unchanged in 2.0.19/2.0.20. |
 
-OpenCode **v1.18.33 is a separate release line** from the 2.0.16→2.0.18 source range reviewed here. Its GPT-6 sign-in, Cloudflare AI Gateway, Gemini/Gemma, debug-config, Console, and data changes should not be presumed present in 2.0.18 based on the v1 changelog. The directly relevant v2.0.18 URL and compaction changes were verified against the v2 release commits above.
+## Still open (carried over from 2.0.18 review)
+
+1. **Runtime binary version is not pinned.** A JS client bump doesn't deliver the 2.0.19 and 2.0.20 server fixes. Upgrade the OpenCode binary in the runtime image and confirm with `opencode --version`.
+2. **OAuth `window.open` URL validation.** [MCP OAuth](platform/apps/web-app/components/chat/opencode-mcp-menu.tsx) and [provider OAuth](platform/apps/web-app/components/chat/opencode-provider-connect-dialog.tsx) still open server-provided URLs without checking for `http:`/`https:`. This also applies to any future use of `Connection.Status.url`.
+
+## Recommended checks after the binary upgrade
+
+1. Authenticated health, list/create session, prompt with SSE events, queued input, model inventory, MCP list/OAuth.
+2. Provider dialog: a working provider shows ✓. A provider in `needs_auth` (for example an expired Console SSO) shows the chevron and reconnects.
+3. Trigger a provider error (bad key) and confirm the session error shows the provider's own message.
+4. Reject one of several parallel permission asks and confirm the session continues instead of failing.

@@ -2194,7 +2194,10 @@ export async function getOpencodeProviderIntegrations(
   return result.data.map((integration) => ({
     id: integration.id,
     name: integration.name,
-    connected: integration.connections.length > 0,
+    // OpenCode 2.0.20+ keeps expired/revoked connections but marks them needs_auth.
+    connected: integration.connections.some(
+      (connection) => connection.status?.status !== "needs_auth",
+    ),
     methods: integration.methods.flatMap<OpencodeProviderConnectMethod>(
       (method) => {
         if (method.type === "key") {
