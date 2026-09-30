@@ -170,6 +170,15 @@ export const useGetProjectConfigForEdit = (id: string | null) => {
   });
 };
 
+export const useGetProjectWithDetails = (id: string | null) => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["project", id!, "details"],
+    queryFn: () => client.projects.getProjectWithDetails(id!),
+    enabled: Boolean(id),
+  });
+};
+
 export const useGetProjectFilesById = (id: string | null) => {
   const client = useApiClient();
   return useQuery({

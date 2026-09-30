@@ -648,6 +648,7 @@ export default function ClientView() {
 
       <ProjectSessionRuntimeDialog
         open={runtimeDialogSessionId !== null}
+        sessionId={runtimeDialogSessionId}
         onOpenChange={(open) => {
           if (!open) setRuntimeDialogSessionId(null);
         }}

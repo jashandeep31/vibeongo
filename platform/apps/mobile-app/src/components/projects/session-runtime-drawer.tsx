@@ -1,15 +1,24 @@
+import { useGetProjectWithDetails } from "@repo/api-hooks";
+import { useSessionsStore } from "@repo/app-store";
 import { SymbolView } from "expo-symbols";
 import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ThemedText } from "@/components/themed-text";
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
+import {
+  getRuntimeProviderName,
+  RuntimeProviderIcon,
+} from "@/components/projects/runtime-provider-icon";
+import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
 
 export type SessionRuntime = "vm" | "sandbox";
 
 type SessionRuntimeDrawerProps = {
   onClose: () => void;
+  // Session being resumed, used to show the project's configured provider and size
+  sessionId: string | null;
   onSelect: (runtime: SessionRuntime) => void;
   visible: boolean;
 };
@@ -27,13 +36,45 @@ const runtimes = [
   },
 ];
 
+type RuntimeTarget = {
+  name: string;
+  provider: string;
+  cpu: string | null;
+  ram: string | null;
+  region_name: string | null;
+};
+
+// Sandbox type names can already contain the specs, e.g. "Custom 4 vCPU / 8 GiB"
+const formatDetails = ({
+  name,
+  provider,
+  cpu,
+  ram,
+  region_name,
+}: RuntimeTarget) =>
+  [
+    getRuntimeProviderName(provider),
+    region_name,
+    ...[cpu, ram].filter((spec) => spec && !name.includes(spec)),
+  ]
+    .filter(Boolean)
+    .join(" · ");
+
 export function SessionRuntimeDrawer({
   onClose,
   onSelect,
+  sessionId,
   visible,
 }: SessionRuntimeDrawerProps) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
+  const projectId = useSessionsStore(
+    (store) =>
+      store.sessions.find((entry) => entry.session.id === sessionId)?.session
+        .project_id ?? null,
+  );
+  const projectDetails = useGetProjectWithDetails(visible ? projectId : null);
+  const deployment = projectDetails.data?.deployment;
 
   return (
     <Modal
@@ -79,40 +120,66 @@ export function SessionRuntimeDrawer({
           </View>
 
           <View style={styles.runtimes}>
-            {runtimes.map((runtime, index) => (
-              <Pressable
-                accessibilityLabel={`Resume with ${runtime.title}`}
-                accessibilityRole="button"
-                key={runtime.value}
-                onPress={() => onSelect(runtime.value)}
-                style={({ pressed }) => [
-                  styles.runtime,
-                  index < runtimes.length - 1 && {
-                    borderBottomColor: theme.backgroundSelected,
-                    borderBottomWidth: StyleSheet.hairlineWidth,
-                  },
-                  pressed && {
-                    backgroundColor: theme.backgroundElement,
-                  },
-                ]}
-              >
-                <View
-                  style={[
-                    styles.runtimeIcon,
-                    { backgroundColor: theme.backgroundElement },
+            {runtimes.map((runtime, index) => {
+              const target = deployment?.[runtime.value] ?? null;
+              return (
+                <Pressable
+                  accessibilityLabel={`Resume with ${runtime.title}`}
+                  accessibilityRole="button"
+                  key={runtime.value}
+                  onPress={() => onSelect(runtime.value)}
+                  style={({ pressed }) => [
+                    styles.runtime,
+                    index < runtimes.length - 1 && {
+                      borderBottomColor: theme.backgroundSelected,
+                      borderBottomWidth: StyleSheet.hairlineWidth,
+                    },
+                    pressed && {
+                      backgroundColor: theme.backgroundElement,
+                    },
                   ]}
                 >
-                  <SymbolView
-                    name={runtime.icon}
-                    size={18}
-                    tintColor={theme.text}
-                  />
-                </View>
-                <ThemedText style={styles.runtimeTitle}>
-                  {runtime.title}
-                </ThemedText>
-              </Pressable>
-            ))}
+                  <View
+                    style={[
+                      styles.runtimeIcon,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
+                  >
+                    {target ? (
+                      <RuntimeProviderIcon provider={target.provider} />
+                    ) : (
+                      <SymbolView
+                        name={runtime.icon}
+                        size={18}
+                        tintColor={theme.text}
+                      />
+                    )}
+                  </View>
+                  <View style={styles.runtimeCopy}>
+                    <ThemedText style={styles.runtimeTitle}>
+                      {runtime.title}
+                    </ThemedText>
+                    {target ? (
+                      <>
+                        <ThemedText
+                          numberOfLines={1}
+                          style={styles.runtimeName}
+                        >
+                          {target.name}
+                        </ThemedText>
+                        <ThemedText
+                          numberOfLines={1}
+                          style={styles.runtimeDetails}
+                          themeColor="textSecondary"
+                        >
+                          {formatDetails(target)}
+                        </ThemedText>
+                      </>
+                    ) : null}
+                  </View>
+                </Pressable>
+              );
+            })}
           </View>
         </BottomDrawerPanel>
       </View>
@@ -187,8 +254,22 @@ const styles = StyleSheet.create({
   runtimes: {
     marginTop: 18,
   },
-  runtimeTitle: {
+  runtimeCopy: {
     flex: 1,
+    minWidth: 0,
+    paddingVertical: 10,
+  },
+  runtimeDetails: {
+    fontSize: 12,
+    lineHeight: 16,
+  },
+  runtimeName: {
+    fontFamily: Fonts.mono,
+    fontSize: 13,
+    lineHeight: 18,
+    marginTop: 2,
+  },
+  runtimeTitle: {
     fontSize: 15,
     fontWeight: "600",
   },

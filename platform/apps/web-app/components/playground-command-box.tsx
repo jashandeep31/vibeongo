@@ -738,6 +738,7 @@ export function PlaygroundCommandBox() {
       </CommandDialog>
       <ProjectSessionRuntimeDialog
         open={runtimeDialogSessionId !== null}
+        sessionId={runtimeDialogSessionId}
         onOpenChange={(nextOpen) => {
           if (!nextOpen) {
             setRuntimeDialogSessionId(null);

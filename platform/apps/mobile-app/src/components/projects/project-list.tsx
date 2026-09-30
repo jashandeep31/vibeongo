@@ -742,6 +742,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
       <SessionRuntimeDrawer
         onClose={() => setRuntimeSessionId(null)}
         onSelect={handleRuntimeSelect}
+        sessionId={runtimeSessionId}
         visible={runtimeSessionId !== null}
       />
       <ProjectActionsMenu
