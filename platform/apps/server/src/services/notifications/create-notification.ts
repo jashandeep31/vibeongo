@@ -1,9 +1,23 @@
 import { db, notifications } from "@repo/db";
 import { addNotificationPushJob } from "../../jobs/notification-push.js";
 import { redis } from "../../lib/valkey.js";
+import { isUserOnline } from "../../websocket/user-presence.js";
 
-// if the user does not read it within this time, fallback to push notification
-const PUSH_FALLBACK_DELAY_MS = 60_000;
+// user has an open app or web tab: it gets the notification over the
+// websocket and marks it read when shown, the push only goes out if that
+// did not happen by then (e.g. hidden tab, app just sent to background)
+const ONLINE_PUSH_DELAY_MS = 10_000;
+
+// no open socket: nothing else will reach the user, push right away
+const pushDelayFor = async (userId: string) => {
+  try {
+    return (await isUserOnline(userId)) ? ONLINE_PUSH_DELAY_MS : 0;
+  } catch (error) {
+    // unknown: wait, so an in-app delivery is not doubled by a push
+    console.error(`Could not check if user ${userId} is online`, error);
+    return ONLINE_PUSH_DELAY_MS;
+  }
+};
 
 // valkey pub/sub channel: the api process that holds the user's websocket
 // delivers it (see websocket/notification-subscriber.ts)
@@ -41,15 +55,18 @@ export const createNotification = async ({
   title,
   body,
   payload,
-  pushDelayMs = PUSH_FALLBACK_DELAY_MS,
+  pushDelayMs,
 }: {
   userId: string;
   type: string;
   title: string;
   body?: string;
   payload?: Record<string, unknown>;
+  // overrides the delay picked from the user's presence
   pushDelayMs?: number;
 }) => {
+  pushDelayMs ??= await pushDelayFor(userId);
+
   const [notification] = await db
     .insert(notifications)
     .values({

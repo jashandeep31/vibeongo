@@ -34,6 +34,7 @@ import { userRoutes } from "./routes/user-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
 import { startNotificationSubscriber } from "./websocket/notification-subscriber.js";
+import { refreshUserSocketsPresence } from "./websocket/user-sockets-store.js";
 import { findWebSession } from "./lib/auth-session.js";
 import { webhookRoutes } from "./routes/webhook-routes.js";
 import test from "./test.js";
@@ -177,6 +178,10 @@ const wsHeartbeat = setInterval(() => {
     socket.isAlive = false;
     socket.ping();
   }
+  // live sockets stay marked online for the push notification delay
+  refreshUserSocketsPresence().catch((error) => {
+    console.error("Could not refresh websocket presence", error);
+  });
 }, WS_HEARTBEAT_INTERVAL_MS);
 ws.on("close", () => clearInterval(wsHeartbeat));
 
