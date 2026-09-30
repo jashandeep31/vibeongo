@@ -1,8 +1,11 @@
-import type {
-  OpencodeFileReference,
-  OpencodeInventory,
-  OpencodePromptSelection,
-  UploadAttachment,
+import {
+  filterOpencodeCommands,
+  getActiveOpencodeSlashCommand,
+  type OpencodeCommand,
+  type OpencodeFileReference,
+  type OpencodeInventory,
+  type OpencodePromptSelection,
+  type UploadAttachment,
 } from "@repo/api-client";
 import { useVoiceTranscription } from "@/components/projects/use-voice-transcription";
 import { VoiceWaveform } from "@/components/projects/voice-waveform";
@@ -40,7 +43,13 @@ import { useTheme } from "@/hooks/use-theme";
 
 type PickerKind = "provider" | "model" | "agent" | "variant";
 type PickerOption = { id: string; title: string; subtitle?: string };
-type ActiveFileMention = { end: number; query: string; start: number };
+// App-side slash commands; they run here instead of being sent to OpenCode.
+export type OpencodeComposerAction = {
+  name: string;
+  description: string;
+  run: () => void;
+};
+type ComposerCommand = OpencodeCommand & { run?: () => void };
 const CONNECT_PROVIDER_OPTION = "__connect_provider__";
 const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
@@ -71,8 +80,10 @@ export type ComposerAttachment = UploadAttachment & {
 
 type OpencodeComposerProps = {
   accessibilityLabel: string;
+  actions?: OpencodeComposerAction[];
   attachments?: ComposerAttachment[];
   autoFocus?: boolean;
+  commands?: OpencodeCommand[];
   disabled?: boolean;
   submitDisabled?: boolean;
   inventory?: OpencodeInventory;
@@ -86,6 +97,7 @@ type OpencodeComposerProps = {
   onNewChat?: () => void;
   onOpenChats?: () => void;
   onOpenTerminal?: () => void;
+  onOpenWorktrees?: () => void;
   onStop?: () => void;
   providerConnection?: OpencodeProviderConnection;
   searchFiles?: (query: string) => Promise<string[]>;
@@ -156,8 +168,10 @@ export const OpencodeComposerController = memo(
 
 export function OpencodeComposer({
   accessibilityLabel,
+  actions,
   attachments = [],
   autoFocus,
+  commands,
   disabled,
   fileReferences = [],
   inventory,
@@ -170,6 +184,7 @@ export function OpencodeComposer({
   onNewChat,
   onOpenChats,
   onOpenTerminal,
+  onOpenWorktrees,
   onStop,
   providerConnection,
   searchFiles,
@@ -190,7 +205,75 @@ export function OpencodeComposer({
   const [selectionEnd, setSelectionEnd] = useState(value.length);
   const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
   const [isSearchingFiles, setIsSearchingFiles] = useState(false);
+  const [picker, setPicker] = useState<PickerKind | null>(null);
   const activeFileMention = getActiveFileMention(value, selectionEnd);
+  const activeSlashCommand = getActiveOpencodeSlashCommand(value, selectionEnd);
+  const hasModelPicker = !!(inventory?.models.length || providerConnection);
+  const hasAgentPicker = !!inventory?.agents.length;
+  const availableCommands = useMemo(() => {
+    const serverCommands: ComposerCommand[] = commands ?? [];
+    const localCommands: ComposerCommand[] = [
+      ...(onNewChat
+        ? [{ name: "new", description: "Start a new chat", run: onNewChat }]
+        : []),
+      ...(hasModelPicker
+        ? [
+            {
+              name: "models",
+              description: "Choose a model",
+              run: () => {
+                Keyboard.dismiss();
+                setPicker("provider");
+              },
+            },
+          ]
+        : []),
+      ...(hasAgentPicker
+        ? [
+            {
+              name: "agents",
+              description: "Choose an agent",
+              run: () => {
+                Keyboard.dismiss();
+                setPicker("agent");
+              },
+            },
+          ]
+        : []),
+      ...(onOpenTerminal
+        ? [
+            {
+              name: "terminal",
+              description: "Open the terminal",
+              run: onOpenTerminal,
+            },
+          ]
+        : []),
+      ...(actions ?? []),
+    ];
+    return [
+      ...serverCommands,
+      ...localCommands.filter(
+        (local) =>
+          !serverCommands.some((command) => command.name === local.name),
+      ),
+    ];
+  }, [
+    actions,
+    commands,
+    hasAgentPicker,
+    hasModelPicker,
+    onNewChat,
+    onOpenTerminal,
+  ]);
+  const activeCommandQuery = activeSlashCommand?.query;
+  const commandSuggestions = useMemo(
+    () =>
+      activeCommandQuery === undefined
+        ? []
+        : filterOpencodeCommands(availableCommands, activeCommandQuery),
+    [activeCommandQuery, availableCommands],
+  );
   const isVoiceActive = voice.state !== "idle";
   // Voice input swaps the text field for a recording bar, which uses the
   // single-row layout.
@@ -380,6 +463,23 @@ export function OpencodeComposer({
         nextValue.includes(reference.mention),
       ),
     );
+  };
+
+  const chooseCommand = (command: ComposerCommand) => {
+    if (!activeSlashCommand) return;
+    if (command.run) {
+      // Local commands act on the composer instead of being sent.
+      const nextValue = value.slice(activeSlashCommand.end).trimStart();
+      onChangeText(nextValue);
+      setSelectionEnd(0);
+      command.run();
+      return;
+    }
+    const token = `/${command.name} `;
+    const rest = value.slice(activeSlashCommand.end).replace(/^\s+/, "");
+    onChangeText(`${token}${rest}`);
+    setSelectionEnd(token.length);
+    requestAnimationFrame(() => inputRef.current?.focus());
   };
 
   const chooseFile = (path: string) => {
@@ -707,11 +807,14 @@ export function OpencodeComposer({
           onNewChat={onNewChat}
           onOpenChats={onOpenChats}
           onOpenTerminal={onOpenTerminal}
+          onOpenWorktrees={onOpenWorktrees}
+          picker={picker}
           providerConnection={providerConnection}
           selection={selection}
+          setPicker={setPicker}
         />
       </BlurTargetView>
-      {activeFileMention && searchFiles ? (
+      {commandSuggestions.length || (activeFileMention && searchFiles) ? (
         <View
           style={[
             styles.fileSuggestions,
@@ -740,7 +843,37 @@ export function OpencodeComposer({
               },
             ]}
           />
-          {isSearchingFiles ? (
+          {commandSuggestions.length ? (
+            <FlatList
+              data={commandSuggestions}
+              keyboardShouldPersistTaps="handled"
+              keyExtractor={(command) => command.name}
+              renderItem={({ item: command }) => (
+                <Pressable
+                  accessibilityLabel={`Use /${command.name} command`}
+                  accessibilityRole="button"
+                  onPress={() => chooseCommand(command)}
+                  style={({ pressed }) => [
+                    styles.fileSuggestion,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.commandName}>
+                    /{command.name}
+                  </ThemedText>
+                  {command.description ? (
+                    <ThemedText
+                      numberOfLines={1}
+                      style={styles.commandDescription}
+                      themeColor="textSecondary"
+                    >
+                      {command.description}
+                    </ThemedText>
+                  ) : null}
+                </Pressable>
+              )}
+            />
+          ) : isSearchingFiles ? (
             <View style={styles.fileSuggestionState}>
               <ActivityIndicator size="small" />
               <ThemedText
@@ -862,8 +995,11 @@ const PromptSelectors = memo(function PromptSelectors({
   onNewChat,
   onOpenChats,
   onOpenTerminal,
+  onOpenWorktrees,
+  picker,
   providerConnection,
   selection,
+  setPicker,
 }: {
   disabled?: boolean;
   inventory?: OpencodeInventory;
@@ -871,11 +1007,13 @@ const PromptSelectors = memo(function PromptSelectors({
   onNewChat?: () => void;
   onOpenChats?: () => void;
   onOpenTerminal?: () => void;
+  onOpenWorktrees?: () => void;
+  picker: PickerKind | null;
   providerConnection?: OpencodeProviderConnection;
   selection: OpencodePromptSelection;
+  setPicker: (picker: PickerKind | null) => void;
 }) {
   const theme = useTheme();
-  const [picker, setPicker] = useState<PickerKind | null>(null);
   const [providerConnectOpen, setProviderConnectOpen] = useState(false);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
@@ -1032,6 +1170,15 @@ const PromptSelectors = memo(function PromptSelectors({
             icon={{ ios: "apple.terminal", android: "terminal" }}
             label="Terminal"
             onPress={onOpenTerminal}
+            showChevron={false}
+          />
+        ) : null}
+        {onOpenWorktrees ? (
+          <SelectorPill
+            disabled={disabled}
+            icon={{ ios: "arrow.triangle.branch", android: "account_tree" }}
+            label="Worktree"
+            onPress={onOpenWorktrees}
             showChevron={false}
           />
         ) : null}
@@ -1358,6 +1505,8 @@ const styles = StyleSheet.create({
     width: "100%",
   },
   blurTarget: { width: "100%" },
+  commandDescription: { flex: 1, fontSize: 12 },
+  commandName: { fontFamily: Fonts.mono, fontSize: 12, fontWeight: "600" },
   closeButton: {
     alignItems: "center",
     height: 44,

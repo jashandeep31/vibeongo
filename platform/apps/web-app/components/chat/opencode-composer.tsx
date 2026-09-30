@@ -4,10 +4,13 @@ import {
   OpencodeProviderConnectDialog,
   type OpencodeWebProviderConnection,
 } from "@/components/chat/opencode-provider-connect-dialog";
-import type {
-  OpencodeFileReference,
-  OpencodeInventory,
-  OpencodePromptSelection,
+import {
+  filterOpencodeCommands,
+  getActiveOpencodeSlashCommand,
+  type OpencodeCommand,
+  type OpencodeFileReference,
+  type OpencodeInventory,
+  type OpencodePromptSelection,
 } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -28,6 +31,7 @@ import {
   ChevronsUpDown,
   File,
   Loader2,
+  SquareSlash,
   ListPlus,
   Plus,
   Square,
@@ -35,6 +39,7 @@ import {
 } from "lucide-react";
 import {
   useEffect,
+  useMemo,
   useRef,
   useState,
   type ChangeEvent,
@@ -76,9 +81,19 @@ type OpencodeComposerProps = {
   trailingControl?: ReactNode;
   searchFiles?: (query: string) => Promise<string[]>;
   providerConnection?: OpencodeWebProviderConnection;
+  commands?: OpencodeCommand[];
+  onNewChat?: () => void;
+  actions?: OpencodeComposerAction[];
 };
 
 type ActiveFileMention = { end: number; query: string; start: number };
+// App-side slash commands; they run here instead of being sent to OpenCode.
+export type OpencodeComposerAction = {
+  name: string;
+  description: string;
+  run: () => void;
+};
+type ComposerCommand = OpencodeCommand & { run?: () => void };
 
 function getActiveFileMention(value: string, cursor: number) {
   const match = value.slice(0, cursor).match(/(?:^|\s)@([^\s@]*)$/);
@@ -104,6 +119,9 @@ export function OpencodeComposer({
   trailingControl,
   searchFiles,
   providerConnection,
+  commands,
+  onNewChat,
+  actions,
 }: OpencodeComposerProps) {
   const [hasQuestion, setHasQuestion] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
@@ -119,6 +137,9 @@ export function OpencodeComposer({
   const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
   const [isSearchingFiles, setIsSearchingFiles] = useState(false);
   const [highlightedFileIndex, setHighlightedFileIndex] = useState(0);
+  const [activeSlashCommand, setActiveSlashCommand] =
+    useState<ActiveFileMention | null>(null);
+  const [highlightedCommandIndex, setHighlightedCommandIndex] = useState(0);
   const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
   const activeFileQuery = activeFileMention?.query;
   const attachmentsRef = useRef<LocalAttachment[]>([]);
@@ -133,6 +154,51 @@ export function OpencodeComposer({
   const selectedAgent = inventory?.agents.find(
     (agent) => agent.id === selection.agent,
   );
+  const hasModelPicker = !!(inventory?.models.length || providerConnection);
+  const hasAgentPicker = !!inventory?.agents.length;
+  const availableCommands = useMemo(() => {
+    const serverCommands: ComposerCommand[] = commands ?? [];
+    const localCommands: ComposerCommand[] = [
+      ...(onNewChat
+        ? [{ name: "new", description: "Start a new chat", run: onNewChat }]
+        : []),
+      ...(hasModelPicker
+        ? [
+            {
+              name: "models",
+              description: "Choose a model",
+              run: () => setIsModelPickerOpen(true),
+            },
+          ]
+        : []),
+      ...(hasAgentPicker
+        ? [
+            {
+              name: "agents",
+              description: "Choose an agent",
+              run: () => setIsAgentPickerOpen(true),
+            },
+          ]
+        : []),
+      ...(actions ?? []),
+    ];
+    return [
+      ...serverCommands,
+      ...localCommands.filter(
+        (local) =>
+          !serverCommands.some((command) => command.name === local.name),
+      ),
+    ];
+  }, [actions, commands, hasAgentPicker, hasModelPicker, onNewChat]);
+  const commandSuggestions = useMemo(
+    () =>
+      activeSlashCommand
+        ? filterOpencodeCommands(availableCommands, activeSlashCommand.query)
+        : [],
+    [activeSlashCommand, availableCommands],
+  );
+  // Hidden when nothing matches, so a prompt like "/etc/hosts …" isn't nagged.
+  const showCommandSuggestions = commandSuggestions.length > 0;
 
   useEffect(() => {
     if (
@@ -238,6 +304,7 @@ export function OpencodeComposer({
     }
     setHasQuestion(false);
     setActiveFileMention(null);
+    setActiveSlashCommand(null);
     setFileReferences([]);
     attachments.forEach((attachment) => {
       if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
@@ -295,6 +362,32 @@ export function OpencodeComposer({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (showCommandSuggestions) {
+      if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+        event.preventDefault();
+        const direction = event.key === "ArrowDown" ? 1 : -1;
+        setHighlightedCommandIndex(
+          (current) =>
+            (current + direction + commandSuggestions.length) %
+            commandSuggestions.length,
+        );
+        return;
+      }
+      if (
+        (event.key === "Enter" || event.key === "Tab") &&
+        !event.shiftKey &&
+        !event.nativeEvent.isComposing
+      ) {
+        event.preventDefault();
+        const command = commandSuggestions[highlightedCommandIndex];
+        if (command) chooseCommand(command);
+        return;
+      }
+    }
+    if (event.key === "Escape" && activeSlashCommand) {
+      setActiveSlashCommand(null);
+      return;
+    }
     if (activeFileMention && fileSuggestions.length > 0) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
@@ -343,6 +436,50 @@ export function OpencodeComposer({
     textarea.style.height = `${Math.min(textarea.scrollHeight, maxHeight)}px`;
     textarea.style.overflowY =
       textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  };
+
+  const updateActiveTokens = (textarea: HTMLTextAreaElement) => {
+    setActiveFileMention(
+      getActiveFileMention(textarea.value, textarea.selectionStart),
+    );
+    const slashCommand = getActiveOpencodeSlashCommand(
+      textarea.value,
+      textarea.selectionStart,
+    );
+    if (slashCommand?.query !== activeSlashCommand?.query) {
+      setHighlightedCommandIndex(0);
+    }
+    setActiveSlashCommand(slashCommand);
+  };
+
+  const chooseCommand = (command: ComposerCommand) => {
+    const textarea = textareaRef.current;
+    if (!textarea || !activeSlashCommand) return;
+    if (command.run) {
+      // Local commands act on the composer instead of being sent.
+      textarea.setRangeText(
+        "",
+        activeSlashCommand.start,
+        activeSlashCommand.end,
+        "start",
+      );
+      textarea.value = textarea.value.trimStart();
+      setHasQuestion(textarea.value.trim().length > 0);
+      setActiveSlashCommand(null);
+      resizeTextarea(textarea);
+      command.run();
+      return;
+    }
+    textarea.setRangeText(
+      `/${command.name} `,
+      activeSlashCommand.start,
+      activeSlashCommand.end,
+      "end",
+    );
+    setHasQuestion(true);
+    setActiveSlashCommand(null);
+    resizeTextarea(textarea);
+    textarea.focus();
   };
 
   const chooseFile = (path: string) => {
@@ -625,7 +762,39 @@ export function OpencodeComposer({
         tabIndex={-1}
         onChange={handleFiles}
       />
-      {activeFileMention && searchFiles ? (
+      {showCommandSuggestions ? (
+        <div
+          role="listbox"
+          aria-label="Commands"
+          className="bg-popover text-popover-foreground max-h-64 overflow-y-auto rounded-xl border p-1 shadow-lg"
+        >
+          {commandSuggestions.map((command, index) => (
+            <button
+              key={command.name}
+              type="button"
+              role="option"
+              aria-selected={index === highlightedCommandIndex}
+              className={`flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm ${
+                index === highlightedCommandIndex
+                  ? "bg-accent"
+                  : "hover:bg-accent"
+              }`}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={() => chooseCommand(command)}
+            >
+              <SquareSlash className="text-muted-foreground size-4 shrink-0" />
+              <span className="shrink-0 font-mono text-xs">
+                /{command.name}
+              </span>
+              {command.description ? (
+                <span className="text-muted-foreground min-w-0 truncate text-xs">
+                  {command.description}
+                </span>
+              ) : null}
+            </button>
+          ))}
+        </div>
+      ) : activeFileMention && searchFiles ? (
         <div className="bg-popover text-popover-foreground max-h-64 overflow-y-auto rounded-xl border p-1 shadow-lg">
           {isSearchingFiles ? (
             <div className="text-muted-foreground flex h-12 items-center justify-center gap-2 text-sm">
@@ -679,12 +848,7 @@ export function OpencodeComposer({
             disabled={disabled}
             onChange={(event) => {
               setHasQuestion(event.target.value.trim().length > 0);
-              setActiveFileMention(
-                getActiveFileMention(
-                  event.target.value,
-                  event.target.selectionStart,
-                ),
-              );
+              updateActiveTokens(event.target);
               setFileReferences((current) =>
                 current.filter((reference) =>
                   event.target.value.includes(reference.mention),
@@ -692,14 +856,7 @@ export function OpencodeComposer({
               );
               resizeTextarea(event.target);
             }}
-            onClick={(event) =>
-              setActiveFileMention(
-                getActiveFileMention(
-                  event.currentTarget.value,
-                  event.currentTarget.selectionStart,
-                ),
-              )
-            }
+            onClick={(event) => updateActiveTokens(event.currentTarget)}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             className="placeholder:text-muted-foreground min-h-10 min-w-0 flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-4 py-2 text-base leading-6 outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"

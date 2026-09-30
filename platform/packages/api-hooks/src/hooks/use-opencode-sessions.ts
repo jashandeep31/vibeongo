@@ -3,7 +3,11 @@
 import {
   createOpencodeSession,
   getOpencodeProjectDirectories,
+  listOpencodeWorktrees,
+  reloadOpencodeConfig,
+  removeOpencodeWorktree,
   getOpencodeSessions,
+  sendOpencodeCommand,
   sendOpencodePrompt,
   type OpencodeSessionData,
   type OpencodeFileReference,
@@ -13,6 +17,7 @@ import {
 import { useSessionChatsStore } from "@repo/app-store";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
+import { findCachedOpencodeCommand } from "./opencode-command-cache.js";
 import { toOpencodeUploadAttachment } from "./opencode-upload-attachment.js";
 
 export const useOpencodeSessions = (
@@ -53,6 +58,89 @@ export const useOpencodeProjectDirectories = (
       getOpencodeProjectDirectories(chatId, serverUrl, accessToken, password),
     enabled: enabled && !!chatId && !!serverUrl && !!accessToken,
   });
+
+export const useOpencodeWorktrees = (
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory: string | undefined,
+  password?: string,
+  enabled = true,
+) =>
+  useQuery({
+    queryKey: ["opencode", "worktrees", chatId, serverUrl, directory ?? ""],
+    queryFn: () =>
+      listOpencodeWorktrees(
+        chatId,
+        serverUrl,
+        accessToken,
+        directory ?? "",
+        password,
+      ),
+    enabled:
+      enabled && !!chatId && !!serverUrl && !!accessToken && !!directory,
+    retry: false,
+  });
+
+type OpencodeConnection = {
+  chatId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+};
+
+export const useRemoveOpencodeWorktree = ({
+  chatId,
+  serverUrl,
+  accessToken,
+  password,
+}: OpencodeConnection) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({
+      projectId,
+      directory,
+    }: {
+      projectId: string;
+      directory: string;
+    }) =>
+      removeOpencodeWorktree(
+        chatId,
+        serverUrl,
+        accessToken,
+        projectId,
+        directory,
+        password,
+      ),
+    onSettled: () =>
+      queryClient.invalidateQueries({
+        queryKey: ["opencode", "worktrees", chatId, serverUrl],
+      }),
+  });
+};
+
+export const useReloadOpencodeConfig = ({
+  chatId,
+  serverUrl,
+  accessToken,
+  password,
+  directory,
+}: OpencodeConnection & { directory?: string }) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () =>
+      reloadOpencodeConfig(chatId, serverUrl, accessToken, directory, password),
+    onSuccess: () =>
+      Promise.all([
+        queryClient.invalidateQueries({
+          queryKey: ["opencode", "inventory", chatId, serverUrl],
+        }),
+        queryClient.invalidateQueries({
+          queryKey: ["opencode", "commands", chatId, serverUrl],
+        }),
+      ]),
+  });
+};
 
 export const useStartOpencodeSession = () => {
   const queryClient = useQueryClient();
@@ -200,17 +288,38 @@ export const useStartOpencodeSession = () => {
       onSessionCreated?.(session.id);
 
       try {
-        await sendOpencodePrompt(
+        const command = findCachedOpencodeCommand(
+          queryClient,
           chatId,
-          session.id,
-          text,
-          attachments,
-          fileReferences,
-          selection,
           serverUrl,
-          accessToken,
-          password,
+          text,
         );
+        if (command) {
+          await sendOpencodeCommand(
+            chatId,
+            session.id,
+            command,
+            attachments,
+            fileReferences,
+            selection,
+            "steer",
+            serverUrl,
+            accessToken,
+            password,
+          );
+        } else {
+          await sendOpencodePrompt(
+            chatId,
+            session.id,
+            text,
+            attachments,
+            fileReferences,
+            selection,
+            serverUrl,
+            accessToken,
+            password,
+          );
+        }
       } catch (error) {
         const message =
           error instanceof Error

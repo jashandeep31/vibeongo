@@ -9,6 +9,8 @@ import {
   exportOpencodeSession,
   forkOpencodeSession,
   getOpencodeInventory,
+  listOpencodeCommands,
+  sendOpencodeCommand,
   getOpencodeWebSearchProviders,
   getOpencodeSessionMessagePage,
   getOpencodeSessionRaw,
@@ -37,6 +39,7 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { findCachedOpencodeCommand } from "./opencode-command-cache.js";
 import { toOpencodeUploadAttachment } from "./opencode-upload-attachment.js";
 
 export const useOpencodeSession = ({
@@ -299,6 +302,26 @@ export const useSendOpencodePrompt = ({
         files.map(toOpencodeUploadAttachment),
       );
 
+      const command = findCachedOpencodeCommand(
+        queryClient,
+        chatId,
+        serverUrl,
+        text,
+      );
+      if (command) {
+        return sendOpencodeCommand(
+          chatId,
+          sessionId,
+          command,
+          [...directAttachments, ...fileAttachments],
+          fileReferences,
+          selection,
+          "steer",
+          serverUrl,
+          accessToken,
+          password,
+        );
+      }
       return sendOpencodePrompt(
         chatId,
         sessionId,
@@ -351,6 +374,26 @@ export const useQueueOpencodePrompt = ({
       const attachments = await Promise.all(
         files.map(toOpencodeUploadAttachment),
       );
+      const command = findCachedOpencodeCommand(
+        queryClient,
+        chatId,
+        serverUrl,
+        text,
+      );
+      if (command) {
+        return sendOpencodeCommand(
+          chatId,
+          sessionId,
+          command,
+          [...directAttachments, ...attachments],
+          fileReferences,
+          selection,
+          "queue",
+          serverUrl,
+          accessToken,
+          password,
+        );
+      }
       return queueOpencodePrompt(
         chatId,
         sessionId,
@@ -919,6 +962,22 @@ export const useDeleteOpencodeSession = ({
     },
   });
 };
+
+export const useOpencodeCommands = (
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+) =>
+  useQuery({
+    queryKey: ["opencode", "commands", chatId, serverUrl, directory ?? ""],
+    queryFn: () =>
+      listOpencodeCommands(chatId, serverUrl, accessToken, directory, password),
+    enabled: !!serverUrl && !!accessToken,
+    retry: 2,
+    staleTime: 60_000,
+  });
 
 export const useOpencodeInventory = (
   chatId: string,

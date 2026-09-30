@@ -2,6 +2,7 @@
 
 import { OpencodeContextUsageMenu } from "@/components/chat/opencode-context-usage-menu";
 import { OpencodeMcpMenu } from "@/components/chat/opencode-mcp-menu";
+import { OpencodeWorktreeDialog } from "@/components/chat/opencode-worktree-dialog";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
 import {
@@ -34,6 +35,7 @@ import {
   Download,
   Ellipsis,
   FolderOpen,
+  GitBranch,
   GitCompareArrows,
   GitFork,
   Loader2,
@@ -58,6 +60,8 @@ export function OpencodeChatTopBar({
   isRefreshing = false,
   onRefresh,
   reviewActive = false,
+  worktreeOpen,
+  onWorktreeOpenChange,
 }: {
   projectId: string;
   projectSessionId: string;
@@ -71,7 +75,21 @@ export function OpencodeChatTopBar({
   isRefreshing?: boolean;
   onRefresh?: () => void;
   reviewActive?: boolean;
+  worktreeOpen?: boolean;
+  onWorktreeOpenChange?: (open: boolean) => void;
 }) {
+  const router = useRouter();
+  const [ownWorktreeOpen, setOwnWorktreeOpen] = useState(false);
+  const isWorktreeOpen = worktreeOpen ?? ownWorktreeOpen;
+  const setWorktreeOpen = onWorktreeOpenChange ?? setOwnWorktreeOpen;
+  const openChatInDirectory = (nextDirectory: string) => {
+    setWorktreeOpen(false);
+    const params = new URLSearchParams({ serverUrl, directory: nextDirectory });
+    router.push(
+      `/projects/${projectId}/sessions/${projectSessionId}?${params.toString()}`,
+    );
+  };
+
   return (
     <div className="absolute top-3 right-3 z-50 flex items-center gap-2">
       {session ? (
@@ -115,6 +133,29 @@ export function OpencodeChatTopBar({
       <TopBarLink href={`${chatUrl}/settings`} label="Runtime settings">
         <Settings2 />
       </TopBarLink>
+      <Button
+        type="button"
+        variant="outline"
+        size="icon-sm"
+        className="bg-background/90 shadow-sm backdrop-blur"
+        aria-label="Worktrees"
+        title="Worktrees"
+        onClick={() => setWorktreeOpen(true)}
+      >
+        <GitBranch />
+      </Button>
+      <OpencodeWorktreeDialog
+        connection={{
+          chatId: projectSessionId,
+          serverUrl,
+          accessToken,
+          password,
+        }}
+        currentDirectory={directory}
+        open={isWorktreeOpen}
+        onOpenChange={setWorktreeOpen}
+        onSelect={openChatInDirectory}
+      />
       {onRefresh ? (
         <Button
           type="button"

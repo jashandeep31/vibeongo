@@ -7,16 +7,21 @@ import {
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { OpencodePermissionDock } from "@/components/chat/opencode-permission-dock";
 import { OpencodeWebSearchDock } from "@/components/chat/opencode-web-search-dock";
-import { OpencodeComposer } from "@/components/chat/opencode-composer";
+import {
+  OpencodeComposer,
+  type OpencodeComposerAction,
+} from "@/components/chat/opencode-composer";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useCancelOpencodeQueuedPrompt,
   useEditOpencodeQueuedPrompt,
+  useOpencodeCommands,
   useOpencodeInventory,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReloadOpencodeConfig,
   useReplyOpencodePermission,
   useReorderOpencodeQueuedPrompts,
   useRevertOpencodeSession,
@@ -60,6 +65,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -103,6 +109,14 @@ export function OpencodeSessionChat({
     password,
   );
   const inventory = inventoryQuery.data;
+  const { data: commands } = useOpencodeCommands(
+    chatId,
+    serverUrl,
+    accessToken,
+    rawResponse.session.directory,
+    password,
+  );
+  const router = useRouter();
   const revertMessageId = rawResponse.session.revert?.messageID;
   const { visibleMessages, revertedMessages } = useMemo(() => {
     if (!revertMessageId) {
@@ -272,6 +286,84 @@ export function OpencodeSessionChat({
     accessToken,
     password,
   });
+  const reloadConfig = useReloadOpencodeConfig({
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory: rawResponse.session.directory,
+  });
+  const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
+  const lastQuestionId = [...visibleMessages]
+    .reverse()
+    .find((message) => message.info.role === "user")?.info.id;
+  const firstRevertedId = revertedQuestions[0]?.id;
+  const secondRevertedId = revertedQuestions[1]?.id;
+  const composerActions = useMemo<OpencodeComposerAction[]>(
+    () => [
+      {
+        name: "undo",
+        description: "Revert the last message",
+        run: () => {
+          if (isStreaming) {
+            toast.error("Wait for the response to finish before undoing");
+            return;
+          }
+          if (!lastQuestionId) {
+            toast.error("There is no message to undo");
+            return;
+          }
+          revertSession.mutate(lastQuestionId, {
+            onSuccess: () => toast.success("Messages rolled back"),
+            onError: (error) =>
+              toast.error(error.message || "Could not revert messages"),
+          });
+        },
+      },
+      {
+        name: "redo",
+        description: "Restore the last reverted message",
+        run: () => {
+          if (!firstRevertedId) {
+            toast.error("There is no message to redo");
+            return;
+          }
+          restoreMessage.mutate(
+            { messageId: firstRevertedId, nextMessageId: secondRevertedId },
+            {
+              onSuccess: () => toast.success("Message restored"),
+              onError: (error) =>
+                toast.error(error.message || "Could not restore message"),
+            },
+          );
+        },
+      },
+      {
+        name: "reload",
+        description: "Reload OpenCode config",
+        run: () =>
+          reloadConfig.mutate(undefined, {
+            onSuccess: () => toast.success("OpenCode config reloaded"),
+            onError: (error) =>
+              toast.error(error.message || "Could not reload config"),
+          }),
+      },
+      {
+        name: "worktree",
+        description: "Manage worktrees",
+        run: () => setIsWorktreeOpen(true),
+      },
+    ],
+    [
+      firstRevertedId,
+      isStreaming,
+      lastQuestionId,
+      reloadConfig.mutate,
+      restoreMessage.mutate,
+      revertSession.mutate,
+      secondRevertedId,
+    ],
+  );
   const sessionSelection = useMemo(
     () => getSessionPromptSelection(rawResponse),
     [rawResponse],
@@ -462,6 +554,8 @@ export function OpencodeSessionChat({
         inventory={inventory}
         isRefreshing={isRefreshing}
         onRefresh={onRefresh}
+        worktreeOpen={isWorktreeOpen}
+        onWorktreeOpenChange={setIsWorktreeOpen}
       />
       <div
         ref={scrollAreaRef}
@@ -871,6 +965,11 @@ export function OpencodeSessionChat({
                   }
                 }}
                 searchFiles={searchFiles}
+                commands={commands}
+                actions={composerActions}
+                onNewChat={() =>
+                  router.push(`${sessionUrl}?${newChatParams.toString()}`)
+                }
                 onSubmitSuccess={() => scrollToBottom("smooth")}
                 autoFocus
                 focusOnTyping

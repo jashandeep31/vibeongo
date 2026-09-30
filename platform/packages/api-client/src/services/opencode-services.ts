@@ -20,7 +20,10 @@ import type {
   OpencodeError,
 } from "./opencode-types.js";
 import { normalizeOpencodeError } from "./opencode-errors.js";
-import { isRuntimeRepositoryDirectory } from "./runtime-paths.js";
+import {
+  isRuntimeRepositoryDirectory,
+  RUNTIME_WORKSPACE_DIRECTORY,
+} from "./runtime-paths.js";
 import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
@@ -2167,6 +2170,253 @@ export async function findOpencodeFiles(
     ...(directory ? { location: { directory } } : {}),
   });
   return result.data.map((entry) => entry.path);
+}
+
+export type OpencodeCommand = {
+  name: string;
+  description?: string;
+};
+
+export async function listOpencodeCommands(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+): Promise<OpencodeCommand[]> {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const result = await client.command.list(
+    directory ? { location: { directory } } : {},
+  );
+  return result.data
+    .map((command) => ({
+      name: command.name,
+      ...(command.description ? { description: command.description } : {}),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Only text that starts with a known command name is a command; anything else
+// (for example "/etc/hosts is broken") is sent as a normal prompt.
+export function parseOpencodeSlashCommand(
+  text: string,
+  commands: ReadonlyArray<Pick<OpencodeCommand, "name">> | undefined,
+) {
+  const match = text.match(/^\/(\S+)(?:\s+([\s\S]*))?$/);
+  if (!match || !commands?.length) return null;
+  const name = match[1] ?? "";
+  if (!commands.some((command) => command.name === name)) return null;
+  return { name, args: (match[2] ?? "").trim() };
+}
+
+// Like the OpenCode TUI, suggestions show only while the cursor is still inside
+// a leading "/name" token.
+export function getActiveOpencodeSlashCommand(value: string, cursor: number) {
+  const match = value.slice(0, cursor).match(/^\/(\S*)$/);
+  if (!match) return null;
+  const query = match[1] ?? "";
+  const tokenEnd = value.slice(cursor).search(/\s|$/);
+  return { end: cursor + Math.max(0, tokenEnd), query, start: 0 };
+}
+
+export function filterOpencodeCommands<T extends OpencodeCommand>(
+  commands: ReadonlyArray<T>,
+  query: string,
+) {
+  const normalized = query.toLocaleLowerCase();
+  if (!normalized) return [...commands];
+  const prefix: T[] = [];
+  const contains: T[] = [];
+  for (const command of commands) {
+    const name = command.name.toLocaleLowerCase();
+    if (name.startsWith(normalized)) prefix.push(command);
+    else if (
+      name.includes(normalized) ||
+      command.description?.toLocaleLowerCase().includes(normalized)
+    )
+      contains.push(command);
+  }
+  return [...prefix, ...contains];
+}
+
+export async function sendOpencodeCommand(
+  chatId: string,
+  sessionId: string,
+  command: { name: string; args: string },
+  attachments: UploadAttachment[],
+  fileReferences: OpencodeFileReference[],
+  selection: OpencodePromptSelection,
+  delivery: "steer" | "queue",
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const session = await findOpencodeSession(
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  );
+  if (!session) throw new Error("OpenCode session not found");
+
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    session.directory,
+  );
+  const preparedAttachments = await prepareOpencodeAttachments(
+    client,
+    session.directory,
+    attachments,
+  );
+  const files = [
+    ...fileReferences.map((reference) => {
+      const start = command.args.indexOf(reference.mention);
+      const absolutePath = reference.path.startsWith("/")
+        ? reference.path
+        : `${session.directory.replace(/\/$/, "")}/${reference.path}`;
+      return {
+        uri: `file://${absolutePath
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/")}`,
+        name: reference.path.split("/").pop() ?? reference.path,
+        mention: {
+          text: reference.mention,
+          start: Math.max(0, start),
+          end: Math.max(0, start) + reference.mention.length,
+        },
+      };
+    }),
+    ...preparedAttachments.files,
+  ];
+  // A queued command must not change the model or agent of the running turn.
+  if (delivery === "steer") {
+    const model = parseModelSelection(selection.model);
+    if (model) {
+      await client.session.switchModel({
+        sessionID: sessionId,
+        model: {
+          id: model.modelID,
+          providerID: model.providerID,
+          ...(selection.variant ? { variant: selection.variant } : {}),
+        },
+      });
+    }
+    if (selection.agent) {
+      await client.session.switchAgent({
+        sessionID: sessionId,
+        agent: selection.agent,
+      });
+    }
+  }
+  await client.session.command({
+    sessionID: sessionId,
+    name: command.name,
+    text: [command.args, ...preparedAttachments.references]
+      .filter(Boolean)
+      .join("\n"),
+    ...(files.length ? { files } : {}),
+    delivery,
+  });
+}
+
+// Makes the OpenCode server re-read config (commands, agents, MCP) for a
+// directory.
+export async function reloadOpencodeConfig(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.location.reload(
+    directory
+      ? { headers: { "x-opencode-directory": encodeURIComponent(directory) } }
+      : undefined,
+  );
+}
+
+export type OpencodeWorktree = {
+  directory: string;
+  type: "root" | "worktree";
+};
+
+// Repositories live under the runtime workspace, which is not a repository
+// itself, so worktrees are scoped to the repository the chat is in.
+function getWorkspaceRepositoryDirectory(directory: string) {
+  const prefix = `${RUNTIME_WORKSPACE_DIRECTORY}/`;
+  if (!directory.startsWith(prefix)) return undefined;
+  const repoName = directory.slice(prefix.length).split("/")[0] ?? "";
+  const repoDirectory = `${prefix}${repoName}`;
+  return isRuntimeRepositoryDirectory(repoDirectory)
+    ? repoDirectory
+    : undefined;
+}
+
+export async function listOpencodeWorktrees(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  let location = await client.location.get({ location: { directory } });
+  if (!isRuntimeRepositoryDirectory(location.project.directory)) {
+    const repoDirectory = getWorkspaceRepositoryDirectory(directory);
+    if (!repoDirectory) {
+      throw new Error("Open a chat inside a repository to use worktrees.");
+    }
+    location = await client.location.get({
+      location: { directory: repoDirectory },
+    });
+    if (!isRuntimeRepositoryDirectory(location.project.directory)) {
+      throw new Error(`${repoDirectory} is not a git repository.`);
+    }
+  }
+  const root = location.project.directory;
+  const worktrees = await client.worktree.list({
+    projectID: location.project.id,
+  });
+  return {
+    projectId: location.project.id,
+    worktrees: [
+      { directory: root, type: "root" as const },
+      ...worktrees
+        .filter((worktree) => worktree.directory !== root)
+        .map((worktree) => ({
+          directory: worktree.directory,
+          type: "worktree" as const,
+        })),
+    ] satisfies OpencodeWorktree[],
+  };
+}
+
+export async function removeOpencodeWorktree(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  projectId: string,
+  directory: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.worktree.remove({
+    projectID: projectId,
+    directory,
+    force: false,
+  });
 }
 
 export type OpencodeProviderConnectMethod =

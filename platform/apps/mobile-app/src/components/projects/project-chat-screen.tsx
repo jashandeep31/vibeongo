@@ -16,10 +16,12 @@ import {
   useDeleteOpencodeSession,
   useEditOpencodeQueuedPrompt,
   useForkOpencodeSession,
+  useOpencodeCommands,
   useOpencodeInventory,
   useOpencodeSession,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReloadOpencodeConfig,
   useReorderOpencodeQueuedPrompts,
   useRestoreRevertedOpencodeMessage,
   useRevertOpencodeSession,
@@ -66,6 +68,8 @@ import {
 } from "@/components/projects/opencode-composer";
 import { OpencodeQuestionPrompt } from "@/components/projects/opencode-question-prompt";
 import { OpencodeForkDrawer } from "@/components/projects/opencode-fork-drawer";
+import { OpencodeWorktreeDrawer } from "@/components/projects/opencode-worktree-drawer";
+import type { OpencodeComposerAction } from "@/components/projects/opencode-composer";
 import { OpencodePermissionPrompt } from "@/components/projects/opencode-permission-prompt";
 import { OpencodeWebSearchPrompt } from "@/components/projects/opencode-web-search-prompt";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
@@ -261,6 +265,7 @@ export function ProjectChatScreen() {
   const [isSessionChatSwitcherOpen, setIsSessionChatSwitcherOpen] =
     useState(false);
   const [isForkDrawerOpen, setIsForkDrawerOpen] = useState(false);
+  const [isWorktreeDrawerOpen, setIsWorktreeDrawerOpen] = useState(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const data = sessionQuery.data;
   const searchFiles = useCallback(
@@ -358,6 +363,109 @@ export function ProjectChatScreen() {
     selection.model,
     selection.variant,
   ]);
+
+  const openWorktrees = useCallback(() => {
+    Keyboard.dismiss();
+    setIsWorktreeDrawerOpen(true);
+  }, []);
+  const openChatInDirectory = useCallback(
+    (directory: string) => {
+      setIsWorktreeDrawerOpen(false);
+      router.setParams({
+        chatId: "new",
+        directory,
+        ...(selection.agent ? { agent: selection.agent } : {}),
+        ...(selection.model ? { model: selection.model } : {}),
+        ...(selection.variant ? { variant: selection.variant } : {}),
+        returnOpencodeSessionId: opencodeSessionId,
+        returnProjectId: projectId,
+        returnProjectSessionId: projectSessionId,
+      });
+    },
+    [
+      opencodeSessionId,
+      projectId,
+      projectSessionId,
+      router,
+      selection.agent,
+      selection.model,
+      selection.variant,
+    ],
+  );
+  const reloadConfig = useReloadOpencodeConfig({
+    chatId: projectSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+    directory: data?.session.directory,
+  });
+  const isSessionBusy = !!data && data.status.type !== "idle";
+  const lastQuestionId = visibleMessages.findLast(
+    (message) => message.info.role === "user",
+  )?.info.id;
+  const firstRevertedId = revertedQuestions[0]?.id;
+  const secondRevertedId = revertedQuestions[1]?.id;
+  const composerActions = useMemo<OpencodeComposerAction[]>(
+    () => [
+      {
+        name: "undo",
+        description: "Revert the last message",
+        run: () => {
+          if (isSessionBusy || !lastQuestionId) {
+            Alert.alert(
+              "Nothing to undo",
+              isSessionBusy
+                ? "Wait for the response to finish."
+                : "There is no message to revert.",
+            );
+            return;
+          }
+          revertTurn(lastQuestionId);
+        },
+      },
+      {
+        name: "redo",
+        description: "Restore the last reverted message",
+        run: () => {
+          if (!firstRevertedId) {
+            Alert.alert("Nothing to redo", "There is no reverted message.");
+            return;
+          }
+          restoreMessage.mutate(
+            { messageId: firstRevertedId, nextMessageId: secondRevertedId },
+            {
+              onError: (error) =>
+                Alert.alert("Could not restore message", error.message),
+            },
+          );
+        },
+      },
+      {
+        name: "reload",
+        description: "Reload OpenCode config",
+        run: () =>
+          reloadConfig.mutate(undefined, {
+            onError: (error) =>
+              Alert.alert("Could not reload config", error.message),
+          }),
+      },
+      {
+        name: "worktree",
+        description: "Manage worktrees",
+        run: openWorktrees,
+      },
+    ],
+    [
+      firstRevertedId,
+      isSessionBusy,
+      lastQuestionId,
+      openWorktrees,
+      reloadConfig.mutate,
+      restoreMessage.mutate,
+      revertTurn,
+      secondRevertedId,
+    ],
+  );
 
   const selectChat = (target: ProjectChatTarget) => {
     setIsChatSwitcherOpen(false);
@@ -657,6 +765,8 @@ export function ProjectChatScreen() {
                         setIsSessionChatSwitcherOpen(true);
                       }}
                       onOpenTerminal={openTerminal}
+                      onOpenWorktrees={openWorktrees}
+                      actions={composerActions}
                       selection={selection}
                       searchFiles={searchFiles}
                     />
@@ -784,11 +894,24 @@ export function ProjectChatScreen() {
         }}
         visible={isForkDrawerOpen}
       />
+      <OpencodeWorktreeDrawer
+        connection={{
+          accessToken: runtime.accessToken,
+          chatId: projectSessionId,
+          password: runtime.password,
+          serverUrl: runtime.serverUrl,
+        }}
+        currentDirectory={data.session.directory}
+        onClose={() => setIsWorktreeDrawerOpen(false)}
+        onSelect={openChatInDirectory}
+        visible={isWorktreeDrawerOpen}
+      />
     </View>
   );
 }
 
 const ProjectChatComposer = memo(function ProjectChatComposer({
+  actions,
   disabled,
   accessToken,
   accessibilityLabel,
@@ -799,6 +922,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   onNewChat,
   onOpenChats,
   onOpenTerminal,
+  onOpenWorktrees,
   onProviderConnected,
   password,
   promptError,
@@ -809,6 +933,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   serverUrl,
   sessionId,
 }: {
+  actions: OpencodeComposerAction[];
   accessToken: string;
   disabled: boolean;
   accessibilityLabel: string;
@@ -819,6 +944,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
   onNewChat: () => void;
   onOpenChats: () => void;
   onOpenTerminal: () => void;
+  onOpenWorktrees: () => void;
   onProviderConnected: () => Promise<void>;
   password?: string;
   promptError?: string;
@@ -844,6 +970,13 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
     accessToken,
     password,
   });
+  const { data: commands } = useOpencodeCommands(
+    chatId,
+    serverUrl,
+    accessToken,
+    directory,
+    password,
+  );
   const queuedPrompts = useMemo(
     () =>
       pendingInbox.filter(
@@ -1235,6 +1368,8 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
       ) : null}
       <OpencodeComposerController
         accessibilityLabel={accessibilityLabel}
+        actions={actions}
+        commands={commands}
         inventory={inventory}
         isStopping={abortSession.isPending}
         isSubmitting={sendPrompt.isPending || queuePrompt.isPending}
@@ -1242,6 +1377,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         onNewChat={onNewChat}
         onOpenChats={onOpenChats}
         onOpenTerminal={onOpenTerminal}
+        onOpenWorktrees={onOpenWorktrees}
         onStop={isStreaming ? stopStreaming : undefined}
         onSubmit={submit}
         placeholder={isStreaming ? "Type " : "Ask a follow-up…"}

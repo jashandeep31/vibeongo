@@ -7,6 +7,7 @@ import { Button } from "@repo/ui/components/button";
 import { ArrowLeft, TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useState } from "react";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { getOpencodePassword } from "@repo/api-client";
 
@@ -37,6 +38,7 @@ export default function NewOpencodeChatPage() {
     Boolean(serverUrl && accessToken && opencodePassword),
   );
   const directory = requestedDirectory ?? directories.data?.[0]?.worktree;
+  const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
 
   if (!serverUrl || !accessToken || !opencodePassword) {
     return (
@@ -75,6 +77,8 @@ export default function NewOpencodeChatPage() {
         accessToken={accessToken}
         password={opencodePassword}
         directory={directory}
+        worktreeOpen={isWorktreeOpen}
+        onWorktreeOpenChange={setIsWorktreeOpen}
       />
       <NewOpencodeChat
         chatId={projectSessionId}
@@ -85,6 +89,7 @@ export default function NewOpencodeChatPage() {
         directory={directory}
         projectName={projectName}
         sessionName={sessionName}
+        onOpenWorktrees={() => setIsWorktreeOpen(true)}
       />
     </div>
   );
