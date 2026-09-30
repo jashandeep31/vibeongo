@@ -1,12 +1,14 @@
 package webhooks
 
 import (
+	"crypto/subtle"
 	"fmt"
 	"net/http"
 	"net/url"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/labstack/echo/v5"
 )
 
@@ -37,6 +39,12 @@ type OpenCodeEvent struct {
 }
 
 func OpenCodeEventsWebhook(c *echo.Context) error {
+	authtoken := c.Request().Header.Get("Authorization")
+	expectedToken := utils.GetOpencodePluginToken()
+	if expectedToken == "" || subtle.ConstantTimeCompare([]byte(authtoken), []byte(expectedToken)) != 1 {
+		return echo.NewHTTPError(http.StatusUnauthorized, "Invalid token")
+	}
+
 	var event OpenCodeEvent
 	err := echo.BindBody(c, &event)
 	if err != nil {

@@ -4,6 +4,7 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 )
@@ -20,10 +21,14 @@ func Start() error {
 	tools := store.NewTools()
 
 	go func() {
-		// if err := tools.OpenCode.StartWebServerWithRetry(); err != nil {
-		// 	e.Logger.Error("failed to start opencode web server", "error", err)
-		// }
+		if err := tools.OpenCode.StartWebServerWithRetry(); err != nil {
+			e.Logger.Error("failed to start opencode web server", "error", err)
+		}
 	}()
+
+	if err := utils.EnsurePluginTokenFile(); err != nil {
+		return err
+	}
 
 	// Allow requests from every origin. Echo reflects requested headers for
 	// preflight requests when no explicit AllowHeaders list is configured.
