@@ -12,6 +12,7 @@ import {
   boolean,
   index,
   uniqueIndex,
+  doublePrecision,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 import { projects } from "./projects.js";
@@ -53,8 +54,6 @@ export const instances = pgTable(
     terminated_at: timestamp(),
     started_at: timestamp().notNull().defaultNow(),
     state: instanceState().notNull(),
-    // Stored as real cost * 10^7.
-    session_cost: bigint({ mode: "number" }).notNull().default(0),
     config: json().notNull().default("{}"),
 
     // Overview by the ai so if needed then we can resume the session with context
@@ -110,6 +109,11 @@ export const instancePeriods = pgTable(
     ended_at: timestamp(),
 
     rate_per_second: bigint({ mode: "number" }).notNull(),
+    compute_amount: bigint({ mode: "number" }).notNull().default(0),
+    ai_amount: bigint({ mode: "number" }).notNull().default(0),
+    network_amount: bigint({ mode: "number" }).notNull().default(0),
+    network_out_gb: doublePrecision().notNull().default(0),
+    storage_amount: bigint({ mode: "number" }).notNull().default(0),
     amount: bigint({ mode: "number" }),
     charged_at: timestamp(),
 

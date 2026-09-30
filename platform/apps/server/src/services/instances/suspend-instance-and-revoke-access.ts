@@ -4,18 +4,23 @@ import {
   eq,
   inArray,
   instanceOpenRouterKeys,
-  instancePeriods,
   instances,
   instanceSlots,
-  isNull,
   sandboxTypes,
 } from "@repo/db";
 import { createId } from "@paralleldrive/cuid2";
 import crypto from "crypto";
 import { AppError } from "../../lib/app-error.js";
+import { invalidateProxyHosts } from "../../lib/invalidate-project-proxies-by-pid.js";
+import { invalidateCachedProxyPreviews } from "../../cache/proxy-preview-cache.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
 import { getOpenRouterKeyChargesAnTerminateKey } from "../openrouter/index.js";
 import { dispatchQueuedInstanceLaunches } from "./check-and-queue-instance-launch.js";
+import {
+  chargeInstancePeriod,
+  getOrOpenRunningPeriod,
+  openInstancePeriod,
+} from "./charge-instance-period.js";
 import {
   calculateSandboxUsageCost,
   clearInstanceDomainRouting,
@@ -28,6 +33,49 @@ interface SuspendInstanceAndRevokeAccessProps {
   instanceId: string;
   userId: string;
 }
+
+const clearRuntimeSecrets = async (instance: typeof instances.$inferSelect) => {
+  const config =
+    instance.config && typeof instance.config === "object"
+      ? (instance.config as Record<string, unknown>)
+      : {};
+  const localToken =
+    typeof config.vibeongoLocalToken === "string"
+      ? config.vibeongoLocalToken
+      : "";
+
+  try {
+    if (!instance.public_ip || !localToken) {
+      throw new Error("runtime address or local token is missing");
+    }
+    const trafficToken = await e2bClient.getPreviewToken({
+      sandboxId: instance.provider_instance_id,
+    });
+    const response = await fetch(
+      `https://${instance.public_ip}/clear-secrets`,
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${localToken}`,
+          "e2b-traffic-access-token": trafficToken,
+        },
+        signal: AbortSignal.timeout(30_000),
+      },
+    );
+    if (!response.ok) {
+      throw new Error(`status ${response.status}: ${await response.text()}`);
+    }
+  } catch (error) {
+    console.error(
+      `Could not clear runtime secrets before suspending instance ${instance.id}`,
+      error,
+    );
+    throw new AppError(
+      "Could not clear the instance before suspending it. Please try again.",
+      502,
+    );
+  }
+};
 
 export const suspendInstanceAndRevokeAccess = async ({
   instanceId,
@@ -49,6 +97,8 @@ export const suspendInstanceAndRevokeAccess = async ({
     throw new AppError("Only E2B sandboxes can be suspended", 400);
   }
 
+  await clearRuntimeSecrets(instance);
+
   const aiCharges = await getOpenRouterKeyChargesAnTerminateKey(instance.id);
 
   await e2bClient.suspendInstance(instance.provider_instance_id);
@@ -57,11 +107,10 @@ export const suspendInstanceAndRevokeAccess = async ({
   const uptimeInMin = Math.ceil(
     (suspendedAt.getTime() - instance.started_at.getTime()) / 1000 / 60,
   );
-  const runningAmount =
-    calculateSandboxUsageCost({
-      pricePerSecond: sandboxType.price_per_second,
-      uptimeInMin,
-    }) + aiCharges;
+  const computeAmount = calculateSandboxUsageCost({
+    pricePerSecond: sandboxType.price_per_second,
+    uptimeInMin,
+  });
 
   const instanceConfig =
     instance.config && typeof instance.config === "object"
@@ -98,38 +147,27 @@ export const suspendInstanceAndRevokeAccess = async ({
       )
       .returning({ category: instanceSlots.category });
 
-    const [closedPeriod] = await tx
-      .update(instancePeriods)
-      .set({
-        ended_at: suspendedAt,
-        amount: runningAmount,
-        updated_at: suspendedAt,
-      })
-      .where(
-        and(
-          eq(instancePeriods.instance_id, instanceId),
-          eq(instancePeriods.kind, "running"),
-          isNull(instancePeriods.ended_at),
-        ),
-      )
-      .returning({ id: instancePeriods.id });
+    const runningPeriodId = await getOrOpenRunningPeriod({
+      tx,
+      instance,
+      ratePerSecond: sandboxType.price_per_second,
+    });
+    await chargeInstancePeriod({
+      tx,
+      periodId: runningPeriodId,
+      instance,
+      endedAt: suspendedAt,
+      computeAmount,
+      aiAmount: aiCharges,
+      event: "suspended",
+    });
 
-    if (!closedPeriod) {
-      await tx.insert(instancePeriods).values({
-        instance_id: instanceId,
-        kind: "running",
-        started_at: instance.started_at,
-        ended_at: suspendedAt,
-        rate_per_second: sandboxType.price_per_second,
-        amount: runningAmount,
-      });
-    }
-
-    await tx.insert(instancePeriods).values({
-      instance_id: instanceId,
+    await openInstancePeriod({
+      tx,
+      instanceId,
       kind: "suspended",
-      started_at: suspendedAt,
-      rate_per_second: 0,
+      startedAt: suspendedAt,
+      ratePerSecond: 0,
     });
 
     await tx
@@ -141,6 +179,14 @@ export const suspendInstanceAndRevokeAccess = async ({
 
   await queueInstanceGitTokenRevocations(instanceId);
   await clearInstanceDomainRouting({ instanceId, userId });
+  await invalidateCachedProxyPreviews("e2b", instance.provider_instance_id);
+  if (instance.project_id) {
+    await invalidateProxyHosts(
+      instance.project_id,
+      [`3101-${instance.id}`, `4096-${instance.id}`],
+      instance.proxy_domain,
+    );
+  }
 
   if (suspendedSlot) {
     try {

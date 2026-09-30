@@ -2,6 +2,7 @@ package vibeongo
 
 import (
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/actions"
@@ -231,6 +232,24 @@ func ProvisionOpenCodeCmd() *cobra.Command {
 			return actions.ProvisionOpenCode(cfg.OpenCode)
 		},
 	}
+}
+
+func ResumeRuntimeCmd() *cobra.Command {
+	var sessionToken string
+	cmd := &cobra.Command{
+		Use:   "resume-runtime",
+		Short: "Restore the runtime after the instance is resumed",
+		Long:  "Fetch the runtime config again, put the tool credentials back in place, and start opencode and the dev script. The new session token can be passed with --session-token or the VIBEONGO_SESSION_TOKEN environment variable.",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if sessionToken == "" {
+				sessionToken = os.Getenv("VIBEONGO_SESSION_TOKEN")
+			}
+			return actions.ResumeRuntime(sessionToken)
+		},
+	}
+	cmd.Flags().StringVar(&sessionToken, "session-token", "", "Session token to fetch the runtime config with")
+	return cmd
 }
 
 func ExecuteIntialScriptCmd() *cobra.Command {

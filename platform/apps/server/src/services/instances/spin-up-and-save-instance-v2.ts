@@ -25,6 +25,7 @@ import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
 import { createProviderInstance } from "../../providers/create-providers-instance.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { createOpenRouterVirtualKeyAndSave } from "../openrouter/index.js";
+import { openInstancePeriod } from "./charge-instance-period.js";
 
 type ProviderInstance = Awaited<ReturnType<typeof createProviderInstance>>;
 
@@ -34,12 +35,14 @@ type ProvisionedInstance =
       instance: ProviderInstance;
       instanceTypeId: string;
       sandboxTypeId: null;
+      ratePerSecond: number;
     }
   | {
       runtime: "sandbox";
       instance: ProviderInstance;
       instanceTypeId: null;
       sandboxTypeId: string;
+      ratePerSecond: number;
     };
 
 interface SpinUpAndSaveInstanceV2 {
@@ -115,41 +118,54 @@ export const spinUpAndSaveInstanceV2 = async ({
     instance: newInstance,
     instanceTypeId,
     sandboxTypeId,
+    ratePerSecond,
   } = provisionedInstance;
 
-  const [instance] = await db
-    .insert(instances)
-    .values({
-      name: newInstance.instanceName,
-      id: instanceId,
-      project_id: project.id,
-      user_id: userId,
-      runtime_kind: provisionedInstance.runtime,
-      instance_type_id: instanceTypeId,
-      sandbox_type_id: sandboxTypeId,
-      provider_instance_id: newInstance.instanceId,
-      proxy_domain: await getProxyServerUrl(project.id),
-      terminated_at: null,
-      terminates_at: new Date(
-        new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
-      ),
-      started_at: new Date(),
-      public_ip: newInstance.publicIPv4,
-      state: "running",
-      project_session_id: sessionId,
-      access_token: createId(),
-      config: {
-        opencodePassword: createId(),
-        terminate: category === "auto",
-        vibeongoLocalToken: createId(),
-        sessionToken: sessionToken,
-      },
-    })
-    .returning();
+  const startedAt = new Date();
+  const instance = await db.transaction(async (tx) => {
+    const [createdInstance] = await tx
+      .insert(instances)
+      .values({
+        name: newInstance.instanceName,
+        id: instanceId,
+        project_id: project.id,
+        user_id: userId,
+        runtime_kind: provisionedInstance.runtime,
+        instance_type_id: instanceTypeId,
+        sandbox_type_id: sandboxTypeId,
+        provider_instance_id: newInstance.instanceId,
+        proxy_domain: await getProxyServerUrl(project.id),
+        terminated_at: null,
+        terminates_at: new Date(
+          new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
+        ),
+        started_at: startedAt,
+        public_ip: newInstance.publicIPv4,
+        state: "running",
+        project_session_id: sessionId,
+        access_token: createId(),
+        config: {
+          opencodePassword: createId(),
+          terminate: category === "auto",
+          vibeongoLocalToken: createId(),
+          sessionToken: sessionToken,
+        },
+      })
+      .returning();
 
-  if (!instance) {
-    throw new AppError("Failed to create instance", 500);
-  }
+    if (!createdInstance) {
+      throw new AppError("Failed to create instance", 500);
+    }
+
+    await openInstancePeriod({
+      tx,
+      instanceId: createdInstance.id,
+      kind: "running",
+      startedAt,
+      ratePerSecond,
+    });
+    return createdInstance;
+  });
 
   // TODO: look for a better way
   await createOpenRouterVirtualKeyAndSave({
@@ -168,7 +184,7 @@ export const spinUpAndSaveInstanceV2 = async ({
 const MAX_OPENROUTER_KEY_LIMIT_IN_DOLLARS = 5;
 const MIN_OPENROUTER_KEY_LIMIT_IN_DOLLARS = 0.01;
 
-const getOpenRouterKeyLimitInDollars = async ({
+export const getOpenRouterKeyLimitInDollars = async ({
   userId,
   instanceTypeId,
   sandboxTypeId,
@@ -256,6 +272,9 @@ const handleVmRuntime = async ({
     }),
     instanceTypeId: instanceTypeWithRegion.instanceType.id,
     sandboxTypeId: null,
+    ratePerSecond: Math.ceil(
+      instanceTypeWithRegion.instanceType.price_per_hour / 3600,
+    ),
   };
 };
 const handlesandboxRuntime = async ({
@@ -304,5 +323,6 @@ const handlesandboxRuntime = async ({
     }),
     instanceTypeId: null,
     sandboxTypeId: row.sandboxType.id,
+    ratePerSecond: row.sandboxType.price_per_second,
   };
 };

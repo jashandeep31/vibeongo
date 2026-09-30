@@ -3,8 +3,12 @@ import axios from "axios";
 import { env } from "./env.js";
 import { getProxyServerUrl } from "./proxy-servers.js";
 
-export const invalidateProxyHosts = async (pid: string, hosts: string[]) => {
-  const domain = await getProxyServerUrl(pid);
+export const invalidateProxyHosts = async (
+  pid: string,
+  hosts: string[],
+  proxyDomain?: string,
+) => {
+  const domain = proxyDomain ?? (await getProxyServerUrl(pid));
   const uniqueHosts = [
     ...new Set(
       hosts
@@ -28,7 +32,11 @@ export const invalidateProxyHosts = async (pid: string, hosts: string[]) => {
   );
 };
 
-export const invalidateProjectProxiesByPid = async (pid: string) => {
+export const invalidateProjectProxiesByPid = async (
+  pid: string,
+  additionalHosts: string[] = [],
+  proxyDomain?: string,
+) => {
   const data = await db
     .select({
       domain: proxyDomains.domain,
@@ -42,6 +50,7 @@ export const invalidateProjectProxiesByPid = async (pid: string) => {
 
   await invalidateProxyHosts(
     pid,
-    data.map((d) => d.domain),
+    [...data.map((d) => d.domain), ...additionalHosts],
+    proxyDomain,
   );
 };

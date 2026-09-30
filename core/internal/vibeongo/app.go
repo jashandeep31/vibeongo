@@ -27,6 +27,7 @@ func NewCommand() *cobra.Command {
 	rootCmd.AddCommand(ProvissionToolsCmd())
 	// ProvisionOpenCodeCmd setup opencode
 	rootCmd.AddCommand(ProvisionOpenCodeCmd())
+	rootCmd.AddCommand(ResumeRuntimeCmd())
 	// CloneGitReposCmd clone the github repos
 	rootCmd.AddCommand(CloneGitReposCmd())
 	// ServeCmd start the echo server

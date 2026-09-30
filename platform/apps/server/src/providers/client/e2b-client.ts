@@ -21,6 +21,25 @@ export class E2BClient {
     return true;
   }
 
+  async resumeInstance(instanceId: string, timeoutMs: number) {
+    await Sandbox.connect(instanceId, {
+      apiKey: env.E2B_API_KEY,
+      timeoutMs,
+    });
+    return true;
+  }
+
+  async runCommand(
+    instanceId: string,
+    command: string,
+    opts: { user?: string; envs?: Record<string, string>; timeoutMs?: number },
+  ) {
+    const sandbox = await Sandbox.connect(instanceId, {
+      apiKey: env.E2B_API_KEY,
+    });
+    return sandbox.commands.run(command, opts);
+  }
+
   async createInstance({
     instanceName,
     userData,
