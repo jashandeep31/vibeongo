@@ -69,31 +69,6 @@ func ProvisionPi(cfg *config.PiConfig) error {
 	return nil
 }
 
-func ProvisionClaude(cfg *config.ClaudeConfig) error {
-	if cfg == nil {
-		return nil
-	}
-	fmt.Println("setting up the claude .credentials.json")
-
-	credentialsJSON := bytes.TrimSpace(cfg.AuthJSON)
-	if len(credentialsJSON) == 0 || string(credentialsJSON) == "null" {
-		credentialsJSON = []byte("{}")
-	}
-
-	credentialsDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.claude")
-	if err := os.MkdirAll(credentialsDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create claude credentials directory: %w", err)
-	}
-
-	credentialsPath := filepath.Join(credentialsDir, ".credentials.json")
-	if err := os.WriteFile(credentialsPath, credentialsJSON, 0o600); err != nil {
-		return fmt.Errorf("failed to write claude .credentials.json: %w", err)
-	}
-
-	fmt.Println("updated the claude .credentials.json")
-	return nil
-}
-
 func ProvisionT3Code(cfg config.Config) error {
 	fmt.Println("Adding the projects to the t3")
 	for _, repo := range cfg.Repos {

@@ -208,10 +208,6 @@ func ProvissionToolsCmd() *cobra.Command {
 			if err := actions.ProvisionPi(cfg.Pi); err != nil {
 				return err
 			}
-
-			if err := actions.ProvisionClaude(cfg.Claude); err != nil {
-				return err
-			}
 			return nil
 		},
 	}

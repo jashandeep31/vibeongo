@@ -8,6 +8,7 @@ import {
 import type { UserConfigValue } from "@repo/api-client";
 import type { userConfigs } from "@repo/db";
 import { opencodeCredentialsValidator } from "@repo/shared";
+import { Alert, AlertDescription, AlertTitle } from "@repo/ui/components/alert";
 import { Button } from "@repo/ui/components/button";
 import {
   Dialog,
@@ -21,6 +22,7 @@ import {
 import { Skeleton } from "@repo/ui/components/skeleton";
 import { Textarea } from "@repo/ui/components/textarea";
 import { useQueryClient } from "@tanstack/react-query";
+import { TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 
@@ -139,6 +141,17 @@ export function UserConfigDialog({
             open and encrypted again when saved.
           </DialogDescription>
         </DialogHeader>
+
+        {configType === "claude" ? (
+          <Alert>
+            <TriangleAlert />
+            <AlertTitle>Claude Code is not supported yet</AlertTitle>
+            <AlertDescription>
+              You can save your configuration now, but it is not applied to your
+              instances until Claude Code support is ready.
+            </AlertDescription>
+          </Alert>
+        ) : null}
 
         {configQuery.isLoading ? (
           <Skeleton className="h-72 w-full" />

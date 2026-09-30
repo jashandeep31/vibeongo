@@ -1064,6 +1064,27 @@ function UserConfigDrawer({
         This sensitive configuration is decrypted only while this drawer is open
         and encrypted again when saved.
       </ThemedText>
+      {editor?.type === "claude" ? (
+        <View style={styles.notice}>
+          <SymbolView
+            name={{
+              ios: "exclamationmark.triangle.fill",
+              android: "warning",
+            }}
+            size={16}
+            tintColor="#b45309"
+          />
+          <View style={styles.noticeCopy}>
+            <ThemedText style={styles.noticeTitle}>
+              Claude Code is not supported yet
+            </ThemedText>
+            <ThemedText style={styles.noticeText}>
+              You can save your configuration now, but it is not applied to your
+              instances until Claude Code support is ready.
+            </ThemedText>
+          </View>
+        </View>
+      ) : null}
       {configQuery.isPending ? (
         <View style={styles.drawerState}>
           <ActivityIndicator color={theme.textSecondary} />
@@ -1524,6 +1545,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   jsonInput: { fontSize: 12, height: 260, lineHeight: 18, marginTop: 6 },
+  notice: {
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
+    borderColor: "rgba(245, 158, 11, 0.35)",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 18,
+    padding: 12,
+  },
+  noticeCopy: { flex: 1, gap: 2 },
+  noticeText: { color: "#b45309", fontSize: 12, lineHeight: 17 },
+  noticeTitle: { color: "#b45309", fontSize: 13, fontWeight: "700" },
   sshInput: { height: 120 },
   validation: { color: "#ef4444", fontSize: 12, lineHeight: 17, marginTop: 7 },
 });

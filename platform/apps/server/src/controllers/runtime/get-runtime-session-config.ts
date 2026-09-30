@@ -55,9 +55,8 @@ export const getRuntimeSessionConfig = catchAsync(
     const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
     const resolvedProjectConfig = await appendOpenRouterKeysToOpencodeConfig(
       instanceId,
-      await resolveProjectUserConfigs(
-        withClaudePackage(parsedConfig),
-        project.user_id,
+      withEmptyClaudePackage(
+        await resolveProjectUserConfigs(parsedConfig, project.user_id),
       ),
     );
 
@@ -173,18 +172,16 @@ type ResolvedProjectConfig = Awaited<
   ReturnType<typeof resolveProjectUserConfigs>
 >;
 
-function withClaudePackage(
+function withEmptyClaudePackage(
   config: ResolvedProjectConfig,
 ): ResolvedProjectConfig {
-  if (
-    config.packages.some((projectPackage) => projectPackage.name === "claude")
-  )
-    return config;
-
+  const packages = config.packages.filter(
+    (projectPackage) => projectPackage.name !== "claude",
+  );
   return {
     ...config,
     packages: [
-      ...config.packages,
+      ...packages,
       { name: "claude", config: { auth_json: {}, use_user_config: true } },
     ],
   };
