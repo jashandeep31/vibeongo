@@ -50,6 +50,13 @@
       "when": 1790751754621,
       "tag": "0006_messy_hiroim",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790778635252,
+      "tag": "0007_outgoing_norrin_radd",
+      "breakpoints": true
     }
   ]
 }
