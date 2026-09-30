@@ -19,7 +19,8 @@ import {
 import { useGetProjectGithubReposById } from "@repo/api-hooks";
 import { useAuthenticatedUser } from "@repo/api-hooks";
 import { useWebSocket } from "@repo/api-hooks";
-import { LOW_BALANCE_THRESHOLD } from "@/lib/constants";
+import { LowBalanceAlert } from "@/components/low-balance-alert";
+import { showResumeSessionError } from "@/lib/resume-session-error";
 import {
   isWorkspaceView,
   WORKSPACE_VIEW_CHANGE_EVENT,
@@ -51,10 +52,8 @@ import {
   Play,
   Plus,
   Terminal,
-  TriangleAlert,
   X,
 } from "lucide-react";
-import axios from "axios";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -75,16 +74,6 @@ function getRunningSessionUrl(entry: SessionEntry, directory: string) {
 function getServerUrl(entry: SessionEntry) {
   if (!entry.instance || entry.state !== "running") return "";
   return `https://4096-${entry.instance.id}${entry.instance.proxy_domain}`;
-}
-
-function getErrorMessage(error: unknown, fallback: string) {
-  if (axios.isAxiosError<{ message?: unknown }>(error)) {
-    const message = error.response?.data?.message;
-    if (typeof message === "string" && message.trim()) return message;
-  }
-
-  if (error instanceof Error && error.message.trim()) return error.message;
-  return fallback;
 }
 
 function SessionRow({
@@ -308,8 +297,6 @@ export default function ClientView() {
   );
   const [isCreatingChat, setIsCreatingChat] = useState(false);
   const [activeTab, setActiveTab] = useState<WorkspaceView>("projects");
-  const isBalanceLow = user && user.balance < LOW_BALANCE_THRESHOLD;
-  const hasNoBalance = user && user.balance <= 0;
 
   useEffect(() => {
     const syncViewFromUrl = () => {
@@ -376,7 +363,7 @@ export default function ClientView() {
       {
         onSuccess: () => toast.success("Session is starting"),
         onError: (error) =>
-          toast.error(getErrorMessage(error, "Failed to resume session")),
+          showResumeSessionError(error, (href) => router.push(href)),
         onSettled: () => setResumingSessionId(null),
       },
     );
@@ -476,31 +463,10 @@ export default function ClientView() {
               autoFocus
               focusOnTyping
             />
-            {isBalanceLow ? (
-              <div
-                role="alert"
-                className={`relative z-0 mx-7 -mt-3 flex min-h-12 items-center justify-between gap-3 rounded-b-2xl px-4 pt-5 pb-3 text-sm ${
-                  hasNoBalance
-                    ? "bg-destructive/10 text-destructive"
-                    : "bg-amber-500/10 text-amber-700 dark:text-amber-400"
-                }`}
-              >
-                <span className="flex min-w-0 items-center gap-2">
-                  <TriangleAlert className="size-4 shrink-0" />
-                  <span>
-                    {hasNoBalance
-                      ? "No credits remaining. Add credits to continue using AI."
-                      : "Your wallet balance is low."}
-                  </span>
-                </span>
-                <Link
-                  href="/wallet"
-                  className="shrink-0 font-medium underline underline-offset-4"
-                >
-                  Add credits
-                </Link>
-              </div>
-            ) : null}
+            <LowBalanceAlert
+              balance={user?.balance}
+              className="relative z-0 mx-7 -mt-3 rounded-b-2xl pt-5 pb-3"
+            />
           </div>
 
           <section aria-label="Recent chats" className="mt-6">
@@ -562,6 +528,10 @@ export default function ClientView() {
         </TabsContent>
 
         <TabsContent value="projects">
+          <LowBalanceAlert
+            balance={user?.balance}
+            className="mb-4 rounded-xl border border-current/15 py-3"
+          />
           <div className="mb-4 flex justify-end">
             <Button
               asChild

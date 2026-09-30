@@ -71,6 +71,9 @@ export const useResumeProjectSession = () => {
           .getState()
           .updateSessionState(context.id, context.previousState);
       }
+      // A failed launch is often a balance problem; refresh the balance so
+      // the low-balance warnings reflect it.
+      void queryClient.invalidateQueries({ queryKey: ["user-metadata"] });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });

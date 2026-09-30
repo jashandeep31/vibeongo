@@ -51,6 +51,7 @@ import {
   Terminal,
   WalletCards,
 } from "lucide-react";
+import { showResumeSessionError } from "@/lib/resume-session-error";
 import { useParams, useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
@@ -307,7 +308,13 @@ export function PlaygroundCommandBox() {
 
     const sessionId = runtimeDialogSessionId;
     setRuntimeDialogSessionId(null);
-    resumeSession.mutate({ id: sessionId, runtime });
+    resumeSession.mutate(
+      { id: sessionId, runtime },
+      {
+        onError: (error) =>
+          showResumeSessionError(error, (href) => router.push(href)),
+      },
+    );
     setOpen(true);
   };
 

@@ -6,7 +6,12 @@ import {
   useGetProjectOverview,
   useResumeProjectSession,
   useTerminateInstance,
+  useUserMetadata,
 } from "@repo/api-hooks";
+import {
+  isInsufficientBalanceMessage,
+  LOW_BALANCE_THRESHOLD,
+} from "@repo/shared/money";
 import {
   useProjectsStore,
   useSessionChatsStore,
@@ -82,6 +87,55 @@ function getApiError(error: unknown) {
   };
 }
 
+function LowBalanceBanner({
+  balance,
+  onPress,
+}: {
+  balance: number | undefined;
+  onPress: () => void;
+}) {
+  if (balance === undefined || balance >= LOW_BALANCE_THRESHOLD) return null;
+  const hasNoBalance = balance <= 0;
+  const color = hasNoBalance ? "#dc2626" : "#b45309";
+
+  return (
+    <Pressable
+      accessibilityLabel="Low wallet balance. Add credits"
+      accessibilityRole="button"
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.balanceBanner,
+        {
+          backgroundColor: hasNoBalance
+            ? "rgba(220, 38, 38, 0.1)"
+            : "rgba(245, 158, 11, 0.12)",
+          borderColor: hasNoBalance
+            ? "rgba(220, 38, 38, 0.3)"
+            : "rgba(245, 158, 11, 0.35)",
+        },
+        pressed && styles.pressed,
+      ]}
+    >
+      <SymbolView
+        name={{
+          ios: "exclamationmark.triangle.fill",
+          android: "warning",
+        }}
+        size={17}
+        tintColor={color}
+      />
+      <ThemedText style={[styles.balanceBannerText, { color }]}>
+        {hasNoBalance
+          ? "No credits remaining. Add credits to start sessions."
+          : "Your wallet balance is low. Sessions may fail to start."}
+      </ThemedText>
+      <ThemedText style={[styles.balanceBannerAction, { color }]}>
+        Add credits
+      </ThemedText>
+    </Pressable>
+  );
+}
+
 export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const theme = useTheme();
   const router = useRouter();
@@ -105,6 +159,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
   const deleteProject = useDeleteProject();
+  const userQuery = useUserMetadata();
   const [runtimeSessionId, setRuntimeSessionId] = useState<string | null>(null);
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
     null,
@@ -211,9 +266,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
             return;
           }
 
-          if (
-            apiError.message?.toLowerCase().startsWith("insufficient balance")
-          ) {
+          if (isInsufficientBalanceMessage(apiError.message)) {
             Toast.show({
               type: "error",
               text1: "Insufficient balance",
@@ -372,7 +425,10 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
         nestedScrollEnabled
         refreshControl={
           <RefreshControl
-            onRefresh={() => void projectsQuery.refetch()}
+            onRefresh={() => {
+              void projectsQuery.refetch();
+              void userQuery.refetch();
+            }}
             refreshing={
               projectsQuery.isRefetching && !projectsQuery.isFetchingNextPage
             }
@@ -381,6 +437,10 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
         }
         showsVerticalScrollIndicator={false}
       >
+        <LowBalanceBanner
+          balance={userQuery.data?.balance}
+          onPress={() => router.push("/wallet")}
+        />
         {projects.map((project) => (
           <View
             key={project.id}
@@ -883,6 +943,22 @@ const SessionExpiryWarning = memo(function SessionExpiryWarning({
 });
 
 const styles = StyleSheet.create({
+  balanceBanner: {
+    alignItems: "center",
+    borderRadius: 14,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 16,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+  },
+  balanceBannerAction: {
+    fontSize: 13,
+    fontWeight: "700",
+    textDecorationLine: "underline",
+  },
+  balanceBannerText: { flex: 1, fontSize: 13, lineHeight: 18 },
   automatedBadge: {
     alignItems: "center",
     backgroundColor: "rgba(139, 92, 246, 0.12)",

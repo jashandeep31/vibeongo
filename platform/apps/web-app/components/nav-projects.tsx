@@ -59,6 +59,7 @@ import {
 } from "lucide-react";
 import { Blocks } from "loading-dev";
 import Link from "next/link";
+import { showResumeSessionError } from "@/lib/resume-session-error";
 import { useParams, usePathname, useRouter } from "next/navigation";
 import { useEffect, useState, type ReactElement } from "react";
 import { projects, projectSessions } from "@repo/db";
@@ -514,6 +515,7 @@ function ProjectSessionNavItem({
 export function NavProjects({ projects }: { projects: Project[] }): ReactElement {
   const params = useParams<{ projectId?: string }>();
   const activeProjectId = params.projectId;
+  const router = useRouter();
   const resumeSession = useResumeProjectSession();
   const archiveSession = useArchiveProjectSession();
   const sessions = useSessionsStore((store) => store.sessions);
@@ -559,7 +561,13 @@ export function NavProjects({ projects }: { projects: Project[] }): ReactElement
 
     const sessionId = runtimeDialogSessionId;
     setRuntimeDialogSessionId(null);
-    resumeSession.mutate({ id: sessionId, runtime });
+    resumeSession.mutate(
+      { id: sessionId, runtime },
+      {
+        onError: (error) =>
+          showResumeSessionError(error, (href) => router.push(href)),
+      },
+    );
   };
 
   const handleArchive = (sessionId: string) => {
