@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
@@ -33,9 +34,25 @@ type Data struct {
 	SessionID string `json:"sessionID"`
 }
 
+// Notification is written by the plugin's notification agent, absent when that failed
+type Notification struct {
+	Title string `json:"title"`
+	Body  string `json:"body"`
+}
+
 type OpenCodeEvent struct {
-	Type OpenCodeEventType `json:"type"`
-	Data Data              `json:"data"`
+	Type         OpenCodeEventType `json:"type"`
+	Data         Data              `json:"data"`
+	Notification *Notification     `json:"notification,omitempty"`
+}
+
+// crafted title and body from the plugin, or the given defaults
+func (e OpenCodeEvent) notificationText(title string, body string) (string, string) {
+	if e.Notification == nil || strings.TrimSpace(e.Notification.Title) == "" {
+		fmt.Println("OpenCodeEventsWebhook: no crafted notification from plugin, using default text")
+		return title, body
+	}
+	return strings.TrimSpace(e.Notification.Title), strings.TrimSpace(e.Notification.Body)
 }
 
 func OpenCodeEventsWebhook(c *echo.Context) error {
@@ -51,14 +68,16 @@ func OpenCodeEventsWebhook(c *echo.Context) error {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
 	}
 
+	fmt.Printf("OpenCodeEventsWebhook: received type=%s sessionID=%s notification=%+v\n", event.Type, event.Data.SessionID, event.Notification)
+
 	switch event.Type {
 	case OpencoodeEventSessionExecutionSucceeded:
+		title, body := event.notificationText(
+			"Task finished",
+			"Your agent has finished working. Open the session to review the changes.",
+		)
 		go func() {
-			if err := SendNotificationEvent(
-				"Task finished",
-				"Your agent has finished working. Open the session to review the changes.",
-				event.Data.SessionID,
-			); err != nil {
+			if err := SendNotificationEvent(title, body, event.Data.SessionID); err != nil {
 				fmt.Println("OpenCodeEventsWebhook: failed to send notification:", err)
 			}
 		}()
@@ -104,15 +123,14 @@ func SendNotificationEvent(title string, body string, opencodeSessionID string) 
 		"X-Instance-Id": cfg.InstanceID,
 	}
 
-	_, err = apiClient.Post(
-		"/api/v1/notifications/runtime/sessions/"+cfg.SessionID,
-		notificationRequest{
-			Title: title,
-			Body:  body,
-			URL:   chatURL(cfg, opencodeSessionID),
-		},
-		headers,
-		nil,
-	)
+	path := "/api/v1/notifications/runtime/sessions/" + cfg.SessionID
+	notification := notificationRequest{
+		Title: title,
+		Body:  body,
+		URL:   chatURL(cfg, opencodeSessionID),
+	}
+	fmt.Printf("SendNotificationEvent: POST %s%s notification=%+v\n", cfg.ServerBaseURL, path, notification)
+
+	_, err = apiClient.Post(path, notification, headers, nil)
 	return err
 }

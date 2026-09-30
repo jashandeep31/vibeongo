@@ -17,5 +17,4 @@ core/vibeongo
 core/proxyserver
 core/test.db
 core/config.json
-core/webhook-token.txt
 .codex

@@ -10,11 +10,8 @@ import (
 	"strings"
 )
 
-// development keeps the token next to the running server, like config.json
+// always in the user's config dir, where the opencode plugin reads it
 func pluginTokenPath() string {
-	if IsDevelopment() {
-		return "webhook-token.txt"
-	}
 	return filepath.Join(ReplaceUsernamePlaceholder("/home/_USERNAME_/.config/vibeongo"), "webhook-token.txt")
 }
 
