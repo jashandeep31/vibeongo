@@ -7,6 +7,7 @@ import * as Notifications from "expo-notifications";
 import { router, type Href } from "expo-router";
 import { useEffect, useRef } from "react";
 
+import { useIsViewingChat } from "@/hooks/use-is-viewing-chat";
 import { showNotificationToast } from "@/lib/notification-toast";
 import { dismissNotificationFromTray } from "@/lib/notification-tray";
 
@@ -34,6 +35,7 @@ export function PushNotificationHandler() {
   const { mutate: markNotificationRead } = useMarkNotificationRead();
   const markReadRef = useRef(markNotificationRead);
   markReadRef.current = markNotificationRead;
+  const isViewingChat = useIsViewingChat();
   // the same response can come from both the listener and the last response
   const handledRef = useRef(new Set<string>());
 
@@ -78,6 +80,12 @@ export function PushNotificationHandler() {
         });
 
         const { title, body, data } = notification.request.content;
+        // already looking at that chat: no toast, it counts as read
+        if (isViewingChat(data?.url)) {
+          markRead(notification);
+          return;
+        }
+
         showNotificationToast({
           title: title ?? "Notification",
           body,
@@ -91,7 +99,7 @@ export function PushNotificationHandler() {
       responseSubscription.remove();
       receivedSubscription.remove();
     };
-  }, [queryClient]);
+  }, [isViewingChat, queryClient]);
 
   return null;
 }

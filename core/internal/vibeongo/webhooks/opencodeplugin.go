@@ -6,6 +6,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/shared/httpclient"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
@@ -41,6 +43,8 @@ type Notification struct {
 }
 
 type OpenCodeEvent struct {
+	// unique per opencode event ("evt_..."), the same in every plugin copy that sees it
+	ID           string            `json:"id"`
 	Type         OpenCodeEventType `json:"type"`
 	Data         Data              `json:"data"`
 	Notification *Notification     `json:"notification,omitempty"`
@@ -54,6 +58,37 @@ func (e OpenCodeEvent) notificationText(title string, body string) (string, stri
 	return strings.TrimSpace(e.Notification.Title), strings.TrimSpace(e.Notification.Body)
 }
 
+// how long an event id is remembered; every plugin copy posts within seconds
+const seenEventTTL = 10 * time.Minute
+
+var (
+	seenEventsMu sync.Mutex
+	seenEvents   = map[string]time.Time{}
+)
+
+// firstSighting reports whether this event id was not handled yet. More than
+// one opencode process can load the plugin (e.g. a local service and a TUI),
+// and each posts the same event, which must become a single notification.
+func firstSighting(eventID string) bool {
+	if eventID == "" {
+		return true
+	}
+	seenEventsMu.Lock()
+	defer seenEventsMu.Unlock()
+
+	now := time.Now()
+	for id, seenAt := range seenEvents {
+		if now.Sub(seenAt) > seenEventTTL {
+			delete(seenEvents, id)
+		}
+	}
+	if _, seen := seenEvents[eventID]; seen {
+		return false
+	}
+	seenEvents[eventID] = now
+	return true
+}
+
 func OpenCodeEventsWebhook(c *echo.Context) error {
 	authtoken := c.Request().Header.Get("Authorization")
 	expectedToken := utils.GetOpencodePluginToken()
@@ -65,6 +100,11 @@ func OpenCodeEventsWebhook(c *echo.Context) error {
 	err := echo.BindBody(c, &event)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "Invalid request body")
+	}
+
+	// a duplicate still gets 200: the plugin did nothing wrong
+	if !firstSighting(event.ID) {
+		return nil
 	}
 
 	switch event.Type {

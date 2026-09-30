@@ -6,6 +6,7 @@ import {
 import { useEffect, useRef } from "react";
 import { AppState } from "react-native";
 
+import { useIsViewingChat } from "@/hooks/use-is-viewing-chat";
 import { showNotificationToast } from "@/lib/notification-toast";
 import { dismissNotificationFromTray } from "@/lib/notification-tray";
 
@@ -30,6 +31,7 @@ export function NotificationListener() {
   const queryClient = useQueryClient();
   const { sendJsonMessage, status, subscribeJsonMessage } = useWebSocket();
   const { mutate: markNotificationRead } = useMarkNotificationRead();
+  const isViewingChat = useIsViewingChat();
   // notifications received while the app was not in the foreground
   const pendingRef = useRef<AppNotification[]>([]);
 
@@ -38,6 +40,13 @@ export function NotificationListener() {
     queryClient.invalidateQueries({ queryKey: ["notifications"] });
 
   const showNotification = (notification: AppNotification) => {
+    // already looking at that chat: nothing to announce, it counts as read
+    // (which also cancels the push)
+    if (isViewingChat(notification.payload?.url)) {
+      markNotificationRead(notification.id);
+      return;
+    }
+
     showNotificationToast({
       title: notification.title,
       body: notification.body,

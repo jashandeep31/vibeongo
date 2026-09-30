@@ -1,4 +1,5 @@
 import { MobileSidebarTrigger } from "@/components/mobile-sidebar-trigger";
+import { NotificationListener } from "@/components/notification-listener";
 import { PlaygroundCommandBox } from "@/components/playground-command-box";
 import { PlaygroundSidebar } from "@/components/playground-sidebar";
 import { PlaygroundStoreSync } from "@/components/playground-store-sync";
@@ -24,6 +25,7 @@ export default async function PlaygroundLayout({
         style={{ "--sidebar-width": "18rem" } as React.CSSProperties}
       >
         <PlaygroundStoreSync />
+        <NotificationListener />
         <PlaygroundCommandBox />
         <PlaygroundSidebar />
         <MobileSidebarTrigger className="bg-background/90 border shadow-sm backdrop-blur" />
