@@ -25,6 +25,10 @@ import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { resolveProjectUserConfigs } from "../../services/user-config/resolve-project-user-configs.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { decryptData } from "../../lib/encryption-decryption.js";
+import {
+  vibeongoAiModels,
+  vibeongoAiModelsSchema,
+} from "../../services/opencode/vibeongo-ai-models.js";
 
 export const getRuntimeSessionConfig = catchAsync(
   async (req: Request, res: Response) => {
@@ -53,7 +57,7 @@ export const getRuntimeSessionConfig = catchAsync(
     const { project, instance } = sessionRow;
     const stringfiedConfig = await getDecryptedProjectConfig(project.id);
     const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
-    const resolvedProjectConfig = await appendOpenRouterKeysToOpencodeConfig(
+    const resolvedProjectConfig = await appendVibeongoAiKeyToOpencodeConfig(
       instanceId,
       withEmptyClaudePackage(
         await resolveProjectUserConfigs(parsedConfig, project.user_id),
@@ -96,6 +100,7 @@ export const getRuntimeSessionConfig = catchAsync(
       initialScript: project.initial_script,
       finalScript: project.final_script,
       devScript: project.dev_script,
+      vibeongoAiModels: vibeongoAiModelsSchema.parse(vibeongoAiModels),
       repos: await getConfigReadyGitRepos(validRepos, { instanceId }),
       ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
       tasks: tasks.map((t) => ({
@@ -187,7 +192,7 @@ function withEmptyClaudePackage(
   };
 }
 
-async function appendOpenRouterKeysToOpencodeConfig(
+async function appendVibeongoAiKeyToOpencodeConfig(
   instanceId: string,
   config: ResolvedProjectConfig,
 ): Promise<ResolvedProjectConfig> {
@@ -210,16 +215,16 @@ async function appendOpenRouterKeysToOpencodeConfig(
 
   if (!opencodePackage) return config;
 
-  // opencodePackage.config.auth_json = [
-  //   ...opencodePackage.config.auth_json,
-  //   {
-  //     id: `openrouter-${instanceId}`,
-  //     integrationID: "openrouter",
-  //     label: "openrouter",
-  //     active: true,
-  //     value: { type: "key", key: decryptedKey },
-  //   },
-  // ];
+  opencodePackage.config.auth_json = [
+    ...opencodePackage.config.auth_json,
+    {
+      id: `vibeongo_ai-${instanceId}`,
+      integrationID: "vibeongo_ai",
+      label: "Vibeongo AI",
+      active: true,
+      value: { type: "key", key: decryptedKey },
+    },
+  ];
 
   return config;
 }

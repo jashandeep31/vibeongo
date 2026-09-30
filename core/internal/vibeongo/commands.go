@@ -225,6 +225,9 @@ func ProvisionOpenCodeCmd() *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := actions.ProvisionVibeongoAIModels(cfg.VibeongoAIModels); err != nil {
+				return err
+			}
 			return actions.ProvisionOpenCode(cfg.OpenCode)
 		},
 	}

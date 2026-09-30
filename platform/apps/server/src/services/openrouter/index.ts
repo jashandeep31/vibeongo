@@ -2,6 +2,8 @@ import axios from "axios";
 import { env } from "../../lib/env.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
 import { db, instanceOpenRouterKeys, eq } from "@repo/db";
+import { INTERNAL_MONEY_SCALE } from "@repo/shared";
+import { AppError } from "../../lib/app-error.js";
 
 export const openRouterInterface = axios.create({
   baseURL: env.OPENROUTER_API_ENDPOINT,
@@ -54,30 +56,51 @@ export async function createOpenRouterVirtualKeyAndSave({
   return true;
 }
 
+const OPENROUTER_SETTLE_ATTEMPTS = 3;
+
+const wait = (milliseconds: number) =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds));
+
 export async function getOpenRouterKeyChargesAnTerminateKey(
   instanceId: string,
 ): Promise<number> {
-  try {
-    const [openrouterKeyData] = await db
-      .select()
-      .from(instanceOpenRouterKeys)
-      .where(eq(instanceOpenRouterKeys.instance_id, instanceId));
-    if (!openrouterKeyData) return 0;
+  const [openrouterKeyData] = await db
+    .select()
+    .from(instanceOpenRouterKeys)
+    .where(eq(instanceOpenRouterKeys.instance_id, instanceId));
+  if (!openrouterKeyData) return 0;
 
-    const res = await openRouterInterface.patch(
-      `/keys/${openrouterKeyData.hash}`,
-      {
-        disabled: true,
-      },
-    );
-    if (res.status != 200) {
-      return 0;
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= OPENROUTER_SETTLE_ATTEMPTS; attempt++) {
+    try {
+      const res = await openRouterInterface.patch(
+        `/keys/${openrouterKeyData.hash}`,
+        { disabled: true },
+        { timeout: 10_000 },
+      );
+      const usage: unknown = res.data?.data?.usage;
+      if (typeof usage !== "number" || !Number.isFinite(usage)) {
+        throw new Error("OpenRouter key response has no usage");
+      }
+      return Math.ceil(Math.abs(usage) * INTERNAL_MONEY_SCALE);
+    } catch (error) {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        console.error(
+          `OpenRouter key for instance ${instanceId} no longer exists, no AI usage charged`,
+        );
+        return 0;
+      }
+      lastError = error;
+      if (attempt < OPENROUTER_SETTLE_ATTEMPTS) await wait(attempt * 1_000);
     }
-    const converted = Math.ceil(Math.abs(res.data.data.usage * 1000_000_0));
-
-    return converted;
-  } catch {
-    console.log(`failed to get data`);
-    return 0;
   }
+
+  console.error(
+    `Could not disable the OpenRouter key and read its usage for instance ${instanceId}`,
+    lastError,
+  );
+  throw new AppError(
+    "Could not settle AI usage for this instance. Please try again.",
+    502,
+  );
 }

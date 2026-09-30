@@ -11,7 +11,10 @@ import {
   sandboxRegions,
   sandboxTypes,
   sshKeys,
+  userWallet,
 } from "@repo/db";
+import { INTERNAL_MONEY_SCALE } from "@repo/shared";
+import { env } from "../../lib/env.js";
 import { AppError } from "../../lib/app-error.js";
 import { createId } from "@paralleldrive/cuid2";
 import crypto from "crypto";
@@ -151,10 +154,62 @@ export const spinUpAndSaveInstanceV2 = async ({
   // TODO: look for a better way
   await createOpenRouterVirtualKeyAndSave({
     instanceId: instance.id,
-    limit_in_dollars: 5,
+    limit_in_dollars: await getOpenRouterKeyLimitInDollars({
+      userId,
+      instanceTypeId,
+      sandboxTypeId,
+      autoTerminateAfterInMinutes,
+    }),
     expires_after_in_minutes: autoTerminateAfterInMinutes,
   });
   return instance;
+};
+
+const MAX_OPENROUTER_KEY_LIMIT_IN_DOLLARS = 5;
+const MIN_OPENROUTER_KEY_LIMIT_IN_DOLLARS = 0.01;
+
+const getOpenRouterKeyLimitInDollars = async ({
+  userId,
+  instanceTypeId,
+  sandboxTypeId,
+  autoTerminateAfterInMinutes,
+}: {
+  userId: string;
+  instanceTypeId: string | null;
+  sandboxTypeId: string | null;
+  autoTerminateAfterInMinutes: number;
+}) => {
+  const [wallet] = await db
+    .select({ balance: userWallet.balance })
+    .from(userWallet)
+    .where(eq(userWallet.user_id, userId));
+
+  let computeCost = 0;
+  if (instanceTypeId) {
+    const [instanceType] = await db
+      .select({ pricePerHour: instanceTypes.price_per_hour })
+      .from(instanceTypes)
+      .where(eq(instanceTypes.id, instanceTypeId));
+    computeCost =
+      ((instanceType?.pricePerHour ?? 0) * autoTerminateAfterInMinutes) / 60;
+  } else if (sandboxTypeId) {
+    const [sandboxType] = await db
+      .select({ pricePerSecond: sandboxTypes.price_per_second })
+      .from(sandboxTypes)
+      .where(eq(sandboxTypes.id, sandboxTypeId));
+    computeCost =
+      (sandboxType?.pricePerSecond ?? 0) * 60 * autoTerminateAfterInMinutes;
+  }
+
+  const computeReserve = computeCost * (1 + env.PROFIT_PRECENTAGE / 100);
+  const availableInDollars =
+    ((wallet?.balance ?? 0) - computeReserve) / INTERNAL_MONEY_SCALE;
+  const limit = Math.floor(availableInDollars * 100) / 100;
+
+  return Math.min(
+    MAX_OPENROUTER_KEY_LIMIT_IN_DOLLARS,
+    Math.max(MIN_OPENROUTER_KEY_LIMIT_IN_DOLLARS, limit),
+  );
 };
 
 const handleVmRuntime = async ({

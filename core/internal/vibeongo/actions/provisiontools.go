@@ -2,6 +2,7 @@ package actions
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -66,6 +67,59 @@ func ProvisionPi(cfg *config.PiConfig) error {
 	}
 
 	fmt.Println("Pi agent setup is complete")
+	return nil
+}
+
+func ProvisionVibeongoAIModels(models map[string]config.VibeongoAIModel) error {
+	configPath := os.Getenv("OPENCODE_CONFIG")
+	if configPath == "" {
+		configPath = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.config/opencode/opencode.json")
+	}
+
+	info, err := os.Stat(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to find opencode config at %s: %w", configPath, err)
+	}
+	file, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read opencode config: %w", err)
+	}
+
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(file, &document); err != nil {
+		return fmt.Errorf("failed to parse opencode config: %w", err)
+	}
+	var providers map[string]json.RawMessage
+	if err := json.Unmarshal(document["providers"], &providers); err != nil || providers == nil {
+		return fmt.Errorf("opencode config has no providers")
+	}
+	var provider map[string]json.RawMessage
+	if err := json.Unmarshal(providers["vibeongo_ai"], &provider); err != nil || provider == nil {
+		return fmt.Errorf("opencode config has no vibeongo_ai provider")
+	}
+
+	if models == nil {
+		models = map[string]config.VibeongoAIModel{}
+	}
+	if provider["models"], err = json.Marshal(models); err != nil {
+		return fmt.Errorf("failed to encode vibeongo ai models: %w", err)
+	}
+	if providers["vibeongo_ai"], err = json.Marshal(provider); err != nil {
+		return fmt.Errorf("failed to encode vibeongo_ai provider: %w", err)
+	}
+	if document["providers"], err = json.Marshal(providers); err != nil {
+		return fmt.Errorf("failed to encode opencode providers: %w", err)
+	}
+
+	updated, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to encode opencode config: %w", err)
+	}
+	if err := os.WriteFile(configPath, append(updated, '\n'), info.Mode().Perm()); err != nil {
+		return fmt.Errorf("failed to write opencode config: %w", err)
+	}
+
+	fmt.Printf("updated %d vibeongo ai models in the opencode config\n", len(models))
 	return nil
 }
 
