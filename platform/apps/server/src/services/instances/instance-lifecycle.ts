@@ -2,11 +2,10 @@ import { and, db, eq, instances, sandboxTypes } from "@repo/db";
 import { withRedisLock } from "../../cache/redis-lock.js";
 import { AppError } from "../../lib/app-error.js";
 import { AUTOMATIC_SUSPENSION_PROVIDERS } from "../../providers/constants.js";
-import { resumeSuspendedSession } from "./resume-suspended-session.js";
 import { suspendInstanceAndRevokeAccess } from "./suspend-instance-and-revoke-access.js";
 import { terminateInstanceAndChargeUsage } from "./terminate-instance-and-charge-usage.js";
 
-export type InstanceAction = "pause" | "terminate" | "resume";
+export type InstanceAction = "pause" | "terminate";
 
 type InstanceActionProps = {
   instanceId: string;
@@ -64,19 +63,6 @@ export const createInstanceActionHandler =
         if (instance.state === "suspended" || instance.state === "terminated")
           return;
         await suspendInstanceAndRevokeAccess(data);
-        return;
-      case "resume":
-        if (instance.state === "running") return;
-        if (instance.state !== "suspended") {
-          throw new AppError("Only suspended instances can be resumed", 409);
-        }
-        if (!instance.project_session_id) {
-          throw new AppError("Instance has no project session", 400);
-        }
-        await resumeSuspendedSession({
-          sessionId: instance.project_session_id,
-          userId: instance.user_id,
-        });
         return;
     }
   };

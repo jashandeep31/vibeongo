@@ -27,6 +27,8 @@ import {
 import { getOpenRouterKeyLimitInDollars } from "./spin-up-and-save-instance-v2.js";
 import { getValidatedAutoTerminateAfterInMinutes } from "./spin-up-and-save-instance.js";
 import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
+import { withRedisLock } from "../../cache/redis-lock.js";
+import { getTerminateOrPauseInstanceLockName } from "./instance-lifecycle.js";
 
 const e2bClient = new E2BClient();
 
@@ -42,12 +44,52 @@ export const resumeSuspendedSession = async ({
   sessionId,
   userId,
 }: ResumeSuspendedSessionProps) => {
+  // Resolve ownership before taking the same lock used by pause and termination.
+  const [instance] = await db
+    .select({ id: instances.id })
+    .from(instances)
+    .where(
+      and(
+        eq(instances.project_session_id, sessionId),
+        eq(instances.user_id, userId),
+        eq(instances.state, "suspended"),
+      ),
+    );
+  if (!instance) {
+    throw new AppError("This session has no suspended instance", 404);
+  }
+
+  // Resume the instance with the locking system
+  // to prevent multiple concurrent requests.
+  const lock = await withRedisLock(
+    getTerminateOrPauseInstanceLockName(instance.id),
+    () =>
+      resumeSuspendedSessionUnderLock({
+        instanceId: instance.id,
+        sessionId,
+        userId,
+      }),
+  );
+  if (!lock.acquired) {
+    throw new AppError(
+      "Another operation is in progress for this instance. Please try again shortly.",
+      409,
+    );
+  }
+};
+
+const resumeSuspendedSessionUnderLock = async ({
+  instanceId,
+  sessionId,
+  userId,
+}: ResumeSuspendedSessionProps & { instanceId: string }) => {
   const [row] = await db
     .select({ instance: instances, sandboxType: sandboxTypes })
     .from(instances)
     .innerJoin(sandboxTypes, eq(sandboxTypes.id, instances.sandbox_type_id))
     .where(
       and(
+        eq(instances.id, instanceId),
         eq(instances.project_session_id, sessionId),
         eq(instances.user_id, userId),
         eq(instances.state, "suspended"),
