@@ -57,6 +57,13 @@
       "when": 1790778635252,
       "tag": "0007_outgoing_norrin_radd",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790854486585,
+      "tag": "0008_fantastic_wendigo",
+      "breakpoints": true
     }
   ]
 }
