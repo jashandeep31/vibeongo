@@ -3,6 +3,10 @@ import { redis } from "../lib/valkey.js";
 
 const DEFAULT_LOCK_TTL_MS = 2 * 60 * 1000;
 
+export const lockNames = {
+  instanceLifecycle: (instanceId: string) => `instance-lifecycle:${instanceId}`,
+} as const;
+
 const lockKey = (name: string) => `LOCK:${name}`;
 
 const RELEASE_SCRIPT = `

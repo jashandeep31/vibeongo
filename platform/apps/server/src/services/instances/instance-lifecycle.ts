@@ -1,5 +1,5 @@
 import { and, db, eq, instances, sandboxTypes } from "@repo/db";
-import { withRedisLock } from "../../cache/redis-lock.js";
+import { lockNames, withRedisLock } from "../../cache/redis-lock.js";
 import { AppError } from "../../lib/app-error.js";
 import { AUTOMATIC_SUSPENSION_PROVIDERS } from "../../providers/constants.js";
 import { suspendInstanceAndRevokeAccess } from "./suspend-instance-and-revoke-access.js";
@@ -13,9 +13,6 @@ type InstanceActionProps = {
   userId?: string;
   autoExpire?: boolean;
 };
-
-export const getTerminateOrPauseInstanceLockName = (instanceId: string) =>
-  `terminate-or-pause-instance:${instanceId}`;
 
 const getInstance = async ({ instanceId, userId }: InstanceActionProps) => {
   const [instance] = await db
@@ -73,7 +70,7 @@ export const runInstanceActionWithLock = async (
   // Authorize before lock acquisition so a busy instance cannot bypass ownership.
   await getInstance(props);
   return withRedisLock(
-    getTerminateOrPauseInstanceLockName(props.instanceId),
+    lockNames.instanceLifecycle(props.instanceId),
     createInstanceActionHandler(props),
   );
 };

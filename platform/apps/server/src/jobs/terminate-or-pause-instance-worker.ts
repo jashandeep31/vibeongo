@@ -1,10 +1,7 @@
 import { DelayedError, Worker } from "bullmq";
 import { redis } from "../lib/valkey.js";
-import { withRedisLock } from "../cache/redis-lock.js";
-import {
-  createInstanceActionHandler,
-  getTerminateOrPauseInstanceLockName,
-} from "../services/instances/instance-lifecycle.js";
+import { lockNames, withRedisLock } from "../cache/redis-lock.js";
+import { createInstanceActionHandler } from "../services/instances/instance-lifecycle.js";
 import {
   TERMINATE_OR_PAUSE_INSTANCE_JOB_NAME,
   type InstanceActionJobData,
@@ -14,7 +11,7 @@ export const terminateOrPauseInstanceWorker = new Worker<InstanceActionJobData>(
   TERMINATE_OR_PAUSE_INSTANCE_JOB_NAME,
   async (job, token) => {
     const lock = await withRedisLock(
-      getTerminateOrPauseInstanceLockName(job.data.instanceId),
+      lockNames.instanceLifecycle(job.data.instanceId),
       createInstanceActionHandler(job.data),
     );
 

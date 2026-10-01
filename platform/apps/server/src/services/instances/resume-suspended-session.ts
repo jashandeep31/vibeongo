@@ -27,8 +27,7 @@ import {
 import { getOpenRouterKeyLimitInDollars } from "./spin-up-and-save-instance-v2.js";
 import { getValidatedAutoTerminateAfterInMinutes } from "./spin-up-and-save-instance.js";
 import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
-import { withRedisLock } from "../../cache/redis-lock.js";
-import { getTerminateOrPauseInstanceLockName } from "./instance-lifecycle.js";
+import { lockNames, withRedisLock } from "../../cache/redis-lock.js";
 
 const e2bClient = new E2BClient();
 
@@ -62,7 +61,7 @@ export const resumeSuspendedSession = async ({
   // Resume the instance with the locking system
   // to prevent multiple concurrent requests.
   const lock = await withRedisLock(
-    getTerminateOrPauseInstanceLockName(instance.id),
+    lockNames.instanceLifecycle(instance.id),
     () =>
       resumeSuspendedSessionUnderLock({
         instanceId: instance.id,

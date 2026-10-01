@@ -369,8 +369,7 @@ export const resumeProjectSession = catchAsync(
       .from(projectSessions)
       .where(
         and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
-      )
-      .limit(1);
+      );
 
     if (!session) throw new AppError("Project session not found", 404);
     if (session.category === "auto") {
