@@ -43,17 +43,12 @@ const setupE2BSandbox = async (sandboxId: string, userData: string) => {
   );
 };
 
-const resumeE2BSandbox = async (
-  sandboxId: string,
-  script: string,
-  sessionToken: string,
-) => {
+const resumeE2BSandbox = async (sandboxId: string, script: string) => {
   const sandbox = await E2BSandbox.connect(sandboxId, {
     apiKey: env.E2B_API_KEY,
   });
   await sandbox.commands.run(script, {
     user: "vibe",
-    envs: { VIBEONGO_SESSION_TOKEN: sessionToken },
     timeoutMs: RESUME_TIMEOUT_MS,
     onStdout: (data: string): void => {
       process.stdout.write(data);
@@ -61,15 +56,10 @@ const resumeE2BSandbox = async (
   });
 };
 
-const resumeBoatSandbox = async (
-  sandboxId: string,
-  script: string,
-  sessionToken: string,
-) => {
-  const quotedSessionToken = `'${sessionToken.replaceAll("'", "'\\''")}'`;
+const resumeBoatSandbox = async (sandboxId: string, script: string) => {
   await boatClient.runCommand(
     sandboxId,
-    `sudo -n -H -u vibe env VIBEONGO_SESSION_TOKEN=${quotedSessionToken} bash <<'VIBEONGO_BOAT_RESUME'
+    `sudo -n -H -u vibe bash <<'VIBEONGO_BOAT_RESUME'
 ${script}
 VIBEONGO_BOAT_RESUME`,
     RESUME_TIMEOUT_MS,
@@ -138,14 +128,11 @@ export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
       await new Promise((resolve) => setTimeout(resolve, 5_000));
     }
     if (job.data.scriptType === "resume") {
-      if (!job.data.sessionToken) {
-        throw new Error("Resume script requires a session token");
-      }
       switch (provider) {
         case "e2b":
-          return resumeE2BSandbox(sandboxId, userData, job.data.sessionToken);
+          return resumeE2BSandbox(sandboxId, userData);
         case "boat":
-          return resumeBoatSandbox(sandboxId, userData, job.data.sessionToken);
+          return resumeBoatSandbox(sandboxId, userData);
         default:
           throw new Error(
             `Resume scripts are unsupported for provider: ${provider}`,

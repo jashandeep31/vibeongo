@@ -15,7 +15,6 @@ export type SandboxSetupJobData = {
   | {
       provider: "e2b" | "boat";
       scriptType: "resume";
-      sessionToken: string;
     }
 );
 

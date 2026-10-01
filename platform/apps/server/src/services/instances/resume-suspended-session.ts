@@ -307,8 +307,11 @@ const resumeSuspendedSessionUnderLock = async ({
       provider,
       sandboxId: instance.provider_instance_id,
       scriptType: "resume",
-      userData: resumeInstanceScript(),
-      sessionToken,
+      userData: resumeInstanceScript({
+        authToken: sessionToken,
+        projectSessionId: sessionId,
+        instanceId: instance.id,
+      }),
     });
   } catch (error) {
     console.error(
