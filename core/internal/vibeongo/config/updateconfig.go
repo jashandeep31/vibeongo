@@ -68,22 +68,3 @@ func UpdateConfigFile(update func(map[string]json.RawMessage) error) error {
 	}
 	return nil
 }
-
-func ReplaceConfigFile(data []byte) error {
-	if _, err := validateConfig(data); err != nil {
-		return err
-	}
-	var replacement map[string]json.RawMessage
-	if err := json.Unmarshal(data, &replacement); err != nil {
-		return fmt.Errorf("failed to parse replacement config: %w", err)
-	}
-	return UpdateConfigFile(func(document map[string]json.RawMessage) error {
-		for key := range document {
-			delete(document, key)
-		}
-		for key, value := range replacement {
-			document[key] = value
-		}
-		return nil
-	})
-}
