@@ -2,7 +2,6 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import "@repo/ui/globals.css";
 import Provider from "./provider";
-import { Toaster } from "sonner";
 import { Geist, Geist_Mono, Instrument_Sans } from "next/font/google";
 import { cn } from "@repo/ui/lib/utils";
 import { Analytics } from "@vercel/analytics/next";
@@ -100,7 +99,6 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body>
-        <Toaster richColors />
         <Provider
           attribute="class"
           defaultTheme="system"
