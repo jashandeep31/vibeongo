@@ -4,9 +4,11 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { CreateProjectSessionDialog } from "@/components/dialogs/create-project-session-dialog";
 import {
   useDeleteProject,
+  useGetProjectWithDetails,
   useSuspendInstance,
   useTerminateInstance,
 } from "@repo/api-hooks";
+import { supportsSandboxSuspension } from "@repo/shared/providers";
 import { instances } from "@repo/db";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -234,6 +236,14 @@ export function InstanceControlsDropdown({
     useState(false);
   const terminateInstance = useTerminateInstance(projectId, sessionId);
   const suspendInstance = useSuspendInstance(projectId, sessionId);
+  const projectQuery = useGetProjectWithDetails(
+    instance.runtime_kind === "sandbox" ? projectId : null,
+  );
+  const sandbox = projectQuery.data?.deployment.sandbox;
+  const canSuspend =
+    instance.runtime_kind === "sandbox" &&
+    sandbox?.id === instance.sandbox_type_id &&
+    supportsSandboxSuspension(sandbox?.provider);
   const isPending = terminateInstance.isPending || suspendInstance.isPending;
 
   const handleSuspend = () => {
@@ -296,7 +306,7 @@ export function InstanceControlsDropdown({
             </div>
           </div>
           <DropdownMenuSeparator />
-          {instance.runtime_kind === "sandbox" ? (
+          {canSuspend ? (
             <DropdownMenuItem disabled={isPending} onSelect={handleSuspend}>
               <Snowflake />
               Suspend

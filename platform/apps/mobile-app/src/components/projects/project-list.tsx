@@ -4,7 +4,10 @@ import {
   useDeleteProject,
   useGetProjectGithubReposById,
   useGetProjectOverview,
+  useGetProjectWithDetails,
   useResumeProjectSession,
+  useResumeSuspendedSession,
+  useSuspendInstance,
   useTerminateInstance,
   useUserMetadata,
 } from "@repo/api-hooks";
@@ -12,6 +15,7 @@ import {
   isInsufficientBalanceMessage,
   LOW_BALANCE_THRESHOLD,
 } from "@repo/shared/money";
+import { supportsSandboxSuspension } from "@repo/shared/providers";
 import {
   useProjectsStore,
   useSessionChatsStore,
@@ -56,6 +60,8 @@ type TerminationTarget = {
   projectId: string;
   sessionId: string;
   sessionName: string;
+  runtimeKind: "vm" | "sandbox";
+  sandboxTypeId: string | null;
 };
 
 type NewChatTarget = {
@@ -157,6 +163,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     (store) => store.attentionBySessionId,
   );
   const resumeSession = useResumeProjectSession();
+  const resumeSuspendedSession = useResumeSuspendedSession();
   const archiveSession = useArchiveProjectSession();
   const deleteProject = useDeleteProject();
   const userQuery = useUserMetadata();
@@ -164,6 +171,9 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
   const [resumingSessionId, setResumingSessionId] = useState<string | null>(
     null,
   );
+  const [suspendingInstanceId, setSuspendingInstanceId] = useState<
+    string | null
+  >(null);
   const [terminationTarget, setTerminationTarget] =
     useState<TerminationTarget | null>(null);
   const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
@@ -193,6 +203,20 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     terminationTarget?.projectId ?? "",
     terminationTarget?.sessionId ?? "",
   );
+  const suspendInstance = useSuspendInstance(
+    terminationTarget?.projectId ?? "",
+    terminationTarget?.sessionId ?? "",
+  );
+  const terminationProjectQuery = useGetProjectWithDetails(
+    terminationTarget?.runtimeKind === "sandbox"
+      ? terminationTarget.projectId
+      : null,
+  );
+  const sandbox = terminationProjectQuery.data?.deployment.sandbox;
+  const canSuspend =
+    terminationTarget?.runtimeKind === "sandbox" &&
+    sandbox?.id === terminationTarget.sandboxTypeId &&
+    supportsSandboxSuspension(sandbox?.provider);
 
   const openNewChat = useCallback(
     (directory: string) => {
@@ -241,6 +265,43 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     repositoriesQuery.isSuccess,
   ]);
 
+  const showResumeError = (error: unknown) => {
+    const apiError = getApiError(error);
+    if (apiError.status === 402) {
+      Toast.show({
+        type: "error",
+        text1: "Instance limit reached",
+        text2: `${apiError.message ?? "Upgrade your tier or stop a running session before launching another instance."} Tap to view limits.`,
+        onPress: () => {
+          Toast.hide();
+          router.push("/limits");
+        },
+        visibilityTime: 5000,
+      });
+      return;
+    }
+
+    if (isInsufficientBalanceMessage(apiError.message)) {
+      Toast.show({
+        type: "error",
+        text1: "Insufficient balance",
+        text2: `${apiError.message} Tap to open your wallet.`,
+        onPress: () => {
+          Toast.hide();
+          router.push("/wallet");
+        },
+        visibilityTime: 5000,
+      });
+      return;
+    }
+
+    Toast.show({
+      type: "error",
+      text1: "Could not resume session",
+      text2: apiError.message ?? "Please check your connection and try again.",
+    });
+  };
+
   const handleRuntimeSelect = (runtime: SessionRuntime) => {
     if (!runtimeSessionId) return;
 
@@ -250,50 +311,49 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
     resumeSession.mutate(
       { id: sessionId, runtime },
       {
-        onError: (error) => {
-          const apiError = getApiError(error);
-          if (apiError.status === 402) {
-            Toast.show({
-              type: "error",
-              text1: "Instance limit reached",
-              text2: `${apiError.message ?? "Upgrade your tier or stop a running session before launching another instance."} Tap to view limits.`,
-              onPress: () => {
-                Toast.hide();
-                router.push("/limits");
-              },
-              visibilityTime: 5000,
-            });
-            return;
-          }
-
-          if (isInsufficientBalanceMessage(apiError.message)) {
-            Toast.show({
-              type: "error",
-              text1: "Insufficient balance",
-              text2: `${apiError.message} Tap to open your wallet.`,
-              onPress: () => {
-                Toast.hide();
-                router.push("/wallet");
-              },
-              visibilityTime: 5000,
-            });
-            return;
-          }
-
-          Toast.show({
-            type: "error",
-            text1: "Could not resume session",
-            text2:
-              apiError.message ?? "Please check your connection and try again.",
-          });
-        },
+        onError: showResumeError,
         onSettled: () => setResumingSessionId(null),
       },
     );
   };
 
+  const handleResume = (sessionId: string) => {
+    if (
+      resumeSession.isPending ||
+      resumeSuspendedSession.isPending ||
+      archiveSession.isPending ||
+      suspendingInstanceId
+    )
+      return;
+    const entry = useSessionsStore
+      .getState()
+      .sessions.find((entry) => entry.session.id === sessionId);
+    if (!entry || entry.state === "running" || entry.state === "processing")
+      return;
+    if (entry.state !== "suspended") {
+      setRuntimeSessionId(sessionId);
+      return;
+    }
+    setResumingSessionId(sessionId);
+    resumeSuspendedSession.mutate(sessionId, {
+      onSuccess: (response) =>
+        Toast.show({
+          type: "success",
+          text1: "Session resumed",
+          text2: response.message,
+        }),
+      onError: showResumeError,
+      onSettled: () => setResumingSessionId(null),
+    });
+  };
+
   const handleTerminate = () => {
-    if (!terminationTarget) return;
+    if (
+      !terminationTarget ||
+      terminateInstance.isPending ||
+      suspendInstance.isPending
+    )
+      return;
 
     const instanceId = terminationTarget.instanceId;
     setIsTerminationConfirmationOpen(false);
@@ -307,6 +367,35 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
       },
       onSettled: () => {
         setTerminatingInstanceId(null);
+        setTerminationTarget(null);
+      },
+    });
+  };
+
+  const handleSuspend = () => {
+    if (
+      !terminationTarget ||
+      !canSuspend ||
+      terminateInstance.isPending ||
+      suspendInstance.isPending
+    )
+      return;
+    const instanceId = terminationTarget.instanceId;
+    setIsTerminationConfirmationOpen(false);
+    setSuspendingInstanceId(instanceId);
+    suspendInstance.mutate(instanceId, {
+      onSuccess: (response) =>
+        Toast.show({ type: "success", text1: response.message }),
+      onError: (error) =>
+        Toast.show({
+          type: "error",
+          text1: "Could not suspend session",
+          text2:
+            getApiError(error).message ??
+            "Please check your connection and try again.",
+        }),
+      onSettled: () => {
+        setSuspendingInstanceId(null);
         setTerminationTarget(null);
       },
     });
@@ -482,6 +571,15 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                     const session = entry.session;
                     const runningInstance = entry.instance;
                     const isRunning = entry.state === "running";
+                    const isSuspended = entry.state === "suspended";
+                    const isArchiveDisabled =
+                      entry.state !== "stopped" ||
+                      Boolean(runningInstance) ||
+                      archiveSession.isPending ||
+                      resumeSession.isPending ||
+                      resumeSuspendedSession.isPending ||
+                      terminateInstance.isPending ||
+                      Boolean(suspendingInstanceId);
                     const isResuming = resumingSessionId === entry.session.id;
                     const isTerminating =
                       terminatingInstanceId === runningInstance?.id;
@@ -524,19 +622,25 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                             {entry.state !== "stopped" ? (
                               <View
                                 accessibilityLabel={
-                                  isRunning ? "Running" : "Starting"
+                                  isSuspended
+                                    ? "Suspended"
+                                    : isRunning
+                                      ? "Running"
+                                      : "Starting"
                                 }
                                 style={[
                                   styles.statusDot,
                                   {
-                                    backgroundColor: isRunning
-                                      ? "#10b981"
-                                      : "#f59e0b",
+                                    backgroundColor: isSuspended
+                                      ? "#0284c7"
+                                      : isRunning
+                                        ? "#10b981"
+                                        : "#f59e0b",
                                   },
                                 ]}
                               />
                             ) : null}
-                            {runningInstance ? (
+                            {runningInstance?.state === "running" ? (
                               <>
                                 <Pressable
                                   accessibilityLabel={`Open terminal for ${session.name}`}
@@ -565,28 +669,41 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                                     tintColor={theme.textSecondary}
                                   />
                                 </Pressable>
+
                                 <Pressable
                                   accessibilityLabel={`Terminate ${session.name}`}
                                   accessibilityRole="button"
-                                  disabled={terminateInstance.isPending}
+                                  disabled={
+                                    terminateInstance.isPending ||
+                                    Boolean(suspendingInstanceId)
+                                  }
                                   onPress={() => {
                                     setTerminationTarget({
                                       instanceId: runningInstance.id,
                                       projectId: project.id,
                                       sessionId: session.id,
                                       sessionName: session.name,
+                                      runtimeKind: runningInstance.runtime_kind,
+                                      sandboxTypeId:
+                                        runningInstance.sandbox_type_id,
                                     });
                                     setIsTerminationConfirmationOpen(true);
                                   }}
                                   style={({ pressed }) => [
                                     styles.sessionAction,
-                                    (pressed || terminateInstance.isPending) &&
+                                    (pressed ||
+                                      terminateInstance.isPending ||
+                                      Boolean(suspendingInstanceId)) &&
                                       styles.pressed,
                                   ]}
                                 >
-                                  {isTerminating ? (
+                                  {isTerminating ||
+                                  suspendingInstanceId ===
+                                    runningInstance.id ? (
                                     <ActivityIndicator
-                                      color="#ef4444"
+                                      color={
+                                        isTerminating ? "#ef4444" : "#2563eb"
+                                      }
                                       size="small"
                                     />
                                   ) : (
@@ -601,7 +718,7 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                                   )}
                                 </Pressable>
                               </>
-                            ) : entry.state === "processing" ? (
+                            ) : entry.state === "processing" || isResuming ? (
                               <ActivityIndicator size="small" />
                             ) : (
                               <>
@@ -610,15 +727,17 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                                   accessibilityRole="button"
                                   disabled={
                                     resumeSession.isPending ||
+                                    resumeSuspendedSession.isPending ||
+                                    Boolean(suspendingInstanceId) ||
                                     archiveSession.isPending
                                   }
-                                  onPress={() =>
-                                    setRuntimeSessionId(session.id)
-                                  }
+                                  onPress={() => handleResume(session.id)}
                                   style={({ pressed }) => [
                                     styles.sessionAction,
                                     (pressed ||
                                       resumeSession.isPending ||
+                                      resumeSuspendedSession.isPending ||
+                                      Boolean(suspendingInstanceId) ||
                                       archiveSession.isPending) &&
                                       styles.pressed,
                                   ]}
@@ -636,33 +755,36 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
                                     />
                                   )}
                                 </Pressable>
-                                <Pressable
-                                  accessibilityLabel={`Archive ${session.name}`}
-                                  accessibilityRole="button"
-                                  disabled={archiveSession.isPending}
-                                  onPress={() =>
-                                    setSessionToArchive({
-                                      id: session.id,
-                                      name: session.name,
-                                    })
-                                  }
-                                  style={({ pressed }) => [
-                                    styles.sessionAction,
-                                    (pressed || archiveSession.isPending) &&
-                                      styles.pressed,
-                                  ]}
-                                >
-                                  <SymbolView
-                                    name={{
-                                      ios: "archivebox",
-                                      android: "archive",
-                                    }}
-                                    size={17}
-                                    tintColor={theme.textSecondary}
-                                  />
-                                </Pressable>
                               </>
                             )}
+                            <Pressable
+                              accessibilityLabel={`Archive ${session.name}`}
+                              accessibilityRole="button"
+                              accessibilityState={{
+                                disabled: isArchiveDisabled,
+                              }}
+                              disabled={isArchiveDisabled}
+                              onPress={() =>
+                                setSessionToArchive({
+                                  id: session.id,
+                                  name: session.name,
+                                })
+                              }
+                              style={({ pressed }) => [
+                                styles.sessionAction,
+                                pressed && styles.pressed,
+                                isArchiveDisabled && styles.disabledAction,
+                              ]}
+                            >
+                              <SymbolView
+                                name={{
+                                  ios: "archivebox",
+                                  android: "archive",
+                                }}
+                                size={17}
+                                tintColor={theme.textSecondary}
+                              />
+                            </Pressable>
                           </View>
                         </View>
 
@@ -862,13 +984,31 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
       <ConfirmationDrawer
         confirmDelaySeconds={1}
         confirmLabel="Terminate"
-        description={`The running instance for "${terminationTarget?.sessionName ?? "this session"}" will stop immediately. Any unsaved work may be lost.`}
+        hideCancel
+        description={
+          canSuspend
+            ? `Suspend "${terminationTarget?.sessionName ?? "this session"}" to resume it later, or terminate its instance. Terminating may lose unsaved work.`
+            : `The running instance for "${terminationTarget?.sessionName ?? "this session"}" will stop immediately. Any unsaved work may be lost.`
+        }
+        isConfirming={terminateInstance.isPending}
+        secondaryAction={
+          canSuspend
+            ? {
+                label: "Suspend",
+                onPress: handleSuspend,
+                isPending: suspendInstance.isPending,
+                disabled: terminateInstance.isPending,
+              }
+            : undefined
+        }
         onCancel={() => {
           setIsTerminationConfirmationOpen(false);
           setTerminationTarget(null);
         }}
         onConfirm={handleTerminate}
-        title="Terminate this instance?"
+        title={
+          canSuspend ? "Suspend or terminate?" : "Terminate this instance?"
+        }
         visible={isTerminationConfirmationOpen}
       />
       <RepositoryDrawer
@@ -1062,6 +1202,9 @@ const styles = StyleSheet.create({
   opencodeChats: {
     marginBottom: 6,
     paddingLeft: 24,
+  },
+  disabledAction: {
+    opacity: 0.35,
   },
   pressed: {
     opacity: 0.7,
