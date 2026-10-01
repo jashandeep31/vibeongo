@@ -52,13 +52,13 @@ export type ProjectWithDetails = Pick<
     vm:
       | (Pick<
           typeof instanceTypes.$inferSelect,
-          "id" | "name" | "provider" | "cpu" | "ram" | "region_id"
+          "id" | "name" | "provider" | "cpu" | "ram" | "storage" | "region_id"
         > & { region_name: string | null })
       | null;
     sandbox:
       | (Pick<
           typeof sandboxTypes.$inferSelect,
-          "id" | "name" | "provider" | "cpu" | "ram"
+          "id" | "name" | "provider" | "cpu" | "ram" | "storage"
         > & { region_id: string | null; region_name: string | null })
       | null;
   };

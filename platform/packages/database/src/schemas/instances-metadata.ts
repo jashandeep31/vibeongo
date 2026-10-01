@@ -7,6 +7,7 @@ import {
   timestamp,
   uuid,
   varchar,
+  integer,
 } from "drizzle-orm/pg-core";
 
 // currently we are only using the aws instances
@@ -34,8 +35,10 @@ export const instanceTypes = pgTable("instance_types", {
 
   slug: varchar().notNull(),
   description: text(),
-  cpu: text(),
-  ram: text(),
+  // CPU count; RAM and storage are measured in GB.
+  cpu: integer().notNull().default(4),
+  ram: integer().notNull().default(8),
+  storage: integer().notNull().default(15),
 
   provider: instanceProvidersEnum().notNull(),
   region_id: uuid().references(() => instanceRegions.id),

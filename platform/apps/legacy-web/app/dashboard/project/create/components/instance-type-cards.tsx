@@ -71,7 +71,8 @@ function InstanceTypeCards() {
                   <span className="min-w-0">
                     <span className="block truncate">{instance.name}</span>
                     <span className="text-muted-foreground mt-0.5 block text-[10px] font-normal">
-                      {instance.cpu || "N/A"} · {instance.ram || "N/A"} ·{" "}
+                      {instance.cpu} vCPU · {instance.ram} GB RAM ·{" "}
+                      {instance.storage} GB storage ·{" "}
                       {formatHourlyPrice(instance.price_per_hour)}
                     </span>
                   </span>

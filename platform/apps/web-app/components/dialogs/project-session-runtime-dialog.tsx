@@ -33,8 +33,9 @@ type ProjectSessionRuntimeDialogProps = {
 type RuntimeTarget = {
   name: string;
   provider: string;
-  cpu: string | null;
-  ram: string | null;
+  cpu: number;
+  ram: number;
+  storage: number;
   region_name: string | null;
 };
 
@@ -54,10 +55,12 @@ const runtimes = [
 ];
 
 // Sandbox type names can already contain the specs, e.g. "Custom 4 vCPU / 8 GiB"
-const formatSpecs = ({ name, cpu, ram }: RuntimeTarget) => {
-  const specs = [cpu, ram].filter((spec): spec is string =>
-    Boolean(spec && !name.includes(spec)),
-  );
+const formatSpecs = ({ name, cpu, ram, storage }: RuntimeTarget) => {
+  const specs = [
+    `${cpu} vCPU`,
+    `${ram} GB RAM`,
+    `${storage} GB storage`,
+  ].filter((spec) => !name.includes(spec));
   return specs.join(" · ");
 };
 

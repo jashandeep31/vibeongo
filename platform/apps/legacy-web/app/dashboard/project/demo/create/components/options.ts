@@ -10,8 +10,9 @@ export type InstanceOption = {
   id: string;
   name: string;
   description: string;
-  cpu: string;
-  ram: string;
+  cpu: number;
+  ram: number;
+  storage: number;
   price: string;
   icon: LucideIcon;
 };
@@ -34,8 +35,9 @@ export const INSTANCES: InstanceOption[] = [
     id: "t3.micro",
     name: "Starter",
     description: "Best for hobby projects and testing",
-    cpu: "2 vCPU",
-    ram: "1 GB RAM",
+    cpu: 2,
+    ram: 1,
+    storage: 15,
     price: "$5/mo",
     icon: Server,
   },
@@ -43,8 +45,9 @@ export const INSTANCES: InstanceOption[] = [
     id: "t3.small",
     name: "Standard",
     description: "Good for small production workloads",
-    cpu: "2 vCPU",
-    ram: "2 GB RAM",
+    cpu: 2,
+    ram: 2,
+    storage: 15,
     price: "$10/mo",
     icon: Cpu,
   },
@@ -52,8 +55,9 @@ export const INSTANCES: InstanceOption[] = [
     id: "t3.medium",
     name: "Pro",
     description: "For more demanding applications",
-    cpu: "2 vCPU",
-    ram: "4 GB RAM",
+    cpu: 2,
+    ram: 4,
+    storage: 15,
     price: "$20/mo",
     icon: Server,
   },

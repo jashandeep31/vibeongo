@@ -571,7 +571,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                 }
                 options={instanceTypes.map((type) => ({
                   id: type.id,
-                  label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                 }))}
                 onChange={setInstanceTypeId}
               />
@@ -628,7 +628,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                 }
                 options={sandboxTypes.map((type) => ({
                   id: type.id,
-                  label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                 }))}
                 onChange={setSandboxTypeId}
               />
