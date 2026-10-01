@@ -1,6 +1,7 @@
-import { and, db, eq, instances } from "@repo/db";
+import { and, db, eq, instances, sandboxTypes } from "@repo/db";
 import { withRedisLock } from "../../cache/redis-lock.js";
 import { AppError } from "../../lib/app-error.js";
+import { AUTOMATIC_SUSPENSION_PROVIDERS } from "../../providers/constants.js";
 import { resumeSuspendedSession } from "./resume-suspended-session.js";
 import { suspendInstanceAndRevokeAccess } from "./suspend-instance-and-revoke-access.js";
 import { terminateInstanceAndChargeUsage } from "./terminate-instance-and-charge-usage.js";
@@ -46,6 +47,17 @@ export const createInstanceActionHandler =
     switch (props.action) {
       case "terminate":
         if (instance.state === "terminated") return;
+        if (props.autoExpire && instance.runtime_kind === "sandbox") {
+          const [sandboxType] = await db
+            .select({ provider: sandboxTypes.provider })
+            .from(sandboxTypes)
+            .where(eq(sandboxTypes.id, instance.sandbox_type_id!));
+          if (!sandboxType) throw new AppError("Sandbox type not found", 404);
+          if (AUTOMATIC_SUSPENSION_PROVIDERS.has(sandboxType.provider)) {
+            await suspendInstanceAndRevokeAccess(data);
+            return;
+          }
+        }
         await terminateInstanceAndChargeUsage(data);
         return;
       case "pause":
