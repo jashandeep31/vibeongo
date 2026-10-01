@@ -177,7 +177,8 @@ func CloneGitReposCmd() *cobra.Command {
 }
 
 func ProvissionToolsCmd() *cobra.Command {
-	return &cobra.Command{
+	var skipDocker bool
+	cmd := &cobra.Command{
 		Use:   "provisiontools",
 		Short: "Provision the workspace",
 		Long:  "Provision the workspace by applying authentication setup and cloning the repositories defined in the project configuration.",
@@ -193,8 +194,10 @@ func ProvissionToolsCmd() *cobra.Command {
 				return err
 			}
 
-			if err := actions.ProvisionDockerContainers(cfg.Docker); err != nil {
-				return err
+			if !skipDocker {
+				if err := actions.ProvisionDockerContainers(cfg.Docker); err != nil {
+					return err
+				}
 			}
 
 			if err := actions.ProvisionT3Code(cfg); err != nil {
@@ -211,6 +214,8 @@ func ProvissionToolsCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&skipDocker, "skip-docker", false, "Skip Docker container provisioning")
+	return cmd
 }
 
 // ProvisionOpenCodeCmd installs and configures opencode

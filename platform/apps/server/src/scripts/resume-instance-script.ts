@@ -78,8 +78,8 @@ else
   setsid nohup /usr/local/bin/vibeongo serve > "$HOME/.logs/vibeongo-serve.log" 2>&1 < /dev/null &
 fi
 
-echo "Restoring remaining tools and Docker containers"
-/usr/local/bin/vibeongo provisiontools
+echo "Restoring remaining tools"
+/usr/local/bin/vibeongo provisiontools --skip-docker
 
 echo "Starting the development script"
 /usr/local/bin/vibeongo dev-script
