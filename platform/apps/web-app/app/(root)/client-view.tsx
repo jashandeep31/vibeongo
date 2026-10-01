@@ -29,6 +29,7 @@ import {
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
+  useResumeSuspendedSession,
 } from "@repo/api-hooks";
 import { getRuntimeRepositoryDirectory, type Chat } from "@repo/api-client";
 import { useDeleteChat, useGetVibeongoChats } from "@repo/api-hooks";
@@ -157,7 +158,9 @@ function SessionRow({
                     ? "bg-emerald-500"
                     : entry.state === "processing"
                       ? "animate-pulse bg-amber-500"
-                      : "bg-muted-foreground/50"
+                      : entry.state === "suspended"
+                        ? "bg-sky-500"
+                        : "bg-muted-foreground/50"
                 }`}
               />
             </span>
@@ -181,6 +184,24 @@ function SessionRow({
                 projectId={entry.session.project_id}
                 sessionId={entry.session.id}
                 sessionName={entry.session.name}
+              />
+            </>
+          ) : entry.state === "suspended" ? (
+            <>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={isResumePending || isArchivePending}
+                onClick={() => onResume(entry.session.id)}
+              >
+                <Play />
+                Resume
+              </Button>
+              <SessionActionsDropdown
+                sessionName={entry.session.name}
+                isArchivePending={isArchivePending}
+                onArchive={() => onArchive(entry.session.id)}
               />
             </>
           ) : entry.state === "stopped" ? (
@@ -283,6 +304,7 @@ export default function ClientView() {
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const resumeSession = useResumeProjectSession();
+  const resumeSuspendedSession = useResumeSuspendedSession();
   const archiveSession = useArchiveProjectSession();
   const deleteChat = useDeleteChat();
   const [chatToDelete, setChatToDelete] = useState<Chat | null>(null);
@@ -367,6 +389,23 @@ export default function ClientView() {
         onSettled: () => setResumingSessionId(null),
       },
     );
+  };
+
+  const handleResume = (sessionId: string) => {
+    const entry = useSessionsStore
+      .getState()
+      .sessions.find((entry) => entry.session.id === sessionId);
+    if (entry?.state === "processing" || entry?.state === "running") return;
+    if (entry?.state !== "suspended") {
+      setRuntimeDialogSessionId(sessionId);
+      return;
+    }
+
+    resumeSuspendedSession.mutate(sessionId, {
+      onSuccess: () => toast.success("Session resumed"),
+      onError: (error) =>
+        showResumeSessionError(error, (href) => router.push(href)),
+    });
   };
 
   const handleArchive = (sessionId: string) => {
@@ -595,12 +634,15 @@ export default function ClientView() {
                                 key={entry.session.id}
                                 entry={entry}
                                 isResumePending={
-                                  resumingSessionId === entry.session.id
+                                  resumingSessionId === entry.session.id ||
+                                  (resumeSuspendedSession.isPending &&
+                                    resumeSuspendedSession.variables ===
+                                      entry.session.id)
                                 }
                                 isArchivePending={
                                   archivingSessionId === entry.session.id
                                 }
-                                onResume={setRuntimeDialogSessionId}
+                                onResume={handleResume}
                                 onArchive={handleArchive}
                               />
                             ))

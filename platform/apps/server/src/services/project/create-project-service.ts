@@ -53,7 +53,6 @@ export const createProjectWithConfigAndUserIdService = async (
         user_id: userId,
         instance_type_id: parsedData.instanceTypeId,
         sandbox_type_id: parsedData.sandboxTypeId,
-        total_charges: 0,
         initial_script: parsedData.initialScript,
         final_script: parsedData.finalScript,
         dev_script: parsedData.devScript,

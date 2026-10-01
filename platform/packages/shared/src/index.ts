@@ -7,3 +7,4 @@ export * from "./common-filter-schema.js";
 export * from "./project-vaidator-for-ai.js";
 export * from "./project-automations.js";
 export * from "./money.js";
+export * from "./providers.js";

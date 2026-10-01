@@ -108,13 +108,19 @@ export function DeploymentSection({
                       <div className="flex justify-between">
                         <span>CPU</span>
                         <span className="text-foreground font-medium">
-                          {instance.cpu}
+                          {instance.cpu} vCPU
                         </span>
                       </div>
                       <div className="flex justify-between">
                         <span>RAM</span>
                         <span className="text-foreground font-medium">
-                          {instance.ram}
+                          {instance.ram} GB RAM
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>Storage</span>
+                        <span className="text-foreground font-medium">
+                          {instance.storage} GB
                         </span>
                       </div>
                     </div>

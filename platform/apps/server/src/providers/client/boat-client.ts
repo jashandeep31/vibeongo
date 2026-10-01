@@ -4,8 +4,20 @@ import type {
   CreateInstanceProps,
   CreateInstanceProviderResponse,
 } from "../types.js";
-import { BoatApi, Configuration, waitUntilReady } from "@boatdev/sdk";
+import {
+  BoatApi,
+  Configuration,
+  waitUntilReady,
+  type SandboxStateEnum,
+} from "@boatdev/sdk";
 import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
+import { PROVIDER_TERMINATION_GRACE_MINUTES } from "../constants.js";
+
+const BOAT_READY_STATES: readonly SandboxStateEnum[] = [
+  "ready",
+  "idle",
+  "running",
+];
 
 const boatSandboxClient = new BoatApi(
   new Configuration({
@@ -23,7 +35,8 @@ export class BoatClient {
   }: CreateInstanceProps): Promise<CreateInstanceProviderResponse> {
     const created = await boatSandboxClient.create({
       from: instanceType,
-      ttlSeconds: terminatedAfterInMinutes * 60,
+      ttlSeconds:
+        (terminatedAfterInMinutes + PROVIDER_TERMINATION_GRACE_MINUTES) * 60,
     });
     const sandbox = await waitUntilReady(boatSandboxClient, created.sandbox.id);
     const preview = await this.getPreviewTarget({
@@ -55,6 +68,100 @@ export class BoatClient {
       accepted.operation.kind === "sandbox" &&
       accepted.operation.targetId === instanceId
     );
+  }
+
+  /**
+   * Pause the sandbox so that user can resume it later.
+   *
+   * @param sandboxId - Sandbox id given by the boat
+   * @returns boolea true if the sandbox is paused
+   */
+  async pauseInstance(sandboxId: string): Promise<boolean> {
+    // NOTE: we don't need to worry this about the failure as boat.dev not charge for this even if the sandbox is not paused
+    // SOURCE: https://docs.boat.dev/sdks/typescript
+    // But we will verify it for our own sanity
+    await boatSandboxClient.stop({ sandboxId });
+    const state = await this.getSandboxState(sandboxId);
+
+    if (state === "archived") {
+      return true;
+    }
+
+    let retries = 0;
+    let timegap = 0;
+    while (retries < 10) {
+      await new Promise((resolve) => setTimeout(resolve, timegap * 1000));
+      timegap += 2;
+      const state = await this.getSandboxState(sandboxId);
+      if (state === "archived") {
+        return true;
+      }
+      retries++;
+    }
+    return false;
+  }
+
+  async resumeInstance(sandboxId: string, timeoutMs: number): Promise<boolean> {
+    await boatSandboxClient.resume({
+      sandboxId,
+      ttlSeconds:
+        Math.ceil(timeoutMs / 1000) + PROVIDER_TERMINATION_GRACE_MINUTES * 60,
+    });
+    const state = await this.getSandboxState(sandboxId);
+
+    if (BOAT_READY_STATES.includes(state)) {
+      return true;
+    }
+    let retries = 0;
+    let timegap = 0;
+    while (retries < 10) {
+      await new Promise((resolve) => setTimeout(resolve, timegap * 1000));
+      timegap += 2;
+      const state = await this.getSandboxState(sandboxId);
+      if (BOAT_READY_STATES.includes(state)) {
+        return true;
+      }
+      retries++;
+    }
+    return false;
+  }
+  async getSandboxState(sandboxId: string) {
+    const { sandbox } = await boatSandboxClient.get({ sandboxId });
+    return sandbox.state;
+  }
+
+  async runCommand(
+    sandboxId: string,
+    command: string,
+    timeoutMs = 5 * 60 * 1000,
+  ): Promise<void> {
+    const deadline = Date.now() + timeoutMs;
+    const started = await boatSandboxClient.command({
+      sandboxId,
+      command,
+      detached: true,
+      timeoutSeconds: Math.ceil(timeoutMs / 1000),
+    });
+    if (!("processId" in started)) {
+      throw new AppError("Boat sandbox command did not start", 502);
+    }
+    while (Date.now() < deadline) {
+      const status = await boatSandboxClient.commandStatus({
+        sandboxId,
+        processId: started.processId,
+      });
+      if (!status.running) {
+        if (status.exitCode !== 0) {
+          throw new AppError(
+            `Boat sandbox command failed with exit code ${status.exitCode}`,
+            502,
+          );
+        }
+        return;
+      }
+      await new Promise((resolve) => setTimeout(resolve, 2000));
+    }
+    throw new AppError("Boat sandbox command timed out", 502);
   }
 
   async setupInstance(sandboxId: string, userData: string): Promise<void> {

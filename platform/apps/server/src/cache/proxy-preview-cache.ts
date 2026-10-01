@@ -57,3 +57,22 @@ export async function cacheProxyPreview(
     console.error("Failed to cache proxy preview");
   }
 }
+
+export async function invalidateCachedProxyPreviews(
+  provider: PreviewProvider,
+  sandboxId: string,
+): Promise<void> {
+  const prefix = `proxy:preview:v1:${provider}:${encodeURIComponent(sandboxId)}:`;
+  let cursor = "0";
+  do {
+    const [nextCursor, keys] = await redis.scan(
+      cursor,
+      "MATCH",
+      `${prefix}*`,
+      "COUNT",
+      100,
+    );
+    cursor = nextCursor;
+    if (keys.length) await redis.del(...keys);
+  } while (cursor !== "0");
+}

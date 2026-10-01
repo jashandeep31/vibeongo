@@ -122,41 +122,39 @@ function SandboxConfigCard() {
             <TooltipProvider>
               {sandboxProviderOptions
                 .filter((option) => providers.includes(option.id))
-                .map(
-                  ({ id, name, description, recommended, Icon }) => (
-                    <Tooltip key={id}>
-                      <TooltipTrigger asChild>
-                        <Button
-                          type="button"
-                          variant="outline"
-                          aria-label={name}
-                          aria-pressed={sandboxProvider === id}
-                          onClick={() => selectProvider(id)}
-                          className={`relative h-9 min-w-28 justify-start gap-2 px-3 ${
-                            sandboxProvider === id
-                              ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
-                              : recommended
-                                ? "border-amber-300/80 bg-amber-50/60 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/5"
-                                : ""
-                          }`}
-                        >
-                          {recommended ? (
-                            <Badge
-                              variant="outline"
-                              className="absolute -top-2 right-1 h-4 border-amber-300 bg-amber-100 px-1.5 text-[9px] leading-none text-amber-800 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300"
-                            >
-                              <Sparkles />
-                              Recommended
-                            </Badge>
-                          ) : null}
-                          <Icon className="size-4" />
-                          {name}
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent side="top">{description}</TooltipContent>
-                    </Tooltip>
-                  ),
-                )}
+                .map(({ id, name, description, recommended, Icon }) => (
+                  <Tooltip key={id}>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        aria-label={name}
+                        aria-pressed={sandboxProvider === id}
+                        onClick={() => selectProvider(id)}
+                        className={`relative h-9 min-w-28 justify-start gap-2 px-3 ${
+                          sandboxProvider === id
+                            ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
+                            : recommended
+                              ? "border-amber-300/80 bg-amber-50/60 hover:bg-amber-50 dark:border-amber-500/40 dark:bg-amber-500/5"
+                              : ""
+                        }`}
+                      >
+                        {recommended ? (
+                          <Badge
+                            variant="outline"
+                            className="absolute -top-2 right-1 h-4 border-amber-300 bg-amber-100 px-1.5 text-[9px] leading-none text-amber-800 shadow-sm dark:border-amber-500/40 dark:bg-amber-500/15 dark:text-amber-300"
+                          >
+                            <Sparkles />
+                            Recommended
+                          </Badge>
+                        ) : null}
+                        <Icon className="size-4" />
+                        {name}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">{description}</TooltipContent>
+                  </Tooltip>
+                ))}
             </TooltipProvider>
           )}
         </div>
@@ -225,11 +223,9 @@ function SandboxConfigCard() {
                             {sandboxType.name}
                           </span>
                           <span className="text-muted-foreground mt-0.5 block text-[10px] font-normal">
-                            {sandboxType.cpu || "N/A"} ·{" "}
-                            {sandboxType.ram || "N/A"} ·{" "}
-                            {formatPricePerSecond(
-                              sandboxType.price_per_second,
-                            )}
+                            {sandboxType.cpu} vCPU · {sandboxType.ram} GB RAM ·{" "}
+                            {sandboxType.storage} GB storage ·{" "}
+                            {formatPricePerSecond(sandboxType.price_per_second)}
                           </span>
                         </span>
                       </Button>

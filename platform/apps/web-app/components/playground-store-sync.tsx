@@ -25,12 +25,14 @@ import { useEffect, useMemo, useRef } from "react";
 function ProjectSessionRuntimeSync({
   instance,
   instanceSyncState,
+  isSuspended,
   sessionId,
 }: {
   // The session's running instance from the overview; `undefined` when it
   // has none.
   instance: ProjectOverviewInstance | undefined;
   instanceSyncState: "pending" | "error" | "success";
+  isSuspended: boolean;
   sessionId: string;
 }) {
   const queryClient = useQueryClient();
@@ -633,6 +635,15 @@ function ProjectSessionRuntimeSync({
       return;
     }
 
+    if (isSuspended) {
+      updateSession(sessionId, {
+        instance: null,
+        state: "suspended",
+        instanceSyncState: "success",
+      });
+      return;
+    }
+
     if (!instance) {
       updateSession(sessionId, {
         instance: null,
@@ -647,7 +658,14 @@ function ProjectSessionRuntimeSync({
       state: isOpencodeRunning ? "running" : "processing",
       instanceSyncState: "success",
     });
-  }, [instance, instanceSyncState, isOpencodeRunning, sessionId, updateSession]);
+  }, [
+    instance,
+    instanceSyncState,
+    isOpencodeRunning,
+    isSuspended,
+    sessionId,
+    updateSession,
+  ]);
 
   return null;
 }
@@ -797,12 +815,18 @@ export function PlaygroundStoreSync() {
     );
   }, [addAllProjects, addAllSessions, projectsWithSessions]);
 
-  return sessions.map(({ session }) => (
-    <ProjectSessionRuntimeSync
-      instance={instancesBySessionId.get(session.id)}
-      instanceSyncState={instanceSyncState}
-      key={session.id}
-      sessionId={session.id}
-    />
-  ));
+  return sessions.map(({ session }) => {
+    const sessionInstance = instancesBySessionId.get(session.id);
+    return (
+      <ProjectSessionRuntimeSync
+        instance={
+          sessionInstance?.state === "running" ? sessionInstance : undefined
+        }
+        isSuspended={sessionInstance?.state === "suspended"}
+        instanceSyncState={instanceSyncState}
+        key={session.id}
+        sessionId={session.id}
+      />
+    );
+  });
 }

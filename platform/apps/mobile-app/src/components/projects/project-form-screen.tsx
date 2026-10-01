@@ -491,7 +491,7 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                   onChange={setInstanceTypeId}
                   options={instanceTypes.map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   placeholder={
                     instanceTypesQuery.isPending
@@ -544,7 +544,7 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                   onChange={setSandboxTypeId}
                   options={sandboxTypes.map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   placeholder={
                     sandboxTypesQuery.isPending
@@ -601,7 +601,10 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                   onChangeText={setFinalScript}
                   placeholder="Runs after repositories are set up"
                   value={finalScript}
-                  warnings={getRepoScriptWarnings(finalScript, selectedRepoNames)}
+                  warnings={getRepoScriptWarnings(
+                    finalScript,
+                    selectedRepoNames,
+                  )}
                 />
                 <ScriptField
                   label="Development script"
@@ -809,7 +812,9 @@ function ScriptField({
             key={`${kind}-${repoName}`}
             style={[
               styles.scriptWarning,
-              isUnselected ? styles.scriptWarningRed : styles.scriptWarningYellow,
+              isUnselected
+                ? styles.scriptWarningRed
+                : styles.scriptWarningYellow,
             ]}
           >
             <SymbolView

@@ -21,6 +21,7 @@ import {
 import {
   useArchiveProjectSession,
   useResumeProjectSession,
+  useResumeSuspendedSession,
 } from "@repo/api-hooks";
 import { useSessionChatsStore, useSessionsStore } from "@repo/app-store";
 import {
@@ -492,7 +493,11 @@ function ProjectSessionNavItem({
                   size="icon-xs"
                   aria-label={`Resume ${session.name}`}
                   title="Resume session"
-                  disabled={isResumePending || isArchivePending}
+                  disabled={
+                    isResumePending ||
+                    isArchivePending ||
+                    sessionEntry?.state === "processing"
+                  }
                   onClick={() => onResume(session.id)}
                 >
                   <Play />
@@ -512,11 +517,16 @@ function ProjectSessionNavItem({
   );
 }
 
-export function NavProjects({ projects }: { projects: Project[] }): ReactElement {
+export function NavProjects({
+  projects,
+}: {
+  projects: Project[];
+}): ReactElement {
   const params = useParams<{ projectId?: string }>();
   const activeProjectId = params.projectId;
   const router = useRouter();
   const resumeSession = useResumeProjectSession();
+  const resumeSuspendedSession = useResumeSuspendedSession();
   const archiveSession = useArchiveProjectSession();
   const sessions = useSessionsStore((store) => store.sessions);
   const { isMobile, setOpenMobile } = useSidebar();
@@ -568,6 +578,23 @@ export function NavProjects({ projects }: { projects: Project[] }): ReactElement
           showResumeSessionError(error, (href) => router.push(href)),
       },
     );
+  };
+
+  const handleResume = (sessionId: string) => {
+    const entry = useSessionsStore
+      .getState()
+      .sessions.find((entry) => entry.session.id === sessionId);
+    if (entry?.state === "processing" || entry?.state === "running") return;
+    if (entry?.state !== "suspended") {
+      setRuntimeDialogSessionId(sessionId);
+      return;
+    }
+
+    resumeSuspendedSession.mutate(sessionId, {
+      onSuccess: () => toast.success("Session resumed"),
+      onError: (error) =>
+        showResumeSessionError(error, (href) => router.push(href)),
+    });
   };
 
   const handleArchive = (sessionId: string) => {
@@ -640,9 +667,12 @@ export function NavProjects({ projects }: { projects: Project[] }): ReactElement
                         <ProjectSessionNavItem
                           key={session.id}
                           session={session}
-                          isResumePending={resumeSession.isPending}
+                          isResumePending={
+                            resumeSession.isPending ||
+                            resumeSuspendedSession.isPending
+                          }
                           isArchivePending={archivingSessionId === session.id}
-                          onResume={setRuntimeDialogSessionId}
+                          onResume={handleResume}
                           onArchive={handleArchive}
                           onNavigate={closeMobileSidebar}
                         />

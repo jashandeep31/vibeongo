@@ -2,15 +2,41 @@ import { Sandbox } from "e2b";
 import { env } from "../../lib/env.js";
 import { CreateInstanceProps } from "../types.js";
 import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
+import { PROVIDER_TERMINATION_GRACE_MINUTES } from "../constants.js";
 
 export class E2BClient {
   async terminateInstance(instanceId: string) {
-    try {
-      //TODO: incase the e2b termianted it before we dont wanna fail automated request
-      //But for future find a better way to handle this as this charges user a little more then the user actaully had used
-      await Sandbox.kill(instanceId, { apiKey: env.E2B_API_KEY });
-    } catch (e) {}
+    return await Sandbox.kill(instanceId, { apiKey: env.E2B_API_KEY });
+  }
+
+  async suspendInstance(instanceId: string): Promise<boolean> {
+    await Sandbox.pause(instanceId, {
+      apiKey: env.E2B_API_KEY,
+      keepMemory: true,
+    });
     return true;
+  }
+
+  async resumeInstance(
+    instanceId: string,
+    timeoutMs: number,
+  ): Promise<boolean> {
+    await Sandbox.connect(instanceId, {
+      apiKey: env.E2B_API_KEY,
+      timeoutMs: timeoutMs + PROVIDER_TERMINATION_GRACE_MINUTES * 60 * 1000,
+    });
+    return true;
+  }
+
+  async runCommand(
+    instanceId: string,
+    command: string,
+    opts: { user?: string; envs?: Record<string, string>; timeoutMs?: number },
+  ) {
+    const sandbox = await Sandbox.connect(instanceId, {
+      apiKey: env.E2B_API_KEY,
+    });
+    return sandbox.commands.run(command, opts);
   }
 
   async createInstance({
@@ -19,7 +45,8 @@ export class E2BClient {
     instanceType,
     terminatedAfterInMinutes,
   }: CreateInstanceProps) {
-    const terminateInstanceInSecs = terminatedAfterInMinutes * 60;
+    const terminateInstanceInSecs =
+      (terminatedAfterInMinutes + PROVIDER_TERMINATION_GRACE_MINUTES) * 60;
 
     const sandbox = await Sandbox.create(instanceType, {
       metadata: { name: instanceName },

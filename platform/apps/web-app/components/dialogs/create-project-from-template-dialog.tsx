@@ -258,7 +258,7 @@ export function CreateProjectFromTemplateDialog({
                   }
                   options={(instanceTypesQuery.data ?? []).map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   onChange={setInstanceTypeId}
                 />
@@ -312,7 +312,7 @@ export function CreateProjectFromTemplateDialog({
                   }
                   options={(sandboxTypesQuery.data ?? []).map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   onChange={setSandboxTypeId}
                 />

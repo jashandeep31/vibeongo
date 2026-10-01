@@ -11,6 +11,7 @@ import {
   Box,
   Check,
   Cpu,
+  HardDrive,
   Info,
   MemoryStick,
   Plus,
@@ -36,8 +37,9 @@ type PricingRow = {
   name: string;
   provider: string;
   region?: string;
-  cpu: string | null;
-  ram: string | null;
+  cpu: number;
+  ram: number;
+  storage: number;
   /** Price per billing unit, already formatted. */
   price: string;
   finePrint?: string;
@@ -72,6 +74,7 @@ export default function PricingClientView({
       region: region.name,
       cpu: type.cpu,
       ram: type.ram,
+      storage: type.storage,
       // Billing is per started minute today; the per-second rate is fine print.
       price: formatPrice(
         type.price_per_second * 60 * MANAGEMENT_CHARGE_MULTIPLIER,
@@ -96,6 +99,7 @@ export default function PricingClientView({
       provider: type.provider,
       cpu: type.cpu,
       ram: type.ram,
+      storage: type.storage,
       price: formatPrice(type.price_per_hour * MANAGEMENT_CHARGE_MULTIPLIER),
       hourly: type.price_per_hour * MANAGEMENT_CHARGE_MULTIPLIER,
     }));
@@ -486,26 +490,26 @@ function ProviderMark({ provider }: { provider: string }) {
 }
 
 function Specs({ row, dark = false }: { row: PricingRow; dark?: boolean }) {
-  if (!row.cpu && !row.ram) return null;
   const chip = dark
     ? "bg-white/[0.07] text-white/75"
     : "bg-lp-muted text-lp-ink/70";
   return (
     <span className="flex flex-wrap gap-1.5 text-[11px] font-medium">
-      {row.cpu ? (
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${chip}`}
-        >
-          <Cpu className="size-3" /> {row.cpu}
-        </span>
-      ) : null}
-      {row.ram ? (
-        <span
-          className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${chip}`}
-        >
-          <MemoryStick className="size-3" /> {row.ram}
-        </span>
-      ) : null}
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${chip}`}
+      >
+        <Cpu className="size-3" /> {row.cpu} vCPU
+      </span>
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${chip}`}
+      >
+        <MemoryStick className="size-3" /> {row.ram} GB RAM
+      </span>
+      <span
+        className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 ${chip}`}
+      >
+        <HardDrive className="size-3" /> {row.storage} GB storage
+      </span>
     </span>
   );
 }

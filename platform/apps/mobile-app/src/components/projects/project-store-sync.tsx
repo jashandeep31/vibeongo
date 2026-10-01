@@ -49,19 +49,20 @@ function getConfigValue(config: unknown, key: string) {
 
 function ProjectSessionRuntimeSync({
   activeOpencodeSessionId,
-  instance,
+  instance: overviewInstance,
   instanceSyncState,
   runtimeSocketEnabled,
   sessionId,
 }: {
   activeOpencodeSessionId: string;
-  // The session's running instance from the overview; `undefined` when it
-  // has none.
+  // The session's running or suspended instance from the overview.
   instance: ProjectOverviewInstance | undefined;
   instanceSyncState: "pending" | "error" | "success";
   runtimeSocketEnabled: boolean;
   sessionId: string;
 }) {
+  const instance =
+    overviewInstance?.state === "running" ? overviewInstance : undefined;
   const queryClient = useQueryClient();
   const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
   activeOpencodeSessionIdRef.current = activeOpencodeSessionId;
@@ -513,7 +514,8 @@ function ProjectSessionRuntimeSync({
     if (!instance) {
       updateSession(sessionId, {
         instance: null,
-        state: "stopped",
+        state:
+          overviewInstance?.state === "suspended" ? "suspended" : "stopped",
         instanceSyncState,
       });
       return;
@@ -524,16 +526,21 @@ function ProjectSessionRuntimeSync({
       state: isOpencodeRunning ? "running" : "processing",
       instanceSyncState: "success",
     });
-  }, [instance, instanceSyncState, isOpencodeRunning, sessionId, updateSession]);
+  }, [
+    instance,
+    overviewInstance,
+    instanceSyncState,
+    isOpencodeRunning,
+    sessionId,
+    updateSession,
+  ]);
 
   return null;
 }
 
 function getEventSessionId(event: Event) {
   const properties = event.properties as
-    | { sessionID?: unknown }
-    | null
-    | undefined;
+    { sessionID?: unknown } | null | undefined;
   return typeof properties?.sessionID === "string"
     ? properties.sessionID
     : undefined;
@@ -545,8 +552,7 @@ function sessionFromCreatedEvent(event: Event): Session | undefined {
   const location = value.location as { directory?: unknown } | undefined;
   if (typeof location?.directory !== "string") return undefined;
   const model = value.model as
-    | { id?: unknown; providerID?: unknown; variant?: unknown }
-    | undefined;
+    { id?: unknown; providerID?: unknown; variant?: unknown } | undefined;
   return {
     id: value.sessionID,
     slug: typeof value.slug === "string" ? value.slug : value.sessionID,
@@ -617,7 +623,16 @@ export function ProjectStoreSync({
       new Map(
         (projectsWithSessions ?? []).flatMap((project) =>
           project.sessions.map(
-            (session) => [session.id, session.instances[0]] as const,
+            (session) =>
+              [
+                session.id,
+                session.instances.find(
+                  (instance) => instance.state === "running",
+                ) ??
+                  session.instances.find(
+                    (instance) => instance.state === "suspended",
+                  ),
+              ] as const,
           ),
         ),
       ),
@@ -711,7 +726,9 @@ export function ProjectStoreSync({
         ({ sessions: _sessions, ...project }) => project,
       ),
       projectsWithSessions.flatMap((project) =>
-        project.sessions.map(({ instances: _instances, ...session }) => session),
+        project.sessions.map(
+          ({ instances: _instances, ...session }) => session,
+        ),
       ),
     );
   }, [addAllProjects, addAllSessions, cacheOwnerId, projectsWithSessions]);

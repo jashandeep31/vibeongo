@@ -1,6 +1,6 @@
 import { Worker } from "bullmq";
 import { redis } from "../lib/valkey.js";
-import { terminateInstanceAndChargeUsage } from "../services/instances/terminate-instance-and-charge-usage.js";
+import { addTerminateOrPauseInstanceJob } from "./terminate-or-pause-instance.js";
 import {
   INSTANCE_TERMINATION_JOB_NAME,
   INSTANCE_TERMINATION_QUEUE_NAME,
@@ -14,7 +14,11 @@ export const instanceTerminationWorker = new Worker<
 >(
   INSTANCE_TERMINATION_QUEUE_NAME,
   async (job) => {
-    await terminateInstanceAndChargeUsage(job.data);
+    // Drain older termination jobs through the shared lifecycle queue and lock.
+    await addTerminateOrPauseInstanceJob({
+      instanceId: job.data.instanceId,
+      action: "terminate",
+    });
   },
   {
     connection: redis.duplicate({ maxRetriesPerRequest: null }) as any,

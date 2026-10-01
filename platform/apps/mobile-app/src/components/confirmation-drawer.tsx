@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useLayoutEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -18,8 +18,17 @@ type ConfirmationDrawerProps = {
   description: string;
   destructive?: boolean;
   isConfirming?: boolean;
+  hideCancel?: boolean;
   onCancel: () => void;
   onConfirm: () => void;
+  secondaryAction?:
+    | {
+        label: string;
+        onPress: () => void;
+        disabled?: boolean;
+        isPending?: boolean;
+      }
+    | undefined;
   title: string;
   visible: boolean;
 };
@@ -30,8 +39,10 @@ export function ConfirmationDrawer({
   description,
   destructive = true,
   isConfirming = false,
+  hideCancel = false,
   onCancel,
   onConfirm,
+  secondaryAction,
   title,
   visible,
 }: ConfirmationDrawerProps) {
@@ -39,7 +50,7 @@ export function ConfirmationDrawer({
   const insets = useSafeAreaInsets();
   const [secondsRemaining, setSecondsRemaining] = useState(0);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!visible) {
       setSecondsRemaining(0);
       return;
@@ -61,6 +72,38 @@ export function ConfirmationDrawer({
   }, [confirmDelaySeconds, visible]);
 
   const isConfirmDisabled = secondsRemaining > 0 || isConfirming;
+  const secondaryButton = secondaryAction ? (
+    <Pressable
+      accessibilityLabel={secondaryAction.label}
+      accessibilityRole="button"
+      accessibilityState={{
+        disabled: Boolean(
+          secondaryAction.disabled || secondaryAction.isPending || isConfirming,
+        ),
+        busy: Boolean(secondaryAction.isPending),
+      }}
+      disabled={
+        secondaryAction.disabled || secondaryAction.isPending || isConfirming
+      }
+      onPress={secondaryAction.onPress}
+      style={({ pressed }) => [
+        hideCancel ? styles.inlineSecondaryAction : styles.secondaryAction,
+        (secondaryAction.disabled ||
+          secondaryAction.isPending ||
+          isConfirming) &&
+          styles.disabledAction,
+        pressed && styles.pressed,
+      ]}
+    >
+      {secondaryAction.isPending ? (
+        <ActivityIndicator color="#ffffff" size="small" />
+      ) : (
+        <ThemedText style={[styles.actionLabel, { color: "#ffffff" }]}>
+          {secondaryAction.label}
+        </ThemedText>
+      )}
+    </Pressable>
+  ) : null;
 
   return (
     <Modal
@@ -101,18 +144,28 @@ export function ConfirmationDrawer({
             {description}
           </ThemedText>
 
-          <View style={styles.actions}>
-            <Pressable
-              accessibilityRole="button"
-              onPress={onCancel}
-              style={({ pressed }) => [
-                styles.action,
-                { backgroundColor: theme.backgroundElement },
-                pressed && styles.pressed,
-              ]}
-            >
-              <ThemedText style={styles.actionLabel}>Cancel</ThemedText>
-            </Pressable>
+          {!hideCancel && secondaryButton}
+          <View
+            style={[
+              styles.actions,
+              !hideCancel && secondaryAction && { marginTop: 10 },
+            ]}
+          >
+            {hideCancel ? (
+              secondaryButton
+            ) : (
+              <Pressable
+                accessibilityRole="button"
+                onPress={onCancel}
+                style={({ pressed }) => [
+                  styles.action,
+                  { backgroundColor: theme.backgroundElement },
+                  pressed && styles.pressed,
+                ]}
+              >
+                <ThemedText style={styles.actionLabel}>Cancel</ThemedText>
+              </Pressable>
+            )}
             <Pressable
               accessibilityLabel={
                 isConfirming
@@ -176,6 +229,24 @@ const styles = StyleSheet.create({
   actionLabel: {
     fontSize: 14,
     fontWeight: "700",
+  },
+  inlineSecondaryAction: {
+    alignItems: "center",
+    backgroundColor: "#2563eb",
+    borderRadius: 10,
+    flex: 1,
+    justifyContent: "center",
+    minHeight: 44,
+    paddingHorizontal: 14,
+  },
+  secondaryAction: {
+    alignItems: "center",
+    backgroundColor: "#2563eb",
+    borderRadius: 10,
+    justifyContent: "center",
+    marginTop: 22,
+    minHeight: 44,
+    paddingHorizontal: 14,
   },
   actions: {
     flexDirection: "row",

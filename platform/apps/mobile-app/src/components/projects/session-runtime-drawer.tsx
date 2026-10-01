@@ -39,8 +39,9 @@ const runtimes = [
 type RuntimeTarget = {
   name: string;
   provider: string;
-  cpu: string | null;
-  ram: string | null;
+  cpu: number;
+  ram: number;
+  storage: number;
   region_name: string | null;
 };
 
@@ -50,12 +51,15 @@ const formatDetails = ({
   provider,
   cpu,
   ram,
+  storage,
   region_name,
 }: RuntimeTarget) =>
   [
     getRuntimeProviderName(provider),
     region_name,
-    ...[cpu, ram].filter((spec) => spec && !name.includes(spec)),
+    ...[`${cpu} vCPU`, `${ram} GB RAM`, `${storage} GB storage`].filter(
+      (spec) => !name.includes(spec),
+    ),
   ]
     .filter(Boolean)
     .join(" · ");
