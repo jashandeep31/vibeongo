@@ -26,6 +26,7 @@ import {
 } from "./charge-instance-period.js";
 import { getOpenRouterKeyLimitInDollars } from "./spin-up-and-save-instance-v2.js";
 import { getValidatedAutoTerminateAfterInMinutes } from "./spin-up-and-save-instance.js";
+import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
 
 const e2bClient = new E2BClient();
 
@@ -187,6 +188,11 @@ export const resumeSuspendedSession = async ({
       startedAt: resumedAt,
       ratePerSecond: sandboxType.price_per_second,
     });
+  });
+
+  await addTerminateOrPauseInstanceJob({
+    instanceId: instance.id,
+    autoExpire: true,
   });
 
   // E2B traffic credentials and the proxy's instance access token may have

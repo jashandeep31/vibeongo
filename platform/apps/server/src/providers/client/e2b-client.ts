@@ -2,6 +2,7 @@ import { Sandbox } from "e2b";
 import { env } from "../../lib/env.js";
 import { CreateInstanceProps } from "../types.js";
 import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
+import { PROVIDER_TERMINATION_GRACE_MINUTES } from "../constants.js";
 
 export class E2BClient {
   async terminateInstance(instanceId: string) {
@@ -24,7 +25,7 @@ export class E2BClient {
   async resumeInstance(instanceId: string, timeoutMs: number) {
     await Sandbox.connect(instanceId, {
       apiKey: env.E2B_API_KEY,
-      timeoutMs,
+      timeoutMs: timeoutMs + PROVIDER_TERMINATION_GRACE_MINUTES * 60 * 1000,
     });
     return true;
   }
@@ -46,7 +47,8 @@ export class E2BClient {
     instanceType,
     terminatedAfterInMinutes,
   }: CreateInstanceProps) {
-    const terminateInstanceInSecs = terminatedAfterInMinutes * 60;
+    const terminateInstanceInSecs =
+      (terminatedAfterInMinutes + PROVIDER_TERMINATION_GRACE_MINUTES) * 60;
 
     const sandbox = await Sandbox.create(instanceType, {
       metadata: { name: instanceName },

@@ -2,6 +2,7 @@ import { env } from "../../lib/env.js";
 import { CreateInstanceProps } from "../types.js";
 import { Daytona } from "@daytona/sdk";
 import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
+import { PROVIDER_TERMINATION_GRACE_MINUTES } from "../constants.js";
 
 const daytona = new Daytona({
   apiKey: env.DAYTONA_API_KEY,
@@ -27,7 +28,8 @@ export class DaytonaClient {
         snapshot: instanceType,
         // resources: { cpu: 2, memory: 4, disk: 8 },
         public: false,
-        ttlMinutes: terminatedAfterInMinutes,
+        ttlMinutes:
+          terminatedAfterInMinutes + PROVIDER_TERMINATION_GRACE_MINUTES,
         networkBlockAll: false,
       },
       {

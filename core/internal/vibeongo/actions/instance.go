@@ -12,14 +12,19 @@ func TerminateInstance(cfg config.Config, force bool) error {
 	apiClient := httpclient.Client{BaseURL: cfg.ServerBaseURL}
 
 	if cfg.InstanceConfig.Terminate || force {
-		var apiRes any
+		var apiRes struct {
+			Data string `json:"data"`
+		}
 		headers := runtimeAuthHeaders(cfg)
 		resp, err := apiClient.Get("/api/v1/runtime/sessions/"+cfg.SessionID+"/terminate/"+cfg.InstanceID, headers, &apiRes)
 		if err != nil {
 			return err
 		}
-		if resp.StatusCode != http.StatusOK {
+		if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusAccepted {
 			return fmt.Errorf("failed to terminate instance: unexpected status code %d", resp.StatusCode)
+		}
+		if apiRes.Data != "" {
+			fmt.Println(apiRes.Data)
 		}
 
 		return nil

@@ -135,7 +135,7 @@ func TerminateInstanceCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "terminate",
 		Short: "Terminate the current runtime instance",
-		Long:  "Request termination of the current runtime instance. Use this when work is complete to release resources and stop further usage. Pass --force to terminate even when the current config disables automatic termination.",
+		Long:  "Request termination of the current runtime instance. If the instance is busy, termination is queued for processing in the next few minutes. Use this when work is complete to release resources and stop further usage. Pass --force to terminate even when the current config disables automatic termination.",
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := config.LoadAndValidate()

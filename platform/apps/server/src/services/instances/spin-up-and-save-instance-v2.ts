@@ -26,6 +26,7 @@ import { createProviderInstance } from "../../providers/create-providers-instanc
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { createOpenRouterVirtualKeyAndSave } from "../openrouter/index.js";
 import { openInstancePeriod } from "./charge-instance-period.js";
+import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
 
 type ProviderInstance = Awaited<ReturnType<typeof createProviderInstance>>;
 
@@ -165,6 +166,11 @@ export const spinUpAndSaveInstanceV2 = async ({
       ratePerSecond,
     });
     return createdInstance;
+  });
+
+  await addTerminateOrPauseInstanceJob({
+    instanceId: instance.id,
+    autoExpire: true,
   });
 
   // TODO: look for a better way
@@ -311,6 +317,7 @@ const handlesandboxRuntime = async ({
     projectSessionId: sessionId,
     instanceId,
   });
+
   return {
     runtime: "sandbox",
     instance: await createProviderInstance({

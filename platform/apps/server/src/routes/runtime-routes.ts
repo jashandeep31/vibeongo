@@ -9,7 +9,7 @@ import {
   getSessionOverview,
   updateSessionOverview,
 } from "../controllers/runtime/session-overview.js";
-import { suspendSessionInstance } from "../controllers/runtime/suspend-session-instance.js";
+import { terminateSessionInstance } from "../controllers/runtime/terminate-session-instance.js";
 import { runTaskActions } from "../controllers/runtime/task-actions.js";
 import { renewTokens } from "../controllers/runtime/renew-tokens.js";
 import { updateRuntimeProjectBasicConfig } from "../controllers/runtime/update-project-config.js";
@@ -23,7 +23,7 @@ routes
 
 routes
   .route("/sessions/:id/terminate/:instanceId")
-  .get(checkRuntimeAuthorization, suspendSessionInstance);
+  .get(checkRuntimeAuthorization, terminateSessionInstance);
 
 routes
   .route("/sessions/:id/get-project-files")
