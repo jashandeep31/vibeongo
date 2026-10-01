@@ -6,12 +6,7 @@ import { PROVIDER_TERMINATION_GRACE_MINUTES } from "../constants.js";
 
 export class E2BClient {
   async terminateInstance(instanceId: string) {
-    try {
-      //TODO: incase the e2b termianted it before we dont wanna fail automated request
-      //But for future find a better way to handle this as this charges user a little more then the user actaully had used
-      await Sandbox.kill(instanceId, { apiKey: env.E2B_API_KEY });
-    } catch (e) {}
-    return true;
+    return await Sandbox.kill(instanceId, { apiKey: env.E2B_API_KEY });
   }
 
   async suspendInstance(instanceId: string) {

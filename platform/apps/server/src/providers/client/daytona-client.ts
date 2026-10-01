@@ -11,10 +11,11 @@ const daytona = new Daytona({
 export class DaytonaClient {
   async terminateInstance(instanceId: string) {
     try {
-      const sandbox = await daytona.get(instanceId);
-      await daytona.delete(sandbox);
-    } catch {}
-    return true;
+      await daytona.get(instanceId);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   async createInstance({
