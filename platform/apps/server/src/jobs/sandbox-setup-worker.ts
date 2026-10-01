@@ -11,6 +11,7 @@ import { redis } from "../lib/valkey.js";
 import { BoatClient } from "../providers/client/boat-client.js";
 
 const SETUP_TIMEOUT_MS = 1000 * 60 * 10;
+const RESUME_TIMEOUT_MS = 1000 * 60 * 5;
 const daytona = new Daytona({
   apiKey: env.DAYTONA_API_KEY,
 });
@@ -42,6 +43,39 @@ const setupE2BSandbox = async (sandboxId: string, userData: string) => {
   );
 };
 
+const resumeE2BSandbox = async (
+  sandboxId: string,
+  script: string,
+  sessionToken: string,
+) => {
+  const sandbox = await E2BSandbox.connect(sandboxId, {
+    apiKey: env.E2B_API_KEY,
+  });
+  await sandbox.commands.run(script, {
+    user: "vibe",
+    envs: { VIBEONGO_SESSION_TOKEN: sessionToken },
+    timeoutMs: RESUME_TIMEOUT_MS,
+    onStdout: (data: string): void => {
+      process.stdout.write(data);
+    },
+  });
+};
+
+const resumeBoatSandbox = async (
+  sandboxId: string,
+  script: string,
+  sessionToken: string,
+) => {
+  const quotedSessionToken = `'${sessionToken.replaceAll("'", "'\\''")}'`;
+  await boatClient.runCommand(
+    sandboxId,
+    `sudo -n -H -u vibe env VIBEONGO_SESSION_TOKEN=${quotedSessionToken} bash <<'VIBEONGO_BOAT_RESUME'
+${script}
+VIBEONGO_BOAT_RESUME`,
+    RESUME_TIMEOUT_MS,
+  );
+};
+
 const setupDaytonaSandbox = async (sandboxId: string, userData: string) => {
   const sandbox = await daytona.get(sandboxId);
   const encodedUserData = encodeUserData(userData);
@@ -54,7 +88,6 @@ chmod 700 /home/vibe/setup.sh
 chown vibe:vibe /home/vibe/setup.sh
 
 runuser -u vibe -- bash -lc '
-  sudo apt install jq -y
   echo "Running as: $(whoami)"
   echo "Home: $HOME"
 
@@ -100,11 +133,31 @@ const setupVercelSandbox = async (sandboxId: string, userData: string) => {
 export const sandboxSetupWorker = new Worker<SandboxSetupJobData>(
   SANDBOX_SETUP_QUEUE_NAME,
   async (job) => {
+    const { sandboxId, userData, provider = "e2b" } = job.data;
+    if (provider === "boat") {
+      await new Promise((resolve) => setTimeout(resolve, 5_000));
+    }
+    if (job.data.scriptType === "resume") {
+      if (!job.data.sessionToken) {
+        throw new Error("Resume script requires a session token");
+      }
+      switch (provider) {
+        case "e2b":
+          return resumeE2BSandbox(sandboxId, userData, job.data.sessionToken);
+        case "boat":
+          return resumeBoatSandbox(sandboxId, userData, job.data.sessionToken);
+        default:
+          throw new Error(
+            `Resume scripts are unsupported for provider: ${provider}`,
+          );
+      }
+    }
     // NOTE: this needed to be removed
     // add here to remove the race conidtion of sometimes openrouter key isn't created and it just moves without it
     // STILL not best way to handle as its not measured weather 1sec can help or not
-    await new Promise((r) => setTimeout(r, 1000));
-    const { sandboxId, userData, provider = "e2b" } = job.data;
+    if (provider !== "boat") {
+      await new Promise((r) => setTimeout(r, 1000));
+    }
 
     switch (provider) {
       case "e2b":
@@ -131,5 +184,8 @@ sandboxSetupWorker.on("error", (error) => {
 });
 
 sandboxSetupWorker.on("failed", (job, error) => {
-  console.error(`Sandbox setup job ${job?.id ?? "unknown"} failed`, error);
+  console.error(
+    `Sandbox ${job?.data.scriptType ?? "setup"} job ${job?.id ?? "unknown"} failed`,
+    error,
+  );
 });

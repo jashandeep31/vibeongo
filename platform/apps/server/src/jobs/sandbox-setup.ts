@@ -1,13 +1,23 @@
 import { Queue } from "bullmq";
+import { randomUUID } from "node:crypto";
 import { redis } from "../lib/valkey.js";
 
 export const SANDBOX_SETUP_QUEUE_NAME = "sandbox-setup";
 
 export type SandboxSetupJobData = {
-  provider: "e2b" | "daytona" | "vercel" | "boat";
   sandboxId: string;
   userData: string;
-};
+} & (
+  | {
+      provider: "e2b" | "daytona" | "vercel" | "boat";
+      scriptType?: "setup";
+    }
+  | {
+      provider: "e2b" | "boat";
+      scriptType: "resume";
+      sessionToken: string;
+    }
+);
 
 const sandboxSetupQueue = new Queue<SandboxSetupJobData>(
   SANDBOX_SETUP_QUEUE_NAME,
@@ -22,7 +32,10 @@ sandboxSetupQueue.on("error", (error) => {
 
 export const addSandboxSetupJob = async (data: SandboxSetupJobData) => {
   await sandboxSetupQueue.add("sandbox-setup-job", data, {
-    jobId: `${data.provider}-${data.sandboxId}`,
+    jobId:
+      data.scriptType === "resume"
+        ? `${data.provider}-${data.sandboxId}-resume-${randomUUID()}`
+        : `${data.provider}-${data.sandboxId}`,
     attempts: 1,
     backoff: {
       type: "exponential",

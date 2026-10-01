@@ -9,7 +9,7 @@ export class E2BClient {
     return await Sandbox.kill(instanceId, { apiKey: env.E2B_API_KEY });
   }
 
-  async suspendInstance(instanceId: string) {
+  async suspendInstance(instanceId: string): Promise<boolean> {
     await Sandbox.pause(instanceId, {
       apiKey: env.E2B_API_KEY,
       keepMemory: true,
@@ -17,7 +17,10 @@ export class E2BClient {
     return true;
   }
 
-  async resumeInstance(instanceId: string, timeoutMs: number) {
+  async resumeInstance(
+    instanceId: string,
+    timeoutMs: number,
+  ): Promise<boolean> {
     await Sandbox.connect(instanceId, {
       apiKey: env.E2B_API_KEY,
       timeoutMs: timeoutMs + PROVIDER_TERMINATION_GRACE_MINUTES * 60 * 1000,

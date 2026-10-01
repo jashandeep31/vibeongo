@@ -13,6 +13,8 @@ export const resumeSuspendedProjectSession = catchAsync(
 
     await resumeSuspendedSession({ sessionId: id, userId: user.id });
 
-    res.status(200).json({ message: "Session resumed successfully" });
+    res.status(200).json({
+      message: "Session resumed. Its runtime is restarting in the background.",
+    });
   },
 );

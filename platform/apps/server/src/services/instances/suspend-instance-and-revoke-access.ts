@@ -26,15 +26,21 @@ import {
   clearInstanceDomainRouting,
   queueInstanceGitTokenRevocations,
 } from "./terminate-instance-and-charge-usage.js";
+import { PAUSEABLE_SANDBOX_PROVIDERS } from "../../providers/constants.js";
+import { BoatClient } from "../../providers/client/boat-client.js";
 
 const e2bClient = new E2BClient();
+const boatClient = new BoatClient();
 
 interface SuspendInstanceAndRevokeAccessProps {
   instanceId: string;
   userId: string;
 }
 
-const clearRuntimeSecrets = async (instance: typeof instances.$inferSelect) => {
+const clearRuntimeSecrets = async (
+  instance: typeof instances.$inferSelect,
+  provider: "e2b" | "boat",
+) => {
   const config =
     instance.config && typeof instance.config === "object"
       ? (instance.config as Record<string, unknown>)
@@ -48,20 +54,28 @@ const clearRuntimeSecrets = async (instance: typeof instances.$inferSelect) => {
     if (!instance.public_ip || !localToken) {
       throw new Error("runtime address or local token is missing");
     }
-    const trafficToken = await e2bClient.getPreviewToken({
-      sandboxId: instance.provider_instance_id,
+    let targetUrl: string;
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${localToken}`,
+    };
+    if (provider === "boat") {
+      const preview = await boatClient.getPreviewTarget({
+        sandboxId: instance.provider_instance_id,
+        port: 3101,
+      });
+      targetUrl = preview.targetUrl;
+      headers.Cookie = `_port_auth=${preview.token}`;
+    } else {
+      targetUrl = `https://${instance.public_ip}`;
+      headers["e2b-traffic-access-token"] = await e2bClient.getPreviewToken({
+        sandboxId: instance.provider_instance_id,
+      });
+    }
+    const response = await fetch(new URL("/clear-secrets", targetUrl), {
+      method: "POST",
+      headers,
+      signal: AbortSignal.timeout(30_000),
     });
-    const response = await fetch(
-      `https://${instance.public_ip}/clear-secrets`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${localToken}`,
-          "e2b-traffic-access-token": trafficToken,
-        },
-        signal: AbortSignal.timeout(30_000),
-      },
-    );
     if (!response.ok) {
       throw new Error(`status ${response.status}: ${await response.text()}`);
     }
@@ -93,16 +107,37 @@ export const suspendInstanceAndRevokeAccess = async ({
   if (instance.state !== "running") {
     throw new AppError("Only running instances can be suspended", 409);
   }
-  if (sandboxType.provider !== "e2b") {
-    throw new AppError("Only E2B sandboxes can be suspended", 400);
+  const provider = sandboxType.provider;
+  if (provider !== "e2b" && provider !== "boat") {
+    throw new AppError(
+      `Only ${PAUSEABLE_SANDBOX_PROVIDERS.join(", ")} sandboxes can be suspended`,
+      400,
+    );
   }
 
-  await clearRuntimeSecrets(instance);
+  await clearRuntimeSecrets(instance, provider);
 
   const aiCharges = await getOpenRouterKeyChargesAnTerminateKey(instance.id);
 
-  await e2bClient.suspendInstance(instance.provider_instance_id);
+  let paused: boolean = false;
+  switch (sandboxType.provider) {
+    case "e2b":
+      paused = await e2bClient.suspendInstance(instance.provider_instance_id);
+      break;
+    case "boat":
+      paused = await boatClient.pauseInstance(instance.provider_instance_id);
+      break;
+    default:
+      throw new AppError("Unknown sandbox provider", 500);
+  }
 
+  if (!paused) {
+    // TODO: handle this more properly
+    throw new AppError(
+      "Could not suspend the instance. Please try again.",
+      502,
+    );
+  }
   const suspendedAt = new Date();
   const uptimeInMin = Math.ceil(
     (suspendedAt.getTime() - instance.started_at.getTime()) / 1000 / 60,
@@ -179,7 +214,7 @@ export const suspendInstanceAndRevokeAccess = async ({
 
   await queueInstanceGitTokenRevocations(instanceId);
   await clearInstanceDomainRouting({ instanceId, userId });
-  await invalidateCachedProxyPreviews("e2b", instance.provider_instance_id);
+  await invalidateCachedProxyPreviews(provider, instance.provider_instance_id);
   if (instance.project_id) {
     await invalidateProxyHosts(
       instance.project_id,

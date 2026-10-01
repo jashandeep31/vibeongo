@@ -1,7 +1,7 @@
 import { and, db, eq, instances, sandboxTypes } from "@repo/db";
 import { lockNames, withRedisLock } from "../../cache/redis-lock.js";
 import { AppError } from "../../lib/app-error.js";
-import { AUTOMATIC_SUSPENSION_PROVIDERS } from "../../providers/constants.js";
+import { PAUSEABLE_SANDBOX_PROVIDERS } from "../../providers/constants.js";
 import { suspendInstanceAndRevokeAccess } from "./suspend-instance-and-revoke-access.js";
 import { terminateInstanceAndChargeUsage } from "./terminate-instance-and-charge-usage.js";
 
@@ -49,7 +49,11 @@ export const createInstanceActionHandler =
             .from(sandboxTypes)
             .where(eq(sandboxTypes.id, instance.sandbox_type_id!));
           if (!sandboxType) throw new AppError("Sandbox type not found", 404);
-          if (AUTOMATIC_SUSPENSION_PROVIDERS.has(sandboxType.provider)) {
+          if (
+            PAUSEABLE_SANDBOX_PROVIDERS.some(
+              (provider) => provider === sandboxType.provider,
+            )
+          ) {
             await suspendInstanceAndRevokeAccess(data);
             return;
           }

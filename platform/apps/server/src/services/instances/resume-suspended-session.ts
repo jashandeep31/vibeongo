@@ -17,6 +17,7 @@ import { invalidateCachedProxyPreviews } from "../../cache/proxy-preview-cache.j
 import { E2BClient } from "../../providers/client/e2b-client.js";
 import { resumeInstanceScript } from "../../scripts/resume-instance-script.js";
 import { tierLimits } from "../../utils/constants.js";
+import { PAUSEABLE_SANDBOX_PROVIDERS } from "../../providers/constants.js";
 import { createOpenRouterVirtualKeyAndSave } from "../openrouter/index.js";
 import { assertUserCanAffordInstanceLaunch } from "./assert-user-can-afford-instance-launch.js";
 import { getActiveInstanceSlotCount } from "./get-active-instance-slot-count.js";
@@ -28,11 +29,11 @@ import { getOpenRouterKeyLimitInDollars } from "./spin-up-and-save-instance-v2.j
 import { getValidatedAutoTerminateAfterInMinutes } from "./spin-up-and-save-instance.js";
 import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
 import { lockNames, withRedisLock } from "../../cache/redis-lock.js";
+import { BoatClient } from "../../providers/client/boat-client.js";
+import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
 
 const e2bClient = new E2BClient();
-
-const SANDBOX_USERNAME = "vibe";
-const RESUME_SCRIPT_TIMEOUT_MS = 5 * 60 * 1000;
+const boatClient = new BoatClient();
 
 interface ResumeSuspendedSessionProps {
   sessionId: string;
@@ -99,8 +100,12 @@ const resumeSuspendedSessionUnderLock = async ({
     throw new AppError("This session has no suspended instance", 404);
   }
   const { instance, sandboxType } = row;
-  if (sandboxType.provider !== "e2b") {
-    throw new AppError("Only E2B sandboxes can be resumed", 400);
+  const provider = sandboxType.provider;
+  if (provider !== "e2b" && provider !== "boat") {
+    throw new AppError(
+      `Only ${PAUSEABLE_SANDBOX_PROVIDERS.join(", ")} sandboxes can be resumed`,
+      400,
+    );
   }
 
   const reservedSlot = await db.transaction(async (tx) => {
@@ -150,29 +155,55 @@ const resumeSuspendedSessionUnderLock = async ({
     return slot;
   });
 
-  const autoTerminateAfterInMinutes =
-    await getValidatedAutoTerminateAfterInMinutes({
-      runtime: "sandbox",
-      terminateAfterInMinutes: undefined,
-      userId,
-      terminateSetting: z
-        .enum(["manual", "pr", "issue", "automation"])
-        .catch("manual")
-        .parse(reservedSlot.spun_up_by),
-    });
-
+  let autoTerminateAfterInMinutes: number;
   try {
-    await e2bClient.resumeInstance(
-      instance.provider_instance_id,
-      autoTerminateAfterInMinutes * 60 * 1000,
+    autoTerminateAfterInMinutes = await getValidatedAutoTerminateAfterInMinutes(
+      {
+        runtime: "sandbox",
+        terminateAfterInMinutes: undefined,
+        userId,
+        terminateSetting: z
+          .enum(["manual", "pr", "issue", "automation"])
+          .catch("manual")
+          .parse(reservedSlot.spun_up_by),
+      },
     );
+
+    let resumed: boolean = false;
+    switch (provider) {
+      case "e2b":
+        resumed = await e2bClient.resumeInstance(
+          instance.provider_instance_id,
+          autoTerminateAfterInMinutes * 60 * 1000,
+        );
+        break;
+      case "boat":
+        resumed = await boatClient.resumeInstance(
+          instance.provider_instance_id,
+          autoTerminateAfterInMinutes * 60 * 1000,
+        );
+        break;
+      default:
+        throw new AppError("Unknown sandbox provider", 500);
+    }
+
+    if (!resumed) {
+      throw new AppError(
+        "Could not resume the instance. Please try again.",
+        502,
+      );
+    }
   } catch (error) {
     await db
       .update(instanceSlots)
       .set({ status: "suspended", updated_at: new Date() })
-      .where(eq(instanceSlots.id, reservedSlot.id));
-    console.error(`Could not resume the E2B sandbox of ${instance.id}`, error);
-    throw new AppError("Could not resume the instance. Please try again.", 502);
+      .where(
+        and(
+          eq(instanceSlots.id, reservedSlot.id),
+          eq(instanceSlots.status, "provisioning"),
+        ),
+      );
+    throw error;
   }
 
   const resumedAt = new Date();
@@ -236,9 +267,8 @@ const resumeSuspendedSessionUnderLock = async ({
     autoExpire: true,
   });
 
-  // E2B traffic credentials and the proxy's instance access token may have
-  // changed while suspended. Clear both layers before exposing the runtime.
-  await invalidateCachedProxyPreviews("e2b", instance.provider_instance_id);
+  // Preview credentials and the instance access token may have changed.
+  await invalidateCachedProxyPreviews(provider, instance.provider_instance_id);
   if (instance.project_id) {
     await invalidateProjectProxiesByPid(
       instance.project_id,
@@ -273,19 +303,20 @@ const resumeSuspendedSessionUnderLock = async ({
   }
 
   try {
-    await e2bClient.runCommand(
-      instance.provider_instance_id,
-      resumeInstanceScript(),
-      {
-        user: SANDBOX_USERNAME,
-        envs: { VIBEONGO_SESSION_TOKEN: sessionToken },
-        timeoutMs: RESUME_SCRIPT_TIMEOUT_MS,
-      },
-    );
+    await addSandboxSetupJob({
+      provider,
+      sandboxId: instance.provider_instance_id,
+      scriptType: "resume",
+      userData: resumeInstanceScript(),
+      sessionToken,
+    });
   } catch (error) {
-    console.error(`The resume script failed on instance ${instance.id}`, error);
+    console.error(
+      `Could not queue the resume script for instance ${instance.id}`,
+      error,
+    );
     throw new AppError(
-      "The instance was resumed but its runtime did not start. Suspend or terminate it and try again.",
+      "The instance was resumed but its runtime restart could not be queued. Suspend or terminate it and try again.",
       502,
     );
   }
