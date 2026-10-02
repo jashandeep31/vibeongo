@@ -222,10 +222,7 @@ export function reduceOpencodeMessages(
       native.text.trim()
     ) {
       const isInstructionUpdate = nativeType === "session.instructions.updated";
-      const syntheticDescription =
-        typeof native.description === "string" && native.description.trim()
-          ? native.description
-          : undefined;
+      const syntheticDescription = getSyntheticNoticeLabel(native.description, native.metadata);
       // Synthetic text is model context (such as an AGENTS.md body), not
       // assistant prose. OpenCode's transcript displays its description.
       if (!isInstructionUpdate && !syntheticDescription) return messages;
@@ -877,6 +874,18 @@ function appendTimelineText(
       ],
     },
   ];
+}
+
+function getSyntheticNoticeLabel(description: unknown, metadata: unknown) {
+  const label =
+    typeof description === "string" && description.trim() ? description : undefined;
+  const info = recordValue(metadata);
+  if (info?.source !== "subagent") return label;
+  const state =
+    info.state === "completed" ? "completed"
+      : info.state === "error" ? "failed"
+        : info.state === "cancelled" ? "cancelled" : undefined;
+  return state ? `${label ?? "Subagent"} — ${state}` : label;
 }
 
 function getInstructionUpdateLabel(native: Record<string, unknown>) {
@@ -1816,6 +1825,24 @@ async function opencodeCursorContainsUserMessage(
   return false;
 }
 
+export async function getOpencodeSubagentStatus(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const [session, active] = await Promise.all([
+    client.session.get({ sessionID: sessionId }),
+    client.session.active(),
+  ]);
+  return {
+    status: active[sessionId] ? "busy" as const : "idle" as const,
+    outcome: session.outcome,
+  };
+}
+
 export async function getOpencodeSessionStatuses(
   chatId: string,
   sessions: Session[],
@@ -2054,15 +2081,55 @@ function normalizeV2Form(form: OpencodeForm): OpencodeSessionForms {
   };
 }
 
+/** Resolve the session directory's project before enabling Git-only review modes. */
+export async function getOpencodeReviewProjectVcs(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const [location, projects] = await Promise.all([
+    client.location.get({ location: { directory } }),
+    client.project.list(),
+  ]);
+  const project = projects.find((project) => project.id === location.project.id);
+  return project?.vcs ?? null;
+}
+
+/** Snapshot changes from this session's most recent turn, independent of Git working changes. */
+export async function getOpencodeLastTurnChanges(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+): Promise<SnapshotFileDiff[]> {
+  return getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+  ).session.diff({ sessionID: sessionId });
+}
+
 export async function createOpencodeSession(
   chatId: string,
   serverUrl: string,
   accessToken: string,
   directory?: string,
   password?: string,
+  parentID?: string,
 ) {
   if (directory && !isRuntimeRepositoryDirectory(directory)) {
     throw new Error("Invalid repository directory");
+  }
+
+  if (parentID) {
+    const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+    // The server derives the child's location from its parent and rejects missing parents.
+    return normalizeV2Session(await client.session.create({ parentID }));
   }
 
   const selectedDirectory =
@@ -2568,6 +2635,7 @@ export async function sendOpencodePrompt(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  displayText?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -2632,7 +2700,7 @@ export async function sendOpencodePrompt(
     text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
     ...(files.length ? { files } : {}),
     metadata: {
-      displayText: text,
+      displayText: displayText ?? text,
       comments: [],
       attachments: preparedAttachments.attachments,
     },
@@ -3078,24 +3146,20 @@ export async function answerOpencodeQuestion(
 }
 
 export async function rejectOpencodeQuestion(
-  _chatId: string,
+  chatId: string,
   sessionId: string,
   requestId: string,
   serverUrl: string,
   accessToken: string,
   password?: string,
+  message?: string,
 ) {
-  const response = await fetch(
-    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/form/${encodeURIComponent(requestId)}`,
-    {
-      method: "DELETE",
-      headers: getOpencodeHeaders(accessToken, password),
-    },
-  );
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || "Could not dismiss the OpenCode question");
-  }
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.session.form.cancel({
+    sessionID: sessionId,
+    formID: requestId,
+    ...(message ? { message } : {}),
+  });
 }
 
 export async function streamOpencodeEvents(
@@ -3476,7 +3540,7 @@ function normalizeV2Message(
               message.type === "system"
                 ? (message.description ?? "Instructions updated")
                 : message.type === "synthetic"
-                  ? (message.description ?? "")
+                  ? (getSyntheticNoticeLabel(message.description, message.metadata) ?? "")
                   : `Skill ${message.name}`,
           },
         ],

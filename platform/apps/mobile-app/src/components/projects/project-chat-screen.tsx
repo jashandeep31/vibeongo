@@ -523,11 +523,14 @@ export function ProjectChatScreen() {
   );
 
   const dismissQuestion = useCallback(
-    (requestId: string) => {
-      rejectQuestion.mutate(requestId, {
-        onError: (error) =>
-          Alert.alert("Could not dismiss the question", error.message),
-      });
+    (requestId: string, message?: string) => {
+      rejectQuestion.mutate(
+        { requestId, message },
+        {
+          onError: (error) =>
+            Alert.alert("Could not dismiss the question", error.message),
+        },
+      );
     },
     [rejectQuestion.mutate],
   );
@@ -674,7 +677,7 @@ export function ProjectChatScreen() {
                       { backgroundColor: theme.background },
                     ]}
                   />
-                  {revertedQuestions.length > 0 ? (
+                  {!data.session.parentID && revertedQuestions.length > 0 ? (
                     <RevertedMessagesPanel
                       chatId={projectSessionId}
                       messages={revertedQuestions}
@@ -740,6 +743,38 @@ export function ProjectChatScreen() {
                       onSubmit={submitQuestionAnswer}
                       request={activeQuestion}
                     />
+                  ) : data.session.parentID ? (
+                    <View
+                      style={[
+                        styles.subagentBar,
+                        {
+                          backgroundColor: theme.background,
+                          borderColor: theme.backgroundSelected,
+                        },
+                      ]}
+                    >
+                      <ThemedText
+                        style={[
+                          styles.subagentNotice,
+                          { color: theme.textSecondary },
+                        ]}
+                      >
+                        Subagent sessions cannot be prompted.
+                      </ThemedText>
+                      <Pressable
+                        accessibilityRole="button"
+                        accessibilityLabel="Back to main session"
+                        onPress={() => {
+                          Keyboard.dismiss();
+                          router.setParams({ chatId: data.session.parentID! });
+                        }}
+                        style={styles.subagentBackButton}
+                      >
+                        <ThemedText style={styles.subagentBackText}>
+                          Back to main session
+                        </ThemedText>
+                      </Pressable>
+                    </View>
                   ) : (
                     <ProjectChatComposer
                       disabled={!runtime.serverUrl || !!sessionQuery.error}
@@ -1414,6 +1449,7 @@ function createChatShellSelector() {
     if (
       previous &&
       previous.session.id === data.session.id &&
+      previous.session.parentID === data.session.parentID &&
       previous.session.title === data.session.title &&
       previous.session.directory === data.session.directory &&
       previous.session.agent === data.session.agent &&
@@ -2009,6 +2045,26 @@ function RevertedMessagesPanel({
 
 const styles = StyleSheet.create({
   chatArea: { flex: 1 },
+  subagentBar: {
+    borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    paddingTop: 12,
+    paddingBottom: 4,
+  },
+  subagentNotice: {
+    fontSize: 14,
+    lineHeight: 20,
+  },
+  subagentBackButton: {
+    justifyContent: "center",
+    minHeight: 44,
+    alignSelf: "flex-start",
+  },
+  subagentBackText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
   composerOuter: {
     backgroundColor: "transparent",
     bottom: 0,

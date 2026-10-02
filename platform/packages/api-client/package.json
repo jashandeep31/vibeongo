@@ -9,7 +9,9 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "tsc-watch -p ./tsconfig.json --onSuccess \"node dist/index.js\"",
     "build": "npx tsc -p ./tsconfig.json",
-    "start": "node dist/index.js"
+    "start": "node dist/index.js",
+    "test:opencode-upgrade": "tsc -p ./tsconfig.json && node tests/opencode-upgrade.test.mjs",
+    "test:opencode-subagent": "tsc -p ./tsconfig.json && node tests/opencode-subagent.test.mjs"
   },
   "keywords": [],
   "devDependencies": {
@@ -17,7 +19,7 @@
     "tsc-watch": "^7.2.1"
   },
   "dependencies": {
-    "@opencode/client": "^2.0.20",
+    "@opencode/client": "^2.0.22",
     "@repo/db": "workspace:*",
     "@repo/shared": "workspace:*",
     "axios": "^1.20.0",

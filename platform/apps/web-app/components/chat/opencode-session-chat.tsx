@@ -1,5 +1,7 @@
 "use client";
 
+import { OpencodeSubagentProvider } from "@/components/chat/opencode-subagent-context";
+
 import {
   OpencodeChatQuestion,
   StreamingIndicator,
@@ -478,14 +480,18 @@ export function OpencodeSessionChat({
     );
   };
 
-  const dismissQuestion = (requestId: string) => {
-    rejectQuestion.mutate(requestId, {
-      onError: (error) =>
-        toast.error(error.message || "Could not dismiss the question"),
-    });
+  const dismissQuestion = (requestId: string, message?: string) => {
+    rejectQuestion.mutate(
+      { requestId, message },
+      {
+        onError: (error) =>
+          toast.error(error.message || "Could not dismiss the question"),
+      },
+    );
   };
 
   const sessionUrl = `/projects/${projectId}/sessions/${chatId}`;
+  const parentSessionId = rawResponse.session.parentID;
   const newChatParams = new URLSearchParams({ serverUrl });
   const composerControls = (
     <>
@@ -607,31 +613,41 @@ export function OpencodeSessionChat({
                 Start the chat by describing what you want to build.
               </div>
             ) : null}
-            {turns.map((turn, index) => (
-              <OpencodeChatQuestion
-                key={turn.id}
-                item={turn}
-                isStreaming={isStreaming && index === turns.length - 1}
-                isReverting={
-                  revertSession.isPending && revertSession.variables === turn.id
-                }
-                revertDisabled={
-                  isStreaming ||
-                  revertSession.isPending ||
-                  restoreMessage.isPending
-                }
-                onRevert={() =>
-                  revertSession.mutate(turn.id, {
-                    onSuccess: () => toast.success("Messages rolled back"),
-                    onError: (error) =>
-                      toast.error(error.message || "Could not revert messages"),
-                  })
-                }
-                reserveBottomSpace={
-                  index === turns.length - 1 && !activeQuestion
-                }
-              />
-            ))}
+            <OpencodeSubagentProvider
+              connection={{
+                chatId,
+                chatUrl: `${sessionUrl}/chats/${sessionId}`,
+                serverUrl,
+                accessToken,
+                password,
+              }}
+            >
+              {turns.map((turn, index) => (
+                <OpencodeChatQuestion
+                  key={turn.id}
+                  item={turn}
+                  isStreaming={isStreaming && index === turns.length - 1}
+                  isReverting={
+                    revertSession.isPending && revertSession.variables === turn.id
+                  }
+                  revertDisabled={
+                    isStreaming ||
+                    revertSession.isPending ||
+                    restoreMessage.isPending
+                  }
+                  onRevert={() =>
+                    revertSession.mutate(turn.id, {
+                      onSuccess: () => toast.success("Messages rolled back"),
+                      onError: (error) =>
+                        toast.error(error.message || "Could not revert messages"),
+                    })
+                  }
+                  reserveBottomSpace={
+                    index === turns.length - 1 && !activeQuestion
+                  }
+                />
+              ))}
+            </OpencodeSubagentProvider>
             {isStreaming && turns.length === 0 ? (
               <StreamingIndicator />
             ) : null}
@@ -664,7 +680,7 @@ export function OpencodeSessionChat({
           className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)] backdrop-blur-xl"
         />
         <div className="relative mx-auto w-full max-w-4xl">
-          {revertedQuestions.length > 0 ? (
+          {!parentSessionId && revertedQuestions.length > 0 ? (
             <div className="mb-2">
               <RevertedMessagesPanel
                 messages={revertedQuestions}
@@ -720,6 +736,16 @@ export function OpencodeSessionChat({
               onSubmit={submitQuestionAnswer}
               onDismiss={dismissQuestion}
             />
+          ) : parentSessionId ? (
+            <div className="border-border bg-background text-muted-foreground rounded-xl border p-3 text-sm">
+              Subagent sessions cannot be prompted.{" "}
+              <Link
+                href={`${sessionUrl}/chats/${encodeURIComponent(parentSessionId)}?${newChatParams.toString()}`}
+                className="text-foreground hover:text-primary rounded-sm font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                Back to main session
+              </Link>
+            </div>
           ) : (
             <>
               {queuedPrompts.length ? (

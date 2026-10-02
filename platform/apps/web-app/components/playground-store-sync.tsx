@@ -346,6 +346,15 @@ function ProjectSessionRuntimeSync({
               : current,
         );
 
+        if (
+          event.type === "session.status" || event.type === "session.execution.started" ||
+          event.type === "session.updated" || isTerminalExecutionEvent(event)
+        ) {
+          void queryClient.invalidateQueries({
+            queryKey: ["opencode", "subagent-status", sessionId, opencodeSessionId],
+          });
+        }
+
         if (event.type === "session.status") {
           chatsStore.setChatStatus(
             sessionId,

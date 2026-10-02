@@ -31,13 +31,14 @@ function OpencodeQuestionPromptComponent({
   isSubmitting: boolean;
   isDismissing: boolean;
   onSubmit: (requestId: string, answers: QuestionAnswer[]) => void;
-  onDismiss: (requestId: string) => void;
+  onDismiss: (requestId: string, message?: string) => void;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const scrollRef = useRef<ScrollView>(null);
   const keyboardScrollTimerRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [keyboardHeight, setKeyboardHeight] = useState(0);
+  const [dismissMessage, setDismissMessage] = useState("");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<string[][]>(() =>
     request.questions.map(() => []),
@@ -156,7 +157,9 @@ function OpencodeQuestionPromptComponent({
   return (
     <Modal
       animationType="none"
-      onRequestClose={() => !isBusy && onDismiss(request.id)}
+      onRequestClose={() =>
+        !isBusy && onDismiss(request.id, dismissMessage.trim() || undefined)
+      }
       presentationStyle="overFullScreen"
       statusBarTranslucent
       transparent
@@ -354,6 +357,29 @@ function OpencodeQuestionPromptComponent({
               </Pressable>
             ) : null}
           </View>
+          <View style={styles.dismissFeedback}>
+            <ThemedText style={{ color: theme.textSecondary, fontSize: 12 }}>
+              Optional feedback when dismissing
+            </ThemedText>
+            <TextInput
+              accessibilityLabel="Dismissal feedback (optional)"
+              editable={!isBusy}
+              multiline
+              onChangeText={setDismissMessage}
+              onFocus={scrollToCustomAnswer}
+              placeholder="For example: Use the existing setup"
+              placeholderTextColor={theme.textSecondary}
+              style={[
+                styles.customInput,
+                {
+                  borderColor: theme.backgroundSelected,
+                  color: theme.text,
+                  paddingVertical: 10,
+                },
+              ]}
+              value={dismissMessage}
+            />
+          </View>
         </ScrollView>
 
         <View
@@ -362,7 +388,9 @@ function OpencodeQuestionPromptComponent({
           <Pressable
             accessibilityRole="button"
             disabled={isBusy}
-            onPress={() => onDismiss(request.id)}
+            onPress={() =>
+              onDismiss(request.id, dismissMessage.trim() || undefined)
+            }
             style={({ pressed }) => [
               styles.actionButton,
               pressed && styles.pressed,
@@ -464,6 +492,7 @@ const styles = StyleSheet.create({
     minHeight: 38,
     paddingHorizontal: 10,
   },
+  dismissFeedback: { gap: 4, marginTop: 12 },
   disabled: { opacity: 0.42 },
   handle: {
     alignSelf: "center",
