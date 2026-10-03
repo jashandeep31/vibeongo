@@ -1,15 +1,14 @@
 import { redis } from "../lib/valkey.js";
 
 const COOLDOWN_SECONDS = 3;
-const HOURLY_LIMIT = 10;
+const HOURLY_LIMIT = 30;
 const HOUR_SECONDS = 60 * 60;
 
 const cooldownKey = (userId: string) => `SPEECH_TOKEN_COOLDOWN:${userId}`;
 const hourlyKey = (userId: string) => `SPEECH_TOKEN_HOURLY:${userId}`;
 
 export type SpeechTokenRateLimit =
-  | { allowed: true }
-  | { allowed: false; reason: "cooldown" | "hourly" };
+  { allowed: true } | { allowed: false; reason: "cooldown" | "hourly" };
 
 export async function consumeSpeechTokenRateLimit(
   userId: string,
