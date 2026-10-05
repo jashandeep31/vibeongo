@@ -5,6 +5,9 @@ import {
   db,
   eq,
   asc,
+  and,
+  gt,
+  isNull,
   gitRepos,
   projectGitRepos,
   projectSessions,
@@ -16,6 +19,7 @@ import {
   projectDomainRouting,
   proxyDomains,
   instanceOpenRouterKeys,
+  userProviderCredentials,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGitRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
@@ -57,10 +61,13 @@ export const getRuntimeSessionConfig = catchAsync(
     const { project, instance } = sessionRow;
     const stringfiedConfig = await getDecryptedProjectConfig(project.id);
     const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
-    const resolvedProjectConfig = await appendVibeongoAiKeyToOpencodeConfig(
-      instanceId,
-      withEmptyClaudePackage(
-        await resolveProjectUserConfigs(parsedConfig, project.user_id),
+    const resolvedProjectConfig = await appendChatgptCredentialsToOpencodeConfig(
+      project.user_id,
+      await appendVibeongoAiKeyToOpencodeConfig(
+        instanceId,
+        withEmptyClaudePackage(
+          await resolveProjectUserConfigs(parsedConfig, project.user_id),
+        ),
       ),
     );
 
@@ -113,6 +120,7 @@ export const getRuntimeSessionConfig = catchAsync(
       })),
     };
 
+    res.set("Cache-Control", "no-store");
     res.status(200).json({ data: config });
   },
 );
@@ -223,6 +231,82 @@ async function appendVibeongoAiKeyToOpencodeConfig(
       label: "Vibeongo AI",
       active: true,
       value: { type: "key", key: decryptedKey },
+    },
+  ];
+
+  return config;
+}
+
+const storedChatgptTokensSchema = z.object({
+  access_token: z.string().min(1),
+  scope: z.string().optional(),
+});
+
+async function appendChatgptCredentialsToOpencodeConfig(
+  userId: string,
+  config: ResolvedProjectConfig,
+): Promise<ResolvedProjectConfig> {
+  const opencodePackage = config.packages.find(
+    (projectPackage) => projectPackage.name === "opencode",
+  );
+  if (!opencodePackage || !opencodePackage.config.use_user_config) return config;
+
+  const [credential] = await db
+    .select()
+    .from(userProviderCredentials)
+    .where(
+      and(
+        eq(userProviderCredentials.user_id, userId),
+        eq(userProviderCredentials.provider, "codex"),
+        eq(userProviderCredentials.auth_type, "oauth"),
+        isNull(userProviderCredentials.revoked_at),
+        gt(userProviderCredentials.refresh_token_expires_at, new Date()),
+      ),
+    );
+  if (!credential || !credential.access_token_expires_at) return config;
+
+  const decrypted: unknown = JSON.parse(
+    decryptData({
+      iv: credential.iv,
+      tag: credential.tag,
+      encrypted: credential.encrypted_data,
+    }),
+  );
+  const parsed = storedChatgptTokensSchema.safeParse(decrypted);
+  if (!parsed.success) {
+    throw new AppError(
+      "Stored ChatGPT credentials are invalid. Sign in again from the CLI",
+      409,
+    );
+  }
+
+  const tokens = parsed.data;
+  const metadata = {
+    clientID: "Managed by Vibeongo",
+    scopes: credential.metadata.scopes ??
+      tokens.scope?.split(/\s+/).filter(Boolean) ?? [],
+  };
+  const credentialId = `cred_${credential.id}`;
+  opencodePackage.config.auth_json = [
+    ...opencodePackage.config.auth_json
+      .filter((entry) => entry.id !== credentialId)
+      .map((entry) =>
+        entry.integrationID === "openai" ? { ...entry, active: false } : entry,
+      ),
+    {
+      id: credentialId,
+      integrationID: "openai",
+      label: "Vibeongo OpenAI",
+      active: true,
+      value: {
+        type: "oauth",
+        methodID: "chatgpt-token-sharing",
+        access: tokens.access_token,
+        // Display placeholders only; real refresh credentials stay on the server.
+        refresh: "Managed by Vibeongo",
+        expires: credential.access_token_expires_at.getTime(),
+        metadata,
+      },
     },
   ];
 
