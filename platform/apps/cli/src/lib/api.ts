@@ -1,4 +1,4 @@
-export const DEFAULT_SERVER_URL = "http://localhost:8000";
+export const DEFAULT_SERVER_URL = "https://server.vibeongo.com";
 
 export function normalizeServerUrl(value: string): string {
   let url: URL;

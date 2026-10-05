@@ -25,7 +25,7 @@ pnpm --filter @vibeongo/cli cli login
 ```
 
 Enter the key at the masked prompt. The CLI validates it with
-`GET http://localhost:8000/api/v1/users/metadata`, saves the key only after
+`GET https://server.vibeongo.com/api/v1/users/metadata`, saves the key only after
 successful validation, and prints an account summary without the account ID. It never prints
 the key or accepts it as a command-line argument. Ctrl+C cancels the prompt.
 
@@ -35,7 +35,7 @@ For a local server:
 pnpm --filter @vibeongo/cli cli login --server-url http://127.0.0.1:3001
 ```
 
-The default server is hardcoded to `http://localhost:8000` for now.
+The default server is `https://server.vibeongo.com`.
 Use `--server-url` to override it.
 
 Remote servers require HTTPS. HTTP is accepted only for loopback development.
@@ -83,7 +83,7 @@ Log in to Vibeongo first. ChatGPT sign-in reads the saved Vibeongo API key and
 validates it before opening the browser. After verifying the ChatGPT response,
 it sends the credentials, issued client ID, and metadata (`clientID` and granted
 `scopes`) to
-`PUT http://localhost:8000/api/v1/users/provider-credentials/codex`.
+`PUT https://server.vibeongo.com/api/v1/users/provider-credentials/codex`.
 The server encrypts the credentials and creates or replaces your Codex connection,
 with access expiry of one hour and refresh expiry of 30 days from saving.
 Use the same `--server-url` for both login commands to select a different server.
