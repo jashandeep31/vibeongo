@@ -16,6 +16,7 @@ import {
   useUpdateUserSettings,
   useUserConfigs,
   useUserSettings,
+  useProviderCredentials,
 } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -33,6 +34,7 @@ import {
   Moon,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Settings2,
   Sun,
@@ -47,6 +49,14 @@ import { toast } from "sonner";
 const AUTO_TERMINATE_MIN_MINUTES = 15;
 const AUTO_TERMINATE_MAX_MINUTES = 1200;
 const FORGEJO_URL = "https://forgejo.devsradar.com/";
+
+function formatCredentialDate(value: string | null) {
+  if (!value) return "Not available";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Not available"
+    : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
 
 const themeOptions = [
   {
@@ -138,6 +148,7 @@ export default function SettingsPage() {
   const { theme = "system", setTheme } = useTheme();
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
+  const providerCredentialsQuery = useProviderCredentials();
   const sshKeysQuery = useSshKeys();
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
@@ -374,6 +385,83 @@ export default function SettingsPage() {
           />
         }
       />
+
+      <SettingsSection
+        title="Provider connections"
+        description="Authentication and token expiry for your connected providers."
+        icon={KeyRound}
+        action={
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void providerCredentialsQuery.refetch()}
+            disabled={providerCredentialsQuery.isFetching}
+          >
+            <RefreshCw /> Refresh
+          </Button>
+        }
+      >
+        {providerCredentialsQuery.isPending ? (
+          <Skeleton className="h-48 w-full max-w-2xl rounded-xl" />
+        ) : providerCredentialsQuery.isError ? (
+          <p className="text-destructive text-sm" role="alert">
+            Failed to load provider connections. Try refreshing.
+          </p>
+        ) : providerCredentialsQuery.data?.data.length ? (
+          <div className="max-w-2xl space-y-4">
+            {providerCredentialsQuery.data.data.map((connection) => (
+              <div
+                key={connection.provider}
+                className="bg-muted/10 overflow-hidden rounded-xl border"
+              >
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-muted flex size-9 items-center justify-center rounded-lg">
+                      <Bot className="size-4" aria-hidden="true" />
+                    </span>
+                    <h3 className="text-sm font-semibold">
+                      {connection.provider === "codex" ? "Codex" : connection.provider}
+                    </h3>
+                  </div>
+                  <dl>
+                    <dt className="sr-only">Auth type</dt>
+                    <dd className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
+                      {connection.auth_type === "oauth" ? "OAuth" : "API key"}
+                    </dd>
+                  </dl>
+                </div>
+                <dl className="grid gap-5 px-5 pb-5 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground text-xs">
+                      Access token expires
+                    </dt>
+                    <dd className="mt-1.5 font-medium tabular-nums">
+                      {formatCredentialDate(connection.access_token_expires_at)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs">
+                      Refresh token expires
+                    </dt>
+                    <dd className="mt-1.5 font-medium tabular-nums">
+                      {formatCredentialDate(connection.refresh_token_expires_at)}
+                    </dd>
+                  </div>
+                </dl>
+                <dl className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t px-5 py-3 text-xs">
+                  <dt>Last updated</dt>
+                  <dd className="tabular-nums">
+                    {formatCredentialDate(connection.updated_at)}
+                  </dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">No provider connections.</p>
+        )}
+      </SettingsSection>
 
       <SettingsSection
         title="Tool configurations"

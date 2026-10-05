@@ -64,6 +64,13 @@
       "when": 1790854486585,
       "tag": "0008_fantastic_wendigo",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791213659960,
+      "tag": "0009_dusty_darkstar",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,7 @@ import * as projectMetadataApi from "./services/project-metadata-services.js";
 import * as projectAutomationsApi from "./services/project-automation-services.js";
 import * as projectsApi from "./services/project-services.js";
 import * as projectSessionsApi from "./services/project-session-services.js";
+import * as providerCredentialsApi from "./services/provider-credentials-services.js";
 import * as speechTextApi from "./services/speech-text-services.js";
 import * as sshKeysApi from "./services/ssh-key-services.js";
 import * as usersApi from "./services/user-services.js";
@@ -44,6 +45,10 @@ export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
 export * from "./services/runtime-paths.js";
 export type { Chat } from "./services/chat-services.js";
+export type {
+  ProviderCredentialSummary,
+  GetProviderCredentialsResponse,
+} from "./services/provider-credentials-services.js";
 export type {
   ApiKey,
   CreateApiKeyInput,
@@ -145,6 +150,7 @@ function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
 
 export class MobileClient {
   apiClient: AxiosInstance;
+  providerCredentials: ReturnType<typeof bindApiModule<typeof providerCredentialsApi>>;
   apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
@@ -171,6 +177,7 @@ export class MobileClient {
     });
 
     this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
+    this.providerCredentials = bindApiModule(providerCredentialsApi, this.apiClient);
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
@@ -192,6 +199,7 @@ export class MobileClient {
 
 export class WebClient {
   apiClient: AxiosInstance;
+  providerCredentials: ReturnType<typeof bindApiModule<typeof providerCredentialsApi>>;
   apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
@@ -216,6 +224,7 @@ export class WebClient {
     });
 
     this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
+    this.providerCredentials = bindApiModule(providerCredentialsApi, this.apiClient);
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);

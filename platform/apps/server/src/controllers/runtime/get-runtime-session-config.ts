@@ -23,6 +23,7 @@ import { env } from "../../lib/env.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { resolveProjectUserConfigs } from "../../services/user-config/resolve-project-user-configs.js";
+import { getChatgptAccessToken } from "../../services/user-config/get-chatgpt-access-token.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { decryptData } from "../../lib/encryption-decryption.js";
 import {
@@ -57,10 +58,13 @@ export const getRuntimeSessionConfig = catchAsync(
     const { project, instance } = sessionRow;
     const stringfiedConfig = await getDecryptedProjectConfig(project.id);
     const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
-    const resolvedProjectConfig = await appendVibeongoAiKeyToOpencodeConfig(
-      instanceId,
-      withEmptyClaudePackage(
-        await resolveProjectUserConfigs(parsedConfig, project.user_id),
+    const resolvedProjectConfig = await appendChatgptCredentialsToOpencodeConfig(
+      project.user_id,
+      await appendVibeongoAiKeyToOpencodeConfig(
+        instanceId,
+        withEmptyClaudePackage(
+          await resolveProjectUserConfigs(parsedConfig, project.user_id),
+        ),
       ),
     );
 
@@ -113,6 +117,7 @@ export const getRuntimeSessionConfig = catchAsync(
       })),
     };
 
+    res.set("Cache-Control", "no-store");
     res.status(200).json({ data: config });
   },
 );
@@ -223,6 +228,53 @@ async function appendVibeongoAiKeyToOpencodeConfig(
       label: "Vibeongo AI",
       active: true,
       value: { type: "key", key: decryptedKey },
+    },
+  ];
+
+  return config;
+}
+
+async function appendChatgptCredentialsToOpencodeConfig(
+  userId: string,
+  config: ResolvedProjectConfig,
+): Promise<ResolvedProjectConfig> {
+  const opencodePackage = config.packages.find(
+    (projectPackage) => projectPackage.name === "opencode",
+  );
+  if (!opencodePackage || !opencodePackage.config.use_user_config) return config;
+
+  // ChatGPT is optional here; any failure must not block the session config.
+  const token = await getChatgptAccessToken(userId, { optional: true }).catch(
+    () => null,
+  );
+  if (!token) return config;
+
+  const metadata = {
+    clientID: "Managed by Vibeongo",
+    managedBy: "vibeongo",
+    scopes: token.scopes,
+  };
+  const credentialId = `cred_${token.credential_id}`;
+  opencodePackage.config.auth_json = [
+    ...opencodePackage.config.auth_json
+      .filter((entry) => entry.id !== credentialId)
+      .map((entry) =>
+        entry.integrationID === "openai" ? { ...entry, active: false } : entry,
+      ),
+    {
+      id: credentialId,
+      integrationID: "openai",
+      label: "Vibeongo OpenAI",
+      active: true,
+      value: {
+        type: "oauth",
+        methodID: "chatgpt-token-sharing",
+        access: token.access_token,
+        // Display placeholders only; real refresh credentials stay on the server.
+        refresh: "Managed by Vibeongo",
+        expires: token.access_token_expires_at.getTime(),
+        metadata,
+      },
     },
   ];
 

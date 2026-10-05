@@ -21,6 +21,7 @@ export * from "./hooks/use-project-metadata.js";
 export * from "./hooks/use-project-automations.js";
 export * from "./hooks/use-project-sessions.js";
 export * from "./hooks/use-project.js";
+export * from "./hooks/use-provider-credentials.js";
 export * from "./hooks/use-runtime-settings.js";
 export * from "./hooks/use-runtime-files.js";
 export * from "./hooks/use-ssh-keys.js";
