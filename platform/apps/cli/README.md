@@ -72,6 +72,45 @@ and a nonzero exit code instead of reporting a successful login.
 
 Use the same `--server-url` as login when checking a different server.
 
+## ChatGPT sign-in
+
+```bash
+pnpm --filter @vibeongo/cli cli chatgpt login
+```
+
+This opens Continue with ChatGPT in your default browser. The CLI listens on
+`http://127.0.0.1:3102/auth/callback`; if that port is occupied, it tries 3103,
+3104, and so on. It prints the authorization URL for manual opening if needed.
+Run the CLI on the same computer as the browser receiving the loopback callback.
+Sign-in expires after five minutes; Ctrl+C cancels it and closes the listener.
+
+The first sign-in uses OpenAI's `dynamic_agent_client` registration flow with
+`agent_name_hint=Vibeongo`. Later sign-ins reuse the issued client ID for the last
+selected account. Host IDs and verified client/account registrations are kept in
+the OS keyring, separate from the Vibeongo API key.
+
+```bash
+# Register a different ChatGPT account or workspace
+pnpm --filter @vibeongo/cli cli chatgpt login --new-account
+
+# Select a previously saved registration
+pnpm --filter @vibeongo/cli cli chatgpt login --client-id oaiapp_YOUR_CLIENT_ID
+```
+
+The requested scopes are `openid profile email offline_access resource.invoke
+chatgpt.tokens.use.direct`. The flow checks state and PKCE, verifies the ID token
+against OpenAI's discovered JWKS, and checks the granted scopes before reporting
+ChatGPT plan usage as enabled. Permission depends on the user's approval and
+OpenAI account/workspace eligibility; the command does not make inference requests
+or spend credits.
+
+For inspecting this flow, the CLI prints every callback field, the complete token
+response (including access, refresh, and ID tokens), token response headers, and
+validated ID-token claims. Tokens are printed only and are not saved to disk or
+the keyring. The browser callback page contains no tokens.
+
+Official reference: https://developers.openai.com/siwc/token-sharing-open-source/sign-in
+
 Build and run the JavaScript output:
 
 ```bash

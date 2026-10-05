@@ -27,7 +27,9 @@
   "dependencies": {
     "@inquirer/password": "^5.2.3",
     "@napi-rs/keyring": "^2.1.0",
-    "commander": "^14.0.0"
+    "commander": "^14.0.0",
+    "jose": "^6.2.12",
+    "open": "^11.0.4"
   },
   "devDependencies": {
     "@repo/eslint-config": "workspace:*",

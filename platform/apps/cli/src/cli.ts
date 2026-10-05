@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import { createLoginCommand } from "./commands/login.js";
 import { createStatusCommand } from "./commands/status.js";
+import { createChatgptCommand } from "./commands/chatgpt.js";
 
 export function createCli() {
   const { version } = JSON.parse(
@@ -24,6 +25,7 @@ export function createCli() {
 
   program.addCommand(createLoginCommand());
   program.addCommand(createStatusCommand());
+  program.addCommand(createChatgptCommand());
 
   return program;
 }
