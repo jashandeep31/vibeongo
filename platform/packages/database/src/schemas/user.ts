@@ -134,6 +134,46 @@ export const userConfigTypeEnum = pgEnum("user_config_type", [
   "claude",
 ]);
 
+export const userCredentialProviderEnum = pgEnum("user_credential_provider", [
+  "codex",
+]);
+
+export const userCredentialAuthTypeEnum = pgEnum("user_credential_auth_type", [
+  "api_key",
+  "oauth",
+]);
+
+export const userProviderCredentials = pgTable(
+  "user_provider_credentials",
+  {
+    id: uuid().primaryKey().defaultRandom(),
+    user_id: uuid()
+      .references(() => users.id, { onDelete: "cascade" })
+      .notNull(),
+
+    provider: userCredentialProviderEnum().default("codex").notNull(),
+    auth_type: userCredentialAuthTypeEnum().default("oauth").notNull(),
+
+    // Encrypt the credential JSON with the server's existing encryption helper.
+    encrypted_data: text().notNull(),
+    iv: varchar().notNull(),
+    tag: text().notNull(),
+
+    access_token_expires_at: timestamp(),
+    refresh_token_expires_at: timestamp(),
+    revoked_at: timestamp(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("user_provider_credentials_user_id_provider_unique").on(
+      table.user_id,
+      table.provider,
+    ),
+  ],
+);
+
 export const userConfigs = pgTable(
   "user_configs",
   {
