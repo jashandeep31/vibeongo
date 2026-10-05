@@ -10,6 +10,7 @@ import {
   text,
   uniqueIndex,
   index,
+  jsonb,
 } from "drizzle-orm/pg-core";
 
 export const userRoles = pgEnum("users_roles", ["user", "admin"]);
@@ -153,6 +154,11 @@ export const userProviderCredentials = pgTable(
 
     provider: userCredentialProviderEnum().default("codex").notNull(),
     auth_type: userCredentialAuthTypeEnum().default("oauth").notNull(),
+
+    metadata: jsonb()
+      .$type<{ clientID?: string; scopes?: string[] }>()
+      .default({})
+      .notNull(),
 
     // Encrypt the credential JSON with the server's existing encryption helper.
     encrypted_data: text().notNull(),

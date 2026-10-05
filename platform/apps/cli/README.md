@@ -81,7 +81,8 @@ pnpm --filter @vibeongo/cli cli chatgpt login
 
 Log in to Vibeongo first. ChatGPT sign-in reads the saved Vibeongo API key and
 validates it before opening the browser. After verifying the ChatGPT response,
-it sends the credentials and issued client ID to
+it sends the credentials, issued client ID, and metadata (`clientID` and granted
+`scopes`) to
 `PUT http://localhost:8000/api/v1/users/provider-credentials/codex`.
 The server encrypts the credentials and creates or replaces your Codex connection,
 with access expiry of one hour and refresh expiry of 30 days from saving.

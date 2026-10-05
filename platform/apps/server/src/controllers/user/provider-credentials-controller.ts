@@ -15,6 +15,12 @@ const codexCredentialsSchema = z.object({
   scope: z.string().max(4096).optional(),
   expires_in: z.number().int().positive().optional(),
   earliest_refresh_at: z.number().int().nonnegative().optional(),
+  metadata: z
+    .object({
+      clientID: z.string().trim().min(1).max(255),
+      scopes: z.array(z.string().trim().min(1).max(255)).max(100),
+    })
+    .optional(),
 });
 
 const ACCESS_TOKEN_LIFETIME_MS = 60 * 60 * 1000;
@@ -60,10 +66,28 @@ export const saveProviderCredentials = catchAsync(
       );
     }
 
-    const encrypted = encryptData(JSON.stringify(parsed.data));
+    const { metadata: suppliedMetadata, ...credentials } = parsed.data;
+    if (suppliedMetadata && suppliedMetadata.clientID !== credentials.client_id) {
+      throw new AppError("Metadata clientID must match client_id", 400);
+    }
+    const scopes = credentials.scope?.split(/\s+/).filter(Boolean);
+    if (
+      suppliedMetadata && scopes && (
+        scopes.some((scope) => !suppliedMetadata.scopes.includes(scope)) ||
+        suppliedMetadata.scopes.some((scope) => !scopes.includes(scope))
+      )
+    ) {
+      throw new AppError("Metadata scopes must match the granted scope", 400);
+    }
+    const metadata = suppliedMetadata ?? {
+      clientID: credentials.client_id,
+      scopes: scopes ?? [],
+    };
+    const encrypted = encryptData(JSON.stringify(credentials));
     const now = new Date();
     const values = {
       auth_type: "oauth" as const,
+      metadata,
       encrypted_data: encrypted.encryptedData,
       iv: encrypted.iv,
       tag: encrypted.tag,

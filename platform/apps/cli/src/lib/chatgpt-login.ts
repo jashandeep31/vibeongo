@@ -216,7 +216,11 @@ export async function loginWithChatgpt(options: {
       await saveCodexCredentials(
         serverUrl,
         apiKey,
-        { ...tokens, client_id: clientId },
+        {
+          ...tokens,
+          client_id: clientId,
+          metadata: { clientID: clientId, scopes: scopes.filter(Boolean) },
+        },
         controller.signal,
       );
       const name = typeof payload.name === "string"
@@ -232,13 +236,13 @@ export async function loginWithChatgpt(options: {
       sendCallbackMessage(
         response,
         200,
-        "ChatGPT sign-in completed and credentials saved to Vibeongo. You can close this tab.",
+        "Vibeongo is now connected to ChatGPT.",
       );
     } catch (error) {
       sendCallbackMessage(
         response,
         400,
-        "ChatGPT sign-in failed. You can close this tab.",
+        "Vibeongo could not connect to ChatGPT. Please try signing in again from the CLI.",
       );
       throw error;
     }

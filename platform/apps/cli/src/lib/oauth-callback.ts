@@ -1,5 +1,6 @@
 import { createServer, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
+import { renderCallbackPage } from "./oauth-callback-page.js";
 
 export function sendCallbackMessage(
   response: ServerResponse,
@@ -7,13 +8,14 @@ export function sendCallbackMessage(
   message: string,
 ) {
   response.writeHead(status, {
-    "Content-Type": "text/plain; charset=utf-8",
+    "Content-Type": "text/html; charset=utf-8",
+    "Content-Security-Policy": "default-src 'none'; img-src data:; style-src 'unsafe-inline'; base-uri 'none'; frame-ancestors 'none'; form-action 'none'",
     "Cache-Control": "no-store",
     "Referrer-Policy": "no-referrer",
     "X-Content-Type-Options": "nosniff",
     Connection: "close",
   });
-  response.end(message);
+  response.end(renderCallbackPage(status, message));
 }
 
 export async function startOAuthCallback(state: string, signal: AbortSignal) {
