@@ -1,5 +1,10 @@
-import type { UserConfigValue } from "@repo/api-client";
+import type { ApiKey, UserConfigValue } from "@repo/api-client";
 import {
+  useApiKeys,
+  useCreateApiKey,
+  useDeleteApiKey,
+  useRotateApiKey,
+  useProviderCredentials,
   useCreateSshKey,
   useCreateUserConfig,
   useDeleteSshKey,
@@ -15,6 +20,7 @@ import {
 import { useQueryClient } from "@repo/api-hooks";
 import { opencodeCredentialsValidator } from "@repo/shared";
 import * as Linking from "expo-linking";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import {
@@ -25,6 +31,7 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -148,6 +155,12 @@ export default function SettingsScreen() {
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
   const sshKeysQuery = useSshKeys();
+  const [apiKeyPage, setApiKeyPage] = useState(1);
+  const apiKeysQuery = useApiKeys({ page: apiKeyPage, limit: 10 });
+  const providerCredentialsQuery = useProviderCredentials();
+  const deleteApiKey = useDeleteApiKey();
+  const [apiKeyEditor, setApiKeyEditor] = useState<ApiKey | "new" | null>(null);
+  const [apiKeyToRevoke, setApiKeyToRevoke] = useState<ApiKey | null>(null);
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
   const updateTerminationSettings = useUpdateUserSettings();
@@ -336,13 +349,28 @@ export default function SettingsScreen() {
       settingsQuery.refetch(),
       configsQuery.refetch(),
       sshKeysQuery.refetch(),
+      apiKeysQuery.refetch(),
+      providerCredentialsQuery.refetch(),
     ]);
   };
 
   const isRefreshing =
     settingsQuery.isRefetching ||
     configsQuery.isRefetching ||
-    sshKeysQuery.isRefetching;
+    sshKeysQuery.isRefetching ||
+    apiKeysQuery.isRefetching ||
+    providerCredentialsQuery.isRefetching;
+
+  const revokeApiKey = async () => {
+    if (!apiKeyToRevoke || deleteApiKey.isPending) return;
+    try {
+      await deleteApiKey.mutateAsync(apiKeyToRevoke.id);
+      setApiKeyToRevoke(null);
+      Toast.show({ type: "success", text1: "API key revoked" });
+    } catch {
+      showSettingsError("Could not revoke API key", "Please try again.");
+    }
+  };
 
   return (
     <SafeAreaView
@@ -452,6 +480,254 @@ export default function SettingsScreen() {
                 icon={{ ios: "bell", android: "notifications" }}
                 title="Notification sound"
               />
+
+              <SettingsSection
+                icon={{ ios: "key", android: "key" }}
+                title="API keys"
+                description="Keys for the CLI."
+                action={
+                  <CredentialButton
+                    label="Create key"
+                    icon={{ ios: "plus", android: "add" }}
+                    onPress={() => setApiKeyEditor("new")}
+                  />
+                }
+              >
+                {apiKeysQuery.isPending ? (
+                  <LoadingBlocks />
+                ) : apiKeysQuery.isError ? (
+                  <InlineError
+                    label="Failed to load API keys."
+                    onRetry={() => void apiKeysQuery.refetch()}
+                  />
+                ) : apiKeysQuery.data?.data.length ? (
+                  <View
+                    style={[
+                      styles.credentialGroup,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
+                  >
+                    {apiKeysQuery.data.data.map((key, index, keys) => {
+                      const status = key.revoked_at
+                        ? "Revoked"
+                        : key.expires_at &&
+                            new Date(key.expires_at).getTime() <= Date.now()
+                          ? "Expired"
+                          : "Active";
+                      return (
+                        <View
+                          key={key.id}
+                          style={[
+                            styles.apiKeyRow,
+                            index < keys.length - 1 && {
+                              borderBottomWidth: StyleSheet.hairlineWidth,
+                              borderBottomColor: theme.backgroundSelected,
+                            },
+                          ]}
+                        >
+                          <View style={styles.credentialCopy}>
+                            <View style={styles.apiKeyHeading}>
+                              <ThemedText
+                                style={styles.credentialName}
+                                numberOfLines={1}
+                              >
+                                {key.name}
+                              </ThemedText>
+                              <ThemedText
+                                themeColor="textSecondary"
+                                style={styles.credentialCaption}
+                              >
+                                {status}
+                              </ThemedText>
+                            </View>
+                            <ThemedText
+                              themeColor="textSecondary"
+                              style={styles.credentialCaption}
+                            >
+                              {key.last_used_at
+                                ? `Last used ${formatCredentialDate(key.last_used_at)}`
+                                : "Never used"}
+                            </ThemedText>
+                            <ThemedText
+                              themeColor="textSecondary"
+                              style={styles.credentialCaption}
+                            >
+                              Created {formatCredentialDate(key.created_at)}
+                              {key.expires_at
+                                ? ` · Expires ${formatCredentialDate(key.expires_at)}`
+                                : " · No expiry"}
+                            </ThemedText>
+                          </View>
+                          {!key.revoked_at ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Manage API key ${key.name}`}
+                              accessibilityState={{
+                                disabled: deleteApiKey.isPending,
+                              }}
+                              disabled={deleteApiKey.isPending}
+                              onPress={() =>
+                                Alert.alert(key.name, "Manage this API key.", [
+                                  {
+                                    text: "Rotate key",
+                                    onPress: () => setApiKeyEditor(key),
+                                  },
+                                  {
+                                    text: "Revoke key",
+                                    style: "destructive",
+                                    onPress: () => setApiKeyToRevoke(key),
+                                  },
+                                  { text: "Cancel", style: "cancel" },
+                                ])
+                              }
+                              style={({ pressed }) => [
+                                styles.credentialMenu,
+                                pressed && styles.pressed,
+                                deleteApiKey.isPending && styles.disabled,
+                              ]}
+                            >
+                              <SymbolView
+                                name={{
+                                  ios: "ellipsis",
+                                  android: "more_horiz",
+                                }}
+                                size={20}
+                                tintColor={theme.textSecondary}
+                              />
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.credentialEmpty}>
+                    <ThemedText style={styles.credentialName}>
+                      No API keys yet
+                    </ThemedText>
+                    <ThemedText
+                      themeColor="textSecondary"
+                      style={styles.credentialBody}
+                    >
+                      Create a key to sign in from your computer.
+                    </ThemedText>
+                  </View>
+                )}
+                {apiKeyPage > 1 || apiKeysQuery.data?.hasNext ? (
+                  <View style={styles.credentialPagination}>
+                    <CredentialButton
+                      label="Previous"
+                      onPress={() => setApiKeyPage((page) => page - 1)}
+                      disabled={apiKeyPage === 1 || apiKeysQuery.isFetching}
+                    />
+                    <ThemedText
+                      themeColor="textSecondary"
+                      style={styles.credentialCaption}
+                    >
+                      Page {apiKeyPage}
+                    </ThemedText>
+                    <CredentialButton
+                      label="Next"
+                      onPress={() => setApiKeyPage((page) => page + 1)}
+                      disabled={
+                        !apiKeysQuery.data?.hasNext || apiKeysQuery.isFetching
+                      }
+                    />
+                  </View>
+                ) : null}
+              </SettingsSection>
+
+              <SettingsSection
+                icon={{ ios: "link", android: "link" }}
+                title="Provider connections"
+                description="Connected coding accounts."
+                action={
+                  <CredentialButton
+                    accessibilityLabel="Refresh provider connections"
+                    icon={{ ios: "arrow.clockwise", android: "refresh" }}
+                    onPress={() => void providerCredentialsQuery.refetch()}
+                    disabled={providerCredentialsQuery.isFetching}
+                  />
+                }
+              >
+                {providerCredentialsQuery.isPending ? (
+                  <LoadingBlocks />
+                ) : providerCredentialsQuery.isError ? (
+                  <InlineError
+                    label="Failed to load provider connections."
+                    onRetry={() => void providerCredentialsQuery.refetch()}
+                  />
+                ) : providerCredentialsQuery.data?.data.length ? (
+                  <View style={styles.providerList}>
+                    {providerCredentialsQuery.data.data.map((connection) => (
+                      <View
+                        key={connection.provider}
+                        style={[
+                          styles.credentialGroup,
+                          { backgroundColor: theme.backgroundElement },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.providerHeader,
+                            { borderBottomColor: theme.backgroundSelected },
+                          ]}
+                        >
+                          <ThemedText style={styles.credentialName}>
+                            {connection.provider === "codex"
+                              ? "Codex"
+                              : connection.provider}
+                          </ThemedText>
+                          <ThemedText
+                            themeColor="textSecondary"
+                            style={styles.credentialCaption}
+                          >
+                            {connection.auth_type === "oauth"
+                              ? "OAuth"
+                              : "API key"}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.providerDetails}>
+                          <CredentialDetail
+                            label="Access expires"
+                            value={connection.access_token_expires_at}
+                          />
+                          <CredentialDetail
+                            label="Refresh expires"
+                            value={connection.refresh_token_expires_at}
+                          />
+                          <CredentialDetail
+                            label="Last updated"
+                            value={connection.updated_at}
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.credentialEmpty}>
+                    <ThemedText style={styles.credentialName}>
+                      No connected providers
+                    </ThemedText>
+                    <ThemedText
+                      themeColor="textSecondary"
+                      style={styles.credentialBody}
+                    >
+                      Connect ChatGPT from your computer using the Vibeongo CLI.
+                    </ThemedText>
+                  </View>
+                )}
+                {!providerCredentialsQuery.isPending &&
+                !providerCredentialsQuery.isError &&
+                providerCredentialsQuery.data?.data.length ? (
+                  <ThemedText
+                    themeColor="textSecondary"
+                    style={styles.credentialFootnote}
+                  >
+                    Manage your ChatGPT connection with the Vibeongo CLI.
+                  </ThemedText>
+                ) : null}
+              </SettingsSection>
 
               <SettingsSection
                 icon={{ ios: "cpu", android: "smart_toy" }}
@@ -735,6 +1011,21 @@ export default function SettingsScreen() {
         </PageChromeLayout>
       </KeyboardAvoidingView>
 
+      <ApiKeyDrawer
+        editor={apiKeyEditor}
+        onClose={() => setApiKeyEditor(null)}
+      />
+      <ConfirmationDrawer
+        title="Revoke API key?"
+        description={`Revoke ${apiKeyToRevoke?.name ?? "this key"}. Apps using this key will lose access.`}
+        confirmLabel="Revoke"
+        isConfirming={deleteApiKey.isPending}
+        onCancel={() => {
+          if (!deleteApiKey.isPending) setApiKeyToRevoke(null);
+        }}
+        onConfirm={() => void revokeApiKey()}
+        visible={Boolean(apiKeyToRevoke)}
+      />
       <UserConfigDrawer
         editor={configEditor}
         onClose={() => setConfigEditor(null)}
@@ -904,18 +1195,23 @@ function SaveButton({
 function SmallButton({
   label,
   onPress,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.smallButton,
         { borderColor: theme.backgroundSelected },
+        disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
@@ -977,6 +1273,224 @@ const validateUserConfig = (
     ? "The configuration must be a JSON object."
     : null;
 };
+
+function formatCredentialDate(
+  value: string | null,
+  includeTime = false,
+  fallback = "Not available",
+) {
+  const date = value ? new Date(value) : null;
+  if (!date || !Number.isFinite(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    ...(includeTime ? ({ hour: "numeric", minute: "2-digit" } as const) : {}),
+  }).format(date);
+}
+
+function CredentialDetail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <View style={styles.credentialDetail}>
+      <ThemedText
+        themeColor="textSecondary"
+        style={styles.credentialDetailLabel}
+      >
+        {label}
+      </ThemedText>
+      <ThemedText style={styles.credentialValue}>
+        {formatCredentialDate(value, true)}
+      </ThemedText>
+    </View>
+  );
+}
+
+function CredentialButton({
+  label,
+  icon,
+  accessibilityLabel,
+  onPress,
+  disabled = false,
+  primary = false,
+  pending = false,
+}: {
+  label?: string;
+  icon?: SymbolViewProps["name"];
+  accessibilityLabel?: string;
+  onPress: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  pending?: boolean;
+}) {
+  const theme = useTheme();
+  const inactive = disabled || pending;
+  const color = primary ? theme.background : theme.text;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: inactive, busy: pending }}
+      disabled={inactive}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.credentialButton,
+        primary && { backgroundColor: theme.text },
+        inactive && styles.disabled,
+        pressed && styles.pressed,
+      ]}
+    >
+      {pending ? (
+        <ActivityIndicator size="small" color={color} />
+      ) : icon ? (
+        <SymbolView name={icon} size={18} tintColor={color} />
+      ) : null}
+      {label ? (
+        <ThemedText style={[styles.credentialButtonLabel, { color }]}>
+          {label}
+        </ThemedText>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function ApiKeyDrawer({
+  editor,
+  onClose,
+}: {
+  editor: ApiKey | "new" | null;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const [name, setName] = useState("");
+  const [secret, setSecret] = useState<string | null>(null);
+  const create = useCreateApiKey();
+  const rotate = useRotateApiKey();
+  const pending = create.isPending || rotate.isPending;
+  const rotating = editor !== null && editor !== "new";
+
+  const close = () => {
+    if (pending) return;
+    setName("");
+    setSecret(null);
+    // Clear the one-time secret from mutation state as well as the drawer.
+    create.reset();
+    rotate.reset();
+    onClose();
+  };
+
+  const save = async () => {
+    if (!editor || pending || (editor === "new" && !name.trim())) return;
+    try {
+      const result =
+        editor === "new"
+          ? await create.mutateAsync({ name: name.trim() })
+          : await rotate.mutateAsync(editor.id);
+      setSecret(result.data.key);
+      Toast.show({
+        type: "success",
+        text1: rotating ? "API key rotated" : "API key created",
+      });
+    } catch {
+      showSettingsError(
+        rotating ? "Could not rotate API key" : "Could not create API key",
+        "Please try again.",
+      );
+    }
+  };
+
+  const copy = async () => {
+    if (!secret) return;
+    try {
+      await Clipboard.setStringAsync(secret);
+      Toast.show({ type: "success", text1: "API key copied" });
+    } catch {
+      showSettingsError("Could not copy API key", "Please try again.");
+    }
+  };
+
+  return (
+    <SettingsDrawer
+      visible={Boolean(editor)}
+      onClose={close}
+      title={
+        secret
+          ? "Your new API key"
+          : rotating
+            ? "Rotate API key?"
+            : "Create API key"
+      }
+    >
+      <ThemedText themeColor="textSecondary" style={styles.drawerDescription}>
+        {secret
+          ? "Copy this key now. You will not be able to see it again."
+          : rotating
+            ? `Replace the key for ${editor.name}. The old key will stop working immediately.`
+            : "Give this key a name so you can identify it later."}
+      </ThemedText>
+      {secret ? (
+        <>
+          <View
+            style={[
+              styles.credentialSecret,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
+            <ThemedText
+              selectable
+              accessibilityLabel={`New API key: ${secret}`}
+              style={styles.credentialSecretText}
+            >
+              {secret}
+            </ThemedText>
+          </View>
+          <View style={styles.credentialDrawerActions}>
+            <CredentialButton
+              label="Copy key"
+              icon={{ ios: "doc.on.doc", android: "content_copy" }}
+              onPress={() => void copy()}
+            />
+            <CredentialButton label="Done" primary onPress={close} />
+          </View>
+        </>
+      ) : (
+        <>
+          {!rotating ? (
+            <LabeledInput
+              label="Name"
+              placeholder="e.g. My laptop"
+              value={name}
+              onChangeText={setName}
+              maxLength={255}
+              editable={!pending}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          ) : null}
+          <View style={styles.credentialDrawerActions}>
+            <CredentialButton
+              label="Cancel"
+              onPress={close}
+              disabled={pending}
+            />
+            <CredentialButton
+              label={rotating ? "Rotate key" : "Create key"}
+              primary
+              disabled={!rotating && !name.trim()}
+              pending={pending}
+              onPress={() => void save()}
+            />
+          </View>
+        </>
+      )}
+    </SettingsDrawer>
+  );
+}
 
 function UserConfigDrawer({
   editor,
@@ -1354,6 +1868,91 @@ function LoadingBlocks() {
 }
 
 const styles = StyleSheet.create({
+  credentialGroup: { borderRadius: 12, overflow: "hidden" },
+  apiKeyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 16,
+    paddingRight: 8,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  credentialCopy: { flex: 1, gap: 4 },
+  apiKeyHeading: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    columnGap: 12,
+    rowGap: 4,
+  },
+  credentialName: {
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  credentialCaption: { fontSize: 12, lineHeight: 18 },
+  credentialBody: { fontSize: 14, lineHeight: 20 },
+  credentialMenu: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  credentialEmpty: { paddingVertical: 8, gap: 8 },
+  credentialFootnote: { fontSize: 12, lineHeight: 18, marginTop: 12 },
+  providerList: { gap: 16 },
+  providerHeader: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  providerDetails: { padding: 16, gap: 16 },
+  credentialDetail: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  credentialDetailLabel: { fontSize: 13, lineHeight: 19, flex: 1 },
+  credentialValue: {
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1.5,
+    textAlign: "right",
+    fontVariant: ["tabular-nums"],
+  },
+  credentialButton: {
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  credentialButtonLabel: { fontSize: 13, lineHeight: 19, fontWeight: "600" },
+  credentialPagination: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 12,
+  },
+  credentialSecret: { padding: 16, borderRadius: 12 },
+  credentialSecretText: {
+    fontFamily: Fonts.mono,
+    fontSize: 13,
+    lineHeight: 21,
+  },
+  credentialDrawerActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 24,
+  },
+
   screen: { flex: 1 },
   header: {
     alignItems: "center",
