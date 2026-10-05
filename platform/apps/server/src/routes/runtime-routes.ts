@@ -13,8 +13,13 @@ import { terminateSessionInstance } from "../controllers/runtime/terminate-sessi
 import { runTaskActions } from "../controllers/runtime/task-actions.js";
 import { renewTokens } from "../controllers/runtime/renew-tokens.js";
 import { updateRuntimeProjectBasicConfig } from "../controllers/runtime/update-project-config.js";
+import { getProviderAccessToken } from "../controllers/runtime/get-provider-access-token.js";
 
 const routes: Router = Router();
+
+routes
+  .route("/sessions/:id/provider-credentials/:provider/access-token")
+  .post(checkRuntimeAuthorization, getProviderAccessToken);
 
 routes
   .route("/sessions/:id/config/:instanceId")

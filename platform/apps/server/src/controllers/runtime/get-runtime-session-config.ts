@@ -5,9 +5,6 @@ import {
   db,
   eq,
   asc,
-  and,
-  gt,
-  isNull,
   gitRepos,
   projectGitRepos,
   projectSessions,
@@ -19,7 +16,6 @@ import {
   projectDomainRouting,
   proxyDomains,
   instanceOpenRouterKeys,
-  userProviderCredentials,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { getConfigReadyGitRepos } from "../../github-app-functions/get-project-ready-github-repos.js";
@@ -27,6 +23,7 @@ import { env } from "../../lib/env.js";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { resolveProjectUserConfigs } from "../../services/user-config/resolve-project-user-configs.js";
+import { getChatgptAccessToken } from "../../services/user-config/get-chatgpt-access-token.js";
 import { parseStoredProjectConfig } from "../../services/project/parse-stored-project-config.js";
 import { decryptData } from "../../lib/encryption-decryption.js";
 import {
@@ -237,11 +234,6 @@ async function appendVibeongoAiKeyToOpencodeConfig(
   return config;
 }
 
-const storedChatgptTokensSchema = z.object({
-  access_token: z.string().min(1),
-  scope: z.string().optional(),
-});
-
 async function appendChatgptCredentialsToOpencodeConfig(
   userId: string,
   config: ResolvedProjectConfig,
@@ -251,42 +243,14 @@ async function appendChatgptCredentialsToOpencodeConfig(
   );
   if (!opencodePackage || !opencodePackage.config.use_user_config) return config;
 
-  const [credential] = await db
-    .select()
-    .from(userProviderCredentials)
-    .where(
-      and(
-        eq(userProviderCredentials.user_id, userId),
-        eq(userProviderCredentials.provider, "codex"),
-        eq(userProviderCredentials.auth_type, "oauth"),
-        isNull(userProviderCredentials.revoked_at),
-        gt(userProviderCredentials.refresh_token_expires_at, new Date()),
-      ),
-    );
-  if (!credential || !credential.access_token_expires_at) return config;
+  const token = await getChatgptAccessToken(userId, { optional: true });
+  if (!token) return config;
 
-  const decrypted: unknown = JSON.parse(
-    decryptData({
-      iv: credential.iv,
-      tag: credential.tag,
-      encrypted: credential.encrypted_data,
-    }),
-  );
-  const parsed = storedChatgptTokensSchema.safeParse(decrypted);
-  if (!parsed.success) {
-    throw new AppError(
-      "Stored ChatGPT credentials are invalid. Sign in again from the CLI",
-      409,
-    );
-  }
-
-  const tokens = parsed.data;
   const metadata = {
     clientID: "Managed by Vibeongo",
-    scopes: credential.metadata.scopes ??
-      tokens.scope?.split(/\s+/).filter(Boolean) ?? [],
+    scopes: token.scopes,
   };
-  const credentialId = `cred_${credential.id}`;
+  const credentialId = `cred_${token.credential_id}`;
   opencodePackage.config.auth_json = [
     ...opencodePackage.config.auth_json
       .filter((entry) => entry.id !== credentialId)
@@ -301,10 +265,10 @@ async function appendChatgptCredentialsToOpencodeConfig(
       value: {
         type: "oauth",
         methodID: "chatgpt-token-sharing",
-        access: tokens.access_token,
+        access: token.access_token,
         // Display placeholders only; real refresh credentials stay on the server.
         refresh: "Managed by Vibeongo",
-        expires: credential.access_token_expires_at.getTime(),
+        expires: token.access_token_expires_at.getTime(),
         metadata,
       },
     },
