@@ -11,7 +11,7 @@ const navLinks = [
   { href: "#features", label: "Features" },
   { href: "#automation", label: "Automations" },
   { href: "#forgejo", label: "Forgejo" },
-  { href: "#mobile", label: "Mobile" },
+  { href: "/app", label: "Mobile" },
   { href: "/pricing", label: "Pricing" },
 ];
 
