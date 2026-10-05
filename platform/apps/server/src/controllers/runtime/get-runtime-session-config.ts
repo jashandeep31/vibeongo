@@ -243,7 +243,10 @@ async function appendChatgptCredentialsToOpencodeConfig(
   );
   if (!opencodePackage || !opencodePackage.config.use_user_config) return config;
 
-  const token = await getChatgptAccessToken(userId, { optional: true });
+  // ChatGPT is optional here; any failure must not block the session config.
+  const token = await getChatgptAccessToken(userId, { optional: true }).catch(
+    () => null,
+  );
   if (!token) return config;
 
   const metadata = {
