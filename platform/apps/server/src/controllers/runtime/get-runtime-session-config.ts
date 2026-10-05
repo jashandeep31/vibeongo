@@ -248,6 +248,7 @@ async function appendChatgptCredentialsToOpencodeConfig(
 
   const metadata = {
     clientID: "Managed by Vibeongo",
+    managedBy: "vibeongo",
     scopes: token.scopes,
   };
   const credentialId = `cred_${token.credential_id}`;

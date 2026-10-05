@@ -1,6 +1,7 @@
 package store
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"strings"
@@ -127,23 +128,41 @@ func (o *OpencodeWeb) StopWebServer() error {
 }
 
 func waitForOpencodeReady(isRunning func() bool, timeout, interval time.Duration) bool {
+	return waitForOpencodeReadyContext(context.Background(), isRunning, timeout, interval)
+}
+
+func waitForOpencodeReadyContext(ctx context.Context, isRunning func() bool, timeout, interval time.Duration) bool {
 	deadline := time.Now().Add(timeout)
 	for {
+		if ctx.Err() != nil {
+			return false
+		}
 		if isRunning() {
 			return true
 		}
 		if !time.Now().Before(deadline) {
 			return false
 		}
-		time.Sleep(interval)
+		select {
+		case <-ctx.Done():
+			return false
+		case <-time.After(interval):
+		}
 	}
 }
 
 // StartWebServerWithRetry waits for the HTTP endpoint after startup and
 // retries the tmux process up to three times if it does not become ready.
 func (o *OpencodeWeb) StartWebServerWithRetry() error {
+	return o.StartWebServerWithRetryContext(context.Background())
+}
+
+func (o *OpencodeWeb) StartWebServerWithRetryContext(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	startErr := o.StartWebServer()
-	if waitForOpencodeReady(o.IsRunning, opencodeReadyTimeout, opencodeReadyInterval) {
+	if waitForOpencodeReadyContext(ctx, o.IsRunning, opencodeReadyTimeout, opencodeReadyInterval) {
 		fmt.Println("opencode web server ready after initial start")
 		return nil
 	}
@@ -155,6 +174,9 @@ func (o *OpencodeWeb) StartWebServerWithRetry() error {
 
 	var retryErr error
 	for i, timeout := range opencodeRetryTimeouts {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		attempt := i + 1
 		fmt.Printf("opencode web server retry %d/%d: restarting; waiting up to %s for health\n", attempt, len(opencodeRetryTimeouts), timeout)
 
@@ -173,7 +195,7 @@ func (o *OpencodeWeb) StartWebServerWithRetry() error {
 			fmt.Printf("opencode web server retry %d/%d failed to start: %v\n", attempt, len(opencodeRetryTimeouts), retryErr)
 			continue
 		}
-		if waitForOpencodeReady(o.IsRunning, timeout, opencodeReadyInterval) {
+		if waitForOpencodeReadyContext(ctx, o.IsRunning, timeout, opencodeReadyInterval) {
 			fmt.Printf("opencode web server ready after retry %d/%d\n", attempt, len(opencodeRetryTimeouts))
 			return nil
 		}

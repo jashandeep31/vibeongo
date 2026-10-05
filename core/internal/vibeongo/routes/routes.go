@@ -4,7 +4,6 @@ import (
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/handlers"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/middlewares"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
-	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/webhooks"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/ws"
 	"github.com/labstack/echo/v5"
 )
@@ -38,9 +37,5 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	protected.GET("/fs/search", handlers.SearchFiles)
 	protected.POST("/fs/upload", handlers.UploadFile)
 	protected.POST("/fs/create", handlers.CreateFileOrFolder)
-
-	//Routes for plugin of opencode for notification functionality
-	opencodePluginRoutes := e.Group("/webhook/opencode")
-	opencodePluginRoutes.POST("", webhooks.OpenCodeEventsWebhook)
 
 }
