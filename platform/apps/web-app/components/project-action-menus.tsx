@@ -232,6 +232,8 @@ export function InstanceControlsDropdown({
 }) {
   const [now, setNow] = useState(() => Date.now());
   const [isOpen, setIsOpen] = useState(false);
+  const [isSuspensionConfirmationOpen, setIsSuspensionConfirmationOpen] =
+    useState(false);
   const [isTerminationConfirmationOpen, setIsTerminationConfirmationOpen] =
     useState(false);
   const terminateInstance = useTerminateInstance(projectId, sessionId);
@@ -307,7 +309,10 @@ export function InstanceControlsDropdown({
           </div>
           <DropdownMenuSeparator />
           {canSuspend ? (
-            <DropdownMenuItem disabled={isPending} onSelect={handleSuspend}>
+            <DropdownMenuItem
+              disabled={isPending}
+              onSelect={() => setIsSuspensionConfirmationOpen(true)}
+            >
               <Snowflake />
               Suspend
             </DropdownMenuItem>
@@ -322,6 +327,17 @@ export function InstanceControlsDropdown({
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      <ConfirmationDialog
+        open={isSuspensionConfirmationOpen}
+        onOpenChange={setIsSuspensionConfirmationOpen}
+        title="Suspend this instance?"
+        description="The running session instance will be paused until you resume it."
+        confirmText="Suspend"
+        onConfirm={() => {
+          setIsSuspensionConfirmationOpen(false);
+          handleSuspend();
+        }}
+      />
       <ConfirmationDialog
         open={isTerminationConfirmationOpen}
         onOpenChange={setIsTerminationConfirmationOpen}
