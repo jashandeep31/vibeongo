@@ -1,4 +1,4 @@
-import { db, userProviderCredentials } from "@repo/db";
+import { db, eq, userProviderCredentials } from "@repo/db";
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
@@ -19,6 +19,29 @@ const codexCredentialsSchema = z.object({
 
 const ACCESS_TOKEN_LIFETIME_MS = 60 * 60 * 1000;
 const REFRESH_TOKEN_LIFETIME_MS = 30 * 24 * 60 * 60 * 1000;
+
+const safeProviderCredentialSelection = {
+  provider: userProviderCredentials.provider,
+  auth_type: userProviderCredentials.auth_type,
+  access_token_expires_at: userProviderCredentials.access_token_expires_at,
+  refresh_token_expires_at: userProviderCredentials.refresh_token_expires_at,
+  updated_at: userProviderCredentials.updated_at,
+};
+
+export const getProviderCredentials = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 401);
+
+    const credentials = await db
+      .select(safeProviderCredentialSelection)
+      .from(userProviderCredentials)
+      .where(eq(userProviderCredentials.user_id, user.id));
+
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({ data: credentials });
+  },
+);
 
 export const saveProviderCredentials = catchAsync(
   async (req: Request, res: Response) => {
@@ -57,15 +80,7 @@ export const saveProviderCredentials = catchAsync(
         target: [userProviderCredentials.user_id, userProviderCredentials.provider],
         set: values,
       })
-      .returning({
-        id: userProviderCredentials.id,
-        provider: userProviderCredentials.provider,
-        auth_type: userProviderCredentials.auth_type,
-        access_token_expires_at: userProviderCredentials.access_token_expires_at,
-        refresh_token_expires_at: userProviderCredentials.refresh_token_expires_at,
-        created_at: userProviderCredentials.created_at,
-        updated_at: userProviderCredentials.updated_at,
-      });
+      .returning(safeProviderCredentialSelection);
 
     res.set("Cache-Control", "no-store");
     res.status(200).json({
