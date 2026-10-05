@@ -10,6 +10,13 @@ try {
     await program.parseAsync(process.argv);
   }
 } catch (error) {
-  console.error(error instanceof Error ? error.message : "CLI command failed");
-  process.exitCode = 1;
+  if (error instanceof Error && error.name === "ExitPromptError") {
+    console.error("Login cancelled.");
+    process.exitCode = 130;
+  } else {
+    console.error(
+      error instanceof Error ? error.message : "CLI command failed",
+    );
+    process.exitCode = 1;
+  }
 }

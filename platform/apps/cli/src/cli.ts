@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import { createLoginCommand } from "./commands/login.js";
+import { createStatusCommand } from "./commands/status.js";
 
 export function createCli() {
   const { version } = JSON.parse(
@@ -22,6 +23,7 @@ export function createCli() {
     });
 
   program.addCommand(createLoginCommand());
+  program.addCommand(createStatusCommand());
 
   return program;
 }
