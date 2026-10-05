@@ -27,7 +27,11 @@ const columns: { title: string; links: FooterLink[] }[] = [
     title: "Get started",
     links: [
       { label: "Open the web app", href: getAppUrl(), external: true },
-      { label: "Sign in with GitHub", href: getAppUrl("/login"), external: true },
+      {
+        label: "Sign in with GitHub",
+        href: getAppUrl("/login"),
+        external: true,
+      },
       { label: "Android app", href: GOOGLE_PLAY_URL, external: true },
       { label: "FAQ", href: "/#faq" },
     ],
@@ -35,8 +39,16 @@ const columns: { title: string; links: FooterLink[] }[] = [
   {
     title: "Community",
     links: [
-      { label: "Source on GitHub", href: GITHUB_REPOSITORY_URL, external: true },
-      { label: "Report an issue", href: `${GITHUB_REPOSITORY_URL}/issues`, external: true },
+      {
+        label: "Source on GitHub",
+        href: GITHUB_REPOSITORY_URL,
+        external: true,
+      },
+      {
+        label: "Report an issue",
+        href: `${GITHUB_REPOSITORY_URL}/issues`,
+        external: true,
+      },
       { label: "Follow on X", href: X_URL, external: true },
       { label: "Contact", href: "/contact" },
     ],
@@ -57,12 +69,17 @@ const columns: { title: string; links: FooterLink[] }[] = [
 
 function FooterAnchor({ link }: { link: FooterLink }) {
   const className =
-    "group inline-flex items-center gap-1 text-sm text-lp-ink/55 transition-colors hover:text-lp-ink";
+    "group inline-flex items-center gap-1 text-sm text-lp-ink/75 transition-colors hover:text-lp-ink";
   if (link.external) {
     return (
-      <a href={link.href} target="_blank" rel="noopener noreferrer" className={className}>
+      <a
+        href={link.href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={className}
+      >
         {link.label}
-        <ArrowUpRight className="size-3.5 text-lp-ink/25 transition-colors group-hover:text-lp-ink/60" />
+        <ArrowUpRight className="text-lp-ink/25 group-hover:text-lp-ink/60 size-3.5 transition-colors" />
       </a>
     );
   }
@@ -75,12 +92,12 @@ function FooterAnchor({ link }: { link: FooterLink }) {
 
 export function LandingFooter() {
   return (
-    <footer className="border-t border-lp-ink/10 bg-lp-canvas px-5 sm:px-8">
+    <footer className="border-lp-ink/10 bg-lp-canvas border-t px-5 sm:px-8">
       <div className="mx-auto max-w-7xl">
         <div className="grid gap-12 py-16 sm:py-20 lg:grid-cols-[1.2fr_2fr] lg:gap-16">
           <div className="max-w-sm">
             <Wordmark />
-            <p className="mt-5 text-sm leading-6 text-pretty text-lp-ink/55">
+            <p className="text-lp-ink/75 mt-5 text-sm leading-6 text-pretty">
               Cloud workspaces for AI coding agents. Connect a repository,
               launch a VM or sandbox, and ship from the web or your phone.
             </p>
@@ -90,7 +107,7 @@ export function LandingFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="VibeOnGo on GitHub"
-                className="flex size-10 items-center justify-center rounded-xl border border-lp-ink/10 bg-lp-surface text-lp-ink/60 transition-colors hover:text-lp-ink"
+                className="border-lp-ink/10 bg-lp-surface text-lp-ink/60 hover:text-lp-ink flex size-10 items-center justify-center rounded-xl border transition-colors"
               >
                 <Github className="size-[18px]" strokeWidth={1.75} />
               </a>
@@ -99,9 +116,13 @@ export function LandingFooter() {
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="VibeOnGo on X"
-                className="flex size-10 items-center justify-center rounded-xl border border-lp-ink/10 bg-lp-surface text-lp-ink/60 transition-colors hover:text-lp-ink"
+                className="border-lp-ink/10 bg-lp-surface text-lp-ink/60 hover:text-lp-ink flex size-10 items-center justify-center rounded-xl border transition-colors"
               >
-                <svg viewBox="0 0 24 24" className="size-4 fill-current" aria-hidden="true">
+                <svg
+                  viewBox="0 0 24 24"
+                  className="size-4 fill-current"
+                  aria-hidden="true"
+                >
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
               </a>
@@ -129,7 +150,7 @@ export function LandingFooter() {
           >
             {columns.map((column) => (
               <div key={column.title}>
-                <p className="text-xs font-semibold tracking-[0.14em] text-lp-ink/40 uppercase">
+                <p className="text-lp-ink/65 text-xs font-semibold tracking-[0.14em] uppercase">
                   {column.title}
                 </p>
                 <ul className="mt-5 space-y-3">
@@ -144,7 +165,7 @@ export function LandingFooter() {
           </nav>
         </div>
 
-        <div className="flex flex-col gap-3 border-t border-lp-ink/10 py-8 text-xs text-lp-ink/40 sm:flex-row sm:items-center sm:justify-between">
+        <div className="border-lp-ink/10 text-lp-ink/65 flex flex-col gap-3 border-t py-8 text-xs sm:flex-row sm:items-center sm:justify-between">
           <div className="flex items-center gap-4">
             <ThemeSwitcher />
             <p>© {new Date().getFullYear()} VibeOnGo. All rights reserved.</p>
@@ -155,7 +176,7 @@ export function LandingFooter() {
               href={`${GITHUB_REPOSITORY_URL}/blob/main/LICENSE`}
               target="_blank"
               rel="noopener noreferrer"
-              className="underline decoration-lp-ink/20 underline-offset-2 hover:text-lp-ink/70"
+              className="decoration-lp-ink/20 hover:text-lp-ink/70 underline underline-offset-2"
             >
               Elastic License 2.0
             </a>

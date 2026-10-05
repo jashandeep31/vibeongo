@@ -1,9 +1,20 @@
 import type { LucideIcon } from "lucide-react";
-import { ArrowRight, KeyRound, Lock, ShieldCheck, TimerReset } from "lucide-react";
-import { IconBadge } from "./icon-badge";
+import {
+  ArrowRight,
+  KeyRound,
+  Lock,
+  ShieldCheck,
+  TimerReset,
+} from "lucide-react";
 import { InView } from "./in-view";
 
-const flow = ["protected main", "agent branch", "pull request", "checks & review", "merge"];
+const flow = [
+  "protected main",
+  "agent branch",
+  "pull request",
+  "checks & review",
+  "merge",
+];
 
 const points: { icon: LucideIcon; title: string; copy: string }[] = [
   {
@@ -30,14 +41,11 @@ const points: { icon: LucideIcon; title: string; copy: string }[] = [
 
 export function SafetySection() {
   return (
-    <section className="border-t border-lp-ink/10 bg-lp-surface px-5 py-24 sm:px-8 sm:py-32">
+    <section className="border-lp-ink/10 bg-lp-surface border-t px-5 py-24 sm:px-8 sm:py-32">
       <InView className="mx-auto max-w-7xl">
         <div className="mx-auto max-w-3xl text-center">
-          <p className="lp-reveal text-xs font-semibold tracking-[0.18em] text-lp-accent uppercase">
-            Safe by design
-          </p>
           <h2
-            className="lp-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.045em] text-balance sm:text-6xl sm:leading-[1.02]"
+            className="lp-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.03em] text-balance sm:text-6xl sm:leading-[1.02]"
             style={{ ["--d" as string]: "80ms" }}
           >
             Agents propose. <br className="hidden sm:block" />
@@ -53,12 +61,12 @@ export function SafetySection() {
               style={{ ["--d" as string]: `${200 + i * 120}ms` }}
             >
               <span
-                className={`flex h-10 items-center rounded-full px-4 ${i === 0 || i === flow.length - 1 ? "bg-lp-ink text-lp-on-ink" : "border border-lp-ink/10 bg-lp-surface text-lp-ink/60"}`}
+                className={`flex h-10 items-center rounded-lg px-4 ${i === 0 || i === flow.length - 1 ? "bg-lp-ink text-lp-on-ink" : "border-lp-ink/10 bg-lp-surface text-lp-ink/60 border"}`}
               >
                 {step}
               </span>
               {i < flow.length - 1 ? (
-                <ArrowRight className="size-3.5 rotate-90 text-lp-accent sm:rotate-0" />
+                <ArrowRight className="text-lp-accent size-3.5 rotate-90 sm:rotate-0" />
               ) : null}
             </div>
           ))}
@@ -68,12 +76,14 @@ export function SafetySection() {
           {points.map(({ icon: Icon, title, copy }, i) => (
             <div
               key={title}
-              className="lp-rise lp-card rounded-2xl border border-lp-ink/10 bg-lp-canvas p-6"
+              className="lp-rise border-lp-ink/15 border-t pt-6"
               style={{ ["--d" as string]: `${400 + i * 80}ms` }}
             >
-              <IconBadge icon={Icon} />
+              <Icon className="text-lp-accent size-5" aria-hidden="true" />
               <p className="mt-6 text-sm font-semibold">{title}</p>
-              <p className="mt-1.5 text-[13px] leading-5 text-pretty text-lp-ink/50">{copy}</p>
+              <p className="text-lp-ink/75 mt-1.5 text-[13px] leading-5 text-pretty">
+                {copy}
+              </p>
             </div>
           ))}
         </div>

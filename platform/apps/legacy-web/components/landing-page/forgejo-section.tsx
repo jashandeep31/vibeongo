@@ -1,5 +1,10 @@
-import { GitFork, GitPullRequest, LayoutTemplate, Plus, ShieldCheck } from "lucide-react";
-import { IconBadge } from "./icon-badge";
+import {
+  GitFork,
+  GitPullRequest,
+  LayoutTemplate,
+  Plus,
+  ShieldCheck,
+} from "lucide-react";
 import { InView } from "./in-view";
 
 const ways = [
@@ -16,11 +21,8 @@ export function ForgejoSection() {
     >
       <InView className="mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-2 lg:gap-16">
         <div>
-          <p className="lp-reveal text-xs font-semibold tracking-[0.18em] text-[#ff9a4d] uppercase">
-            Built-in Forgejo
-          </p>
           <h2
-            className="lp-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.045em] text-balance sm:text-6xl sm:leading-[1.02]"
+            className="lp-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.03em] text-balance sm:text-6xl sm:leading-[1.02]"
             style={{ ["--d" as string]: "80ms" }}
           >
             Not every repo <br className="hidden sm:block" />
@@ -28,7 +30,7 @@ export function ForgejoSection() {
             <span className="lp-strike relative text-white/40">GitHub</span>.
           </h2>
           <p
-            className="lp-reveal mt-6 max-w-xl text-lg leading-8 text-pretty text-white/55"
+            className="lp-reveal mt-6 max-w-xl text-lg leading-8 text-pretty text-white/75"
             style={{ ["--d" as string]: "160ms" }}
           >
             Every VibeOnGo account comes with its own Forgejo account. Create,
@@ -39,17 +41,19 @@ export function ForgejoSection() {
             {ways.map(({ icon: Icon, title, copy }, i) => (
               <div
                 key={title}
-                className="lp-rise rounded-2xl border border-white/10 bg-white/[0.04] p-5"
+                className="lp-rise border-t border-white/20 pt-5"
                 style={{ ["--d" as string]: `${240 + i * 90}ms` }}
               >
-                <IconBadge icon={Icon} tone="forge" />
+                <Icon className="size-5 text-[#ff9a4d]" aria-hidden="true" />
                 <p className="mt-6 text-sm font-semibold">{title}</p>
-                <p className="mt-1.5 text-[13px] leading-5 text-white/50">{copy}</p>
+                <p className="mt-1.5 text-[13px] leading-5 text-white/75">
+                  {copy}
+                </p>
               </div>
             ))}
           </div>
           <p
-            className="lp-reveal mt-6 text-[13px] text-white/45"
+            className="lp-reveal mt-6 text-[13px] text-white/75"
             style={{ ["--d" as string]: "500ms" }}
           >
             Prefer your own Git client? Set a Forgejo password in Settings and
@@ -106,24 +110,36 @@ export function ForgejoSection() {
                 strokeWidth="4"
               />
             ))}
-            <text x="20" y="230" fill="rgba(255,255,255,0.45)" fontSize="17" fontFamily="var(--font-mono)">
+            <text
+              x="20"
+              y="230"
+              fill="rgba(255,255,255,0.65)"
+              fontSize="17"
+              fontFamily="var(--font-mono)"
+            >
               main
             </text>
-            <text x="200" y="40" fill="#ff9a4d" fontSize="17" fontFamily="var(--font-mono)">
+            <text
+              x="200"
+              y="40"
+              fill="#ff9a4d"
+              fontSize="17"
+              fontFamily="var(--font-mono)"
+            >
               agent/fix-login
             </text>
           </svg>
 
           <div
-            className="lp-rise mt-4 flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.05] p-5"
+            className="lp-rise mt-4 flex items-center justify-between gap-4 rounded-xl border border-white/10 bg-white/[0.05] p-5"
             style={{ ["--d" as string]: "1300ms" }}
           >
             <div className="flex items-center gap-3">
               <GitPullRequest className="size-5 text-[#ff9a4d]" />
               <div>
                 <p className="text-sm font-semibold">you/side-project #1</p>
-                <p className="mt-0.5 text-xs text-white/45">
-                  Fix login redirect · reviewed
+                <p className="mt-0.5 text-xs text-white/75">
+                  Example: Fix login redirect · reviewed
                 </p>
               </div>
             </div>
@@ -132,7 +148,7 @@ export function ForgejoSection() {
             </span>
           </div>
           <div
-            className="lp-rise mt-3 inline-flex items-center gap-2 rounded-full bg-[#c6ff3d] px-4 py-2 text-xs font-semibold text-black"
+            className="lp-rise mt-3 inline-flex items-center gap-2 rounded-lg bg-[#c6ff3d] px-4 py-2 text-xs font-semibold text-black"
             style={{ ["--d" as string]: "1700ms" }}
           >
             <ShieldCheck className="size-3.5" /> main is protected automatically

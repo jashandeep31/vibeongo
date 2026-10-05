@@ -9,7 +9,6 @@ import {
   Siren,
   Webhook,
 } from "lucide-react";
-import { IconBadge } from "./icon-badge";
 import { InView } from "./in-view";
 
 const triggers: { icon: LucideIcon; title: string; copy: string }[] = [
@@ -37,27 +36,31 @@ const triggers: { icon: LucideIcon; title: string; copy: string }[] = [
 
 const runs = [
   { name: "Review new PR #139", source: "webhook", state: "done" },
-  { name: "Investigate TypeError in checkout", source: "sentry", state: "done" },
+  {
+    name: "Investigate TypeError in checkout",
+    source: "sentry",
+    state: "done",
+  },
   { name: "Weekly dependency report", source: "schedule", state: "running" },
 ];
 
 export function AutomationSection() {
   return (
-    <section id="automation" className="scroll-mt-16 px-5 py-24 sm:px-8 sm:py-32">
+    <section
+      id="automation"
+      className="scroll-mt-16 px-5 py-24 sm:px-8 sm:py-32"
+    >
       <InView className="mx-auto max-w-7xl" threshold={0.15}>
         <div className="grid gap-14 lg:grid-cols-2 lg:gap-16">
           <div>
-            <p className="lp-reveal text-xs font-semibold tracking-[0.18em] text-lp-accent uppercase">
-              Project automations
-            </p>
             <h2
-              className="lp-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.045em] text-balance sm:text-6xl sm:leading-[1.02]"
+              className="lp-reveal mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.03em] text-balance sm:text-6xl sm:leading-[1.02]"
               style={{ ["--d" as string]: "80ms" }}
             >
               Your backlog moves while you sleep.
             </h2>
             <p
-              className="lp-reveal mt-6 max-w-xl text-lg leading-8 text-pretty text-lp-ink/50"
+              className="lp-reveal text-lp-ink/75 mt-6 max-w-xl text-lg leading-8 text-pretty"
               style={{ ["--d" as string]: "160ms" }}
             >
               Save ordered prompts, target paths, roles and models as an
@@ -68,31 +71,33 @@ export function AutomationSection() {
               {triggers.map(({ icon: Icon, title, copy }, i) => (
                 <div
                   key={title}
-                  className="lp-rise lp-card rounded-2xl border border-lp-ink/10 bg-lp-surface p-5"
+                  className="lp-rise border-lp-ink/15 border-t pt-5"
                   style={{ ["--d" as string]: `${200 + i * 80}ms` }}
                 >
-                  <IconBadge icon={Icon} />
+                  <Icon className="text-lp-accent size-5" aria-hidden="true" />
                   <p className="mt-6 text-sm font-semibold">{title}</p>
-                  <p className="mt-1.5 text-[13px] leading-5 text-pretty text-lp-ink/50">{copy}</p>
+                  <p className="text-lp-ink/75 mt-1.5 text-[13px] leading-5 text-pretty">
+                    {copy}
+                  </p>
                 </div>
               ))}
             </div>
           </div>
 
-          <div className="lp-pop self-end rounded-[1.75rem] border border-lp-ink/10 bg-lp-surface p-6 shadow-[0_30px_80px_-30px_rgba(23,24,28,0.3)] sm:p-8">
+          <div className="lp-pop border-lp-ink/15 bg-lp-surface self-end rounded-xl border p-6 sm:p-8">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <span className="flex size-10 items-center justify-center rounded-xl bg-lp-ink text-lp-on-ink">
+                <span className="bg-lp-ink text-lp-on-ink flex size-10 items-center justify-center rounded-xl">
                   <ShieldCheck className="size-5" />
                 </span>
                 <div>
                   <p className="text-sm font-semibold">Review every new PR</p>
-                  <p className="text-[11px] text-lp-ink/40">
+                  <p className="text-lp-ink/65 text-[11px]">
                     pr-reviewer · runs on pull_request.opened
                   </p>
                 </div>
               </div>
-              <span className="rounded-full bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
+              <span className="rounded-lg bg-emerald-100 px-3 py-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300">
                 Enabled
               </span>
             </div>
@@ -105,21 +110,21 @@ export function AutomationSection() {
                   style={{ ["--d" as string]: `${500 + index * 200}ms` }}
                 >
                   <span
-                    className={`rounded-full px-3 py-1.5 ${index === 3 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-lp-muted text-lp-ink/55"}`}
+                    className={`rounded-lg px-3 py-1.5 ${index === 3 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300" : "bg-lp-muted text-lp-ink/75"}`}
                   >
                     {item}
                   </span>
                   {index < 3 ? (
-                    <ChevronRight className="size-3 text-lp-ink/25" />
+                    <ChevronRight className="text-lp-ink/25 size-3" />
                   ) : null}
                 </div>
               ))}
             </div>
 
-            <p className="mt-8 text-[10px] font-semibold tracking-[0.15em] text-lp-ink/30 uppercase">
-              Run history
+            <p className="text-lp-ink/65 mt-8 text-[10px] font-semibold tracking-[0.15em] uppercase">
+              Example run history
             </p>
-            <ul className="mt-3 divide-y divide-lp-ink/5 rounded-2xl bg-lp-canvas">
+            <ul className="divide-lp-ink/5 bg-lp-canvas mt-3 divide-y rounded-xl">
               {runs.map((run, i) => (
                 <li
                   key={run.name}
@@ -130,11 +135,11 @@ export function AutomationSection() {
                     {run.state === "done" ? (
                       <Check className="size-3.5 text-emerald-500" />
                     ) : (
-                      <Loader2 className="size-3.5 animate-spin text-lp-accent" />
+                      <Loader2 className="text-lp-accent size-3.5 animate-spin" />
                     )}
                     {run.name}
                   </span>
-                  <span className="rounded-full bg-lp-surface px-2.5 py-1 font-mono text-[10px] text-lp-ink/45">
+                  <span className="bg-lp-surface text-lp-ink/70 rounded-lg px-2.5 py-1 font-mono text-[10px]">
                     {run.source}
                   </span>
                 </li>

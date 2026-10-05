@@ -37,24 +37,26 @@ export const faqs = [
 
 export function FaqSection() {
   return (
-    <section id="faq" className="scroll-mt-16 border-t border-lp-ink/10 bg-lp-surface px-5 py-24 sm:px-8 sm:py-32">
+    <section
+      id="faq"
+      className="border-lp-ink/10 bg-lp-surface scroll-mt-16 border-t px-5 py-24 sm:px-8 sm:py-32"
+    >
       <div className="mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.7fr_1.3fr] lg:gap-20">
         <div>
-          <p className="text-xs font-semibold tracking-[0.18em] text-lp-accent uppercase">
-            FAQ
-          </p>
-          <h2 className="mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.045em] text-balance sm:text-5xl sm:leading-[1.02]">
+          <h2 className="mt-5 text-4xl leading-[1.05] font-semibold tracking-[-0.03em] text-balance sm:text-5xl sm:leading-[1.02]">
             Questions, answered.
           </h2>
         </div>
-        <div className="divide-y divide-lp-ink/10 border-y border-lp-ink/10">
+        <div className="divide-lp-ink/10 border-lp-ink/10 divide-y border-y">
           {faqs.map(({ q, a }) => (
             <details key={q} className="group py-5">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-6 text-base font-medium [&::-webkit-details-marker]:hidden">
                 {q}
-                <Plus className="size-4 shrink-0 text-lp-ink/40 transition-transform duration-300 group-open:rotate-45" />
+                <Plus className="text-lp-ink/65 size-4 shrink-0 transition-transform duration-300 group-open:rotate-45" />
               </summary>
-              <p className="mt-3 max-w-2xl text-sm leading-6 text-lp-ink/50">{a}</p>
+              <p className="text-lp-ink/75 mt-3 max-w-2xl text-sm leading-6">
+                {a}
+              </p>
             </details>
           ))}
         </div>

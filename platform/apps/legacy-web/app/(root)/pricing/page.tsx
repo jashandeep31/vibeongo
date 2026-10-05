@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import "../../home.css";
+import "./pricing.css";
 import { BACKEND_URL } from "@/lib/constants";
 import type { PricingMetadata } from "@/services/instance-metadata-service";
 import PricingClientView from "./client-view";
@@ -65,7 +67,7 @@ async function getPricingMetadata(): Promise<PricingMetadata> {
 export const metadata: Metadata = pageMetadata({
   title: "Cloud Workspace Pricing",
   description:
-    "Compare VibeOnGo virtual machine and sandbox pricing. Sandboxes bill per minute, VMs per hour, and auto-shutdown stops idle compute — pay for the work, not the waiting.",
+    "Compare VibeOnGo virtual machine and sandbox pricing. Sandboxes and VMs bill per started minute, and auto-shutdown stops idle compute — pay for the work, not the waiting.",
   path: "/pricing",
 });
 
@@ -89,7 +91,7 @@ const pricingStructuredData = {
           name: "How does VibeOnGo pricing work?",
           acceptedAnswer: {
             "@type": "Answer",
-            text: "Sandboxes are billed per started minute and virtual machines are billed per hour. The 30-day estimates assume 8 hours a day, 5 days a week. Prices include the VibeOnGo management charge.",
+            text: "Sandboxes and virtual machines are billed per started minute. The 30-day estimates assume 8 hours a day, 5 days a week. Prices include the VibeOnGo management charge.",
           },
         },
         {
