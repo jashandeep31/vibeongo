@@ -39,3 +39,14 @@ export async function getApiKey(
     );
   }
 }
+
+export async function deleteApiKey(serverUrl: string): Promise<boolean> {
+  const entry = await getEntry(serverUrl);
+  try {
+    return await entry.deleteCredential();
+  } catch {
+    throw new Error(
+      "Could not remove the API key from the OS credential store. Unlock the keychain and try again.",
+    );
+  }
+}

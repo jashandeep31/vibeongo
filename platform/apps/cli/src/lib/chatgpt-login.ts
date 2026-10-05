@@ -7,6 +7,7 @@ import { getApiKey } from "./credential-store.js";
 import { saveCodexCredentials } from "./provider-credentials.js";
 import { loadChatgptHost, saveChatgptHost } from "./chatgpt-registration.js";
 import { sendCallbackMessage, startOAuthCallback } from "./oauth-callback.js";
+import { LoginRequiredError } from "./login-required-error.js";
 
 const ISSUER = "https://auth.openai.com";
 const RESOURCE = "https://api.openai.com/v1";
@@ -25,9 +26,7 @@ export async function loginWithChatgpt(options: {
   const serverUrl = normalizeServerUrl(options.serverUrl ?? DEFAULT_SERVER_URL);
   const apiKey = await getApiKey(serverUrl);
   if (!apiKey) {
-    throw new Error(
-      "Log in to Vibeongo first with vibeongo login. Use the same --server-url for both commands.",
-    );
+    throw new LoginRequiredError(serverUrl);
   }
   await getUserMetadata(serverUrl, apiKey);
   const host = await loadChatgptHost();

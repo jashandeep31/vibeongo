@@ -11,6 +11,12 @@ npx @vibeongo/cli status
 
 Your API key is saved in your OS credential store. On Linux, a running, unlocked Secret Service keyring is required.
 
+Remove your saved local login:
+
+```bash
+npx @vibeongo/cli logout
+```
+
 Connect ChatGPT after logging in to Vibeongo:
 
 ```bash
@@ -25,6 +31,7 @@ For a custom server, use the same URL for each command:
 npx @vibeongo/cli login --server-url https://your-server.com
 npx @vibeongo/cli chatgpt login --server-url https://your-server.com
 npx @vibeongo/cli status --server-url https://your-server.com
+npx @vibeongo/cli logout --server-url https://your-server.com
 ```
 
 The default server is `https://server.vibeongo.com`.

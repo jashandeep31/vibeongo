@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { DEFAULT_SERVER_URL } from "../lib/api.js";
+import { LoginRequiredError } from "../lib/login-required-error.js";
 
 export function createChatgptCommand() {
   const command = new Command("chatgpt").description(
@@ -22,7 +23,8 @@ export function createChatgptCommand() {
       try {
         const { loginWithChatgpt } = await import("../lib/chatgpt-login.js");
         await loginWithChatgpt(options);
-      } catch {
+      } catch (error) {
+        if (error instanceof LoginRequiredError) throw error;
         throw new Error("ChatGPT sign-in failed.");
       }
     });

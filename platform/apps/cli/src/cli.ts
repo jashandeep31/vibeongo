@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { Command } from "commander";
 import { createLoginCommand } from "./commands/login.js";
+import { createLogoutCommand } from "./commands/logout.js";
 import { createStatusCommand } from "./commands/status.js";
 import { createChatgptCommand } from "./commands/chatgpt.js";
 
@@ -24,6 +25,7 @@ export function createCli() {
     });
 
   program.addCommand(createLoginCommand());
+  program.addCommand(createLogoutCommand());
   program.addCommand(createStatusCommand());
   program.addCommand(createChatgptCommand());
 
