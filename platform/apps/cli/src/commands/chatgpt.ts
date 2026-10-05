@@ -1,4 +1,5 @@
 import { Command } from "commander";
+import { DEFAULT_SERVER_URL } from "../lib/api.js";
 
 export function createChatgptCommand() {
   const command = new Command("chatgpt").description(
@@ -6,15 +7,24 @@ export function createChatgptCommand() {
   );
   command
     .command("login")
-    .description("Continue with ChatGPT and print the full OAuth response")
+    .description("Continue with ChatGPT and save credentials to Vibeongo")
+    .option("--server-url <url>", "Vibeongo server origin", DEFAULT_SERVER_URL)
     .option("--new-account", "Register another ChatGPT account or workspace")
     .option(
       "--client-id <id>",
       "Sign in with a previously saved client registration",
     )
-    .action(async (options: { newAccount?: boolean; clientId?: string }) => {
-      const { loginWithChatgpt } = await import("../lib/chatgpt-login.js");
-      await loginWithChatgpt(options);
+    .action(async (options: {
+      newAccount?: boolean;
+      clientId?: string;
+      serverUrl: string;
+    }) => {
+      try {
+        const { loginWithChatgpt } = await import("../lib/chatgpt-login.js");
+        await loginWithChatgpt(options);
+      } catch {
+        throw new Error("ChatGPT sign-in failed.");
+      }
     });
   return command;
 }

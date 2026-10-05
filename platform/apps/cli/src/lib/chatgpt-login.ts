@@ -1,6 +1,10 @@
 import { createHash, randomBytes } from "node:crypto";
+import { stripVTControlCharacters } from "node:util";
 import { createRemoteJWKSet, jwtVerify } from "jose";
 import open from "open";
+import { DEFAULT_SERVER_URL, getUserMetadata, normalizeServerUrl } from "./api.js";
+import { getApiKey } from "./credential-store.js";
+import { saveCodexCredentials } from "./provider-credentials.js";
 import { loadChatgptHost, saveChatgptHost } from "./chatgpt-registration.js";
 import { sendCallbackMessage, startOAuthCallback } from "./oauth-callback.js";
 
@@ -9,28 +13,23 @@ const RESOURCE = "https://api.openai.com/v1";
 const SCOPES =
   "openid profile email offline_access resource.invoke chatgpt.tokens.use.direct";
 
-function printResponse(label: string, value: unknown) {
-  console.log(`\n${label}`);
-  console.log(JSON.stringify(value, null, 2));
-}
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
-}
-
-function callbackFields(params: URLSearchParams) {
-  const fields: Record<string, string | string[]> = {};
-  for (const key of new Set(params.keys())) {
-    const values = params.getAll(key);
-    fields[key] = values.length === 1 ? values[0]! : values;
-  }
-  return fields;
 }
 
 export async function loginWithChatgpt(options: {
   newAccount?: boolean;
   clientId?: string;
+  serverUrl?: string;
 }) {
+  const serverUrl = normalizeServerUrl(options.serverUrl ?? DEFAULT_SERVER_URL);
+  const apiKey = await getApiKey(serverUrl);
+  if (!apiKey) {
+    throw new Error(
+      "Log in to Vibeongo first with vibeongo login. Use the same --server-url for both commands.",
+    );
+  }
+  await getUserMetadata(serverUrl, apiKey);
   const host = await loadChatgptHost();
   if (options.newAccount && options.clientId) {
     throw new Error("Choose either --new-account or --client-id.");
@@ -105,22 +104,11 @@ export async function loginWithChatgpt(options: {
       ...(selected?.email ? { login_hint: selected.email } : {}),
     }).toString();
 
-    console.log("Continue with ChatGPT");
-    console.log(`Callback listener: ${listener.redirectUri}`);
-    console.log(
-      `Open this URL if the browser does not open:\n${authorizationUrl.toString()}`,
-    );
     // Browser opening must not prevent the callback, cancellation, or timeout.
     void open(authorizationUrl.toString()).catch(() => {
-      console.log(
-        "Could not open the browser automatically. Open the URL above manually.",
-      );
+      controller.abort();
     });
     const { params, response } = await listener.callback;
-    printResponse(
-      "OpenAI callback (all returned fields)",
-      callbackFields(params),
-    );
 
     try {
       if (params.has("error"))
@@ -168,17 +156,8 @@ export async function loginWithChatgpt(options: {
       try {
         tokens = JSON.parse(rawBody);
       } catch {
-        // Stringify even non-JSON bodies so terminal control characters are escaped.
         tokens = rawBody;
       }
-      printResponse(
-        `OpenAI token response (HTTP ${tokenResponse.status}, all returned fields)`,
-        tokens,
-      );
-      printResponse(
-        "OpenAI token response headers",
-        Object.fromEntries(tokenResponse.headers),
-      );
       if (!tokenResponse.ok) {
         throw new Error(
           `Token exchange failed (HTTP ${tokenResponse.status}). Start a fresh sign-in; do not reuse the code.`,
@@ -206,7 +185,6 @@ export async function loginWithChatgpt(options: {
           "The signed-in ChatGPT account does not match the selected registration.",
         );
       }
-      printResponse("Validated ID token claims (all returned fields)", payload);
       controller.signal.throwIfAborted();
       const registration = {
         clientId,
@@ -235,25 +213,32 @@ export async function loginWithChatgpt(options: {
           `ChatGPT plan usage was not fully authorized. Missing scopes: ${missingScopes.join(", ") || "none"}. Access and refresh tokens are required.`,
         );
       }
-      printResponse("ChatGPT authorization", {
-        client_id: clientId,
-        ext_agent_host_id: host.hostId,
-        chatgpt_plan_usage_enabled: true,
-        granted_scopes: scopes,
-      });
+      await saveCodexCredentials(
+        serverUrl,
+        apiKey,
+        { ...tokens, client_id: clientId },
+        controller.signal,
+      );
+      const name = typeof payload.name === "string"
+        ? stripVTControlCharacters(payload.name)
+          .replace(/[\p{Cc}\p{Cf}]/gu, "")
+          .replace(/\s+/g, " ")
+          .trim()
+          .slice(0, 120)
+        : "";
       console.log(
-        "\nChatGPT sign-in successful. ChatGPT plan usage permission is enabled.",
+        `ChatGPT sign-in successful${name ? ` (${name})` : ""}.`,
       );
       sendCallbackMessage(
         response,
         200,
-        "ChatGPT sign-in completed. Return to the Vibeongo CLI to inspect the response. You can close this tab.",
+        "ChatGPT sign-in completed and credentials saved to Vibeongo. You can close this tab.",
       );
     } catch (error) {
       sendCallbackMessage(
         response,
         400,
-        "ChatGPT sign-in did not complete. Return to the Vibeongo CLI for details.",
+        "ChatGPT sign-in failed. You can close this tab.",
       );
       throw error;
     }

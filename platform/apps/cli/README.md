@@ -75,12 +75,22 @@ Use the same `--server-url` as login when checking a different server.
 ## ChatGPT sign-in
 
 ```bash
+pnpm --filter @vibeongo/cli cli login
 pnpm --filter @vibeongo/cli cli chatgpt login
 ```
 
+Log in to Vibeongo first. ChatGPT sign-in reads the saved Vibeongo API key and
+validates it before opening the browser. After verifying the ChatGPT response,
+it sends the credentials and issued client ID to
+`PUT http://localhost:8000/api/v1/users/provider-credentials/codex`.
+The server encrypts the credentials and creates or replaces your Codex connection,
+with access expiry of one hour and refresh expiry of 30 days from saving.
+Use the same `--server-url` for both login commands to select a different server.
+If saving fails, the command exits with an error instead of reporting success.
+
 This opens Continue with ChatGPT in your default browser. The CLI listens on
 `http://127.0.0.1:3102/auth/callback`; if that port is occupied, it tries 3103,
-3104, and so on. It prints the authorization URL for manual opening if needed.
+3104, and so on. If the browser cannot open, sign-in fails.
 Run the CLI on the same computer as the browser receiving the loopback callback.
 Sign-in expires after five minutes; Ctrl+C cancels it and closes the listener.
 
@@ -104,10 +114,11 @@ ChatGPT plan usage as enabled. Permission depends on the user's approval and
 OpenAI account/workspace eligibility; the command does not make inference requests
 or spend credits.
 
-For inspecting this flow, the CLI prints every callback field, the complete token
-response (including access, refresh, and ID tokens), token response headers, and
-validated ID-token claims. Tokens are printed only and are not saved to disk or
-the keyring. The browser callback page contains no tokens.
+The CLI prints only `ChatGPT sign-in successful`, including the account name when
+available, or `ChatGPT sign-in failed.` It does not print tokens, authorization
+URLs, response headers, or account claims. Tokens are saved encrypted on the
+Vibeongo server; they are not saved to local files or the OS keyring. The browser
+callback page contains no tokens.
 
 Official reference: https://developers.openai.com/siwc/token-sharing-open-source/sign-in
 
