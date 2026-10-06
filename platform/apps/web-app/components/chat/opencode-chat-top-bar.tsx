@@ -52,7 +52,7 @@ import {
   GitFork,
   Loader2,
   RefreshCw,
-  Settings2,
+  Settings,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -142,20 +142,6 @@ export function OpencodeChatTopBar({
       <TopBarLink href={`${chatUrl}/files`} label="Open files">
         <FolderOpen />
       </TopBarLink>
-      <TopBarLink href={`${chatUrl}/settings`} label="Runtime settings">
-        <Settings2 />
-      </TopBarLink>
-      <Button
-        type="button"
-        variant="outline"
-        size="icon-sm"
-        className="bg-background/90 shadow-sm backdrop-blur"
-        aria-label="Worktrees"
-        title="Worktrees"
-        onClick={() => setWorktreeOpen(true)}
-      >
-        <GitBranch />
-      </Button>
       <OpencodeWorktreeDialog
         connection={{
           chatId: projectSessionId,
@@ -213,6 +199,9 @@ export function OpencodeChatTopBar({
         projectSessionId={projectSessionId}
         iconOnly
       />
+      <TopBarLink href={`${chatUrl}/settings`} label="Runtime settings">
+        <Settings />
+      </TopBarLink>
     </div>
   );
 }

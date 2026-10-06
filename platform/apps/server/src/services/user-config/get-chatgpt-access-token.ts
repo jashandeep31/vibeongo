@@ -20,7 +20,9 @@ const storedTokensSchema = z.object({
 
 const refreshedTokensSchema = storedTokensSchema
   .omit({ client_id: true })
-  .extend({ expires_in: z.number().int().positive().max(86_400).default(3600) });
+  .extend({
+    expires_in: z.number().int().positive().max(86_400).default(3600),
+  });
 
 type ChatgptAccessToken = {
   credential_id: string;
@@ -29,14 +31,17 @@ type ChatgptAccessToken = {
   scopes: string[];
 };
 
-export function getChatgptAccessToken(userId: string): Promise<ChatgptAccessToken>;
 export function getChatgptAccessToken(
   userId: string,
-  options: { optional: true },
+  options?: { forceRefresh?: boolean },
+): Promise<ChatgptAccessToken>;
+export function getChatgptAccessToken(
+  userId: string,
+  options: { optional: true; forceRefresh?: boolean },
 ): Promise<ChatgptAccessToken | null>;
 export async function getChatgptAccessToken(
   userId: string,
-  options?: { optional: true },
+  options?: { optional?: true; forceRefresh?: boolean },
 ) {
   return db.transaction(async (tx) => {
     // A database lock serializes rotation across VMs and server processes.
@@ -44,10 +49,12 @@ export async function getChatgptAccessToken(
     const [credential] = await tx
       .select()
       .from(userProviderCredentials)
-      .where(and(
-        eq(userProviderCredentials.user_id, userId),
-        eq(userProviderCredentials.provider, "codex"),
-      ))
+      .where(
+        and(
+          eq(userProviderCredentials.user_id, userId),
+          eq(userProviderCredentials.provider, "codex"),
+        ),
+      )
       .for("update");
 
     if (!credential) {
@@ -55,43 +62,66 @@ export async function getChatgptAccessToken(
       throw new AppError("ChatGPT connection not found", 404);
     }
     if (credential.revoked_at || credential.auth_type !== "oauth") {
-      if (options?.optional) return null;
-      throw new AppError("ChatGPT connection is unavailable. Sign in again from the CLI", 409);
+      if (options?.optional && !options.forceRefresh) return null;
+      throw new AppError(
+        "ChatGPT connection is unavailable. Sign in again from the CLI",
+        409,
+      );
     }
 
     let decrypted: unknown;
     try {
-      decrypted = JSON.parse(decryptData({
-        iv: credential.iv,
-        tag: credential.tag,
-        encrypted: credential.encrypted_data,
-      }));
+      decrypted = JSON.parse(
+        decryptData({
+          iv: credential.iv,
+          tag: credential.tag,
+          encrypted: credential.encrypted_data,
+        }),
+      );
     } catch {
       throw new AppError("Could not read stored ChatGPT credentials", 500);
     }
     const parsed = storedTokensSchema.safeParse(decrypted);
     if (!parsed.success) {
-      throw new AppError("Stored ChatGPT credentials are invalid. Sign in again from the CLI", 409);
+      throw new AppError(
+        "Stored ChatGPT credentials are invalid. Sign in again from the CLI",
+        409,
+      );
     }
     const tokens = parsed.data;
     const now = Date.now();
     const accessExpiry = credential.access_token_expires_at;
-    if (accessExpiry && accessExpiry.getTime() > now + REFRESH_WINDOW_MS) {
+    if (
+      !options?.forceRefresh &&
+      accessExpiry &&
+      accessExpiry.getTime() > now + REFRESH_WINDOW_MS
+    ) {
       return {
         credential_id: credential.id,
         access_token: tokens.access_token,
         access_token_expires_at: accessExpiry,
-        scopes: credential.metadata.scopes ?? tokens.scope?.split(/\s+/).filter(Boolean) ?? [],
+        scopes:
+          credential.metadata.scopes ??
+          tokens.scope?.split(/\s+/).filter(Boolean) ??
+          [],
       };
     }
 
-    if (!credential.refresh_token_expires_at ||
-      credential.refresh_token_expires_at.getTime() <= now) {
-      throw new AppError("ChatGPT refresh token has expired. Sign in again from the CLI", 409);
+    if (
+      !credential.refresh_token_expires_at ||
+      credential.refresh_token_expires_at.getTime() <= now
+    ) {
+      throw new AppError(
+        "ChatGPT refresh token has expired. Sign in again from the CLI",
+        409,
+      );
     }
     const clientId = credential.metadata.clientID ?? tokens.client_id;
     if (clientId !== tokens.client_id || clientId === "dynamic_agent_client") {
-      throw new AppError("Stored ChatGPT client ID is invalid. Sign in again from the CLI", 409);
+      throw new AppError(
+        "Stored ChatGPT client ID is invalid. Sign in again from the CLI",
+        409,
+      );
     }
 
     let response: globalThis.Response;
@@ -112,7 +142,10 @@ export async function getChatgptAccessToken(
         signal: AbortSignal.timeout(15_000),
       });
     } catch {
-      throw new AppError("Could not reach OpenAI to refresh ChatGPT access", 502);
+      throw new AppError(
+        "Could not reach OpenAI to refresh ChatGPT access",
+        502,
+      );
     }
 
     let body: unknown;
@@ -124,7 +157,10 @@ export async function getChatgptAccessToken(
     if (!response.ok) {
       const error = z.object({ error: z.string() }).safeParse(body);
       if (error.success && error.data.error === "invalid_grant") {
-        throw new AppError("ChatGPT authorization has expired or been revoked. Sign in again from the CLI", 409);
+        throw new AppError(
+          "ChatGPT authorization has expired or been revoked. Sign in again from the CLI",
+          409,
+        );
       }
       throw new AppError("OpenAI could not refresh ChatGPT access", 502);
     }
@@ -136,7 +172,9 @@ export async function getChatgptAccessToken(
     const replacement = { ...tokens, ...refreshed.data, client_id: clientId };
     const encrypted = encryptData(JSON.stringify(replacement));
     const renewedAt = new Date();
-    const expiresAt = new Date(renewedAt.getTime() + refreshed.data.expires_in * 1000);
+    const expiresAt = new Date(
+      renewedAt.getTime() + refreshed.data.expires_in * 1000,
+    );
     await tx
       .update(userProviderCredentials)
       .set({
@@ -145,11 +183,15 @@ export async function getChatgptAccessToken(
         tag: encrypted.tag,
         metadata: {
           clientID: clientId,
-          scopes: replacement.scope?.split(/\s+/).filter(Boolean) ??
-            credential.metadata.scopes ?? [],
+          scopes:
+            replacement.scope?.split(/\s+/).filter(Boolean) ??
+            credential.metadata.scopes ??
+            [],
         },
         access_token_expires_at: expiresAt,
-        refresh_token_expires_at: new Date(renewedAt.getTime() + REFRESH_TOKEN_LIFETIME_MS),
+        refresh_token_expires_at: new Date(
+          renewedAt.getTime() + REFRESH_TOKEN_LIFETIME_MS,
+        ),
         updated_at: renewedAt,
       })
       .where(eq(userProviderCredentials.id, credential.id));
@@ -159,7 +201,10 @@ export async function getChatgptAccessToken(
       credential_id: credential.id,
       access_token: refreshed.data.access_token,
       access_token_expires_at: expiresAt,
-      scopes: replacement.scope?.split(/\s+/).filter(Boolean) ?? credential.metadata.scopes ?? [],
+      scopes:
+        replacement.scope?.split(/\s+/).filter(Boolean) ??
+        credential.metadata.scopes ??
+        [],
     };
   });
 }

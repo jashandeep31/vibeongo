@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getSessionDomains,
   getRuntimeSessionConfig,
+  renewRuntimeOpencodeCredentials,
 } from "../controllers/runtime/get-runtime-session-config.js";
 import { checkRuntimeAuthorization } from "../middlewares/check-runtime-authorization.js";
 import { getRuntimeProjectFiles } from "../controllers/runtime/get-projects-files.js";
@@ -20,6 +21,10 @@ const routes: Router = Router();
 routes
   .route("/sessions/:id/provider-credentials/:provider/access-token")
   .post(checkRuntimeAuthorization, getProviderAccessToken);
+
+routes
+  .route("/sessions/:id/opencode/renew-credentials/:instanceId")
+  .post(checkRuntimeAuthorization, renewRuntimeOpencodeCredentials);
 
 routes
   .route("/sessions/:id/config/:instanceId")

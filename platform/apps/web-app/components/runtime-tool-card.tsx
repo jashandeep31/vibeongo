@@ -40,6 +40,8 @@ export function RuntimeToolCard({
   isConnected,
   lastMessage,
   opencodePassword,
+  onRenewCredentials,
+  renewingCredentials = false,
   sendJsonMessage,
   tool,
   url,
@@ -48,6 +50,8 @@ export function RuntimeToolCard({
   isConnected: boolean;
   lastMessage: RuntimeControlMessage | null;
   opencodePassword?: string | null;
+  onRenewCredentials?: () => void;
+  renewingCredentials?: boolean;
   sendJsonMessage: (message: unknown) => boolean;
   tool: ToolKind;
   url: string;
@@ -255,7 +259,7 @@ export function RuntimeToolCard({
           <Button
             type="button"
             size="sm"
-            disabled={actionDisabled}
+            disabled={actionDisabled || renewingCredentials}
             onClick={primaryAction}
           >
             {isBusy || pendingAction ? (
@@ -279,13 +283,13 @@ export function RuntimeToolCard({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem
-                disabled={!isConnected || isBusy}
+                disabled={!isConnected || isBusy || renewingCredentials}
                 onSelect={restart}
               >
                 <RotateCcw /> Restart
               </DropdownMenuItem>
               <DropdownMenuItem
-                disabled={!isConnected || !isRunning}
+                disabled={!isConnected || !isRunning || renewingCredentials}
                 onSelect={stop}
               >
                 <Square /> Stop
@@ -328,6 +332,31 @@ export function RuntimeToolCard({
           </DropdownMenu>
         </CardAction>
       </CardHeader>
+      {tool === "opencode" && onRenewCredentials ? (
+        <CardContent>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            disabled={
+              disabled ||
+              !isConnected ||
+              !isRunning ||
+              isBusy ||
+              renewingCredentials
+            }
+            onClick={onRenewCredentials}
+            aria-busy={renewingCredentials}
+          >
+            {renewingCredentials ? (
+              <Loader2 className="animate-spin" />
+            ) : (
+              <KeyRound />
+            )}
+            {renewingCredentials ? "Renewing…" : "Renew credentials"}
+          </Button>
+        </CardContent>
+      ) : null}
       {error ? (
         <CardContent>
           <p className="text-destructive text-xs break-words">{error}</p>

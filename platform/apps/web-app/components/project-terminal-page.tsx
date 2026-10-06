@@ -8,7 +8,7 @@ import {
   FolderOpen,
   LoaderCircle,
   Plus,
-  Settings2,
+  Settings,
   Terminal as TerminalIcon,
   Trash2,
 } from "lucide-react";
@@ -405,15 +405,6 @@ export function ProjectTerminalPage({
                       <FolderOpen />
                     </Link>
                   </Button>
-                  <Button asChild size="icon-sm" variant="outline">
-                    <Link
-                      href={`/projects/${projectId}/sessions/${projectSessionId}/settings`}
-                      aria-label="Session settings"
-                      title="Session settings"
-                    >
-                      <Settings2 />
-                    </Link>
-                  </Button>
                   <ConnectionStatus status={combinedSocketStatus} />
                   <RuntimePulseMenu projectSessionId={projectSessionId} />
                   <ProjectDomainsDialog
@@ -421,6 +412,15 @@ export function ProjectTerminalPage({
                     projectSessionId={projectSessionId}
                     iconOnly
                   />
+                  <Button asChild size="icon-sm" variant="outline">
+                    <Link
+                      href={`/projects/${projectId}/sessions/${projectSessionId}/settings`}
+                      aria-label="Session settings"
+                      title="Session settings"
+                    >
+                      <Settings />
+                    </Link>
+                  </Button>
                 </div>
               </div>
             </div>

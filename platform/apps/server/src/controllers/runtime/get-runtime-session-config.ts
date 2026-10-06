@@ -32,95 +32,130 @@ import {
 } from "../../services/opencode/vibeongo-ai-models.js";
 
 export const getRuntimeSessionConfig = catchAsync(
-  async (req: Request, res: Response) => {
-    const { id, instanceId } = z
-      .object({ id: z.string(), instanceId: z.string() })
-      .parse(req.params);
-
-    const [sessionRow] = await db
-      .select({
-        project_session: projectSessions,
-        project: projects,
-        instance: instances,
-      })
-      .from(projectSessions)
-      .leftJoin(projects, eq(projects.id, projectSessions.project_id))
-      .leftJoin(instances, eq(instances.id, instanceId))
-      .where(eq(projectSessions.id, id));
-
-    if (
-      !sessionRow?.project_session ||
-      !sessionRow?.project ||
-      !sessionRow.instance
-    )
-      throw new AppError("Project session not found", 404);
-
-    const { project, instance } = sessionRow;
-    const stringfiedConfig = await getDecryptedProjectConfig(project.id);
-    const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
-    const resolvedProjectConfig = await appendChatgptCredentialsToOpencodeConfig(
-      project.user_id,
-      await appendVibeongoAiKeyToOpencodeConfig(
-        instanceId,
-        withEmptyClaudePackage(
-          await resolveProjectUserConfigs(parsedConfig, project.user_id),
-        ),
-      ),
-    );
-
-    const [tasks, repos, keys] = await Promise.all([
-      db
-        .select()
-        .from(projectSessionTasks)
-        .orderBy(asc(projectSessionTasks.order_number))
-        .where(eq(projectSessionTasks.project_session_id, id)),
-
-      db
-        .select({ repo: gitRepos })
-        .from(projectGitRepos)
-        .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
-        .where(eq(projectGitRepos.project_id, project.id)),
-
-      db
-        .select({ value: sshKeys.value })
-        .from(projectSshKeys)
-        .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
-        .where(eq(projectSshKeys.project_id, project.id)),
-    ]);
-
-    const validRepos = repos
-      .map((r) => r.repo)
-      .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
-
-    const config = {
-      ...resolvedProjectConfig,
-      publicIp: instance.public_ip,
-      serverBaseUrl: env.SERVER_URL,
-      sessionId: sessionRow.project_session.id,
-      instanceConfig: instance.config,
-      instanceId,
-      instanceName: instance.name,
-      projectId: project.id,
-      initialScript: project.initial_script,
-      finalScript: project.final_script,
-      devScript: project.dev_script,
-      vibeongoAiModels: vibeongoAiModelsSchema.parse(vibeongoAiModels),
-      repos: await getConfigReadyGitRepos(validRepos, { instanceId }),
-      ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
-      tasks: tasks.map((t) => ({
-        id: t.id,
-        folder_name: t.folder_name,
-        task: t.task,
-        agent: t.agent,
-        model: t.model,
-        done: t.done,
-      })),
-    };
-
-    res.set("Cache-Control", "no-store");
-    res.status(200).json({ data: config });
-  },
+  (req: Request, res: Response) => sendRuntimeSessionConfig(req, res),
 );
+
+export const renewRuntimeOpencodeCredentials = catchAsync(
+  (req: Request, res: Response) => sendRuntimeSessionConfig(req, res, true),
+);
+
+async function sendRuntimeSessionConfig(
+  req: Request,
+  res: Response,
+  renewCredentials = false,
+) {
+  const { id, instanceId } = z
+    .object({ id: z.string(), instanceId: z.string() })
+    .parse(req.params);
+
+  if (
+    !req.runtimeInstance ||
+    req.runtimeInstance.id !== instanceId ||
+    req.runtimeInstance.project_session_id !== id
+  ) {
+    throw new AppError(
+      "Runtime authentication does not match this instance",
+      401,
+    );
+  }
+
+  const [sessionRow] = await db
+    .select({
+      project_session: projectSessions,
+      project: projects,
+      instance: instances,
+    })
+    .from(projectSessions)
+    .leftJoin(projects, eq(projects.id, projectSessions.project_id))
+    .leftJoin(instances, eq(instances.id, instanceId))
+    .where(eq(projectSessions.id, id));
+
+  if (
+    !sessionRow?.project_session ||
+    !sessionRow?.project ||
+    !sessionRow.instance
+  )
+    throw new AppError("Project session not found", 404);
+
+  const { project, instance } = sessionRow;
+  const stringfiedConfig = await getDecryptedProjectConfig(project.id);
+  const parsedConfig = parseStoredProjectConfig(stringfiedConfig);
+  const resolvedProjectConfig = await appendChatgptCredentialsToOpencodeConfig(
+    project.user_id,
+    await appendVibeongoAiKeyToOpencodeConfig(
+      instanceId,
+      withEmptyClaudePackage(
+        await resolveProjectUserConfigs(parsedConfig, project.user_id),
+      ),
+    ),
+    renewCredentials,
+  );
+
+  if (renewCredentials) {
+    res.set("Cache-Control", "no-store");
+    res.status(200).json({
+      data: {
+        instanceId,
+        sessionId: id,
+        packages: resolvedProjectConfig.packages,
+        vibeongoAiModels: vibeongoAiModelsSchema.parse(vibeongoAiModels),
+      },
+    });
+    return;
+  }
+
+  const [tasks, repos, keys] = await Promise.all([
+    db
+      .select()
+      .from(projectSessionTasks)
+      .orderBy(asc(projectSessionTasks.order_number))
+      .where(eq(projectSessionTasks.project_session_id, id)),
+
+    db
+      .select({ repo: gitRepos })
+      .from(projectGitRepos)
+      .leftJoin(gitRepos, eq(gitRepos.id, projectGitRepos.github_repo_id))
+      .where(eq(projectGitRepos.project_id, project.id)),
+
+    db
+      .select({ value: sshKeys.value })
+      .from(projectSshKeys)
+      .leftJoin(sshKeys, eq(sshKeys.id, projectSshKeys.ssh_key_id))
+      .where(eq(projectSshKeys.project_id, project.id)),
+  ]);
+
+  const validRepos = repos
+    .map((r) => r.repo)
+    .filter((r): r is typeof gitRepos.$inferSelect => r !== null);
+
+  const config = {
+    ...resolvedProjectConfig,
+    publicIp: instance.public_ip,
+    serverBaseUrl: env.SERVER_URL,
+    sessionId: sessionRow.project_session.id,
+    instanceConfig: instance.config,
+    instanceId,
+    instanceName: instance.name,
+    projectId: project.id,
+    initialScript: project.initial_script,
+    finalScript: project.final_script,
+    devScript: project.dev_script,
+    vibeongoAiModels: vibeongoAiModelsSchema.parse(vibeongoAiModels),
+    repos: await getConfigReadyGitRepos(validRepos, { instanceId }),
+    ssh_keys: keys.map((k) => k.value).filter((v): v is string => !!v),
+    tasks: tasks.map((t) => ({
+      id: t.id,
+      folder_name: t.folder_name,
+      task: t.task,
+      agent: t.agent,
+      model: t.model,
+      done: t.done,
+    })),
+  };
+
+  res.set("Cache-Control", "no-store");
+  res.status(200).json({ data: config });
+}
 
 export const getSessionDomains = catchAsync(
   async (req: Request, res: Response) => {
@@ -237,16 +272,22 @@ async function appendVibeongoAiKeyToOpencodeConfig(
 async function appendChatgptCredentialsToOpencodeConfig(
   userId: string,
   config: ResolvedProjectConfig,
+  renewCredentials = false,
 ): Promise<ResolvedProjectConfig> {
   const opencodePackage = config.packages.find(
     (projectPackage) => projectPackage.name === "opencode",
   );
-  if (!opencodePackage || !opencodePackage.config.use_user_config) return config;
+  if (!opencodePackage || !opencodePackage.config.use_user_config)
+    return config;
 
   // ChatGPT is optional here; any failure must not block the session config.
-  const token = await getChatgptAccessToken(userId, { optional: true }).catch(
-    () => null,
-  );
+  const tokenRequest = getChatgptAccessToken(userId, {
+    optional: true,
+    forceRefresh: renewCredentials,
+  });
+  const token = renewCredentials
+    ? await tokenRequest
+    : await tokenRequest.catch(() => null);
   if (!token) return config;
 
   const metadata = {

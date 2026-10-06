@@ -1,6 +1,7 @@
 import {
   useGetProjectDomainsById,
   useRestartDevScript,
+  useRenewOpencodeCredentials,
   useUpdateInstanceTime,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
@@ -113,6 +114,12 @@ export function ProjectSettingsScreen() {
   );
   const runtimeSocket = useSessionRuntimeSocket(projectSessionId);
   const restartDevScript = useRestartDevScript({
+    instanceId: runtimeInstanceId,
+    runtimeUrl,
+    localToken,
+    accessToken: runtime.accessToken,
+  });
+  const renewCredentials = useRenewOpencodeCredentials({
     instanceId: runtimeInstanceId,
     runtimeUrl,
     localToken,
@@ -394,6 +401,21 @@ export function ProjectSettingsScreen() {
                   isConnected={runtimeSocket.status === "connected"}
                   lastMessage={runtimeSocket.toolMessages.opencode ?? null}
                   opencodePassword={runtime.password}
+                  renewingCredentials={renewCredentials.isPending}
+                  onRenewCredentials={() => {
+                    renewCredentials.mutate(undefined, {
+                      onSuccess: () =>
+                        Toast.show({
+                          type: "success",
+                          text1: "Credentials renewed",
+                        }),
+                      onError: (error) =>
+                        Alert.alert(
+                          "Could not renew credentials",
+                          error.message,
+                        ),
+                    });
+                  }}
                   sendJsonMessage={runtimeSocket.sendJsonMessage}
                   tool="opencode"
                   url={opencodeDomain ? `https://${opencodeDomain}` : ""}

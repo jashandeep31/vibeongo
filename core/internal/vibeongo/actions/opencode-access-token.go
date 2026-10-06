@@ -32,9 +32,15 @@ var opencodeTokenClient = &http.Client{
 }
 
 func GetOpencodeAccessToken(ctx context.Context) (OpencodeAccessToken, error) {
+	// Keep automatic bridge requests outside manual credential replacement.
+	opencodeRenewMu.Lock()
+	defer opencodeRenewMu.Unlock()
 	var result OpencodeAccessToken
 	fail := func(status int, message string) (OpencodeAccessToken, error) {
 		return result, &OpencodeAccessTokenError{Status: status, Message: message}
+	}
+	if ctx.Err() != nil {
+		return fail(http.StatusServiceUnavailable, "ChatGPT renewal cancelled; try again")
 	}
 	cfg, err := config.LoadAndValidate()
 	if err != nil {

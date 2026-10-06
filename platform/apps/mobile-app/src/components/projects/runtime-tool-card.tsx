@@ -26,6 +26,8 @@ type RuntimeToolCardProps = {
   isConnected: boolean;
   lastMessage: RuntimeSocketMessage | null;
   opencodePassword?: string | null;
+  onRenewCredentials?: () => void;
+  renewingCredentials?: boolean;
   sendJsonMessage: (message: unknown) => boolean;
   tool: ToolKind;
   url: string;
@@ -36,6 +38,8 @@ export function RuntimeToolCard({
   isConnected,
   lastMessage,
   opencodePassword,
+  onRenewCredentials,
+  renewingCredentials = false,
   sendJsonMessage,
   tool,
   url,
@@ -222,65 +226,124 @@ export function RuntimeToolCard({
           },
         ]}
       >
-        <View style={styles.titleRow}>
-          <ThemedText numberOfLines={1} style={styles.title}>
-            {title}
-          </ThemedText>
-          <View
-            style={[
-              styles.statusDot,
-              { backgroundColor: isRunning ? "#10b981" : "#ef4444" },
-            ]}
-          />
+        <View style={styles.toolRow}>
+          <View style={styles.titleRow}>
+            <ThemedText numberOfLines={1} style={styles.title}>
+              {title}
+            </ThemedText>
+            <View
+              style={[
+                styles.statusDot,
+                { backgroundColor: isRunning ? "#10b981" : "#ef4444" },
+              ]}
+            />
+          </View>
+          <View style={styles.actions}>
+            <Pressable
+              accessibilityLabel={`${isRunning ? "Open" : "Start"} ${title}`}
+              accessibilityRole="button"
+              disabled={
+                disabled ||
+                !url ||
+                !isConnected ||
+                isBusy ||
+                Boolean(pendingAction) ||
+                renewingCredentials
+              }
+              onPress={primaryAction}
+              style={({ pressed }) => [
+                styles.primaryButton,
+                pressed && styles.pressed,
+                (disabled ||
+                  !url ||
+                  !isConnected ||
+                  isBusy ||
+                  renewingCredentials) &&
+                  styles.disabled,
+              ]}
+            >
+              {isBusy || pendingAction ? (
+                <ActivityIndicator color="#ffffff" size="small" />
+              ) : (
+                <SymbolView
+                  name={{ ios: "globe", android: "public" }}
+                  size={16}
+                  tintColor="#ffffff"
+                />
+              )}
+              <ThemedText style={styles.primaryLabel}>
+                {primaryLabel}
+              </ThemedText>
+            </Pressable>
+            <Pressable
+              accessibilityLabel={`${title} actions`}
+              accessibilityRole="button"
+              disabled={disabled || !url}
+              onPress={() => setMenuOpen(true)}
+              style={({ pressed }) => [
+                styles.menuButton,
+                { borderColor: theme.backgroundSelected },
+                pressed && styles.pressed,
+                (disabled || !url) && styles.disabled,
+              ]}
+            >
+              <SymbolView
+                name={{ ios: "ellipsis", android: "more_horiz" }}
+                size={19}
+                tintColor={theme.textSecondary}
+              />
+            </Pressable>
+          </View>
         </View>
-        <View style={styles.actions}>
+        {tool === "opencode" && onRenewCredentials ? (
           <Pressable
-            accessibilityLabel={`${isRunning ? "Open" : "Start"} ${title}`}
             accessibilityRole="button"
+            accessibilityLabel={
+              renewingCredentials ? "Renewing credentials" : "Renew credentials"
+            }
+            accessibilityState={{
+              disabled:
+                disabled ||
+                !isConnected ||
+                !isRunning ||
+                isBusy ||
+                renewingCredentials,
+              busy: renewingCredentials,
+            }}
             disabled={
               disabled ||
-              !url ||
               !isConnected ||
+              !isRunning ||
               isBusy ||
-              Boolean(pendingAction)
+              renewingCredentials
             }
-            onPress={primaryAction}
+            onPress={onRenewCredentials}
             style={({ pressed }) => [
-              styles.primaryButton,
-              pressed && styles.pressed,
-              (disabled || !url || !isConnected || isBusy) && styles.disabled,
-            ]}
-          >
-            {isBusy || pendingAction ? (
-              <ActivityIndicator color="#ffffff" size="small" />
-            ) : (
-              <SymbolView
-                name={{ ios: "globe", android: "public" }}
-                size={16}
-                tintColor="#ffffff"
-              />
-            )}
-            <ThemedText style={styles.primaryLabel}>{primaryLabel}</ThemedText>
-          </Pressable>
-          <Pressable
-            accessibilityLabel={`${title} actions`}
-            accessibilityRole="button"
-            disabled={disabled || !url}
-            onPress={() => setMenuOpen(true)}
-            style={({ pressed }) => [
-              styles.menuButton,
+              styles.renewButton,
               { borderColor: theme.backgroundSelected },
               pressed && styles.pressed,
-              (disabled || !url) && styles.disabled,
+              (disabled ||
+                !isConnected ||
+                !isRunning ||
+                isBusy ||
+                renewingCredentials) &&
+                styles.disabled,
             ]}
           >
-            <SymbolView
-              name={{ ios: "ellipsis", android: "more_horiz" }}
-              size={19}
-              tintColor={theme.textSecondary}
-            />
+            {renewingCredentials ? (
+              <ActivityIndicator size="small" color={theme.textSecondary} />
+            ) : (
+              <SymbolView
+                name={{ ios: "key", android: "key" }}
+                size={16}
+                tintColor={theme.textSecondary}
+              />
+            )}
+            <ThemedText style={styles.renewLabel}>
+              {renewingCredentials ? "Renewing…" : "Renew credentials"}
+            </ThemedText>
           </Pressable>
-        </View>
+        ) : null}
         {error ? <ThemedText style={styles.error}>{error}</ThemedText> : null}
       </View>
 
@@ -320,10 +383,11 @@ export function RuntimeToolCard({
             <ToolAction
               icon={{ ios: "arrow.clockwise", android: "refresh" }}
               label="Restart"
+              disabled={!isConnected || isBusy || renewingCredentials}
               onPress={restart}
             />
             <ToolAction
-              disabled={!isRunning}
+              disabled={!isRunning || renewingCredentials}
               icon={{ ios: "stop.fill", android: "stop" }}
               label="Stop"
               onPress={stop}
@@ -409,12 +473,10 @@ const styles = StyleSheet.create({
     top: 0,
   },
   card: {
-    alignItems: "center",
+    alignItems: "stretch",
     borderRadius: 14,
     borderWidth: StyleSheet.hairlineWidth,
-    flexDirection: "row",
     gap: 12,
-    justifyContent: "space-between",
     minHeight: 70,
     padding: 12,
   },
@@ -442,9 +504,6 @@ const styles = StyleSheet.create({
   error: {
     color: "#ef4444",
     fontSize: 12,
-    position: "absolute",
-    bottom: 2,
-    left: 12,
   },
   handle: {
     alignSelf: "center",
@@ -475,6 +534,24 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
   },
   primaryLabel: { color: "#ffffff", fontSize: 13, fontWeight: "700" },
+  renewButton: {
+    alignItems: "center",
+    alignSelf: "flex-start",
+    borderRadius: 9,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 8,
+    minHeight: 44,
+    paddingHorizontal: 12,
+  },
+  renewLabel: { fontSize: 13, fontWeight: "600" },
+  toolRow: {
+    alignItems: "center",
+    flexDirection: "row",
+    gap: 12,
+    justifyContent: "space-between",
+    minHeight: 44,
+  },
   root: { flex: 1, justifyContent: "flex-end" },
   statusDot: { borderRadius: 5, height: 9, width: 9 },
   title: { flexShrink: 1, fontSize: 15, fontWeight: "700" },

@@ -92,3 +92,24 @@ export async function restartDevScript({
   );
   await assertRuntimeResponse(response, "Could not restart dev script");
 }
+
+export type RenewOpencodeCredentialsResult = {
+  credentials: number;
+  renewedAt: string;
+};
+
+export async function renewOpencodeCredentials(
+  connection: RuntimeConnection,
+): Promise<RenewOpencodeCredentialsResult> {
+  const response = await fetch(
+    `${getRuntimeUrl(connection.runtimeUrl)}/opencode/renew-credentials`,
+    {
+      method: "POST",
+      headers: getRuntimeHeaders(connection.localToken, connection.accessToken),
+      cache: "no-store",
+      signal: AbortSignal.timeout(95_000),
+    },
+  );
+  await assertRuntimeResponse(response, "Could not renew OpenCode credentials");
+  return response.json() as Promise<RenewOpencodeCredentialsResult>;
+}

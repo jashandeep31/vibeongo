@@ -151,14 +151,9 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
             ]}
           >
             {showReview ? reviewButton : null}
-            {!wide ? domainsAction : null}
             {wide ? (
               <>
                 <ProjectFilesButton
-                  projectId={projectId}
-                  projectSessionId={projectSessionId}
-                />
-                <ProjectSettingsButton
                   projectId={projectId}
                   projectSessionId={projectSessionId}
                 />
@@ -168,7 +163,6 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
                     onPress={() => setMcpVisible(true)}
                   />
                 ) : null}
-                {domainsAction}
                 {onRefresh ? (
                   <RefreshButton
                     isRefreshing={isRefreshing}
@@ -197,6 +191,11 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
                 />
               </Pressable>
             )}
+            {domainsAction}
+            <ProjectSettingsButton
+              projectId={projectId}
+              projectSessionId={projectSessionId}
+            />
           </View>
         }
         title={title}
