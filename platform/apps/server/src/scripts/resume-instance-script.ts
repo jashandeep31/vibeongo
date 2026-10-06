@@ -4,13 +4,22 @@ interface ResumeInstanceScriptOptions {
   authToken: string;
   projectSessionId: string;
   instanceId: string;
+  instanceName: string;
 }
 
 export const resumeInstanceScript = ({
   authToken,
   projectSessionId,
   instanceId,
-}: ResumeInstanceScriptOptions): string => `#!/usr/bin/env bash
+  instanceName,
+}: ResumeInstanceScriptOptions): string => {
+  const hostname =
+    instanceName
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .slice(0, 63)
+      .replace(/^-+|-+$/g, "") || "vibeongo";
+  return `#!/usr/bin/env bash
 # E2B uses a login shell. Replace it so exit does not run .bash_logout.
 exec bash <<'VIBEONGO_RESUME'
 set -euo pipefail
@@ -21,6 +30,8 @@ exec > >(tee -a "$resume_log_file") 2>&1
 echo "Resume started at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 echo "Resume log: $resume_log_file"
 trap 'resume_exit_code=$?; echo "Resume finished at $(date -u +%Y-%m-%dT%H:%M:%SZ) with exit code $resume_exit_code"' EXIT
+
+sudo -n hostnamectl set-hostname "${hostname}"
 
 echo "Restoring runtime configuration"
 CONFIG_DIR="$HOME/.config/vibeongo"
@@ -87,3 +98,4 @@ echo "Starting the development script"
 exit 0
 VIBEONGO_RESUME
 `;
+};

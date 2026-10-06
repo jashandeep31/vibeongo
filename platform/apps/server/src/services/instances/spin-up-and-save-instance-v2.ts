@@ -22,7 +22,10 @@ import { InstanceRuntime } from "../../providers/types.js";
 import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 import { getValidatedAutoTerminateAfterInMinutes } from "./spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
-import { createProviderInstance } from "../../providers/create-providers-instance.js";
+import {
+  createProviderInstance,
+  generateInstanceName,
+} from "../../providers/create-providers-instance.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { createOpenRouterVirtualKeyAndSave } from "../openrouter/index.js";
 import { openInstancePeriod } from "./charge-instance-period.js";
@@ -65,6 +68,7 @@ export const spinUpAndSaveInstanceV2 = async ({
 }: SpinUpAndSaveInstanceV2) => {
   const sessionToken = `vps_${createId()}${crypto.randomBytes(16).toString("hex")}`;
   const instanceId = crypto.randomUUID();
+  const instanceName = generateInstanceName();
 
   const autoTerminateAfterInMinutes =
     await getValidatedAutoTerminateAfterInMinutes({
@@ -96,6 +100,7 @@ export const spinUpAndSaveInstanceV2 = async ({
       return await handleVmRuntime({
         project,
         instanceId,
+        instanceName,
         sessionToken,
         sshKeysArray,
         sessionId,
@@ -105,6 +110,7 @@ export const spinUpAndSaveInstanceV2 = async ({
     return await handlesandboxRuntime({
       project,
       instanceId,
+      instanceName,
       sessionToken,
       sshKeysArray,
       sessionId,
@@ -237,6 +243,7 @@ export const getOpenRouterKeyLimitInDollars = async ({
 const handleVmRuntime = async ({
   project,
   instanceId,
+  instanceName,
   sessionToken,
   sshKeysArray,
   sessionId,
@@ -245,6 +252,7 @@ const handleVmRuntime = async ({
 }: {
   project: typeof projects.$inferSelect;
   instanceId: string;
+  instanceName: string;
   sshKeysArray: string[];
   sessionId: string;
   sessionToken: string;
@@ -265,10 +273,12 @@ const handleVmRuntime = async ({
     authToken: sessionToken,
     projectSessionId: sessionId,
     instanceId,
+    instanceName,
   });
   return {
     runtime: "vm",
     instance: await createProviderInstance({
+      instanceName,
       provider: instanceTypeWithRegion.instanceType.provider,
       region: instanceTypeWithRegion.region.slug,
       instanceType: instanceTypeWithRegion.instanceType.slug,
@@ -286,6 +296,7 @@ const handleVmRuntime = async ({
 const handlesandboxRuntime = async ({
   project,
   instanceId,
+  instanceName,
   sessionToken,
   sshKeysArray,
   sessionId,
@@ -293,6 +304,7 @@ const handlesandboxRuntime = async ({
 }: {
   project: typeof projects.$inferSelect;
   instanceId: string;
+  instanceName: string;
   sshKeysArray: string[];
   sessionId: string;
   sessionToken: string;
@@ -316,11 +328,13 @@ const handlesandboxRuntime = async ({
     authToken: sessionToken,
     projectSessionId: sessionId,
     instanceId,
+    instanceName,
   });
 
   return {
     runtime: "sandbox",
     instance: await createProviderInstance({
+      instanceName,
       provider: row.sandboxType.provider,
       region: row.region.slug,
       instanceType: row.sandboxType.slug,

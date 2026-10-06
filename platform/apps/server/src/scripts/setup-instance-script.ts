@@ -5,6 +5,7 @@ interface SetupInstanceScriptOptions {
   authToken: string;
   projectSessionId: string;
   instanceId: string;
+  instanceName: string;
   terminate?: boolean;
   username?: string;
 }
@@ -14,12 +15,22 @@ export const setupInstanceScript = ({
   authToken,
   projectSessionId,
   instanceId,
+  instanceName,
   terminate = false,
   username = "vibe",
 }: SetupInstanceScriptOptions): string => {
+  const hostname =
+    instanceName
+      .toLowerCase()
+      .replace(/[^a-z0-9-]+/g, "-")
+      .slice(0, 63)
+      .replace(/^-+|-+$/g, "") || "vibeongo";
   return `#!/usr/bin/env bash
 set -euo pipefail
 USER_HOME="/home/${username}"
+
+sudo hostnamectl set-hostname "${hostname}"
+
 mkdir -p "$USER_HOME/.logs"
 exec > "$USER_HOME/.logs/vibeongo.log" 2>&1
 

@@ -33,6 +33,7 @@ export const createProviderInstance = async (
 };
 
 const createSandboxProviderInstance = async ({
+  instanceName,
   provider,
   region,
   instanceType,
@@ -43,7 +44,7 @@ const createSandboxProviderInstance = async ({
     region,
     instanceType,
     userData,
-    instanceName: generateInstanceName(),
+    instanceName,
     terminatedAfterInMinutes,
   };
 
@@ -62,6 +63,7 @@ const createSandboxProviderInstance = async ({
 };
 
 const createVmProviderInstance = async ({
+  instanceName,
   provider,
   region,
   instanceType,
@@ -72,7 +74,7 @@ const createVmProviderInstance = async ({
     region,
     instanceType,
     userData,
-    instanceName: generateInstanceName(),
+    instanceName,
     terminatedAfterInMinutes,
   };
 
@@ -86,7 +88,7 @@ const createVmProviderInstance = async ({
   }
 };
 
-const generateInstanceName = () =>
+export const generateInstanceName = () =>
   uniqueNamesGenerator({
     dictionaries: [colors, animals],
     style: "capital",

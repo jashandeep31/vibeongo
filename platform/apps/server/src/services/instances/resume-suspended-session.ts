@@ -311,6 +311,7 @@ const resumeSuspendedSessionUnderLock = async ({
         authToken: sessionToken,
         projectSessionId: sessionId,
         instanceId: instance.id,
+        instanceName: instance.name,
       }),
     });
   } catch (error) {
