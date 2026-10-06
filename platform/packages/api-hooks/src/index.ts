@@ -23,6 +23,7 @@ export * from "./hooks/use-project.js";
 export * from "./hooks/use-runtime-settings.js";
 export * from "./hooks/use-runtime-files.js";
 export * from "./hooks/use-ssh-keys.js";
+export * from "./hooks/use-ssh-tickets.js";
 export * from "./hooks/use-user.js";
 export * from "./hooks/use-wallet.js";
 export * from "./hooks/use-websocket.js";

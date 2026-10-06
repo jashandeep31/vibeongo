@@ -5,6 +5,7 @@ import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import { RuntimeToolCard } from "@/components/runtime-tool-card";
 import {
+  useCreateSshTicket,
   useGetInstances,
   useGetProjectDomainsById,
   useRestartDevScript,
@@ -96,7 +97,7 @@ export function ProjectSessionSettingsPage({
   sessionId?: string;
 }) {
   const [now, setNow] = useState(() => Date.now());
-  const [copied, setCopied] = useState<"ip" | "ssh" | null>(null);
+  const [copied, setCopied] = useState<"ip" | "ssh" | "gateway" | null>(null);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -123,6 +124,7 @@ export function ProjectSessionSettingsPage({
   };
   const runtimeSocket = useRuntimeSession();
   const restartDevScript = useRestartDevScript(connection);
+  const createSshTicket = useCreateSshTicket();
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(instance));
   const domainsPointToRuntime =
     domainsQuery.data?.target_instance_id === instance?.id;
@@ -158,8 +160,14 @@ export function ProjectSessionSettingsPage({
   const sshCommand = instance?.public_ip
     ? `ssh vibe@${instance.public_ip}`
     : "";
+  const gatewayCommand = createSshTicket.data?.sshCommand ?? "";
+  const gatewayExpiresAt = createSshTicket.data
+    ? new Date(createSshTicket.data.expiresAt).getTime()
+    : Number.NaN;
+  const gatewayCommandIsValid =
+    Boolean(gatewayCommand) && gatewayExpiresAt > now;
 
-  const copyValue = async (kind: "ip" | "ssh", value: string) => {
+  const copyValue = async (kind: "ip" | "ssh" | "gateway", value: string) => {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
@@ -167,7 +175,11 @@ export function ProjectSessionSettingsPage({
       toast.success(kind === "ip" ? "IP address copied" : "SSH command copied");
       window.setTimeout(() => setCopied(null), 1_500);
     } catch {
-      toast.error("Could not copy to clipboard");
+      toast.error(
+        kind === "gateway"
+          ? "Command created. Copy it from the field below."
+          : "Could not copy to clipboard",
+      );
     }
   };
 
@@ -378,21 +390,68 @@ export function ProjectSessionSettingsPage({
               Direct access details for this runtime.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <CopyRow
-              label="Public IP"
-              value={instance.public_ip ?? "Unavailable"}
-              copied={copied === "ip"}
-              disabled={!instance.public_ip}
-              onCopy={() => void copyValue("ip", instance.public_ip ?? "")}
-            />
-            <CopyRow
-              label="SSH command"
-              value={sshCommand || "Unavailable"}
-              copied={copied === "ssh"}
-              disabled={!sshCommand}
-              onCopy={() => void copyValue("ssh", sshCommand)}
-            />
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">SSH gateway</p>
+                  <p className="text-muted-foreground text-xs">
+                    Create a single-use command for this session. It expires in
+                    90 seconds.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={createSshTicket.isPending}
+                  onClick={() =>
+                    createSshTicket.mutate(projectSessionId, {
+                      onSuccess: ({ sshCommand: command }) =>
+                        void copyValue("gateway", command),
+                      onError: () =>
+                        toast.error("Could not create SSH command. Try again."),
+                    })
+                  }
+                >
+                  <Terminal />
+                  {createSshTicket.isPending ? "Creating…" : "Create SSH"}
+                </Button>
+              </div>
+              {gatewayCommandIsValid ? (
+                <div aria-live="polite" className="space-y-1.5">
+                  <CopyRow
+                    label="Gateway SSH command"
+                    value={gatewayCommand}
+                    copied={copied === "gateway"}
+                    disabled={false}
+                    onCopy={() => void copyValue("gateway", gatewayCommand)}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Expires in {formatDuration(gatewayExpiresAt - now)}.
+                  </p>
+                </div>
+              ) : createSshTicket.data ? (
+                <p className="text-muted-foreground text-xs" role="status">
+                  SSH command expired. Create a new one to connect.
+                </p>
+              ) : null}
+            </div>
+            <div className="grid gap-3 border-t pt-4 sm:grid-cols-2">
+              <CopyRow
+                label="Public IP"
+                value={instance.public_ip ?? "Unavailable"}
+                copied={copied === "ip"}
+                disabled={!instance.public_ip}
+                onCopy={() => void copyValue("ip", instance.public_ip ?? "")}
+              />
+              <CopyRow
+                label="Direct SSH command"
+                value={sshCommand || "Unavailable"}
+                copied={copied === "ssh"}
+                disabled={!sshCommand}
+                onCopy={() => void copyValue("ssh", sshCommand)}
+              />
+            </div>
           </CardContent>
         </Card>
       </main>

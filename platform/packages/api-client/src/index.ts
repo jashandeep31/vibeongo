@@ -10,6 +10,7 @@ import * as projectsApi from "./services/project-services.js";
 import * as projectSessionsApi from "./services/project-session-services.js";
 import * as speechTextApi from "./services/speech-text-services.js";
 import * as sshKeysApi from "./services/ssh-key-services.js";
+import * as sshTicketsApi from "./services/ssh-ticket-services.js";
 import * as usersApi from "./services/user-services.js";
 import * as walletApi from "./services/wallet-services.js";
 
@@ -123,6 +124,7 @@ export type {
   SetForgejoPasswordResponse,
   UserConfigValue,
 } from "./services/user-services.js";
+export type { CreateSshTicketResponse } from "./services/ssh-ticket-services.js";
 
 function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
   module: T,
@@ -195,6 +197,7 @@ export class WebClient {
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
   speechText: ReturnType<typeof bindApiModule<typeof speechTextApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
+  sshTickets: ReturnType<typeof bindApiModule<typeof sshTicketsApi>>;
   users: ReturnType<typeof bindApiModule<typeof usersApi>>;
   wallet: ReturnType<typeof bindApiModule<typeof walletApi>>;
 
@@ -218,6 +221,7 @@ export class WebClient {
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
     this.speechText = bindApiModule(speechTextApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
+    this.sshTickets = bindApiModule(sshTicketsApi, this.apiClient);
     this.users = bindApiModule(usersApi, this.apiClient);
     this.wallet = bindApiModule(walletApi, this.apiClient);
   }

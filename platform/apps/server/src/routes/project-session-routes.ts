@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
+import { issueSshTicket } from "../controllers/project-sessions/ssh-ticket-controller.js";
 import {
   addTaskToProjectSession,
   archiveProjectSession,
@@ -12,6 +13,10 @@ import {
 } from "../controllers/project-sessions/project-sessions.js";
 
 const routes: Router = Router();
+
+routes
+  .route("/:id/ssh-ticket")
+  .post(checkAuthorization(["user"]), issueSshTicket);
 
 routes
   .route("/")
