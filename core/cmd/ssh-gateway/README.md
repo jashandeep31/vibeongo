@@ -1,0 +1,31 @@
+# SSH gateway
+
+The gateway accepts the single-use ticket returned by the platform's
+`POST /api/v1/project-sessions/:id/ssh-ticket` route as the SSH username. It
+redeems the ticket through the platform server, opens the authorized runtime
+terminal WebSocket, and bridges terminal input, output, and resize events.
+
+## Configuration
+
+| Variable | Purpose |
+| --- | --- |
+| `SSH_GATEWAY_API_URL` | Platform server origin, for example `http://server.vibeongo.com` or `https://server.vibeongo.com`. |
+| `SSH_GATEWAY_TOKEN` | Shared secret matching the platform server's `SSH_GATEWAY_TOKEN`. |
+| `SSH_GATEWAY_HOST_KEY_PATH` | Optional path to a persistent SSH private host key, readable only by its owner. If omitted, a key is created beside `core/.env`. |
+| `SSH_GATEWAY_PORT` | TCP listening port loaded from `core/.env`. Defaults to `8005` if unset. |
+
+The gateway loads `core/.env` when started from the repository root, `core/`,
+or this command directory. Existing process environment variables take
+precedence. To provide a host key yourself, create it once:
+
+```sh
+ssh-keygen -t ed25519 -f /var/lib/vibeongo/ssh_host_ed25519_key -N ''
+```
+
+Mount the same private key on every restart so clients see a stable host
+identity. The gateway allows one interactive shell per SSH connection. It does
+not support remote commands, SFTP, or port forwarding.
+
+Set the platform server's `SSH_GATEWAY_PORT` to the public SSH port as well. Its
+default is `8005`, so the generated command includes `-p 8005`. The platform
+omits `-p` only when explicitly configured with SSH's default port `22`.

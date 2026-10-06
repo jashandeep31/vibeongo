@@ -33,6 +33,7 @@ type TerminalSession struct {
 	killOnce         sync.Once
 	killErr          error
 	readerOnce       sync.Once
+	readerDone       chan struct{}
 	subscribers      map[chan []byte]struct{}
 }
 
@@ -251,6 +252,7 @@ func (s *SessionsStore) createTerminalSession(baseCommand *exec.Cmd, metadata Te
 		CreatedAt:        time.Now(),
 		command:          baseCommand,
 		processDone:      make(chan struct{}),
+		readerDone:       make(chan struct{}),
 		subscribers:      make(map[chan []byte]struct{}),
 	}
 	s.Mu.Lock()
@@ -357,6 +359,7 @@ func (s *TerminalSession) kill() error {
 func (s *TerminalSession) startReader() {
 	s.readerOnce.Do(func() {
 		go func() {
+			defer close(s.readerDone)
 			buf := make([]byte, 32*1024)
 			for {
 				n, err := s.Ptmx.Read(buf)
@@ -372,6 +375,11 @@ func (s *TerminalSession) startReader() {
 			}
 		}()
 	})
+}
+
+// ReaderDone closes after the PTY has produced its final output.
+func (s *TerminalSession) ReaderDone() <-chan struct{} {
+	return s.readerDone
 }
 
 func (s *TerminalSession) appendOutput(output []byte) {

@@ -5,11 +5,7 @@ import { useApiClient } from "../api-client-context.js";
 export const useCreateSshTicket = () => {
   const client = useApiClient();
   return useMutation({
-    mutationFn: (projectSessionId: string) => {
-      if (!("sshTickets" in client)) {
-        throw new Error("SSH tickets are available only in the web app");
-      }
-      return client.sshTickets.createSshTicket(projectSessionId);
-    },
+    mutationFn: (projectSessionId: string) =>
+      client.sshTickets.createSshTicket(projectSessionId),
   });
 };

@@ -4,9 +4,11 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import {
+  useCreateSshTicket,
   useDisableTerminateAfterDone,
   useTerminateAfterDoneStatus,
 } from "@repo/api-hooks";
+import { formatSshCommand } from "@repo/api-client";
 import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -112,6 +114,7 @@ export function RuntimePulseMenu({
   };
   const terminateStatus = useTerminateAfterDoneStatus(connection);
   const disableTerminate = useDisableTerminateAfterDone(connection);
+  const createSshTicket = useCreateSshTicket();
   const runtime = useRuntimeSession();
 
   useEffect(() => {
@@ -128,10 +131,6 @@ export function RuntimePulseMenu({
   const terminateAfterDone = terminateStatus.data?.terminate;
   const cpuPercent = normalizePercent(runtime.stats?.cpu_percent);
   const memoryPercent = normalizePercent(runtime.stats?.used_percent);
-  const sshCommand = instance.public_ip
-    ? `ssh vibe@${instance.public_ip}`
-    : null;
-
   const copyValue = async (kind: "ip" | "ssh", value: string | null) => {
     if (!value) return;
     try {
@@ -142,6 +141,15 @@ export function RuntimePulseMenu({
     } catch {
       toast.error("Could not copy to clipboard");
     }
+  };
+
+  const createAndCopySshCommand = () => {
+    createSshTicket.mutate(projectSessionId, {
+      onSuccess: (connection) => {
+        void copyValue("ssh", formatSshCommand(connection));
+      },
+      onError: () => toast.error("Could not create SSH command. Try again."),
+    });
   };
 
   return (
@@ -308,11 +316,19 @@ export function RuntimePulseMenu({
             ) : null}
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={!sshCommand}
-            onSelect={() => void copyValue("ssh", sshCommand)}
+            disabled={createSshTicket.isPending}
+            onSelect={createAndCopySshCommand}
           >
-            {copiedValue === "ssh" ? <Check /> : <Terminal />}
-            <span className="flex-1">Copy SSH command</span>
+            {createSshTicket.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : copiedValue === "ssh" ? (
+              <Check />
+            ) : (
+              <Terminal />
+            )}
+            <span className="flex-1">
+              {createSshTicket.isPending ? "Creating SSH command…" : "Copy SSH command"}
+            </span>
             <Copy className="text-muted-foreground" />
           </DropdownMenuItem>
         </DropdownMenuContent>

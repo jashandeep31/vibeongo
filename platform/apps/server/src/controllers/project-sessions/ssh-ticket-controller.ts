@@ -6,6 +6,7 @@ import { consumeSshTicket, createSshTicket } from "../../cache/ssh-ticket-cache.
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { env } from "../../lib/env.js";
+import { getSshTerminalWebSocketGrant } from "../../services/instances/get-ssh-terminal-websocket-grant.js";
 
 const ticketSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
 
@@ -45,7 +46,9 @@ export const issueSshTicket = catchAsync(async (req: Request, res: Response) => 
   res.status(201).json({
     ticket,
     expiresAt,
-    sshCommand: `ssh -l ${ticket}${env.SSH_GATEWAY_PORT === 2022 ? "" : ` -p ${env.SSH_GATEWAY_PORT}`} ${env.SSH_GATEWAY_DOMAIN}`,
+    username: ticket,
+    host: env.SSH_GATEWAY_DOMAIN,
+    port: env.SSH_GATEWAY_PORT,
   });
 });
 
@@ -68,7 +71,12 @@ export const redeemSshTicket = catchAsync(async (req: Request, res: Response) =>
   if (!target) throw new AppError("Invalid or expired SSH ticket", 401);
 
   const [instance] = await db
-    .select({ id: instances.id })
+    .select({
+      id: instances.id,
+      projectId: projects.id,
+      config: instances.config,
+      proxyAccessToken: instances.access_token,
+    })
     .from(instances)
     .innerJoin(
       projectSessions,
@@ -91,6 +99,25 @@ export const redeemSshTicket = catchAsync(async (req: Request, res: Response) =>
     .limit(1);
   if (!instance) throw new AppError("SSH target is no longer available", 409);
 
+  const runtimeLocalToken =
+    instance.config &&
+    typeof instance.config === "object" &&
+    !Array.isArray(instance.config) &&
+    "vibeongoLocalToken" in instance.config &&
+    typeof instance.config.vibeongoLocalToken === "string"
+      ? instance.config.vibeongoLocalToken
+      : null;
+  if (!runtimeLocalToken) {
+    throw new AppError("SSH terminal credentials are unavailable", 409);
+  }
+
+  const grant = await getSshTerminalWebSocketGrant({
+    instanceId: instance.id,
+    projectId: instance.projectId,
+    proxyAccessToken: instance.proxyAccessToken,
+    runtimeLocalToken,
+  });
+
   res.set("Cache-Control", "no-store");
-  res.status(200).json({ valid: true, ...target });
+  res.status(200).json({ valid: true, ...target, ...grant });
 });

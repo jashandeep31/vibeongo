@@ -138,6 +138,7 @@ export type {
   UserConfigValue,
 } from "./services/user-services.js";
 export type { CreateSshTicketResponse } from "./services/ssh-ticket-services.js";
+export { formatSshCommand } from "./ssh-command.js";
 
 function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
   module: T,
@@ -167,6 +168,7 @@ export class MobileClient {
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
   speechText: ReturnType<typeof bindApiModule<typeof speechTextApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
+  sshTickets: ReturnType<typeof bindApiModule<typeof sshTicketsApi>>;
   users: ReturnType<typeof bindApiModule<typeof usersApi>>;
   wallet: ReturnType<typeof bindApiModule<typeof walletApi>>;
 
@@ -194,6 +196,7 @@ export class MobileClient {
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
     this.speechText = bindApiModule(speechTextApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
+    this.sshTickets = bindApiModule(sshTicketsApi, this.apiClient);
     this.users = bindApiModule(usersApi, this.apiClient);
     this.wallet = bindApiModule(walletApi, this.apiClient);
   }

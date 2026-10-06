@@ -3,7 +3,9 @@ import type { AxiosInstance } from "axios";
 export type CreateSshTicketResponse = {
   ticket: string;
   expiresAt: string;
-  sshCommand: string;
+  username: string;
+  host: string;
+  port: number;
 };
 
 export const createSshTicket =

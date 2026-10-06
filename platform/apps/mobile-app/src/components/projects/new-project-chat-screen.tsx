@@ -350,6 +350,7 @@ export function NewProjectChatScreen() {
               projectId={projectId}
               projectSessionId={projectSessionId}
               showReview={false}
+              showSshConnection
               terminatesAt={runtime.instance.terminates_at}
               title="New chat"
               titleTrailing={

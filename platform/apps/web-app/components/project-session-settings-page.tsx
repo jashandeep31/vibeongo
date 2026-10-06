@@ -11,7 +11,7 @@ import {
   useRestartDevScript,
   useRenewOpencodeCredentials,
 } from "@repo/api-hooks";
-import { getOpencodePassword } from "@repo/api-client";
+import { formatSshCommand, getOpencodePassword } from "@repo/api-client";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -162,7 +162,9 @@ export function ProjectSessionSettingsPage({
   const sshCommand = instance?.public_ip
     ? `ssh vibe@${instance.public_ip}`
     : "";
-  const gatewayCommand = createSshTicket.data?.sshCommand ?? "";
+  const gatewayCommand = createSshTicket.data
+    ? formatSshCommand(createSshTicket.data)
+    : "";
   const gatewayExpiresAt = createSshTicket.data
     ? new Date(createSshTicket.data.expiresAt).getTime()
     : Number.NaN;
@@ -416,8 +418,8 @@ export function ProjectSessionSettingsPage({
                   disabled={createSshTicket.isPending}
                   onClick={() =>
                     createSshTicket.mutate(projectSessionId, {
-                      onSuccess: ({ sshCommand: command }) =>
-                        void copyValue("gateway", command),
+                      onSuccess: (connection) =>
+                        void copyValue("gateway", formatSshCommand(connection)),
                       onError: () =>
                         toast.error("Could not create SSH command. Try again."),
                     })
