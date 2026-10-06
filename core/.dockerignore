@@ -1,4 +1,6 @@
 .gitignore
-.env
+**/.env
+**/.env.*
+**/.ssh-gateway-host-key
 tmp
 .air.*
