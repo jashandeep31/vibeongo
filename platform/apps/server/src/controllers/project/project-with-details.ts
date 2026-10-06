@@ -89,6 +89,7 @@ export const getProjectWithDetails = catchAsync(
             provider: instanceTypes.provider,
             cpu: instanceTypes.cpu,
             ram: instanceTypes.ram,
+            storage: instanceTypes.storage,
             region_id: instanceRegions.id,
             region_name: instanceRegions.name,
           })
@@ -106,6 +107,7 @@ export const getProjectWithDetails = catchAsync(
             provider: sandboxTypes.provider,
             cpu: sandboxTypes.cpu,
             ram: sandboxTypes.ram,
+            storage: sandboxTypes.storage,
             region_id: sandboxRegions.id,
             region_name: sandboxRegions.name,
           })

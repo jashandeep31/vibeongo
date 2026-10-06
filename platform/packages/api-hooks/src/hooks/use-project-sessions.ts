@@ -71,10 +71,48 @@ export const useResumeProjectSession = () => {
           .getState()
           .updateSessionState(context.id, context.previousState);
       }
+      // A failed launch is often a balance problem; refresh the balance so
+      // the low-balance warnings reflect it.
+      void queryClient.invalidateQueries({ queryKey: ["user-metadata"] });
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
       void queryClient.invalidateQueries({ queryKey: ["instances"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+  });
+};
+
+export const useResumeSuspendedSession = () => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.projectSessions.resumeSuspendedSession,
+    onMutate: (id) => {
+      useSessionsStore.getState().updateSessionState(id, "processing");
+      return { id };
+    },
+    onError: (_error, _id, context) => {
+      if (context) {
+        useSessionsStore.getState().updateSessionState(context.id, "suspended");
+      }
+      // The sandbox may have resumed before its runtime failed to start.
+      void queryClient.invalidateQueries({ queryKey: ["instances"] });
+      void queryClient.invalidateQueries({ queryKey: ["user-metadata"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+    },
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
+      void queryClient.invalidateQueries({ queryKey: ["instances"] });
+      void queryClient.invalidateQueries({ queryKey: ["user-metadata"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
     },
   });
 };

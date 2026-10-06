@@ -28,7 +28,7 @@ export function ProjectSettingsButton({
       style={({ pressed }) => [styles.headerAction, pressed && styles.pressed]}
     >
       <SymbolView
-        name={{ ios: "slider.horizontal.3", android: "tune" }}
+        name={{ ios: "gearshape", android: "settings" }}
         size={19}
         tintColor={theme.textSecondary}
       />

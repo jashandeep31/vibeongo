@@ -22,8 +22,9 @@ export function OpencodeQuestionPrompt({
   isDismissing: boolean;
   isStreaming: boolean;
   onSubmit: (requestId: string, answers: QuestionAnswer[]) => void;
-  onDismiss: (requestId: string) => void;
+  onDismiss: (requestId: string, message?: string) => void;
 }) {
+  const [dismissMessage, setDismissMessage] = useState("");
   const [questionIndex, setQuestionIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<string[][]>(() =>
     request.questions.map(() => []),
@@ -305,12 +306,23 @@ export function OpencodeQuestionPrompt({
         </fieldset>
       </div>
 
+      <div className="border-border border-t px-3 py-2">
+        <Input
+          aria-label="Dismissal feedback (optional)"
+          placeholder="Optional feedback if you dismiss this question"
+          value={dismissMessage}
+          disabled={isBusy}
+          onChange={(event) => setDismissMessage(event.target.value)}
+        />
+      </div>
       <div className="border-border bg-muted/20 flex items-center justify-between border-t px-3 py-2">
         <Button
           type="button"
           variant="ghost"
           disabled={isBusy}
-          onClick={() => onDismiss(request.id)}
+          onClick={() =>
+            onDismiss(request.id, dismissMessage.trim() || undefined)
+          }
         >
           {isDismissing ? <Loader2 className="animate-spin" /> : null}
           Dismiss

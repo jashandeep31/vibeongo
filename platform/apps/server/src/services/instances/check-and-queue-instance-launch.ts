@@ -140,7 +140,7 @@ export async function scheduleAutomatedInstanceLaunch({
     }
 
     const [existingSlot] = await tx
-      .select({ id: instanceSlots.id })
+      .select({ id: instanceSlots.id, status: instanceSlots.status })
       .from(instanceSlots)
       .where(
         and(
@@ -150,11 +150,18 @@ export async function scheduleAutomatedInstanceLaunch({
             "provisioning",
             "active",
             "terminating",
+            "suspended",
           ]),
         ),
       )
       .limit(1);
 
+    if (existingSlot?.status === "suspended") {
+      throw new AppError(
+        "This session has a suspended instance. Resume or terminate it before starting a new one.",
+        409,
+      );
+    }
     if (existingSlot) {
       throw new AppError(
         "This session already has an instance running or starting.",
@@ -231,7 +238,7 @@ export const checkAndLaunchInstance = async ({
     if (!project) throw new AppError("Project not found ", 404);
 
     const [existingSlot] = await tx
-      .select({ id: instanceSlots.id })
+      .select({ id: instanceSlots.id, status: instanceSlots.status })
       .from(instanceSlots)
       .where(
         and(
@@ -241,11 +248,18 @@ export const checkAndLaunchInstance = async ({
             "provisioning",
             "active",
             "terminating",
+            "suspended",
           ]),
         ),
       )
       .limit(1);
 
+    if (existingSlot?.status === "suspended") {
+      throw new AppError(
+        "This session has a suspended instance. Resume or terminate it before starting a new one.",
+        409,
+      );
+    }
     if (existingSlot) {
       throw new AppError(
         "This session already has an instance running or starting.",

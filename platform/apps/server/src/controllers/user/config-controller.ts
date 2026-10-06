@@ -1,20 +1,35 @@
 import { Request, Response } from "express";
 import { and, db, eq, userConfigs } from "@repo/db";
+import { opencodeCredentialsValidator } from "@repo/shared";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { decryptData, encryptData } from "../../lib/encryption-decryption.js";
 
-const userConfigTypeSchema = z.enum(["opencode", "codex", "pi", "fx"]);
+const userConfigTypeSchema = z.enum([
+  "opencode",
+  "codex",
+  "pi",
+  "fx",
+  "claude",
+]);
+type UserConfigType = z.infer<typeof userConfigTypeSchema>;
 const userConfigSchema = z.record(z.string(), z.unknown());
+const storedUserConfigSchema = z.union([
+  userConfigSchema,
+  z.array(z.unknown()),
+]);
+
+const userConfigSchemaFor = (configType: UserConfigType) =>
+  configType === "opencode" ? opencodeCredentialsValidator : userConfigSchema;
 
 const createUserConfigSchema = z.object({
   configType: userConfigTypeSchema,
-  config: userConfigSchema,
+  config: z.unknown(),
 });
 
 const updateUserConfigSchema = z.object({
-  config: userConfigSchema,
+  config: z.unknown(),
 });
 
 const safeUserConfigSelection = {
@@ -66,7 +81,7 @@ export const getUserConfig = catchAsync(async (req: Request, res: Response) => {
     return;
   }
 
-  const config = userConfigSchema.parse(
+  const config = storedUserConfigSchema.parse(
     JSON.parse(
       decryptData({
         iv: configRow.iv,
@@ -94,6 +109,9 @@ export const createUserConfig = catchAsync(
     if (!user) throw new AppError("Authentication is required", 401);
 
     const parsedData = createUserConfigSchema.parse(req.body);
+    const userConfig = userConfigSchemaFor(parsedData.configType).parse(
+      parsedData.config,
+    );
     const [existingConfig] = await db
       .select({ id: userConfigs.id })
       .from(userConfigs)
@@ -108,7 +126,7 @@ export const createUserConfig = catchAsync(
       throw new AppError("This configuration already exists", 409);
     }
 
-    const encryptedConfig = encryptData(JSON.stringify(parsedData.config));
+    const encryptedConfig = encryptData(JSON.stringify(userConfig));
     const [config] = await db
       .insert(userConfigs)
       .values({
@@ -131,7 +149,8 @@ export const updateUserConfig = catchAsync(
 
     const configType = userConfigTypeSchema.parse(req.params.configType);
     const parsedData = updateUserConfigSchema.parse(req.body);
-    const encryptedConfig = encryptData(JSON.stringify(parsedData.config));
+    const userConfig = userConfigSchemaFor(configType).parse(parsedData.config);
+    const encryptedConfig = encryptData(JSON.stringify(userConfig));
 
     const [config] = await db
       .update(userConfigs)
@@ -141,6 +160,28 @@ export const updateUserConfig = catchAsync(
         encrypted_config: encryptedConfig.encryptedData,
         updated_at: new Date(),
       })
+      .where(
+        and(
+          eq(userConfigs.user_id, user.id),
+          eq(userConfigs.config_type, configType),
+        ),
+      )
+      .returning(safeUserConfigSelection);
+
+    if (!config) throw new AppError("User configuration not found", 404);
+
+    res.status(200).json({ data: config });
+  },
+);
+
+export const deleteUserConfig = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 401);
+
+    const configType = userConfigTypeSchema.parse(req.params.configType);
+    const [config] = await db
+      .delete(userConfigs)
       .where(
         and(
           eq(userConfigs.user_id, user.id),

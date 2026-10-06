@@ -27,7 +27,7 @@
         "name": "opencode",
         "enabled": true,
         "config": {
-          "auth_json": "{\"auths\":{}}"
+          "auth_json": []
         }
       },
       {

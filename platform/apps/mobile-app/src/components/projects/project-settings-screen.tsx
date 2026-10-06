@@ -1,6 +1,7 @@
 import {
   useGetProjectDomainsById,
   useRestartDevScript,
+  useRenewOpencodeCredentials,
   useUpdateInstanceTime,
   useUpdateProjectRoutingTargetInstance,
 } from "@repo/api-hooks";
@@ -35,7 +36,7 @@ import { Fonts } from "@/constants/theme";
 import { useCurrentTime } from "@/hooks/use-current-time";
 import { useProjectRuntime } from "@/hooks/use-project-runtime";
 import { useTheme } from "@/hooks/use-theme";
-import { useVibeongoRuntimeSocket } from "@/hooks/use-vibeongo-runtime-socket";
+import { useSessionRuntimeSocket } from "@/hooks/use-vibeongo-runtime-socket";
 import {
   formatInstanceTimeRemaining,
   getInstanceRemainingMs,
@@ -111,13 +112,14 @@ export function ProjectSettingsScreen() {
     runtime.instance?.config,
     "vibeongoLocalToken",
   );
-  const runtimeSocket = useVibeongoRuntimeSocket({
-    accessToken: runtime.accessToken,
-    enabled: Boolean(runtime.instance),
-    localToken,
-    runtimeUrl,
-  });
+  const runtimeSocket = useSessionRuntimeSocket(projectSessionId);
   const restartDevScript = useRestartDevScript({
+    instanceId: runtimeInstanceId,
+    runtimeUrl,
+    localToken,
+    accessToken: runtime.accessToken,
+  });
+  const renewCredentials = useRenewOpencodeCredentials({
     instanceId: runtimeInstanceId,
     runtimeUrl,
     localToken,
@@ -399,6 +401,21 @@ export function ProjectSettingsScreen() {
                   isConnected={runtimeSocket.status === "connected"}
                   lastMessage={runtimeSocket.toolMessages.opencode ?? null}
                   opencodePassword={runtime.password}
+                  renewingCredentials={renewCredentials.isPending}
+                  onRenewCredentials={() => {
+                    renewCredentials.mutate(undefined, {
+                      onSuccess: () =>
+                        Toast.show({
+                          type: "success",
+                          text1: "Credentials renewed",
+                        }),
+                      onError: (error) =>
+                        Alert.alert(
+                          "Could not renew credentials",
+                          error.message,
+                        ),
+                    });
+                  }}
                   sendJsonMessage={runtimeSocket.sendJsonMessage}
                   tool="opencode"
                   url={opencodeDomain ? `https://${opencodeDomain}` : ""}

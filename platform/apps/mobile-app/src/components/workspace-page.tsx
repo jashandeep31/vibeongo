@@ -1,3 +1,4 @@
+import { useUnreadNotificationCount } from "@repo/api-hooks";
 import { GlassView, isGlassEffectAPIAvailable } from "expo-glass-effect";
 import { SymbolView } from "expo-symbols";
 import { useLocalSearchParams, useRouter } from "expo-router";
@@ -50,6 +51,8 @@ export function WorkspacePage() {
   const animatedScrollX = useSharedValue(initialScrollX);
   const [activeView, setActiveView] = useState<WorkspaceView>(initialView);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const unreadCountQuery = useUnreadNotificationCount();
+  const hasUnreadNotifications = (unreadCountQuery.data ?? 0) > 0;
 
   useDerivedValue(() => {
     scrollTo(pagerRef, animatedScrollX.value, 0, false);
@@ -144,6 +147,13 @@ export function WorkspacePage() {
                     tintColor={theme.text}
                   />
                 </GlassView>
+                {hasUnreadNotifications ? (
+                  <View
+                    accessibilityLabel="Unread notifications"
+                    pointerEvents="none"
+                    style={[styles.unreadDot, { borderColor: theme.background }]}
+                  />
+                ) : null}
               </Pressable>
 
               <GlassView
@@ -307,16 +317,26 @@ const styles = StyleSheet.create({
   roundedControl: {
     borderRadius: 22,
   },
+  unreadDot: {
+    backgroundColor: "#ef4444",
+    borderRadius: 6,
+    borderWidth: 2,
+    height: 12,
+    position: "absolute",
+    right: 1,
+    top: 1,
+    width: 12,
+  },
   tabPill: {
     borderRadius: 22,
     flexDirection: "row",
     overflow: "hidden",
-    padding: 4,
+    padding: 2,
   },
   tabButton: {
     alignItems: "center",
-    borderRadius: 17,
-    height: 34,
+    borderRadius: 20,
+    height: 40,
     justifyContent: "center",
     minWidth: 82,
     paddingHorizontal: 16,

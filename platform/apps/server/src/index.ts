@@ -28,12 +28,17 @@ import { projectAutomationRoutes } from "./routes/project-automation-routes.js";
 import { projectSessionRoutes } from "./routes/project-session-routes.js";
 import { runtimeRoutes } from "./routes/runtime-routes.js";
 import { speechTextRoutes } from "./routes/speech-text-routes.js";
+import { notificationRoutes } from "./routes/notification-routes.js";
 import { testRoutes } from "./routes/test-routes.js";
 import { userRoutes } from "./routes/user-routes.js";
+import { providerCredentialsRoutes } from "./routes/provider-credentials-routes.js";
 import { githubAppWebhookMiddleware } from "./webhooks/github/index.js";
 import { SocketHandler } from "./websocket/socket-handler.js";
+import { startNotificationSubscriber } from "./websocket/notification-subscriber.js";
+import { refreshUserSocketsPresence } from "./websocket/user-sockets-store.js";
 import { findWebSession } from "./lib/auth-session.js";
 import { webhookRoutes } from "./routes/webhook-routes.js";
+import test from "./test.js";
 
 const app = express();
 
@@ -93,6 +98,7 @@ app.use("/", miscellaneousRoutes);
 app.use("/", testRoutes);
 app.use("/api/v1/auth", authRoutes);
 app.use("/api/v1/users", userRoutes);
+app.use("/api/v1/users/provider-credentials", providerCredentialsRoutes);
 app.use("/api/v1/projects", projectRoutes);
 app.use("/api/v1/project-automations", projectAutomationRoutes);
 app.use("/api/v1/instances", instanceRoutes);
@@ -105,6 +111,7 @@ app.use("/api/v1/payments", paymentRoutes);
 app.use("/api/v1/chats", chatRoutes);
 app.use("/api/v1/project-sessions", projectSessionRoutes);
 app.use("/api/v1/speech-text", speechTextRoutes);
+app.use("/api/v1/notifications", notificationRoutes);
 
 // webhooks routes
 app.use("/v1/webhook", webhookRoutes);
@@ -161,7 +168,36 @@ function getWebSocketToken(req: {
   return parseCookies(cookies).session;
 }
 
+// heartbeat: ping every client, terminate the ones that did not pong since
+// the last ping (dead mobile connections never send a close frame)
+const WS_HEARTBEAT_INTERVAL_MS = 30_000;
+const wsHeartbeat = setInterval(() => {
+  for (const socket of ws.clients) {
+    if (!socket.isAlive) {
+      socket.terminate();
+      continue;
+    }
+    socket.isAlive = false;
+    socket.ping();
+  }
+  // live sockets stay marked online for the push notification delay
+  refreshUserSocketsPresence().catch((error) => {
+    console.error("Could not refresh websocket presence", error);
+  });
+}, WS_HEARTBEAT_INTERVAL_MS);
+ws.on("close", () => clearInterval(wsHeartbeat));
+
+// deliver notifications created in any process to sockets held by this one
+startNotificationSubscriber().catch((error) => {
+  console.error("Could not start notification subscriber", error);
+});
+
 ws.on("connection", async (socket, req) => {
+  socket.isAlive = true;
+  socket.on("pong", () => {
+    socket.isAlive = true;
+  });
+
   const token = getWebSocketToken(req);
   if (!token) {
     socket.close(4401, "Authentication required");
@@ -221,6 +257,9 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
   });
 });
 
+if (env.NODE_ENV === "development") {
+  await test();
+}
 // --- Server ---
 server.listen(env.PORT, () => {
   console.log(`Server is running at 🔥 ${env.PORT}`);

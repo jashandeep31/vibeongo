@@ -9,6 +9,11 @@ import {
   exportOpencodeSession,
   forkOpencodeSession,
   getOpencodeInventory,
+  getOpencodeSubagentStatus,
+  getOpencodeReviewProjectVcs,
+  getOpencodeLastTurnChanges,
+  listOpencodeCommands,
+  sendOpencodeCommand,
   getOpencodeWebSearchProviders,
   getOpencodeSessionMessagePage,
   getOpencodeSessionRaw,
@@ -37,7 +42,95 @@ import {
   type UseQueryOptions,
 } from "@tanstack/react-query";
 import { useCallback, useMemo, useRef, useState } from "react";
+import { findCachedOpencodeCommand } from "./opencode-command-cache.js";
 import { toOpencodeUploadAttachment } from "./opencode-upload-attachment.js";
+
+export const useOpencodeSubagentStatus = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+  enabled = true,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "subagent-status", chatId, sessionId, serverUrl],
+    queryFn: () =>
+      getOpencodeSubagentStatus(
+        chatId,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    enabled:
+      enabled && !!sessionId && !!serverUrl && !!accessToken && !!password,
+    staleTime: 5_000,
+  });
+
+export const useOpencodeReviewProjectVcs = ({
+  chatId,
+  directory,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  directory?: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "review-project-vcs", chatId, serverUrl, directory],
+    queryFn: () =>
+      getOpencodeReviewProjectVcs(
+        chatId,
+        directory!,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    enabled: !!directory && !!serverUrl && !!accessToken && !!password,
+    staleTime: 30_000,
+  });
+
+export const useOpencodeLastTurnChanges = ({
+  chatId,
+  sessionId,
+  serverUrl,
+  accessToken,
+  password,
+  enabled = true,
+}: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "last-turn-changes", chatId, sessionId, serverUrl],
+    refetchOnWindowFocus: false,
+    queryFn: () =>
+      getOpencodeLastTurnChanges(
+        chatId,
+        sessionId,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    enabled:
+      enabled && !!sessionId && !!serverUrl && !!accessToken && !!password,
+  });
 
 export const useOpencodeSession = ({
   chatId,
@@ -284,12 +377,14 @@ export const useSendOpencodePrompt = ({
     },
     mutationFn: async ({
       text,
+      displayText,
       files,
       attachments: directAttachments = [],
       fileReferences = [],
       selection,
     }: {
       text: string;
+      displayText?: string;
       files: File[];
       attachments?: UploadAttachment[];
       fileReferences?: OpencodeFileReference[];
@@ -299,6 +394,26 @@ export const useSendOpencodePrompt = ({
         files.map(toOpencodeUploadAttachment),
       );
 
+      const command = findCachedOpencodeCommand(
+        queryClient,
+        chatId,
+        serverUrl,
+        text,
+      );
+      if (command) {
+        return sendOpencodeCommand(
+          chatId,
+          sessionId,
+          command,
+          [...directAttachments, ...fileAttachments],
+          fileReferences,
+          selection,
+          "steer",
+          serverUrl,
+          accessToken,
+          password,
+        );
+      }
       return sendOpencodePrompt(
         chatId,
         sessionId,
@@ -309,6 +424,7 @@ export const useSendOpencodePrompt = ({
         serverUrl,
         accessToken,
         password,
+        displayText,
       );
     },
     onError: (_error, _variables, context) => {
@@ -351,6 +467,26 @@ export const useQueueOpencodePrompt = ({
       const attachments = await Promise.all(
         files.map(toOpencodeUploadAttachment),
       );
+      const command = findCachedOpencodeCommand(
+        queryClient,
+        chatId,
+        serverUrl,
+        text,
+      );
+      if (command) {
+        return sendOpencodeCommand(
+          chatId,
+          sessionId,
+          command,
+          [...directAttachments, ...attachments],
+          fileReferences,
+          selection,
+          "queue",
+          serverUrl,
+          accessToken,
+          password,
+        );
+      }
       return queueOpencodePrompt(
         chatId,
         sessionId,
@@ -675,16 +811,18 @@ export const useRejectOpencodeQuestion = ({
   const queryKey = ["opencode", "session", chatId, sessionId, serverUrl];
 
   return useMutation({
-    mutationFn: (requestId: string) =>
+    mutationFn: (input: string | { requestId: string; message?: string }) =>
       rejectOpencodeQuestion(
         chatId,
         sessionId,
-        requestId,
+        typeof input === "string" ? input : input.requestId,
         serverUrl,
         accessToken,
         password,
+        typeof input === "string" ? undefined : input.message,
       ),
-    onSuccess: (_, requestId) => {
+    onSuccess: (_, input) => {
+      const requestId = typeof input === "string" ? input : input.requestId;
       queryClient.setQueryData<OpencodeSessionData>(queryKey, (current) =>
         current
           ? {
@@ -919,6 +1057,22 @@ export const useDeleteOpencodeSession = ({
     },
   });
 };
+
+export const useOpencodeCommands = (
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+) =>
+  useQuery({
+    queryKey: ["opencode", "commands", chatId, serverUrl, directory ?? ""],
+    queryFn: () =>
+      listOpencodeCommands(chatId, serverUrl, accessToken, directory, password),
+    enabled: !!serverUrl && !!accessToken,
+    retry: 2,
+    staleTime: 60_000,
+  });
 
 export const useOpencodeInventory = (
   chatId: string,

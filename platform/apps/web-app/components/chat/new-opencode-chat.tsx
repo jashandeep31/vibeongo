@@ -1,7 +1,14 @@
 "use client";
 
-import { OpencodeComposer } from "@/components/chat/opencode-composer";
-import { useOpencodeInventory } from "@repo/api-hooks";
+import {
+  OpencodeComposer,
+  type OpencodeComposerAction,
+} from "@/components/chat/opencode-composer";
+import {
+  useOpencodeCommands,
+  useOpencodeInventory,
+  useReloadOpencodeConfig,
+} from "@repo/api-hooks";
 import { useStartOpencodeSession } from "@repo/api-hooks";
 import { useUserSettings } from "@repo/api-hooks";
 import {
@@ -13,7 +20,8 @@ import { Button } from "@repo/ui/components/button";
 import { ChevronRight, Terminal } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { toast } from "sonner";
 
 export function NewOpencodeChat({
   chatId,
@@ -24,6 +32,7 @@ export function NewOpencodeChat({
   directory,
   projectName,
   sessionName,
+  onOpenWorktrees,
 }: {
   chatId: string;
   chatUrl: string;
@@ -33,6 +42,7 @@ export function NewOpencodeChat({
   directory?: string;
   projectName: string;
   sessionName: string;
+  onOpenWorktrees?: () => void;
 }) {
   const router = useRouter();
   const startSession = useStartOpencodeSession();
@@ -43,6 +53,13 @@ export function NewOpencodeChat({
     password,
   );
   const inventory = inventoryQuery.data;
+  const { data: commands } = useOpencodeCommands(
+    chatId,
+    serverUrl,
+    accessToken,
+    directory,
+    password,
+  );
   const { data: userSettings } = useUserSettings();
   const [selection, setSelection] = useState<OpencodePromptSelection>({});
   const configuredDefaultModel = userSettings?.default_model ?? undefined;
@@ -59,6 +76,38 @@ export function NewOpencodeChat({
       inventory?.agents.find((agent) => agent.mode === "primary")?.id ??
       inventory?.agents[0]?.id,
   };
+
+  const reloadConfig = useReloadOpencodeConfig({
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  });
+  const composerActions = useMemo<OpencodeComposerAction[]>(
+    () => [
+      {
+        name: "reload",
+        description: "Reload OpenCode config",
+        run: () =>
+          reloadConfig.mutate(undefined, {
+            onSuccess: () => toast.success("OpenCode config reloaded"),
+            onError: (error) =>
+              toast.error(error.message || "Could not reload config"),
+          }),
+      },
+      ...(onOpenWorktrees
+        ? [
+            {
+              name: "worktree",
+              description: "Manage worktrees",
+              run: onOpenWorktrees,
+            },
+          ]
+        : []),
+    ],
+    [onOpenWorktrees, reloadConfig.mutate],
+  );
 
   const searchFiles = useCallback(
     (query: string) =>
@@ -134,6 +183,8 @@ export function NewOpencodeChat({
           selection={effectiveSelection}
           onSelectionChange={setSelection}
           searchFiles={searchFiles}
+          commands={commands}
+          actions={composerActions}
           autoFocus
           focusOnTyping
           trailingControl={

@@ -53,6 +53,8 @@ const envSchema = z.object({
   REDIS_URL: z.string(),
   E2B_API_KEY: z.string(),
   DAYTONA_API_KEY: z.string(),
+  BOAT_API_KEY: z.string(),
+  BOAT_BASE_URL: z.string().url(),
   VERCEL_TEAM_ID: z.string(),
   VERCEL_PROJECT_ID: z.string(),
   VERCEL_TOKEN: z.string(),

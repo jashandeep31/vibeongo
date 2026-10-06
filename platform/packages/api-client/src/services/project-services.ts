@@ -20,33 +20,13 @@ export type ProjectWithSessions = Project & {
   sessions: (typeof projectSessions.$inferSelect)[];
 };
 
-export type ProjectOverviewInstance = Pick<
-  typeof instances.$inferSelect,
-  | "id"
-  | "project_id"
-  | "project_session_id"
-  | "name"
-  | "state"
-  | "runtime_kind"
-  | "started_at"
-  | "terminates_at"
->;
+export type ProjectOverviewInstance = typeof instances.$inferSelect;
 
-export type ProjectOverviewSession = Pick<
-  typeof projectSessions.$inferSelect,
-  | "id"
-  | "project_id"
-  | "name"
-  | "description"
-  | "category"
-  | "started_at"
-  | "created_at"
-> & { instances: ProjectOverviewInstance[] };
+export type ProjectOverviewSession = typeof projectSessions.$inferSelect & {
+  instances: ProjectOverviewInstance[];
+};
 
-export type ProjectOverview = Pick<
-  Project,
-  "id" | "name" | "description" | "created_at"
-> & {
+export type ProjectOverview = Project & {
   sessions: ProjectOverviewSession[];
 };
 
@@ -72,13 +52,13 @@ export type ProjectWithDetails = Pick<
     vm:
       | (Pick<
           typeof instanceTypes.$inferSelect,
-          "id" | "name" | "provider" | "cpu" | "ram" | "region_id"
+          "id" | "name" | "provider" | "cpu" | "ram" | "storage" | "region_id"
         > & { region_name: string | null })
       | null;
     sandbox:
       | (Pick<
           typeof sandboxTypes.$inferSelect,
-          "id" | "name" | "provider" | "cpu" | "ram"
+          "id" | "name" | "provider" | "cpu" | "ram" | "storage"
         > & { region_id: string | null; region_name: string | null })
       | null;
   };
@@ -143,7 +123,7 @@ export type ProjectDomains = typeof projectDomainRouting.$inferSelect & {
 
 export type ProjectGithubRepo = Pick<
   typeof gitRepos.$inferSelect,
-  "id" | "full_name"
+  "id" | "full_name" | "type"
 >;
 
 export type ProjectFile = typeof projectFiles.$inferSelect & {

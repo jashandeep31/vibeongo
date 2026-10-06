@@ -7,12 +7,14 @@ import {
   pgEnum,
   text,
   boolean,
+  integer,
 } from "drizzle-orm/pg-core";
 
 export const sandboxProvidersEnums = pgEnum("sandbox_providers", [
   "e2b",
   "vercel",
   "daytona",
+  "boat",
 ]);
 
 export const sandboxRegions = pgTable("sandbox_regions", {
@@ -32,8 +34,10 @@ export const sandboxTypes = pgTable("sandbox_types", {
   slug: varchar().notNull(),
   description: text(),
 
-  cpu: text(),
-  ram: text(),
+  // CPU count; RAM and storage are measured in GB.
+  cpu: integer().notNull().default(4),
+  ram: integer().notNull().default(8),
+  storage: integer().notNull().default(15),
 
   enabled: boolean().default(true),
   provider: sandboxProvidersEnums().notNull(),

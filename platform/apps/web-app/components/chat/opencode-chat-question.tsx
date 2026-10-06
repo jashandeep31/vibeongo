@@ -19,7 +19,7 @@ import {
   Sparkles,
   Undo2,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactElement } from "react";
 import { Blocks } from "loading-dev";
 
 export type OpencodeChatTurn = {
@@ -48,7 +48,7 @@ export function OpencodeChatQuestion({
   isReverting?: boolean;
   revertDisabled?: boolean;
   onRevert: () => void;
-}) {
+}): ReactElement {
   const [isCopied, setIsCopied] = useState(false);
   const [isQuestionCopied, setIsQuestionCopied] = useState(false);
   const [reserveSpace, setReserveSpace] = useState(false);
@@ -288,7 +288,7 @@ function getReasoningHeading(text: string) {
   return value.length > 72 ? `${value.slice(0, 69)}…` : value;
 }
 
-export function StreamingIndicator() {
+export function StreamingIndicator(): ReactElement {
   return (
     <div
       role="status"

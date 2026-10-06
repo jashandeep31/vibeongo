@@ -36,6 +36,41 @@
       "when": 1790411400254,
       "tag": "0004_nebulous_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1790574034642,
+      "tag": "0005_amusing_tattoo",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790751754621,
+      "tag": "0006_messy_hiroim",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1790778635252,
+      "tag": "0007_outgoing_norrin_radd",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1790854486585,
+      "tag": "0008_fantastic_wendigo",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791213659960,
+      "tag": "0009_dusty_darkstar",
+      "breakpoints": true
     }
   ]
 }

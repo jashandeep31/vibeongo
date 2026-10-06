@@ -9,6 +9,7 @@ import {
   useGetInstances,
   useGetProjectDomainsById,
   useRestartDevScript,
+  useRenewOpencodeCredentials,
 } from "@repo/api-hooks";
 import { getOpencodePassword } from "@repo/api-client";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
@@ -125,6 +126,7 @@ export function ProjectSessionSettingsPage({
   const runtimeSocket = useRuntimeSession();
   const restartDevScript = useRestartDevScript(connection);
   const createSshTicket = useCreateSshTicket();
+  const renewCredentials = useRenewOpencodeCredentials(connection);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(instance));
   const domainsPointToRuntime =
     domainsQuery.data?.target_instance_id === instance?.id;
@@ -276,6 +278,14 @@ export function ProjectSessionSettingsPage({
             isConnected={runtimeSocket.status === "connected"}
             lastMessage={runtimeSocket.toolMessages.opencode ?? null}
             opencodePassword={getOpencodePassword(instance.config)}
+            renewingCredentials={renewCredentials.isPending}
+            onRenewCredentials={() => {
+              renewCredentials.mutate(undefined, {
+                onSuccess: () => toast.success("Credentials renewed"),
+                onError: (error) =>
+                  toast.error(error.message || "Could not renew credentials"),
+              });
+            }}
             sendJsonMessage={runtimeSocket.sendJsonMessage}
             tool="opencode"
             url={opencodeDomain ? `https://${opencodeDomain}` : ""}

@@ -17,6 +17,7 @@ import {
 } from "../controllers/user/settings-controller.js";
 import {
   createUserConfig,
+  deleteUserConfig,
   getUserConfig,
   getUserConfigs,
   updateUserConfig,
@@ -69,7 +70,8 @@ routes
 routes
   .route("/configs/:configType")
   .get(checkAuthorization(["user"]), getUserConfig)
-  .put(checkAuthorization(["user"]), updateUserConfig);
+  .put(checkAuthorization(["user"]), updateUserConfig)
+  .delete(checkAuthorization(["user"]), deleteUserConfig);
 
 routes
   .route("/wallet")

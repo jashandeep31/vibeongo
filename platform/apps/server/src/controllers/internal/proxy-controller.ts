@@ -20,11 +20,17 @@ import { env } from "../../lib/env.js";
 import { DaytonaClient } from "../../providers/client/daytona-client.js";
 import { E2BClient } from "../../providers/client/e2b-client.js";
 import { VercelSandboxClient } from "../../providers/client/vercel-sandbox-client.js";
+import { BoatClient } from "../../providers/client/boat-client.js";
 import { AppError } from "../../lib/app-error.js";
+import {
+  cacheProxyPreview,
+  getCachedProxyPreview,
+} from "../../cache/proxy-preview-cache.js";
 
 const daytonaClient = new DaytonaClient();
 const e2bClient = new E2BClient();
 const vercelClient = new VercelSandboxClient();
+const boatClient = new BoatClient();
 
 // current regex can accepts all domains. needs to fix it
 // depending upon the future needs
@@ -250,6 +256,8 @@ async function getProxyTargetUrl(
       return handleDaytonaClientProxyUrl(options);
     case "vercel":
       return handleVercelClientProxyUrl(options);
+    case "boat":
+      return handleBoatClientProxyUrl(options);
     case "aws":
       return handleEC2ClientProxyUrl(options);
     case "digitalocean":
@@ -264,12 +272,21 @@ async function handleE2BClientProxyUrl({
   provider,
 }: ProxyTargetOptions): Promise<ProxyTargetResponse> {
   const domain = publicIp?.split("-").slice(1).join("-");
-  const token = await e2bClient.getPreviewToken({
-    sandboxId: providerInstanceId,
-  });
+  let preview = await getCachedProxyPreview(
+    "e2b",
+    providerInstanceId,
+    targetPort,
+  );
+  if (!preview) {
+    preview = {
+      url: `https://${targetPort}-${domain}`,
+      token: await e2bClient.getPreviewToken({ sandboxId: providerInstanceId }),
+    };
+    await cacheProxyPreview("e2b", providerInstanceId, targetPort, preview);
+  }
   return {
-    targetUrl: `https://${targetPort}-${domain}`,
-    token,
+    targetUrl: preview.url,
+    token: preview.token,
     provider,
   };
 }
@@ -279,21 +296,28 @@ async function handleDaytonaClientProxyUrl({
   providerInstanceId,
   provider,
 }: ProxyTargetOptions): Promise<ProxyTargetResponse> {
-  let signedUrl: Awaited<ReturnType<DaytonaClient["getSignedPreviewUrl"]>>;
-  try {
-    signedUrl = await daytonaClient.getSignedPreviewUrl({
-      sandboxId: providerInstanceId,
-      port: targetPort,
-      expiresInSeconds: 60 * 5,
-    });
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.name === "DaytonaNotFoundError"
-    ) {
-      throw new AppError("Instance sandbox not found", 404);
+  let signedUrl = await getCachedProxyPreview(
+    "daytona",
+    providerInstanceId,
+    targetPort,
+  );
+  if (!signedUrl) {
+    try {
+      signedUrl = await daytonaClient.getSignedPreviewUrl({
+        sandboxId: providerInstanceId,
+        port: targetPort,
+        expiresInSeconds: 60 * 60,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.name === "DaytonaNotFoundError"
+      ) {
+        throw new AppError("Instance sandbox not found", 404);
+      }
+      throw error;
     }
-    throw error;
+    await cacheProxyPreview("daytona", providerInstanceId, targetPort, signedUrl);
   }
 
   return {
@@ -318,6 +342,28 @@ async function handleVercelClientProxyUrl({
     token: "",
     provider,
   };
+}
+
+async function handleBoatClientProxyUrl({
+  targetPort,
+  providerInstanceId,
+  provider,
+}: ProxyTargetOptions): Promise<ProxyTargetResponse> {
+  let preview = await getCachedProxyPreview(
+    "boat",
+    providerInstanceId,
+    targetPort,
+  );
+  if (!preview) {
+    const { targetUrl, token } = await boatClient.getPreviewTarget({
+      sandboxId: providerInstanceId,
+      port: targetPort,
+    });
+    preview = { url: targetUrl, token };
+    await cacheProxyPreview("boat", providerInstanceId, targetPort, preview);
+  }
+
+  return { targetUrl: preview.url, token: preview.token, provider };
 }
 
 async function handleEC2ClientProxyUrl({

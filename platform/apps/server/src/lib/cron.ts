@@ -13,12 +13,13 @@ import {
   sql,
 } from "@repo/db";
 import cron from "node-cron";
-import { terminateInstanceAndChargeUsage } from "../services/instances/terminate-instance-and-charge-usage.js";
+import { addTerminateOrPauseInstanceJob } from "../jobs/terminate-or-pause-instance.js";
 import { addGitRepoAccessTokenRevocationJob } from "../jobs/git-repo-access-token-revocation.js";
 import {
   claimDueProjectAutomations,
   dispatchAutomationScheduleOutbox,
 } from "../services/project-automations/schedule-due-automations.js";
+import { cleanupNotifications } from "../services/notifications/cleanup-notifications.js";
 
 cron.schedule(
   "* * * * *",
@@ -41,7 +42,7 @@ cron.schedule(
 cron.schedule(
   "*/2 * * * *",
   async () => {
-    console.log("Running expired instance termination job");
+    console.log("Recovering overdue instance termination jobs");
 
     let rows: Array<{
       id: string;
@@ -58,7 +59,7 @@ cron.schedule(
         .from(instances)
         .where(
           and(
-            lt(instances.terminates_at, sql`NOW()`),
+            lte(instances.terminates_at, sql`NOW() - INTERVAL '2 minutes'`),
             eq(instances.state, "running"),
           ),
         );
@@ -69,21 +70,21 @@ cron.schedule(
 
     for (const row of rows) {
       try {
-        await terminateInstanceAndChargeUsage({
+        await addTerminateOrPauseInstanceJob({
           instanceId: row.id,
-          userId: row.userId,
+          autoExpire: true,
         });
-        console.log(`Terminated expired ${row.runtimeKind} instance ${row.id}`);
+        console.log(`Recovered overdue ${row.runtimeKind} instance ${row.id}`);
       } catch (error) {
         console.error(
-          `Could not terminate expired ${row.runtimeKind} instance ${row.id}`,
+          `Could not queue overdue ${row.runtimeKind} instance ${row.id}`,
           error,
         );
       }
     }
   },
   {
-    name: "terminate-expired-instances",
+    name: "recover-overdue-instance-termination-jobs",
     noOverlap: true,
   },
 );
@@ -188,4 +189,20 @@ cron.schedule(
     name: "revoke-expired-git-access-tokens",
     noOverlap: true,
   },
+);
+
+// daily at 03:00: remove stale push tokens and old notifications
+cron.schedule(
+  "0 3 * * *",
+  async () => {
+    try {
+      const deleted = await cleanupNotifications();
+      console.log(
+        `Notification cleanup: deleted ${deleted.pushTokens} push token(s) and ${deleted.notifications} notification(s)`,
+      );
+    } catch (error) {
+      console.error("Could not clean up notifications", error);
+    }
+  },
+  { name: "cleanup-notifications", noOverlap: true },
 );

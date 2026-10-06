@@ -13,6 +13,7 @@ export type InstanceRuntime = (typeof instanceRuntimeKind.enumValues)[number];
 export type AwsSupportedRegion = (typeof awsSupportedRegions)[number];
 
 export interface CreateProviderInstanceBaseProps {
+  instanceName: string;
   region: string;
   instanceType: string;
   userData: string;

@@ -369,8 +369,7 @@ export const resumeProjectSession = catchAsync(
       .from(projectSessions)
       .where(
         and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
-      )
-      .limit(1);
+      );
 
     if (!session) throw new AppError("Project session not found", 404);
     if (session.category === "auto") {
@@ -454,7 +453,7 @@ export const archiveProjectSession = catchAsync(
 
     const { id } = z
       .object({
-        id: z.string(),
+        id: z.uuid(),
       })
       .parse(req.params);
 
@@ -467,17 +466,44 @@ export const archiveProjectSession = catchAsync(
           ),
       })
       .parse(req.body);
-    await db
+    const [updatedSession] = await db
       .update(projectSessions)
       .set({
         archived: action,
       })
       .where(
-        and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
+        and(
+          eq(projectSessions.id, id),
+          eq(projectSessions.user_id, user.id),
+          action
+            ? sql`NOT EXISTS (
+                SELECT 1 FROM ${instances}
+                WHERE ${instances.project_session_id} = ${id}
+                  AND ${instances.state} = 'running'
+              )`
+            : undefined,
+        ),
+      )
+      .returning({ id: projectSessions.id });
+
+    if (!updatedSession) {
+      const [session] = await db
+        .select({ id: projectSessions.id })
+        .from(projectSessions)
+        .where(
+          and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
+        );
+      if (!session) throw new AppError("Project session not found", 404);
+      throw new AppError(
+        "Suspend or terminate the running instance before archiving this session",
+        409,
       );
+    }
 
     res.status(200).json({
-      message: "Successfully archived the project session",
+      message: action
+        ? "Successfully archived the project session"
+        : "Successfully unarchived the project session",
     });
   },
 );

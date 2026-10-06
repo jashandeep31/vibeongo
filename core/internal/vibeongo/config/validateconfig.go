@@ -5,31 +5,34 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 )
 
 type Config struct {
-	PublicIP       string          `json:"publicIp"`
-	ServerBaseURL  string          `json:"serverBaseUrl"`
-	SessionID      string          `json:"sessionId"`
-	ProjectID      string          `json:"projectId"`
-	InstanceConfig InstanceConfig  `json:"instanceConfig"`
-	InstanceID     string          `json:"instanceId"`
-	InstanceName   string          `json:"instanceName"`
-	Packages       []PackageConfig `json:"packages"`
-	Repos          []GitRepoConfig `json:"repos"`
-	Docker         *DockerConfig   `json:"docker"`
-	OpenCode       *OpenCodeConfig `json:"opencode"`
-	Pi             *PiConfig       `json:"pi"`
-	Codex          *CodexConfig    `json:"codex"`
-	Fx             *FxConfig       `json:"fx"`
-	Nvim           *NvimConfig     `json:"nvim"`
-	Tasks          []TaskConfig    `json:"tasks"`
-	InitialScript  string          `json:"initialScript"`
-	FinalScript    string          `json:"finalScript"`
-	DevScript      string          `json:"devScript"`
+	PublicIP         string                     `json:"publicIp"`
+	ServerBaseURL    string                     `json:"serverBaseUrl"`
+	SessionID        string                     `json:"sessionId"`
+	ProjectID        string                     `json:"projectId"`
+	InstanceConfig   InstanceConfig             `json:"instanceConfig"`
+	InstanceID       string                     `json:"instanceId"`
+	InstanceName     string                     `json:"instanceName"`
+	Packages         []PackageConfig            `json:"packages"`
+	Repos            []GitRepoConfig            `json:"repos"`
+	Docker           *DockerConfig              `json:"docker"`
+	OpenCode         *OpenCodeConfig            `json:"opencode"`
+	Pi               *PiConfig                  `json:"pi"`
+	Codex            *CodexConfig               `json:"codex"`
+	Fx               *FxConfig                  `json:"fx"`
+	Claude           *ClaudeConfig              `json:"claude"`
+	Nvim             *NvimConfig                `json:"nvim"`
+	Tasks            []TaskConfig               `json:"tasks"`
+	VibeongoAIModels map[string]VibeongoAIModel `json:"vibeongoAiModels"`
+	InitialScript    string                     `json:"initialScript"`
+	FinalScript      string                     `json:"finalScript"`
+	DevScript        string                     `json:"devScript"`
 }
 type InstanceConfig struct {
 	OpencodePassword   string `json:"opencodePassword"`
@@ -97,6 +100,35 @@ type FxConfig struct {
 	AuthJSON json.RawMessage `json:"auth_json"`
 }
 
+type ClaudeConfig struct {
+	AuthJSON json.RawMessage `json:"auth_json"`
+}
+
+type VibeongoAIModel struct {
+	Name  string                `json:"name"`
+	Limit *VibeongoAIModelLimit `json:"limit,omitempty"`
+}
+
+type VibeongoAIModelLimit struct {
+	Context int `json:"context"`
+	Output  int `json:"output"`
+}
+
+func validateVibeongoAIModels(models map[string]VibeongoAIModel) error {
+	for id, model := range models {
+		if strings.TrimSpace(id) == "" {
+			return fmt.Errorf("vibeongo ai model id is empty")
+		}
+		if strings.TrimSpace(model.Name) == "" {
+			return fmt.Errorf("vibeongo ai model %q has no name", id)
+		}
+		if model.Limit != nil && (model.Limit.Context <= 0 || model.Limit.Output <= 0) {
+			return fmt.Errorf("vibeongo ai model %q has an invalid limit", id)
+		}
+	}
+	return nil
+}
+
 type NvimConfig struct {
 	ConfigJSON json.RawMessage `json:"config_json"`
 }
@@ -142,6 +174,13 @@ func validateConfig(file []byte) (Config, error) {
 			}
 			cfg.Pi = &piConfig
 
+		case "claude":
+			var claudeConfig ClaudeConfig
+			if err := json.Unmarshal(pkg.Config, &claudeConfig); err != nil {
+				return cfg, fmt.Errorf("error parsing claude package config: %w", err)
+			}
+			cfg.Claude = &claudeConfig
+
 		case "nvim":
 			var nvimConfig NvimConfig
 			if err := json.Unmarshal(pkg.Config, &nvimConfig); err != nil {
@@ -151,19 +190,26 @@ func validateConfig(file []byte) (Config, error) {
 		}
 	}
 
+	if err := validateVibeongoAIModels(cfg.VibeongoAIModels); err != nil {
+		return cfg, err
+	}
+
 	return cfg, nil
 }
 
 var configPath = filepath.Join(utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.config/vibeongo"), "config.json")
 
+// development reads config.json from the directory the server runs in,
+// production from the instance user's config dir
 func ResolveConfigPath() (string, error) {
-	if _, err := os.Stat(configPath); err == nil {
-		return configPath, nil
+	path := configPath
+	if utils.IsDevelopment() {
+		path = "config.json"
 	}
-	if _, err := os.Stat("config.json"); err == nil {
-		return "config.json", nil
+	if _, err := os.Stat(path); err != nil {
+		return "", fmt.Errorf("config not found at %s: %w", path, err)
 	}
-	return "", fmt.Errorf("config not found at %s", configPath)
+	return path, nil
 }
 
 func LoadAndValidate() (Config, error) {

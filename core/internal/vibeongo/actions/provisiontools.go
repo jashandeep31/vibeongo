@@ -1,6 +1,8 @@
 package actions
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -68,6 +70,59 @@ func ProvisionPi(cfg *config.PiConfig) error {
 	return nil
 }
 
+func ProvisionVibeongoAIModels(models map[string]config.VibeongoAIModel) error {
+	configPath := os.Getenv("OPENCODE_CONFIG")
+	if configPath == "" {
+		configPath = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.config/opencode/opencode.json")
+	}
+
+	info, err := os.Stat(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to find opencode config at %s: %w", configPath, err)
+	}
+	file, err := os.ReadFile(configPath)
+	if err != nil {
+		return fmt.Errorf("failed to read opencode config: %w", err)
+	}
+
+	var document map[string]json.RawMessage
+	if err := json.Unmarshal(file, &document); err != nil {
+		return fmt.Errorf("failed to parse opencode config: %w", err)
+	}
+	var providers map[string]json.RawMessage
+	if err := json.Unmarshal(document["providers"], &providers); err != nil || providers == nil {
+		return fmt.Errorf("opencode config has no providers")
+	}
+	var provider map[string]json.RawMessage
+	if err := json.Unmarshal(providers["vibeongo_ai"], &provider); err != nil || provider == nil {
+		return fmt.Errorf("opencode config has no vibeongo_ai provider")
+	}
+
+	if models == nil {
+		models = map[string]config.VibeongoAIModel{}
+	}
+	if provider["models"], err = json.Marshal(models); err != nil {
+		return fmt.Errorf("failed to encode vibeongo ai models: %w", err)
+	}
+	if providers["vibeongo_ai"], err = json.Marshal(provider); err != nil {
+		return fmt.Errorf("failed to encode vibeongo_ai provider: %w", err)
+	}
+	if document["providers"], err = json.Marshal(providers); err != nil {
+		return fmt.Errorf("failed to encode opencode providers: %w", err)
+	}
+
+	updated, err := json.MarshalIndent(document, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to encode opencode config: %w", err)
+	}
+	if err := os.WriteFile(configPath, append(updated, '\n'), info.Mode().Perm()); err != nil {
+		return fmt.Errorf("failed to write opencode config: %w", err)
+	}
+
+	fmt.Printf("updated %d vibeongo ai models in the opencode config\n", len(models))
+	return nil
+}
+
 func ProvisionT3Code(cfg config.Config) error {
 	fmt.Println("Adding the projects to the t3")
 	for _, repo := range cfg.Repos {
@@ -86,27 +141,34 @@ func ProvisionT3Code(cfg config.Config) error {
 	return nil
 }
 
-// Setup the opencode auth.json file
+// ProvisionOpenCode imports the credentials (output of `opencode auth export`) with `opencode auth import`
 func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	if cfg == nil {
 		return nil
 	}
 
-	// opencode is pre-insatlled in the ami
-	fmt.Println("opencode config is running ")
-	authJSON := cfg.AuthJSON
-
-	authDir := utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.local/share/opencode")
-	if err := os.MkdirAll(authDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create opencode auth directory: %w", err)
+	authJSON := bytes.TrimSpace(cfg.AuthJSON)
+	if len(authJSON) == 0 || string(authJSON) == "null" || string(authJSON) == "[]" {
+		fmt.Println("no opencode credentials to import")
+		return nil
 	}
 
-	authfilePath := filepath.Join(authDir, "auth.json")
-	if err := os.WriteFile(authfilePath, authJSON, 0o600); err != nil {
-		return fmt.Errorf("failed to write opencode auth.json: %w", err)
+	// opencode is pre-insatlled in the ami. OPENCODE_BIN overrides it for local testing
+	opencodeBin := os.Getenv("OPENCODE_BIN")
+	if opencodeBin == "" {
+		opencodeBin = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.opencode/bin/opencode")
 	}
 
-	fmt.Println("updated the auth.json")
+	fmt.Println("importing opencode credentials")
+	// --standalone avoids spawning the background service, credentials are passed on stdin so they never touch the disk
+	cmd := exec.Command(opencodeBin, "auth", "import", "--standalone")
+	cmd.Stdin = bytes.NewReader(authJSON)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to import opencode credentials: %w", err)
+	}
+
 	return nil
 }
 

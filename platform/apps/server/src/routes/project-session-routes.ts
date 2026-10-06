@@ -11,6 +11,7 @@ import {
   resumeProjectSession,
   updateProjectSessionTask,
 } from "../controllers/project-sessions/project-sessions.js";
+import { resumeSuspendedProjectSession } from "../controllers/project-sessions/resume-suspended-session.js";
 
 const routes: Router = Router();
 
@@ -27,6 +28,10 @@ routes
   .post(checkAuthorization(["user"]), resumeProjectSession)
   .get(checkAuthorization(["user"]), getProjectSessionById);
 // .delete(checkAuthorization(["user"]), archiveProjectSession);
+
+routes
+  .route("/:id/resume")
+  .post(checkAuthorization(["user"]), resumeSuspendedProjectSession);
 
 routes
   .route("/:id/archive")

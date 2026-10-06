@@ -1,5 +1,7 @@
 "use client";
 
+import { OpencodeSubagentProvider } from "@/components/chat/opencode-subagent-context";
+
 import {
   OpencodeChatQuestion,
   StreamingIndicator,
@@ -7,16 +9,21 @@ import {
 import { OpencodeQuestionPrompt } from "@/components/chat/opencode-question-prompt";
 import { OpencodePermissionDock } from "@/components/chat/opencode-permission-dock";
 import { OpencodeWebSearchDock } from "@/components/chat/opencode-web-search-dock";
-import { OpencodeComposer } from "@/components/chat/opencode-composer";
+import {
+  OpencodeComposer,
+  type OpencodeComposerAction,
+} from "@/components/chat/opencode-composer";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import {
   useAbortOpencodeSession,
   useAnswerOpencodeQuestion,
   useCancelOpencodeQueuedPrompt,
   useEditOpencodeQueuedPrompt,
+  useOpencodeCommands,
   useOpencodeInventory,
   useQueueOpencodePrompt,
   useRejectOpencodeQuestion,
+  useReloadOpencodeConfig,
   useReplyOpencodePermission,
   useReorderOpencodeQueuedPrompts,
   useRevertOpencodeSession,
@@ -60,6 +67,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -103,6 +111,14 @@ export function OpencodeSessionChat({
     password,
   );
   const inventory = inventoryQuery.data;
+  const { data: commands } = useOpencodeCommands(
+    chatId,
+    serverUrl,
+    accessToken,
+    rawResponse.session.directory,
+    password,
+  );
+  const router = useRouter();
   const revertMessageId = rawResponse.session.revert?.messageID;
   const { visibleMessages, revertedMessages } = useMemo(() => {
     if (!revertMessageId) {
@@ -272,6 +288,84 @@ export function OpencodeSessionChat({
     accessToken,
     password,
   });
+  const reloadConfig = useReloadOpencodeConfig({
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory: rawResponse.session.directory,
+  });
+  const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
+  const lastQuestionId = [...visibleMessages]
+    .reverse()
+    .find((message) => message.info.role === "user")?.info.id;
+  const firstRevertedId = revertedQuestions[0]?.id;
+  const secondRevertedId = revertedQuestions[1]?.id;
+  const composerActions = useMemo<OpencodeComposerAction[]>(
+    () => [
+      {
+        name: "undo",
+        description: "Revert the last message",
+        run: () => {
+          if (isStreaming) {
+            toast.error("Wait for the response to finish before undoing");
+            return;
+          }
+          if (!lastQuestionId) {
+            toast.error("There is no message to undo");
+            return;
+          }
+          revertSession.mutate(lastQuestionId, {
+            onSuccess: () => toast.success("Messages rolled back"),
+            onError: (error) =>
+              toast.error(error.message || "Could not revert messages"),
+          });
+        },
+      },
+      {
+        name: "redo",
+        description: "Restore the last reverted message",
+        run: () => {
+          if (!firstRevertedId) {
+            toast.error("There is no message to redo");
+            return;
+          }
+          restoreMessage.mutate(
+            { messageId: firstRevertedId, nextMessageId: secondRevertedId },
+            {
+              onSuccess: () => toast.success("Message restored"),
+              onError: (error) =>
+                toast.error(error.message || "Could not restore message"),
+            },
+          );
+        },
+      },
+      {
+        name: "reload",
+        description: "Reload OpenCode config",
+        run: () =>
+          reloadConfig.mutate(undefined, {
+            onSuccess: () => toast.success("OpenCode config reloaded"),
+            onError: (error) =>
+              toast.error(error.message || "Could not reload config"),
+          }),
+      },
+      {
+        name: "worktree",
+        description: "Manage worktrees",
+        run: () => setIsWorktreeOpen(true),
+      },
+    ],
+    [
+      firstRevertedId,
+      isStreaming,
+      lastQuestionId,
+      reloadConfig.mutate,
+      restoreMessage.mutate,
+      revertSession.mutate,
+      secondRevertedId,
+    ],
+  );
   const sessionSelection = useMemo(
     () => getSessionPromptSelection(rawResponse),
     [rawResponse],
@@ -386,14 +480,18 @@ export function OpencodeSessionChat({
     );
   };
 
-  const dismissQuestion = (requestId: string) => {
-    rejectQuestion.mutate(requestId, {
-      onError: (error) =>
-        toast.error(error.message || "Could not dismiss the question"),
-    });
+  const dismissQuestion = (requestId: string, message?: string) => {
+    rejectQuestion.mutate(
+      { requestId, message },
+      {
+        onError: (error) =>
+          toast.error(error.message || "Could not dismiss the question"),
+      },
+    );
   };
 
   const sessionUrl = `/projects/${projectId}/sessions/${chatId}`;
+  const parentSessionId = rawResponse.session.parentID;
   const newChatParams = new URLSearchParams({ serverUrl });
   const composerControls = (
     <>
@@ -462,6 +560,8 @@ export function OpencodeSessionChat({
         inventory={inventory}
         isRefreshing={isRefreshing}
         onRefresh={onRefresh}
+        worktreeOpen={isWorktreeOpen}
+        onWorktreeOpenChange={setIsWorktreeOpen}
       />
       <div
         ref={scrollAreaRef}
@@ -513,31 +613,41 @@ export function OpencodeSessionChat({
                 Start the chat by describing what you want to build.
               </div>
             ) : null}
-            {turns.map((turn, index) => (
-              <OpencodeChatQuestion
-                key={turn.id}
-                item={turn}
-                isStreaming={isStreaming && index === turns.length - 1}
-                isReverting={
-                  revertSession.isPending && revertSession.variables === turn.id
-                }
-                revertDisabled={
-                  isStreaming ||
-                  revertSession.isPending ||
-                  restoreMessage.isPending
-                }
-                onRevert={() =>
-                  revertSession.mutate(turn.id, {
-                    onSuccess: () => toast.success("Messages rolled back"),
-                    onError: (error) =>
-                      toast.error(error.message || "Could not revert messages"),
-                  })
-                }
-                reserveBottomSpace={
-                  index === turns.length - 1 && !activeQuestion
-                }
-              />
-            ))}
+            <OpencodeSubagentProvider
+              connection={{
+                chatId,
+                chatUrl: `${sessionUrl}/chats/${sessionId}`,
+                serverUrl,
+                accessToken,
+                password,
+              }}
+            >
+              {turns.map((turn, index) => (
+                <OpencodeChatQuestion
+                  key={turn.id}
+                  item={turn}
+                  isStreaming={isStreaming && index === turns.length - 1}
+                  isReverting={
+                    revertSession.isPending && revertSession.variables === turn.id
+                  }
+                  revertDisabled={
+                    isStreaming ||
+                    revertSession.isPending ||
+                    restoreMessage.isPending
+                  }
+                  onRevert={() =>
+                    revertSession.mutate(turn.id, {
+                      onSuccess: () => toast.success("Messages rolled back"),
+                      onError: (error) =>
+                        toast.error(error.message || "Could not revert messages"),
+                    })
+                  }
+                  reserveBottomSpace={
+                    index === turns.length - 1 && !activeQuestion
+                  }
+                />
+              ))}
+            </OpencodeSubagentProvider>
             {isStreaming && turns.length === 0 ? (
               <StreamingIndicator />
             ) : null}
@@ -570,7 +680,7 @@ export function OpencodeSessionChat({
           className="from-background/95 via-background/70 pointer-events-none absolute inset-x-0 -top-10 bottom-0 bg-gradient-to-t to-transparent [mask-image:linear-gradient(to_top,black_0%,black_70%,transparent_100%)] backdrop-blur-xl"
         />
         <div className="relative mx-auto w-full max-w-4xl">
-          {revertedQuestions.length > 0 ? (
+          {!parentSessionId && revertedQuestions.length > 0 ? (
             <div className="mb-2">
               <RevertedMessagesPanel
                 messages={revertedQuestions}
@@ -626,6 +736,16 @@ export function OpencodeSessionChat({
               onSubmit={submitQuestionAnswer}
               onDismiss={dismissQuestion}
             />
+          ) : parentSessionId ? (
+            <div className="border-border bg-background text-muted-foreground rounded-xl border p-3 text-sm">
+              Subagent sessions cannot be prompted.{" "}
+              <Link
+                href={`${sessionUrl}/chats/${encodeURIComponent(parentSessionId)}?${newChatParams.toString()}`}
+                className="text-foreground hover:text-primary rounded-sm font-medium underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2"
+              >
+                Back to main session
+              </Link>
+            </div>
           ) : (
             <>
               {queuedPrompts.length ? (
@@ -871,6 +991,11 @@ export function OpencodeSessionChat({
                   }
                 }}
                 searchFiles={searchFiles}
+                commands={commands}
+                actions={composerActions}
+                onNewChat={() =>
+                  router.push(`${sessionUrl}?${newChatParams.toString()}`)
+                }
                 onSubmitSuccess={() => scrollToBottom("smooth")}
                 autoFocus
                 focusOnTyping

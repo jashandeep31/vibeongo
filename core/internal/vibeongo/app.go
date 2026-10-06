@@ -23,8 +23,10 @@ func NewCommand() *cobra.Command {
 	rootCmd.AddCommand(UpdateCmd())
 	// RenewKeysCmd Renew the expired keys from the config files
 	rootCmd.AddCommand(RenewKeysCmd())
-	// ProvissionToolsCmd setup all tools like: codex, t3Code and Opencode
+	// ProvissionToolsCmd setup all tools like: codex, t3Code
 	rootCmd.AddCommand(ProvissionToolsCmd())
+	// ProvisionOpenCodeCmd setup opencode
+	rootCmd.AddCommand(ProvisionOpenCodeCmd())
 	// CloneGitReposCmd clone the github repos
 	rootCmd.AddCommand(CloneGitReposCmd())
 	// ServeCmd start the echo server

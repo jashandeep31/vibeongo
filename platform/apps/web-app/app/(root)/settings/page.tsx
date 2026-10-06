@@ -5,6 +5,10 @@ import { ModelPicker } from "@/components/model-picker";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { ApiKeysSettings } from "@/components/settings/api-keys-settings";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
+import {
+  isNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+} from "@/lib/notification-sound";
 import { logout } from "@/services/auth-services";
 import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
 import {
@@ -12,11 +16,14 @@ import {
   useUpdateUserSettings,
   useUserConfigs,
   useUserSettings,
+  useProviderCredentials,
 } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
 import { Skeleton } from "@repo/ui/components/skeleton";
+import { Switch } from "@repo/ui/components/switch";
 import {
+  Bell,
   Bot,
   Check,
   ExternalLink,
@@ -27,6 +34,7 @@ import {
   Moon,
   Pencil,
   Plus,
+  RefreshCw,
   Save,
   Settings2,
   Sun,
@@ -41,6 +49,14 @@ import { toast } from "sonner";
 const AUTO_TERMINATE_MIN_MINUTES = 15;
 const AUTO_TERMINATE_MAX_MINUTES = 1200;
 const FORGEJO_URL = "https://forgejo.devsradar.com/";
+
+function formatCredentialDate(value: string | null) {
+  if (!value) return "Not available";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime())
+    ? "Not available"
+    : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+}
 
 const themeOptions = [
   {
@@ -84,6 +100,11 @@ const configTypes = [
     name: "FX",
     description: "FX authentication configuration.",
   },
+  {
+    type: "claude",
+    name: "Claude Code",
+    description: "Claude Code authentication configuration.",
+  },
 ] as const;
 
 function SettingsSection({
@@ -94,26 +115,30 @@ function SettingsSection({
   children,
 }: {
   title: string;
-  description: string;
+  description?: string;
   icon: typeof Settings2;
   action?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   return (
     <section className="py-3 md:py-4">
-      <div className="flex items-start justify-between gap-4">
+      <div
+        className={`flex justify-between gap-4 ${children ? "items-start" : "items-center"}`}
+      >
         <div className="flex min-w-0 items-start gap-4">
           <Icon className="text-muted-foreground mt-1 size-4 shrink-0" />
           <div>
             <h2 className="font-semibold">{title}</h2>
-            <p className="text-muted-foreground mt-0.5 text-sm">
-              {description}
-            </p>
+            {description ? (
+              <p className="text-muted-foreground mt-0.5 text-sm">
+                {description}
+              </p>
+            ) : null}
           </div>
         </div>
         {action}
       </div>
-      <div className="mt-7 pl-0 md:pl-8">{children}</div>
+      {children ? <div className="mt-7 pl-0 md:pl-8">{children}</div> : null}
     </section>
   );
 }
@@ -123,6 +148,7 @@ export default function SettingsPage() {
   const { theme = "system", setTheme } = useTheme();
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
+  const providerCredentialsQuery = useProviderCredentials();
   const sshKeysQuery = useSshKeys();
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
@@ -149,6 +175,12 @@ export default function SettingsPage() {
   const [forgejoPasswordConfirmation, setForgejoPasswordConfirmation] =
     useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  // stored in this browser only, read after mount to match the server render
+  useEffect(() => {
+    setSoundEnabled(isNotificationSoundEnabled());
+  }, []);
 
   useEffect(() => {
     if (!userSettings || isTelegramDirty) return;
@@ -337,6 +369,98 @@ export default function SettingsPage() {
             );
           })}
         </div>
+      </SettingsSection>
+
+      <SettingsSection
+        title="Notification sound"
+        icon={Bell}
+        action={
+          <Switch
+            aria-label="Notification sound"
+            checked={soundEnabled}
+            onCheckedChange={(checked) => {
+              setSoundEnabled(checked);
+              setNotificationSoundEnabled(checked);
+            }}
+          />
+        }
+      />
+
+      <SettingsSection
+        title="Provider connections"
+        description="Authentication and token expiry for your connected providers."
+        icon={KeyRound}
+        action={
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => void providerCredentialsQuery.refetch()}
+            disabled={providerCredentialsQuery.isFetching}
+          >
+            <RefreshCw /> Refresh
+          </Button>
+        }
+      >
+        {providerCredentialsQuery.isPending ? (
+          <Skeleton className="h-48 w-full max-w-2xl rounded-xl" />
+        ) : providerCredentialsQuery.isError ? (
+          <p className="text-destructive text-sm" role="alert">
+            Failed to load provider connections. Try refreshing.
+          </p>
+        ) : providerCredentialsQuery.data?.data.length ? (
+          <div className="max-w-2xl space-y-4">
+            {providerCredentialsQuery.data.data.map((connection) => (
+              <div
+                key={connection.provider}
+                className="bg-muted/10 overflow-hidden rounded-xl border"
+              >
+                <div className="flex items-center justify-between gap-4 px-5 py-4">
+                  <div className="flex items-center gap-3">
+                    <span className="bg-muted flex size-9 items-center justify-center rounded-lg">
+                      <Bot className="size-4" aria-hidden="true" />
+                    </span>
+                    <h3 className="text-sm font-semibold">
+                      {connection.provider === "codex" ? "Codex" : connection.provider}
+                    </h3>
+                  </div>
+                  <dl>
+                    <dt className="sr-only">Auth type</dt>
+                    <dd className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
+                      {connection.auth_type === "oauth" ? "OAuth" : "API key"}
+                    </dd>
+                  </dl>
+                </div>
+                <dl className="grid gap-5 px-5 pb-5 text-sm sm:grid-cols-2">
+                  <div>
+                    <dt className="text-muted-foreground text-xs">
+                      Access token expires
+                    </dt>
+                    <dd className="mt-1.5 font-medium tabular-nums">
+                      {formatCredentialDate(connection.access_token_expires_at)}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-muted-foreground text-xs">
+                      Refresh token expires
+                    </dt>
+                    <dd className="mt-1.5 font-medium tabular-nums">
+                      {formatCredentialDate(connection.refresh_token_expires_at)}
+                    </dd>
+                  </div>
+                </dl>
+                <dl className="text-muted-foreground flex flex-wrap items-center gap-x-1.5 gap-y-1 border-t px-5 py-3 text-xs">
+                  <dt>Last updated</dt>
+                  <dd className="tabular-nums">
+                    {formatCredentialDate(connection.updated_at)}
+                  </dd>
+                </dl>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-muted-foreground text-sm">No provider connections.</p>
+        )}
       </SettingsSection>
 
       <SettingsSection

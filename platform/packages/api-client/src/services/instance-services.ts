@@ -67,6 +67,18 @@ export const terminateInstance =
     return response.data;
   };
 
+export const suspendInstance =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.post(
+      `/api/v1/instances/${id}/suspend`,
+      undefined,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
 export type UpdateInstanceTimeInput = {
   id: string;
   action: "increase" | "decrease";

@@ -21,7 +21,8 @@ type UserConfigSummary = Omit<
   typeof userConfigs.$inferSelect,
   "iv" | "encrypted_config" | "tag"
 >;
-export type UserConfigValue = Record<string, unknown>;
+// OpenCode stores the `opencode auth export` array, the other tools an object
+export type UserConfigValue = Record<string, unknown> | unknown[];
 
 type UserConfigPayload = {
   configType: (typeof userConfigs.$inferSelect)["config_type"];

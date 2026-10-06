@@ -2,6 +2,7 @@ import { Router } from "express";
 import {
   getSessionDomains,
   getRuntimeSessionConfig,
+  renewRuntimeOpencodeCredentials,
 } from "../controllers/runtime/get-runtime-session-config.js";
 import { checkRuntimeAuthorization } from "../middlewares/check-runtime-authorization.js";
 import { getRuntimeProjectFiles } from "../controllers/runtime/get-projects-files.js";
@@ -9,12 +10,21 @@ import {
   getSessionOverview,
   updateSessionOverview,
 } from "../controllers/runtime/session-overview.js";
-import { suspendSessionInstance } from "../controllers/runtime/suspend-session-instance.js";
+import { terminateSessionInstance } from "../controllers/runtime/terminate-session-instance.js";
 import { runTaskActions } from "../controllers/runtime/task-actions.js";
 import { renewTokens } from "../controllers/runtime/renew-tokens.js";
 import { updateRuntimeProjectBasicConfig } from "../controllers/runtime/update-project-config.js";
+import { getProviderAccessToken } from "../controllers/runtime/get-provider-access-token.js";
 
 const routes: Router = Router();
+
+routes
+  .route("/sessions/:id/provider-credentials/:provider/access-token")
+  .post(checkRuntimeAuthorization, getProviderAccessToken);
+
+routes
+  .route("/sessions/:id/opencode/renew-credentials/:instanceId")
+  .post(checkRuntimeAuthorization, renewRuntimeOpencodeCredentials);
 
 routes
   .route("/sessions/:id/config/:instanceId")
@@ -23,7 +33,7 @@ routes
 
 routes
   .route("/sessions/:id/terminate/:instanceId")
-  .get(checkRuntimeAuthorization, suspendSessionInstance);
+  .get(checkRuntimeAuthorization, terminateSessionInstance);
 
 routes
   .route("/sessions/:id/get-project-files")

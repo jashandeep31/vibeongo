@@ -1,5 +1,4 @@
 import {
-  bigint,
   integer,
   pgTable,
   timestamp,
@@ -33,7 +32,6 @@ export const projects = pgTable("projects", {
     .notNull(),
 
   // Stored as real cost * 10^7.
-  total_charges: bigint({ mode: "number" }).notNull().default(0),
 
   overview: text().default("").notNull(),
 

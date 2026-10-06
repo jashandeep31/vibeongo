@@ -9,8 +9,21 @@ export const dockerConfigValidator = z.object({
   ),
 });
 
+// Output of `opencode auth export`, loaded on the instance with `opencode auth import`
+export const opencodeCredentialsValidator = z.array(
+  z.looseObject({
+    id: z.string().min(1),
+    integrationID: z.string().min(1),
+    label: z.string(),
+    active: z.boolean(),
+    value: z.looseObject({ type: z.enum(["oauth", "key"]) }),
+  }),
+  "OpenCode credentials must be the JSON array printed by `opencode auth export`",
+);
+export type OpencodeCredentials = z.infer<typeof opencodeCredentialsValidator>;
+
 export const opencodeConfigValidator = z.object({
-  auth_json: z.json(),
+  auth_json: opencodeCredentialsValidator,
   use_user_config: z.boolean().default(true),
   model: z.string().default("default"),
 });
@@ -27,6 +40,11 @@ export const codexConfigValidator = z.object({
 
 export const fxConfigValidator = z.object({
   auth_json: z.json(),
+  use_user_config: z.boolean().default(true),
+});
+
+export const claudeConfigValidator = z.object({
+  auth_json: z.json().default({}),
   use_user_config: z.boolean().default(true),
 });
 
@@ -95,13 +113,17 @@ export const projectConfigValidator = z.object({
             name: z.literal("fx"),
             config: fxConfigValidator,
           }),
+          z.object({
+            name: z.literal("claude"),
+            config: claudeConfigValidator,
+          }),
         ]),
       )
       .default([
         { name: "docker", config: { containers: [] } },
         {
           name: "opencode",
-          config: { auth_json: {}, use_user_config: true, model: "default" },
+          config: { auth_json: [], use_user_config: true, model: "default" },
         },
         {
           name: "codex",
@@ -109,6 +131,10 @@ export const projectConfigValidator = z.object({
         },
         {
           name: "pi",
+          config: { auth_json: {}, use_user_config: true },
+        },
+        {
+          name: "claude",
           config: { auth_json: {}, use_user_config: true },
         },
       ]),

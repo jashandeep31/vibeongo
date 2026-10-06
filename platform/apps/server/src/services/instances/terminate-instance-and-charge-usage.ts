@@ -5,33 +5,32 @@ import {
   eq,
   instanceRegions,
   instanceTypes,
-  sql,
-  userCreditGrants,
-  gt,
-  asc,
-  userWalletTransactions,
   projectDomainRouting,
   projectAutomationRuns,
   projectSessions,
-  projects,
   sandboxTypes,
   sandboxRegions,
   instanceSlots,
   inArray,
   gitRepoAccessTokens,
   isNull,
+  instancePeriods,
+  type Transaction,
 } from "@repo/db";
 import { AppError } from "../../lib/app-error.js";
 import { env } from "../../lib/env.js";
-import { userWallet } from "@repo/db";
 // import { getEc2InstanceNetworkUsage } from "../../providers/aws/services/get-instance-network-usage.js";
 import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
 import { terminateProviderInstance } from "../../providers/terminate-providers-instance.js";
 import { getProviderOutboundNetworkUsage } from "../../providers/get-provider-outbound-network-usage.js";
-import { formatInternalMoney, INTERNAL_MONEY_SCALE } from "@repo/shared";
+import { INTERNAL_MONEY_SCALE } from "@repo/shared";
 import { getOpenRouterKeyChargesAnTerminateKey } from "../openrouter/index.js";
 import { dispatchQueuedInstanceLaunches } from "./check-and-queue-instance-launch.js";
 import { addGitRepoAccessTokenRevocationJob } from "../../jobs/git-repo-access-token-revocation.js";
+import {
+  chargeInstancePeriod,
+  getOrOpenRunningPeriod,
+} from "./charge-instance-period.js";
 
 interface TerminateInstanceAndChargeUsageProps {
   instanceId: string;
@@ -48,16 +47,8 @@ interface TerminationUsage {
   uptimeInMin: number;
   totalCostWithProfit: number;
   networkOutInGb: number;
+  ratePerSecond: number;
 }
-
-const formatUptime = (uptimeInMin: number) =>
-  `${uptimeInMin} ${uptimeInMin === 1 ? "minute" : "minutes"}`;
-
-const formatNetworkUsage = (networkUsageInGb: number) =>
-  `${networkUsageInGb.toFixed(6)} GB`;
-
-const formatWalletAmount = (amount: number) =>
-  `$${formatInternalMoney(amount)}`;
 
 const calculateTotalCostWithProfit = ({
   costEachMin,
@@ -78,6 +69,46 @@ const calculateTotalCostWithProfit = ({
     : Math.ceil(totalCostWithProfit);
 };
 
+const closeSessionAfterTermination = async ({
+  tx,
+  instance,
+  userId,
+  spinedUpBy,
+}: {
+  tx: Transaction;
+  instance: typeof instances.$inferSelect;
+  userId: string;
+  spinedUpBy: string | null | undefined;
+}) => {
+  if (!instance.project_session_id) return;
+
+  await tx
+    .update(projectSessions)
+    .set({
+      archived: true,
+      updated_at: new Date(),
+    })
+    .where(
+      and(
+        eq(projectSessions.id, instance.project_session_id),
+        eq(projectSessions.user_id, userId),
+        eq(projectSessions.category, "auto"),
+      ),
+    );
+
+  if (spinedUpBy === "automation") {
+    await tx
+      .update(projectAutomationRuns)
+      .set({ status: "done", updated_at: new Date(), error: null })
+      .where(
+        eq(
+          projectAutomationRuns.project_session_id,
+          instance.project_session_id,
+        ),
+      );
+  }
+};
+
 /**
  * Terminate the instance and charge the user
  */
@@ -91,6 +122,11 @@ export const terminateInstanceAndChargeUsage = async ({
     .from(instances)
     .where(and(eq(instances.id, instanceId), eq(instances.user_id, userId)));
   if (!instance) throw new AppError("instance not found", 404);
+
+  if (instance.state === "suspended") {
+    await terminateSuspendedInstance({ instance, userId });
+    return;
+  }
 
   const [terminatingSlot] = await db
     .update(instanceSlots)
@@ -122,8 +158,8 @@ export const terminateInstanceAndChargeUsage = async ({
   const {
     totalCostWithProfit: totalCostWithProfitWithoutAICharges,
     networkCharges,
-    uptimeInMin,
     networkOutInGb,
+    ratePerSecond,
   } = instance.runtime_kind === "vm"
     ? await terminateVmInstance({
         instance: instance,
@@ -132,20 +168,21 @@ export const terminateInstanceAndChargeUsage = async ({
         instance: instance,
       });
 
-  const totalCostWithProfit =
-    totalCostWithProfitWithoutAICharges + openrouterCharges;
+  const networkAmount = Math.min(
+    totalCostWithProfitWithoutAICharges,
+    Math.ceil(networkCharges * (1 + env.PROFIT_PRECENTAGE / 100)),
+  );
 
   // Start the database transaction.
   const terminatedSlot = await db.transaction(async (tx) => {
-    // Total cost includes network charges and normal usage charges.
-    const totalCost = totalCostWithProfit;
+    const terminatedAt = new Date();
 
     // Only one request can claim and charge a running instance.
     // Mark the instance as terminated with the termination time.
     const [instanceToTerminate] = await tx
       .update(instances)
       .set({
-        terminated_at: new Date(),
+        terminated_at: terminatedAt,
         state: "terminated",
       })
       .where(and(eq(instances.id, instanceId), eq(instances.state, "running")))
@@ -165,119 +202,29 @@ export const terminateInstanceAndChargeUsage = async ({
 
     if (!instanceToTerminate) return terminatedSlot;
 
-    if (instance.project_session_id) {
-      await tx
-        .update(projectSessions)
-        .set({
-          archived: true,
-          updated_at: new Date(),
-        })
-        .where(
-          and(
-            eq(projectSessions.id, instance.project_session_id),
-            eq(projectSessions.user_id, userId),
-            eq(projectSessions.category, "auto"),
-          ),
-        );
-    }
+    await closeSessionAfterTermination({
+      tx,
+      instance,
+      userId,
+      spinedUpBy: terminatedSlot?.spined_up_by,
+    });
 
-    if (
-      instance.project_session_id &&
-      terminatedSlot?.spined_up_by === "automation"
-    ) {
-      await tx
-        .update(projectAutomationRuns)
-        .set({ status: "done", updated_at: new Date(), error: null })
-        .where(
-          eq(
-            projectAutomationRuns.project_session_id,
-            instance.project_session_id,
-          ),
-        );
-    }
-
-    // Select and lock the user wallet for update.
-    const [userWalletRow] = await tx
-      .select()
-      .from(userWallet)
-      .where(eq(userWallet.user_id, userId))
-      .for("update");
-    if (!userWalletRow) throw new AppError("User wallet not found", 404);
-
-    // Select and lock all available credit wallets for update.
-    const userCreditWalletRows = await tx
-      .select()
-      .from(userCreditGrants)
-      .where(
-        and(
-          eq(userCreditGrants.user_id, userId),
-          eq(userCreditGrants.expired, false),
-          gt(userCreditGrants.expires_at, new Date()),
-          gt(userCreditGrants.balance, 0),
-        ),
-      )
-      .orderBy(asc(userCreditGrants.expires_at))
-      .for("update");
-
-    const availableCreditBalance = userCreditWalletRows.reduce(
-      (total, credit) => total + credit.balance,
-      0,
-    );
-
-    // Prevent the charge from exceeding either wallet's available balance.
-    const amountToCharge = Math.min(
-      totalCost,
-      Math.max(0, userWalletRow.balance),
-      availableCreditBalance,
-    );
-
-    // Update the user wallet amount.
-    await tx
-      .update(userWallet)
-      .set({
-        balance: sql`greatest(${userWallet.balance} - ${amountToCharge}, 0)`,
-      })
-      .where(eq(userWallet.id, userWalletRow.id));
-
-    let pendingAmount = amountToCharge;
-    for (const creditWallet of userCreditWalletRows) {
-      if (pendingAmount <= 0) break;
-      const amountToUse = Math.min(pendingAmount, creditWallet.balance);
-      pendingAmount -= amountToUse;
-      await tx
-        .update(userCreditGrants)
-        .set({
-          balance: sql`greatest(${userCreditGrants.balance} - ${amountToUse}, 0)`,
-        })
-        .where(eq(userCreditGrants.id, creditWallet.id));
-
-      await tx.insert(userWalletTransactions).values({
-        wallet_id: userWalletRow.id,
-        transaction_type: "spent",
-        description: `Instance ID: ${instanceId}| ENV: ${instance.runtime_kind} | Uptime: ${formatUptime(uptimeInMin)} | Network usage: ${formatNetworkUsage(networkOutInGb)}  | AI Charges: ${formatInternalMoney(openrouterCharges)}`,
-        raw_description: `Instance ${instanceId} ${instance.instance_type_id || instance.sandbox_type_id}  ran for ${formatUptime(uptimeInMin)} and used ${formatNetworkUsage(networkOutInGb)} of network data. The network cost was ${formatWalletAmount(networkCharges)}, the total cost was ${formatWalletAmount(totalCost)}, and ${formatWalletAmount(amountToUse)} was charged. And openrouter charges ${openrouterCharges} `,
-        amount: amountToUse,
-        user_wallet_credit_id: creditWallet.id,
-      });
-    }
-
-    // Update the session cost.
-    await tx
-      .update(instances)
-      .set({
-        session_cost: totalCost,
-      })
-      .where(eq(instances.id, instanceId));
-
-    // Update the project's total charges.
-    if (instance.project_id) {
-      await tx
-        .update(projects)
-        .set({
-          total_charges: sql`${projects.total_charges} + ${totalCost}`,
-        })
-        .where(eq(projects.id, instance.project_id));
-    }
+    const runningPeriodId = await getOrOpenRunningPeriod({
+      tx,
+      instance,
+      ratePerSecond,
+    });
+    await chargeInstancePeriod({
+      tx,
+      periodId: runningPeriodId,
+      instance,
+      endedAt: terminatedAt,
+      computeAmount: totalCostWithProfitWithoutAICharges - networkAmount,
+      aiAmount: openrouterCharges,
+      networkAmount,
+      networkOutGb: networkOutInGb,
+      event: "terminated",
+    });
 
     return terminatedSlot;
   });
@@ -285,22 +232,7 @@ export const terminateInstanceAndChargeUsage = async ({
   await queueInstanceGitTokenRevocations(instanceId);
 
   // Remove the routes and invalidate affected project proxies.
-  const updatedRoutings = await db
-    .update(projectDomainRouting)
-    .set({
-      target_instance_id: null,
-    })
-    .where(
-      and(
-        eq(projectDomainRouting.target_instance_id, instanceId),
-        eq(projectDomainRouting.user_id, userId),
-      ),
-    )
-    .returning();
-
-  for (const routing of updatedRoutings) {
-    await invalidateProjectProxiesByPid(routing.project_id);
-  }
+  await clearInstanceDomainRouting({ instanceId, userId });
 
   if (terminatedSlot) {
     try {
@@ -319,7 +251,126 @@ export const terminateInstanceAndChargeUsage = async ({
   return;
 };
 
-const queueInstanceGitTokenRevocations = async (instanceId: string) => {
+const terminateSuspendedInstance = async ({
+  instance,
+  userId,
+}: {
+  instance: typeof instances.$inferSelect;
+  userId: string;
+}) => {
+  const [terminatingSlot] = await db
+    .update(instanceSlots)
+    .set({ status: "terminating", updated_at: new Date() })
+    .where(
+      and(
+        eq(instanceSlots.instance_id, instance.id),
+        eq(instanceSlots.user_id, userId),
+        inArray(instanceSlots.status, ["suspended", "terminating"]),
+      ),
+    )
+    .returning({ id: instanceSlots.id });
+  if (!terminatingSlot) {
+    throw new AppError("Suspended instance slot not found", 404);
+  }
+
+  const [sandboxWithRegion] = await db
+    .select()
+    .from(sandboxTypes)
+    .innerJoin(
+      sandboxRegions,
+      eq(sandboxRegions.id, sandboxTypes.sandbox_region),
+    )
+    .where(eq(sandboxTypes.id, instance.sandbox_type_id!));
+  if (!sandboxWithRegion) throw new AppError("Sandbox not found ", 404);
+
+  const terminationResponse = await terminateProviderInstance({
+    provider: sandboxWithRegion.sandbox_types.provider,
+    region: sandboxWithRegion.sandbox_regions.slug,
+    instanceId: instance.provider_instance_id,
+    runtime: instance.runtime_kind,
+  });
+  if (!terminationResponse.terminated) {
+    throw new AppError("Failed to terminate instance", 502);
+  }
+
+  await db.transaction(async (tx) => {
+    const terminatedAt = new Date();
+    const [instanceToTerminate] = await tx
+      .update(instances)
+      .set({ terminated_at: terminatedAt, state: "terminated" })
+      .where(
+        and(eq(instances.id, instance.id), eq(instances.state, "suspended")),
+      )
+      .returning({ id: instances.id });
+
+    const [terminatedSlot] = await tx
+      .update(instanceSlots)
+      .set({ status: "terminated", updated_at: terminatedAt })
+      .where(eq(instanceSlots.instance_id, instance.id))
+      .returning({ spined_up_by: instanceSlots.spun_up_by });
+
+    if (!instanceToTerminate) return;
+
+    await closeSessionAfterTermination({
+      tx,
+      instance,
+      userId,
+      spinedUpBy: terminatedSlot?.spined_up_by,
+    });
+
+    const [suspendedPeriod] = await tx
+      .select({ id: instancePeriods.id })
+      .from(instancePeriods)
+      .where(
+        and(
+          eq(instancePeriods.instance_id, instance.id),
+          eq(instancePeriods.kind, "suspended"),
+          isNull(instancePeriods.ended_at),
+        ),
+      )
+      .for("update");
+    if (suspendedPeriod) {
+      await chargeInstancePeriod({
+        tx,
+        periodId: suspendedPeriod.id,
+        instance,
+        endedAt: terminatedAt,
+        storageAmount: 0,
+        event: "terminated",
+      });
+    }
+  });
+
+  await queueInstanceGitTokenRevocations(instance.id);
+  await clearInstanceDomainRouting({ instanceId: instance.id, userId });
+};
+
+export const clearInstanceDomainRouting = async ({
+  instanceId,
+  userId,
+}: {
+  instanceId: string;
+  userId: string;
+}) => {
+  const updatedRoutings = await db
+    .update(projectDomainRouting)
+    .set({
+      target_instance_id: null,
+    })
+    .where(
+      and(
+        eq(projectDomainRouting.target_instance_id, instanceId),
+        eq(projectDomainRouting.user_id, userId),
+      ),
+    )
+    .returning();
+
+  for (const routing of updatedRoutings) {
+    await invalidateProjectProxiesByPid(routing.project_id);
+  }
+};
+
+export const queueInstanceGitTokenRevocations = async (instanceId: string) => {
   let tokens: Array<{ id: string }>;
 
   try {
@@ -408,6 +459,7 @@ const terminateVmInstance = async ({
       networkCharges,
     }),
     networkOutInGb,
+    ratePerSecond: Math.ceil(instanceType.price_per_hour / 3600),
   };
 };
 
@@ -446,28 +498,41 @@ const terminateSandboxInstance = async ({
     (Date.now() - instance.started_at!.getTime()) / 1000 / 60,
   );
 
+  const networkCharges = 0;
+
+  return {
+    networkCharges,
+    uptimeInMin,
+    totalCostWithProfit: calculateSandboxUsageCost({
+      pricePerSecond: sandbox.price_per_second,
+      uptimeInMin,
+    }),
+    networkOutInGb,
+    ratePerSecond: sandbox.price_per_second,
+  };
+};
+
+export const calculateSandboxUsageCost = ({
+  pricePerSecond,
+  uptimeInMin,
+}: {
+  pricePerSecond: number;
+  uptimeInMin: number;
+}) => {
   const MIN_CHARGE = Math.ceil(0.0001 * INTERNAL_MONEY_SCALE);
 
   // Step 1: convert stored price back to a real $/second value
-  const pricePerSecond = sandbox.price_per_second / INTERNAL_MONEY_SCALE;
+  const pricePerSecondInDollars = pricePerSecond / INTERNAL_MONEY_SCALE;
 
   // Step 2: all math in real dollars, no scaling yet
-  const costEachMin = pricePerSecond * 60;
+  const costEachMin = pricePerSecondInDollars * 60;
   const totalCost = costEachMin * uptimeInMin;
   const profit = totalCost * (env.PROFIT_PRECENTAGE / 100);
   const totalCostWithProfit = totalCost + profit; // still real dollars
 
   // Step 3: scale to the internal 10^7 integer representation.
   const scaled = Math.ceil(totalCostWithProfit * INTERNAL_MONEY_SCALE);
-  const total = scaled < MIN_CHARGE ? MIN_CHARGE : scaled;
-  const networkCharges = 0;
-
-  return {
-    networkCharges,
-    uptimeInMin,
-    totalCostWithProfit: total,
-    networkOutInGb,
-  };
+  return scaled < MIN_CHARGE ? MIN_CHARGE : scaled;
 };
 
 /**

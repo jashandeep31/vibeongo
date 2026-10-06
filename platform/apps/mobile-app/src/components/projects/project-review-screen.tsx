@@ -1,8 +1,12 @@
 import type { SnapshotFileDiff } from "@repo/api-client";
-import { useOpencodeSession } from "@repo/api-hooks";
+import {
+  useOpencodeLastTurnChanges,
+  useOpencodeReviewProjectVcs,
+  useOpencodeSession,
+} from "@repo/api-hooks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   BackHandler,
@@ -31,6 +35,12 @@ import {
   type OpencodeDiffRow,
 } from "@/lib/opencode-diff";
 
+import {
+  getOpencodeReviewMode,
+  setOpencodeReviewMode,
+  type OpencodeReviewMode,
+} from "@/lib/opencode-review-mode";
+
 function firstParam(value: string | string[] | undefined) {
   return Array.isArray(value) ? (value[0] ?? "") : (value ?? "");
 }
@@ -56,17 +66,75 @@ export function ProjectReviewScreen() {
     serverUrl: runtime.serverUrl,
     sessionId: chatId,
   });
+  const [savedReviewMode, setReviewMode] =
+    useState<OpencodeReviewMode>("working");
+  const reviewScope = `${projectSessionId}:${chatId}`;
+  const [readyScope, setReadyScope] = useState<string>();
+  const reviewVcs = useOpencodeReviewProjectVcs({
+    chatId: projectSessionId,
+    directory: sessionQuery.data?.session.directory,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+  });
+  const canReviewLastTurn = reviewVcs.data === "git";
+  const reviewMode =
+    canReviewLastTurn && readyScope === reviewScope
+      ? savedReviewMode
+      : "working";
+  const changedReviewMode = useRef(false);
+  useEffect(() => {
+    let active = true;
+    changedReviewMode.current = false;
+    void getOpencodeReviewMode(reviewScope).then((mode) => {
+      if (active && !changedReviewMode.current) {
+        setReviewMode(mode);
+        setReadyScope(reviewScope);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [reviewScope]);
+  const changeReviewMode = (mode: OpencodeReviewMode) => {
+    changedReviewMode.current = true;
+    setReviewMode(mode);
+    setReadyScope(reviewScope);
+    setSelectedPath(undefined);
+    void setOpencodeReviewMode(mode, reviewScope);
+  };
+  const lastTurnQuery = useOpencodeLastTurnChanges({
+    accessToken: runtime.accessToken,
+    chatId: projectSessionId,
+    password: runtime.password,
+    serverUrl: runtime.serverUrl,
+    sessionId: chatId,
+    enabled: reviewMode === "last-turn",
+  });
+  const { refetch: refetchLastTurn } = lastTurnQuery;
+  const sessionUpdated = sessionQuery.data?.session.time.updated;
+  useEffect(() => {
+    if (reviewMode === "last-turn" && sessionUpdated) void refetchLastTurn();
+  }, [
+    reviewMode,
+    sessionUpdated,
+    sessionQuery.data?.status.type,
+    refetchLastTurn,
+  ]);
   const [filter, setFilter] = useState("");
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string>();
   const data = sessionQuery.data;
+  const reviewChanges =
+    reviewMode === "last-turn" ? lastTurnQuery.data : data?.changes;
+  const reviewError = reviewMode === "last-turn" ? lastTurnQuery.error : null;
   const changes = useMemo(
     () =>
-      (data?.changes ?? []).map((change) => ({
+      (reviewChanges ?? []).map((change) => ({
         ...change,
         normalizedPath: normalizeOpencodeFilePath(change.file),
       })),
-    [data?.changes],
+    [reviewChanges],
   );
   const filteredChanges = useMemo(() => {
     const query = filter.trim().toLocaleLowerCase();
@@ -111,11 +179,14 @@ export function ProjectReviewScreen() {
     if (isManuallyRefreshing) return;
     setIsManuallyRefreshing(true);
     try {
-      await sessionQuery.resync();
+      await Promise.all([
+        sessionQuery.resync(),
+        ...(reviewMode === "last-turn" ? [refetchLastTurn()] : []),
+      ]);
     } finally {
       setIsManuallyRefreshing(false);
     }
-  }, [isManuallyRefreshing, sessionQuery.resync]);
+  }, [isManuallyRefreshing, sessionQuery.resync, reviewMode, refetchLastTurn]);
 
   useFocusEffect(
     useCallback(() => {
@@ -188,8 +259,72 @@ export function ProjectReviewScreen() {
       >
         {({ topInset }) => (
           <View style={[styles.content, { paddingTop: topInset }]}>
-            {changes.length === 0 ? (
+            <View
+              accessibilityRole="radiogroup"
+              accessibilityLabel="Changes to review"
+              style={styles.reviewModes}
+            >
+              {(canReviewLastTurn
+                ? (["working", "last-turn"] as const)
+                : (["working"] as const)
+              ).map((mode) => (
+                <Pressable
+                  key={mode}
+                  accessibilityRole="radio"
+                  accessibilityState={{ checked: reviewMode === mode }}
+                  onPress={() => changeReviewMode(mode)}
+                  style={[
+                    styles.reviewMode,
+                    {
+                      backgroundColor:
+                        reviewMode === mode
+                          ? theme.backgroundSelected
+                          : theme.backgroundElement,
+                    },
+                  ]}
+                >
+                  <ThemedText style={styles.reviewModeText}>
+                    {mode === "working"
+                      ? "Working changes"
+                      : "Last turn changes"}
+                  </ThemedText>
+                </Pressable>
+              ))}
+            </View>
+            {reviewError ? (
+              <View style={styles.center}>
+                <ThemedText accessibilityRole="alert" style={styles.emptyTitle}>
+                  Could not load last turn changes
+                </ThemedText>
+                <ThemedText
+                  style={styles.centerCopy}
+                  themeColor="textSecondary"
+                >
+                  {reviewError.message ||
+                    "The session snapshot is unavailable."}
+                </ThemedText>
+                <Pressable
+                  accessibilityRole="button"
+                  disabled={isManuallyRefreshing}
+                  onPress={() => void refreshManually()}
+                  style={[
+                    styles.refreshButton,
+                    { backgroundColor: theme.backgroundElement },
+                  ]}
+                >
+                  <ThemedText style={styles.refreshText}>Retry</ThemedText>
+                </Pressable>
+              </View>
+            ) : reviewMode === "last-turn" && lastTurnQuery.isPending ? (
+              <View style={styles.center}>
+                <ActivityIndicator />
+                <ThemedText themeColor="textSecondary">
+                  Loading last turn changes…
+                </ThemedText>
+              </View>
+            ) : changes.length === 0 ? (
               <EmptyChanges
+                mode={reviewMode}
                 refreshing={isManuallyRefreshing}
                 onRefresh={() => void refreshManually()}
               />
@@ -210,7 +345,9 @@ export function ProjectReviewScreen() {
                       style={styles.summarySubtitle}
                       themeColor="textSecondary"
                     >
-                      Session workspace changes
+                      {reviewMode === "last-turn"
+                        ? "Latest agent turn"
+                        : "Session workspace changes"}
                     </ThemedText>
                   </View>
                   <View style={styles.totals}>
@@ -521,9 +658,11 @@ function DiffRow({ row }: { row: OpencodeDiffRow }) {
 }
 
 function EmptyChanges({
+  mode,
   onRefresh,
   refreshing,
 }: {
+  mode: OpencodeReviewMode;
   onRefresh: () => void;
   refreshing: boolean;
 }) {
@@ -537,7 +676,9 @@ function EmptyChanges({
       />
       <ThemedText style={styles.emptyTitle}>No file changes</ThemedText>
       <ThemedText style={styles.centerCopy} themeColor="textSecondary">
-        No changes have been reported for this chat yet.
+        {mode === "last-turn"
+          ? "The latest turn has no file changes."
+          : "No changes have been reported for this chat yet."}
       </ThemedText>
       <Pressable
         accessibilityRole="button"
@@ -559,6 +700,16 @@ function EmptyChanges({
 }
 
 const styles = StyleSheet.create({
+  reviewModes: { flexDirection: "row", gap: 8, paddingVertical: 10 },
+  reviewMode: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    borderRadius: 10,
+    minHeight: 44,
+    paddingHorizontal: 8,
+  },
+  reviewModeText: { fontSize: 13, fontWeight: "600" },
   additions: { color: "#059669", fontFamily: Fonts.mono, fontSize: 12 },
   center: {
     alignItems: "center",

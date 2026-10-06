@@ -40,6 +40,7 @@ const sandboxProviderOptions = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ] as const;
 
 function SelectField({
@@ -257,7 +258,7 @@ export function CreateProjectFromTemplateDialog({
                   }
                   options={(instanceTypesQuery.data ?? []).map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   onChange={setInstanceTypeId}
                 />
@@ -311,7 +312,7 @@ export function CreateProjectFromTemplateDialog({
                   }
                   options={(sandboxTypesQuery.data ?? []).map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   onChange={setSandboxTypeId}
                 />

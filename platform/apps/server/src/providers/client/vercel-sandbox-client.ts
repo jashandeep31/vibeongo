@@ -48,10 +48,10 @@ export class VercelSandboxClient {
     try {
       const sandbox = await Sandbox.get({ ...credentials, name: instanceId });
       await sandbox.delete();
-    } catch {
-      // An already deleted sandbox is considered terminated.
+      return true;
+    } catch (e) {
+      return false;
     }
-    return true;
   }
 
   async getPreviewUrl({

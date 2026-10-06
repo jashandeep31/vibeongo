@@ -4,14 +4,16 @@ import {
 } from "@repo/api-client";
 import {
   useDeleteOpencodeSession,
+  useOpencodeCommands,
   useOpencodeInventory,
   useOpencodeProjectDirectories,
+  useReloadOpencodeConfig,
   useStartOpencodeSession,
   useUserSettings,
 } from "@repo/api-hooks";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -23,8 +25,10 @@ import {
 
 import {
   type ComposerDraft,
+  type OpencodeComposerAction,
   OpencodeComposerController,
 } from "@/components/projects/opencode-composer";
+import { OpencodeWorktreeDrawer } from "@/components/projects/opencode-worktree-drawer";
 import { ProjectChatStatus } from "@/components/projects/project-chat-status";
 import {
   ProjectChatSwitcherDrawer,
@@ -101,6 +105,13 @@ export function NewProjectChatScreen() {
     runtime.password,
   );
   const resolvedDirectory = directory || directoriesQuery.data?.[0]?.worktree;
+  const commandsQuery = useOpencodeCommands(
+    projectSessionId,
+    runtime.serverUrl,
+    runtime.accessToken,
+    resolvedDirectory,
+    runtime.password,
+  );
   const { data: userSettings } = useUserSettings();
   const startSession = useStartOpencodeSession();
   const deleteSession = useDeleteOpencodeSession({
@@ -217,6 +228,38 @@ export function NewProjectChatScreen() {
       params: { ...target, chatId: "new" },
     });
   };
+
+  const [isWorktreeDrawerOpen, setIsWorktreeDrawerOpen] = useState(false);
+  const openWorktrees = useCallback(() => {
+    Keyboard.dismiss();
+    setIsWorktreeDrawerOpen(true);
+  }, []);
+  const reloadConfig = useReloadOpencodeConfig({
+    chatId: projectSessionId,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+    directory: resolvedDirectory,
+  });
+  const composerActions = useMemo<OpencodeComposerAction[]>(
+    () => [
+      {
+        name: "reload",
+        description: "Reload OpenCode config",
+        run: () =>
+          reloadConfig.mutate(undefined, {
+            onError: (error) =>
+              Alert.alert("Could not reload config", error.message),
+          }),
+      },
+      {
+        name: "worktree",
+        description: "Manage worktrees",
+        run: openWorktrees,
+      },
+    ],
+    [openWorktrees, reloadConfig.mutate],
+  );
 
   const submit = (draft: ComposerDraft, restore: () => void) => {
     const { attachments, fileReferences, text } = draft;
@@ -345,7 +388,9 @@ export function NewProjectChatScreen() {
               </View>
               <OpencodeComposerController
                 accessibilityLabel="First prompt"
+                actions={composerActions}
                 autoFocus
+                commands={commandsQuery.data}
                 inventory={inventoryQuery.data}
                 isSubmitting={startSession.isPending}
                 onChangeSelection={setSelection}
@@ -354,6 +399,7 @@ export function NewProjectChatScreen() {
                   setIsSessionChatSwitcherOpen(true);
                 }}
                 onOpenTerminal={openTerminal}
+                onOpenWorktrees={openWorktrees}
                 onSubmit={submit}
                 placeholder="Describe the task…"
                 providerConnection={{
@@ -415,6 +461,21 @@ export function NewProjectChatScreen() {
           scopeProjectSessionId={projectSessionId}
           visible={isSessionChatSwitcherOpen}
         />
+        <OpencodeWorktreeDrawer
+          connection={{
+            accessToken: runtime.accessToken,
+            chatId: projectSessionId,
+            password: runtime.password,
+            serverUrl: runtime.serverUrl,
+          }}
+          currentDirectory={resolvedDirectory}
+          onClose={() => setIsWorktreeDrawerOpen(false)}
+          onSelect={(nextDirectory) => {
+            setIsWorktreeDrawerOpen(false);
+            router.setParams({ directory: nextDirectory });
+          }}
+          visible={isWorktreeDrawerOpen}
+        />
       </>
     </View>
   );
@@ -425,7 +486,7 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 24,
     justifyContent: "flex-end",
-    paddingBottom: 20,
+    paddingBottom: 10,
     paddingHorizontal: 20,
     zIndex: 2,
   },

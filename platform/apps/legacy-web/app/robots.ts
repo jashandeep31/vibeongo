@@ -1,14 +1,25 @@
 import type { MetadataRoute } from "next";
-
-const siteUrl = "https://vibeongo.com";
+import { SITE_URL, absoluteUrl } from "@/lib/seo";
 
 export default function robots(): MetadataRoute.Robots {
   return {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/dashboard", "/projects", "/chats", "/admin", "/invite"],
+      // Signed-in areas and routes that only redirect to app.vibeongo.com.
+      disallow: [
+        "/dashboard",
+        "/projects",
+        "/chats",
+        "/admin",
+        "/invite",
+        "/new",
+        "/login",
+        "/signup",
+        "/api/",
+      ],
     },
-    sitemap: `${siteUrl}/sitemap.xml`,
+    sitemap: absoluteUrl("/sitemap.xml"),
+    host: SITE_URL,
   };
 }

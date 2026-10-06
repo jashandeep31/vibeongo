@@ -1,6 +1,5 @@
 import {
-  useGetInstances,
-  useGetProjectsWithSessions,
+  useGetProjectOverview,
   useOpencodeSessions,
   useOpencodeStatus,
   useQueryClient,
@@ -15,6 +14,7 @@ import {
   streamOpencodeEvents,
   type Event,
   type OpencodeSessionData,
+  type ProjectOverviewInstance,
   type Session,
   type SessionStatus,
 } from "@repo/api-client";
@@ -26,10 +26,13 @@ import {
 } from "@repo/app-store";
 import { fetch as expoFetch } from "expo/fetch";
 import { useGlobalSearchParams, usePathname } from "expo-router";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import { AppState } from "react-native";
 
-import { useVibeongoWsV2 } from "@/hooks/use-vibeongo-ws-v2";
+import {
+  publishRuntimeSocket,
+  useVibeongoRuntimeSocket,
+} from "@/hooks/use-vibeongo-runtime-socket";
 import {
   loadProjectMetadataCache,
   saveProjectMetadataCache,
@@ -46,23 +49,24 @@ function getConfigValue(config: unknown, key: string) {
 
 function ProjectSessionRuntimeSync({
   activeOpencodeSessionId,
+  instance: overviewInstance,
+  instanceSyncState,
+  runtimeSocketEnabled,
   sessionId,
-  workspaceEnabled,
 }: {
   activeOpencodeSessionId: string;
+  // The session's running or suspended instance from the overview.
+  instance: ProjectOverviewInstance | undefined;
+  instanceSyncState: "pending" | "error" | "success";
+  runtimeSocketEnabled: boolean;
   sessionId: string;
-  workspaceEnabled: boolean;
 }) {
+  const instance =
+    overviewInstance?.state === "running" ? overviewInstance : undefined;
   const queryClient = useQueryClient();
   const activeOpencodeSessionIdRef = useRef(activeOpencodeSessionId);
   activeOpencodeSessionIdRef.current = activeOpencodeSessionId;
   const updateSession = useSessionsStore((store) => store.updateSession);
-  const instancesQuery = useGetInstances({
-    sessionId,
-    state: "running",
-    limit: 1,
-  });
-  const instance = instancesQuery.data?.data[0];
   const runtimeUrl = instance
     ? `https://3101-${instance.id}${instance.proxy_domain}`
     : "";
@@ -71,12 +75,19 @@ function ProjectSessionRuntimeSync({
     : "";
   const accessToken = instance?.access_token ?? "";
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
-  const terminalWorkspace = useVibeongoWsV2({
+  const runtimeSocket = useVibeongoRuntimeSocket({
     accessToken,
-    enabled: Boolean(workspaceEnabled && instance && localToken && accessToken),
+    enabled: Boolean(runtimeSocketEnabled && instance),
     localToken,
     runtimeUrl,
   });
+  useEffect(() => {
+    publishRuntimeSocket(sessionId, runtimeSocket);
+  }, [runtimeSocket, sessionId]);
+  useEffect(
+    () => () => publishRuntimeSocket(sessionId, undefined),
+    [sessionId],
+  );
   const setTerminalWorkspace = useTerminalWorkspaceStore(
     (store) => store.setWorkspace,
   );
@@ -143,22 +154,23 @@ function ProjectSessionRuntimeSync({
 
   useEffect(() => {
     setTerminalWorkspace(sessionId, {
-      activeTerminalSessionId: terminalWorkspace.activeTerminalSessionId,
-      favoriteDirs: terminalWorkspace.favoriteDirs,
-      status: terminalWorkspace.status,
-      terminalSessionIds: terminalWorkspace.terminalSessionIds,
-      terminalSessions: terminalWorkspace.terminalSessions,
-      tmuxSessions: terminalWorkspace.tmuxSessions,
+      activeTerminalSessionId: runtimeSocket.activeTerminalSessionId,
+      favoriteDirs: runtimeSocket.favoriteDirs,
+      status: runtimeSocket.status,
+      terminalSessionIds: runtimeSocket.terminalSessions.map(
+        (session) => session.id,
+      ),
+      terminalSessions: runtimeSocket.terminalSessions,
+      tmuxSessions: runtimeSocket.tmuxSessions,
     });
   }, [
+    runtimeSocket.activeTerminalSessionId,
+    runtimeSocket.favoriteDirs,
+    runtimeSocket.status,
+    runtimeSocket.terminalSessions,
+    runtimeSocket.tmuxSessions,
     sessionId,
     setTerminalWorkspace,
-    terminalWorkspace.activeTerminalSessionId,
-    terminalWorkspace.favoriteDirs,
-    terminalWorkspace.status,
-    terminalWorkspace.terminalSessionIds,
-    terminalWorkspace.terminalSessions,
-    terminalWorkspace.tmuxSessions,
   ]);
 
   useEffect(() => {
@@ -476,7 +488,6 @@ function ProjectSessionRuntimeSync({
   useEffect(() => {
     const subscription = AppState.addEventListener("change", (state) => {
       if (state !== "active") return;
-      void instancesQuery.refetch();
       if (instance) void statusQuery.refetch();
       if (isOpencodeRunning) {
         void sessionsQuery
@@ -488,7 +499,6 @@ function ProjectSessionRuntimeSync({
     return () => subscription.remove();
   }, [
     instance,
-    instancesQuery.refetch,
     isOpencodeRunning,
     prefetchChatMessages,
     sessionsQuery.refetch,
@@ -496,7 +506,7 @@ function ProjectSessionRuntimeSync({
   ]);
 
   useEffect(() => {
-    if (instancesQuery.isPending) {
+    if (instanceSyncState === "pending") {
       updateSession(sessionId, { instanceSyncState: "pending" });
       return;
     }
@@ -504,8 +514,9 @@ function ProjectSessionRuntimeSync({
     if (!instance) {
       updateSession(sessionId, {
         instance: null,
-        state: "stopped",
-        instanceSyncState: instancesQuery.isError ? "error" : "success",
+        state:
+          overviewInstance?.state === "suspended" ? "suspended" : "stopped",
+        instanceSyncState,
       });
       return;
     }
@@ -517,8 +528,8 @@ function ProjectSessionRuntimeSync({
     });
   }, [
     instance,
-    instancesQuery.isError,
-    instancesQuery.isPending,
+    overviewInstance,
+    instanceSyncState,
     isOpencodeRunning,
     sessionId,
     updateSession,
@@ -529,9 +540,7 @@ function ProjectSessionRuntimeSync({
 
 function getEventSessionId(event: Event) {
   const properties = event.properties as
-    | { sessionID?: unknown }
-    | null
-    | undefined;
+    { sessionID?: unknown } | null | undefined;
   return typeof properties?.sessionID === "string"
     ? properties.sessionID
     : undefined;
@@ -543,8 +552,7 @@ function sessionFromCreatedEvent(event: Event): Session | undefined {
   const location = value.location as { directory?: unknown } | undefined;
   if (typeof location?.directory !== "string") return undefined;
   const model = value.model as
-    | { id?: unknown; providerID?: unknown; variant?: unknown }
-    | undefined;
+    { id?: unknown; providerID?: unknown; variant?: unknown } | undefined;
   return {
     id: value.sessionID,
     slug: typeof value.slug === "string" ? value.slug : value.sessionID,
@@ -595,7 +603,54 @@ export function ProjectStoreSync({
   const { chatId } = useGlobalSearchParams<{
     chatId?: string | string[];
   }>();
-  const { data: projectsWithSessions } = useGetProjectsWithSessions(enabled);
+  const overviewQuery = useGetProjectOverview({ enabled });
+  const { fetchNextPage, hasNextPage, isFetchingNextPage } = overviewQuery;
+  // The home screen lists every project, so keep paging until the overview
+  // is complete and only apply it to the stores then.
+  useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const overviewPages = overviewQuery.data?.pages;
+  const projectsWithSessions = useMemo(
+    () =>
+      overviewPages && !hasNextPage
+        ? overviewPages.flatMap((page) => page.data)
+        : undefined,
+    [hasNextPage, overviewPages],
+  );
+  const instancesBySessionId = useMemo(
+    () =>
+      new Map(
+        (projectsWithSessions ?? []).flatMap((project) =>
+          project.sessions.map(
+            (session) =>
+              [
+                session.id,
+                session.instances.find(
+                  (instance) => instance.state === "running",
+                ) ??
+                  session.instances.find(
+                    (instance) => instance.state === "suspended",
+                  ),
+              ] as const,
+          ),
+        ),
+      ),
+    [projectsWithSessions],
+  );
+  const instanceSyncState = projectsWithSessions
+    ? "success"
+    : overviewQuery.isError
+      ? "error"
+      : "pending";
+  const refetchOverview = overviewQuery.refetch;
+  useEffect(() => {
+    if (!enabled) return;
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void refetchOverview();
+    });
+    return () => subscription.remove();
+  }, [enabled, refetchOverview]);
   const sessions = useSessionsStore((store) => store.sessions);
   const addAllProjects = useProjectsStore((store) => store.addAllProjects);
   const addAllSessions = useSessionsStore((store) => store.addAllSessions);
@@ -651,7 +706,7 @@ export function ProjectStoreSync({
 
     addAllSessions(
       projectsWithSessions.flatMap((project) =>
-        project.sessions.map((session) => {
+        project.sessions.map(({ instances: _instances, ...session }) => {
           const existing = existingSessions.get(session.id);
           return existing
             ? { ...existing, session }
@@ -670,7 +725,11 @@ export function ProjectStoreSync({
       projectsWithSessions.map(
         ({ sessions: _sessions, ...project }) => project,
       ),
-      projectsWithSessions.flatMap((project) => project.sessions),
+      projectsWithSessions.flatMap((project) =>
+        project.sessions.map(
+          ({ instances: _instances, ...session }) => session,
+        ),
+      ),
     );
   }, [addAllProjects, addAllSessions, cacheOwnerId, projectsWithSessions]);
 
@@ -688,8 +747,11 @@ export function ProjectStoreSync({
       ? workspaceChatId
       : ""
     : (legacyActiveChatMatch?.[2] ?? "");
-  const terminalWorkspaceMatch = pathname.match(
-    /^\/projects\/[^/]+\/sessions\/([^/]+)\/terminal(?:\/|$)/,
+  // The runtime socket (stats, logs, tool status, terminal lists) stays
+  // connected on every page of a project session: chats, files, terminal,
+  // settings, review.
+  const sessionRouteMatch = pathname.match(
+    /^\/projects\/[^/]+\/sessions\/([^/]+)(?:\/|$)/,
   );
 
   if (!enabled) return null;
@@ -699,9 +761,11 @@ export function ProjectStoreSync({
       activeOpencodeSessionId={
         session.id === activeProjectSessionId ? activeOpencodeSessionId : ""
       }
+      instance={instancesBySessionId.get(session.id)}
+      instanceSyncState={instanceSyncState}
       key={session.id}
+      runtimeSocketEnabled={sessionRouteMatch?.[1] === session.id}
       sessionId={session.id}
-      workspaceEnabled={terminalWorkspaceMatch?.[1] === session.id}
     />
   ));
 }

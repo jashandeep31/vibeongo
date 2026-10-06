@@ -13,6 +13,9 @@ const MarkdownRenderer = memo(({ content }: MarkdownRendererProps) => {
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
+          strong: ({ className, ...props }) => (
+            <strong className={cn("font-bold", className)} {...props} />
+          ),
           h1: ({ className, ...props }) => (
             <h1
               className={cn(

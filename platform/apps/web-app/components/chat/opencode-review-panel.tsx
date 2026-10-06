@@ -22,11 +22,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { useEffect, useMemo, useState } from "react";
 
 type DiffStyle = "unified" | "split";
 
@@ -35,11 +31,17 @@ const DIFF_STYLE_KEY = "vibeongo-opencode-review-diff-style";
 export function OpencodeReviewPanel({
   changes,
   isRefreshing,
+  mode,
+  onModeChange,
+  changesError,
   chatUrl,
   onRefresh,
 }: {
   changes: SnapshotFileDiff[];
   isRefreshing?: boolean;
+  mode?: "working" | "last-turn";
+  onModeChange?: (mode: "working" | "last-turn") => void;
+  changesError?: string;
   chatUrl: string;
   onRefresh?: () => void;
 }) {
@@ -131,7 +133,8 @@ export function OpencodeReviewPanel({
         <div className="min-w-0">
           <h2 className="truncate text-sm font-medium">Review changes</h2>
           <p className="text-muted-foreground text-xs tabular-nums">
-            {normalizedChanges.length} {normalizedChanges.length === 1 ? "file" : "files"}
+            {normalizedChanges.length}{" "}
+            {normalizedChanges.length === 1 ? "file" : "files"}
             {normalizedChanges.length > 0 ? (
               <>
                 {" · "}<span className="text-emerald-600 dark:text-emerald-400">+{additions}</span>{" "}
@@ -141,6 +144,21 @@ export function OpencodeReviewPanel({
           </p>
         </div>
         <div className="ml-auto flex items-center gap-1">
+          {onModeChange ? (
+            <select
+              aria-label="Changes to review"
+              className="bg-background max-w-36 min-w-0 rounded-md border px-2 py-1 text-xs"
+              value={mode ?? "working"}
+              onChange={(event) =>
+                onModeChange(
+                  event.target.value === "last-turn" ? "last-turn" : "working",
+                )
+              }
+            >
+              <option value="working">Working changes</option>
+              <option value="last-turn">Last turn changes</option>
+            </select>
+          ) : null}
           <div className="border-border mr-1 hidden items-center rounded-md border sm:flex">
             <Button
               type="button"
@@ -186,7 +204,15 @@ export function OpencodeReviewPanel({
         </div>
       </header>
 
-      {normalizedChanges.length === 0 ? (
+      {changesError ? (
+        <div role="alert" className="text-destructive p-6 text-sm">
+          {changesError}
+        </div>
+      ) : isRefreshing && normalizedChanges.length === 0 ? (
+        <div role="status" className="text-muted-foreground p-6 text-sm">
+          Loading changes…
+        </div>
+      ) : normalizedChanges.length === 0 ? (
         <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center text-sm">
           <GitCompareArrows className="size-8 opacity-40" />
           <div>
@@ -302,8 +328,10 @@ function ReviewDiffPreview({
   return (
     <>
       <div className="border-border flex min-w-0 items-center gap-2 border-b px-3 py-2 text-xs">
-        <FileCode2 className="text-violet-500 size-3.5 shrink-0" />
-        <span className="min-w-0 flex-1 truncate" title={path}>{path}</span>
+        <FileCode2 className="size-3.5 shrink-0 text-violet-500" />
+        <span className="min-w-0 flex-1 truncate" title={path}>
+          {path}
+        </span>
         <span className="shrink-0 font-mono tabular-nums">
           <span className="text-emerald-600 dark:text-emerald-400">+{diff.additions}</span>{" "}
           <span className="text-red-600 dark:text-red-400">-{diff.deletions}</span>
@@ -435,7 +463,13 @@ function pairSplitDiffRows(rows: OpencodeDiffRow[]) {
   return pairs;
 }
 
-function SplitDiffCell({ row, side }: { row?: OpencodeDiffRow; side: "old" | "new" }) {
+function SplitDiffCell({
+  row,
+  side,
+}: {
+  row?: OpencodeDiffRow;
+  side: "old" | "new";
+}) {
   return (
     <div
       className={cn(

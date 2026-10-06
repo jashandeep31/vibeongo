@@ -56,7 +56,7 @@ export default function GitRepoActivityDetailsView({
     ? (item as GitRepoPullRequest | undefined)
     : undefined;
   const providerName = repo?.type === "forgejo" ? "Forgejo" : "GitHub";
-  const canAutomate = repo?.type === "github" && Boolean(repo.default_project_id);
+  const canAutomate = Boolean(repo?.default_project_id);
   const automationPending = generateFix.isPending || generateReview.isPending;
   const automationLabel = isIssue ? "Fix with AI" : "Review with AI";
 
@@ -121,11 +121,9 @@ export default function GitRepoActivityDetailsView({
       size="sm"
       disabled={!canAutomate || automationPending}
       title={
-        repo.type !== "github"
-          ? "AI actions are currently available for GitHub repositories"
-          : !repo.default_project_id
-            ? "Choose a default project to use AI actions"
-            : automationLabel
+        !repo.default_project_id
+          ? "Choose a default project to use AI actions"
+          : automationLabel
       }
     >
       {!repo.default_project_id ? (

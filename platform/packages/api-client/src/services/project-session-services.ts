@@ -93,6 +93,18 @@ export const resumeProjectSession =
     return response.data;
   };
 
+export const resumeSuspendedSession =
+  (apiClient: AxiosInstance) =>
+  async (id: string): Promise<{ message: string }> => {
+    const response = await apiClient.post(
+      `/api/v1/project-sessions/${id}/resume`,
+      undefined,
+      { withCredentials: true },
+    );
+
+    return response.data;
+  };
+
 export const archiveProjectSession =
   (apiClient: AxiosInstance) =>
   async ({ id, action }: ArchiveProjectSessionInput) => {

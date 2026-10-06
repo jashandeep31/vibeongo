@@ -4,6 +4,7 @@ import { DigitalOceanClient } from "./client/digitalocean-client.js";
 import { E2BClient } from "./client/e2b-client.js";
 import { DaytonaClient } from "./client/daytona-client.js";
 import { VercelSandboxClient } from "./client/vercel-sandbox-client.js";
+import { BoatClient } from "./client/boat-client.js";
 import type {
   TerminateProviderInstanceProps,
   TerminateProviderInstanceResponse,
@@ -14,6 +15,7 @@ const digitalOceanClient = new DigitalOceanClient();
 const e2bClient = new E2BClient();
 const daytonaClient = new DaytonaClient();
 const vercelClient = new VercelSandboxClient();
+const boatClient = new BoatClient();
 
 export const terminateProviderInstance = async ({
   provider,
@@ -44,6 +46,8 @@ const terminateSandboxInstance = async ({
         return daytonaClient.terminateInstance(instanceId);
       case "vercel":
         return vercelClient.terminateInstance(instanceId);
+      case "boat":
+        return boatClient.terminateInstance(instanceId);
       default:
         throw new AppError("Sandbox provider not found", 404);
     }

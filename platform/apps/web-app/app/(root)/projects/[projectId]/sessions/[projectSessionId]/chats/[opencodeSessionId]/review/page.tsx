@@ -5,6 +5,8 @@ import { OpencodeReviewPanel } from "@/components/chat/opencode-review-panel";
 import {
   useGetInstances,
   useOpencodeInventory,
+  useOpencodeLastTurnChanges,
+  useOpencodeReviewProjectVcs,
   useOpencodeSession,
 } from "@repo/api-hooks";
 import { getOpencodePassword } from "@repo/api-client";
@@ -14,6 +16,9 @@ import { Skeleton } from "@repo/ui/components/skeleton";
 import { TriangleAlert } from "lucide-react";
 import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+
+const REVIEW_MODE_KEY = "vibeongo-opencode-review-mode";
 
 export default function OpencodeReviewPage() {
   const { projectId, projectSessionId, opencodeSessionId } = useParams<{
@@ -21,6 +26,29 @@ export default function OpencodeReviewPage() {
     projectSessionId: string;
     opencodeSessionId: string;
   }>();
+  const reviewModeKey = `${REVIEW_MODE_KEY}:${projectSessionId}:${opencodeSessionId}`;
+  const [savedMode, setSavedMode] = useState<{
+    key: string;
+    mode: "working" | "last-turn";
+  }>();
+  useEffect(() => {
+    let mode: "working" | "last-turn" = "working";
+    try {
+      if (window.localStorage.getItem(reviewModeKey) === "last-turn")
+        mode = "last-turn";
+    } catch {
+      /* Storage may be unavailable. */
+    }
+    setSavedMode({ key: reviewModeKey, mode });
+  }, [reviewModeKey]);
+  const changeReviewMode = (mode: "working" | "last-turn") => {
+    setSavedMode({ key: reviewModeKey, mode });
+    try {
+      window.localStorage.setItem(reviewModeKey, mode);
+    } catch {
+      /* Keep the selection for this visit. */
+    }
+  };
   const searchParams = useSearchParams();
   const requestedServerUrl = searchParams.get("serverUrl") ?? "";
   const storedInstance = useSessionsStore(
@@ -53,6 +81,43 @@ export default function OpencodeReviewPage() {
     accessToken,
     password,
   });
+  const reviewVcs = useOpencodeReviewProjectVcs({
+    chatId: projectSessionId,
+    directory: data?.session.directory,
+    serverUrl,
+    accessToken,
+    password,
+  });
+  const canReviewLastTurn = reviewVcs.data === "git";
+  const reviewMode =
+    canReviewLastTurn && savedMode?.key === reviewModeKey
+      ? savedMode.mode
+      : "working";
+  const lastTurnQuery = useOpencodeLastTurnChanges({
+    chatId: projectSessionId,
+    sessionId: opencodeSessionId,
+    serverUrl,
+    accessToken,
+    password,
+    enabled: reviewMode === "last-turn",
+  });
+  const { refetch: refetchLastTurn } = lastTurnQuery;
+  // Refresh snapshots after another client or the live event stream updates this session.
+  useEffect(() => {
+    if (reviewMode === "last-turn" && data?.session.time.updated)
+      void refetchLastTurn();
+  }, [
+    reviewMode,
+    data?.session.time.updated,
+    data?.status.type,
+    refetchLastTurn,
+  ]);
+  const refreshChanges = () => {
+    void resync();
+    if (reviewMode === "last-turn") void refetchLastTurn();
+  };
+  const refreshingChanges =
+    isFetching || (reviewMode === "last-turn" && lastTurnQuery.isFetching);
   const inventoryQuery = useOpencodeInventory(
     projectSessionId,
     serverUrl,
@@ -105,16 +170,27 @@ export default function OpencodeReviewPage() {
         directory={data.session.directory}
         session={data}
         inventory={inventoryQuery.data}
-        isRefreshing={isFetching}
-        onRefresh={() => void resync()}
+        isRefreshing={refreshingChanges}
+        onRefresh={refreshChanges}
         reviewActive
       />
       <main className="min-h-0 flex-1">
         <OpencodeReviewPanel
-          changes={data.changes}
+          changes={
+            reviewMode === "last-turn"
+              ? (lastTurnQuery.data ?? [])
+              : data.changes
+          }
+          mode={reviewMode}
+          onModeChange={canReviewLastTurn ? changeReviewMode : undefined}
+          changesError={
+            reviewMode === "last-turn"
+              ? lastTurnQuery.error?.message
+              : undefined
+          }
           chatUrl={chatUrl}
-          isRefreshing={isFetching}
-          onRefresh={() => void resync()}
+          isRefreshing={refreshingChanges}
+          onRefresh={refreshChanges}
         />
       </main>
     </div>

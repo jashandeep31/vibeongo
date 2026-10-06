@@ -1,7 +1,8 @@
 import { AppError } from "../../lib/app-error.js";
 import { catchAsync } from "../../lib/catch-async.js";
 import { Request, Response } from "express";
-import { terminateInstanceAndChargeUsage } from "../../services/instances/terminate-instance-and-charge-usage.js";
+import { runInstanceActionWithLock } from "../../services/instances/instance-lifecycle.js";
+import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
 
 export const terminateByIdInstance = catchAsync(
   async (req: Request, res: Response) => {
@@ -12,10 +13,25 @@ export const terminateByIdInstance = catchAsync(
 
     if (!user) throw new AppError("authentication is required", 400);
 
-    await terminateInstanceAndChargeUsage({
+    const lock = await runInstanceActionWithLock({
       instanceId: id,
       userId: user.id,
+      action: "terminate",
     });
+
+    if (!lock.acquired) {
+      await addTerminateOrPauseInstanceJob({
+        instanceId: id,
+        action: "terminate",
+        delayInMinutes: 1,
+      });
+
+      res.status(202).json({
+        message:
+          "Your termination request is being processed. It will be processed in the next few minutes.",
+      });
+      return;
+    }
 
     res.status(200).json({
       message: "Instance terminated successfully",

@@ -1,4 +1,5 @@
 import { ExpoConfig, ConfigContext } from "expo/config";
+import { version } from "./package.json";
 export default ({ config }: ConfigContext) => {
   const VARIANT: "development" | "production" = process.env.APP_VARIANT! as any;
 
@@ -9,6 +10,7 @@ export default ({ config }: ConfigContext) => {
 
   return {
     ...config,
+    version,
     name: APP_NAME,
     ios: {
       ...config.ios,

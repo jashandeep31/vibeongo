@@ -26,8 +26,10 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	// protected.GET("/stats", handlers.GetRuntimeStats)
 	protected.GET("/ufw", handlers.GetAllowedPorts)
 	protected.POST("/restart-dev-script", handlers.RestartDevScriptHandler)
+	protected.POST("/opencode/renew-credentials", handlers.RenewOpencodeCredentialsHandler)
 	protected.GET("/terminate-after-done", handlers.GetTerminateAfterDone)
 	protected.POST("/terminate-after-done/disable", handlers.DisableTerminateAfterDone)
+	protected.POST("/clear-secrets", handlers.ClearSecretsHandler)
 
 	protected.PUT("/fs", handlers.UpdateFileContent)
 	protected.DELETE("/fs", handlers.DeleteFileOrFolder)
@@ -36,4 +38,5 @@ func Register(e *echo.Echo, tools *store.Tools, localToken string) {
 	protected.GET("/fs/search", handlers.SearchFiles)
 	protected.POST("/fs/upload", handlers.UploadFile)
 	protected.POST("/fs/create", handlers.CreateFileOrFolder)
+
 }

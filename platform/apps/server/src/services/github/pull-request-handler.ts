@@ -11,8 +11,8 @@ import {
 import { createInstanceSchema } from "@repo/shared";
 import { createTasksForPRIssueOrCommentAgent } from "../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
 import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
-import { getPullRequestDetailByPullNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { createProjectSessionInstance } from "../instances/create-project-session-instance.js";
+import { getIssueOrPullRequestForRepo } from "./get-issue-or-pr-for-repo.js";
 
 interface pullRequestOpenedHandlerProps {
   gitRepoId: string;
@@ -49,17 +49,13 @@ export const pullRequestOpenedHandler = async ({
     throw new Error("repo not found");
   }
 
-  const pullRequest = await getPullRequestDetailByPullNumber({
-    installation_id: repo.installation_id,
-    full_repo_name: repo.full_name,
-    pull_number: prNumber,
-  });
+  const pullRequest = await getIssueOrPullRequestForRepo(repo, "pr", prNumber);
   const sessionMeta = await getSessionNameAndDescriptionAgent(
     pullRequest.title + "\n" + pullRequest.body,
   );
   const generatedTasks = await createTasksForPRIssueOrCommentAgent(
     "pr",
-    `${pullRequest.url} body: ${pullRequest.body}`,
+    `${pullRequest.html_url} body: ${pullRequest.body}`,
   );
   const [settings] = await db
     .select()

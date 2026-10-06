@@ -2,7 +2,7 @@
   "expo": {
     "name": "VibeOnGo",
     "slug": "mobile-app",
-    "version": "1.0.1",
+    "version": "0.0.1",
     "orientation": "portrait",
     "icon": "./assets/images/vibeongo-logo.png",
     "scheme": "vibeongo",
@@ -20,7 +20,14 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
+      ],
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",
@@ -47,7 +54,8 @@
           "microphonePermission": "Allow VibeOnGo to record audio for speech-to-text prompts.",
           "enableBackgroundRecording": false
         }
-      ]
+      ],
+      "expo-notifications"
     ],
     "experiments": {
       "typedRoutes": true,
@@ -59,6 +67,12 @@
         "projectId": "935cdf8b-4b80-4b31-9500-22e22fb871f7"
       }
     },
-    "owner": "jashansingup"
+    "owner": "jashansingup",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/935cdf8b-4b80-4b31-9500-22e22fb871f7"
+    }
   }
 }

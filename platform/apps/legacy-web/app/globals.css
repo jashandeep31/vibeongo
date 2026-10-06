@@ -50,3 +50,271 @@
     padding-inline: 1rem;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Landing page motion                                                 */
+/* ------------------------------------------------------------------ */
+
+.lp-hero-glow {
+  background: radial-gradient(
+    closest-side,
+    rgba(91, 92, 240, 0.16),
+    rgba(91, 92, 240, 0.07) 45%,
+    rgba(91, 92, 240, 0) 100%
+  );
+}
+
+.lp-underline {
+  position: relative;
+  white-space: nowrap;
+}
+.lp-underline::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.03em;
+  height: 0.075em;
+  border-radius: 999px;
+  background: var(--lp-accent);
+  transform-origin: left;
+  animation: lp-sweep 700ms cubic-bezier(0.7, 0, 0.2, 1) 650ms both;
+}
+
+.lp-strike::after {
+  content: "";
+  position: absolute;
+  left: -4px;
+  right: -4px;
+  top: 54%;
+  height: 3px;
+  border-radius: 999px;
+  background: #ef4444;
+  transform: scaleX(0);
+  transform-origin: left;
+}
+[data-inview] .lp-strike::after {
+  animation: lp-sweep 380ms cubic-bezier(0.7, 0, 0.2, 1) calc(var(--d, 0ms) + 450ms) forwards;
+}
+#forgejo .lp-strike::after {
+  height: 0.09em;
+  background: #ff7a1a;
+}
+
+/* 3D hero shot */
+.lp-stage {
+  perspective: 1800px;
+}
+.lp-tilt {
+  transform: rotateX(14deg) scale(0.94);
+  transform-origin: 50% 0;
+  transition: transform 600ms ease;
+}
+@supports (animation-timeline: view()) {
+  .lp-tilt {
+    animation: lp-untilt linear both;
+    animation-timeline: view();
+    animation-range: entry 0% cover 45%;
+  }
+}
+
+.lp-phone-stage {
+  perspective: 1400px;
+}
+.lp-phone {
+  transform: rotateY(-14deg) rotateX(6deg);
+  transition: transform 700ms cubic-bezier(0.2, 1, 0.3, 1);
+}
+.lp-phone-stage:hover .lp-phone {
+  transform: rotateY(-4deg) rotateX(2deg) translateY(-8px);
+}
+
+.lp-float {
+  animation: lp-float 6s ease-in-out infinite;
+}
+
+.lp-card {
+  transition:
+    transform 300ms cubic-bezier(0.2, 1, 0.3, 1),
+    box-shadow 300ms ease;
+}
+.lp-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 24px 60px -30px rgba(23, 24, 28, 0.35);
+}
+
+.lp-nudge {
+  animation: lp-nudge 1.6s ease-in-out infinite;
+}
+.lp-pulse {
+  animation: lp-pulse 1.8s ease-in-out infinite;
+}
+.lp-blink {
+  animation: lp-blink 1s steps(2) infinite;
+}
+
+.lp-draw {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+}
+[data-inview] .lp-draw {
+  animation: lp-draw 1100ms cubic-bezier(0.5, 0, 0.3, 1) var(--d, 0ms) forwards;
+}
+.lp-dot {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+/* Entrance states: only hidden when JS can reveal them and motion is OK. */
+@media (scripting: enabled) and (prefers-reduced-motion: no-preference) {
+  .lp-hero-in {
+    animation: lp-rise 800ms cubic-bezier(0.2, 1, 0.3, 1) both;
+  }
+  .lp-scope .lp-reveal,
+  .lp-scope .lp-rise,
+  .lp-scope .lp-pop,
+  .lp-scope .lp-dot,
+  .lp-scope .lp-stamp {
+    opacity: 0;
+  }
+  [data-inview] .lp-reveal {
+    animation: lp-rise 700ms cubic-bezier(0.2, 1, 0.3, 1) var(--d, 0ms) both;
+  }
+  [data-inview] .lp-rise {
+    animation: lp-rise 650ms cubic-bezier(0.2, 1, 0.3, 1) var(--d, 0ms) both;
+  }
+  [data-inview] .lp-pop {
+    animation: lp-pop 800ms cubic-bezier(0.2, 1.2, 0.3, 1) var(--d, 150ms) both;
+  }
+  [data-inview] .lp-dot {
+    animation: lp-pop-dot 350ms cubic-bezier(0.2, 1.6, 0.4, 1) var(--d, 0ms) both;
+  }
+  [data-inview] .lp-stamp {
+    animation: lp-stamp 350ms cubic-bezier(0.3, 1.6, 0.5, 1) 1750ms both;
+  }
+  .lp-line {
+    transform: scaleX(0);
+    transform-origin: left;
+  }
+  [data-inview] .lp-line {
+    animation: lp-sweep 1400ms cubic-bezier(0.6, 0, 0.2, 1) 300ms forwards;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lp-tilt,
+  .lp-phone {
+    transform: none;
+    animation: none;
+  }
+  .lp-float,
+  .lp-nudge,
+  .lp-pulse,
+  .lp-blink,
+  .lp-underline::after {
+    animation: none;
+  }
+  .lp-draw {
+    stroke-dashoffset: 0;
+  }
+  .lp-strike::after {
+    transform: scaleX(1);
+    animation: none !important;
+  }
+}
+
+@keyframes lp-rise {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lp-pop {
+  from { opacity: 0; transform: perspective(1200px) rotateX(18deg) translateY(40px) scale(0.94); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lp-pop-dot {
+  from { opacity: 0; transform: scale(0); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes lp-stamp {
+  from { opacity: 0; transform: rotate(-8deg) scale(2.4); }
+  to { opacity: 1; transform: rotate(-8deg) scale(1); }
+}
+@keyframes lp-sweep {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+@keyframes lp-draw {
+  to { stroke-dashoffset: 0; }
+}
+@keyframes lp-untilt {
+  from { transform: rotateX(18deg) scale(0.92); }
+  to { transform: rotateX(0deg) scale(1); }
+}
+@keyframes lp-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+@keyframes lp-nudge {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(4px); }
+}
+@keyframes lp-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.6); }
+  50% { box-shadow: 0 0 0 6px rgba(52, 211, 153, 0); }
+}
+@keyframes lp-blink {
+  50% { opacity: 0; }
+}
+
+/* Smooth in-page anchor scrolling (e.g. nav "#features" links). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Landing theme tokens (light / dark)                                 */
+/* ------------------------------------------------------------------ */
+
+:root {
+  --lp-canvas: #f7f6f2;
+  --lp-surface: #ffffff;
+  --lp-muted: #f2f1ed;
+  --lp-ink: #17181c;
+  --lp-on-ink: #ffffff;
+  --lp-accent: #5b5cf0;
+  --lp-accent-soft: #eeefff;
+  --lp-accent-tint: #e9e9ff;
+  --lp-grid: rgba(23, 24, 28, 0.04);
+}
+
+.dark {
+  --lp-canvas: #0b0c0f;
+  --lp-surface: #141519;
+  --lp-muted: #1c1d23;
+  --lp-ink: #f2f1ed;
+  --lp-on-ink: #17181c;
+  --lp-accent: #8b8cff;
+  --lp-accent-soft: #212348;
+  --lp-accent-tint: #191a36;
+  --lp-grid: rgba(255, 255, 255, 0.045);
+}
+
+/* Shadows that read on a dark canvas: deeper drop plus a hairline edge. */
+.dark .lp-card:hover {
+  box-shadow:
+    0 24px 60px -30px rgba(0, 0, 0, 0.9),
+    0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+.dark .lp-hero-glow {
+  background: radial-gradient(
+    closest-side,
+    rgba(91, 92, 240, 0.28),
+    rgba(91, 92, 240, 0.1) 45%,
+    rgba(91, 92, 240, 0) 100%
+  );
+}
+
+/* The matching --color-lp-* Tailwind tokens live in @repo/ui globals.css:
+   this file is not processed by Tailwind, so @theme here would be ignored. */

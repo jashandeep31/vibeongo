@@ -11,3 +11,12 @@ export const formatInternalMoney = (
   amount: number,
   fractionDigits = 7,
 ): string => (amount / INTERNAL_MONEY_SCALE).toFixed(fractionDigits);
+
+/** Below this wallet balance the apps warn that sessions may fail to start. */
+export const LOW_BALANCE_THRESHOLD = 5 * INTERNAL_MONEY_SCALE;
+
+/** Matches the server's "Insufficient balance…" launch errors. */
+export const isInsufficientBalanceMessage = (
+  message: string | null | undefined,
+): boolean =>
+  !!message?.trim().toLowerCase().startsWith("insufficient balance");

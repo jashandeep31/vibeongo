@@ -32,6 +32,7 @@ const sandboxProviderOptions: Choice[] = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ];
 
 function getErrorMessage(error: unknown) {
@@ -256,7 +257,7 @@ export function CreateProjectFromTemplateDrawer({
                 onChange={setInstanceTypeId}
                 options={(instanceTypesQuery.data ?? []).map((type) => ({
                   id: type.id,
-                  label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                 }))}
                 placeholder="Select a machine type"
                 value={instanceTypeId}
@@ -297,7 +298,7 @@ export function CreateProjectFromTemplateDrawer({
                 onChange={setSandboxTypeId}
                 options={(sandboxTypesQuery.data ?? []).map((type) => ({
                   id: type.id,
-                  label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                 }))}
                 placeholder="Select a machine type"
                 value={sandboxTypeId}

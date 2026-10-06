@@ -34,11 +34,15 @@ export const transcribeAudio = catchAsync(
 
     const isMp4 =
       audio.buffer.length >= 12 &&
-      audio.buffer.toString("ascii", 4, 8) === "ftyp";
-    if (
-      !isMp4 ||
-      !["audio/mp4", "audio/m4a", "audio/x-m4a"].includes(audio.mimetype)
-    ) {
+      audio.buffer.toString("ascii", 4, 8) === "ftyp" &&
+      ["audio/mp4", "audio/m4a", "audio/x-m4a"].includes(audio.mimetype);
+    // WAV is what the mobile app uploads when live streaming falls back.
+    const isWav =
+      audio.buffer.length >= 12 &&
+      audio.buffer.toString("ascii", 0, 4) === "RIFF" &&
+      audio.buffer.toString("ascii", 8, 12) === "WAVE" &&
+      ["audio/wav", "audio/x-wav", "audio/wave"].includes(audio.mimetype);
+    if (!isMp4 && !isWav) {
       throw new AppError("Unsupported audio format", 415);
     }
 

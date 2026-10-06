@@ -1,55 +1,87 @@
 package server
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/routes"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/store"
+	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
 	"github.com/labstack/echo/v5"
 	"github.com/labstack/echo/v5/middleware"
 )
 
-// Start starts the application.
+// Start keeps public runtime routes separate from the private token bridge.
 func Start() error {
 	cfg, err := config.LoadAndValidate()
 	if err != nil {
 		return err
 	}
+	if err := utils.EnsurePluginTokenFile(); err != nil {
+		return err
+	}
+	if utils.GetOpencodePluginToken() == "" {
+		return errors.New("OpenCode plugin token is unavailable")
+	}
 
-	// go handlers.GetAllowedPortsTestfunc()
-	e := echo.New()
-
-	// spinning up the opencode web server
-	// openCode := store.NewOpencodeWeb()
-	// t3Code := store.NewT3Code()
+	privateListener, err := net.Listen("tcp", "127.0.0.1:3102")
+	if err != nil {
+		return fmt.Errorf("bind private OpenCode bridge on 127.0.0.1:3102: %w", err)
+	}
+	defer privateListener.Close()
+	publicListener, err := net.Listen("tcp", ":3101")
+	if err != nil {
+		return fmt.Errorf("bind public runtime server: %w", err)
+	}
+	defer publicListener.Close()
 
 	tools := store.NewTools()
+	public := echo.New()
+	public.Use(middleware.CORS("*"))
+	public.Use(middleware.RequestLogger())
+	routes.Register(public, tools, cfg.InstanceConfig.VibeongoLocalToken)
+	private := echo.New()
+	routes.RegisterOpencodeInternal(private)
 
-	// NOTE: we are not using this option any more as this starting the opencode server before the complete setup causes the issue of not loading the folders of that project properly
-	// go func() {
-	// 	if err := openCode.StartWebServer(); err != nil {
-	// 		e.Logger.Error("failed to start opencode web server", "error", err)
-	// 	}
-	// }()
-	//
-	//
-	//NOTE: testing purposes remove this in the production
+	ctx, cancel := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer cancel()
+	publicServer := &http.Server{Handler: public, ReadHeaderTimeout: 10 * time.Second, BaseContext: func(net.Listener) context.Context { return ctx }}
+	privateServer := &http.Server{Handler: private, ReadHeaderTimeout: 5 * time.Second, ReadTimeout: 5 * time.Second, WriteTimeout: 40 * time.Second, IdleTimeout: 30 * time.Second, BaseContext: func(net.Listener) context.Context { return ctx }}
+	failures := make(chan error, 2)
+	go func() { failures <- privateServer.Serve(privateListener) }()
+	go func() { failures <- publicServer.Serve(publicListener) }()
+	// Both listeners and the token file exist before OpenCode loads plugins.
+	opencodeDone := make(chan struct{})
 	go func() {
-		tools.OpenCode.StartWebServer()
+		defer close(opencodeDone)
+		if err := tools.OpenCode.StartWebServerWithRetryContext(ctx); err != nil && ctx.Err() == nil {
+			public.Logger.Error("failed to start opencode web server", "error", err)
+		}
 	}()
 
-	// Allow requests from every origin. Echo reflects requested headers for
-	// preflight requests when no explicit AllowHeaders list is configured.
-	e.Use(middleware.CORS("*"))
-
-	e.Use(middleware.RequestLogger())
-
-	// routes of app
-	routes.Register(e, tools, cfg.InstanceConfig.VibeongoLocalToken)
-
-	// address := ":" + config.ENV.PORT
-	address := ":" + "3101"
-	if err := e.Start(address); err != nil {
-		e.Logger.Error("failed to start server", "error", err)
+	select {
+	case err = <-failures:
+		if errors.Is(err, http.ErrServerClosed) {
+			err = nil
+		}
+	case <-ctx.Done():
+		err = nil
 	}
-	return nil
+	cancel()
+	// Closing also cancels any outstanding bridge request through BaseContext.
+	_ = privateServer.Close()
+	_ = publicServer.Close()
+	<-opencodeDone
+	if stopErr := tools.OpenCode.StopWebServer(); stopErr != nil {
+		public.Logger.Error("failed to stop opencode web server", "error", stopErr)
+	}
+	return err
 }

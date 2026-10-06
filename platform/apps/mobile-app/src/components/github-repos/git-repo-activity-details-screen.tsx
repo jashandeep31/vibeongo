@@ -54,8 +54,7 @@ export function GitRepoActivityDetailsScreen({
     ? (item as GitRepoPullRequest | undefined)
     : undefined;
   const pending = reviewMutation.isPending || fixMutation.isPending;
-  const canAutomate =
-    repo?.type === "github" && Boolean(repo.default_project_id);
+  const canAutomate = Boolean(repo?.default_project_id);
   const actionLabel = isIssue ? "Fix with AI" : "Review with AI";
 
   const refresh = () => {
@@ -236,12 +235,6 @@ export function GitRepoActivityDetailsScreen({
           </Pressable>
         </View>
 
-        {repo.type !== "github" ? (
-          <ThemedText style={styles.notice} themeColor="textSecondary">
-            AI review and fix actions currently support GitHub repositories only.
-          </ThemedText>
-        ) : null}
-
         <View style={[styles.description, { borderColor: theme.backgroundSelected }]}>
           {item.body ? (
             <NativeMarkdown content={item.body} />
@@ -301,7 +294,6 @@ const styles = StyleSheet.create({
   actionText: { fontSize: 13, fontWeight: "600" },
   disabled: { opacity: 0.45 },
   pressed: { opacity: 0.7 },
-  notice: { fontSize: 12, lineHeight: 18, marginTop: 10 },
   description: { borderRadius: 14, borderWidth: StyleSheet.hairlineWidth, marginTop: 20, minHeight: 180, padding: 16 },
   state: { alignItems: "center", flex: 1, gap: 12, justifyContent: "center", minHeight: 360 },
   stateTitle: { fontSize: 16, fontWeight: "600" },

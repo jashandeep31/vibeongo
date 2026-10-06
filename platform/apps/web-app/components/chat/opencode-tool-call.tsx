@@ -1,5 +1,9 @@
 "use client";
 
+import { useOpencodeSubagentConnection } from "@/components/chat/opencode-subagent-context";
+import { useOpencodeSubagentStatus } from "@repo/api-hooks";
+import { useSessionChatsStore } from "@repo/app-store";
+import Link from "next/link";
 import { OpencodeFileDiff } from "@/components/chat/opencode-file-diff";
 import {
   deriveOpencodeToolFileDiff,
@@ -69,7 +73,12 @@ export function OpencodeToolCall({
     if (todos.length > 0) return <TodoList tool={firstTool} todos={todos} />;
   }
 
-  if (tools.length === 1 && isOpencodeToolFailed(firstTool)) {
+  if (
+    tools.length === 1 &&
+    isOpencodeToolFailed(firstTool) &&
+    firstTool.tool !== "subagent" &&
+    firstTool.tool !== "task"
+  ) {
     return <ToolError tool={firstTool} />;
   }
 
@@ -227,6 +236,8 @@ function getFileChangeTitle(tools: ToolPart[]) {
 }
 
 function ToolItem({ tool }: { tool: ToolPart }) {
+  if (tool.tool === "subagent" || tool.tool === "task")
+    return <SubagentTool tool={tool} />;
   if (isOpencodeToolFailed(tool)) return <ToolError tool={tool} />;
   if (tool.tool === "webfetch") {
     const url = getSafeWebUrl(getStringInput(tool, "url"));
@@ -259,9 +270,6 @@ function ToolItem({ tool }: { tool: ToolPart }) {
   }
   if (tool.tool === "websearch") return <WebSearchTool tool={tool} />;
   if (tool.tool === "execute") return <ExecuteTool tool={tool} />;
-  if (tool.tool === "subagent" || tool.tool === "task") {
-    return <SubagentTool tool={tool} />;
-  }
   if (tool.tool === "skill") return <SkillGroup tools={[tool]} />;
   if (isBrowserTool(tool)) return <BrowserTool tool={tool} />;
   return <GenericTool tool={tool} />;
@@ -324,25 +332,107 @@ function WebSearchTool({ tool }: { tool: ToolPart }) {
 }
 
 function SubagentTool({ tool }: { tool: ToolPart }) {
-  const agent = getStringInput(tool, "agent");
+  const connection = useOpencodeSubagentConnection();
+  const agent =
+    getStringInput(tool, "agent") || getStringInput(tool, "subagent_type");
   const description = getStringInput(tool, "description");
-  const background = getMetadataBoolean(tool, "background");
-  return (
-    <div className="bg-muted/35 my-1 flex min-w-0 items-center gap-2 rounded-lg px-3 py-2 text-sm">
-      {isToolPending(tool) ? (
-        <Loader2 className="text-muted-foreground size-3.5 animate-spin" />
+  const childId =
+    getMetadataString(tool, "sessionID") ||
+    getMetadataString(tool, "sessionId") ||
+    getStringInput(tool, "sessionID");
+  const background =
+    getMetadataBoolean(tool, "background") ||
+    getMetadataString(tool, "status") === "running" ||
+    tool.state.input.background === true;
+  const liveStatus = useSessionChatsStore((store) =>
+    connection && childId
+      ? store.statusesBySessionId[connection.chatId]?.[childId]
+      : undefined,
+  );
+  const childStatus = useOpencodeSubagentStatus({
+    chatId: connection?.chatId ?? "",
+    sessionId: childId,
+    serverUrl: connection?.serverUrl ?? "",
+    accessToken: connection?.accessToken ?? "",
+    password: connection?.password,
+    enabled: background && !!connection && !!childId,
+  });
+  const running =
+    isToolPending(tool) ||
+    (background &&
+      (liveStatus?.type === "busy" ||
+        liveStatus?.type === "retry" ||
+        (!liveStatus && childStatus.data?.status === "busy")));
+  const outcome =
+    childStatus.data?.status === "idle" ? childStatus.data.outcome : undefined;
+  const failed =
+    tool.state.status === "error" || (!running && outcome === "failed");
+  const status = running
+    ? "Running"
+    : failed
+      ? "Failed"
+      : outcome === "interrupted"
+        ? "Cancelled"
+        : outcome === "succeeded" || !background
+          ? "Completed"
+          : childStatus.error
+            ? "Status unavailable"
+            : "Running in background";
+  const href =
+    childId && connection
+      ? `${connection.chatUrl.replace(/\/chats\/[^/]+$/, `/chats/${encodeURIComponent(childId)}`)}?${new URLSearchParams({ serverUrl: connection.serverUrl })}`
+      : undefined;
+  const output = getToolOutput(tool);
+  const header = (
+    <>
+      {running || status === "Running in background" ? (
+        <Loader2 className="text-muted-foreground size-3.5 shrink-0 animate-spin" />
+      ) : failed ? (
+        <CircleX className="text-destructive size-3.5 shrink-0" />
       ) : (
-        <span aria-hidden>◈</span>
+        <Check className="text-muted-foreground size-3.5 shrink-0" />
       )}
       <span className="shrink-0 font-medium">
         {agent ? capitalize(agent) : "Subagent"}
       </span>
-      <span className="text-muted-foreground min-w-0 truncate">
+      <span className="text-muted-foreground min-w-0 flex-1 truncate">
         {description}
         {background ? " (background)" : ""}
       </span>
-      {getMetadataString(tool, "sessionID") ? (
-        <ChevronRight className="text-muted-foreground ml-auto size-3.5" />
+      <span className="text-muted-foreground shrink-0 text-xs" role="status">
+        {status}
+      </span>
+      {href ? (
+        <ChevronRight className="text-muted-foreground size-3.5 shrink-0" />
+      ) : null}
+    </>
+  );
+  return (
+    <div className="bg-muted/35 my-1 rounded-lg text-sm">
+      {href ? (
+        <Link
+          href={href}
+          aria-label={`Open subagent chat: ${description || agent || childId}`}
+          className="hover:bg-muted/60 flex min-w-0 items-center gap-2 rounded-lg px-3 py-2"
+        >
+          {header}
+        </Link>
+      ) : (
+        <div className="flex min-w-0 items-center gap-2 px-3 py-2">
+          {header}
+        </div>
+      )}
+      {output && !isToolPending(tool) ? (
+        <details className="border-border border-t px-3 py-2">
+          <summary className="text-muted-foreground cursor-pointer">
+            {tool.state.status === "error"
+              ? "Failure details"
+              : background
+                ? "Delegation details"
+                : "Subagent result"}
+          </summary>
+          <FormattedToolOutput output={output} />
+        </details>
       ) : null}
     </div>
   );

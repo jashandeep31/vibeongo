@@ -53,6 +53,40 @@ export const useTerminateInstance = (projectId: string, sessionId: string) => {
   });
 };
 
+export const useSuspendInstance = (projectId: string, sessionId: string) => {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: client.instances.suspendInstance,
+    onSuccess: (_, instanceId) => {
+      useSessionChatsStore.getState().clearSessionChats(sessionId);
+      useSessionsStore.getState().updateSession(sessionId, {
+        instance: null,
+        state: "stopped",
+        instanceSyncState: "success",
+      });
+      queryClient.removeQueries({
+        predicate: (query) =>
+          query.queryKey[0] === "opencode" &&
+          query.queryKey.includes(sessionId),
+      });
+      void queryClient.invalidateQueries({ queryKey: ["instances"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["instance", instanceId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["project-sessions"] });
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
+      void queryClient.invalidateQueries({
+        queryKey: ["project-session", sessionId],
+      });
+      void queryClient.invalidateQueries({ queryKey: ["project", projectId] });
+    },
+  });
+};
+
 export const useUpdateInstanceTime = (sessionId: string) => {
   const client = useApiClient();
   const queryClient = useQueryClient();
@@ -62,6 +96,9 @@ export const useUpdateInstanceTime = (sessionId: string) => {
     onSuccess: (instance) => {
       useSessionsStore.getState().updateSession(sessionId, { instance });
       queryClient.setQueryData(["instance", instance.id], instance);
+      void queryClient.invalidateQueries({
+        queryKey: ["projects", "with-sessions"],
+      });
       return queryClient.invalidateQueries({ queryKey: ["instances"] });
     },
   });

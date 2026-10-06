@@ -2,6 +2,7 @@ import {
   disableTerminateAfterDone,
   getTerminateAfterDoneStatus,
   restartDevScript,
+  renewOpencodeCredentials,
 } from "@repo/api-client";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -50,5 +51,19 @@ export function useDisableTerminateAfterDone(
 export function useRestartDevScript(connection: RuntimeSettingsConnection) {
   return useMutation({
     mutationFn: () => restartDevScript(connection),
+  });
+}
+
+export function useRenewOpencodeCredentials(
+  connection: RuntimeSettingsConnection,
+) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => renewOpencodeCredentials(connection),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({
+        queryKey: ["opencode", "inventory"],
+      });
+    },
   });
 }

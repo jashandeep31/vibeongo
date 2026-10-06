@@ -49,6 +49,6 @@ export const getChatName = async (body: string): Promise<string> => {
     });
     return res.output.name;
   } catch {
-    return "chat";
+    return `Chat ${new Date().toISOString()}`;
   }
 };

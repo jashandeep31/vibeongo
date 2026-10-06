@@ -1,5 +1,10 @@
 import { useProjectsStore } from "@repo/app-store";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 import { useApiClient } from "../api-client-context.js";
 
 export const useCreateGithubRepo = () => {
@@ -135,11 +140,41 @@ export const useGetProjectsWithSessions = (enabled = true) => {
   });
 };
 
+// Projects with their non-archived sessions and running instances, one page
+// per request. Nested under the with-sessions key so every mutation that
+// invalidates it also refreshes the overview.
+export const useGetProjectOverview = (
+  { limit, enabled = true }: { limit?: number; enabled?: boolean } = {},
+) => {
+  const client = useApiClient();
+  return useInfiniteQuery({
+    queryKey: ["projects", "with-sessions", "overview", limit ?? null],
+    queryFn: ({ pageParam }) =>
+      client.projects.getProjectOverview({
+        page: pageParam,
+        ...(limit ? { limit } : {}),
+      }),
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasNext ? lastPage.page + 1 : undefined,
+    enabled,
+  });
+};
+
 export const useGetProjectConfigForEdit = (id: string | null) => {
   const client = useApiClient();
   return useQuery({
     queryKey: ["project", id!, "edit-config"],
     queryFn: () => client.projects.getProjectConfigForEdit(id!),
+    enabled: Boolean(id),
+  });
+};
+
+export const useGetProjectWithDetails = (id: string | null) => {
+  const client = useApiClient();
+  return useQuery({
+    queryKey: ["project", id!, "details"],
+    queryFn: () => client.projects.getProjectWithDetails(id!),
     enabled: Boolean(id),
   });
 };

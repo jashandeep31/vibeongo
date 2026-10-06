@@ -11,7 +11,10 @@ import {
   sandboxRegions,
   sandboxTypes,
   sshKeys,
+  userWallet,
 } from "@repo/db";
+import { INTERNAL_MONEY_SCALE } from "@repo/shared";
+import { env } from "../../lib/env.js";
 import { AppError } from "../../lib/app-error.js";
 import { createId } from "@paralleldrive/cuid2";
 import crypto from "crypto";
@@ -19,9 +22,14 @@ import { InstanceRuntime } from "../../providers/types.js";
 import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 import { getValidatedAutoTerminateAfterInMinutes } from "./spin-up-and-save-instance.js";
 import { setupInstanceScript } from "../../scripts/setup-instance-script.js";
-import { createProviderInstance } from "../../providers/create-providers-instance.js";
+import {
+  createProviderInstance,
+  generateInstanceName,
+} from "../../providers/create-providers-instance.js";
 import { getProxyServerUrl } from "../../lib/proxy-servers.js";
 import { createOpenRouterVirtualKeyAndSave } from "../openrouter/index.js";
+import { openInstancePeriod } from "./charge-instance-period.js";
+import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-instance.js";
 
 type ProviderInstance = Awaited<ReturnType<typeof createProviderInstance>>;
 
@@ -31,12 +39,14 @@ type ProvisionedInstance =
       instance: ProviderInstance;
       instanceTypeId: string;
       sandboxTypeId: null;
+      ratePerSecond: number;
     }
   | {
       runtime: "sandbox";
       instance: ProviderInstance;
       instanceTypeId: null;
       sandboxTypeId: string;
+      ratePerSecond: number;
     };
 
 interface SpinUpAndSaveInstanceV2 {
@@ -58,6 +68,7 @@ export const spinUpAndSaveInstanceV2 = async ({
 }: SpinUpAndSaveInstanceV2) => {
   const sessionToken = `vps_${createId()}${crypto.randomBytes(16).toString("hex")}`;
   const instanceId = crypto.randomUUID();
+  const instanceName = generateInstanceName();
 
   const autoTerminateAfterInMinutes =
     await getValidatedAutoTerminateAfterInMinutes({
@@ -89,6 +100,7 @@ export const spinUpAndSaveInstanceV2 = async ({
       return await handleVmRuntime({
         project,
         instanceId,
+        instanceName,
         sessionToken,
         sshKeysArray,
         sessionId,
@@ -98,6 +110,7 @@ export const spinUpAndSaveInstanceV2 = async ({
     return await handlesandboxRuntime({
       project,
       instanceId,
+      instanceName,
       sessionToken,
       sshKeysArray,
       sessionId,
@@ -112,54 +125,125 @@ export const spinUpAndSaveInstanceV2 = async ({
     instance: newInstance,
     instanceTypeId,
     sandboxTypeId,
+    ratePerSecond,
   } = provisionedInstance;
 
-  const [instance] = await db
-    .insert(instances)
-    .values({
-      name: newInstance.instanceName,
-      id: instanceId,
-      project_id: project.id,
-      user_id: userId,
-      runtime_kind: provisionedInstance.runtime,
-      instance_type_id: instanceTypeId,
-      sandbox_type_id: sandboxTypeId,
-      provider_instance_id: newInstance.instanceId,
-      proxy_domain: await getProxyServerUrl(project.id),
-      terminated_at: null,
-      terminates_at: new Date(
-        new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
-      ),
-      started_at: new Date(),
-      public_ip: newInstance.publicIPv4,
-      state: "running",
-      project_session_id: sessionId,
-      access_token: createId(),
-      config: {
-        opencodePassword: createId(),
-        terminate: category === "auto",
-        vibeongoLocalToken: createId(),
-        sessionToken: sessionToken,
-      },
-    })
-    .returning();
+  const startedAt = new Date();
+  const instance = await db.transaction(async (tx) => {
+    const [createdInstance] = await tx
+      .insert(instances)
+      .values({
+        name: newInstance.instanceName,
+        id: instanceId,
+        project_id: project.id,
+        user_id: userId,
+        runtime_kind: provisionedInstance.runtime,
+        instance_type_id: instanceTypeId,
+        sandbox_type_id: sandboxTypeId,
+        provider_instance_id: newInstance.instanceId,
+        proxy_domain: await getProxyServerUrl(project.id),
+        terminated_at: null,
+        terminates_at: new Date(
+          new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
+        ),
+        started_at: startedAt,
+        public_ip: newInstance.publicIPv4,
+        state: "running",
+        project_session_id: sessionId,
+        access_token: createId(),
+        config: {
+          opencodePassword: createId(),
+          terminate: category === "auto",
+          vibeongoLocalToken: createId(),
+          sessionToken: sessionToken,
+        },
+      })
+      .returning();
 
-  if (!instance) {
-    throw new AppError("Failed to create instance", 500);
-  }
+    if (!createdInstance) {
+      throw new AppError("Failed to create instance", 500);
+    }
+
+    await openInstancePeriod({
+      tx,
+      instanceId: createdInstance.id,
+      kind: "running",
+      startedAt,
+      ratePerSecond,
+    });
+    return createdInstance;
+  });
+
+  await addTerminateOrPauseInstanceJob({
+    instanceId: instance.id,
+    autoExpire: true,
+  });
 
   // TODO: look for a better way
   await createOpenRouterVirtualKeyAndSave({
     instanceId: instance.id,
-    limit_in_dollars: 5,
+    limit_in_dollars: await getOpenRouterKeyLimitInDollars({
+      userId,
+      instanceTypeId,
+      sandboxTypeId,
+      autoTerminateAfterInMinutes,
+    }),
     expires_after_in_minutes: autoTerminateAfterInMinutes,
   });
   return instance;
 };
 
+const MAX_OPENROUTER_KEY_LIMIT_IN_DOLLARS = 5;
+const MIN_OPENROUTER_KEY_LIMIT_IN_DOLLARS = 0.01;
+
+export const getOpenRouterKeyLimitInDollars = async ({
+  userId,
+  instanceTypeId,
+  sandboxTypeId,
+  autoTerminateAfterInMinutes,
+}: {
+  userId: string;
+  instanceTypeId: string | null;
+  sandboxTypeId: string | null;
+  autoTerminateAfterInMinutes: number;
+}) => {
+  const [wallet] = await db
+    .select({ balance: userWallet.balance })
+    .from(userWallet)
+    .where(eq(userWallet.user_id, userId));
+
+  let computeCost = 0;
+  if (instanceTypeId) {
+    const [instanceType] = await db
+      .select({ pricePerHour: instanceTypes.price_per_hour })
+      .from(instanceTypes)
+      .where(eq(instanceTypes.id, instanceTypeId));
+    computeCost =
+      ((instanceType?.pricePerHour ?? 0) * autoTerminateAfterInMinutes) / 60;
+  } else if (sandboxTypeId) {
+    const [sandboxType] = await db
+      .select({ pricePerSecond: sandboxTypes.price_per_second })
+      .from(sandboxTypes)
+      .where(eq(sandboxTypes.id, sandboxTypeId));
+    computeCost =
+      (sandboxType?.pricePerSecond ?? 0) * 60 * autoTerminateAfterInMinutes;
+  }
+
+  const computeReserve = computeCost * (1 + env.PROFIT_PRECENTAGE / 100);
+  const availableInDollars =
+    ((wallet?.balance ?? 0) - computeReserve) / INTERNAL_MONEY_SCALE;
+  const limit = Math.floor(availableInDollars * 100) / 100;
+
+  return Math.min(
+    MAX_OPENROUTER_KEY_LIMIT_IN_DOLLARS,
+    Math.max(MIN_OPENROUTER_KEY_LIMIT_IN_DOLLARS, limit),
+  );
+};
+
 const handleVmRuntime = async ({
   project,
   instanceId,
+  instanceName,
   sessionToken,
   sshKeysArray,
   sessionId,
@@ -168,6 +252,7 @@ const handleVmRuntime = async ({
 }: {
   project: typeof projects.$inferSelect;
   instanceId: string;
+  instanceName: string;
   sshKeysArray: string[];
   sessionId: string;
   sessionToken: string;
@@ -188,10 +273,12 @@ const handleVmRuntime = async ({
     authToken: sessionToken,
     projectSessionId: sessionId,
     instanceId,
+    instanceName,
   });
   return {
     runtime: "vm",
     instance: await createProviderInstance({
+      instanceName,
       provider: instanceTypeWithRegion.instanceType.provider,
       region: instanceTypeWithRegion.region.slug,
       instanceType: instanceTypeWithRegion.instanceType.slug,
@@ -201,11 +288,15 @@ const handleVmRuntime = async ({
     }),
     instanceTypeId: instanceTypeWithRegion.instanceType.id,
     sandboxTypeId: null,
+    ratePerSecond: Math.ceil(
+      instanceTypeWithRegion.instanceType.price_per_hour / 3600,
+    ),
   };
 };
 const handlesandboxRuntime = async ({
   project,
   instanceId,
+  instanceName,
   sessionToken,
   sshKeysArray,
   sessionId,
@@ -213,6 +304,7 @@ const handlesandboxRuntime = async ({
 }: {
   project: typeof projects.$inferSelect;
   instanceId: string;
+  instanceName: string;
   sshKeysArray: string[];
   sessionId: string;
   sessionToken: string;
@@ -236,10 +328,13 @@ const handlesandboxRuntime = async ({
     authToken: sessionToken,
     projectSessionId: sessionId,
     instanceId,
+    instanceName,
   });
+
   return {
     runtime: "sandbox",
     instance: await createProviderInstance({
+      instanceName,
       provider: row.sandboxType.provider,
       region: row.region.slug,
       instanceType: row.sandboxType.slug,
@@ -249,5 +344,6 @@ const handlesandboxRuntime = async ({
     }),
     instanceTypeId: null,
     sandboxTypeId: row.sandboxType.id,
+    ratePerSecond: row.sandboxType.price_per_second,
   };
 };

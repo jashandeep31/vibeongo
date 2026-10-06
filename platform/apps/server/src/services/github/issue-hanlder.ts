@@ -11,8 +11,8 @@ import {
 import { createInstanceSchema } from "@repo/shared";
 import { createTasksForPRIssueOrCommentAgent } from "../../ai/ai-agents/create-tasks-for-pr-issue-or-comment-agent.js";
 import { getSessionNameAndDescriptionAgent } from "../../ai/ai-agents/common-agents.js";
-import { getIssueDetailByIssueNumber } from "../../github-app-functions/get-issue-or-pull-request-detail-by-number.js";
 import { createProjectSessionInstance } from "../instances/create-project-session-instance.js";
+import { getIssueOrPullRequestForRepo } from "./get-issue-or-pr-for-repo.js";
 
 interface issueHandlerProps {
   gitRepoId: string;
@@ -47,17 +47,13 @@ export const issueRequestHandler = async ({
   const { project, user, repo } = githubRepoWithUserAndProject;
   if (!project || !user || !repo) throw new Error("repo not found");
 
-  const issue = await getIssueDetailByIssueNumber({
-    installation_id: repo.installation_id,
-    issue_number: issueNumber,
-    full_repo_name: repo.full_name,
-  });
+  const issue = await getIssueOrPullRequestForRepo(repo, "issue", issueNumber);
   const sessionMeta = await getSessionNameAndDescriptionAgent(
     issue.title + "\n" + issue.body,
   );
   const generatedTasks = await createTasksForPRIssueOrCommentAgent(
     "issue",
-    `${issue.url} body: ${issue.body}`,
+    `${issue.html_url} body: ${issue.body}`,
   );
   const [settings] = await db
     .select()

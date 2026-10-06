@@ -20,7 +20,10 @@ import type {
   OpencodeError,
 } from "./opencode-types.js";
 import { normalizeOpencodeError } from "./opencode-errors.js";
-import { isRuntimeRepositoryDirectory } from "./runtime-paths.js";
+import {
+  isRuntimeRepositoryDirectory,
+  RUNTIME_WORKSPACE_DIRECTORY,
+} from "./runtime-paths.js";
 import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
@@ -219,10 +222,7 @@ export function reduceOpencodeMessages(
       native.text.trim()
     ) {
       const isInstructionUpdate = nativeType === "session.instructions.updated";
-      const syntheticDescription =
-        typeof native.description === "string" && native.description.trim()
-          ? native.description
-          : undefined;
+      const syntheticDescription = getSyntheticNoticeLabel(native.description, native.metadata);
       // Synthetic text is model context (such as an AGENTS.md body), not
       // assistant prose. OpenCode's transcript displays its description.
       if (!isInstructionUpdate && !syntheticDescription) return messages;
@@ -874,6 +874,18 @@ function appendTimelineText(
       ],
     },
   ];
+}
+
+function getSyntheticNoticeLabel(description: unknown, metadata: unknown) {
+  const label =
+    typeof description === "string" && description.trim() ? description : undefined;
+  const info = recordValue(metadata);
+  if (info?.source !== "subagent") return label;
+  const state =
+    info.state === "completed" ? "completed"
+      : info.state === "error" ? "failed"
+        : info.state === "cancelled" ? "cancelled" : undefined;
+  return state ? `${label ?? "Subagent"} — ${state}` : label;
 }
 
 function getInstructionUpdateLabel(native: Record<string, unknown>) {
@@ -1813,6 +1825,24 @@ async function opencodeCursorContainsUserMessage(
   return false;
 }
 
+export async function getOpencodeSubagentStatus(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const [session, active] = await Promise.all([
+    client.session.get({ sessionID: sessionId }),
+    client.session.active(),
+  ]);
+  return {
+    status: active[sessionId] ? "busy" as const : "idle" as const,
+    outcome: session.outcome,
+  };
+}
+
 export async function getOpencodeSessionStatuses(
   chatId: string,
   sessions: Session[],
@@ -2051,15 +2081,55 @@ function normalizeV2Form(form: OpencodeForm): OpencodeSessionForms {
   };
 }
 
+/** Resolve the session directory's project before enabling Git-only review modes. */
+export async function getOpencodeReviewProjectVcs(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const [location, projects] = await Promise.all([
+    client.location.get({ location: { directory } }),
+    client.project.list(),
+  ]);
+  const project = projects.find((project) => project.id === location.project.id);
+  return project?.vcs ?? null;
+}
+
+/** Snapshot changes from this session's most recent turn, independent of Git working changes. */
+export async function getOpencodeLastTurnChanges(
+  chatId: string,
+  sessionId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+): Promise<SnapshotFileDiff[]> {
+  return getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+  ).session.diff({ sessionID: sessionId });
+}
+
 export async function createOpencodeSession(
   chatId: string,
   serverUrl: string,
   accessToken: string,
   directory?: string,
   password?: string,
+  parentID?: string,
 ) {
   if (directory && !isRuntimeRepositoryDirectory(directory)) {
     throw new Error("Invalid repository directory");
+  }
+
+  if (parentID) {
+    const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+    // The server derives the child's location from its parent and rejects missing parents.
+    return normalizeV2Session(await client.session.create({ parentID }));
   }
 
   const selectedDirectory =
@@ -2169,6 +2239,253 @@ export async function findOpencodeFiles(
   return result.data.map((entry) => entry.path);
 }
 
+export type OpencodeCommand = {
+  name: string;
+  description?: string;
+};
+
+export async function listOpencodeCommands(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+): Promise<OpencodeCommand[]> {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const result = await client.command.list(
+    directory ? { location: { directory } } : {},
+  );
+  return result.data
+    .map((command) => ({
+      name: command.name,
+      ...(command.description ? { description: command.description } : {}),
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+// Only text that starts with a known command name is a command; anything else
+// (for example "/etc/hosts is broken") is sent as a normal prompt.
+export function parseOpencodeSlashCommand(
+  text: string,
+  commands: ReadonlyArray<Pick<OpencodeCommand, "name">> | undefined,
+) {
+  const match = text.match(/^\/(\S+)(?:\s+([\s\S]*))?$/);
+  if (!match || !commands?.length) return null;
+  const name = match[1] ?? "";
+  if (!commands.some((command) => command.name === name)) return null;
+  return { name, args: (match[2] ?? "").trim() };
+}
+
+// Like the OpenCode TUI, suggestions show only while the cursor is still inside
+// a leading "/name" token.
+export function getActiveOpencodeSlashCommand(value: string, cursor: number) {
+  const match = value.slice(0, cursor).match(/^\/(\S*)$/);
+  if (!match) return null;
+  const query = match[1] ?? "";
+  const tokenEnd = value.slice(cursor).search(/\s|$/);
+  return { end: cursor + Math.max(0, tokenEnd), query, start: 0 };
+}
+
+export function filterOpencodeCommands<T extends OpencodeCommand>(
+  commands: ReadonlyArray<T>,
+  query: string,
+) {
+  const normalized = query.toLocaleLowerCase();
+  if (!normalized) return [...commands];
+  const prefix: T[] = [];
+  const contains: T[] = [];
+  for (const command of commands) {
+    const name = command.name.toLocaleLowerCase();
+    if (name.startsWith(normalized)) prefix.push(command);
+    else if (
+      name.includes(normalized) ||
+      command.description?.toLocaleLowerCase().includes(normalized)
+    )
+      contains.push(command);
+  }
+  return [...prefix, ...contains];
+}
+
+export async function sendOpencodeCommand(
+  chatId: string,
+  sessionId: string,
+  command: { name: string; args: string },
+  attachments: UploadAttachment[],
+  fileReferences: OpencodeFileReference[],
+  selection: OpencodePromptSelection,
+  delivery: "steer" | "queue",
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const session = await findOpencodeSession(
+    chatId,
+    sessionId,
+    serverUrl,
+    accessToken,
+    password,
+  );
+  if (!session) throw new Error("OpenCode session not found");
+
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    session.directory,
+  );
+  const preparedAttachments = await prepareOpencodeAttachments(
+    client,
+    session.directory,
+    attachments,
+  );
+  const files = [
+    ...fileReferences.map((reference) => {
+      const start = command.args.indexOf(reference.mention);
+      const absolutePath = reference.path.startsWith("/")
+        ? reference.path
+        : `${session.directory.replace(/\/$/, "")}/${reference.path}`;
+      return {
+        uri: `file://${absolutePath
+          .split("/")
+          .map((segment) => encodeURIComponent(segment))
+          .join("/")}`,
+        name: reference.path.split("/").pop() ?? reference.path,
+        mention: {
+          text: reference.mention,
+          start: Math.max(0, start),
+          end: Math.max(0, start) + reference.mention.length,
+        },
+      };
+    }),
+    ...preparedAttachments.files,
+  ];
+  // A queued command must not change the model or agent of the running turn.
+  if (delivery === "steer") {
+    const model = parseModelSelection(selection.model);
+    if (model) {
+      await client.session.switchModel({
+        sessionID: sessionId,
+        model: {
+          id: model.modelID,
+          providerID: model.providerID,
+          ...(selection.variant ? { variant: selection.variant } : {}),
+        },
+      });
+    }
+    if (selection.agent) {
+      await client.session.switchAgent({
+        sessionID: sessionId,
+        agent: selection.agent,
+      });
+    }
+  }
+  await client.session.command({
+    sessionID: sessionId,
+    name: command.name,
+    text: [command.args, ...preparedAttachments.references]
+      .filter(Boolean)
+      .join("\n"),
+    ...(files.length ? { files } : {}),
+    delivery,
+  });
+}
+
+// Makes the OpenCode server re-read config (commands, agents, MCP) for a
+// directory.
+export async function reloadOpencodeConfig(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory?: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.location.reload(
+    directory
+      ? { headers: { "x-opencode-directory": encodeURIComponent(directory) } }
+      : undefined,
+  );
+}
+
+export type OpencodeWorktree = {
+  directory: string;
+  type: "root" | "worktree";
+};
+
+// Repositories live under the runtime workspace, which is not a repository
+// itself, so worktrees are scoped to the repository the chat is in.
+function getWorkspaceRepositoryDirectory(directory: string) {
+  const prefix = `${RUNTIME_WORKSPACE_DIRECTORY}/`;
+  if (!directory.startsWith(prefix)) return undefined;
+  const repoName = directory.slice(prefix.length).split("/")[0] ?? "";
+  const repoDirectory = `${prefix}${repoName}`;
+  return isRuntimeRepositoryDirectory(repoDirectory)
+    ? repoDirectory
+    : undefined;
+}
+
+export async function listOpencodeWorktrees(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  directory: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  let location = await client.location.get({ location: { directory } });
+  if (!isRuntimeRepositoryDirectory(location.project.directory)) {
+    const repoDirectory = getWorkspaceRepositoryDirectory(directory);
+    if (!repoDirectory) {
+      throw new Error("Open a chat inside a repository to use worktrees.");
+    }
+    location = await client.location.get({
+      location: { directory: repoDirectory },
+    });
+    if (!isRuntimeRepositoryDirectory(location.project.directory)) {
+      throw new Error(`${repoDirectory} is not a git repository.`);
+    }
+  }
+  const root = location.project.directory;
+  const worktrees = await client.worktree.list({
+    projectID: location.project.id,
+  });
+  return {
+    projectId: location.project.id,
+    worktrees: [
+      { directory: root, type: "root" as const },
+      ...worktrees
+        .filter((worktree) => worktree.directory !== root)
+        .map((worktree) => ({
+          directory: worktree.directory,
+          type: "worktree" as const,
+        })),
+    ] satisfies OpencodeWorktree[],
+  };
+}
+
+export async function removeOpencodeWorktree(
+  chatId: string,
+  serverUrl: string,
+  accessToken: string,
+  projectId: string,
+  directory: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.worktree.remove({
+    projectID: projectId,
+    directory,
+    force: false,
+  });
+}
+
 export type OpencodeProviderConnectMethod =
   | { id?: string; label: string; type: "key" }
   | { id: string; label: string; type: "oauth" };
@@ -2194,7 +2511,10 @@ export async function getOpencodeProviderIntegrations(
   return result.data.map((integration) => ({
     id: integration.id,
     name: integration.name,
-    connected: integration.connections.length > 0,
+    // OpenCode 2.0.20+ keeps expired/revoked connections but marks them needs_auth.
+    connected: integration.connections.some(
+      (connection) => connection.status?.status !== "needs_auth",
+    ),
     methods: integration.methods.flatMap<OpencodeProviderConnectMethod>(
       (method) => {
         if (method.type === "key") {
@@ -2315,6 +2635,7 @@ export async function sendOpencodePrompt(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  displayText?: string,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -2379,7 +2700,7 @@ export async function sendOpencodePrompt(
     text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
     ...(files.length ? { files } : {}),
     metadata: {
-      displayText: text,
+      displayText: displayText ?? text,
       comments: [],
       attachments: preparedAttachments.attachments,
     },
@@ -2825,24 +3146,20 @@ export async function answerOpencodeQuestion(
 }
 
 export async function rejectOpencodeQuestion(
-  _chatId: string,
+  chatId: string,
   sessionId: string,
   requestId: string,
   serverUrl: string,
   accessToken: string,
   password?: string,
+  message?: string,
 ) {
-  const response = await fetch(
-    `${normalizeOpencodeServerUrl(serverUrl)}/api/session/${encodeURIComponent(sessionId)}/form/${encodeURIComponent(requestId)}`,
-    {
-      method: "DELETE",
-      headers: getOpencodeHeaders(accessToken, password),
-    },
-  );
-  if (!response.ok) {
-    const detail = await response.text();
-    throw new Error(detail || "Could not dismiss the OpenCode question");
-  }
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  await client.session.form.cancel({
+    sessionID: sessionId,
+    formID: requestId,
+    ...(message ? { message } : {}),
+  });
 }
 
 export async function streamOpencodeEvents(
@@ -3223,7 +3540,7 @@ function normalizeV2Message(
               message.type === "system"
                 ? (message.description ?? "Instructions updated")
                 : message.type === "synthetic"
-                  ? (message.description ?? "")
+                  ? (getSyntheticNoticeLabel(message.description, message.metadata) ?? "")
                   : `Skill ${message.name}`,
           },
         ],

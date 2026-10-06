@@ -562,3 +562,20 @@ function isInterruptedError(error: {
 function isFileChangeTool(tool: OpencodeToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }
+
+/** Requests delegation through the parent agent so OpenCode owns child jobs and result delivery. */
+export function buildOpencodeSubtaskPrompt(task: string, options: { agent?: string; background?: boolean } = {}) {
+  const prompt = task.trim();
+  if (!prompt) throw new Error("Enter a subtask to delegate");
+  return [
+    "Delegate the following task using the native subagent tool. Do not perform it yourself.",
+    options.agent ? `Use agent ${JSON.stringify(options.agent)}.` : "Choose an available subagent suited to this task.",
+    options.background
+      ? "Set background=true. Continue only with independent work; let OpenCode deliver the result automatically."
+      : "Set background=false. Wait for the subagent's final response, then explain its findings here.",
+    "Include the relevant context from this conversation in the child's prompt. Keep the current model unless I explicitly requested another one.",
+    "If delegation is unavailable or denied, explain the problem rather than substituting a manually linked session.",
+    "Task:",
+    prompt,
+  ].join("\n\n");
+}

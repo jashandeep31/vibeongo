@@ -3,12 +3,29 @@ import { newChatHandler } from "./handlers/new-chat-handler.js";
 import { joinChatHandler } from "./handlers/join-chat-handler.js";
 import { newQuestionHandler } from "./handlers/new-question-handler.js";
 import { removeSocketFromAllChats } from "./chats-store.js";
+import { addUserSocket, removeUserSocket } from "./user-sockets-store.js";
+import {
+  notificationDeliveredHandler,
+  notificationReadHandler,
+} from "./handlers/notification-read-handler.js";
 import { db, eq, userWallet } from "@repo/db";
 
 export const SocketHandler = async (socket: WebSocket) => {
+  addUserSocket(socket);
+
   socket.onmessage = async (event) => {
     try {
       const parsedEvent = JSON.parse(event.data.toString());
+
+      // notification events must work regardless of wallet balance
+      if (parsedEvent.type === "notification-read") {
+        await notificationReadHandler(socket, parsedEvent.data);
+        return;
+      }
+      if (parsedEvent.type === "notification-delivered") {
+        await notificationDeliveredHandler(socket, parsedEvent.data);
+        return;
+      }
 
       //TODO: remove this limit as the project grows
       const [userWalletRow] = await db
@@ -45,6 +62,7 @@ export const SocketHandler = async (socket: WebSocket) => {
 
   socket.onclose = () => {
     removeSocketFromAllChats(socket);
+    removeUserSocket(socket);
   };
 };
 

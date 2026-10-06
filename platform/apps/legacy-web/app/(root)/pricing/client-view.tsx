@@ -1,497 +1,534 @@
 "use client";
 
-import { usePricingMetadata } from "@/hooks/use-instance-metadata";
+import type { PricingMetadata } from "@/services/instance-metadata-service";
+import { ClosingCta } from "@/components/landing-page/closing-cta";
+import { getAppUrl } from "@/lib/app-url";
+import { getProviderLogo } from "@/lib/provider-logos";
 import { formatInternalMoney } from "@repo/shared";
 import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  Area,
-  AreaChart,
-  CartesianGrid,
-  type ChartConfig,
-  XAxis,
-  YAxis,
-} from "@repo/ui/components/chart";
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from "@repo/ui/components/alert";
-import { Button } from "@repo/ui/components/button";
-import { Input } from "@repo/ui/components/input";
-import { Check, Info, X } from "lucide-react";
+  ArrowRight,
+  Box,
+  Check,
+  Cpu,
+  HardDrive,
+  Info,
+  MemoryStick,
+  Plus,
+  Power,
+  RotateCw,
+  Server,
+  Timer,
+  X,
+} from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 
 const formatPrice = (amount: number, digits = 4) =>
   `$${formatInternalMoney(amount, digits)}`;
 
-const HOURS_IN_30_DAYS = 24 * 30;
-const DAYS_IN_COMPARISON = 30;
 const MANAGEMENT_CHARGE_MULTIPLIER = 1.25;
+const DAYS_IN_ESTIMATE = 30;
 
-const trialChartConfig = {
-  withoutVibeOnGo: {
-    label: "Without VibeOnGo",
-    color: "var(--destructive)",
-  },
-  withVibeOnGo: {
-    label: "With VibeOnGo",
-    color: "var(--primary)",
-  },
-} satisfies ChartConfig;
-
-export default function PricingClientView() {
-  const { data, isError, isLoading } = usePricingMetadata();
-  const [selectedInstanceRegionId, setSelectedInstanceRegionId] = useState("");
-  const [hoursPerDay, setHoursPerDay] = useState(8);
-  const [daysPerWeek, setDaysPerWeek] = useState(5);
-  const instanceRegions = data?.instances.map(({ region }) => region) ?? [];
-  const activeInstanceRegionId =
-    selectedInstanceRegionId || instanceRegions[0]?.id || "";
-  const activeInstanceTypes = [
-    ...(data?.instances.find(
-      ({ region }) => region.id === activeInstanceRegionId,
-    )?.types ?? []),
-  ].sort((left, right) => left.price_per_hour - right.price_per_hour);
-  const [selectedEstimateTypeId, setSelectedEstimateTypeId] = useState("");
-  const selectedEstimateType =
-    activeInstanceTypes.find((type) => type.id === selectedEstimateTypeId) ??
-    activeInstanceTypes[0];
-  const vibeOnGoHoursInComparison =
-    (hoursPerDay * daysPerWeek * DAYS_IN_COMPARISON) / 7;
-  const vibeOnGoLabel = `${hoursPerDay}h/day · ${daysPerWeek}d/week`;
-
-  return (
-    <article className="mx-auto min-h-[calc(100vh-4rem)] max-w-3xl px-5 py-16 text-foreground sm:px-8">
-      <h1 className="text-3xl font-semibold tracking-tight">Pricing</h1>
-      <p className="mt-4 leading-7 text-muted-foreground">
-        Compare the cost of leaving a workspace running for 30 days with using
-        VibeOnGo on your own schedule. VibeOnGo lets you stop workspaces when
-        you are not using them, including overnight and on weekends.
-      </p>
-
-      <section className="mt-8">
-        <h2 className="font-medium">Your usage assumptions</h2>
-        <div className="mt-4 flex flex-col gap-4 sm:flex-row">
-          <UsageStepper
-            label="Hours per day"
-            value={hoursPerDay}
-            min={1}
-            max={24}
-            onChange={setHoursPerDay}
-          />
-          <UsageStepper
-            label="Days per week"
-            value={daysPerWeek}
-            min={1}
-            max={7}
-            onChange={setDaysPerWeek}
-          />
-        </div>
-        <hr className="mt-8 border-border" />
-      </section>
-
-      {isLoading ? (
-        <p className="mt-10 text-sm text-muted-foreground">Loading prices…</p>
-      ) : null}
-
-      {isError ? (
-        <p className="mt-10 text-sm text-destructive">
-          Unable to load pricing information.
-        </p>
-      ) : null}
-
-      {data ? (
-        <div className="mt-12 space-y-12">
-          <section>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <h2 className="text-xl font-semibold">Virtual machines</h2>
-                <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                  Persistent workspaces, billed per hour. The monthly VibeOnGo
-                  estimate uses your selected schedule for 30 days.
-                </p>
-              </div>
-              {instanceRegions.length > 0 ? (
-                <label className="text-sm">
-                  <span className="mb-1 block text-muted-foreground">Region</span>
-                  <select
-                    value={activeInstanceRegionId}
-                    onChange={(event) =>
-                      setSelectedInstanceRegionId(event.target.value)
-                    }
-                    className="h-9 rounded-md border bg-background px-3 text-foreground"
-                  >
-                    {instanceRegions.map((region) => (
-                      <option key={region.id} value={region.id}>
-                        {region.provider} · {region.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-            </div>
-            <PricingOptions
-              rows={activeInstanceTypes.map((type) => ({
-                id: type.id,
-                name: type.name,
-                provider: type.provider,
-                cpu: type.cpu,
-                ram: type.ram,
-                hourlyPrice: formatPrice(
-                  type.price_per_hour * MANAGEMENT_CHARGE_MULTIPLIER,
-                ),
-                alwaysOnPrice: formatPrice(
-                  type.price_per_hour * HOURS_IN_30_DAYS,
-                ),
-                vibeOnGoPrice: formatPrice(
-                  type.price_per_hour *
-                    MANAGEMENT_CHARGE_MULTIPLIER *
-                    vibeOnGoHoursInComparison,
-                ),
-              }))}
-              emptyLabel="No virtual machine options are available."
-              vibeOnGoLabel={vibeOnGoLabel}
-            />
-            {selectedEstimateType ? (
-              <TrialCostChart
-                instanceName={selectedEstimateType.name}
-                providerHourlyPrice={selectedEstimateType.price_per_hour}
-                hoursPerDay={hoursPerDay}
-                daysPerWeek={daysPerWeek}
-                instanceTypes={activeInstanceTypes.map((type) => ({
-                  id: type.id,
-                  name: type.name,
-                }))}
-                selectedTypeId={selectedEstimateType.id}
-                onTypeChange={setSelectedEstimateTypeId}
-              />
-            ) : null}
-          </section>
-
-          <section>
-            <h2 className="text-xl font-semibold">Sandboxes</h2>
-            <p className="mt-2 text-sm leading-6 text-muted-foreground">
-              Disposable workspaces, billed per second. An hourly equivalent is
-              used for the 30-day estimates below.
-            </p>
-            <PricingOptions
-              rows={data.sandboxes
-                .flatMap(({ types }) =>
-                  types.map((type) => ({
-                  id: type.id,
-                  name: type.name,
-                  provider: type.provider,
-                  cpu: type.cpu,
-                  ram: type.ram,
-                  hourlyPrice: formatPrice(
-                    type.price_per_second *
-                      60 *
-                      60 *
-                      MANAGEMENT_CHARGE_MULTIPLIER,
-                  ),
-                  alwaysOnPrice: formatPrice(
-                    type.price_per_second * 60 * 60 * HOURS_IN_30_DAYS,
-                  ),
-                  vibeOnGoPrice: formatPrice(
-                    type.price_per_second *
-                      60 *
-                      60 *
-                      MANAGEMENT_CHARGE_MULTIPLIER *
-                      vibeOnGoHoursInComparison,
-                  ),
-                    sortPrice: type.price_per_second,
-                  })),
-                )
-                .sort((left, right) => left.sortPrice - right.sortPrice)}
-              emptyLabel="No sandbox options are available."
-              vibeOnGoLabel={vibeOnGoLabel}
-            />
-          </section>
-          <IncludedFeatures />
-        </div>
-      ) : null}
-      <PricingFaq />
-    </article>
-  );
-}
+type Kind = "sandbox" | "vm";
 
 type PricingRow = {
   id: string;
   name: string;
   provider: string;
-  cpu: string | null;
-  ram: string | null;
-  hourlyPrice: string;
-  alwaysOnPrice: string;
-  vibeOnGoPrice: string;
+  region?: string;
+  cpu: number;
+  ram: number;
+  storage: number;
+  /** Price per billing unit, already formatted. */
+  price: string;
+  finePrint?: string;
+  /** Per-minute cost in internal money units, including the management charge. */
+  perMinute: number;
 };
 
-function UsageStepper({
+export default function PricingClientView({
+  data,
+}: {
+  data: PricingMetadata | null;
+}) {
+  const [kind, setKind] = useState<Kind>("sandbox");
+  const [selectedInstanceRegionId, setSelectedInstanceRegionId] = useState("");
+  const [hoursPerDay, setHoursPerDay] = useState(8);
+  const [daysPerWeek, setDaysPerWeek] = useState(5);
+  const [selectedRowId, setSelectedRowId] = useState("");
+
+  const instanceRegions = data?.instances.map(({ region }) => region) ?? [];
+  const activeInstanceRegionId =
+    selectedInstanceRegionId || instanceRegions[0]?.id || "";
+
+  const sandboxRows: PricingRow[] = (data?.sandboxes ?? [])
+    .flatMap(({ region, types }) => types.map((type) => ({ region, type })))
+    .sort(
+      (left, right) => left.type.price_per_second - right.type.price_per_second,
+    )
+    .map(({ region, type }) => ({
+      id: type.id,
+      name: type.name,
+      provider: type.provider,
+      region: region.name,
+      cpu: type.cpu,
+      ram: type.ram,
+      storage: type.storage,
+      // Billing is per started minute today; the per-second rate is fine print.
+      price: formatPrice(
+        type.price_per_second * 60 * MANAGEMENT_CHARGE_MULTIPLIER,
+        5,
+      ),
+      finePrint: `${formatPrice(
+        type.price_per_second * MANAGEMENT_CHARGE_MULTIPLIER,
+        7,
+      )}/sec rate`,
+      perMinute: type.price_per_second * 60 * MANAGEMENT_CHARGE_MULTIPLIER,
+    }));
+
+  const vmRows: PricingRow[] = [
+    ...(data?.instances.find(
+      ({ region }) => region.id === activeInstanceRegionId,
+    )?.types ?? []),
+  ]
+    .sort((left, right) => left.price_per_hour - right.price_per_hour)
+    .map((type) => ({
+      id: type.id,
+      name: type.name,
+      provider: type.provider,
+      region: instanceRegions.find(
+        (region) => region.id === activeInstanceRegionId,
+      )?.name,
+      cpu: type.cpu,
+      ram: type.ram,
+      storage: type.storage,
+      // Match the server conversion from stored hourly rates to started-minute billing.
+      price: formatPrice(
+        Math.ceil(type.price_per_hour / 60) * MANAGEMENT_CHARGE_MULTIPLIER,
+        5,
+      ),
+      perMinute:
+        Math.ceil(type.price_per_hour / 60) * MANAGEMENT_CHARGE_MULTIPLIER,
+    }));
+
+  const rows = kind === "sandbox" ? sandboxRows : vmRows;
+  const selectedRow = rows.find((row) => row.id === selectedRowId) ?? rows[0];
+  const hoursInEstimate = (hoursPerDay * daysPerWeek * DAYS_IN_ESTIMATE) / 7;
+
+  return (
+    <article className="home-page pricing-page">
+      <section className="pricing-intro" aria-labelledby="pricing-title">
+        <div className="pricing-container">
+          <h1 id="pricing-title">Pay for the work, not the waiting.</h1>
+          <p>
+            Sandboxes and virtual machines bill per started minute. Run your
+            agent, then let auto-shutdown stop idle compute.
+          </p>
+          <div className="pricing-billing-facts">
+            <span>
+              <Timer size={16} aria-hidden="true" />
+              Usage-based billing
+            </span>
+            <span>
+              <Check size={16} aria-hidden="true" />
+              Management charge included
+            </span>
+            <span>
+              <Power size={16} aria-hidden="true" />
+              Automatic shutdown
+            </span>
+          </div>
+        </div>
+      </section>
+
+      <section
+        className="pricing-compute pricing-container"
+        aria-labelledby="compute-title"
+      >
+        <div className="pricing-section-heading">
+          <div>
+            <h2 id="compute-title">Find your workspace.</h2>
+            <p>Compare compute. Set your schedule. See what it costs.</p>
+          </div>
+          <fieldset className="pricing-kind-toggle">
+            <legend className="sr-only">Workspace type</legend>
+            {(
+              [
+                { value: "sandbox", label: "Sandboxes", icon: Box },
+                { value: "vm", label: "Virtual machines", icon: Server },
+              ] as const
+            ).map(({ value, label, icon: Icon }) => (
+              <label
+                key={value}
+                className={kind === value ? "is-selected" : ""}
+              >
+                <input
+                  type="radio"
+                  name="pricing-kind"
+                  value={value}
+                  checked={kind === value}
+                  onChange={() => {
+                    setKind(value);
+                    setSelectedRowId("");
+                  }}
+                />
+                <Icon size={16} aria-hidden="true" />
+                {label}
+              </label>
+            ))}
+          </fieldset>
+        </div>
+
+        {!data ? (
+          <div className="pricing-empty" role="alert">
+            <Info size={24} aria-hidden="true" />
+            <h3>Pricing is temporarily unavailable.</h3>
+            <p>
+              We couldn&apos;t load the current provider rates. Try again to see
+              live prices.
+            </p>
+            <button
+              type="button"
+              className="home-button home-button-blue"
+              onClick={() => window.location.reload()}
+            >
+              <RotateCw size={16} aria-hidden="true" />
+              Try again
+            </button>
+          </div>
+        ) : (
+          <>
+            <div className="pricing-controls">
+              <p>
+                {kind === "sandbox"
+                  ? "Disposable, isolated workspaces. Billed per started minute."
+                  : "Persistent workspaces for ongoing development. Billed per started minute."}
+              </p>
+              {kind === "vm" && instanceRegions.length > 0 && (
+                <label className="pricing-region">
+                  <span>Region</span>
+                  <select
+                    value={activeInstanceRegionId}
+                    onChange={(event) => {
+                      setSelectedInstanceRegionId(event.target.value);
+                      setSelectedRowId("");
+                    }}
+                  >
+                    {instanceRegions.map((region) => (
+                      <option key={region.id} value={region.id}>
+                        {providerLabel(region.provider)} · {region.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              )}
+            </div>
+            {rows.length === 0 || !selectedRow ? (
+              <div className="pricing-empty">
+                <h3>
+                  No {kind === "sandbox" ? "sandbox" : "virtual machine"}{" "}
+                  options are available.
+                </h3>
+                <p>
+                  Choose another workspace type
+                  {kind === "vm" ? " or region" : ""} to compare available
+                  compute.
+                </p>
+              </div>
+            ) : (
+              <div className="pricing-calculator">
+                <div className="pricing-workspaces">
+                  <div className="pricing-list-heading" aria-hidden="true">
+                    <span>Workspace / provider</span>
+                    <span>Resources</span>
+                    <span>Rate / minute</span>
+                  </div>
+                  <fieldset className="pricing-options">
+                    <legend className="sr-only">Workspace size</legend>
+                    {rows.map((row, index) => (
+                      <OptionRow
+                        key={row.id}
+                        row={row}
+                        selected={row.id === selectedRow.id}
+                        lowest={index === 0 && rows.length > 1}
+                        onSelect={() => setSelectedRowId(row.id)}
+                      />
+                    ))}
+                  </fieldset>
+                </div>
+                <Estimator
+                  row={selectedRow}
+                  hoursPerDay={hoursPerDay}
+                  daysPerWeek={daysPerWeek}
+                  hoursInEstimate={hoursInEstimate}
+                  onHoursPerDay={setHoursPerDay}
+                  onDaysPerWeek={setDaysPerWeek}
+                />
+              </div>
+            )}
+            <p className="pricing-network-note">
+              <Info size={17} aria-hidden="true" />
+              <span>
+                <strong>Network usage is separate.</strong> Prices and estimates
+                cover base compute only. Data-transfer charges depend on how
+                much network data your workspace uses.
+              </span>
+            </p>
+          </>
+        )}
+      </section>
+      <IncludedFeatures />
+      <PricingFaq />
+      <ClosingCta />
+    </article>
+  );
+}
+
+const providerLabel = (provider: string) =>
+  getProviderLogo(provider)?.label ?? provider;
+
+function ProviderMark({ provider }: { provider: string }) {
+  const logo = getProviderLogo(provider);
+  return (
+    <span
+      className={`pricing-provider-mark ${logo?.tile === "light" ? "provider-light" : "provider-dark"}`}
+    >
+      {logo ? (
+        <Image src={logo.src} alt="" width={32} height={32} />
+      ) : (
+        <Server size={18} aria-hidden="true" />
+      )}
+    </span>
+  );
+}
+
+function Specs({ row }: { row: PricingRow }) {
+  return (
+    <span className="pricing-specs">
+      <span>
+        <Cpu size={13} aria-hidden="true" />
+        {row.cpu} vCPU
+      </span>
+      <span>
+        <MemoryStick size={13} aria-hidden="true" />
+        {row.ram} GB RAM
+      </span>
+      <span>
+        <HardDrive size={13} aria-hidden="true" />
+        {row.storage} GB storage
+      </span>
+    </span>
+  );
+}
+
+function OptionRow({
+  row,
+  selected,
+  lowest,
+  onSelect,
+}: {
+  row: PricingRow;
+  selected: boolean;
+  lowest: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <label className={`pricing-option ${selected ? "is-selected" : ""}`}>
+      <input
+        type="radio"
+        name="pricing-workspace"
+        value={row.id}
+        checked={selected}
+        onChange={onSelect}
+      />
+      <span className="pricing-workspace-name">
+        <ProviderMark provider={row.provider} />
+        <span>
+          <span className="pricing-option-name">{row.name}</span>
+          <span className="pricing-option-provider">
+            {providerLabel(row.provider)}
+            {row.region ? ` · ${row.region}` : ""}
+            {lowest && <span className="pricing-lowest">Lowest price</span>}
+          </span>
+        </span>
+      </span>
+      <Specs row={row} />
+      <span className="pricing-option-rate">
+        {row.price}
+        <span>/min</span>
+      </span>
+    </label>
+  );
+}
+
+function Estimator({
+  row,
+  hoursPerDay,
+  daysPerWeek,
+  hoursInEstimate,
+  onHoursPerDay,
+  onDaysPerWeek,
+}: {
+  row: PricingRow;
+  hoursPerDay: number;
+  daysPerWeek: number;
+  hoursInEstimate: number;
+  onHoursPerDay: (value: number) => void;
+  onDaysPerWeek: (value: number) => void;
+}) {
+  return (
+    <aside className="pricing-estimator" aria-labelledby="estimate-title">
+      <h3 id="estimate-title">Your 30-day estimate</h3>
+      <output
+        className="pricing-estimate-amount"
+        aria-live="polite"
+        aria-atomic="true"
+      >
+        {formatPrice(row.perMinute * hoursInEstimate * 60, 2)}
+      </output>
+      <p className="pricing-runtime-hours">
+        {Math.round(hoursInEstimate)} hours of runtime
+      </p>
+      <div className="pricing-estimate-workspace">
+        <strong>{row.name}</strong>
+        <span>
+          {providerLabel(row.provider)}
+          {row.region ? ` · ${row.region}` : ""}
+        </span>
+        <span>{row.price} / minute</span>
+      </div>
+      <div className="pricing-schedule">
+        <ScheduleSlider
+          label="Hours per day"
+          value={hoursPerDay}
+          min={1}
+          max={24}
+          suffix="hours"
+          onChange={onHoursPerDay}
+        />
+        <ScheduleSlider
+          label="Days per week"
+          value={daysPerWeek}
+          min={1}
+          max={7}
+          suffix="days"
+          onChange={onDaysPerWeek}
+        />
+      </div>
+      <p className="pricing-estimate-note">
+        Based on {hoursPerDay} {hoursPerDay === 1 ? "hour" : "hours"} per day,{" "}
+        {daysPerWeek} {daysPerWeek === 1 ? "day" : "days"} per week, over 30
+        days.
+      </p>
+      <ul className="pricing-estimate-includes">
+        <li>
+          <Check size={15} aria-hidden="true" />
+          Management charge included
+        </li>
+        <li>
+          <Power size={15} aria-hidden="true" />
+          Auto-shutdown stops idle billing
+        </li>
+        <li>
+          <Timer size={15} aria-hidden="true" />
+          Billed per started minute
+        </li>
+      </ul>
+      {row.finePrint && <p className="pricing-second-rate">{row.finePrint}</p>}
+      <a href={getAppUrl("/login")} className="home-button home-button-white">
+        Launch this workspace
+        <ArrowRight size={17} aria-hidden="true" />
+      </a>
+      <p className="pricing-estimate-exclusion">
+        Base compute only. Network usage is extra.
+      </p>
+    </aside>
+  );
+}
+
+function ScheduleSlider({
   label,
   value,
   min,
   max,
+  suffix,
   onChange,
 }: {
   label: string;
   value: number;
   min: number;
   max: number;
+  suffix: string;
   onChange: (value: number) => void;
 }) {
   return (
-    <div className="min-w-0 flex-1">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <div className="mt-2 flex items-center">
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          aria-label={`Decrease ${label}`}
-          disabled={value <= min}
-          onClick={() => onChange(Math.max(min, value - 1))}
-          className="rounded-full text-lg"
-        >
-          −
-        </Button>
-        <Input
-          type="number"
-          min={min}
-          max={max}
-          value={value}
-          aria-label={label}
-          onChange={(event) => {
-            const nextValue = Number(event.target.value);
-            if (Number.isFinite(nextValue)) {
-              onChange(Math.min(max, Math.max(min, nextValue)));
-            }
-          }}
-          className="mx-3 h-9 w-16 text-center tabular-nums [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
-        />
-        <Button
-          type="button"
-          variant="secondary"
-          size="icon"
-          aria-label={`Increase ${label}`}
-          disabled={value >= max}
-          onClick={() => onChange(Math.min(max, value + 1))}
-          className="rounded-full text-lg"
-        >
-          +
-        </Button>
-      </div>
-    </div>
-  );
-}
-
-function TrialCostChart({
-  instanceName,
-  providerHourlyPrice,
-  hoursPerDay,
-  daysPerWeek,
-  instanceTypes,
-  selectedTypeId,
-  onTypeChange,
-}: {
-  instanceName: string;
-  providerHourlyPrice: number;
-  hoursPerDay: number;
-  daysPerWeek: number;
-  instanceTypes: Array<{ id: string; name: string }>;
-  selectedTypeId: string;
-  onTypeChange: (id: string) => void;
-}) {
-  const chartData = Array.from({ length: DAYS_IN_COMPARISON }, (_, index) => {
-    const day = index + 1;
-    return {
-      day,
-      withoutVibeOnGo: Number(
-        formatInternalMoney(providerHourlyPrice * day * 24, 2),
-      ),
-      withVibeOnGo: Number(
-        formatInternalMoney(
-          providerHourlyPrice *
-            MANAGEMENT_CHARGE_MULTIPLIER *
-            day *
-            hoursPerDay *
-            (daysPerWeek / 7),
-          2,
-        ),
-      ),
-    };
-  });
-
-  return (
-    <section className="mt-10 border-t pt-10">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h3 className="font-semibold">30-day trial cost comparison</h3>
-          <p className="mt-1 text-sm leading-6 text-muted-foreground">
-            Cumulative cost for {instanceName}: 24 hours/day versus {hoursPerDay}
-            {" "}hours/day, {daysPerWeek} days/week.
-          </p>
-        </div>
-        {instanceTypes.length > 1 ? (
-          <label className="text-sm">
-            <span className="mb-1 block text-muted-foreground">Instance type</span>
-            <select
-              value={selectedTypeId}
-              onChange={(event) => onTypeChange(event.target.value)}
-              className="h-9 rounded-md border bg-background px-3 text-foreground"
-            >
-              {instanceTypes.map((type) => (
-                <option key={type.id} value={type.id}>
-                  {type.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        ) : null}
-      </div>
-      <ChartContainer
-        config={trialChartConfig}
-        className="mt-6 h-72 w-full aspect-auto"
-      >
-        <AreaChart data={chartData} margin={{ left: 6, right: 6, top: 8 }}>
-          <defs>
-            <linearGradient id="fill-without-vibeongo" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-withoutVibeOnGo)" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="var(--color-withoutVibeOnGo)" stopOpacity={0} />
-            </linearGradient>
-            <linearGradient id="fill-with-vibeongo" x1="0" x2="0" y1="0" y2="1">
-              <stop offset="5%" stopColor="var(--color-withVibeOnGo)" stopOpacity={0.2} />
-              <stop offset="95%" stopColor="var(--color-withVibeOnGo)" stopOpacity={0} />
-            </linearGradient>
-          </defs>
-          <CartesianGrid vertical={false} />
-          <XAxis dataKey="day" tickLine={false} axisLine={false} tickMargin={8} />
-          <YAxis
-            tickLine={false}
-            axisLine={false}
-            tickMargin={8}
-            tickFormatter={(value) => `$${value}`}
-          />
-          <ChartTooltip
-            cursor={false}
-            content={
-              <ChartTooltipContent
-                labelFormatter={(value) => `Day ${value}`}
-                formatter={(value, name) => (
-                  <div className="flex flex-1 justify-between gap-6">
-                    <span className="text-muted-foreground">
-                      {name === "withoutVibeOnGo"
-                        ? "Without VibeOnGo"
-                        : "With VibeOnGo"}
-                    </span>
-                    <span className="font-mono font-medium tabular-nums">
-                      ${Number(value).toFixed(2)}
-                    </span>
-                  </div>
-                )}
-              />
-            }
-          />
-          <Area
-            dataKey="withoutVibeOnGo"
-            type="natural"
-            fill="url(#fill-without-vibeongo)"
-            fillOpacity={1}
-            stroke="var(--color-withoutVibeOnGo)"
-          />
-          <Area
-            dataKey="withVibeOnGo"
-            type="natural"
-            fill="url(#fill-with-vibeongo)"
-            fillOpacity={1}
-            stroke="var(--color-withVibeOnGo)"
-          />
-        </AreaChart>
-      </ChartContainer>
-    </section>
+    <label className="pricing-slider">
+      <span>
+        <span>{label}</span>
+        <strong>{value}</strong>
+      </span>
+      <input
+        type="range"
+        min={min}
+        max={max}
+        value={value}
+        aria-valuetext={`${value} ${suffix}`}
+        onChange={(event) => onChange(Number(event.target.value))}
+      />
+      <span className="pricing-slider-bounds" aria-hidden="true">
+        <span>{min}</span>
+        <span>{max}</span>
+      </span>
+    </label>
   );
 }
 
 function IncludedFeatures() {
   const features = [
-    {
-      feature: "Automatic pull-request review",
-    },
-    {
-      feature: "Automatic issue review and fixing",
-    },
-    {
-      feature: "Fresh isolated environment for automated work",
-    },
-    {
-      feature: "Live HTTPS preview URLs",
-    },
-    {
-      feature: "Parallel workspace execution (tier-limited)",
-    },
-    {
-      feature: "Automatic workspace expiration",
-    },
+    "Automatic pull-request review",
+    "Automatic issue review and fixing",
+    "Fresh isolated environment for automated work",
+    "Live HTTPS preview URLs",
+    "Parallel workspace execution (tier-limited)",
+    "Automatic workspace expiration",
   ];
-
   return (
-    <section>
-      <h2 className="text-xl font-semibold">Included platform features</h2>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">
-        Compare a standard always-on provider VM with the VibeOnGo platform.
-      </p>
-      <div className="mt-6 hidden sm:block">
-        <table className="w-full text-left text-sm">
-          <thead className="border-y text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 font-medium">Feature</th>
-              <th className="px-4 py-3 text-center font-medium">
-                Without VibeOnGo
-              </th>
-              <th className="px-4 py-3 text-center font-medium">
-                With VibeOnGo
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {features.map((feature) => (
-              <tr key={feature.feature}>
-                <td className="px-4 py-4 font-medium">{feature.feature}</td>
-                <td className="px-4 py-4 text-center text-muted-foreground">
-                  <X className="mx-auto size-4" aria-label="Not included" />
-                </td>
-                <td className="px-4 py-4 text-center text-emerald-600">
-                  <Check className="mx-auto size-4" aria-label="Included" />
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      <dl className="mt-6 space-y-4 sm:hidden">
-        {features.map((feature) => (
-          <div key={feature.feature} className="border-b pb-4">
-            <dt className="font-medium">{feature.feature}</dt>
-            <dd className="mt-2 flex items-center gap-5 text-sm">
-              <span className="flex items-center gap-1.5 text-muted-foreground">
-                <X className="size-4" /> Without
-              </span>
-              <span className="flex items-center gap-1.5 text-emerald-600">
-                <Check className="size-4" /> With VibeOnGo
-              </span>
-            </dd>
+    <section className="pricing-included" aria-labelledby="included-title">
+      <div className="pricing-container pricing-support-grid">
+        <div>
+          <h2 id="included-title">
+            More than a VM
+            <br />
+            with a price tag.
+          </h2>
+          <p>
+            A standard always-on provider VM gives you a machine. VibeOnGo wraps
+            it in the platform your agents need.
+          </p>
+        </div>
+        <div className="pricing-comparison">
+          <div className="pricing-comparison-row pricing-comparison-head">
+            <span>Feature</span>
+            <span>Plain VM</span>
+            <span>VibeOnGo</span>
           </div>
-        ))}
-      </dl>
-      <Alert className="mt-6">
-        <Info />
-        <AlertTitle>Network usage is separate</AlertTitle>
-        <AlertDescription>
-          These estimates cover base compute only. Network-usage charges are
-          added based on how much network data your workspace uses.
-        </AlertDescription>
-      </Alert>
+          <ul>
+            {features.map((feature) => (
+              <li key={feature} className="pricing-comparison-row">
+                <span>{feature}</span>
+                <span>
+                  <X size={16} aria-hidden="true" />
+                  <span className="sr-only">Not included in a plain VM</span>
+                </span>
+                <span>
+                  <Check size={17} aria-hidden="true" />
+                  <span className="sr-only">Included in VibeOnGo</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
     </section>
   );
 }
@@ -501,151 +538,37 @@ function PricingFaq() {
     {
       question: "How does VibeOnGo pricing work?",
       answer:
-        "Virtual machines are billed per hour and sandboxes are billed per second. Use the calculator above to estimate base compute costs for the workspace type and schedule you choose.",
+        "Sandboxes and virtual machines are billed per started minute. The 30-day estimates assume 8 hours a day, 5 days a week by default — adjust the sliders to match your schedule. Prices include the VibeOnGo management charge.",
     },
     {
-      question: "What is the difference between a virtual machine and a sandbox?",
+      question:
+        "What is the difference between a virtual machine and a sandbox?",
       answer:
         "Virtual machines are persistent workspaces for ongoing development. Sandboxes are disposable, isolated workspaces for short-lived or automated tasks.",
     },
     {
-      question: "Are network charges included in the estimates?",
+      question: "Are network charges included in the prices?",
       answer:
-        "No. The estimates cover base compute. Network-usage charges depend on how much data your workspace transfers.",
+        "No. Prices and estimates cover base compute. Network-usage charges depend on how much data your workspace transfers.",
     },
   ];
-
   return (
-    <section className="mt-12 border-t pt-10" aria-labelledby="pricing-faq">
-      <h2 id="pricing-faq" className="text-xl font-semibold">
-        Pricing FAQ
-      </h2>
-      <dl className="mt-6 space-y-6">
-        {questions.map(({ question, answer }) => (
-          <div key={question}>
-            <dt className="font-medium">{question}</dt>
-            <dd className="mt-2 text-sm leading-6 text-muted-foreground">
-              {answer}
-            </dd>
-          </div>
+    <section
+      className="pricing-faq pricing-container"
+      aria-labelledby="pricing-faq-title"
+    >
+      <h2 id="pricing-faq-title">Pricing, answered.</h2>
+      <div>
+        {questions.map(({ question, answer }, index) => (
+          <details key={question} open={index === 0}>
+            <summary>
+              {question}
+              <Plus size={18} aria-hidden="true" />
+            </summary>
+            <p>{answer}</p>
+          </details>
         ))}
-      </dl>
+      </div>
     </section>
-  );
-}
-
-function PricingOptions({
-  rows,
-  emptyLabel,
-  vibeOnGoLabel,
-}: {
-  rows: PricingRow[];
-  emptyLabel: string;
-  vibeOnGoLabel: string;
-}) {
-  if (rows.length === 0) {
-    return <p className="mt-6 text-sm text-muted-foreground">{emptyLabel}</p>;
-  }
-
-  return (
-    <div className="mt-6">
-      <div className="hidden sm:block">
-        <table className="w-full text-left text-sm">
-          <thead className="border-y text-muted-foreground">
-            <tr>
-              <th className="px-4 py-3 font-medium">Workspace</th>
-              <th className="px-4 py-3 text-right font-medium">
-                Hourly price
-                <br />
-                <span className="font-normal">Includes management charge</span>
-              </th>
-              <th className="bg-red-500/5 px-4 py-3 text-right font-medium text-red-600">
-                Without VibeOnGo<br />
-                <span className="font-normal">Running for 30 days</span>
-              </th>
-              <th className="px-4 py-3 text-right font-medium">
-                With VibeOnGo<br />
-                <span className="font-normal">{vibeOnGoLabel}</span>
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y">
-            {rows.map((row) => (
-              <tr key={row.id}>
-                <td className="px-4 py-4">
-                  <p className="font-medium">{row.name}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    {row.provider}
-                    {row.cpu || row.ram
-                      ? ` · ${[row.cpu, row.ram].filter(Boolean).join(" · ")}`
-                      : ""}
-                  </p>
-                </td>
-                <td className="px-4 py-4 text-right tabular-nums">
-                  {row.hourlyPrice}
-                </td>
-                <td className="bg-red-500/5 px-4 py-4 text-right font-medium tabular-nums text-red-600">
-                  {row.alwaysOnPrice}
-                </td>
-                <td className="px-4 py-4 text-right font-medium tabular-nums">
-                  {row.vibeOnGoPrice}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      <div className="space-y-4 sm:hidden">
-        {rows.map((row) => (
-          <section key={row.id} className="rounded-md border bg-background p-4">
-            <h3 className="font-medium">{row.name}</h3>
-            <p className="mt-1 text-xs text-muted-foreground">
-              {row.provider}
-              {row.cpu || row.ram
-                ? ` · ${[row.cpu, row.ram].filter(Boolean).join(" · ")}`
-                : ""}
-            </p>
-            <dl className="mt-4 space-y-3 text-sm">
-              <ComparisonLine label="Hourly price" price={row.hourlyPrice} />
-              <ComparisonLine
-                label="Without VibeOnGo · running for 30 days"
-                price={row.alwaysOnPrice}
-                tone="warning"
-              />
-              <ComparisonLine
-                label={`With VibeOnGo · ${vibeOnGoLabel}`}
-                price={row.vibeOnGoPrice}
-                tone="default"
-              />
-            </dl>
-          </section>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function ComparisonLine({
-  label,
-  price,
-  tone = "plain",
-}: {
-  label: string;
-  price: string;
-  tone?: "plain" | "warning" | "default";
-}) {
-  const classes =
-    tone === "warning"
-      ? "border-red-500/15 bg-red-500/5 text-red-600"
-      : tone === "default"
-        ? "border-border bg-muted/30"
-        : "border-border bg-muted/30";
-
-  return (
-    <div className={`flex items-center justify-between gap-4 rounded-md border p-3 ${classes}`}>
-      <dt className="text-xs leading-5 opacity-70">{label}</dt>
-      <dd className="shrink-0 font-medium tabular-nums">{price}</dd>
-    </div>
   );
 }

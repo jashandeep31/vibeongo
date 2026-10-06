@@ -57,27 +57,3 @@ export const getSandboxTypesByRegionId = async ({
   );
   return res.data.data;
 };
-
-export const getPricingMetadata = async (): Promise<PricingMetadata> => {
-  const [instanceRegionData, sandboxRegionData] = await Promise.all([
-    getInstanceRegions(),
-    getSandboxRegions(),
-  ]);
-
-  const [instances, sandboxes] = await Promise.all([
-    Promise.all(
-      instanceRegionData.map(async (region) => ({
-        region,
-        types: await getInstanceTypesByRegionId({ regionId: region.id }),
-      })),
-    ),
-    Promise.all(
-      sandboxRegionData.map(async (region) => ({
-        region,
-        types: await getSandboxTypesByRegionId({ regionId: region.id }),
-      })),
-    ),
-  ]);
-
-  return { instances, sandboxes };
-};

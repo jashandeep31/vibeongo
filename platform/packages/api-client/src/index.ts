@@ -4,10 +4,12 @@ import * as chatsApi from "./services/chat-services.js";
 import * as githubReposApi from "./services/github-repo-services.js";
 import * as instancesApi from "./services/instance-services.js";
 import * as instanceSlotsApi from "./services/instance-slot-services.js";
+import * as notificationsApi from "./services/notification-services.js";
 import * as projectMetadataApi from "./services/project-metadata-services.js";
 import * as projectAutomationsApi from "./services/project-automation-services.js";
 import * as projectsApi from "./services/project-services.js";
 import * as projectSessionsApi from "./services/project-session-services.js";
+import * as providerCredentialsApi from "./services/provider-credentials-services.js";
 import * as speechTextApi from "./services/speech-text-services.js";
 import * as sshKeysApi from "./services/ssh-key-services.js";
 import * as sshTicketsApi from "./services/ssh-ticket-services.js";
@@ -44,6 +46,10 @@ export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
 export * from "./services/runtime-paths.js";
 export type { Chat } from "./services/chat-services.js";
+export type {
+  ProviderCredentialSummary,
+  GetProviderCredentialsResponse,
+} from "./services/provider-credentials-services.js";
 export type {
   ApiKey,
   CreateApiKeyInput,
@@ -120,6 +126,13 @@ export type {
   UpdateProjectAutomationResponse,
 } from "./services/project-automation-services.js";
 export type {
+  AppNotification,
+  GetNotificationsParams,
+  GetNotificationsResponse,
+  PushToken,
+  UpsertPushTokenInput,
+} from "./services/notification-services.js";
+export type {
   SetForgejoPasswordPayload,
   SetForgejoPasswordResponse,
   UserConfigValue,
@@ -139,11 +152,13 @@ function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
 
 export class MobileClient {
   apiClient: AxiosInstance;
+  providerCredentials: ReturnType<typeof bindApiModule<typeof providerCredentialsApi>>;
   apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
   instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
+  notifications: ReturnType<typeof bindApiModule<typeof notificationsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
   projectAutomations: ReturnType<
     typeof bindApiModule<typeof projectAutomationsApi>
@@ -164,10 +179,12 @@ export class MobileClient {
     });
 
     this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
+    this.providerCredentials = bindApiModule(providerCredentialsApi, this.apiClient);
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
     this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
+    this.notifications = bindApiModule(notificationsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
     this.projectAutomations = bindApiModule(
       projectAutomationsApi,
@@ -184,11 +201,13 @@ export class MobileClient {
 
 export class WebClient {
   apiClient: AxiosInstance;
+  providerCredentials: ReturnType<typeof bindApiModule<typeof providerCredentialsApi>>;
   apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
   instances: ReturnType<typeof bindApiModule<typeof instancesApi>>;
   instanceSlots: ReturnType<typeof bindApiModule<typeof instanceSlotsApi>>;
+  notifications: ReturnType<typeof bindApiModule<typeof notificationsApi>>;
   projectMetadata: ReturnType<typeof bindApiModule<typeof projectMetadataApi>>;
   projectAutomations: ReturnType<
     typeof bindApiModule<typeof projectAutomationsApi>
@@ -208,10 +227,12 @@ export class WebClient {
     });
 
     this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
+    this.providerCredentials = bindApiModule(providerCredentialsApi, this.apiClient);
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
     this.instanceSlots = bindApiModule(instanceSlotsApi, this.apiClient);
+    this.notifications = bindApiModule(notificationsApi, this.apiClient);
     this.projectMetadata = bindApiModule(projectMetadataApi, this.apiClient);
     this.projectAutomations = bindApiModule(
       projectAutomationsApi,

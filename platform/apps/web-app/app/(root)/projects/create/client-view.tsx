@@ -2,6 +2,7 @@
 
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
 import { GithubRepoDialog } from "@/components/dialogs/github-repo-dialog";
+import { RepoProviderIcon } from "@/components/repo-provider-icon";
 import {
   buildProjectPackages,
   createDefaultProjectServicesConfig,
@@ -35,6 +36,7 @@ import {
   type ProjectProvider,
   type z,
 } from "@repo/shared";
+import { getRuntimeRepositoryDirectory } from "@repo/api-client";
 import axios from "axios";
 import {
   AlertCircle,
@@ -44,6 +46,7 @@ import {
   KeyRound,
   Loader2,
   Plus,
+  TriangleAlert,
 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -57,18 +60,89 @@ import {
 import { toast } from "sonner";
 
 type ProjectPorts = z.infer<typeof projectConfigValidator>["config"]["ports"];
-type SandboxProvider = "e2b" | "vercel" | "daytona";
+type SandboxProvider = "e2b" | "vercel" | "daytona" | "boat";
+
+function getRepoName(fullName: string) {
+  return getRuntimeRepositoryDirectory(fullName).split("/").at(-1) ?? fullName;
+}
+
+// Lines added to the final and development scripts when a repo is selected,
+// so commands for that repo run inside its clone. The initial script is left
+// alone because it runs before repos are cloned.
+function addRepoScriptLines(script: string, fullName: string) {
+  const block = `# Write the code for ${getRepoName(fullName)} below\ncd ${getRuntimeRepositoryDirectory(fullName)}`;
+  if (script.includes(block)) return script;
+  const existing = script.trimEnd();
+  return existing ? `${existing}\n\n${block}\n` : `${block}\n`;
+}
+
+// `cd` into a repo's clone, or a folder inside it. Templates write the
+// workspace as $HOME/workspace, so the home-relative forms count too.
+const CD_INTO_REPO =
+  /^cd\s+["']?(?:\/home\/vibe|\$HOME|\$\{HOME\}|~)\/workspace\/([A-Za-z0-9._-]+)(?:[/"'\s]|$)/;
+
+// Repos a script refers to, found by the added comment or a cd into the
+// repo's clone.
+function getScriptRepoNames(script: string) {
+  const names = new Set<string>();
+  for (const line of script.split("\n")) {
+    const match =
+      line.trim().match(/^# Write the code for (\S+) below$/) ??
+      line.trim().match(CD_INTO_REPO);
+    if (match?.[1]) names.add(match[1]);
+  }
+  return names;
+}
+
+type RepoScriptWarning = { kind: "unselected" | "missing"; repoName: string };
+
+function getRepoScriptWarnings(
+  script: string,
+  selectedRepoNames: string[],
+): RepoScriptWarning[] {
+  const scriptRepoNames = getScriptRepoNames(script);
+  return [
+    ...[...scriptRepoNames]
+      .filter((name) => !selectedRepoNames.includes(name))
+      .map((repoName) => ({ kind: "unselected" as const, repoName })),
+    ...selectedRepoNames
+      .filter((name) => !scriptRepoNames.has(name))
+      .map((repoName) => ({ kind: "missing" as const, repoName })),
+  ];
+}
+
+function RepoScriptWarnings({ warnings }: { warnings: RepoScriptWarning[] }) {
+  return warnings.map(({ kind, repoName }) => (
+    <p
+      key={`${kind}-${repoName}`}
+      className={
+        kind === "unselected"
+          ? "border-destructive/35 bg-destructive/10 text-destructive flex items-center gap-2 rounded-md border px-3 py-2 text-xs"
+          : "flex items-center gap-2 rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400"
+      }
+    >
+      <TriangleAlert className="size-3.5 shrink-0" aria-hidden="true" />
+      {kind === "unselected"
+        ? `Script for ${repoName} is here, but ${repoName} isn't selected.`
+        : `You haven't added any script for ${repoName}.`}
+    </p>
+  ));
+}
 
 const sandboxProviderOptions: { id: SandboxProvider; label: string }[] = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ];
 
 const isAvailableSandboxProvider = (
   provider: string,
 ): provider is SandboxProvider =>
-  provider === "e2b" || provider === "vercel" || provider === "daytona";
+  provider === "e2b" ||
+  provider === "vercel" ||
+  provider === "daytona" ||
+  provider === "boat";
 
 function FormSection({
   title,
@@ -305,6 +379,23 @@ export default function ClientView({ projectId }: { projectId?: string }) {
     );
   };
 
+  // Selecting a repo adds its lines to the scripts. Unselecting leaves the
+  // scripts alone, since the user may have written code there; the warnings
+  // below each script point out the mismatch instead.
+  const toggleRepo = (id: string) => {
+    const isSelected = githubRepoIds.includes(id);
+    toggleValue(id, githubRepoIds, setGithubRepoIds);
+    const repo = reposQuery.data?.find((item) => item.id === id);
+    if (isSelected || !repo) return;
+    const updateScript = (script: string) =>
+      addRepoScriptLines(script, repo.full_name);
+    setFinalScript(updateScript);
+    setDevScript(updateScript);
+  };
+  const selectedRepoNames = (reposQuery.data ?? [])
+    .filter((repo) => githubRepoIds.includes(repo.id))
+    .map((repo) => getRepoName(repo.full_name));
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
 
@@ -480,7 +571,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                 }
                 options={instanceTypes.map((type) => ({
                   id: type.id,
-                  label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                 }))}
                 onChange={setInstanceTypeId}
               />
@@ -537,7 +628,7 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                 }
                 options={sandboxTypes.map((type) => ({
                   id: type.id,
-                  label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                  label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                 }))}
                 onChange={setSandboxTypeId}
               />
@@ -579,17 +670,16 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                       size="sm"
                       aria-pressed={selected}
                       disabled={isSaving}
-                      onClick={() =>
-                        toggleValue(repo.id, githubRepoIds, setGithubRepoIds)
-                      }
+                      onClick={() => toggleRepo(repo.id)}
                       className={
                         selected
                           ? "border-primary bg-primary/5 text-primary ring-primary/30 ring-2"
                           : ""
                       }
                     >
-                      {selected ? <Check /> : <Github />}
+                      <RepoProviderIcon type={repo.type} />
                       {repo.full_name}
+                      {selected ? <Check /> : null}
                     </Button>
                   );
                 })}
@@ -682,6 +772,9 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                 className="min-h-24 font-mono text-xs"
                 disabled={isSaving}
               />
+              <RepoScriptWarnings
+                warnings={getRepoScriptWarnings(finalScript, selectedRepoNames)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="dev-script">Development script</Label>
@@ -693,6 +786,9 @@ export default function ClientView({ projectId }: { projectId?: string }) {
                 maxLength={500}
                 className="min-h-24 font-mono text-xs"
                 disabled={isSaving}
+              />
+              <RepoScriptWarnings
+                warnings={getRepoScriptWarnings(devScript, selectedRepoNames)}
               />
             </div>
           </div>

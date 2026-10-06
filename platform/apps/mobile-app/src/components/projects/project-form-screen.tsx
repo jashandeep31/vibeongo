@@ -1,3 +1,4 @@
+import { getRuntimeRepositoryDirectory } from "@repo/api-client";
 import {
   useCreateProject,
   useGetGithubRepos,
@@ -32,6 +33,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 import { ConnectGithubRepoDrawer } from "@/components/github-repos/connect-github-repo-drawer";
+import { RepoProviderIcon } from "@/components/github-repos/repo-provider-icon";
 import {
   PageChromeLayout,
   PageHeader,
@@ -45,20 +47,81 @@ import {
 } from "@/components/projects/project-services-config";
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/hooks/use-theme";
 
 type ProjectPorts = z.infer<typeof projectConfigValidator>["config"]["ports"];
-type SandboxProvider = "e2b" | "vercel" | "daytona";
-type Choice = { id: string; label: string };
+
+// Lines added to the final and development scripts when a repo is selected,
+// so commands for that repo run inside its clone. The initial script is left
+// alone because it runs before repos are cloned.
+function getRepoScriptLines(fullName: string) {
+  const directory = getRuntimeRepositoryDirectory(fullName);
+  const repoName = directory.split("/").at(-1);
+  return [`# Write the code for ${repoName} below`, `cd ${directory}`];
+}
+
+function addRepoScriptLines(script: string, fullName: string) {
+  const [comment, cd] = getRepoScriptLines(fullName);
+  const block = `${comment}\n${cd}`;
+  if (script.includes(block)) return script;
+  const existing = script.trimEnd();
+  return existing ? `${existing}\n\n${block}\n` : `${block}\n`;
+}
+
+function getRepoName(fullName: string) {
+  return getRuntimeRepositoryDirectory(fullName).split("/").at(-1) ?? fullName;
+}
+
+// `cd` into a repo's clone, or a folder inside it. Templates write the
+// workspace as $HOME/workspace, so the home-relative forms count too.
+const CD_INTO_REPO =
+  /^cd\s+["']?(?:\/home\/vibe|\$HOME|\$\{HOME\}|~)\/workspace\/([A-Za-z0-9._-]+)(?:[\/"'\s]|$)/;
+
+// Repos a script refers to, found by the added comment or a cd into the
+// repo's clone.
+function getScriptRepoNames(script: string) {
+  const names = new Set<string>();
+  for (const line of script.split("\n")) {
+    const match =
+      line.trim().match(/^# Write the code for (\S+) below$/) ??
+      line.trim().match(CD_INTO_REPO);
+    if (match?.[1]) names.add(match[1]);
+  }
+  return names;
+}
+
+type RepoScriptWarning = { kind: "unselected" | "missing"; repoName: string };
+
+function getRepoScriptWarnings(
+  script: string,
+  selectedRepoNames: string[],
+): RepoScriptWarning[] {
+  const scriptRepoNames = getScriptRepoNames(script);
+  return [
+    ...[...scriptRepoNames]
+      .filter((name) => !selectedRepoNames.includes(name))
+      .map((repoName) => ({ kind: "unselected" as const, repoName })),
+    ...selectedRepoNames
+      .filter((name) => !scriptRepoNames.has(name))
+      .map((repoName) => ({ kind: "missing" as const, repoName })),
+  ];
+}
+type SandboxProvider = "e2b" | "vercel" | "daytona" | "boat";
+type Choice = { id: string; label: string; leading?: React.ReactNode };
 
 const sandboxProviderOptions: Choice[] = [
   { id: "e2b", label: "E2B" },
   { id: "vercel", label: "Vercel" },
   { id: "daytona", label: "Daytona" },
+  { id: "boat", label: "Boat" },
 ];
 
 const isSandboxProvider = (value: string): value is SandboxProvider =>
-  value === "e2b" || value === "vercel" || value === "daytona";
+  value === "e2b" ||
+  value === "vercel" ||
+  value === "daytona" ||
+  value === "boat";
 
 function getErrorMessage(error: unknown, fallback: string) {
   if (typeof error === "object" && error !== null && "response" in error) {
@@ -233,6 +296,23 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
         ? values.filter((value) => value !== id)
         : [...values, id],
     );
+
+  // Selecting a repo adds its lines to the scripts. Unselecting leaves the
+  // scripts alone, since the user may have written code there; the warnings
+  // below each script point out the mismatch instead.
+  const toggleRepo = (id: string) => {
+    const isSelected = githubRepoIds.includes(id);
+    toggle(id, githubRepoIds, setGithubRepoIds);
+    const repo = reposQuery.data?.find((item) => item.id === id);
+    if (isSelected || !repo) return;
+    const updateScript = (script: string) =>
+      addRepoScriptLines(script, repo.full_name);
+    setFinalScript(updateScript);
+    setDevScript(updateScript);
+  };
+  const selectedRepoNames = (reposQuery.data ?? [])
+    .filter((repo) => githubRepoIds.includes(repo.id))
+    .map((repo) => getRepoName(repo.full_name));
 
   const submit = async () => {
     if (isSaving) return;
@@ -411,7 +491,7 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                   onChange={setInstanceTypeId}
                   options={instanceTypes.map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   placeholder={
                     instanceTypesQuery.isPending
@@ -464,7 +544,7 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                   onChange={setSandboxTypeId}
                   options={sandboxTypes.map((type) => ({
                     id: type.id,
-                    label: `${type.name} · ${type.cpu || "N/A"} · ${type.ram || "N/A"}`,
+                    label: `${type.name} · ${type.cpu} vCPU · ${type.ram} GB RAM · ${type.storage} GB storage`,
                   }))}
                   placeholder={
                     sandboxTypesQuery.isPending
@@ -484,13 +564,14 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                     android: "code",
                   }}
                   isLoading={reposQuery.isPending}
-                  label="GitHub repositories"
+                  label="Git repos"
                   layout="list"
                   onAction={() => setIsRepoDrawerOpen(true)}
-                  onToggle={(id) => toggle(id, githubRepoIds, setGithubRepoIds)}
+                  onToggle={toggleRepo}
                   options={(reposQuery.data ?? []).map((repo) => ({
                     id: repo.id,
                     label: repo.full_name,
+                    leading: <RepoProviderIcon type={repo.type} />,
                   }))}
                   selectedIds={githubRepoIds}
                 />
@@ -520,12 +601,17 @@ export function ProjectFormScreen({ projectId }: { projectId?: string }) {
                   onChangeText={setFinalScript}
                   placeholder="Runs after repositories are set up"
                   value={finalScript}
+                  warnings={getRepoScriptWarnings(
+                    finalScript,
+                    selectedRepoNames,
+                  )}
                 />
                 <ScriptField
                   label="Development script"
                   onChangeText={setDevScript}
                   placeholder="Starts the development environment"
                   value={devScript}
+                  warnings={getRepoScriptWarnings(devScript, selectedRepoNames)}
                 />
               </FormSection>
 
@@ -699,12 +785,15 @@ function ScriptField({
   onChangeText,
   placeholder,
   value,
+  warnings = [],
 }: {
   label: string;
   onChangeText: (value: string) => void;
   placeholder: string;
   value: string;
+  warnings?: RepoScriptWarning[];
 }) {
+  const isDark = useColorScheme() === "dark";
   return (
     <FormField label={label}>
       <FormInput
@@ -716,6 +805,47 @@ function ScriptField({
         style={styles.scriptInput}
         value={value}
       />
+      {warnings.map(({ kind, repoName }) => {
+        const isUnselected = kind === "unselected";
+        return (
+          <View
+            key={`${kind}-${repoName}`}
+            style={[
+              styles.scriptWarning,
+              isUnselected
+                ? styles.scriptWarningRed
+                : styles.scriptWarningYellow,
+            ]}
+          >
+            <SymbolView
+              name={{
+                ios: "exclamationmark.triangle.fill",
+                android: "warning",
+              }}
+              size={14}
+              tintColor={
+                isUnselected ? "#ef4444" : isDark ? "#fbbf24" : "#b45309"
+              }
+            />
+            <ThemedText
+              style={[
+                styles.scriptWarningText,
+                {
+                  color: isUnselected
+                    ? "#ef4444"
+                    : isDark
+                      ? "#fbbf24"
+                      : "#b45309",
+                },
+              ]}
+            >
+              {isUnselected
+                ? `Script for ${repoName} is here, but ${repoName} isn't selected.`
+                : `You haven't added any script for ${repoName}.`}
+            </ThemedText>
+          </View>
+        );
+      })}
     </FormField>
   );
 }
@@ -880,6 +1010,13 @@ function SelectableGroup({
   selectedIds: string[];
 }) {
   const theme = useTheme();
+  const checkmark = (
+    <SymbolView
+      name={{ ios: "checkmark", android: "check" }}
+      size={13}
+      tintColor={theme.text}
+    />
+  );
   return (
     <View style={styles.selectableGroup}>
       <View style={styles.selectableHeader}>
@@ -919,13 +1056,8 @@ function SelectableGroup({
                   pressed && styles.pressed,
                 ]}
               >
-                {selected ? (
-                  <SymbolView
-                    name={{ ios: "checkmark", android: "check" }}
-                    size={13}
-                    tintColor={theme.text}
-                  />
-                ) : null}
+                {selected && layout !== "list" ? checkmark : null}
+                {option.leading}
                 <ThemedText
                   numberOfLines={layout === "list" ? 1 : undefined}
                   style={[
@@ -935,6 +1067,8 @@ function SelectableGroup({
                 >
                   {option.label}
                 </ThemedText>
+                {/* In lists the check trails, so leading icons stay aligned. */}
+                {selected && layout === "list" ? checkmark : null}
               </Pressable>
             );
           })}
@@ -1018,6 +1152,7 @@ const styles = StyleSheet.create({
   },
   chipLabel: { fontSize: 12, fontWeight: "600" },
   listOption: {
+    gap: 8,
     minHeight: 44,
     width: "100%",
   },
@@ -1027,6 +1162,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   emptyCopy: { fontSize: 13, lineHeight: 19 },
+  scriptWarning: {
+    alignItems: "center",
+    borderRadius: 10,
+    borderWidth: 1,
+    flexDirection: "row",
+    gap: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+  },
+  scriptWarningRed: {
+    backgroundColor: "rgba(239,68,68,0.10)",
+    borderColor: "rgba(239,68,68,0.35)",
+  },
+  scriptWarningYellow: {
+    backgroundColor: "rgba(234,179,8,0.12)",
+    borderColor: "rgba(234,179,8,0.40)",
+  },
+  scriptWarningText: { flex: 1, fontSize: 12, lineHeight: 17 },
   errorCard: {
     backgroundColor: "rgba(239,68,68,0.10)",
     borderColor: "rgba(239,68,68,0.35)",

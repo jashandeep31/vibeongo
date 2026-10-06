@@ -37,7 +37,7 @@ npm run dev`,
           {
             name: "opencode",
             config: {
-              auth_json: {},
+              auth_json: [],
               use_user_config: true,
               model: "default",
             },
@@ -58,6 +58,13 @@ npm run dev`,
           },
           {
             name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "claude",
             config: {
               auth_json: {},
               use_user_config: true,
@@ -115,7 +122,7 @@ volumes:
           {
             name: "opencode",
             config: {
-              auth_json: {},
+              auth_json: [],
               use_user_config: true,
               model: "default",
             },
@@ -136,6 +143,13 @@ volumes:
           },
           {
             name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "claude",
             config: {
               auth_json: {},
               use_user_config: true,
@@ -176,7 +190,7 @@ npm run dev`,
           {
             name: "opencode",
             config: {
-              auth_json: {},
+              auth_json: [],
               use_user_config: true,
               model: "default",
             },
@@ -197,6 +211,13 @@ npm run dev`,
           },
           {
             name: "fx",
+            config: {
+              auth_json: {},
+              use_user_config: true,
+            },
+          },
+          {
+            name: "claude",
             config: {
               auth_json: {},
               use_user_config: true,

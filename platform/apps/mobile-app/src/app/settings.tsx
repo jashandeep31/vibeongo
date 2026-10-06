@@ -1,5 +1,10 @@
-import type { UserConfigValue } from "@repo/api-client";
+import type { ApiKey, UserConfigValue } from "@repo/api-client";
 import {
+  useApiKeys,
+  useCreateApiKey,
+  useDeleteApiKey,
+  useRotateApiKey,
+  useProviderCredentials,
   useCreateSshKey,
   useCreateUserConfig,
   useDeleteSshKey,
@@ -13,7 +18,9 @@ import {
   useUserSettings,
 } from "@repo/api-hooks";
 import { useQueryClient } from "@repo/api-hooks";
+import { opencodeCredentialsValidator } from "@repo/shared";
 import * as Linking from "expo-linking";
+import * as Clipboard from "expo-clipboard";
 import { useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
 import {
@@ -24,6 +31,7 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   KeyboardAvoidingView,
   Modal,
   Platform,
@@ -31,6 +39,7 @@ import {
   RefreshControl,
   ScrollView,
   StyleSheet,
+  Switch,
   TextInput,
   View,
 } from "react-native";
@@ -42,6 +51,7 @@ import Toast from "react-native-toast-message";
 
 import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ConfirmationDrawer } from "@/components/confirmation-drawer";
+import { ModelInput } from "@/components/model-input";
 import {
   PageChromeLayout,
   PageHeader,
@@ -50,6 +60,10 @@ import {
 import { ThemedText } from "@/components/themed-text";
 import { Fonts } from "@/constants/theme";
 import { useTheme } from "@/hooks/use-theme";
+import {
+  getNotificationSoundEnabled,
+  setNotificationSoundEnabled,
+} from "@/lib/notification-sound";
 import {
   type ThemePreference,
   useThemePreference,
@@ -101,6 +115,11 @@ const configTypes = [
     name: "Pi",
     description: "Pi authentication configuration.",
   },
+  {
+    type: "claude",
+    name: "Claude Code",
+    description: "Claude Code authentication configuration.",
+  },
 ] as const;
 
 type ConfigType = (typeof configTypes)[number]["type"];
@@ -136,6 +155,12 @@ export default function SettingsScreen() {
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
   const sshKeysQuery = useSshKeys();
+  const [apiKeyPage, setApiKeyPage] = useState(1);
+  const apiKeysQuery = useApiKeys({ page: apiKeyPage, limit: 10 });
+  const providerCredentialsQuery = useProviderCredentials();
+  const deleteApiKey = useDeleteApiKey();
+  const [apiKeyEditor, setApiKeyEditor] = useState<ApiKey | "new" | null>(null);
+  const [apiKeyToRevoke, setApiKeyToRevoke] = useState<ApiKey | null>(null);
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
   const updateTerminationSettings = useUpdateUserSettings();
@@ -167,6 +192,27 @@ export default function SettingsScreen() {
   } | null>(null);
   const [sshEditor, setSshEditor] = useState<SshKey | "new" | null>(null);
   const [sshKeyToDelete, setSshKeyToDelete] = useState<SshKey | null>(null);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    void getNotificationSoundEnabled().then((enabled) => {
+      if (active) setSoundEnabled(enabled);
+    });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  const toggleSound = (enabled: boolean) => {
+    setSoundEnabled(enabled);
+    void setNotificationSoundEnabled(enabled).catch(() =>
+      showSettingsError(
+        "Could not save notification sound",
+        "Please try again.",
+      ),
+    );
+  };
 
   useEffect(() => {
     if (!userSettings || isTelegramDirty) return;
@@ -303,377 +349,683 @@ export default function SettingsScreen() {
       settingsQuery.refetch(),
       configsQuery.refetch(),
       sshKeysQuery.refetch(),
+      apiKeysQuery.refetch(),
+      providerCredentialsQuery.refetch(),
     ]);
   };
 
   const isRefreshing =
     settingsQuery.isRefetching ||
     configsQuery.isRefetching ||
-    sshKeysQuery.isRefetching;
+    sshKeysQuery.isRefetching ||
+    apiKeysQuery.isRefetching ||
+    providerCredentialsQuery.isRefetching;
+
+  const revokeApiKey = async () => {
+    if (!apiKeyToRevoke || deleteApiKey.isPending) return;
+    try {
+      await deleteApiKey.mutateAsync(apiKeyToRevoke.id);
+      setApiKeyToRevoke(null);
+      Toast.show({ type: "success", text1: "API key revoked" });
+    } catch {
+      showSettingsError("Could not revoke API key", "Please try again.");
+    }
+  };
 
   return (
     <SafeAreaView
       edges={["top", "bottom"]}
       style={[styles.screen, { backgroundColor: theme.background }]}
     >
-      <PageChromeLayout
-        top={
-          <ScreenHeader
-            onBack={() => router.back()}
-            titleOpacity={titleOpacity}
-          />
-        }
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.screen}
       >
-        {({ topInset }) => (
-          <ScrollView
-            onScroll={onTitleScroll}
-            scrollEventThrottle={16}
-            contentContainerStyle={[styles.content, { paddingTop: topInset }]}
-            keyboardShouldPersistTaps="handled"
-            refreshControl={
-              <RefreshControl
-                onRefresh={refresh}
-                refreshing={isRefreshing}
-                tintColor={theme.textSecondary}
-              />
-            }
-            showsVerticalScrollIndicator={false}
-          >
-            <SettingsSection
-              icon={{ ios: "sun.max", android: "light_mode" }}
-              title="Appearance"
-            >
-              <View style={styles.appearanceOptions}>
-                {themeOptions.map((option) => {
-                  const selected = preference === option.value;
-                  return (
-                    <Pressable
-                      accessibilityRole="radio"
-                      accessibilityState={{ checked: selected }}
-                      key={option.value}
-                      onPress={() => void setPreference(option.value)}
-                      style={({ pressed }) => [
-                        styles.appearanceOption,
-                        {
-                          backgroundColor: theme.background,
-                          borderColor: selected
-                            ? theme.text
-                            : theme.backgroundSelected,
-                        },
-                        pressed && styles.pressed,
-                      ]}
-                    >
-                      <View
-                        style={[
-                          styles.appearanceIcon,
-                          {
-                            backgroundColor: selected
-                              ? theme.backgroundElement
-                              : theme.background,
-                          },
-                        ]}
-                      >
-                        <SymbolView
-                          name={option.icon}
-                          size={16}
-                          tintColor={
-                            selected ? theme.text : theme.textSecondary
-                          }
-                        />
-                      </View>
-                      <ThemedText
-                        style={[
-                          styles.appearanceLabel,
-                          !selected && { color: theme.textSecondary },
-                        ]}
-                      >
-                        {option.label}
-                      </ThemedText>
-                      {selected ? (
-                        <View
-                          style={[
-                            styles.selectedIndicator,
-                            { backgroundColor: theme.text },
-                          ]}
-                        />
-                      ) : null}
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </SettingsSection>
-
-            <SettingsSection
-              icon={{ ios: "cpu", android: "smart_toy" }}
-              title="Tool configurations"
-            >
-              {configTypes.map((config) => {
-                const configured = (configsQuery.data ?? []).some(
-                  (item) => item.config_type === config.type,
-                );
-                return (
-                  <SettingsRow key={config.type} last={config.type === "pi"}>
-                    <View style={styles.rowCopy}>
-                      <ThemedText style={styles.rowTitle}>
-                        {config.name}
-                      </ThemedText>
-                      <ThemedText
-                        style={styles.rowDescription}
-                        themeColor="textSecondary"
-                      >
-                        {config.description}
-                      </ThemedText>
-                    </View>
-                    {configsQuery.isPending ? (
-                      <ActivityIndicator
-                        color={theme.textSecondary}
-                        size="small"
-                      />
-                    ) : configsQuery.isError ? (
-                      <ThemedText style={styles.inlineError}>
-                        Load failed
-                      </ThemedText>
-                    ) : (
-                      <SmallButton
-                        label={configured ? "Edit" : "Configure"}
-                        onPress={() =>
-                          setConfigEditor({
-                            type: config.type,
-                            name: config.name,
-                            configured,
-                          })
-                        }
-                      />
-                    )}
-                  </SettingsRow>
-                );
-              })}
-            </SettingsSection>
-
-            <SettingsSection
-              icon={{ ios: "paperplane", android: "send" }}
-              title="Telegram"
-            >
-              <ServerSettingsState query={settingsQuery}>
-                <SettingsTextInput
-                  editable={
-                    Boolean(userSettings) && !updateTelegramSettings.isPending
-                  }
-                  keyboardType="numbers-and-punctuation"
-                  onChangeText={(value) => {
-                    if (/^-?\d*$/.test(value)) {
-                      setTelegramChatId(value);
-                      setIsTelegramDirty(true);
-                    }
-                  }}
-                  placeholder="e.g. -1001234567890"
-                  value={telegramChatId}
-                />
-                <SaveButton
-                  disabled={!userSettings || !isTelegramDirty}
-                  label="Save Telegram"
-                  onPress={() => void saveTelegram()}
-                  pending={updateTelegramSettings.isPending}
-                />
-              </ServerSettingsState>
-            </SettingsSection>
-
-            <SettingsSection
-              icon={{ ios: "slider.horizontal.3", android: "tune" }}
-              title="Default models"
-            >
-              <ServerSettingsState query={settingsQuery}>
-                <View style={styles.formFields}>
-                  {modelRows.map((row) => (
-                    <LabeledInput
-                      editable={
-                        Boolean(userSettings) && !updateModelSettings.isPending
-                      }
-                      key={row.name}
-                      label={row.label}
-                      onChangeText={(value) => {
-                        setModelForm((current) => ({
-                          ...current,
-                          [row.name]: value,
-                        }));
-                        setIsModelFormDirty(true);
-                      }}
-                      value={modelForm[row.name]}
-                    />
-                  ))}
-                </View>
-                <SaveButton
-                  disabled={!userSettings || !isModelFormDirty}
-                  label="Save models"
-                  onPress={() => void saveModels()}
-                  pending={updateModelSettings.isPending}
-                />
-              </ServerSettingsState>
-            </SettingsSection>
-
-            <SettingsSection
-              description="Whole minutes from 15 to 1200."
-              icon={{ ios: "timer", android: "timer" }}
-              title="Instance auto-termination"
-            >
-              <ServerSettingsState query={settingsQuery}>
-                <View style={styles.formFields}>
-                  {terminationRows.map((row) => (
-                    <LabeledInput
-                      editable={
-                        Boolean(userSettings) &&
-                        !updateTerminationSettings.isPending
-                      }
-                      key={row.name}
-                      keyboardType="number-pad"
-                      label={row.label}
-                      onChangeText={(value) => {
-                        if (!/^\d*$/.test(value)) return;
-                        setTerminationForm((current) => ({
-                          ...current,
-                          [row.name]: value,
-                        }));
-                        setIsTerminationFormDirty(true);
-                      }}
-                      value={terminationForm[row.name]}
-                    />
-                  ))}
-                </View>
-                <SaveButton
-                  disabled={!userSettings || !isTerminationFormDirty}
-                  label="Save auto-termination"
-                  onPress={() => void saveTermination()}
-                  pending={updateTerminationSettings.isPending}
-                />
-              </ServerSettingsState>
-            </SettingsSection>
-
-            <SettingsSection
-              action={
-                <SmallButton
-                  label="Add key"
-                  onPress={() => setSshEditor("new")}
+        <PageChromeLayout
+          top={
+            <ScreenHeader
+              onBack={() => router.back()}
+              titleOpacity={titleOpacity}
+            />
+          }
+        >
+          {({ topInset }) => (
+            <ScrollView
+              automaticallyAdjustKeyboardInsets
+              onScroll={onTitleScroll}
+              scrollEventThrottle={16}
+              contentContainerStyle={[styles.content, { paddingTop: topInset }]}
+              keyboardShouldPersistTaps="handled"
+              refreshControl={
+                <RefreshControl
+                  onRefresh={refresh}
+                  refreshing={isRefreshing}
+                  tintColor={theme.textSecondary}
                 />
               }
-              icon={{ ios: "key", android: "key" }}
-              title="SSH keys"
+              showsVerticalScrollIndicator={false}
             >
-              {sshKeysQuery.isPending ? (
-                <LoadingBlocks />
-              ) : sshKeysQuery.isError ? (
-                <InlineError
-                  label="Failed to load SSH keys."
-                  onRetry={() => void sshKeysQuery.refetch()}
-                />
-              ) : sshKeysQuery.data?.length ? (
-                sshKeysQuery.data.map((sshKey, index) => (
-                  <SettingsRow
-                    key={sshKey.id}
-                    last={index === sshKeysQuery.data.length - 1}
-                  >
-                    <View style={styles.keyIcon}>
-                      <SymbolView
-                        name={{ ios: "key", android: "key" }}
-                        size={18}
-                        tintColor={theme.textSecondary}
-                      />
-                    </View>
-                    <ThemedText numberOfLines={1} style={styles.keyName}>
-                      {sshKey.name}
-                    </ThemedText>
-                    <IconButton
-                      accessibilityLabel={`Edit ${sshKey.name}`}
-                      icon={{ ios: "pencil", android: "edit" }}
-                      onPress={() => setSshEditor(sshKey)}
-                    />
-                    <IconButton
-                      accessibilityLabel={`Delete ${sshKey.name}`}
-                      destructive
-                      disabled={deleteSshKey.isPending}
-                      icon={{ ios: "trash", android: "delete" }}
-                      onPress={() => setSshKeyToDelete(sshKey)}
-                    />
-                  </SettingsRow>
-                ))
-              ) : (
-                <View style={styles.emptyState}>
-                  <SymbolView
-                    name={{ ios: "key", android: "key" }}
-                    size={28}
-                    tintColor={theme.textSecondary}
-                  />
-                  <ThemedText themeColor="textSecondary">
-                    No SSH keys configured.
-                  </ThemedText>
-                </View>
-              )}
-            </SettingsSection>
-
-            <SettingsSection
-              description="Set the password used to sign in to your Forgejo account. Use 4–20 characters."
-              icon={{ ios: "lock", android: "lock" }}
-              title="Forgejo password"
-            >
-              <Pressable
-                accessibilityHint="Opens Forgejo in your browser"
-                accessibilityRole="link"
-                onPress={() => {
-                  void Linking.openURL(FORGEJO_URL).catch(() =>
-                    showSettingsError(
-                      "Could not open Forgejo",
-                      "Please try again.",
-                    ),
-                  );
-                }}
-                style={({ pressed }) => [
-                  styles.externalLink,
-                  pressed && styles.pressed,
-                ]}
+              <SettingsSection
+                icon={{ ios: "sun.max", android: "light_mode" }}
+                title="Appearance"
               >
-                <ThemedText style={styles.externalLinkLabel}>
-                  Open Forgejo
-                </ThemedText>
-                <SymbolView
-                  name={{ ios: "arrow.up.right", android: "open_in_new" }}
-                  size={15}
-                  tintColor={theme.text}
-                />
-              </Pressable>
-              <View style={styles.formFields}>
-                <LabeledInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!setForgejoPassword.isPending}
-                  label="New password"
-                  maxLength={20}
-                  onChangeText={setForgejoPasswordValue}
-                  secureTextEntry
-                  textContentType="newPassword"
-                  value={forgejoPassword}
-                />
-                <LabeledInput
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                  editable={!setForgejoPassword.isPending}
-                  label="Confirm password"
-                  maxLength={20}
-                  onChangeText={setForgejoPasswordConfirmation}
-                  secureTextEntry
-                  textContentType="newPassword"
-                  value={forgejoPasswordConfirmation}
-                />
-              </View>
-              <SaveButton
-                disabled={!forgejoPassword || !forgejoPasswordConfirmation}
-                label="Save Forgejo password"
-                onPress={() => void saveForgejoPassword()}
-                pending={setForgejoPassword.isPending}
-              />
-            </SettingsSection>
-          </ScrollView>
-        )}
-      </PageChromeLayout>
+                <View style={styles.appearanceOptions}>
+                  {themeOptions.map((option) => {
+                    const selected = preference === option.value;
+                    return (
+                      <Pressable
+                        accessibilityRole="radio"
+                        accessibilityState={{ checked: selected }}
+                        key={option.value}
+                        onPress={() => void setPreference(option.value)}
+                        style={({ pressed }) => [
+                          styles.appearanceOption,
+                          {
+                            backgroundColor: theme.background,
+                            borderColor: selected
+                              ? theme.text
+                              : theme.backgroundSelected,
+                          },
+                          pressed && styles.pressed,
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.appearanceIcon,
+                            {
+                              backgroundColor: selected
+                                ? theme.backgroundElement
+                                : theme.background,
+                            },
+                          ]}
+                        >
+                          <SymbolView
+                            name={option.icon}
+                            size={16}
+                            tintColor={
+                              selected ? theme.text : theme.textSecondary
+                            }
+                          />
+                        </View>
+                        <ThemedText
+                          style={[
+                            styles.appearanceLabel,
+                            !selected && { color: theme.textSecondary },
+                          ]}
+                        >
+                          {option.label}
+                        </ThemedText>
+                        {selected ? (
+                          <View
+                            style={[
+                              styles.selectedIndicator,
+                              { backgroundColor: theme.text },
+                            ]}
+                          />
+                        ) : null}
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </SettingsSection>
 
+              <SettingsSection
+                action={
+                  <Switch
+                    accessibilityLabel="Notification sound"
+                    onValueChange={toggleSound}
+                    value={soundEnabled}
+                  />
+                }
+                icon={{ ios: "bell", android: "notifications" }}
+                title="Notification sound"
+              />
+
+              <SettingsSection
+                icon={{ ios: "key", android: "key" }}
+                title="API keys"
+                description="Keys for the CLI."
+                action={
+                  <CredentialButton
+                    label="Create key"
+                    icon={{ ios: "plus", android: "add" }}
+                    onPress={() => setApiKeyEditor("new")}
+                  />
+                }
+              >
+                {apiKeysQuery.isPending ? (
+                  <LoadingBlocks />
+                ) : apiKeysQuery.isError ? (
+                  <InlineError
+                    label="Failed to load API keys."
+                    onRetry={() => void apiKeysQuery.refetch()}
+                  />
+                ) : apiKeysQuery.data?.data.length ? (
+                  <View
+                    style={[
+                      styles.credentialGroup,
+                      { backgroundColor: theme.backgroundElement },
+                    ]}
+                  >
+                    {apiKeysQuery.data.data.map((key, index, keys) => {
+                      const status = key.revoked_at
+                        ? "Revoked"
+                        : key.expires_at &&
+                            new Date(key.expires_at).getTime() <= Date.now()
+                          ? "Expired"
+                          : "Active";
+                      return (
+                        <View
+                          key={key.id}
+                          style={[
+                            styles.apiKeyRow,
+                            index < keys.length - 1 && {
+                              borderBottomWidth: StyleSheet.hairlineWidth,
+                              borderBottomColor: theme.backgroundSelected,
+                            },
+                          ]}
+                        >
+                          <View style={styles.credentialCopy}>
+                            <View style={styles.apiKeyHeading}>
+                              <ThemedText
+                                style={styles.credentialName}
+                                numberOfLines={1}
+                              >
+                                {key.name}
+                              </ThemedText>
+                              <ThemedText
+                                themeColor="textSecondary"
+                                style={styles.credentialCaption}
+                              >
+                                {status}
+                              </ThemedText>
+                            </View>
+                            <ThemedText
+                              themeColor="textSecondary"
+                              style={styles.credentialCaption}
+                            >
+                              {key.last_used_at
+                                ? `Last used ${formatCredentialDate(key.last_used_at)}`
+                                : "Never used"}
+                            </ThemedText>
+                            <ThemedText
+                              themeColor="textSecondary"
+                              style={styles.credentialCaption}
+                            >
+                              Created {formatCredentialDate(key.created_at)}
+                              {key.expires_at
+                                ? ` · Expires ${formatCredentialDate(key.expires_at)}`
+                                : " · No expiry"}
+                            </ThemedText>
+                          </View>
+                          {!key.revoked_at ? (
+                            <Pressable
+                              accessibilityRole="button"
+                              accessibilityLabel={`Manage API key ${key.name}`}
+                              accessibilityState={{
+                                disabled: deleteApiKey.isPending,
+                              }}
+                              disabled={deleteApiKey.isPending}
+                              onPress={() =>
+                                Alert.alert(key.name, "Manage this API key.", [
+                                  {
+                                    text: "Rotate key",
+                                    onPress: () => setApiKeyEditor(key),
+                                  },
+                                  {
+                                    text: "Revoke key",
+                                    style: "destructive",
+                                    onPress: () => setApiKeyToRevoke(key),
+                                  },
+                                  { text: "Cancel", style: "cancel" },
+                                ])
+                              }
+                              style={({ pressed }) => [
+                                styles.credentialMenu,
+                                pressed && styles.pressed,
+                                deleteApiKey.isPending && styles.disabled,
+                              ]}
+                            >
+                              <SymbolView
+                                name={{
+                                  ios: "ellipsis",
+                                  android: "more_horiz",
+                                }}
+                                size={20}
+                                tintColor={theme.textSecondary}
+                              />
+                            </Pressable>
+                          ) : null}
+                        </View>
+                      );
+                    })}
+                  </View>
+                ) : (
+                  <View style={styles.credentialEmpty}>
+                    <ThemedText style={styles.credentialName}>
+                      No API keys yet
+                    </ThemedText>
+                    <ThemedText
+                      themeColor="textSecondary"
+                      style={styles.credentialBody}
+                    >
+                      Create a key to sign in from your computer.
+                    </ThemedText>
+                  </View>
+                )}
+                {apiKeyPage > 1 || apiKeysQuery.data?.hasNext ? (
+                  <View style={styles.credentialPagination}>
+                    <CredentialButton
+                      label="Previous"
+                      onPress={() => setApiKeyPage((page) => page - 1)}
+                      disabled={apiKeyPage === 1 || apiKeysQuery.isFetching}
+                    />
+                    <ThemedText
+                      themeColor="textSecondary"
+                      style={styles.credentialCaption}
+                    >
+                      Page {apiKeyPage}
+                    </ThemedText>
+                    <CredentialButton
+                      label="Next"
+                      onPress={() => setApiKeyPage((page) => page + 1)}
+                      disabled={
+                        !apiKeysQuery.data?.hasNext || apiKeysQuery.isFetching
+                      }
+                    />
+                  </View>
+                ) : null}
+              </SettingsSection>
+
+              <SettingsSection
+                icon={{ ios: "link", android: "link" }}
+                title="Provider connections"
+                description="Connected coding accounts."
+                action={
+                  <CredentialButton
+                    accessibilityLabel="Refresh provider connections"
+                    icon={{ ios: "arrow.clockwise", android: "refresh" }}
+                    onPress={() => void providerCredentialsQuery.refetch()}
+                    disabled={providerCredentialsQuery.isFetching}
+                  />
+                }
+              >
+                {providerCredentialsQuery.isPending ? (
+                  <LoadingBlocks />
+                ) : providerCredentialsQuery.isError ? (
+                  <InlineError
+                    label="Failed to load provider connections."
+                    onRetry={() => void providerCredentialsQuery.refetch()}
+                  />
+                ) : providerCredentialsQuery.data?.data.length ? (
+                  <View style={styles.providerList}>
+                    {providerCredentialsQuery.data.data.map((connection) => (
+                      <View
+                        key={connection.provider}
+                        style={[
+                          styles.credentialGroup,
+                          { backgroundColor: theme.backgroundElement },
+                        ]}
+                      >
+                        <View
+                          style={[
+                            styles.providerHeader,
+                            { borderBottomColor: theme.backgroundSelected },
+                          ]}
+                        >
+                          <ThemedText style={styles.credentialName}>
+                            {connection.provider === "codex"
+                              ? "Codex"
+                              : connection.provider}
+                          </ThemedText>
+                          <ThemedText
+                            themeColor="textSecondary"
+                            style={styles.credentialCaption}
+                          >
+                            {connection.auth_type === "oauth"
+                              ? "OAuth"
+                              : "API key"}
+                          </ThemedText>
+                        </View>
+                        <View style={styles.providerDetails}>
+                          <CredentialDetail
+                            label="Access expires"
+                            value={connection.access_token_expires_at}
+                          />
+                          <CredentialDetail
+                            label="Refresh expires"
+                            value={connection.refresh_token_expires_at}
+                          />
+                          <CredentialDetail
+                            label="Last updated"
+                            value={connection.updated_at}
+                          />
+                        </View>
+                      </View>
+                    ))}
+                  </View>
+                ) : (
+                  <View style={styles.credentialEmpty}>
+                    <ThemedText style={styles.credentialName}>
+                      No connected providers
+                    </ThemedText>
+                    <ThemedText
+                      themeColor="textSecondary"
+                      style={styles.credentialBody}
+                    >
+                      Connect ChatGPT from your computer using the Vibeongo CLI.
+                    </ThemedText>
+                  </View>
+                )}
+                {!providerCredentialsQuery.isPending &&
+                !providerCredentialsQuery.isError &&
+                providerCredentialsQuery.data?.data.length ? (
+                  <ThemedText
+                    themeColor="textSecondary"
+                    style={styles.credentialFootnote}
+                  >
+                    Manage your ChatGPT connection with the Vibeongo CLI.
+                  </ThemedText>
+                ) : null}
+              </SettingsSection>
+
+              <SettingsSection
+                icon={{ ios: "cpu", android: "smart_toy" }}
+                title="Tool configurations"
+              >
+                {configTypes.map((config, index) => {
+                  const configured = (configsQuery.data ?? []).some(
+                    (item) => item.config_type === config.type,
+                  );
+                  return (
+                    <SettingsRow
+                      key={config.type}
+                      last={index === configTypes.length - 1}
+                    >
+                      <View style={styles.rowCopy}>
+                        <ThemedText style={styles.rowTitle}>
+                          {config.name}
+                        </ThemedText>
+                        <ThemedText
+                          style={styles.rowDescription}
+                          themeColor="textSecondary"
+                        >
+                          {config.description}
+                        </ThemedText>
+                      </View>
+                      {configsQuery.isPending ? (
+                        <ActivityIndicator
+                          color={theme.textSecondary}
+                          size="small"
+                        />
+                      ) : configsQuery.isError ? (
+                        <ThemedText style={styles.inlineError}>
+                          Load failed
+                        </ThemedText>
+                      ) : (
+                        <SmallButton
+                          label={configured ? "Edit" : "Configure"}
+                          onPress={() =>
+                            setConfigEditor({
+                              type: config.type,
+                              name: config.name,
+                              configured,
+                            })
+                          }
+                        />
+                      )}
+                    </SettingsRow>
+                  );
+                })}
+              </SettingsSection>
+
+              <SettingsSection
+                icon={{ ios: "paperplane", android: "send" }}
+                title="Telegram"
+              >
+                <ServerSettingsState query={settingsQuery}>
+                  <SettingsTextInput
+                    editable={
+                      Boolean(userSettings) && !updateTelegramSettings.isPending
+                    }
+                    keyboardType="numbers-and-punctuation"
+                    onChangeText={(value) => {
+                      if (/^-?\d*$/.test(value)) {
+                        setTelegramChatId(value);
+                        setIsTelegramDirty(true);
+                      }
+                    }}
+                    placeholder="e.g. -1001234567890"
+                    value={telegramChatId}
+                  />
+                  <SaveButton
+                    disabled={!userSettings || !isTelegramDirty}
+                    label="Save Telegram"
+                    onPress={() => void saveTelegram()}
+                    pending={updateTelegramSettings.isPending}
+                  />
+                </ServerSettingsState>
+              </SettingsSection>
+
+              <SettingsSection
+                icon={{ ios: "slider.horizontal.3", android: "tune" }}
+                title="Default models"
+              >
+                <ServerSettingsState query={settingsQuery}>
+                  <View style={styles.formFields}>
+                    {modelRows.map((row) => (
+                      <View key={row.name} style={styles.labeledInput}>
+                        <ThemedText
+                          style={styles.inputLabel}
+                          themeColor="textSecondary"
+                        >
+                          {row.label}
+                        </ThemedText>
+                        <ModelInput
+                          editable={
+                            Boolean(userSettings) &&
+                            !updateModelSettings.isPending
+                          }
+                          onChangeText={(value) => {
+                            setModelForm((current) => ({
+                              ...current,
+                              [row.name]: value,
+                            }));
+                            setIsModelFormDirty(true);
+                          }}
+                          value={modelForm[row.name]}
+                        />
+                      </View>
+                    ))}
+                  </View>
+                  <SaveButton
+                    disabled={!userSettings || !isModelFormDirty}
+                    label="Save models"
+                    onPress={() => void saveModels()}
+                    pending={updateModelSettings.isPending}
+                  />
+                </ServerSettingsState>
+              </SettingsSection>
+
+              <SettingsSection
+                description="Whole minutes from 15 to 1200."
+                icon={{ ios: "timer", android: "timer" }}
+                title="Instance auto-termination"
+              >
+                <ServerSettingsState query={settingsQuery}>
+                  <View style={styles.formFields}>
+                    {terminationRows.map((row) => (
+                      <LabeledInput
+                        editable={
+                          Boolean(userSettings) &&
+                          !updateTerminationSettings.isPending
+                        }
+                        key={row.name}
+                        keyboardType="number-pad"
+                        label={row.label}
+                        onChangeText={(value) => {
+                          if (!/^\d*$/.test(value)) return;
+                          setTerminationForm((current) => ({
+                            ...current,
+                            [row.name]: value,
+                          }));
+                          setIsTerminationFormDirty(true);
+                        }}
+                        value={terminationForm[row.name]}
+                      />
+                    ))}
+                  </View>
+                  <SaveButton
+                    disabled={!userSettings || !isTerminationFormDirty}
+                    label="Save auto-termination"
+                    onPress={() => void saveTermination()}
+                    pending={updateTerminationSettings.isPending}
+                  />
+                </ServerSettingsState>
+              </SettingsSection>
+
+              <SettingsSection
+                action={
+                  <SmallButton
+                    label="Add key"
+                    onPress={() => setSshEditor("new")}
+                  />
+                }
+                icon={{ ios: "key", android: "key" }}
+                title="SSH keys"
+              >
+                {sshKeysQuery.isPending ? (
+                  <LoadingBlocks />
+                ) : sshKeysQuery.isError ? (
+                  <InlineError
+                    label="Failed to load SSH keys."
+                    onRetry={() => void sshKeysQuery.refetch()}
+                  />
+                ) : sshKeysQuery.data?.length ? (
+                  sshKeysQuery.data.map((sshKey, index) => (
+                    <SettingsRow
+                      key={sshKey.id}
+                      last={index === sshKeysQuery.data.length - 1}
+                    >
+                      <View style={styles.keyIcon}>
+                        <SymbolView
+                          name={{ ios: "key", android: "key" }}
+                          size={18}
+                          tintColor={theme.textSecondary}
+                        />
+                      </View>
+                      <ThemedText numberOfLines={1} style={styles.keyName}>
+                        {sshKey.name}
+                      </ThemedText>
+                      <IconButton
+                        accessibilityLabel={`Edit ${sshKey.name}`}
+                        icon={{ ios: "pencil", android: "edit" }}
+                        onPress={() => setSshEditor(sshKey)}
+                      />
+                      <IconButton
+                        accessibilityLabel={`Delete ${sshKey.name}`}
+                        destructive
+                        disabled={deleteSshKey.isPending}
+                        icon={{ ios: "trash", android: "delete" }}
+                        onPress={() => setSshKeyToDelete(sshKey)}
+                      />
+                    </SettingsRow>
+                  ))
+                ) : (
+                  <View style={styles.emptyState}>
+                    <SymbolView
+                      name={{ ios: "key", android: "key" }}
+                      size={28}
+                      tintColor={theme.textSecondary}
+                    />
+                    <ThemedText themeColor="textSecondary">
+                      No SSH keys configured.
+                    </ThemedText>
+                  </View>
+                )}
+              </SettingsSection>
+
+              <SettingsSection
+                description="Set the password used to sign in to your Forgejo account. Use 4–20 characters."
+                icon={{ ios: "lock", android: "lock" }}
+                title="Forgejo password"
+              >
+                <Pressable
+                  accessibilityHint="Opens Forgejo in your browser"
+                  accessibilityRole="link"
+                  onPress={() => {
+                    void Linking.openURL(FORGEJO_URL).catch(() =>
+                      showSettingsError(
+                        "Could not open Forgejo",
+                        "Please try again.",
+                      ),
+                    );
+                  }}
+                  style={({ pressed }) => [
+                    styles.externalLink,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <ThemedText style={styles.externalLinkLabel}>
+                    Open Forgejo
+                  </ThemedText>
+                  <SymbolView
+                    name={{ ios: "arrow.up.right", android: "open_in_new" }}
+                    size={15}
+                    tintColor={theme.text}
+                  />
+                </Pressable>
+                <View style={styles.formFields}>
+                  <LabeledInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!setForgejoPassword.isPending}
+                    label="New password"
+                    maxLength={20}
+                    onChangeText={setForgejoPasswordValue}
+                    secureTextEntry
+                    textContentType="newPassword"
+                    value={forgejoPassword}
+                  />
+                  <LabeledInput
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    editable={!setForgejoPassword.isPending}
+                    label="Confirm password"
+                    maxLength={20}
+                    onChangeText={setForgejoPasswordConfirmation}
+                    secureTextEntry
+                    textContentType="newPassword"
+                    value={forgejoPasswordConfirmation}
+                  />
+                </View>
+                <SaveButton
+                  disabled={!forgejoPassword || !forgejoPasswordConfirmation}
+                  label="Save Forgejo password"
+                  onPress={() => void saveForgejoPassword()}
+                  pending={setForgejoPassword.isPending}
+                />
+              </SettingsSection>
+            </ScrollView>
+          )}
+        </PageChromeLayout>
+      </KeyboardAvoidingView>
+
+      <ApiKeyDrawer
+        editor={apiKeyEditor}
+        onClose={() => setApiKeyEditor(null)}
+      />
+      <ConfirmationDrawer
+        title="Revoke API key?"
+        description={`Revoke ${apiKeyToRevoke?.name ?? "this key"}. Apps using this key will lose access.`}
+        confirmLabel="Revoke"
+        isConfirming={deleteApiKey.isPending}
+        onCancel={() => {
+          if (!deleteApiKey.isPending) setApiKeyToRevoke(null);
+        }}
+        onConfirm={() => void revokeApiKey()}
+        visible={Boolean(apiKeyToRevoke)}
+      />
       <UserConfigDrawer
         editor={configEditor}
         onClose={() => setConfigEditor(null)}
@@ -715,14 +1067,14 @@ function SettingsSection({
   description?: string;
   icon: SymbolViewProps["name"];
   action?: ReactNode;
-  children: ReactNode;
+  children?: ReactNode;
 }) {
   const theme = useTheme();
   return (
     <View
       style={[styles.section, { borderBottomColor: theme.backgroundSelected }]}
     >
-      <View style={styles.sectionHeader}>
+      <View style={[styles.sectionHeader, !children && styles.centered]}>
         <SymbolView name={icon} size={19} tintColor={theme.textSecondary} />
         <View style={styles.sectionCopy}>
           <ThemedText style={styles.sectionTitle}>{title}</ThemedText>
@@ -737,7 +1089,7 @@ function SettingsSection({
         </View>
         {action}
       </View>
-      <View style={styles.sectionBody}>{children}</View>
+      {children ? <View style={styles.sectionBody}>{children}</View> : null}
     </View>
   );
 }
@@ -843,18 +1195,23 @@ function SaveButton({
 function SmallButton({
   label,
   onPress,
+  disabled = false,
 }: {
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   const theme = useTheme();
   return (
     <Pressable
       accessibilityRole="button"
+      accessibilityState={{ disabled }}
+      disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
         styles.smallButton,
         { borderColor: theme.backgroundSelected },
+        disabled && styles.disabled,
         pressed && styles.pressed,
       ]}
     >
@@ -899,6 +1256,242 @@ function IconButton({
   );
 }
 
+// OpenCode takes the `opencode auth export` array, the other tools a JSON object
+const emptyConfigText = (configType: ConfigType) =>
+  configType === "opencode" ? "[]" : "{}";
+
+const validateUserConfig = (
+  configType: ConfigType,
+  config: unknown,
+): string | null => {
+  if (configType === "opencode") {
+    return opencodeCredentialsValidator.safeParse(config).success
+      ? null
+      : "Paste the JSON array printed by `opencode auth export`.";
+  }
+  return config === null || typeof config !== "object" || Array.isArray(config)
+    ? "The configuration must be a JSON object."
+    : null;
+};
+
+function formatCredentialDate(
+  value: string | null,
+  includeTime = false,
+  fallback = "Not available",
+) {
+  const date = value ? new Date(value) : null;
+  if (!date || !Number.isFinite(date.getTime())) return fallback;
+  return new Intl.DateTimeFormat(undefined, {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    ...(includeTime ? ({ hour: "numeric", minute: "2-digit" } as const) : {}),
+  }).format(date);
+}
+
+function CredentialDetail({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | null;
+}) {
+  return (
+    <View style={styles.credentialDetail}>
+      <ThemedText
+        themeColor="textSecondary"
+        style={styles.credentialDetailLabel}
+      >
+        {label}
+      </ThemedText>
+      <ThemedText style={styles.credentialValue}>
+        {formatCredentialDate(value, true)}
+      </ThemedText>
+    </View>
+  );
+}
+
+function CredentialButton({
+  label,
+  icon,
+  accessibilityLabel,
+  onPress,
+  disabled = false,
+  primary = false,
+  pending = false,
+}: {
+  label?: string;
+  icon?: SymbolViewProps["name"];
+  accessibilityLabel?: string;
+  onPress: () => void;
+  disabled?: boolean;
+  primary?: boolean;
+  pending?: boolean;
+}) {
+  const theme = useTheme();
+  const inactive = disabled || pending;
+  const color = primary ? theme.background : theme.text;
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: inactive, busy: pending }}
+      disabled={inactive}
+      onPress={onPress}
+      style={({ pressed }) => [
+        styles.credentialButton,
+        primary && { backgroundColor: theme.text },
+        inactive && styles.disabled,
+        pressed && styles.pressed,
+      ]}
+    >
+      {pending ? (
+        <ActivityIndicator size="small" color={color} />
+      ) : icon ? (
+        <SymbolView name={icon} size={18} tintColor={color} />
+      ) : null}
+      {label ? (
+        <ThemedText style={[styles.credentialButtonLabel, { color }]}>
+          {label}
+        </ThemedText>
+      ) : null}
+    </Pressable>
+  );
+}
+
+function ApiKeyDrawer({
+  editor,
+  onClose,
+}: {
+  editor: ApiKey | "new" | null;
+  onClose: () => void;
+}) {
+  const theme = useTheme();
+  const [name, setName] = useState("");
+  const [secret, setSecret] = useState<string | null>(null);
+  const create = useCreateApiKey();
+  const rotate = useRotateApiKey();
+  const pending = create.isPending || rotate.isPending;
+  const rotating = editor !== null && editor !== "new";
+
+  const close = () => {
+    if (pending) return;
+    setName("");
+    setSecret(null);
+    // Clear the one-time secret from mutation state as well as the drawer.
+    create.reset();
+    rotate.reset();
+    onClose();
+  };
+
+  const save = async () => {
+    if (!editor || pending || (editor === "new" && !name.trim())) return;
+    try {
+      const result =
+        editor === "new"
+          ? await create.mutateAsync({ name: name.trim() })
+          : await rotate.mutateAsync(editor.id);
+      setSecret(result.data.key);
+      Toast.show({
+        type: "success",
+        text1: rotating ? "API key rotated" : "API key created",
+      });
+    } catch {
+      showSettingsError(
+        rotating ? "Could not rotate API key" : "Could not create API key",
+        "Please try again.",
+      );
+    }
+  };
+
+  const copy = async () => {
+    if (!secret) return;
+    try {
+      await Clipboard.setStringAsync(secret);
+      Toast.show({ type: "success", text1: "API key copied" });
+    } catch {
+      showSettingsError("Could not copy API key", "Please try again.");
+    }
+  };
+
+  return (
+    <SettingsDrawer
+      visible={Boolean(editor)}
+      onClose={close}
+      title={
+        secret
+          ? "Your new API key"
+          : rotating
+            ? "Rotate API key?"
+            : "Create API key"
+      }
+    >
+      <ThemedText themeColor="textSecondary" style={styles.drawerDescription}>
+        {secret
+          ? "Copy this key now. You will not be able to see it again."
+          : rotating
+            ? `Replace the key for ${editor.name}. The old key will stop working immediately.`
+            : "Give this key a name so you can identify it later."}
+      </ThemedText>
+      {secret ? (
+        <>
+          <View
+            style={[
+              styles.credentialSecret,
+              { backgroundColor: theme.backgroundElement },
+            ]}
+          >
+            <ThemedText
+              selectable
+              accessibilityLabel={`New API key: ${secret}`}
+              style={styles.credentialSecretText}
+            >
+              {secret}
+            </ThemedText>
+          </View>
+          <View style={styles.credentialDrawerActions}>
+            <CredentialButton
+              label="Copy key"
+              icon={{ ios: "doc.on.doc", android: "content_copy" }}
+              onPress={() => void copy()}
+            />
+            <CredentialButton label="Done" primary onPress={close} />
+          </View>
+        </>
+      ) : (
+        <>
+          {!rotating ? (
+            <LabeledInput
+              label="Name"
+              placeholder="e.g. My laptop"
+              value={name}
+              onChangeText={setName}
+              maxLength={255}
+              editable={!pending}
+              autoCapitalize="none"
+              autoCorrect={false}
+            />
+          ) : null}
+          <View style={styles.credentialDrawerActions}>
+            <CredentialButton
+              label="Cancel"
+              onPress={close}
+              disabled={pending}
+            />
+            <CredentialButton
+              label={rotating ? "Rotate key" : "Create key"}
+              primary
+              disabled={!rotating && !name.trim()}
+              pending={pending}
+              onPress={() => void save()}
+            />
+          </View>
+        </>
+      )}
+    </SettingsDrawer>
+  );
+}
+
 function UserConfigDrawer({
   editor,
   onClose,
@@ -921,7 +1514,10 @@ function UserConfigDrawer({
 
   useEffect(() => {
     if (!editor || !configQuery.isSuccess) return;
-    setConfigText(JSON.stringify(configQuery.data?.config ?? {}, null, 2));
+    const config = configQuery.data?.config;
+    setConfigText(
+      config ? JSON.stringify(config, null, 2) : emptyConfigText(editor.type),
+    );
   }, [configQuery.data, configQuery.isSuccess, editor]);
 
   const close = () => {
@@ -950,12 +1546,9 @@ function UserConfigDrawer({
       setValidationError("Enter valid JSON before saving.");
       return;
     }
-    if (
-      parsed === null ||
-      typeof parsed !== "object" ||
-      Array.isArray(parsed)
-    ) {
-      setValidationError("The configuration must be a JSON object.");
+    const configError = validateUserConfig(editor.type, parsed);
+    if (configError) {
+      setValidationError(configError);
       return;
     }
     setValidationError(null);
@@ -985,6 +1578,27 @@ function UserConfigDrawer({
         This sensitive configuration is decrypted only while this drawer is open
         and encrypted again when saved.
       </ThemedText>
+      {editor?.type === "claude" ? (
+        <View style={styles.notice}>
+          <SymbolView
+            name={{
+              ios: "exclamationmark.triangle.fill",
+              android: "warning",
+            }}
+            size={16}
+            tintColor="#b45309"
+          />
+          <View style={styles.noticeCopy}>
+            <ThemedText style={styles.noticeTitle}>
+              Claude Code is not supported yet
+            </ThemedText>
+            <ThemedText style={styles.noticeText}>
+              You can save your configuration now, but it is not applied to your
+              instances until Claude Code support is ready.
+            </ThemedText>
+          </View>
+        </View>
+      ) : null}
       {configQuery.isPending ? (
         <View style={styles.drawerState}>
           <ActivityIndicator color={theme.textSecondary} />
@@ -1254,6 +1868,91 @@ function LoadingBlocks() {
 }
 
 const styles = StyleSheet.create({
+  credentialGroup: { borderRadius: 12, overflow: "hidden" },
+  apiKeyRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingLeft: 16,
+    paddingRight: 8,
+    paddingVertical: 16,
+    gap: 8,
+  },
+  credentialCopy: { flex: 1, gap: 4 },
+  apiKeyHeading: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    alignItems: "baseline",
+    columnGap: 12,
+    rowGap: 4,
+  },
+  credentialName: {
+    fontSize: 15,
+    lineHeight: 21,
+    fontWeight: "600",
+    flexShrink: 1,
+  },
+  credentialCaption: { fontSize: 12, lineHeight: 18 },
+  credentialBody: { fontSize: 14, lineHeight: 20 },
+  credentialMenu: {
+    minWidth: 44,
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  credentialEmpty: { paddingVertical: 8, gap: 8 },
+  credentialFootnote: { fontSize: 12, lineHeight: 18, marginTop: 12 },
+  providerList: { gap: 16 },
+  providerHeader: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12,
+    padding: 16,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  providerDetails: { padding: 16, gap: 16 },
+  credentialDetail: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
+  credentialDetailLabel: { fontSize: 13, lineHeight: 19, flex: 1 },
+  credentialValue: {
+    fontSize: 13,
+    lineHeight: 19,
+    flex: 1.5,
+    textAlign: "right",
+    fontVariant: ["tabular-nums"],
+  },
+  credentialButton: {
+    minHeight: 44,
+    minWidth: 44,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+  },
+  credentialButtonLabel: { fontSize: 13, lineHeight: 19, fontWeight: "600" },
+  credentialPagination: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+    marginTop: 12,
+  },
+  credentialSecret: { padding: 16, borderRadius: 12 },
+  credentialSecretText: {
+    fontFamily: Fonts.mono,
+    fontSize: 13,
+    lineHeight: 21,
+  },
+  credentialDrawerActions: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "flex-end",
+    gap: 12,
+    marginTop: 24,
+  },
+
   screen: { flex: 1 },
   header: {
     alignItems: "center",
@@ -1274,6 +1973,7 @@ const styles = StyleSheet.create({
   content: { paddingBottom: 48, paddingHorizontal: 20 },
   section: { borderBottomWidth: StyleSheet.hairlineWidth, paddingVertical: 26 },
   sectionHeader: { alignItems: "flex-start", flexDirection: "row", gap: 12 },
+  centered: { alignItems: "center" },
   sectionCopy: { flex: 1 },
   sectionTitle: { fontSize: 16, fontWeight: "700", lineHeight: 21 },
   sectionDescription: { fontSize: 13, lineHeight: 19, marginTop: 2 },
@@ -1444,6 +2144,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   jsonInput: { fontSize: 12, height: 260, lineHeight: 18, marginTop: 6 },
+  notice: {
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
+    borderColor: "rgba(245, 158, 11, 0.35)",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 10,
+    marginBottom: 18,
+    padding: 12,
+  },
+  noticeCopy: { flex: 1, gap: 2 },
+  noticeText: { color: "#b45309", fontSize: 12, lineHeight: 17 },
+  noticeTitle: { color: "#b45309", fontSize: 13, fontWeight: "700" },
   sshInput: { height: 120 },
   validation: { color: "#ef4444", fontSize: 12, lineHeight: 17, marginTop: 7 },
 });
