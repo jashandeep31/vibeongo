@@ -23,3 +23,7 @@ for details.
 
 Special thanks to AWS for free $200 credits, and to Digitalocean and Termius for the
 student discount that helped support development of this project.
+
+I’ll make a shareable architecture diagram showing the web/mobile ticket
+flow, Go gateway, and regional proxy servers. I’m using the image
+generation skill and will place the finished image in this repository.

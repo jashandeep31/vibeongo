@@ -38,6 +38,8 @@ type windowChangeRequest struct {
 	HeightPx uint32
 }
 
+const websocketKeepaliveInterval = 20 * time.Second
+
 func handleSession(channel ssh.Channel, requests <-chan *ssh.Request, grant terminalGrant) {
 	defer channel.Close()
 
@@ -64,7 +66,10 @@ func handleSession(channel ssh.Channel, requests <-chan *ssh.Request, grant term
 		return
 	}
 
-	ended := make(chan error, 2)
+	ended := make(chan error, 3)
+	stopKeepalive := make(chan struct{})
+	defer close(stopKeepalive)
+	go keepTerminalWebSocketAlive(ws, &writeMu, stopKeepalive, ended)
 	go func() {
 		buffer := make([]byte, 32*1024)
 		for {
@@ -117,9 +122,29 @@ func handleSession(channel ssh.Channel, requests <-chan *ssh.Request, grant term
 	_ = ws.Close()
 	status := uint32(0)
 	if err != nil && !errors.Is(err, io.EOF) {
+		log.Printf("SSH terminal bridge ended: %v", err)
 		status = 1
 	}
 	finishSSHSession(channel, status)
+}
+
+func keepTerminalWebSocketAlive(ws *websocket.Conn, writeMu *sync.Mutex, stop <-chan struct{}, ended chan<- error) {
+	ticker := time.NewTicker(websocketKeepaliveInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			writeMu.Lock()
+			err := ws.WriteControl(websocket.PingMessage, nil, time.Now().Add(5*time.Second))
+			writeMu.Unlock()
+			if err != nil {
+				ended <- fmt.Errorf("terminal WebSocket keepalive failed: %w", err)
+				return
+			}
+		}
+	}
 }
 
 func finishSSHSession(channel ssh.Channel, status uint32) {

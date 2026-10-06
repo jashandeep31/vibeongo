@@ -18,9 +18,10 @@ import (
 )
 
 const (
-	defaultSSHPort      = "8005"
-	maxConnections      = 100
-	sshHandshakeTimeout = 25 * time.Second
+	defaultSSHPort       = "8005"
+	maxConnections       = 100
+	sshHandshakeTimeout  = 25 * time.Second
+	sshKeepaliveInterval = 20 * time.Second
 )
 
 type grantContextKey struct{}
@@ -180,10 +181,28 @@ func handleConnection(conn net.Conn, config *ssh.ServerConfig) {
 		}
 		_ = conn.SetDeadline(time.Time{})
 		go func() {
+			stopKeepalive := make(chan struct{})
+			go keepSSHConnectionAlive(sshConn, stopKeepalive)
 			handleSession(channel, requests, grant)
+			close(stopKeepalive)
 			// Let the SSH client receive channel EOF and exit status before
 			// closing the transport. A short deadline still releases idle peers.
 			_ = conn.SetReadDeadline(time.Now().Add(5 * time.Second))
 		}()
+	}
+}
+
+func keepSSHConnectionAlive(conn ssh.Conn, stop <-chan struct{}) {
+	ticker := time.NewTicker(sshKeepaliveInterval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-ticker.C:
+			if _, _, err := conn.SendRequest("keepalive@openssh.com", false, nil); err != nil {
+				return
+			}
+		}
 	}
 }
