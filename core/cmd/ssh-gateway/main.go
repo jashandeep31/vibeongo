@@ -57,10 +57,10 @@ func run() error {
 		NoClientAuth: true,
 		MaxAuthTries: 1,
 		NoClientAuthCallback: func(meta ssh.ConnMetadata) (*ssh.Permissions, error) {
-			grant, err := api.redeem(meta.User())
+			grant, err := api.authorize(meta.User())
 			if err != nil {
-				log.Printf("SSH ticket redemption failed: %v", err)
-				return nil, errors.New("invalid or expired SSH ticket")
+				log.Printf("SSH access authorization failed: %v", err)
+				return nil, errors.New("invalid or expired SSH access")
 			}
 			return &ssh.Permissions{ExtraData: map[any]any{grantContextKey{}: grant}}, nil
 		},

@@ -4,7 +4,7 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import {
-  useCreateSshTicket,
+  useCreateSshAccess,
   useDisableTerminateAfterDone,
   useTerminateAfterDoneStatus,
 } from "@repo/api-hooks";
@@ -28,7 +28,6 @@ import {
   Cpu,
   HardDrive,
   Loader2,
-  Network,
   Rocket,
   Terminal,
   TimerOff,
@@ -88,7 +87,7 @@ export function RuntimePulseMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [copiedValue, setCopiedValue] = useState<"ip" | "ssh" | null>(null);
+  const [copiedValue, setCopiedValue] = useState<"ssh" | null>(null);
   const instance = useSessionsStore(
     (store) =>
       store.sessions.find((entry) => entry.session.id === projectSessionId)
@@ -114,7 +113,7 @@ export function RuntimePulseMenu({
   };
   const terminateStatus = useTerminateAfterDoneStatus(connection);
   const disableTerminate = useDisableTerminateAfterDone(connection);
-  const createSshTicket = useCreateSshTicket();
+  const createSshAccess = useCreateSshAccess();
   const runtime = useRuntimeSession();
 
   useEffect(() => {
@@ -131,12 +130,12 @@ export function RuntimePulseMenu({
   const terminateAfterDone = terminateStatus.data?.terminate;
   const cpuPercent = normalizePercent(runtime.stats?.cpu_percent);
   const memoryPercent = normalizePercent(runtime.stats?.used_percent);
-  const copyValue = async (kind: "ip" | "ssh", value: string | null) => {
+  const copyValue = async (value: string | null) => {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
-      setCopiedValue(kind);
-      toast.success(kind === "ip" ? "IP address copied" : "SSH command copied");
+      setCopiedValue("ssh");
+      toast.success("SSH command copied");
       window.setTimeout(() => setCopiedValue(null), 1_500);
     } catch {
       toast.error("Could not copy to clipboard");
@@ -144,9 +143,9 @@ export function RuntimePulseMenu({
   };
 
   const createAndCopySshCommand = () => {
-    createSshTicket.mutate(projectSessionId, {
+    createSshAccess.mutate(projectSessionId, {
       onSuccess: (connection) => {
-        void copyValue("ssh", formatSshCommand(connection));
+        void copyValue(formatSshCommand(connection));
       },
       onError: () => toast.error("Could not create SSH command. Try again."),
     });
@@ -304,22 +303,10 @@ export function RuntimePulseMenu({
 
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            disabled={!instance.public_ip}
-            onSelect={() => void copyValue("ip", instance.public_ip)}
-          >
-            {copiedValue === "ip" ? <Check /> : <Network />}
-            <span className="flex-1">Copy IP address</span>
-            {instance.public_ip ? (
-              <span className="text-muted-foreground max-w-28 truncate font-mono text-xs">
-                {instance.public_ip}
-              </span>
-            ) : null}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={createSshTicket.isPending}
+            disabled={createSshAccess.isPending}
             onSelect={createAndCopySshCommand}
           >
-            {createSshTicket.isPending ? (
+            {createSshAccess.isPending ? (
               <Loader2 className="animate-spin" />
             ) : copiedValue === "ssh" ? (
               <Check />
@@ -327,7 +314,9 @@ export function RuntimePulseMenu({
               <Terminal />
             )}
             <span className="flex-1">
-              {createSshTicket.isPending ? "Creating SSH command…" : "Copy SSH command"}
+              {createSshAccess.isPending
+                ? "Creating SSH access…"
+                : "Create and copy SSH access"}
             </span>
             <Copy className="text-muted-foreground" />
           </DropdownMenuItem>

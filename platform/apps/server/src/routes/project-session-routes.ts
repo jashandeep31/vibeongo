@@ -1,6 +1,10 @@
 import { Router } from "express";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
-import { issueSshTicket } from "../controllers/project-sessions/ssh-ticket-controller.js";
+import {
+  createSshAccess,
+  listSshAccess,
+  revokeSshAccess,
+} from "../controllers/project-sessions/ssh-access-controller.js";
 import {
   addTaskToProjectSession,
   archiveProjectSession,
@@ -16,8 +20,12 @@ import { resumeSuspendedProjectSession } from "../controllers/project-sessions/r
 const routes: Router = Router();
 
 routes
-  .route("/:id/ssh-ticket")
-  .post(checkAuthorization(["user"]), issueSshTicket);
+  .route("/:id/ssh-access")
+  .get(checkAuthorization(["user"]), listSshAccess)
+  .post(checkAuthorization(["user"]), createSshAccess);
+routes
+  .route("/:id/ssh-access/:accessId/revoke")
+  .post(checkAuthorization(["user"]), revokeSshAccess);
 
 routes
   .route("/")

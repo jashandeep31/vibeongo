@@ -1,9 +1,11 @@
 # SSH gateway
 
-The gateway accepts the single-use ticket returned by the platform's
-`POST /api/v1/project-sessions/:id/ssh-ticket` route as the SSH username. It
-redeems the ticket through the platform server, opens the authorized runtime
+The gateway accepts the 60-minute access token returned by the platform's
+`POST /api/v1/project-sessions/:id/ssh-access` route as the SSH username. It
+authorizes the token through the platform server on every new connection, opens the authorized runtime
 terminal WebSocket, and bridges terminal input, output, and resize events.
+The same token can reconnect until it expires or is revoked. The plaintext
+token is returned only when created; the platform stores its hash.
 
 ## Configuration
 

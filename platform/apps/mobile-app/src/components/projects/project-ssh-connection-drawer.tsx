@@ -1,8 +1,15 @@
-import { formatSshCommand, type CreateSshTicketResponse } from "@repo/api-client";
-import { useCreateSshTicket } from "@repo/api-hooks";
+import {
+  formatSshCommand,
+  type CreateSshAccessResponse,
+} from "@repo/api-client";
+import {
+  useCreateSshAccess,
+  useRevokeSshAccess,
+  useSshAccess,
+} from "@repo/api-hooks";
 import * as Clipboard from "expo-clipboard";
 import { SymbolView } from "expo-symbols";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -19,6 +26,13 @@ import { BottomDrawerPanel } from "@/components/bottom-drawer-panel";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 
+const dateFormatter = new Intl.DateTimeFormat(undefined, {
+  month: "short",
+  day: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
 export function ProjectSshConnectionDrawer({
   onClose,
   projectSessionId,
@@ -29,60 +43,51 @@ export function ProjectSshConnectionDrawer({
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const { isPending, mutateAsync } = useCreateSshTicket();
-  const [connection, setConnection] = useState<CreateSshTicketResponse | null>(
+  const createAccess = useCreateSshAccess();
+  const revokeAccess = useRevokeSshAccess();
+  const accessList = useSshAccess(projectSessionId);
+  const [connection, setConnection] = useState<CreateSshAccessResponse | null>(
     null,
   );
-  const [hasError, setHasError] = useState(false);
   const [now, setNow] = useState(() => Date.now());
-  const requestId = useRef(0);
-
-  const generateConnection = useCallback(async () => {
-    const currentRequest = ++requestId.current;
-    setConnection(null);
-    setHasError(false);
-    try {
-      const result = await mutateAsync(projectSessionId);
-      if (currentRequest === requestId.current) {
-        setConnection(result);
-        setNow(Date.now());
-      }
-    } catch {
-      if (currentRequest === requestId.current) setHasError(true);
-    }
-  }, [mutateAsync, projectSessionId]);
-
   useEffect(() => {
-    void generateConnection();
-    return () => {
-      requestId.current += 1;
-    };
-  }, [generateConnection]);
-
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1_000);
+    const interval = setInterval(() => setNow(Date.now()), 30_000);
     return () => clearInterval(interval);
   }, []);
+  const connectionIsValid =
+    connection !== null &&
+    new Date(connection.expiresAt).getTime() > now &&
+    accessList.data?.find((access) => access.id === connection.id)?.status !==
+      "revoked";
 
-  const expiresAt = connection
-    ? new Date(connection.expiresAt).getTime()
-    : Number.NaN;
-  const isValid = connection !== null && expiresAt > now;
-  const remainingSeconds = isValid
-    ? Math.max(0, Math.ceil((expiresAt - now) / 1_000))
-    : 0;
+  const generateConnection = async () => {
+    setConnection(null);
+    try {
+      setConnection(await createAccess.mutateAsync(projectSessionId));
+      setNow(Date.now());
+    } catch {
+      Toast.show({ type: "error", text1: "Could not create SSH access" });
+    }
+  };
 
   const copyValue = async (label: string, value: string) => {
-    if (!connection || new Date(connection.expiresAt).getTime() <= Date.now()) {
-      setNow(Date.now());
-      Toast.show({ type: "error", text1: "SSH connection expired" });
+    if (
+      !connection ||
+      new Date(connection.expiresAt).getTime() <= Date.now() ||
+      accessList.data?.find((access) => access.id === connection.id)?.status ===
+        "revoked"
+    ) {
+      Toast.show({ type: "error", text1: "SSH access expired or revoked" });
       return;
     }
     try {
       await Clipboard.setStringAsync(value);
       Toast.show({ type: "success", text1: `${label} copied` });
     } catch {
-      Toast.show({ type: "error", text1: `Could not copy ${label.toLowerCase()}` });
+      Toast.show({
+        type: "error",
+        text1: `Could not copy ${label.toLowerCase()}`,
+      });
     }
   };
 
@@ -123,7 +128,7 @@ export function ProjectSshConnectionDrawer({
             <View style={styles.heading}>
               <ThemedText style={styles.title}>SSH connection</ThemedText>
               <ThemedText style={styles.subtitle} themeColor="textSecondary">
-                Connect to this workspace from your terminal.
+                Access this workspace from your terminal for 60 minutes.
               </ThemedText>
             </View>
             <Pressable
@@ -140,22 +145,16 @@ export function ProjectSshConnectionDrawer({
             </Pressable>
           </View>
 
-          {isPending || (!connection && !hasError) ? (
-            <View style={styles.status}>
-              <ActivityIndicator />
-              <ThemedText themeColor="textSecondary">
-                Creating SSH connection…
-              </ThemedText>
-            </View>
-          ) : isValid && connection ? (
-            <>
-              <ThemedText style={styles.expiry} themeColor="textSecondary">
-                Username is single-use. Expires in {remainingSeconds}s.
-              </ThemedText>
-              <ScrollView
-                contentContainerStyle={styles.fields}
-                showsVerticalScrollIndicator={false}
-              >
+          <ScrollView
+            contentContainerStyle={styles.fields}
+            showsVerticalScrollIndicator={false}
+          >
+            {connectionIsValid && connection ? (
+              <>
+                <ThemedText style={styles.expiry} themeColor="textSecondary">
+                  Copy these details now. They cannot be shown again after
+                  closing this drawer.
+                </ThemedText>
                 <ConnectionField
                   label="SSH command"
                   onCopy={() =>
@@ -178,40 +177,126 @@ export function ProjectSshConnectionDrawer({
                   onCopy={() => void copyValue("Port", String(connection.port))}
                   value={String(connection.port)}
                 />
-              </ScrollView>
-            </>
-          ) : (
-            <View style={styles.status}>
-              <ThemedText style={styles.statusTitle}>
-                {hasError ? "Could not create SSH connection" : "SSH connection expired"}
+                <ThemedText style={styles.expiry} themeColor="textSecondary">
+                  Expires {dateFormatter.format(new Date(connection.expiresAt))}
+                  .
+                </ThemedText>
+              </>
+            ) : null}
+
+            <ThemedText style={styles.sectionTitle}>
+              Created SSH access
+            </ThemedText>
+            {accessList.isPending ? (
+              <View style={styles.status}>
+                <ActivityIndicator />
+              </View>
+            ) : accessList.isError ? (
+              <ThemedText themeColor="textSecondary">
+                Could not load SSH access.
               </ThemedText>
-              <ThemedText style={styles.statusCopy} themeColor="textSecondary">
-                {hasError
-                  ? "Try generating a new connection."
-                  : "Generate a new username to connect."}
+            ) : accessList.data?.length ? (
+              accessList.data.map((access) => {
+                const status = access.revokedAt
+                  ? "Revoked"
+                  : new Date(access.expiresAt).getTime() <= now
+                    ? "Expired"
+                    : access.status === "instance_unavailable"
+                      ? "Instance unavailable"
+                      : "Active";
+                return (
+                  <View
+                    key={access.id}
+                    style={[
+                      styles.accessRow,
+                      { borderColor: theme.backgroundSelected },
+                    ]}
+                  >
+                    <View style={styles.accessDetails}>
+                      <ThemedText style={styles.accessTitle}>
+                        {status} · Created{" "}
+                        {dateFormatter.format(new Date(access.createdAt))}
+                      </ThemedText>
+                      <ThemedText
+                        style={styles.subtitle}
+                        themeColor="textSecondary"
+                      >
+                        Expires{" "}
+                        {dateFormatter.format(new Date(access.expiresAt))}
+                        {access.lastUsedAt
+                          ? ` · Last used ${dateFormatter.format(new Date(access.lastUsedAt))}`
+                          : ""}
+                      </ThemedText>
+                    </View>
+                    {!access.revokedAt &&
+                    new Date(access.expiresAt).getTime() > now ? (
+                      <Pressable
+                        accessibilityLabel="Revoke SSH access"
+                        accessibilityRole="button"
+                        accessibilityState={{
+                          disabled: revokeAccess.isPending,
+                        }}
+                        disabled={revokeAccess.isPending}
+                        onPress={() =>
+                          revokeAccess.mutate(
+                            { projectSessionId, accessId: access.id },
+                            {
+                              onSuccess: () => {
+                                if (connection?.id === access.id)
+                                  setConnection(null);
+                                Toast.show({
+                                  type: "success",
+                                  text1: "SSH access revoked",
+                                });
+                              },
+                              onError: () =>
+                                Toast.show({
+                                  type: "error",
+                                  text1: "Could not revoke SSH access",
+                                }),
+                            },
+                          )
+                        }
+                        style={styles.revokeButton}
+                      >
+                        <ThemedText style={styles.revokeLabel}>
+                          Revoke
+                        </ThemedText>
+                      </Pressable>
+                    ) : null}
+                  </View>
+                );
+              })
+            ) : (
+              <ThemedText themeColor="textSecondary">
+                No SSH access created yet.
               </ThemedText>
-            </View>
-          )}
+            )}
+          </ScrollView>
 
           <Pressable
             accessibilityRole="button"
-            accessibilityState={{ disabled: isPending }}
-            disabled={isPending}
+            accessibilityState={{ disabled: createAccess.isPending }}
+            disabled={createAccess.isPending}
             onPress={() => void generateConnection()}
             style={({ pressed }) => [
               styles.generateButton,
               { backgroundColor: theme.backgroundElement },
               pressed && styles.pressed,
-              isPending && styles.disabled,
+              createAccess.isPending && styles.disabled,
             ]}
           >
-            <SymbolView
-              name={{ ios: "arrow.clockwise", android: "refresh" }}
-              size={17}
-              tintColor={theme.text}
-            />
+            {createAccess.isPending ? (
+              <ActivityIndicator size="small" />
+            ) : (
+              <SymbolView
+                name={{ ios: "plus", android: "add" }}
+                size={17}
+                tintColor={theme.text}
+              />
+            )}
             <ThemedText style={styles.generateLabel}>
-              Generate new connection
+              {createAccess.isPending ? "Creating…" : "Create SSH access"}
             </ThemedText>
           </Pressable>
         </BottomDrawerPanel>
@@ -265,6 +350,16 @@ function ConnectionField({
 }
 
 const styles = StyleSheet.create({
+  accessDetails: { flex: 1, gap: 4 },
+  accessRow: {
+    alignItems: "center",
+    borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth,
+    flexDirection: "row",
+    gap: 8,
+    padding: 12,
+  },
+  accessTitle: { fontSize: 13, fontWeight: "600" },
   backdrop: {
     backgroundColor: "rgba(0,0,0,0.38)",
     bottom: 0,
@@ -294,7 +389,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 10,
   },
-  expiry: { fontSize: 13, lineHeight: 19, marginTop: 16 },
+  expiry: { fontSize: 13, lineHeight: 19 },
   field: {
     alignItems: "center",
     borderRadius: 12,
@@ -327,10 +422,15 @@ const styles = StyleSheet.create({
   header: { alignItems: "flex-start", flexDirection: "row" },
   heading: { flex: 1, gap: 5 },
   pressed: { opacity: 0.65 },
+  revokeButton: {
+    minHeight: 44,
+    justifyContent: "center",
+    paddingHorizontal: 8,
+  },
+  revokeLabel: { fontSize: 13, fontWeight: "600" },
   root: { flex: 1, justifyContent: "flex-end" },
-  status: { alignItems: "center", gap: 10, paddingVertical: 38 },
-  statusCopy: { fontSize: 13, textAlign: "center" },
-  statusTitle: { fontSize: 15, fontWeight: "700", textAlign: "center" },
+  sectionTitle: { fontSize: 14, fontWeight: "700", marginTop: 10 },
+  status: { alignItems: "center", paddingVertical: 20 },
   subtitle: { fontSize: 13, lineHeight: 19 },
   title: { fontSize: 21, fontWeight: "700" },
 });

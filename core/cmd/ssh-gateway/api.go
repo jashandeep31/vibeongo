@@ -13,7 +13,7 @@ import (
 	"time"
 )
 
-const redeemPath = "/api/v1/internal/ssh-tickets/redeem"
+const authorizePath = "/api/v1/internal/ssh-access/authorize"
 
 type gatewayAPI struct {
 	endpoint string
@@ -42,7 +42,7 @@ func newGatewayAPI() (*gatewayAPI, error) {
 	if u.Scheme != "http" && u.Scheme != "https" {
 		return nil, errors.New("SSH_GATEWAY_API_URL must use HTTP or HTTPS")
 	}
-	u.Path = redeemPath
+	u.Path = authorizePath
 	return &gatewayAPI{
 		endpoint: u.String(),
 		token:    token,
@@ -55,22 +55,22 @@ func newGatewayAPI() (*gatewayAPI, error) {
 	}, nil
 }
 
-func (api *gatewayAPI) redeem(ticket string) (terminalGrant, error) {
-	if len(ticket) != 43 || !validTicket(ticket) {
-		return terminalGrant{}, errors.New("invalid SSH ticket format")
+func (api *gatewayAPI) authorize(token string) (terminalGrant, error) {
+	if len(token) != 43 || !validAccessToken(token) {
+		return terminalGrant{}, errors.New("invalid SSH access token format")
 	}
 	requestBody, _ := json.Marshal(struct {
-		Ticket string `json:"ticket"`
-	}{Ticket: ticket})
+		Token string `json:"token"`
+	}{Token: token})
 	request, err := http.NewRequest(http.MethodPost, api.endpoint, bytes.NewReader(requestBody))
 	if err != nil {
-		return terminalGrant{}, errors.New("create ticket redemption request")
+		return terminalGrant{}, errors.New("create SSH access authorization request")
 	}
 	request.Header.Set("Authorization", "Bearer "+api.token)
 	request.Header.Set("Content-Type", "application/json")
 	response, err := api.client.Do(request)
 	if err != nil {
-		return terminalGrant{}, errors.New("ticket redemption server unavailable")
+		return terminalGrant{}, errors.New("SSH access authorization server unavailable")
 	}
 	defer response.Body.Close()
 	if response.StatusCode != http.StatusOK {
@@ -82,16 +82,16 @@ func (api *gatewayAPI) redeem(ticket string) (terminalGrant, error) {
 				switch failure.Message {
 				case "Unauthorized":
 					return terminalGrant{}, errors.New("gateway shared token was rejected by the platform server")
-				case "Invalid or expired SSH ticket":
-					return terminalGrant{}, errors.New("SSH ticket is expired or was already used")
+				case "Invalid or expired SSH access":
+					return terminalGrant{}, errors.New("SSH access is invalid, expired, or revoked")
 				}
 			}
 		}
-		return terminalGrant{}, fmt.Errorf("ticket redemption returned HTTP %d", response.StatusCode)
+		return terminalGrant{}, fmt.Errorf("SSH access authorization returned HTTP %d", response.StatusCode)
 	}
 	var grant terminalGrant
 	if err := json.NewDecoder(io.LimitReader(response.Body, 64*1024)).Decode(&grant); err != nil {
-		return terminalGrant{}, errors.New("invalid ticket redemption response")
+		return terminalGrant{}, errors.New("invalid SSH access authorization response")
 	}
 	if !grant.Valid || grant.WebsocketURL == "" || grant.ProxyToken == "" || grant.RuntimeToken == "" || !time.Now().Before(grant.ExpiresAt) {
 		return terminalGrant{}, errors.New("incomplete or expired terminal grant")
@@ -99,8 +99,8 @@ func (api *gatewayAPI) redeem(ticket string) (terminalGrant, error) {
 	return grant, nil
 }
 
-func validTicket(ticket string) bool {
-	for _, character := range ticket {
+func validAccessToken(token string) bool {
+	for _, character := range token {
 		if !((character >= 'A' && character <= 'Z') || (character >= 'a' && character <= 'z') || (character >= '0' && character <= '9') || character == '-' || character == '_') {
 			return false
 		}
