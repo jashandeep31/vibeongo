@@ -5,12 +5,19 @@ import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import { RuntimeToolCard } from "@/components/runtime-tool-card";
 import {
+  useCreateSshAccess,
+  useRevokeSshAccess,
+  useSshAccess,
   useGetInstances,
   useGetProjectDomainsById,
   useRestartDevScript,
   useRenewOpencodeCredentials,
 } from "@repo/api-hooks";
-import { getOpencodePassword } from "@repo/api-client";
+import {
+  formatSshCommand,
+  getOpencodePassword,
+  type CreateSshAccessResponse,
+} from "@repo/api-client";
 import { useProjectsStore, useSessionsStore } from "@repo/app-store";
 import { Badge } from "@repo/ui/components/badge";
 import { Button } from "@repo/ui/components/button";
@@ -97,7 +104,7 @@ export function ProjectSessionSettingsPage({
   sessionId?: string;
 }) {
   const [now, setNow] = useState(() => Date.now());
-  const [copied, setCopied] = useState<"ip" | "ssh" | null>(null);
+  const [copied, setCopied] = useState<"gateway" | null>(null);
   const projectName = useProjectsStore(
     (store) =>
       store.projects.find((project) => project.id === projectId)?.name ??
@@ -113,9 +120,10 @@ export function ProjectSessionSettingsPage({
     !storedInstance,
   );
   const instance = storedInstance ?? instancesQuery.data?.data[0];
+  const instanceId = instance?.id ?? "";
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
   const connection = {
-    instanceId: instance?.id ?? "",
+    instanceId,
     runtimeUrl: instance
       ? `https://3101-${instance.id}${instance.proxy_domain}`
       : "",
@@ -124,6 +132,11 @@ export function ProjectSessionSettingsPage({
   };
   const runtimeSocket = useRuntimeSession();
   const restartDevScript = useRestartDevScript(connection);
+  const createSshAccess = useCreateSshAccess();
+  const revokeSshAccess = useRevokeSshAccess();
+  const sshAccessList = useSshAccess(instanceId);
+  const [newSshAccess, setNewSshAccess] =
+    useState<CreateSshAccessResponse | null>(null);
   const renewCredentials = useRenewOpencodeCredentials(connection);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(instance));
   const domainsPointToRuntime =
@@ -157,19 +170,29 @@ export function ProjectSessionSettingsPage({
   const startedAt = instance
     ? new Date(instance.started_at).getTime()
     : Number.NaN;
-  const sshCommand = instance?.public_ip
-    ? `ssh vibe@${instance.public_ip}`
-    : "";
+  const gatewayCommand = newSshAccess ? formatSshCommand(newSshAccess) : "";
+  const gatewayExpiresAt = newSshAccess
+    ? new Date(newSshAccess.expiresAt).getTime()
+    : Number.NaN;
+  const gatewayCommandIsValid =
+    Boolean(gatewayCommand) &&
+    gatewayExpiresAt > now &&
+    sshAccessList.data?.find((access) => access.id === newSshAccess?.id)
+      ?.status !== "revoked";
 
-  const copyValue = async (kind: "ip" | "ssh", value: string) => {
+  useEffect(() => {
+    setNewSshAccess(null);
+  }, [projectSessionId, instance?.id]);
+
+  const copyValue = async (value: string) => {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
-      setCopied(kind);
-      toast.success(kind === "ip" ? "IP address copied" : "SSH command copied");
+      setCopied("gateway");
+      toast.success("SSH command copied");
       window.setTimeout(() => setCopied(null), 1_500);
     } catch {
-      toast.error("Could not copy to clipboard");
+      toast.error("Command created. Copy it from the field below.");
     }
   };
 
@@ -388,21 +411,131 @@ export function ProjectSessionSettingsPage({
               Direct access details for this runtime.
             </CardDescription>
           </CardHeader>
-          <CardContent className="grid gap-3 sm:grid-cols-2">
-            <CopyRow
-              label="Public IP"
-              value={instance.public_ip ?? "Unavailable"}
-              copied={copied === "ip"}
-              disabled={!instance.public_ip}
-              onCopy={() => void copyValue("ip", instance.public_ip ?? "")}
-            />
-            <CopyRow
-              label="SSH command"
-              value={sshCommand || "Unavailable"}
-              copied={copied === "ssh"}
-              disabled={!sshCommand}
-              onCopy={() => void copyValue("ssh", sshCommand)}
-            />
+          <CardContent className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <p className="text-sm font-medium">SSH gateway</p>
+                  <p className="text-muted-foreground text-xs">
+                    Create access valid for 60 minutes. Copy the command when it
+                    appears; it cannot be shown again.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={!instance || createSshAccess.isPending}
+                  onClick={() =>
+                    instance && createSshAccess.mutate(instanceId, {
+                      onSuccess: (connection) => {
+                        setNewSshAccess(connection);
+                        void copyValue(formatSshCommand(connection));
+                      },
+                      onError: () =>
+                        toast.error("Could not create SSH command. Try again."),
+                    })
+                  }
+                >
+                  <Terminal />
+                  {createSshAccess.isPending
+                    ? "Creating…"
+                    : "Create SSH access"}
+                </Button>
+              </div>
+              {gatewayCommandIsValid ? (
+                <div aria-live="polite" className="space-y-1.5">
+                  <CopyRow
+                    label="Gateway SSH command"
+                    value={gatewayCommand}
+                    copied={copied === "gateway"}
+                    disabled={false}
+                    onCopy={() => void copyValue(gatewayCommand)}
+                  />
+                  <p className="text-muted-foreground text-xs">
+                    Expires in {formatDuration(gatewayExpiresAt - now)}. Save
+                    this command now; it cannot be retrieved later.
+                  </p>
+                </div>
+              ) : newSshAccess ? (
+                <p className="text-muted-foreground text-xs" role="status">
+                  SSH command expired or was revoked. Create a new one to
+                  connect.
+                </p>
+              ) : null}
+              <div className="space-y-2 border-t pt-3">
+                <p className="text-sm font-medium">Created SSH access</p>
+                {!instanceId ? (
+                  <p className="text-muted-foreground text-xs">
+                    No instance is available for SSH access.
+                  </p>
+                ) : sshAccessList.isPending ? (
+                  <p className="text-muted-foreground text-xs">
+                    Loading access…
+                  </p>
+                ) : sshAccessList.isError ? (
+                  <p className="text-destructive text-xs">
+                    Could not load SSH access.
+                  </p>
+                ) : sshAccessList.data?.length ? (
+                  sshAccessList.data.map((access) => {
+                    const status = access.revokedAt
+                      ? "Revoked"
+                      : new Date(access.expiresAt).getTime() <= now
+                        ? "Expired"
+                        : access.status === "instance_unavailable"
+                          ? "Instance unavailable"
+                          : "Active";
+                    return (
+                      <div
+                        key={access.id}
+                        className="flex flex-wrap items-center justify-between gap-2 rounded-md border p-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <p>
+                            Created {formatDate(access.createdAt)} · {status}
+                          </p>
+                          <p className="text-muted-foreground">
+                            Expires {formatDate(access.expiresAt)}
+                            {access.lastUsedAt
+                              ? ` · Last used ${formatDate(access.lastUsedAt)}`
+                              : ""}
+                          </p>
+                        </div>
+                        {!access.revokedAt &&
+                        new Date(access.expiresAt).getTime() > now ? (
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            disabled={revokeSshAccess.isPending}
+                            onClick={() =>
+                              revokeSshAccess.mutate(
+                                { instanceId, accessId: access.id },
+                                {
+                                  onSuccess: () => {
+                                    if (newSshAccess?.id === access.id)
+                                      setNewSshAccess(null);
+                                    toast.success("SSH access revoked");
+                                  },
+                                  onError: () =>
+                                    toast.error("Could not revoke SSH access"),
+                                },
+                              )
+                            }
+                          >
+                            Revoke
+                          </Button>
+                        ) : null}
+                      </div>
+                    );
+                  })
+                ) : (
+                  <p className="text-muted-foreground text-xs">
+                    No SSH access created yet.
+                  </p>
+                )}
+              </div>
+            </div>
           </CardContent>
         </Card>
       </main>

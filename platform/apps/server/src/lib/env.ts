@@ -13,6 +13,9 @@ const envSchema = z.object({
   VIBEONGO_APP_DEEP_LINK: z.string(),
   PROXY_DOMAIN: z.string(),
   PROXY_SERVER_TOKEN: z.string().min(1),
+  SSH_GATEWAY_TOKEN: z.string().min(1).optional(),
+  SSH_GATEWAY_DOMAIN: z.string().default("ssh.vibeongo.com"),
+  SSH_GATEWAY_PORT: z.coerce.number().int().min(1).max(65535).default(8005),
   NODE_ENV: z
     .enum(["development", "production", "test"])
     .default("development"),

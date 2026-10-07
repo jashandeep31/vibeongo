@@ -12,6 +12,7 @@ import * as projectSessionsApi from "./services/project-session-services.js";
 import * as providerCredentialsApi from "./services/provider-credentials-services.js";
 import * as speechTextApi from "./services/speech-text-services.js";
 import * as sshKeysApi from "./services/ssh-key-services.js";
+import * as sshAccessApi from "./services/ssh-access-services.js";
 import * as usersApi from "./services/user-services.js";
 import * as walletApi from "./services/wallet-services.js";
 
@@ -136,6 +137,12 @@ export type {
   SetForgejoPasswordResponse,
   UserConfigValue,
 } from "./services/user-services.js";
+export type {
+  CreateSshAccessResponse,
+  SshAccessSummary,
+  SshAccessStatus,
+} from "./services/ssh-access-services.js";
+export { formatSshCommand } from "./ssh-command.js";
 
 function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
   module: T,
@@ -150,7 +157,9 @@ function bindApiModule<T extends Record<string, (api: AxiosInstance) => any>>(
 
 export class MobileClient {
   apiClient: AxiosInstance;
-  providerCredentials: ReturnType<typeof bindApiModule<typeof providerCredentialsApi>>;
+  providerCredentials: ReturnType<
+    typeof bindApiModule<typeof providerCredentialsApi>
+  >;
   apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
@@ -165,6 +174,7 @@ export class MobileClient {
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
   speechText: ReturnType<typeof bindApiModule<typeof speechTextApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
+  sshAccess: ReturnType<typeof bindApiModule<typeof sshAccessApi>>;
   users: ReturnType<typeof bindApiModule<typeof usersApi>>;
   wallet: ReturnType<typeof bindApiModule<typeof walletApi>>;
 
@@ -177,7 +187,10 @@ export class MobileClient {
     });
 
     this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
-    this.providerCredentials = bindApiModule(providerCredentialsApi, this.apiClient);
+    this.providerCredentials = bindApiModule(
+      providerCredentialsApi,
+      this.apiClient,
+    );
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
@@ -192,6 +205,7 @@ export class MobileClient {
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
     this.speechText = bindApiModule(speechTextApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
+    this.sshAccess = bindApiModule(sshAccessApi, this.apiClient);
     this.users = bindApiModule(usersApi, this.apiClient);
     this.wallet = bindApiModule(walletApi, this.apiClient);
   }
@@ -199,7 +213,9 @@ export class MobileClient {
 
 export class WebClient {
   apiClient: AxiosInstance;
-  providerCredentials: ReturnType<typeof bindApiModule<typeof providerCredentialsApi>>;
+  providerCredentials: ReturnType<
+    typeof bindApiModule<typeof providerCredentialsApi>
+  >;
   apiKeys: ReturnType<typeof bindApiModule<typeof apiKeysApi>>;
   chats: ReturnType<typeof bindApiModule<typeof chatsApi>>;
   githubRepos: ReturnType<typeof bindApiModule<typeof githubReposApi>>;
@@ -214,6 +230,7 @@ export class WebClient {
   projectSessions: ReturnType<typeof bindApiModule<typeof projectSessionsApi>>;
   speechText: ReturnType<typeof bindApiModule<typeof speechTextApi>>;
   sshKeys: ReturnType<typeof bindApiModule<typeof sshKeysApi>>;
+  sshAccess: ReturnType<typeof bindApiModule<typeof sshAccessApi>>;
   users: ReturnType<typeof bindApiModule<typeof usersApi>>;
   wallet: ReturnType<typeof bindApiModule<typeof walletApi>>;
 
@@ -224,7 +241,10 @@ export class WebClient {
     });
 
     this.apiKeys = bindApiModule(apiKeysApi, this.apiClient);
-    this.providerCredentials = bindApiModule(providerCredentialsApi, this.apiClient);
+    this.providerCredentials = bindApiModule(
+      providerCredentialsApi,
+      this.apiClient,
+    );
     this.chats = bindApiModule(chatsApi, this.apiClient);
     this.githubRepos = bindApiModule(githubReposApi, this.apiClient);
     this.instances = bindApiModule(instancesApi, this.apiClient);
@@ -239,6 +259,7 @@ export class WebClient {
     this.projectSessions = bindApiModule(projectSessionsApi, this.apiClient);
     this.speechText = bindApiModule(speechTextApi, this.apiClient);
     this.sshKeys = bindApiModule(sshKeysApi, this.apiClient);
+    this.sshAccess = bindApiModule(sshAccessApi, this.apiClient);
     this.users = bindApiModule(usersApi, this.apiClient);
     this.wallet = bindApiModule(walletApi, this.apiClient);
   }

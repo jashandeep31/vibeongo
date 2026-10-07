@@ -627,6 +627,7 @@ export function ProjectChatScreen() {
                 opencodeSessionId={opencodeSessionId}
                 projectId={projectId}
                 projectSessionId={projectSessionId}
+                showSshConnection
                 terminatesAt={runtime.instance?.terminates_at}
                 title={data.session.title || "Untitled chat"}
               />

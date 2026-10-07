@@ -4,6 +4,8 @@ import { createLoginCommand } from "./commands/login.js";
 import { createLogoutCommand } from "./commands/logout.js";
 import { createStatusCommand } from "./commands/status.js";
 import { createChatgptCommand } from "./commands/chatgpt.js";
+import { createProjectsCommand } from "./commands/projects.js";
+import { createSshCommand } from "./commands/ssh.js";
 
 export function createCli() {
   const { version } = JSON.parse(
@@ -28,6 +30,8 @@ export function createCli() {
   program.addCommand(createLogoutCommand());
   program.addCommand(createStatusCommand());
   program.addCommand(createChatgptCommand());
+  program.addCommand(createProjectsCommand());
+  program.addCommand(createSshCommand());
 
   return program;
 }

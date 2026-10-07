@@ -21,6 +21,7 @@ export function ProjectWorkspaceActionsMenu({
   onMcp,
   onRefresh,
   onSettings,
+  onSshConnection,
   visible,
 }: {
   anchorY: number;
@@ -31,12 +32,18 @@ export function ProjectWorkspaceActionsMenu({
   onMcp?: () => void;
   onRefresh?: () => void;
   onSettings: () => void;
+  onSshConnection?: () => void;
   visible: boolean;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
-  const itemCount = 2 + (onRefresh ? 1 : 0) + (onMcp ? 1 : 0) + (onFork ? 1 : 0);
+  const itemCount =
+    2 +
+    (onRefresh ? 1 : 0) +
+    (onMcp ? 1 : 0) +
+    (onFork ? 1 : 0) +
+    (onSshConnection ? 1 : 0);
   const menuHeight = itemCount * 45 + 10;
   const menuTop = Math.max(
     insets.top + 8,
@@ -86,10 +93,17 @@ export function ProjectWorkspaceActionsMenu({
             />
           ) : null}
           <MenuItem
-            icon={{ ios: "slider.horizontal.3", android: "tune" }}
-            label="Runtime settings"
+            icon={{ ios: "gearshape", android: "settings" }}
+            label="Settings"
             onPress={act(onSettings)}
           />
+          {onSshConnection ? (
+            <MenuItem
+              icon={{ ios: "terminal", android: "terminal" }}
+              label="SSH connection"
+              onPress={act(onSshConnection)}
+            />
+          ) : null}
           {onMcp ? (
             <MenuItem
               icon={{ ios: "server.rack", android: "dns" }}
@@ -166,7 +180,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     padding: 5,
     position: "absolute",
-    right: 18,
+    right: 14,
     shadowColor: "#000000",
     shadowOffset: { height: 5, width: 0 },
     shadowOpacity: 0.18,

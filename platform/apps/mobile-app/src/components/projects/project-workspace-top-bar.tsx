@@ -20,6 +20,7 @@ import {
   type OpencodeWorkspaceConnection,
 } from "@/components/projects/project-mcp-drawer";
 import { ProjectSettingsButton } from "@/components/projects/project-settings-button";
+import { ProjectSshConnectionDrawer } from "@/components/projects/project-ssh-connection-drawer";
 import { ProjectWorkspaceActionsMenu } from "@/components/projects/project-workspace-actions-menu";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
@@ -41,6 +42,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   projectSessionId,
   showMcp = true,
   showReview = true,
+  showSshConnection = false,
   switcherAccessibilityLabel = "Switch chat",
   terminatesAt,
   title,
@@ -62,6 +64,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   projectSessionId: string;
   showMcp?: boolean;
   showReview?: boolean;
+  showSshConnection?: boolean;
   switcherAccessibilityLabel?: string;
   terminatesAt?: Date | number | string | null;
   title: string;
@@ -73,6 +76,7 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
   const wide = width >= 760;
   const [actionsAnchorY, setActionsAnchorY] = useState<number | null>(null);
   const [mcpVisible, setMcpVisible] = useState(false);
+  const [sshDrawerVisible, setSshDrawerVisible] = useState(false);
 
   const openReview = () => {
     if (!opencodeSessionId) return;
@@ -169,33 +173,36 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
                     onRefresh={onRefresh}
                   />
                 ) : null}
+                {domainsAction}
+                <ProjectSettingsButton
+                  projectId={projectId}
+                  projectSessionId={projectSessionId}
+                />
               </>
             ) : (
-              <Pressable
-                accessibilityLabel="More workspace actions"
-                accessibilityRole="button"
-                hitSlop={3}
-                onPress={(event: GestureResponderEvent) =>
-                  setActionsAnchorY(event.nativeEvent.pageY)
-                }
-                style={({ pressed }) => [
-                  styles.action,
-                  styles.compactAction,
-                  pressed && styles.pressed,
-                ]}
-              >
-                <SymbolView
-                  name={{ ios: "ellipsis", android: "more_horiz" }}
-                  size={20}
-                  tintColor={theme.textSecondary}
-                />
-              </Pressable>
+              <>
+                {domainsAction}
+                <Pressable
+                  accessibilityLabel="More workspace actions"
+                  accessibilityRole="button"
+                  hitSlop={3}
+                  onPress={(event: GestureResponderEvent) =>
+                    setActionsAnchorY(event.nativeEvent.pageY)
+                  }
+                  style={({ pressed }) => [
+                    styles.action,
+                    styles.compactAction,
+                    pressed && styles.pressed,
+                  ]}
+                >
+                  <SymbolView
+                    name={{ ios: "ellipsis", android: "more_horiz" }}
+                    size={20}
+                    tintColor={theme.textSecondary}
+                  />
+                </Pressable>
+              </>
             )}
-            {domainsAction}
-            <ProjectSettingsButton
-              projectId={projectId}
-              projectSessionId={projectSessionId}
-            />
           </View>
         }
         title={title}
@@ -240,7 +247,19 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
           onMcp={showMcp && connection ? () => setMcpVisible(true) : undefined}
           onRefresh={onRefresh}
           onSettings={openSettings}
+          onSshConnection={
+            showSshConnection && instanceId
+              ? () => setSshDrawerVisible(true)
+              : undefined
+          }
           visible={actionsAnchorY !== null}
+        />
+      ) : null}
+      {sshDrawerVisible && instanceId ? (
+        <ProjectSshConnectionDrawer
+          key={instanceId}
+          onClose={() => setSshDrawerVisible(false)}
+          instanceId={instanceId}
         />
       ) : null}
       {connection ? (

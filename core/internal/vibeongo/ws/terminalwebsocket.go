@@ -49,6 +49,7 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		if id == "" {
 			id = "new"
 		}
+		ephemeral := id == "new" && c.QueryParam("ephemeral") == "1"
 
 		workingDirectory := currentUser.HomeDir
 		tmuxSessionName := ""
@@ -104,6 +105,9 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 			})
 			return nil
 		}
+		if ephemeral {
+			defer func() { _ = sessionsStore.KillTerminalSession(terminalSession.ID) }()
+		}
 
 		ptmx := terminalSession.Ptmx
 		buffer, output, unsubscribe := terminalSession.Subscribe()
@@ -129,9 +133,35 @@ func TerminalWebSocket(tools *store.Tools) echo.HandlerFunc {
 		}
 
 		go func() {
-			for data := range output {
-				if err := writeTerminalOutput(conn, &writeMu, data); err != nil {
-					return
+			if !ephemeral {
+				for data := range output {
+					if err := writeTerminalOutput(conn, &writeMu, data); err != nil {
+						return
+					}
+				}
+				return
+			}
+			for {
+				select {
+				case data, ok := <-output:
+					if !ok || writeTerminalOutput(conn, &writeMu, data) != nil {
+						return
+					}
+				case <-terminalSession.ReaderDone():
+					// No more PTY bytes can arrive. Send all queued output before
+					// closing the SSH client's terminal session.
+					for {
+						select {
+						case data, ok := <-output:
+							if !ok || writeTerminalOutput(conn, &writeMu, data) != nil {
+								return
+							}
+						default:
+							_ = writeTerminalControl(conn, &writeMu, terminalControlMessage{Type: "exit"})
+							_ = conn.Close()
+							return
+						}
+					}
 				}
 			}
 		}()

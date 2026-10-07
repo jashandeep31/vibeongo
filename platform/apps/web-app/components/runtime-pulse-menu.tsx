@@ -4,9 +4,11 @@ import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { useRuntimeSession } from "@/components/runtime-session-provider";
 import { UpdateInstanceTimeDialog } from "@/components/dialogs/update-instance-time-dialog";
 import {
+  useCreateSshAccess,
   useDisableTerminateAfterDone,
   useTerminateAfterDoneStatus,
 } from "@repo/api-hooks";
+import { formatSshCommand } from "@repo/api-client";
 import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -26,7 +28,6 @@ import {
   Cpu,
   HardDrive,
   Loader2,
-  Network,
   Rocket,
   Terminal,
   TimerOff,
@@ -86,7 +87,7 @@ export function RuntimePulseMenu({
   const [isOpen, setIsOpen] = useState(false);
   const [now, setNow] = useState(() => Date.now());
   const [isConfirmationOpen, setIsConfirmationOpen] = useState(false);
-  const [copiedValue, setCopiedValue] = useState<"ip" | "ssh" | null>(null);
+  const [copiedValue, setCopiedValue] = useState<"ssh" | null>(null);
   const instance = useSessionsStore(
     (store) =>
       store.sessions.find((entry) => entry.session.id === projectSessionId)
@@ -112,6 +113,7 @@ export function RuntimePulseMenu({
   };
   const terminateStatus = useTerminateAfterDoneStatus(connection);
   const disableTerminate = useDisableTerminateAfterDone(connection);
+  const createSshAccess = useCreateSshAccess();
   const runtime = useRuntimeSession();
 
   useEffect(() => {
@@ -128,20 +130,25 @@ export function RuntimePulseMenu({
   const terminateAfterDone = terminateStatus.data?.terminate;
   const cpuPercent = normalizePercent(runtime.stats?.cpu_percent);
   const memoryPercent = normalizePercent(runtime.stats?.used_percent);
-  const sshCommand = instance.public_ip
-    ? `ssh vibe@${instance.public_ip}`
-    : null;
-
-  const copyValue = async (kind: "ip" | "ssh", value: string | null) => {
+  const copyValue = async (value: string | null) => {
     if (!value) return;
     try {
       await navigator.clipboard.writeText(value);
-      setCopiedValue(kind);
-      toast.success(kind === "ip" ? "IP address copied" : "SSH command copied");
+      setCopiedValue("ssh");
+      toast.success("SSH command copied");
       window.setTimeout(() => setCopiedValue(null), 1_500);
     } catch {
       toast.error("Could not copy to clipboard");
     }
+  };
+
+  const createAndCopySshCommand = () => {
+    createSshAccess.mutate(instance.id, {
+      onSuccess: (connection) => {
+        void copyValue(formatSshCommand(connection));
+      },
+      onError: () => toast.error("Could not create SSH command. Try again."),
+    });
   };
 
   return (
@@ -296,23 +303,21 @@ export function RuntimePulseMenu({
 
           <DropdownMenuSeparator />
           <DropdownMenuItem
-            disabled={!instance.public_ip}
-            onSelect={() => void copyValue("ip", instance.public_ip)}
+            disabled={createSshAccess.isPending}
+            onSelect={createAndCopySshCommand}
           >
-            {copiedValue === "ip" ? <Check /> : <Network />}
-            <span className="flex-1">Copy IP address</span>
-            {instance.public_ip ? (
-              <span className="text-muted-foreground max-w-28 truncate font-mono text-xs">
-                {instance.public_ip}
-              </span>
-            ) : null}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            disabled={!sshCommand}
-            onSelect={() => void copyValue("ssh", sshCommand)}
-          >
-            {copiedValue === "ssh" ? <Check /> : <Terminal />}
-            <span className="flex-1">Copy SSH command</span>
+            {createSshAccess.isPending ? (
+              <Loader2 className="animate-spin" />
+            ) : copiedValue === "ssh" ? (
+              <Check />
+            ) : (
+              <Terminal />
+            )}
+            <span className="flex-1">
+              {createSshAccess.isPending
+                ? "Creating SSH access…"
+                : "Create and copy SSH access"}
+            </span>
             <Copy className="text-muted-foreground" />
           </DropdownMenuItem>
         </DropdownMenuContent>

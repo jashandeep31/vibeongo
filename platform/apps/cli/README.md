@@ -9,7 +9,13 @@ npx @vibeongo/cli login
 npx @vibeongo/cli status
 ```
 
-Your API key is saved in your OS credential store. On Linux, a running, unlocked Secret Service keyring is required.
+API keys use the OS keyring by default. To save yours in a local JSON file instead:
+
+```bash
+npx @vibeongo/cli login --storage file
+```
+
+The file is at `~/.config/vibeongo/CLI/config.json` by default and contains the API key in plaintext.
 
 Remove your saved local login:
 
