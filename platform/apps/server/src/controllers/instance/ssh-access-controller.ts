@@ -164,8 +164,7 @@ export const listSshAccess = catchAsync(async (req: Request, res: Response) => {
         eq(sshAccessTokens.instance_id, id),
       ),
     )
-    .orderBy(desc(sshAccessTokens.created_at))
-    .limit(100);
+    .orderBy(desc(sshAccessTokens.created_at));
   const now = new Date();
   res.set("Cache-Control", "no-store");
   res.json(
