@@ -7,7 +7,15 @@ export function createLogoutCommand() {
     .description("Remove the saved Vibeongo API key for this server")
     .option("--server-url <url>", "Vibeongo server origin", DEFAULT_SERVER_URL)
     .action(async (options: { serverUrl: string }) => {
-      const removed = await deleteApiKey(options.serverUrl);
-      console.log(removed ? "Logged out." : "Already logged out.");
+      const result = await deleteApiKey(options.serverUrl);
+      if (result.keyringUnavailable) {
+        console.log(
+          result.removed
+            ? "File API key removed. Keyring unavailable; its entry could not be checked."
+            : "No file API key found. Keyring unavailable; its entry could not be checked.",
+        );
+      } else {
+        console.log(result.removed ? "Logged out." : "Already logged out.");
+      }
     });
 }

@@ -21,7 +21,7 @@ export async function status(
   const apiKey = await dependencies.read(origin);
   if (!apiKey) {
     throw new Error(
-      "Not logged in to this server. Run vibeongo login to connect your account.",
+      "Not logged in to this server. Run vibeongo login with the same --server-url.",
     );
   }
   const user = await dependencies.validate(origin, apiKey);

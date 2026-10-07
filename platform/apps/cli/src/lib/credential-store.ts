@@ -1,6 +1,28 @@
 import { normalizeServerUrl } from "./api.js";
+import {
+  deleteFileApiKey,
+  getFileApiKey,
+  saveFileApiKey,
+} from "./file-credential-store.js";
 
 const SERVICE_NAME = "com.vibeongo.cli";
+
+export interface CredentialStoreOptions {
+  storage?: "keyring" | "file";
+}
+
+export function resolveCredentialStorage(
+  options: CredentialStoreOptions = {},
+): "keyring" | "file" {
+  if (
+    options.storage &&
+    options.storage !== "keyring" &&
+    options.storage !== "file"
+  ) {
+    throw new Error("Use --storage keyring or --storage file.");
+  }
+  return options.storage ?? "keyring";
+}
 
 async function getEntry(serverUrl: string) {
   const origin = normalizeServerUrl(serverUrl);
@@ -16,7 +38,14 @@ async function getEntry(serverUrl: string) {
   }
 }
 
-export async function saveApiKey(serverUrl: string, apiKey: string) {
+export async function saveApiKey(
+  serverUrl: string,
+  apiKey: string,
+  options: CredentialStoreOptions = {},
+) {
+  if (resolveCredentialStorage(options) === "file") {
+    return saveFileApiKey(serverUrl, apiKey);
+  }
   const entry = await getEntry(serverUrl);
   try {
     await entry.setPassword(apiKey);
@@ -30,23 +59,26 @@ export async function saveApiKey(serverUrl: string, apiKey: string) {
 export async function getApiKey(
   serverUrl: string,
 ): Promise<string | undefined> {
-  const entry = await getEntry(serverUrl);
   try {
-    return await entry.getPassword();
+    const keyringKey = await (await getEntry(serverUrl)).getPassword();
+    if (keyringKey) return keyringKey;
   } catch {
-    throw new Error(
-      "Could not read the API key from the OS credential store. Unlock the keychain and try again.",
-    );
+    // File-backed login still works when the OS credential store is unavailable.
   }
+  return getFileApiKey(serverUrl);
 }
 
-export async function deleteApiKey(serverUrl: string): Promise<boolean> {
-  const entry = await getEntry(serverUrl);
+export async function deleteApiKey(serverUrl: string): Promise<{
+  removed: boolean;
+  keyringUnavailable: boolean;
+}> {
+  let removedFromKeyring = false;
+  let keyringUnavailable = false;
   try {
-    return await entry.deleteCredential();
+    removedFromKeyring = await (await getEntry(serverUrl)).deleteCredential();
   } catch {
-    throw new Error(
-      "Could not remove the API key from the OS credential store. Unlock the keychain and try again.",
-    );
+    keyringUnavailable = true;
   }
+  const removedFromFile = await deleteFileApiKey(serverUrl);
+  return { removed: removedFromKeyring || removedFromFile, keyringUnavailable };
 }
