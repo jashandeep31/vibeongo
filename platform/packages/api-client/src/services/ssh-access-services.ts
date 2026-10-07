@@ -22,14 +22,14 @@ export type CreateSshAccessResponse = {
   expiresAt: string;
 };
 
-const accessPath = (projectSessionId: string) =>
-  `/api/v1/project-sessions/${encodeURIComponent(projectSessionId)}/ssh-access`;
+const accessPath = (instanceId: string) =>
+  `/api/v1/instances/${encodeURIComponent(instanceId)}/ssh-access`;
 
 export const createSshAccess =
   (apiClient: AxiosInstance) =>
-  async (projectSessionId: string): Promise<CreateSshAccessResponse> => {
+  async (instanceId: string): Promise<CreateSshAccessResponse> => {
     const response = await apiClient.post<CreateSshAccessResponse>(
-      accessPath(projectSessionId),
+      accessPath(instanceId),
       undefined,
       { withCredentials: true },
     );
@@ -38,9 +38,9 @@ export const createSshAccess =
 
 export const listSshAccess =
   (apiClient: AxiosInstance) =>
-  async (projectSessionId: string): Promise<SshAccessSummary[]> => {
+  async (instanceId: string): Promise<SshAccessSummary[]> => {
     const response = await apiClient.get<SshAccessSummary[]>(
-      accessPath(projectSessionId),
+      accessPath(instanceId),
       { withCredentials: true },
     );
     return response.data;
@@ -49,14 +49,14 @@ export const listSshAccess =
 export const revokeSshAccess =
   (apiClient: AxiosInstance) =>
   async ({
-    projectSessionId,
+    instanceId,
     accessId,
   }: {
-    projectSessionId: string;
+    instanceId: string;
     accessId: string;
   }): Promise<void> => {
     await apiClient.post(
-      `${accessPath(projectSessionId)}/${encodeURIComponent(accessId)}/revoke`,
+      `${accessPath(instanceId)}/${encodeURIComponent(accessId)}/revoke`,
       undefined,
       { withCredentials: true },
     );

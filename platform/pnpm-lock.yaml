@@ -35,6 +35,9 @@ importers:
       '@napi-rs/keyring':
         specifier: ^2.1.0
         version: 2.1.0
+      '@repo/api-client':
+        specifier: workspace:*
+        version: link:../../packages/api-client
       commander:
         specifier: ^14.0.0
         version: 14.0.3

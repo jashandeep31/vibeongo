@@ -143,7 +143,7 @@ export function RuntimePulseMenu({
   };
 
   const createAndCopySshCommand = () => {
-    createSshAccess.mutate(projectSessionId, {
+    createSshAccess.mutate(instance.id, {
       onSuccess: (connection) => {
         void copyValue(formatSshCommand(connection));
       },

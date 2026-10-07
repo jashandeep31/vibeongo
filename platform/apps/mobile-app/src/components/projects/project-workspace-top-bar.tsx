@@ -248,15 +248,18 @@ export const ProjectWorkspaceTopBar = memo(function ProjectWorkspaceTopBar({
           onRefresh={onRefresh}
           onSettings={openSettings}
           onSshConnection={
-            showSshConnection ? () => setSshDrawerVisible(true) : undefined
+            showSshConnection && instanceId
+              ? () => setSshDrawerVisible(true)
+              : undefined
           }
           visible={actionsAnchorY !== null}
         />
       ) : null}
-      {sshDrawerVisible ? (
+      {sshDrawerVisible && instanceId ? (
         <ProjectSshConnectionDrawer
+          key={instanceId}
           onClose={() => setSshDrawerVisible(false)}
-          projectSessionId={projectSessionId}
+          instanceId={instanceId}
         />
       ) : null}
       {connection ? (

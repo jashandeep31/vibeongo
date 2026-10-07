@@ -20,29 +20,35 @@ import { getSshTerminalWebSocketGrant } from "../../services/instances/get-ssh-t
 
 const ACCESS_LIFETIME_MS = 60 * 60 * 1000;
 const accessTokenSchema = z.string().regex(/^[A-Za-z0-9_-]{43}$/);
-const sessionParams = z.object({ id: z.uuid() });
-const accessParams = sessionParams.extend({ accessId: z.uuid() });
+const instanceParams = z.object({ id: z.uuid() });
+const accessParams = instanceParams.extend({ accessId: z.uuid() });
 
 function tokenHash(token: string): string {
   return createHash("sha256").update(token).digest("hex");
 }
 
-async function assertSessionOwner(sessionId: string, userId: string) {
-  const [session] = await db
-    .select({ id: projectSessions.id, archived: projectSessions.archived })
-    .from(projectSessions)
+async function assertInstanceOwner(instanceId: string, userId: string) {
+  const [target] = await db
+    .select({ archived: projectSessions.archived })
+    .from(instances)
+    .innerJoin(
+      projectSessions,
+      eq(projectSessions.id, instances.project_session_id),
+    )
     .innerJoin(projects, eq(projects.id, projectSessions.project_id))
     .where(
       and(
-        eq(projectSessions.id, sessionId),
+        eq(instances.id, instanceId),
+        eq(instances.user_id, userId),
+        eq(instances.project_id, projects.id),
         eq(projectSessions.user_id, userId),
         eq(projects.user_id, userId),
         eq(projects.deleted, false),
       ),
     )
     .limit(1);
-  if (!session) throw new AppError("Project session not found", 404);
-  return session;
+  if (!target) throw new AppError("Instance not found", 404);
+  return target;
 }
 
 function accessStatus(
@@ -67,69 +73,78 @@ function accessStatus(
   return "active";
 }
 
+async function issueSshAccess(
+  res: Response,
+  userId: string,
+  sessionId: string,
+  instanceId: string,
+  now: Date,
+) {
+  const token = randomBytes(32).toString("base64url");
+  const [access] = await db
+    .insert(sshAccessTokens)
+    .values({
+      token_hash: tokenHash(token),
+      user_id: userId,
+      project_session_id: sessionId,
+      instance_id: instanceId,
+      expires_at: new Date(now.getTime() + ACCESS_LIFETIME_MS),
+    })
+    .returning({
+      id: sshAccessTokens.id,
+      createdAt: sshAccessTokens.created_at,
+      expiresAt: sshAccessTokens.expires_at,
+    });
+  if (!access) throw new AppError("Could not create SSH access", 500);
+  res.set("Cache-Control", "no-store");
+  res.status(201).json({
+    id: access.id,
+    username: token,
+    host: env.SSH_GATEWAY_DOMAIN,
+    port: env.SSH_GATEWAY_PORT,
+    createdAt: access.createdAt,
+    expiresAt: access.expiresAt,
+  });
+}
+
 export const createSshAccess = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authentication is required", 401);
-    const { id } = sessionParams.parse(req.params);
+    const { id } = instanceParams.parse(req.params);
     const now = new Date();
     const [target] = await db
-      .select({ instanceId: instances.id })
-      .from(projectSessions)
-      .innerJoin(projects, eq(projects.id, projectSessions.project_id))
+      .select({ sessionId: projectSessions.id })
+      .from(instances)
       .innerJoin(
-        instances,
-        eq(instances.project_session_id, projectSessions.id),
+        projectSessions,
+        eq(projectSessions.id, instances.project_session_id),
       )
+      .innerJoin(projects, eq(projects.id, projectSessions.project_id))
       .where(
         and(
-          eq(projectSessions.id, id),
+          eq(instances.id, id),
+          eq(instances.user_id, user.id),
+          eq(instances.project_id, projects.id),
+          eq(instances.state, "running"),
+          gt(instances.terminates_at, now),
           eq(projectSessions.user_id, user.id),
           eq(projectSessions.archived, false),
           eq(projects.user_id, user.id),
           eq(projects.deleted, false),
-          eq(instances.user_id, user.id),
-          eq(instances.state, "running"),
-          gt(instances.terminates_at, now),
         ),
       )
-      .orderBy(desc(instances.started_at))
       .limit(1);
-    if (!target) throw new AppError("Active project session not found", 404);
-
-    const token = randomBytes(32).toString("base64url");
-    const [access] = await db
-      .insert(sshAccessTokens)
-      .values({
-        token_hash: tokenHash(token),
-        user_id: user.id,
-        project_session_id: id,
-        instance_id: target.instanceId,
-        expires_at: new Date(now.getTime() + ACCESS_LIFETIME_MS),
-      })
-      .returning({
-        id: sshAccessTokens.id,
-        createdAt: sshAccessTokens.created_at,
-        expiresAt: sshAccessTokens.expires_at,
-      });
-    if (!access) throw new AppError("Could not create SSH access", 500);
-    res.set("Cache-Control", "no-store");
-    res.status(201).json({
-      id: access.id,
-      username: token,
-      host: env.SSH_GATEWAY_DOMAIN,
-      port: env.SSH_GATEWAY_PORT,
-      createdAt: access.createdAt,
-      expiresAt: access.expiresAt,
-    });
+    if (!target) throw new AppError("Running instance not found", 404);
+    await issueSshAccess(res, user.id, target.sessionId, id, now);
   },
 );
 
 export const listSshAccess = catchAsync(async (req: Request, res: Response) => {
   const user = req.user;
   if (!user) throw new AppError("Authentication is required", 401);
-  const { id } = sessionParams.parse(req.params);
-  const session = await assertSessionOwner(id, user.id);
+  const { id } = instanceParams.parse(req.params);
+  const target = await assertInstanceOwner(id, user.id);
   const rows = await db
     .select({
       id: sshAccessTokens.id,
@@ -146,7 +161,7 @@ export const listSshAccess = catchAsync(async (req: Request, res: Response) => {
     .where(
       and(
         eq(sshAccessTokens.user_id, user.id),
-        eq(sshAccessTokens.project_session_id, id),
+        eq(sshAccessTokens.instance_id, id),
       ),
     )
     .orderBy(desc(sshAccessTokens.created_at))
@@ -161,7 +176,7 @@ export const listSshAccess = catchAsync(async (req: Request, res: Response) => {
           ...row,
           instanceState,
           instanceTerminatesAt,
-          sessionArchived: session.archived,
+          sessionArchived: target.archived,
         },
         now,
       ),
@@ -174,7 +189,7 @@ export const revokeSshAccess = catchAsync(
     const user = req.user;
     if (!user) throw new AppError("Authentication is required", 401);
     const { id, accessId } = accessParams.parse(req.params);
-    await assertSessionOwner(id, user.id);
+    await assertInstanceOwner(id, user.id);
     const [existing] = await db
       .select({ id: sshAccessTokens.id, revokedAt: sshAccessTokens.revoked_at })
       .from(sshAccessTokens)
@@ -182,7 +197,7 @@ export const revokeSshAccess = catchAsync(
         and(
           eq(sshAccessTokens.id, accessId),
           eq(sshAccessTokens.user_id, user.id),
-          eq(sshAccessTokens.project_session_id, id),
+          eq(sshAccessTokens.instance_id, id),
         ),
       )
       .limit(1);
@@ -195,7 +210,7 @@ export const revokeSshAccess = catchAsync(
           and(
             eq(sshAccessTokens.id, accessId),
             eq(sshAccessTokens.user_id, user.id),
-            eq(sshAccessTokens.project_session_id, id),
+            eq(sshAccessTokens.instance_id, id),
             isNull(sshAccessTokens.revoked_at),
           ),
         );

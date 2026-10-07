@@ -35,17 +35,17 @@ const dateFormatter = new Intl.DateTimeFormat(undefined, {
 
 export function ProjectSshConnectionDrawer({
   onClose,
-  projectSessionId,
+  instanceId,
 }: {
   onClose: () => void;
-  projectSessionId: string;
+  instanceId: string;
 }) {
   const theme = useTheme();
   const insets = useSafeAreaInsets();
   const { height } = useWindowDimensions();
   const createAccess = useCreateSshAccess();
   const revokeAccess = useRevokeSshAccess();
-  const accessList = useSshAccess(projectSessionId);
+  const accessList = useSshAccess(instanceId);
   const [connection, setConnection] = useState<CreateSshAccessResponse | null>(
     null,
   );
@@ -63,7 +63,7 @@ export function ProjectSshConnectionDrawer({
   const generateConnection = async () => {
     setConnection(null);
     try {
-      setConnection(await createAccess.mutateAsync(projectSessionId));
+      setConnection(await createAccess.mutateAsync(instanceId));
       setNow(Date.now());
     } catch {
       Toast.show({ type: "error", text1: "Could not create SSH access" });
@@ -239,7 +239,7 @@ export function ProjectSshConnectionDrawer({
                         disabled={revokeAccess.isPending}
                         onPress={() =>
                           revokeAccess.mutate(
-                            { projectSessionId, accessId: access.id },
+                            { instanceId, accessId: access.id },
                             {
                               onSuccess: () => {
                                 if (connection?.id === access.id)

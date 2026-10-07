@@ -8,8 +8,20 @@ import {
 } from "../controllers/instance/get-instances.js";
 import { terminateByIdInstance } from "../controllers/instance/terminate-by-id-instance.js";
 import { suspendByIdInstance } from "../controllers/instance/suspend-by-id-instance.js";
+import {
+  createSshAccess,
+  listSshAccess,
+  revokeSshAccess,
+} from "../controllers/instance/ssh-access-controller.js";
 
 const routes: Router = Router();
+routes
+  .route("/:id/ssh-access")
+  .get(checkAuthorization(["user", "api_key"]), listSshAccess)
+  .post(checkAuthorization(["user", "api_key"]), createSshAccess);
+routes
+  .route("/:id/ssh-access/:accessId/revoke")
+  .post(checkAuthorization(["user", "api_key"]), revokeSshAccess);
 routes
   .route("/")
   .post(checkAuthorization(["user", "api_key"]), createInstance)

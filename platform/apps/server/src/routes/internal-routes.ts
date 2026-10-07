@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { getTargetHostByDomain } from "../controllers/internal/proxy-controller.js";
-import { authorizeSshAccess } from "../controllers/project-sessions/ssh-access-controller.js";
+import { authorizeSshAccess } from "../controllers/instance/ssh-access-controller.js";
 
 const routes: Router = Router();
 

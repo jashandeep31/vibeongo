@@ -120,9 +120,10 @@ export function ProjectSessionSettingsPage({
     !storedInstance,
   );
   const instance = storedInstance ?? instancesQuery.data?.data[0];
+  const instanceId = instance?.id ?? "";
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
   const connection = {
-    instanceId: instance?.id ?? "",
+    instanceId,
     runtimeUrl: instance
       ? `https://3101-${instance.id}${instance.proxy_domain}`
       : "",
@@ -133,7 +134,7 @@ export function ProjectSessionSettingsPage({
   const restartDevScript = useRestartDevScript(connection);
   const createSshAccess = useCreateSshAccess();
   const revokeSshAccess = useRevokeSshAccess();
-  const sshAccessList = useSshAccess(projectSessionId);
+  const sshAccessList = useSshAccess(instanceId);
   const [newSshAccess, setNewSshAccess] =
     useState<CreateSshAccessResponse | null>(null);
   const renewCredentials = useRenewOpencodeCredentials(connection);
@@ -423,9 +424,9 @@ export function ProjectSessionSettingsPage({
                 <Button
                   type="button"
                   size="sm"
-                  disabled={createSshAccess.isPending}
+                  disabled={!instance || createSshAccess.isPending}
                   onClick={() =>
-                    createSshAccess.mutate(projectSessionId, {
+                    instance && createSshAccess.mutate(instanceId, {
                       onSuccess: (connection) => {
                         setNewSshAccess(connection);
                         void copyValue(formatSshCommand(connection));
@@ -463,7 +464,11 @@ export function ProjectSessionSettingsPage({
               ) : null}
               <div className="space-y-2 border-t pt-3">
                 <p className="text-sm font-medium">Created SSH access</p>
-                {sshAccessList.isPending ? (
+                {!instanceId ? (
+                  <p className="text-muted-foreground text-xs">
+                    No instance is available for SSH access.
+                  </p>
+                ) : sshAccessList.isPending ? (
                   <p className="text-muted-foreground text-xs">
                     Loading access…
                   </p>
@@ -505,7 +510,7 @@ export function ProjectSessionSettingsPage({
                             disabled={revokeSshAccess.isPending}
                             onClick={() =>
                               revokeSshAccess.mutate(
-                                { projectSessionId, accessId: access.id },
+                                { instanceId, accessId: access.id },
                                 {
                                   onSuccess: () => {
                                     if (newSshAccess?.id === access.id)
