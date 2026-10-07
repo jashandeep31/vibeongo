@@ -15,6 +15,7 @@ import {
   CircleAlert,
   Copy,
   FileText,
+  GitFork,
   Loader2,
   Sparkles,
   Undo2,
@@ -32,6 +33,9 @@ export type OpencodeChatTurn = {
   agent?: string;
   model?: string;
   durationMs?: number;
+  questionCreatedAt?: number;
+  answerCreatedAt?: number;
+  answerCompletedAt?: number;
 };
 
 export function OpencodeChatQuestion({
@@ -41,6 +45,9 @@ export function OpencodeChatQuestion({
   isReverting = false,
   revertDisabled = false,
   onRevert,
+  onFork,
+  forkDisabled = false,
+  isForking = false,
 }: {
   item: OpencodeChatTurn;
   isStreaming?: boolean;
@@ -48,6 +55,9 @@ export function OpencodeChatQuestion({
   isReverting?: boolean;
   revertDisabled?: boolean;
   onRevert: () => void;
+  onFork?: () => void;
+  forkDisabled?: boolean;
+  isForking?: boolean;
 }): ReactElement {
   const [isCopied, setIsCopied] = useState(false);
   const [isQuestionCopied, setIsQuestionCopied] = useState(false);
@@ -69,7 +79,7 @@ export function OpencodeChatQuestion({
   return (
     <div
       className="flex flex-col gap-8 transition-[min-height] duration-[280ms] ease-out"
-      style={{ minHeight: reserveSpace ? "70dvh" : "0dvh" }}
+      style={{ minHeight: reserveSpace ? "25dvh" : "0dvh" }}
     >
       {item.question || item.images.length > 0 || item.files.length > 0 ? (
         <div className="group/question flex flex-col items-end gap-2">
@@ -105,40 +115,46 @@ export function OpencodeChatQuestion({
             ) : null}
             {item.question ? <div className="px-1">{item.question}</div> : null}
           </div>
-          <div className="flex items-center gap-1 opacity-100 transition-opacity md:opacity-0 md:group-hover/question:opacity-100 md:focus-within:opacity-100">
-            {item.question ? (
+          <div className="flex flex-wrap items-center justify-end gap-2 opacity-100 transition-opacity md:opacity-0 md:group-hover/question:opacity-100 md:focus-within:opacity-100">
+            <MessageTimestamp
+              value={item.questionCreatedAt}
+              label="Question sent"
+            />
+            <div className="flex items-center gap-1">
+              {item.question ? (
+                <button
+                  type="button"
+                  className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
+                  aria-label="Copy question"
+                  title="Copy question"
+                  onClick={() => {
+                    void navigator.clipboard.writeText(item.question);
+                    setIsQuestionCopied(true);
+                    window.setTimeout(() => setIsQuestionCopied(false), 1500);
+                  }}
+                >
+                  {isQuestionCopied ? (
+                    <Check className="size-3.5" />
+                  ) : (
+                    <Copy className="size-3.5" />
+                  )}
+                </button>
+              ) : null}
               <button
                 type="button"
-                className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors"
-                aria-label="Copy question"
-                title="Copy question"
-                onClick={() => {
-                  void navigator.clipboard.writeText(item.question);
-                  setIsQuestionCopied(true);
-                  window.setTimeout(() => setIsQuestionCopied(false), 1500);
-                }}
+                className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors disabled:pointer-events-none disabled:opacity-40"
+                aria-label="Revert from this question"
+                title="Revert this question and everything after it"
+                disabled={revertDisabled || isReverting}
+                onClick={onRevert}
               >
-                {isQuestionCopied ? (
-                  <Check className="size-3.5" />
+                {isReverting ? (
+                  <Loader2 className="size-3.5 animate-spin" />
                 ) : (
-                  <Copy className="size-3.5" />
+                  <Undo2 className="size-3.5" />
                 )}
               </button>
-            ) : null}
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors disabled:pointer-events-none disabled:opacity-40"
-              aria-label="Revert from this question"
-              title="Revert this question and everything after it"
-              disabled={revertDisabled || isReverting}
-              onClick={onRevert}
-            >
-              {isReverting ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <Undo2 className="size-3.5" />
-              )}
-            </button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -151,10 +167,7 @@ export function OpencodeChatQuestion({
                 content.type === "text" ? (
                   <MarkdownRenderer key={content.id} content={content.text} />
                 ) : content.type === "reasoning" ? (
-                  <details
-                    key={content.id}
-                    className="group/reasoning text-sm"
-                  >
+                  <details key={content.id} className="group/reasoning text-sm">
                     <summary className="text-muted-foreground flex cursor-pointer list-none items-center gap-2 py-1 [&::-webkit-details-marker]:hidden">
                       {content.active ? (
                         <Blocks duration={1570} size={10} />
@@ -244,24 +257,26 @@ export function OpencodeChatQuestion({
                   ))
                 : null}
             </div>
-            {answer && !isStreaming ? (
-              <div className="text-muted-foreground mt-4 flex items-center gap-2 text-xs opacity-100 transition-opacity md:opacity-0 md:group-hover/response:opacity-100 md:focus-within:opacity-100">
-                <button
-                  type="button"
-                  aria-label="Copy response"
-                  onClick={() => {
-                    void navigator.clipboard.writeText(answer);
-                    setIsCopied(true);
-                    window.setTimeout(() => setIsCopied(false), 1500);
-                  }}
-                >
-                  {isCopied ? (
-                    <Check className="size-3.5" />
-                  ) : (
-                    <Copy className="size-3.5" />
-                  )}
-                </button>
-                {[item.agent, item.model, formatDuration(item.durationMs)]
+            {!isStreaming && (answer || item.answerCreatedAt !== undefined) ? (
+              <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-2 text-xs opacity-100 transition-opacity md:opacity-0 md:group-hover/response:opacity-100 md:focus-within:opacity-100">
+                {answer && (
+                  <button
+                    type="button"
+                    aria-label="Copy response"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(answer);
+                      setIsCopied(true);
+                      window.setTimeout(() => setIsCopied(false), 1500);
+                    }}
+                  >
+                    {isCopied ? (
+                      <Check className="size-3.5" />
+                    ) : (
+                      <Copy className="size-3.5" />
+                    )}
+                  </button>
+                )}
+                {[item.model, item.agent, formatDuration(item.durationMs)]
                   .filter(Boolean)
                   .map((value, index) => (
                     <span key={`${value}-${index}`}>
@@ -269,6 +284,36 @@ export function OpencodeChatQuestion({
                       {value}
                     </span>
                   ))}
+                {(item.answerCompletedAt ?? item.answerCreatedAt) !==
+                  undefined && (
+                  <>
+                    <span aria-hidden="true">·</span>
+                    <MessageTimestamp
+                      value={item.answerCompletedAt ?? item.answerCreatedAt}
+                      label={
+                        item.answerCompletedAt !== undefined
+                          ? "Answer completed"
+                          : "Answer started"
+                      }
+                    />
+                  </>
+                )}
+                {onFork && (
+                  <button
+                    type="button"
+                    className="text-muted-foreground hover:text-foreground rounded-md p-1 transition-colors disabled:pointer-events-none disabled:opacity-40"
+                    aria-label="Fork including this question and answer"
+                    title="Fork including this question and answer"
+                    disabled={forkDisabled || isForking}
+                    onClick={onFork}
+                  >
+                    {isForking ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <GitFork className="size-3.5" />
+                    )}
+                  </button>
+                )}
               </div>
             ) : null}
             {isStreaming ? <StreamingIndicator /> : null}
@@ -314,8 +359,31 @@ function isEditTool(tool: ToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
 }
 
+function MessageTimestamp({ value, label }: { value?: number; label: string }) {
+  if (value === undefined || !Number.isFinite(value)) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return (
+    <time
+      dateTime={date.toISOString()}
+      title={`${label}: ${date.toLocaleString()}`}
+      aria-label={`${label}: ${date.toLocaleString()}`}
+      className="text-muted-foreground text-xs tabular-nums"
+    >
+      {date.toLocaleTimeString(undefined, { timeStyle: "short" })}
+    </time>
+  );
+}
+
 function formatDuration(durationMs?: number) {
-  if (durationMs === undefined) return undefined;
-  if (durationMs < 1000) return `${durationMs}ms`;
-  return `${Math.round(durationMs / 1000)}s`;
+  if (
+    durationMs === undefined ||
+    !Number.isFinite(durationMs) ||
+    durationMs < 0
+  )
+    return undefined;
+  const seconds = Math.round(durationMs / 1000);
+  return seconds < 60
+    ? `${seconds}s`
+    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
 }

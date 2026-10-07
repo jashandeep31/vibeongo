@@ -1943,6 +1943,61 @@ export async function replyOpencodeWebSearchRequest(
   });
 }
 
+export type OpencodeForkDraft = {
+  text: string;
+  files: Array<{
+    uri: string;
+    name?: string;
+    source?: { text: string; start: number; end: number };
+  }>;
+  attachments: Array<{ name: string; mime: string; path: string }>;
+  comments: unknown[];
+  agents?: unknown[];
+  skills?: unknown[];
+  selection: OpencodePromptSelection;
+};
+
+// Copy the selected question and every assistant/tool round answering it.
+// Stop before the following question and its attached context carriers.
+export async function forkOpencodeSessionThroughTurn(
+  chatId: string,
+  sessionId: string,
+  messageId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const source = await client.session.get({ sessionID: sessionId });
+  const messages: SessionMessageInfo[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await client.message.list({
+      sessionID: sessionId,
+      limit: 200,
+      // The cursor carries the original ordering. OpenCode rejects a request
+      // that specifies both a cursor and an explicit order.
+      ...(cursor ? { cursor } : { order: "asc" as const }),
+    });
+    messages.push(...page.data);
+    cursor = page.cursor.next ?? undefined;
+    const selectedIndex = messages.findIndex((message) => message.id === messageId);
+    if (selectedIndex >= 0 && messages.slice(selectedIndex + 1).some((message) => message.type === "user")) break;
+  } while (cursor);
+  const index = messages.findIndex((message) => message.id === messageId);
+  if (index < 0 || messages[index]?.type !== "user") throw new Error("This question is no longer available.");
+  const revertIndex = source.revert ? messages.findIndex((message) => message.id === source.revert?.messageID) : -1;
+  if (revertIndex >= 0 && index >= revertIndex) throw new Error("Restore this turn before forking it.");
+  const nextQuestion = messages.findIndex((message, position) => position > index && message.type === "user");
+  let boundary = nextQuestion < 0 ? messages.length : nextQuestion;
+  if (nextQuestion >= 0) while (boundary > index + 1 && messages[boundary - 1]?.type === "synthetic") boundary -= 1;
+  if (revertIndex >= 0) boundary = Math.min(boundary, revertIndex);
+  const answer = messages.slice(index + 1, boundary).filter((message) => message.type === "assistant");
+  if (!answer.length || answer.some((message) => message.time.completed === undefined)) throw new Error("Wait for this answer to finish before forking it.");
+  const session = normalizeV2Session(await client.session.fork({ sessionID: sessionId, ...(messages[boundary] ? { before: messages[boundary]!.id } : {}) }));
+  return { session };
+}
+
 export async function forkOpencodeSession(
   chatId: string,
   sessionId: string,
@@ -2096,6 +2151,19 @@ export async function getOpencodeReviewProjectVcs(
   ]);
   const project = projects.find((project) => project.id === location.project.id);
   return project?.vcs ?? null;
+}
+
+/** Working-tree changes are available before an OpenCode chat is created. */
+export async function getOpencodeWorkingChanges(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+): Promise<SnapshotFileDiff[]> {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password, directory);
+  const result = await client.vcs.diff({ location: { directory }, mode: "working" });
+  return result.data;
 }
 
 /** Snapshot changes from this session's most recent turn, independent of Git working changes. */
@@ -2636,6 +2704,7 @@ export async function sendOpencodePrompt(
   accessToken: string,
   password?: string,
   displayText?: string,
+  forkDraft?: OpencodeForkDraft,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -2670,13 +2739,35 @@ export async function sendOpencodePrompt(
           .map((segment) => encodeURIComponent(segment))
           .join("/")}`,
         name: reference.path.split("/").pop() ?? reference.path,
-        source: {
+        mention: {
           text: reference.mention,
           start: Math.max(0, start),
           end: Math.max(0, start) + reference.mention.length,
         },
       };
     }),
+    ...(forkDraft?.files ?? [])
+      .filter(
+        (file) =>
+          !file.source ||
+          (text.includes(file.source.text) &&
+            !fileReferences.some(
+              (reference) => reference.mention === file.source?.text,
+            )),
+      )
+      .map((file) => ({
+        uri: file.uri,
+        ...(file.name ? { name: file.name } : {}),
+        ...(file.source
+          ? {
+              mention: {
+                ...file.source,
+                start: text.indexOf(file.source.text),
+                end: text.indexOf(file.source.text) + file.source.text.length,
+              },
+            }
+          : {}),
+      })),
     ...preparedAttachments.files,
   ];
   const model = parseModelSelection(selection.model);
@@ -2697,12 +2788,25 @@ export async function sendOpencodePrompt(
     });
   }
   await postV2Prompt(serverUrl, accessToken, password, sessionId, {
-    text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
+    text: [
+      text,
+      ...(forkDraft?.attachments ?? []).map(
+        (file) => `Attached file: \`${file.path}\``,
+      ),
+      ...preparedAttachments.references,
+    ]
+      .filter(Boolean)
+      .join("\n"),
     ...(files.length ? { files } : {}),
+    ...(forkDraft?.agents ? { agents: forkDraft.agents } : {}),
+    ...(forkDraft?.skills ? { skills: forkDraft.skills } : {}),
     metadata: {
       displayText: displayText ?? text,
-      comments: [],
-      attachments: preparedAttachments.attachments,
+      comments: forkDraft?.comments ?? [],
+      attachments: [
+        ...(forkDraft?.attachments ?? []),
+        ...preparedAttachments.attachments,
+      ],
     },
     delivery: "steer",
   });
@@ -2718,6 +2822,7 @@ export async function queueOpencodePrompt(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  forkDraft?: OpencodeForkDraft,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -2753,22 +2858,57 @@ export async function queueOpencodePrompt(
           .map((segment) => encodeURIComponent(segment))
           .join("/")}`,
         name: reference.path.split("/").pop() ?? reference.path,
-        source: {
+        mention: {
           text: reference.mention,
           start: Math.max(0, start),
           end: Math.max(0, start) + reference.mention.length,
         },
       };
     }),
+    ...(forkDraft?.files ?? [])
+      .filter(
+        (file) =>
+          !file.source ||
+          (text.includes(file.source.text) &&
+            !fileReferences.some(
+              (reference) => reference.mention === file.source?.text,
+            )),
+      )
+      .map((file) => ({
+        uri: file.uri,
+        ...(file.name ? { name: file.name } : {}),
+        ...(file.source
+          ? {
+              mention: {
+                ...file.source,
+                start: text.indexOf(file.source.text),
+                end: text.indexOf(file.source.text) + file.source.text.length,
+              },
+            }
+          : {}),
+      })),
     ...preparedAttachments.files,
   ];
   return postV2Prompt(serverUrl, accessToken, password, sessionId, {
-    text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
+    text: [
+      text,
+      ...(forkDraft?.attachments ?? []).map(
+        (file) => `Attached file: \`${file.path}\``,
+      ),
+      ...preparedAttachments.references,
+    ]
+      .filter(Boolean)
+      .join("\n"),
     ...(files.length ? { files } : {}),
+    ...(forkDraft?.agents ? { agents: forkDraft.agents } : {}),
+    ...(forkDraft?.skills ? { skills: forkDraft.skills } : {}),
     metadata: {
       displayText: text,
-      comments: [],
-      attachments: preparedAttachments.attachments,
+      comments: forkDraft?.comments ?? [],
+      attachments: [
+        ...(forkDraft?.attachments ?? []),
+        ...preparedAttachments.attachments,
+      ],
       ...(selection.agent ? { agent: selection.agent } : {}),
       ...(model
         ? {
@@ -2849,6 +2989,7 @@ async function postV2Prompt(
       uri: string;
       name?: string;
       source?: { text: string; start: number; end: number };
+      mention?: { text: string; start: number; end: number };
     }>;
     agents?: unknown[];
     metadata?: Record<string, unknown>;
@@ -3353,6 +3494,7 @@ function normalizeV2Session(session: SessionInfo): Session {
     projectID: session.projectID,
     directory: session.location.directory,
     ...(session.parentID ? { parentID: session.parentID } : {}),
+    ...(session.fork ? { fork: session.fork } : {}),
     cost: session.cost,
     tokens: session.tokens,
     title: session.title?.trim() || "New chat",

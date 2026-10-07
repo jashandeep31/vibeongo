@@ -8,10 +8,13 @@ import {
   editOpencodeQueuedPrompt,
   exportOpencodeSession,
   forkOpencodeSession,
+  forkOpencodeSessionThroughTurn,
+  type OpencodeForkDraft,
   getOpencodeInventory,
   getOpencodeSubagentStatus,
   getOpencodeReviewProjectVcs,
   getOpencodeLastTurnChanges,
+  getOpencodeWorkingChanges,
   listOpencodeCommands,
   sendOpencodeCommand,
   getOpencodeWebSearchProviders,
@@ -100,6 +103,36 @@ export const useOpencodeReviewProjectVcs = ({
       ),
     enabled: !!directory && !!serverUrl && !!accessToken && !!password,
     staleTime: 30_000,
+  });
+
+export const useOpencodeWorkingChanges = ({
+  chatId,
+  directory,
+  serverUrl,
+  accessToken,
+  password,
+  enabled = true,
+}: {
+  chatId: string;
+  directory?: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "working-changes", chatId, serverUrl, directory],
+    queryFn: () =>
+      getOpencodeWorkingChanges(
+        chatId,
+        directory!,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    enabled:
+      enabled && !!directory && !!serverUrl && !!accessToken && !!password,
+    refetchOnWindowFocus: true,
   });
 
 export const useOpencodeLastTurnChanges = ({
@@ -382,6 +415,7 @@ export const useSendOpencodePrompt = ({
       attachments: directAttachments = [],
       fileReferences = [],
       selection,
+      forkDraft,
     }: {
       text: string;
       displayText?: string;
@@ -389,6 +423,7 @@ export const useSendOpencodePrompt = ({
       attachments?: UploadAttachment[];
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
+      forkDraft?: OpencodeForkDraft;
     }) => {
       const fileAttachments = await Promise.all(
         files.map(toOpencodeUploadAttachment),
@@ -400,7 +435,7 @@ export const useSendOpencodePrompt = ({
         serverUrl,
         text,
       );
-      if (command) {
+      if (command && !forkDraft) {
         return sendOpencodeCommand(
           chatId,
           sessionId,
@@ -425,6 +460,7 @@ export const useSendOpencodePrompt = ({
         accessToken,
         password,
         displayText,
+        forkDraft,
       );
     },
     onError: (_error, _variables, context) => {
@@ -457,12 +493,14 @@ export const useQueueOpencodePrompt = ({
       attachments: directAttachments = [],
       fileReferences = [],
       selection,
+      forkDraft,
     }: {
       text: string;
       files: File[];
       attachments?: UploadAttachment[];
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
+      forkDraft?: OpencodeForkDraft;
     }) => {
       const attachments = await Promise.all(
         files.map(toOpencodeUploadAttachment),
@@ -473,7 +511,7 @@ export const useQueueOpencodePrompt = ({
         serverUrl,
         text,
       );
-      if (command) {
+      if (command && !forkDraft) {
         return sendOpencodeCommand(
           chatId,
           sessionId,
@@ -497,6 +535,7 @@ export const useQueueOpencodePrompt = ({
         serverUrl,
         accessToken,
         password,
+        forkDraft,
       );
     },
     onSuccess: () =>
@@ -993,6 +1032,41 @@ export const useForkOpencodeSession = ({
       upsertSessionChat(chatId, session);
       void queryClient.invalidateQueries({
         queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
+        exact: true,
+      });
+    },
+  });
+};
+
+export const useForkOpencodeTurn = (connection: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      forkOpencodeSessionThroughTurn(
+        connection.chatId,
+        connection.sessionId,
+        messageId,
+        connection.serverUrl,
+        connection.accessToken,
+        connection.password,
+      ),
+    onSuccess: ({ session }) => {
+      useSessionChatsStore
+        .getState()
+        .upsertSessionChat(connection.chatId, session);
+      void queryClient.invalidateQueries({
+        queryKey: [
+          "opencode",
+          "chat-sessions",
+          connection.chatId,
+          connection.serverUrl,
+        ],
         exact: true,
       });
     },

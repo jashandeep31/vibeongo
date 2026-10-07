@@ -252,6 +252,9 @@ export type OpencodeChatTurn = {
   provider: string | undefined;
   model: string | undefined;
   durationMs: number | undefined;
+  questionCreatedAt?: number;
+  answerCreatedAt?: number;
+  answerCompletedAt?: number;
 };
 
 export function groupConsecutiveOpencodeToolContent(
@@ -376,7 +379,12 @@ export function createOpencodeChatTurns(
           message.info.role === "user" ? message.info.metadata : undefined,
         ).text
       : "",
-    files: message ? getOpencodeUserMessage(message.parts).files : [],
+    files: message
+      ? getOpencodeUserMessage(
+          message.parts,
+          message.info.role === "user" ? message.info.metadata : undefined,
+        ).files
+      : [],
     images: (message?.parts ?? []).flatMap((part) =>
       part.type === "file" && part.mime.startsWith("image/")
         ? [
@@ -399,6 +407,9 @@ export function createOpencodeChatTurns(
     provider: undefined,
     model: undefined,
     durationMs: undefined,
+    ...(message?.info.role === "user"
+      ? { questionCreatedAt: message.info.time.created }
+      : {}),
   });
   const turnsByMessageId = new Map<string, OpencodeChatTurn>();
   const latestTodoByTurnId = new Map<string, ToolPart>();
@@ -527,15 +538,39 @@ export function createOpencodeChatTurns(
     const model = modelsById.get(
       `${message.info.providerID}/${message.info.modelID}`,
     );
-    turn.agent = message.info.agent;
-    turn.provider = model?.providerName ?? message.info.providerID;
-    turn.model = model?.name ?? message.info.modelID;
-    turn.durationMs = message.info.time.completed
-      ? message.info.time.completed - message.info.time.created
-      : undefined;
+    // Notice records are normalized as assistants, but do not represent model
+    // work. Do not let them replace the response metadata or its timestamps.
+    if (message.info.mode !== "system") {
+      turn.agent = message.info.agent;
+      turn.provider = model?.providerName ?? message.info.providerID;
+      turn.model = model?.name ?? message.info.modelID;
+      if (Number.isFinite(message.info.time.created)) {
+        turn.answerCreatedAt = Math.max(
+          turn.answerCreatedAt ?? message.info.time.created,
+          message.info.time.created,
+        );
+      }
+      const completed = message.info.time.completed;
+      if (completed !== undefined && Number.isFinite(completed)) {
+        turn.answerCompletedAt = Math.max(
+          turn.answerCompletedAt ?? completed,
+          completed,
+        );
+      }
+    }
   }
 
   for (const turn of turns) {
+    // Match the official timeline: latest assistant completion minus the user
+    // prompt's creation, covering every assistant/tool round in the turn.
+    if (
+      turn.questionCreatedAt !== undefined &&
+      Number.isFinite(turn.questionCreatedAt) &&
+      turn.answerCompletedAt !== undefined &&
+      turn.answerCompletedAt >= turn.questionCreatedAt
+    ) {
+      turn.durationMs = turn.answerCompletedAt - turn.questionCreatedAt;
+    }
     const latestTodo = latestTodoByTurnId.get(turn.id);
     if (latestTodo) {
       turn.content.push({
@@ -564,12 +599,17 @@ function isFileChangeTool(tool: OpencodeToolPart) {
 }
 
 /** Requests delegation through the parent agent so OpenCode owns child jobs and result delivery. */
-export function buildOpencodeSubtaskPrompt(task: string, options: { agent?: string; background?: boolean } = {}) {
+export function buildOpencodeSubtaskPrompt(
+  task: string,
+  options: { agent?: string; background?: boolean } = {},
+) {
   const prompt = task.trim();
   if (!prompt) throw new Error("Enter a subtask to delegate");
   return [
     "Delegate the following task using the native subagent tool. Do not perform it yourself.",
-    options.agent ? `Use agent ${JSON.stringify(options.agent)}.` : "Choose an available subagent suited to this task.",
+    options.agent
+      ? `Use agent ${JSON.stringify(options.agent)}.`
+      : "Choose an available subagent suited to this task.",
     options.background
       ? "Set background=true. Continue only with independent work; let OpenCode deliver the result automatically."
       : "Set background=false. Wait for the subagent's final response, then explain its findings here.",

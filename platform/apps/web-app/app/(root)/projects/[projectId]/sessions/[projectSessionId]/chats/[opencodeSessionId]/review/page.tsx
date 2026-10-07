@@ -159,7 +159,7 @@ export default function OpencodeReviewPage() {
   }
 
   return (
-    <div className="bg-background text-foreground relative flex h-svh min-h-0 flex-col pt-14">
+    <div className="bg-background text-foreground relative flex h-svh min-h-0 flex-col">
       <OpencodeChatTopBar
         projectId={projectId}
         projectSessionId={projectSessionId}
@@ -172,7 +172,6 @@ export default function OpencodeReviewPage() {
         inventory={inventoryQuery.data}
         isRefreshing={refreshingChanges}
         onRefresh={refreshChanges}
-        reviewActive
       />
       <main className="min-h-0 flex-1">
         <OpencodeReviewPanel
@@ -208,7 +207,7 @@ function ReviewSkeleton() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 gap-4 pt-4">
-        <Skeleton className="hidden h-full w-64 md:block" />
+        <Skeleton className="hidden h-full w-72 md:block" />
         <Skeleton className="h-full flex-1" />
       </div>
     </div>

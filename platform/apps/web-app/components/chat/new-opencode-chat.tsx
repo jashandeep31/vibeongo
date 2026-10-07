@@ -16,9 +16,7 @@ import {
   type OpencodeFileReference,
   type OpencodePromptSelection,
 } from "@repo/api-client";
-import { Button } from "@repo/ui/components/button";
-import { ChevronRight, Terminal } from "lucide-react";
-import Link from "next/link";
+import { ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -84,13 +82,14 @@ export function NewOpencodeChat({
     password,
     directory,
   });
+  const reloadConfigMutate = reloadConfig.mutate;
   const composerActions = useMemo<OpencodeComposerAction[]>(
     () => [
       {
         name: "reload",
         description: "Reload OpenCode config",
         run: () =>
-          reloadConfig.mutate(undefined, {
+          reloadConfigMutate(undefined, {
             onSuccess: () => toast.success("OpenCode config reloaded"),
             onError: (error) =>
               toast.error(error.message || "Could not reload config"),
@@ -106,7 +105,7 @@ export function NewOpencodeChat({
           ]
         : []),
     ],
-    [onOpenWorktrees, reloadConfig.mutate],
+    [onOpenWorktrees, reloadConfigMutate],
   );
 
   const searchFiles = useCallback(
@@ -147,7 +146,7 @@ export function NewOpencodeChat({
   };
 
   return (
-    <div className="flex min-w-0 flex-1 items-end justify-center overflow-hidden px-4 pt-6 pb-4 md:px-0">
+    <div className="flex h-full min-h-0 min-w-0 flex-1 items-end justify-center overflow-hidden px-4 pt-6 pb-4 md:px-6">
       <section
         className="w-full max-w-4xl min-w-0"
         aria-labelledby="new-chat-heading"
@@ -187,20 +186,6 @@ export function NewOpencodeChat({
           actions={composerActions}
           autoFocus
           focusOnTyping
-          trailingControl={
-            <Button
-              asChild
-              type="button"
-              variant="secondary"
-              size="sm"
-              className="h-10 shrink-0 gap-2 rounded-full px-4 font-normal"
-            >
-              <Link href={`${chatUrl}/terminal`}>
-                <Terminal className="size-3.5" />
-                Terminal
-              </Link>
-            </Button>
-          }
         />
         {startSession.error ? (
           <p className="text-destructive mt-3 text-center text-sm">

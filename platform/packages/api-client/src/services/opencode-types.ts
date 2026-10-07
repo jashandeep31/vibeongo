@@ -16,6 +16,7 @@ export type Session = {
   directory: string;
   path?: string;
   parentID?: string;
+  fork?: { sessionID: string };
   summary?: {
     additions: number;
     deletions: number;
