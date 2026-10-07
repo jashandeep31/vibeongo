@@ -9,6 +9,7 @@ import {
   isNull,
   lt,
   lte,
+  or,
   projectAutomationRuns,
   sql,
 } from "@repo/db";
@@ -48,6 +49,7 @@ cron.schedule(
       id: string;
       userId: string;
       runtimeKind: "vm" | "sandbox";
+      state: "running" | "suspended" | "terminated";
     }>;
     try {
       rows = await db
@@ -55,12 +57,20 @@ cron.schedule(
           id: instances.id,
           userId: instances.user_id,
           runtimeKind: instances.runtime_kind,
+          state: instances.state,
         })
         .from(instances)
+        .leftJoin(instanceSlots, eq(instanceSlots.instance_id, instances.id))
         .where(
           and(
             lte(instances.terminates_at, sql`NOW() - INTERVAL '2 minutes'`),
-            eq(instances.state, "running"),
+            or(
+              eq(instances.state, "running"),
+              and(
+                eq(instances.state, "suspended"),
+                eq(instanceSlots.category, "auto"),
+              ),
+            ),
           ),
         );
     } catch (error) {
@@ -72,7 +82,7 @@ cron.schedule(
       try {
         await addTerminateOrPauseInstanceJob({
           instanceId: row.id,
-          autoExpire: true,
+          autoExpire: row.state === "running",
         });
         console.log(`Recovered overdue ${row.runtimeKind} instance ${row.id}`);
       } catch (error) {

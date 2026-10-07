@@ -7,6 +7,7 @@ import {
   instanceSlots,
   isNull,
   projectDomainRouting,
+  projectSessions,
   sandboxTypes,
   users,
 } from "@repo/db";
@@ -46,8 +47,12 @@ export const resumeSuspendedSession = async ({
 }: ResumeSuspendedSessionProps) => {
   // Resolve ownership before taking the same lock used by pause and termination.
   const [instance] = await db
-    .select({ id: instances.id })
+    .select({ id: instances.id, category: projectSessions.category })
     .from(instances)
+    .innerJoin(
+      projectSessions,
+      eq(projectSessions.id, instances.project_session_id),
+    )
     .where(
       and(
         eq(instances.project_session_id, sessionId),
@@ -57,6 +62,9 @@ export const resumeSuspendedSession = async ({
     );
   if (!instance) {
     throw new AppError("This session has no suspended instance", 404);
+  }
+  if (instance.category === "auto") {
+    throw new AppError("Automated sessions cannot be resumed manually", 409);
   }
 
   // Resume the instance with the locking system

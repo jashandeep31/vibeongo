@@ -1,4 +1,4 @@
-import { and, db, eq, instances, sandboxTypes } from "@repo/db";
+import { and, db, eq, instances, instanceSlots, sandboxTypes } from "@repo/db";
 import { lockNames, withRedisLock } from "../../cache/redis-lock.js";
 import { AppError } from "../../lib/app-error.js";
 import { PAUSEABLE_SANDBOX_PROVIDERS } from "../../providers/constants.js";
@@ -44,14 +44,22 @@ export const createInstanceActionHandler =
       case "terminate":
         if (instance.state === "terminated") return;
         if (props.autoExpire && instance.runtime_kind === "sandbox") {
-          const [sandboxType] = await db
-            .select({ provider: sandboxTypes.provider })
+          const [sandbox] = await db
+            .select({
+              provider: sandboxTypes.provider,
+              category: instanceSlots.category,
+            })
             .from(sandboxTypes)
+            .leftJoin(
+              instanceSlots,
+              eq(instanceSlots.instance_id, instance.id),
+            )
             .where(eq(sandboxTypes.id, instance.sandbox_type_id!));
-          if (!sandboxType) throw new AppError("Sandbox type not found", 404);
+          if (!sandbox) throw new AppError("Sandbox type not found", 404);
           if (
+            sandbox.category === "manual" &&
             PAUSEABLE_SANDBOX_PROVIDERS.some(
-              (provider) => provider === sandboxType.provider,
+              (provider) => provider === sandbox.provider,
             )
           ) {
             await suspendInstanceAndRevokeAccess(data);
