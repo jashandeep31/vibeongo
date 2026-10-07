@@ -210,6 +210,15 @@ importers:
         specifier: 5.9.2
         version: 5.9.2
 
+  apps/mcp:
+    devDependencies:
+      tsc-watch:
+        specifier: ^7.2.1
+        version: 7.2.1(typescript@5.9.2)
+      typescript:
+        specifier: 5.9.2
+        version: 5.9.2
+
   apps/mobile-app:
     dependencies:
       '@expo/ui':
