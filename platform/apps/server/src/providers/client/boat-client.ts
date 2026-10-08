@@ -8,10 +8,12 @@ import {
   BoatApi,
   Configuration,
   waitUntilReady,
+  type SandboxInfoResponse,
   type SandboxStateEnum,
 } from "@boatdev/sdk";
 import { addSandboxSetupJob } from "../../jobs/sandbox-setup.js";
 import { PROVIDER_TERMINATION_GRACE_MINUTES } from "../constants.js";
+import { MAX_BOAT_EXTENSION_MINUTES } from "@repo/shared/providers";
 
 const BOAT_READY_STATES: readonly SandboxStateEnum[] = [
   "ready",
@@ -128,6 +130,75 @@ export class BoatClient {
   async getSandboxState(sandboxId: string) {
     const { sandbox } = await boatSandboxClient.get({ sandboxId });
     return sandbox.state;
+  }
+
+  /** Add minutes to the current deadline, or retry an already recorded target deadline. */
+  async extendTime(
+    sandboxId: string,
+    additionalMinutes: number,
+    targetDeadline?: Date,
+  ): Promise<SandboxInfoResponse> {
+    if (
+      !Number.isSafeInteger(additionalMinutes) ||
+      additionalMinutes < 1 ||
+      additionalMinutes > MAX_BOAT_EXTENSION_MINUTES
+    ) {
+      throw new AppError(
+        `Extension must be a whole number of minutes from 1 to ${MAX_BOAT_EXTENSION_MINUTES}`,
+        400,
+      );
+    }
+
+    const current = await boatSandboxClient.get(
+      { sandboxId },
+      {
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+    if (!current.ok) {
+      throw new AppError("Boat sandbox information is unavailable", 502);
+    }
+    if (!BOAT_READY_STATES.includes(current.sandbox.state)) {
+      throw new AppError(
+        "Only a running Boat sandbox can extend its time",
+        409,
+      );
+    }
+    if (!current.sandbox.archiveAfter) {
+      throw new AppError("Boat sandbox auto-stop is disabled", 409);
+    }
+
+    const currentDeadline = current.sandbox.archiveAfter.getTime();
+    const now = Date.now();
+    if (!Number.isFinite(currentDeadline) || currentDeadline <= now) {
+      throw new AppError(
+        "Boat sandbox auto-stop deadline has expired or is invalid",
+        409,
+      );
+    }
+    const requestedDeadline =
+      targetDeadline?.getTime() ?? currentDeadline + additionalMinutes * 60_000;
+    if (
+      !Number.isFinite(new Date(requestedDeadline).getTime()) ||
+      requestedDeadline <= now
+    ) {
+      throw new AppError("Requested Boat sandbox extension is too large", 400);
+    }
+
+    if (targetDeadline && currentDeadline >= requestedDeadline) return current;
+
+    const updated = await boatSandboxClient.update(
+      {
+        sandboxId,
+        ttlSeconds: Math.ceil((requestedDeadline - Date.now()) / 1000),
+      },
+      { signal: AbortSignal.timeout(15_000) },
+    );
+    if (!updated.ok) {
+      throw new AppError("Boat sandbox time extension failed", 502);
+    }
+    // Return the provider's actual deadline and any account-limit notice.
+    return updated;
   }
 
   async runCommand(

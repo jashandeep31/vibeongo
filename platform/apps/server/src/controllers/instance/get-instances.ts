@@ -1,18 +1,10 @@
 import { Request, Response } from "express";
 import { catchAsync } from "../../lib/catch-async.js";
 import { AppError } from "../../lib/app-error.js";
-import {
-  and,
-  customQuery,
-  db,
-  desc,
-  eq,
-  instances,
-  projects,
-  sql,
-} from "@repo/db";
+import { and, customQuery, db, desc, eq, instances, projects } from "@repo/db";
 import { z } from "zod";
 import { commonFilterSchema } from "@repo/shared";
+import { updateInstanceExpiration } from "../../services/instances/update-instance-expiration.js";
 
 export const getUserInstances = catchAsync(
   async (req: Request, res: Response) => {
@@ -147,51 +139,20 @@ export const updateInstanceById = catchAsync(
           .object({
             action: z.enum(["increase", "decrease"]).default("increase"),
             timeInMinutes: z.number().min(1),
+            requestId: z.string().min(1).max(100).optional(),
           })
           .optional(),
       })
       .parse(req.body);
 
-    const updateData: Partial<{
-      [K in keyof typeof instances.$inferInsert]: any;
-    }> = {};
-
-    const [instance] = await db
-      .select()
-      .from(instances)
-      .where(and(eq(instances.user_id, user.id), eq(instances.id, id)));
-
-    if (!instance) throw new AppError("Instance not found ", 404);
-
-    if (instance.runtime_kind === "sandbox" && terminatesTimeUpdate) {
-      throw new AppError("Terminate time to sandbox can't be extended", 500);
-    }
-
-    if (terminatesTimeUpdate) {
-      const sign = terminatesTimeUpdate.action === "decrease" ? -1 : 1;
-      const minutes = sign * terminatesTimeUpdate.timeInMinutes;
-      updateData.terminates_at = sql`${instances.terminates_at} + (${minutes} * interval '1 minute')`;
-    }
-
-    if (Object.keys(updateData).length === 0) {
+    if (!terminatesTimeUpdate) {
       throw new AppError("No update fields provided", 400);
     }
-
-    const [result] = await db
-      .update(instances)
-      .set(updateData)
-      .where(
-        and(
-          eq(instances.id, id),
-          eq(instances.user_id, user.id),
-          eq(instances.state, "running"),
-        ),
-      )
-      .returning();
-
-    if (!result) {
-      throw new AppError("Running instance not found", 404);
-    }
+    const result = await updateInstanceExpiration({
+      id,
+      userId: user.id,
+      ...terminatesTimeUpdate,
+    });
 
     res.status(200).json({ data: result });
   },

@@ -12,7 +12,9 @@ import {
   useGetProjectDomainsById,
   useRestartDevScript,
   useRenewOpencodeCredentials,
+  useGetProjectWithDetails,
 } from "@repo/api-hooks";
+import { supportsInstanceTimeExtension } from "@repo/shared/providers";
 import {
   formatSshCommand,
   getOpencodePassword,
@@ -134,6 +136,13 @@ export function ProjectSessionSettingsPage({
     isActive && !storedInstance,
   );
   const instance = storedInstance ?? instancesQuery.data?.data[0];
+  const projectDetails = useGetProjectWithDetails(
+    isActive && instance?.runtime_kind === "sandbox" ? projectId : null,
+  );
+  const canUpdateTime = supportsInstanceTimeExtension(
+    instance,
+    projectDetails.data?.deployment.sandbox,
+  );
   const instanceId = instance?.id ?? "";
   const localToken = getConfigValue(instance?.config, "vibeongoLocalToken");
   const connection = {
@@ -289,7 +298,13 @@ export function ProjectSessionSettingsPage({
             >
               <Terminal />
             </Button>
-            <Button variant="ghost" size="icon-sm" aria-label="Open domains panel" title="Domains" onClick={onOpenDomains}>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Open domains panel"
+              title="Domains"
+              onClick={onOpenDomains}
+            >
               <Network />
             </Button>
           </header>
@@ -395,7 +410,7 @@ export function ProjectSessionSettingsPage({
               </CardTitle>
               <CardDescription>Timing for the active instance.</CardDescription>
               <CardAction>
-                {instance.runtime_kind === "sandbox" ? (
+                {!canUpdateTime ? (
                   <Button size="sm" variant="outline" disabled>
                     Update expiration
                   </Button>
@@ -403,6 +418,7 @@ export function ProjectSessionSettingsPage({
                   <UpdateInstanceTimeDialog
                     instanceId={instance.id}
                     projectSessionId={projectSessionId}
+                    isBoatSandbox={instance.runtime_kind === "sandbox"}
                   >
                     <Button size="sm" variant="outline">
                       Update expiration

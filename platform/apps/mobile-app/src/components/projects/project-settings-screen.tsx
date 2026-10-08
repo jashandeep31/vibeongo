@@ -4,7 +4,12 @@ import {
   useRenewOpencodeCredentials,
   useUpdateInstanceTime,
   useUpdateProjectRoutingTargetInstance,
+  useGetProjectWithDetails,
 } from "@repo/api-hooks";
+import {
+  MAX_BOAT_EXTENSION_MINUTES,
+  supportsInstanceTimeExtension,
+} from "@repo/shared/providers";
 import { useProjectsStore } from "@repo/app-store";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView, type SymbolViewProps } from "expo-symbols";
@@ -99,10 +104,20 @@ export function ProjectSettingsScreen() {
       "Project",
   );
   const runtime = useProjectRuntime(projectSessionId);
+  const projectDetails = useGetProjectWithDetails(
+    runtime.instance?.runtime_kind === "sandbox" ? projectId : null,
+  );
+  const canExtendTime = supportsInstanceTimeExtension(
+    runtime.instance,
+    projectDetails.data?.deployment.sandbox,
+  );
+  const isBoatSandbox =
+    runtime.instance?.runtime_kind === "sandbox" && canExtendTime;
   const runtimeInstanceId = runtime.instance?.id ?? "";
   const updateInstanceTime = useUpdateInstanceTime(projectSessionId);
   const [extendTimeOpen, setExtendTimeOpen] = useState(false);
   const [extendMinutes, setExtendMinutes] = useState("60");
+  const extendingTime = useRef(false);
   const domainsQuery = useGetProjectDomainsById(projectId, Boolean(projectId));
   const assignDomains = useUpdateProjectRoutingTargetInstance();
   const runtimeUrl = runtime.instance
@@ -168,18 +183,26 @@ export function ProjectSettingsScreen() {
   };
 
   const extendInstanceTime = async () => {
+    if (extendingTime.current || updateInstanceTime.isPending) return;
     const timeInMinutes = Number(extendMinutes);
-    if (!Number.isInteger(timeInMinutes) || timeInMinutes < 1) {
+    if (
+      !Number.isSafeInteger(timeInMinutes) ||
+      timeInMinutes < 1 ||
+      (isBoatSandbox && timeInMinutes > MAX_BOAT_EXTENSION_MINUTES)
+    ) {
       Alert.alert(
         "Invalid time",
-        "Enter a whole number of minutes greater than zero.",
+        isBoatSandbox
+          ? `Enter 1–${MAX_BOAT_EXTENSION_MINUTES} whole minutes.`
+          : "Enter a whole number of minutes greater than zero.",
       );
       return;
     }
-    if (!runtime.instance || updateInstanceTime.isPending) return;
+    if (!runtime.instance || !canExtendTime) return;
 
+    extendingTime.current = true;
     try {
-      await updateInstanceTime.mutateAsync({
+      const instance = await updateInstanceTime.mutateAsync({
         action: "increase",
         id: runtime.instance.id,
         timeInMinutes,
@@ -188,10 +211,16 @@ export function ProjectSettingsScreen() {
       Toast.show({
         type: "success",
         text1: "Instance time extended",
-        text2: `Added ${timeInMinutes} minutes.`,
+        text2: `Expires ${formatDateTime(instance.terminates_at)}.`,
       });
-    } catch {
-      Toast.show({ type: "error", text1: "Failed to extend instance time" });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Failed to extend instance time",
+        text2: error instanceof Error ? error.message : "Please try again.",
+      });
+    } finally {
+      extendingTime.current = false;
     }
   };
 
@@ -320,11 +349,11 @@ export function ProjectSettingsScreen() {
                   <Pressable
                     accessibilityLabel="Extend instance time"
                     accessibilityRole="button"
-                    disabled={runtime.instance.runtime_kind === "sandbox"}
+                    disabled={!canExtendTime || updateInstanceTime.isPending}
                     onPress={() => setExtendTimeOpen(true)}
                     style={({ pressed }) => [
                       styles.extendButton,
-                      runtime.instance?.runtime_kind === "sandbox" &&
+                      (!canExtendTime || updateInstanceTime.isPending) &&
                         styles.disabled,
                       pressed && styles.pressed,
                     ]}
@@ -339,12 +368,15 @@ export function ProjectSettingsScreen() {
                       Extend time
                     </ThemedText>
                   </Pressable>
-                  {runtime.instance.runtime_kind === "sandbox" ? (
+                  {runtime.instance.runtime_kind === "sandbox" &&
+                  !canExtendTime ? (
                     <ThemedText
                       style={styles.timeHint}
                       themeColor="textSecondary"
                     >
-                      Sandbox instances cannot extend their time.
+                      {projectDetails.isPending
+                        ? "Checking time extension support…"
+                        : "Time extension is only supported for Boat sandboxes."}
                     </ThemedText>
                   ) : null}
                 </View>
@@ -563,7 +595,9 @@ export function ProjectSettingsScreen() {
               style={styles.modalDescription}
               themeColor="textSecondary"
             >
-              Add minutes to this instance&apos;s current termination time.
+              {isBoatSandbox
+                ? `Add 1–${MAX_BOAT_EXTENSION_MINUTES} whole minutes to this instance's current termination time.`
+                : "Add minutes to this instance's current termination time."}
             </ThemedText>
             <ThemedText style={styles.inputLabel}>Minutes</ThemedText>
             <TextInput
@@ -595,7 +629,7 @@ export function ProjectSettingsScreen() {
                 <ThemedText style={styles.cancelButtonLabel}>Cancel</ThemedText>
               </Pressable>
               <Pressable
-                disabled={updateInstanceTime.isPending}
+                disabled={updateInstanceTime.isPending || !canExtendTime}
                 onPress={() => void extendInstanceTime()}
                 style={({ pressed }) => [
                   styles.confirmButton,

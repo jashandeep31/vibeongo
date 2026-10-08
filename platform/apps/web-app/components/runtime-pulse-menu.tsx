@@ -7,7 +7,9 @@ import {
   useCreateSshAccess,
   useDisableTerminateAfterDone,
   useTerminateAfterDoneStatus,
+  useGetProjectWithDetails,
 } from "@repo/api-hooks";
+import { supportsInstanceTimeExtension } from "@repo/shared/providers";
 import { formatSshCommand } from "@repo/api-client";
 import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
@@ -92,6 +94,13 @@ export function RuntimePulseMenu({
     (store) =>
       store.sessions.find((entry) => entry.session.id === projectSessionId)
         ?.instance,
+  );
+  const projectDetails = useGetProjectWithDetails(
+    instance?.runtime_kind === "sandbox" ? instance.project_id : null,
+  );
+  const canUpdateTime = supportsInstanceTimeExtension(
+    instance,
+    projectDetails.data?.deployment.sandbox,
   );
   const config =
     instance?.config &&
@@ -253,16 +262,19 @@ export function RuntimePulseMenu({
           </div>
 
           <DropdownMenuSeparator />
-          {instance.runtime_kind === "sandbox" ? (
+          {!canUpdateTime ? (
             <DropdownMenuItem disabled>
               <CalendarClock />
               <span className="flex-1">Update expiration</span>
-              <span className="text-muted-foreground text-xs">VM only</span>
+              <span className="text-muted-foreground text-xs">
+                Boat or VM only
+              </span>
             </DropdownMenuItem>
           ) : (
             <UpdateInstanceTimeDialog
               instanceId={instance.id}
               projectSessionId={projectSessionId}
+              isBoatSandbox={instance.runtime_kind === "sandbox"}
             >
               <DropdownMenuItem onSelect={(event) => event.preventDefault()}>
                 <CalendarClock />

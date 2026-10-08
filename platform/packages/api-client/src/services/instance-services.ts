@@ -1,4 +1,4 @@
-import type { AxiosInstance } from "axios";
+import { isAxiosError, type AxiosInstance } from "axios";
 import { instances, instanceState } from "@repo/db";
 import { createInstanceSchema, type z } from "@repo/shared";
 
@@ -83,6 +83,7 @@ export type UpdateInstanceTimeInput = {
   id: string;
   action: "increase" | "decrease";
   timeInMinutes: number;
+  requestId?: string;
 };
 
 export const updateInstanceTime =
@@ -91,14 +92,22 @@ export const updateInstanceTime =
     id,
     action,
     timeInMinutes,
+    requestId,
   }: UpdateInstanceTimeInput): Promise<typeof instances.$inferSelect> => {
-    const response = await apiClient.patch(
-      `/api/v1/instances/${id}`,
-      {
-        terminatesTimeUpdate: { action, timeInMinutes },
-      },
-      { withCredentials: true },
-    );
-
-    return response.data.data;
+    try {
+      const response = await apiClient.patch(
+        `/api/v1/instances/${id}`,
+        { terminatesTimeUpdate: { action, timeInMinutes, requestId } },
+        { withCredentials: true },
+      );
+      return response.data.data;
+    } catch (error) {
+      if (
+        isAxiosError(error) &&
+        typeof error.response?.data?.message === "string"
+      ) {
+        throw new Error(error.response.data.message);
+      }
+      throw error;
+    }
   };
