@@ -2,14 +2,22 @@ import type { AxiosInstance } from "axios";
 
 export const transcribeAudio =
   (apiClient: AxiosInstance) =>
-  async (uri: string, signal?: AbortSignal): Promise<string> => {
-    const isWav = uri.toLowerCase().endsWith(".wav");
+  async (audio: string | Blob, signal?: AbortSignal): Promise<string> => {
     const form = new FormData();
-    form.append("audio", {
-      uri,
-      name: isWav ? "recording.wav" : "recording.m4a",
-      type: isWav ? "audio/wav" : "audio/mp4",
-    } as unknown as Blob);
+    if (typeof audio === "string") {
+      const isWav = audio.toLowerCase().endsWith(".wav");
+      form.append("audio", {
+        uri: audio,
+        name: isWav ? "recording.wav" : "recording.m4a",
+        type: isWav ? "audio/wav" : "audio/mp4",
+      } as unknown as Blob);
+    } else {
+      form.append(
+        "audio",
+        audio,
+        audio.type === "audio/wav" ? "recording.wav" : "recording.m4a",
+      );
+    }
 
     const response = await apiClient.post<{ data: { text: string } }>(
       "/api/v1/speech-text/transcriptions",

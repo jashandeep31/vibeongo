@@ -4,6 +4,8 @@ import {
   readComposerDraft,
   saveComposerDraft,
 } from "@/lib/opencode-composer-drafts";
+import { useVoiceTranscription } from "@/components/chat/use-voice-transcription";
+import { VoiceWaveform } from "@/components/chat/voice-waveform";
 import {
   OpencodeProviderConnectDialog,
   type OpencodeWebProviderConnection,
@@ -36,6 +38,8 @@ import {
   ChevronsUpDown,
   File,
   Loader2,
+  Mic,
+  RotateCcw,
   SquareSlash,
   ListPlus,
   Plus,
@@ -137,6 +141,7 @@ export function OpencodeComposer({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [forkDraft, setForkDraft] = useState(restored?.forkDraft);
   const [hasQuestion, setHasQuestion] = useState(Boolean(restored?.text));
+  const [isFocused, setIsFocused] = useState(false);
   const [attachments, setAttachments] = useState<LocalAttachment[]>(() =>
     (restored?.files ?? []).map((file) => ({ id: crypto.randomUUID(), file })),
   );
@@ -156,13 +161,34 @@ export function OpencodeComposer({
     useState<ActiveFileMention | null>(null);
   const [highlightedCommandIndex, setHighlightedCommandIndex] = useState(0);
   const [isDraggingAttachment, setIsDraggingAttachment] = useState(false);
-  const activeFileQuery = activeFileMention?.query;
   const attachmentsRef = useRef<LocalAttachment[]>([]);
   const formRef = useRef<HTMLFormElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const voice = useVoiceTranscription({
+    getText: () => textareaRef.current?.value ?? "",
+    onChangeText: (text) => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+      textarea.value = text;
+      textarea.setSelectionRange(text.length, text.length);
+      handleTextChange(textarea);
+    },
+    onDone: () =>
+      requestAnimationFrame(() => {
+        const textarea = textareaRef.current;
+        if (textarea) {
+          resizeTextarea(textarea);
+          textarea.focus();
+        }
+      }),
+  });
+  const getVoiceDraftText = voice.getDraftText;
+  const activeFileQuery = voice.isActive ? undefined : activeFileMention?.query;
+  const isExpanded = (isFocused || hasQuestion) && !voice.isActive;
   const isSubmitDisabled =
     disabled ||
+    voice.isActive ||
     isSubmitting ||
     submitDisabled ||
     (!hasQuestion &&
@@ -189,19 +215,20 @@ export function OpencodeComposer({
       if (!draftKey) return;
       const state = draftStateRef.current;
       saveComposerDraft(draftKey, {
-        text: textarea?.value ?? "",
+        text: getVoiceDraftText() ?? textarea?.value ?? "",
         files: state.attachments.map((item) => item.file),
         fileReferences: state.fileReferences,
         forkDraft: state.forkDraft,
         selection: state.selection,
       });
     };
-  }, [draftKey]);
+  }, [draftKey, getVoiceDraftText]);
   useEffect(() => {
     if (!restored || !textareaRef.current) return;
     const textarea = textareaRef.current;
     textarea.style.height = "auto";
-    textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 160)}px`;
+    textarea.style.overflowY = textarea.scrollHeight > 160 ? "auto" : "hidden";
     textarea.focus();
   }, [restored]);
   const selectedModel = inventory?.models.find(
@@ -254,7 +281,8 @@ export function OpencodeComposer({
     [activeSlashCommand, availableCommands],
   );
   // Hidden when nothing matches, so a prompt like "/etc/hosts …" isn't nagged.
-  const showCommandSuggestions = commandSuggestions.length > 0;
+  const showCommandSuggestions =
+    !voice.isActive && commandSuggestions.length > 0;
 
   useEffect(() => {
     if (
@@ -282,7 +310,7 @@ export function OpencodeComposer({
   );
 
   useEffect(() => {
-    if (!focusOnTyping || disabled) return;
+    if (!focusOnTyping || disabled || voice.isActive) return;
 
     const focusPromptOnTyping = (event: globalThis.KeyboardEvent) => {
       if (
@@ -310,7 +338,7 @@ export function OpencodeComposer({
 
     window.addEventListener("keydown", focusPromptOnTyping);
     return () => window.removeEventListener("keydown", focusPromptOnTyping);
-  }, [disabled, focusOnTyping]);
+  }, [disabled, focusOnTyping, voice.isActive]);
 
   useEffect(() => {
     if (!searchFiles || activeFileQuery === undefined) {
@@ -343,7 +371,7 @@ export function OpencodeComposer({
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (isSubmitDisabled) return;
+    if (isSubmitDisabled || voice.isBusy()) return;
 
     const trimmedQuestion = textareaRef.current?.value.trim() ?? "";
     setIsSubmitting(true);
@@ -440,6 +468,11 @@ export function OpencodeComposer({
   };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (voice.isBusy()) {
+      event.preventDefault();
+      return;
+    }
+    if (event.nativeEvent.isComposing) return;
     if (showCommandSuggestions) {
       if (event.key === "ArrowDown" || event.key === "ArrowUp") {
         event.preventDefault();
@@ -528,6 +561,18 @@ export function OpencodeComposer({
       setHighlightedCommandIndex(0);
     }
     setActiveSlashCommand(slashCommand);
+  };
+
+  const handleTextChange = (textarea: HTMLTextAreaElement) => {
+    setHasQuestion(textarea.value.trim().length > 0);
+    updateActiveTokens(textarea);
+    setFileReferences((current) => {
+      const retained = current.filter((reference) =>
+        textarea.value.includes(reference.mention),
+      );
+      return retained.length === current.length ? current : retained;
+    });
+    resizeTextarea(textarea);
   };
 
   const chooseCommand = (command: ComposerCommand) => {
@@ -710,7 +755,7 @@ export function OpencodeComposer({
                 disabled={disabled}
                 aria-label="Choose model"
                 title={selectedModel?.name ?? "Choose model"}
-                className="h-10 max-w-64 shrink-0 justify-between gap-2 rounded-full px-4 font-normal"
+                className="h-10 max-w-64 shrink-0 justify-between gap-1.5 rounded-full px-3 text-xs font-normal"
               >
                 <span className="truncate">
                   {selectedModel?.name ?? "Choose model"}
@@ -785,7 +830,7 @@ export function OpencodeComposer({
                 disabled={disabled}
                 aria-label="Choose model variant"
                 title={selection.variant ?? "Choose model variant"}
-                className="h-10 max-w-48 shrink-0 justify-between gap-2 rounded-full px-4 font-normal"
+                className="h-10 max-w-48 shrink-0 justify-between gap-1.5 rounded-full px-3 text-xs font-normal"
               >
                 <span className="truncate">
                   {selection.variant ?? "Default variant"}
@@ -837,7 +882,7 @@ export function OpencodeComposer({
                 disabled={disabled}
                 aria-label="Choose agent"
                 title={selectedAgent?.name ?? selection.agent ?? "Choose agent"}
-                className="h-10 max-w-56 shrink-0 justify-between gap-2 rounded-full px-4 font-normal"
+                className="h-10 max-w-56 shrink-0 justify-between gap-1.5 rounded-full px-3 text-xs font-normal"
               >
                 <span className="truncate">
                   {selectedAgent?.name ?? selection.agent ?? "Choose agent"}
@@ -941,7 +986,7 @@ export function OpencodeComposer({
             </button>
           ))}
         </div>
-      ) : activeFileMention && searchFiles ? (
+      ) : !voice.isActive && activeFileMention && searchFiles ? (
         <div className="bg-popover text-popover-foreground max-h-64 overflow-y-auto rounded-xl border p-1 shadow-lg">
           {isSearchingFiles ? (
             <div className="text-muted-foreground flex h-12 items-center justify-center gap-2 text-sm">
@@ -973,80 +1018,163 @@ export function OpencodeComposer({
           )}
         </div>
       ) : null}
-      <div className="flex items-end gap-2">
+      <div
+        onBlur={(event) => {
+          if (!event.currentTarget.contains(event.relatedTarget))
+            setIsFocused(false);
+        }}
+        className={`bg-card focus-within:border-foreground/30 flex min-h-14 min-w-0 border p-1.5 transition-colors motion-reduce:transition-none ${isExpanded ? "flex-wrap rounded-3xl" : "items-center rounded-full"}`}
+      >
         <Button
           type="button"
-          variant="secondary"
+          variant="ghost"
           size="icon"
-          disabled={disabled || attachments.length >= MAX_ATTACHMENTS}
-          className="size-12 shrink-0 rounded-full border"
-          aria-label="Add an attachment"
-          onClick={() => fileInputRef.current?.click()}
+          disabled={
+            !voice.isActive &&
+            (disabled || attachments.length >= MAX_ATTACHMENTS)
+          }
+          className={`size-11 shrink-0 rounded-full ${isExpanded ? "order-2" : "order-0"}`}
+          aria-label={
+            voice.isActive ? "Cancel voice typing" : "Add an attachment"
+          }
+          title={voice.isActive ? "Cancel voice typing" : "Add an attachment"}
+          onClick={() =>
+            voice.isActive ? voice.cancel() : fileInputRef.current?.click()
+          }
         >
-          <Plus className="size-6" />
+          {voice.isActive ? (
+            <X className="size-5" />
+          ) : (
+            <Plus className="size-5" />
+          )}
         </Button>
-
-        <div className="bg-card focus-within:border-foreground/20 flex min-w-0 flex-1 items-end overflow-hidden rounded-[28px] border py-1.5 pr-1.5 pl-1 shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-colors">
-          <textarea
-            ref={textareaRef}
-            defaultValue={restored?.text}
-            rows={1}
-            aria-label="Write an AI message"
-            placeholder="Work on anything"
-            disabled={disabled}
-            onChange={(event) => {
-              setHasQuestion(event.target.value.trim().length > 0);
-              updateActiveTokens(event.target);
-              setFileReferences((current) =>
-                current.filter((reference) =>
-                  event.target.value.includes(reference.mention),
-                ),
-              );
-              resizeTextarea(event.target);
-            }}
-            onClick={(event) => updateActiveTokens(event.currentTarget)}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            className="placeholder:text-muted-foreground min-h-10 min-w-0 flex-1 resize-none overflow-y-hidden border-0 bg-transparent px-4 py-2 text-base leading-6 outline-none disabled:cursor-not-allowed disabled:opacity-60 sm:text-lg"
-          />
-
-          {isStreaming ? (
+        <textarea
+          ref={textareaRef}
+          defaultValue={restored?.text}
+          rows={1}
+          aria-label="Write an AI message"
+          placeholder="Work on anything"
+          disabled={disabled || voice.isActive}
+          onFocus={() => setIsFocused(true)}
+          onChange={(event) => handleTextChange(event.target)}
+          onClick={(event) => updateActiveTokens(event.currentTarget)}
+          onKeyDown={handleKeyDown}
+          onPaste={handlePaste}
+          className={`placeholder:text-muted-foreground caret-foreground selection:bg-primary/20 min-h-11 min-w-0 resize-none overflow-y-hidden border-0 bg-transparent px-3 py-2.5 text-base leading-6 outline-none disabled:cursor-not-allowed disabled:opacity-60 ${voice.isActive ? "hidden" : isExpanded ? "order-1 w-full" : "order-1 flex-1"}`}
+        />
+        {voice.isActive ? (
+          <div className="order-1 flex min-w-0 flex-1 items-center gap-2 px-2">
+            {voice.state === "recording" ? (
+              <>
+                <VoiceWaveform meterRef={voice.meterRef} />
+                <span
+                  aria-label={`${voice.durationSeconds} seconds recorded`}
+                  className="text-muted-foreground shrink-0 text-xs tabular-nums"
+                >
+                  {Math.floor(voice.durationSeconds / 60)}:
+                  {String(voice.durationSeconds % 60).padStart(2, "0")}
+                </span>
+              </>
+            ) : (
+              <span
+                role="status"
+                className="text-muted-foreground min-w-0 truncate text-sm"
+              >
+                {voice.state === "starting"
+                  ? "Starting microphone…"
+                  : voice.state === "error"
+                    ? "Could not transcribe. Retry or discard."
+                    : "Transcribing…"}
+              </span>
+            )}
+          </div>
+        ) : null}
+        <div
+          className={`flex shrink-0 items-center gap-0.5 ${isExpanded ? "order-3 ml-auto" : "order-2"}`}
+        >
+          {voice.isActive ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-11 shrink-0 rounded-full border border-red-600/35 bg-red-600/10 text-red-600 hover:bg-red-600/20 dark:text-red-400"
+              disabled={voice.state !== "recording" && voice.state !== "error"}
+              aria-label={
+                voice.state === "error"
+                  ? "Retry transcription"
+                  : "Stop recording"
+              }
+              title={
+                voice.state === "error"
+                  ? "Retry transcription"
+                  : "Stop recording"
+              }
+              onClick={() =>
+                voice.state === "error" ? voice.retry() : void voice.stop()
+              }
+            >
+              {voice.state === "error" ? (
+                <RotateCcw className="size-5" />
+              ) : voice.state === "recording" ? (
+                <Square className="size-4 fill-current" />
+              ) : (
+                <Loader2 className="size-5 animate-spin motion-reduce:animate-none" />
+              )}
+            </Button>
+          ) : (
             <>
               <Button
                 type="button"
-                size="icon"
                 variant="ghost"
-                disabled={isStopping}
-                className="size-10 shrink-0 rounded-full"
-                aria-label={isStopping ? "Stopping response" : "Stop response"}
-                title={isStopping ? "Stopping…" : "Stop response"}
-                onClick={onStop}
+                size="icon"
+                className="text-muted-foreground size-11 shrink-0 rounded-full"
+                disabled={disabled || isSubmitting}
+                aria-label="Start voice typing"
+                title="Start voice typing"
+                onClick={() => void voice.start()}
               >
-                <Square className="size-4 fill-current" />
+                <Mic className="size-5" />
               </Button>
-              {queueWhenStreaming ? (
+              {isStreaming ? (
+                <>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="size-11 shrink-0 rounded-full"
+                    aria-label="Stop response"
+                    title="Stop response"
+                    disabled={isStopping}
+                    onClick={onStop}
+                  >
+                    <Square className="size-4 fill-current" />
+                  </Button>
+                  {queueWhenStreaming ? (
+                    <Button
+                      type="submit"
+                      size="icon"
+                      className="size-11 shrink-0 rounded-full"
+                      disabled={isSubmitDisabled}
+                      aria-label="Queue message"
+                      title="Queue message"
+                    >
+                      <ListPlus className="size-5" />
+                    </Button>
+                  ) : null}
+                </>
+              ) : (
                 <Button
                   type="submit"
                   size="icon"
+                  className="size-11 shrink-0 rounded-full"
                   disabled={isSubmitDisabled}
-                  className="size-10 shrink-0 rounded-full"
-                  aria-label="Queue message"
-                  title="Queue message"
+                  aria-label="Send message"
+                  title="Send message"
                 >
-                  <ListPlus className="size-5" />
+                  <ArrowUp className="size-5" strokeWidth={2.5} />
                 </Button>
-              ) : null}
+              )}
             </>
-          ) : (
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isSubmitDisabled}
-              className="size-10 shrink-0 rounded-full"
-              aria-label="Submit message"
-            >
-              <ArrowUp className="size-6" strokeWidth={2.5} />
-            </Button>
           )}
         </div>
       </div>

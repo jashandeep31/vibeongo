@@ -172,6 +172,7 @@ export function NewOpencodeChat({
           <span className="shrink-0">New chat</span>
         </h1>
         <OpencodeComposer
+          key={JSON.stringify([serverUrl, chatId, directory])}
           onSubmit={handleSubmit}
           disabled={startSession.isPending}
           inventory={inventory}

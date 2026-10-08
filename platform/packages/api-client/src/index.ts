@@ -42,6 +42,7 @@ export type {
   WebSearchRequest,
 } from "./services/opencode-types.js";
 export * from "./services/proxy-auth.js";
+export * from "./services/voice-streaming-session.js";
 export * from "./services/runtime-files-services.js";
 export * from "./services/runtime-settings-services.js";
 export * from "./services/runtime-paths.js";
