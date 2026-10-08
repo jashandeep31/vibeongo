@@ -15,13 +15,15 @@ const EMPTY_ENTRIES: RuntimeFileEntry[] = [];
 
 export const RuntimeFileBrowser = memo(function RuntimeFileBrowser({
   connection,
+  isActive = true,
   ...treeProps
 }: Omit<ComponentProps<typeof RuntimeFileTree>, "searchQuery" | "isSearchLoading"> & {
   connection: RuntimeFilesConnection;
+  isActive?: boolean;
 }) {
   const [searchInput, setSearchInput] = useState("");
   const searchQuery = searchInput.trim();
-  const search = useRuntimeFileSearch(connection, searchQuery, treeProps.path);
+  const search = useRuntimeFileSearch(connection, searchQuery, treeProps.path, isActive);
 
   return (
     <div className="flex h-full min-h-0 flex-col">

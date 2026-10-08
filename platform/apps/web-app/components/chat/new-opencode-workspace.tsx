@@ -135,6 +135,7 @@ export function NewOpencodeWorkspace({
           aria-hidden={active !== "files"}
         >
           <ProjectSessionFilesPanel
+            isActive={active === "files"}
             projectId={projectId}
             projectSessionId={projectSessionId}
             onClose={closePanel}

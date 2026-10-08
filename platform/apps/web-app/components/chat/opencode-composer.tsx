@@ -361,6 +361,12 @@ export function OpencodeComposer({
         textareaRef.current.style.height = "auto";
         textareaRef.current.style.overflowY = "hidden";
       }
+      draftStateRef.current = {
+        attachments: [],
+        fileReferences: [],
+        forkDraft: undefined,
+        selection,
+      };
       setHasQuestion(false);
       setForkDraft(undefined);
       if (draftKey)

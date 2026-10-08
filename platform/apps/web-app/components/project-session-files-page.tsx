@@ -70,6 +70,7 @@ type ProjectSessionFilesPageProps = {
   projectId: string;
   projectSessionId: string;
   sessionId?: string;
+  isActive?: boolean;
 };
 
 export function ProjectSessionFilesPage(props: ProjectSessionFilesPageProps) {
@@ -99,6 +100,7 @@ function ProjectSessionFilesContent({
   projectSessionId,
   sessionId,
   mode = "page",
+  isActive = true,
   onClose,
   onDirtyChange,
 }: ProjectSessionFilesPageProps & {
@@ -137,7 +139,7 @@ function ProjectSessionFilesContent({
   );
   const instancesQuery = useGetInstances(
     { sessionId: projectSessionId, state: "running", limit: 1 },
-    !storedInstance,
+    isActive && !storedInstance,
   );
   const instance = storedInstance ?? instancesQuery.data?.data[0];
   const connection = useMemo<RuntimeFilesConnection>(
@@ -160,10 +162,11 @@ function ProjectSessionFilesContent({
   const directoryQuery = useRuntimeDirectory(
     connection,
     requestedDirectoryPath,
+    isActive,
   );
   const directory = directoryQuery.data ?? null;
   const refetchDirectory = directoryQuery.refetch;
-  const fileQuery = useRuntimeFile(connection, selectedFile?.path);
+  const fileQuery = useRuntimeFile(connection, selectedFile?.path, isActive);
   const createEntryMutation = useCreateRuntimeFileEntry(connection);
   const { mutateAsync: updateFile, isPending: isSaving } = useUpdateRuntimeFile(connection);
   const uploadFileMutation = useUploadRuntimeFile(connection);
@@ -321,6 +324,7 @@ function ProjectSessionFilesContent({
   ]);
 
   useEffect(() => {
+    if (!isActive || !canEdit) return;
     const saveWithKeyboard = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
@@ -329,7 +333,7 @@ function ProjectSessionFilesContent({
     };
     window.addEventListener("keydown", saveWithKeyboard);
     return () => window.removeEventListener("keydown", saveWithKeyboard);
-  }, [saveFile]);
+  }, [isActive, canEdit, saveFile]);
 
   const createEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -525,6 +529,7 @@ function ProjectSessionFilesContent({
             <RuntimeFileBrowser
               key={directory?.path ?? "/"}
               connection={connection}
+              isActive={isActive}
               path={directory?.path ?? "/"}
               entries={sortedEntries}
               selectedPath={selectedFile?.path}

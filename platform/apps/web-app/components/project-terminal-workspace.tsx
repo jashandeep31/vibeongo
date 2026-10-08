@@ -70,7 +70,7 @@ export function ProjectTerminalWorkspace({
   );
   const instancesQuery = useGetInstances(
     { limit: 1, sessionId: projectSessionId, state: "running" },
-    !sessionEntry?.instance,
+    isActive && !sessionEntry?.instance,
   );
   const instance = sessionEntry?.instance ?? instancesQuery.data?.data[0];
   const runtimeUrl = instance

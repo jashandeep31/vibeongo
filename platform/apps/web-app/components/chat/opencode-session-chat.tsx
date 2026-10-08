@@ -819,6 +819,7 @@ export function OpencodeSessionChat({
           aria-hidden={!isFilesOpen}
         >
           <ProjectSessionFilesPanel
+            isActive={isFilesOpen}
             projectId={projectId}
             projectSessionId={chatId}
             sessionId={sessionId}

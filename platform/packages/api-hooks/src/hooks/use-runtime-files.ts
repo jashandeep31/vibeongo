@@ -79,11 +79,12 @@ function hasConnection(connection: RuntimeFilesConnection) {
 export function useRuntimeDirectory(
   connection: RuntimeFilesConnection,
   path?: string,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: runtimeDirectoryKey(connection.instanceId, path),
     queryFn: () => getRuntimeDirectory(connection, path),
-    enabled: hasConnection(connection),
+    enabled: enabled && hasConnection(connection),
     placeholderData: keepPreviousData,
     retry: false,
     refetchOnWindowFocus: false,
@@ -93,11 +94,12 @@ export function useRuntimeDirectory(
 export function useRuntimeFile(
   connection: RuntimeFilesConnection,
   path?: string,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: runtimeFileKey(connection.instanceId, path ?? ""),
     queryFn: () => getRuntimeFile(connection, path!),
-    enabled: hasConnection(connection) && Boolean(path),
+    enabled: enabled && hasConnection(connection) && Boolean(path),
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -107,11 +109,12 @@ export function useRuntimeFileSearch(
   connection: RuntimeFilesConnection,
   query: string,
   path?: string,
+  enabled = true,
 ) {
   return useQuery({
     queryKey: runtimeFileSearchKey(connection.instanceId, query, path),
     queryFn: () => searchRuntimeFiles(connection, query, path),
-    enabled: hasConnection(connection) && Boolean(query),
+    enabled: enabled && hasConnection(connection) && Boolean(query),
     placeholderData: keepPreviousData,
     retry: false,
     refetchOnWindowFocus: false,

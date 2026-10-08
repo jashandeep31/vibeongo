@@ -126,7 +126,7 @@ export function NewOpencodeChat({
     files: File[],
     fileReferences: OpencodeFileReference[],
   ) => {
-    startSession.mutate({
+    return startSession.mutateAsync({
       chatId,
       serverUrl,
       accessToken,

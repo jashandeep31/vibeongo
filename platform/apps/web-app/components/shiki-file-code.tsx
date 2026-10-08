@@ -3,6 +3,18 @@
 import { memo, useEffect, useMemo, useRef, useState } from "react";
 
 const HIGHLIGHT_IDLE_MS = 180;
+const MAX_HIGHLIGHT_LENGTH = 500_000;
+const MAX_HIGHLIGHT_LINES = 4000;
+
+function canHighlight(code: string) {
+  if (code.length > MAX_HIGHLIGHT_LENGTH) return false;
+  let lines = 1;
+  for (let index = 0; index < code.length; index++) {
+    if (code.charCodeAt(index) === 10 && ++lines > MAX_HIGHLIGHT_LINES)
+      return false;
+  }
+  return true;
+}
 
 type HighlightResponse = { id: number; html: string | null };
 
@@ -38,12 +50,14 @@ function languageFromPath(path: string) {
 }
 
 function useHighlightedCode(code: string, path: string) {
+  const enabled = useMemo(() => canHighlight(code), [code]);
   const language = useMemo(() => languageFromPath(path), [path]);
   const [html, setHtml] = useState("");
   const workerRef = useRef<Worker | null>(null);
   const requestIdRef = useRef(0);
 
   useEffect(() => {
+    if (!enabled) return;
     let worker: Worker;
     try {
       worker = new Worker(
@@ -70,16 +84,17 @@ function useHighlightedCode(code: string, path: string) {
       worker.terminate();
       if (workerRef.current === worker) workerRef.current = null;
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     const id = ++requestIdRef.current;
     setHtml("");
+    if (!enabled) return;
     const timer = setTimeout(() => {
       workerRef.current?.postMessage({ id, code, language });
     }, HIGHLIGHT_IDLE_MS);
     return () => clearTimeout(timer);
-  }, [code, language]);
+  }, [code, language, enabled]);
 
   return { html, language };
 }

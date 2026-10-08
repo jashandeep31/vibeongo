@@ -13,6 +13,7 @@ import {
 } from "@/lib/browser-tabs-storage";
 import {
   useGetProjectDomainsById,
+  useGetInstances,
   useCurrentUserIp,
   useAddAllowedIpToProject,
 } from "@repo/api-hooks";
@@ -81,11 +82,17 @@ function BrowserWorkspace({
   const tabStrip = useRef<HTMLDivElement>(null);
   const loaded = useRef(false);
   const persistenceAvailable = useRef(true);
-  const instanceId = useSessionsStore(
+  const storedInstance = useSessionsStore(
     (state) =>
       state.sessions.find((entry) => entry.session.id === projectSessionId)
-        ?.instance?.id,
+        ?.instance,
   );
+  const instancesQuery = useGetInstances(
+    { sessionId: projectSessionId, state: "running", limit: 1 },
+    isActive && !storedInstance,
+  );
+  const instance = storedInstance ?? instancesQuery.data?.data[0];
+  const instanceId = instance?.id;
   const domainQuery = useGetProjectDomainsById(projectId, isActive);
   const domains = useMemo(
     () =>
@@ -95,12 +102,9 @@ function BrowserWorkspace({
       ),
     [domainQuery.data?.proxy_domains],
   );
-  const runtimeIpDomain = useSessionsStore((state) => {
-    const instance = state.sessions.find(
-      (entry) => entry.session.id === projectSessionId,
-    )?.instance;
-    return instance ? `3101-${instance.id}${instance.proxy_domain}` : undefined;
-  });
+  const runtimeIpDomain = instance
+    ? `3101-${instance.id}${instance.proxy_domain}`
+    : undefined;
   const ipDomain =
     domains.find((domain) => domain.target_port === 3101)?.domain ??
     runtimeIpDomain;
