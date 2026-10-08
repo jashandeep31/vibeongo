@@ -167,6 +167,7 @@ export default function OpencodeReviewPage() {
       />
       <main className="min-h-0 flex-1">
         <OpencodeReviewPanel
+          gitConnection={{ chatId: projectSessionId, directory: data.session.directory, serverUrl, accessToken, password }}
           changes={
             reviewMode === "last-turn"
               ? (lastTurnQuery.data ?? [])

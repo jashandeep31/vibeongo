@@ -918,6 +918,7 @@ export function OpencodeSessionChat({
           aria-hidden={!isGitOpen}
         >
           <OpencodeReviewPanel
+            gitConnection={{ chatId, directory: rawResponse.session.directory, serverUrl, accessToken, password }}
             isActive={isGitOpen}
             changes={rawResponse.changes}
             chatUrl={chatUrl}

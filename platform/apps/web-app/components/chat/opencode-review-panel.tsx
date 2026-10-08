@@ -9,6 +9,10 @@ import {
   ResizableHandle,
 } from "@repo/ui/components/resizable";
 import type { SnapshotFileDiff } from "@repo/api-client";
+import {
+  useInitializeOpencodeGit,
+  useOpencodeReviewProjectVcs,
+} from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import {
@@ -40,6 +44,7 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
   onRefresh,
   onClose,
   isActive = true,
+  gitConnection,
 }: {
   changes: SnapshotFileDiff[];
   isRefreshing?: boolean;
@@ -50,7 +55,26 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
   onRefresh?: () => void;
   onClose?: () => void;
   isActive?: boolean;
+  gitConnection?: {
+    chatId: string;
+    directory?: string;
+    serverUrl: string;
+    accessToken: string;
+    password?: string;
+  };
 }) {
+  const connection = gitConnection ?? {
+    chatId: "",
+    serverUrl: "",
+    accessToken: "",
+  };
+  const reviewVcs = useOpencodeReviewProjectVcs({
+    ...connection,
+    enabled: isActive && !!gitConnection,
+  });
+  const initializeGit = useInitializeOpencodeGit(connection);
+  const noGit = !!gitConnection && reviewVcs.isSuccess && reviewVcs.data === null;
+  const checkingVcs = !!gitConnection?.directory && reviewVcs.isLoading;
   const [filter, setFilter] = useState("");
   const [selectedPath, setSelectedPath] = useState<string>();
   const [expandedContext, setExpandedContext] = useState(false);
@@ -201,7 +225,10 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
                 aria-label="Refresh changes"
                 title="Refresh changes"
                 disabled={isRefreshing}
-                onClick={onRefresh}
+                onClick={() => {
+                  if (gitConnection?.directory) void reviewVcs.refetch();
+                  onRefresh();
+                }}
               >
                 <RefreshCw className={cn(isRefreshing && "animate-spin")} />
               </Button>
@@ -231,7 +258,37 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
           </div>
         </header>
 
-        {changesError ? (
+        {reviewVcs.error && gitConnection ? (
+          <div role="alert" className="text-destructive p-6 text-sm">
+            {reviewVcs.error.message}
+          </div>
+        ) : checkingVcs ? (
+          <div role="status" className="text-muted-foreground p-6 text-sm">
+            Loading repository…
+          </div>
+        ) : noGit ? (
+          <div className="text-muted-foreground flex flex-1 flex-col items-center justify-center gap-3 p-6 text-center text-sm">
+            <GitCompareArrows className="size-8 opacity-40" />
+            <p>This workspace does not have a Git repository.</p>
+            <Button
+              variant="secondary"
+              size="sm"
+              disabled={initializeGit.isPending || !gitConnection?.directory}
+              onClick={() => {
+                if (gitConnection?.directory)
+                  initializeGit.mutate(gitConnection.directory);
+              }}
+            >
+              {initializeGit.isPending ? "Initializing…" : "Initialize Git"}
+            </Button>
+            {initializeGit.error &&
+            initializeGit.variables === gitConnection?.directory ? (
+              <p role="alert" className="text-destructive">
+                {initializeGit.error.message}
+              </p>
+            ) : null}
+          </div>
+        ) : changesError ? (
           <div role="alert" className="text-destructive p-6 text-sm">
             {changesError}
           </div>

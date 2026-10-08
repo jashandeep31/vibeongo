@@ -1,109 +1,120 @@
-# OpenCode 2.0.20 → 2.0.22 integration report
+# OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Reviewed:** 2026-10-02
+**Reviewed:** 2026-10-08
 
-**Scope:** `platform/packages/api-client`, `platform/packages/api-hooks`, `platform/apps/web-app`, `platform/apps/mobile-app` session chats/review, and the workspace lockfile.
+**Latest stable npm release at review:** `@opencode/client 2.0.24`
 
-**Baseline:** Published npm `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` packages at 2.0.20 and 2.0.22, with declaration files compared directly. Upstream commits and release tags were also checked.
+**Scope:** shared API client, API hooks, web app, and inherited mobile integration.
 
-**Sources:** [v2.0.21](https://github.com/anomalyco/opencode/releases/tag/v2.0.21), [v2.0.22](https://github.com/anomalyco/opencode/releases/tag/v2.0.22), [combined comparison](https://github.com/anomalyco/opencode/compare/v2.0.20...v2.0.22), [published client metadata](https://registry.npmjs.org/@opencode/client/2.0.22).
+## Release and reference
 
-**Previous upgrade:** 2.0.18 → 2.0.20, reviewed 2026-09-30; the `needs_auth` connection fix remains in place.
+The npm `latest` tag was queried directly; it resolves to **2.0.24**. The separate `beta`, `dev`, and `reserved` tags were not selected.
 
-## Status
+References:
 
-**Client upgraded to 2.0.22.** Both direct dependencies now declare `@opencode/client ^2.0.22`; `platform/pnpm-lock.yaml` resolves client, protocol, and schema to 2.0.22. `api-hooks` consumes the client through `api-client` and needs no direct OpenCode dependency.
+- [Published client 2.0.24 metadata](https://registry.npmjs.org/@opencode/client/2.0.24), [protocol metadata](https://registry.npmjs.org/@opencode/protocol/2.0.24), and [schema metadata](https://registry.npmjs.org/@opencode/schema/2.0.24).
+- [Official 2.0.23 release](https://github.com/anomalyco/opencode/releases/tag/v2.0.23), [2.0.24 release](https://github.com/anomalyco/opencode/releases/tag/v2.0.24), and [release comparison](https://github.com/anomalyco/opencode/compare/v2.0.22...v2.0.24).
+- The supplied source is actually at `/home/jashan/Dev/opensource/opencode/packages/app` (plural `packages`). That checkout's HEAD was `93afa91904`, which includes work after the published release. Released behavior was inspected using the local release version-sync commits `d259ae7163` (2.0.22) and `bd55d4895f` (2.0.24); these are not the GitHub release tag commits. Published 2.0.22 and 2.0.24 declaration files were also compared directly, so later checkout changes were not treated as released APIs.
 
-**Implemented:** Cancellation feedback through the client, hooks, and question UI; parent-linked session creation through the client and start-session hook; a persisted Last turn changes mode in web review; explicit bold styling for rendered markdown.
+## What changed
 
-**Validated:** `api-client` and `api-hooks` compile, web-app passes `tsc --noEmit`, and five mocked HTTP upgrade contract checks pass. Targeted ESLint has no errors; the session chat component has an existing `useMemo` dependency warning unrelated to this upgrade. There has been no live browser or runtime smoke test against a 2.0.22 server.
-
-**Runtime binary is separate.** This change updates the three requested TypeScript areas, not the OpenCode executable in deployed workspaces. Server/provider improvements require a 2.0.22 runtime. The local `opencode --version` command invokes a mise shim whose installation fails in the restricted environment, so its installed version was not verified.
-
-## Published contract changes
-
-The existing Promise client methods remain available. The changes below are additive or relax configuration requirements. The `effect` peer remains `4.0.0-rc.112`; the workspace still resolves `rc.117`, carrying the same existing peer warning.
-
-| Contract | Change | Vibeongo handling |
-| --- | --- | --- |
-| `session.form.cancel` | Optional `message` query parameter; cancelled form state also exposes optional `message`. | `rejectOpencodeQuestion` uses the generated client, which encodes feedback in the URL query. It sends no DELETE body. The hook accepts either the existing request ID string or `{ requestId, message? }`, preserving mobile callers. Web questions expose optional dismissal feedback. |
-| `session.create` | Optional `parentID`; a missing parent can return `SessionNotFoundError`. The server derives the child's location from its parent. | `createOpencodeSession` and `useStartOpencodeSession` create independent chats. Parent-linked creation and the manual subtask action have been removed; received `parentID` values remain available for existing child navigation. |
-| Provider settings | Adds `headerTimeout?: number \| false`; `chunkTimeout` now also accepts `false`. | Included through the upgraded generated types. Vibeongo has no separate provider-settings editor to change. These inference timeouts are separate from the client's inventory request and SSE idle timeouts. |
-| Config model capabilities | Config fields `tools`, `input`, and `output` become individually optional. Omitted fields inherit the base model. | Included through generated configuration types. Runtime model inventory remains normalized using the resolved model capabilities. |
-| Plugin session APIs | Compaction/removal support and metadata update fixes. | Server/plugin behavior; Vibeongo uses the HTTP client rather than the plugin session API. |
-
-## Web review changes
-
-The review page now offers **Working changes** and **Last turn changes** and saves the selected mode per session in local storage. Working changes keeps the existing VCS behavior. Last turn changes uses `session.diff({ sessionID })` through a separate client helper and React Query hook; OpenCode defaults that endpoint to the newest user message's turn.
-
-A turn includes prompts steered in while the session was busy and ends at the next idle marker. For an active step, the server can compare against the working copy. The review page refreshes the last-turn query when its cached session update timestamp changes and when the user presses Refresh. Snapshot errors are shown explicitly, and an initial fetch displays a loading state. A snapshot failure does not silently show the working diff under the Last turn label.
-
-The existing session data/cache shape is unchanged; last-turn diffs use a separate query key. This preserves the working-change summaries used by other consumers. The selector is offered only after the session directory resolves to a Git project, matching the official review extension. Review queries also refresh on execution status changes, including the transition to idle, and last-turn diffs do not refetch on window focus.
-
-## Upstream behavior relevant to Vibeongo
-
-| Release area | Effect after the server upgrade |
+| Area | Implementation |
 | --- | --- |
-| Azure discovery (2.0.22) | The existing model inventory reads discovered deployments. Catalog limits/costs/capabilities are resolved upstream. |
-| Inference HTTP timeouts (2.0.22) | Header/chunk timeouts default to five minutes; `false` disables either. Timeout retries are bounded upstream. No client timeout should be changed to emulate these provider settings. |
-| Provider errors, overflow and streaming (2.0.21/22) | Better auth/quota/overflow classification and transport error messages flow through the existing error normalization. Anthropic content-filter explanations are generated upstream. |
-| Prompt caching and gateway routing (2.0.21/22) | OpenRouter, Qwen/Alibaba, DigitalOcean and Cloudflare Gateway changes are inference-server behavior. Existing token normalization already carries cache read/write usage. |
-| MCP diagnostics and session cleanup (2.0.22) | Improved server errors flow through existing MCP dialogs and tools. Legacy HTTP MCP cleanup happens upstream. |
-| ACP defaults, live catalogs, forms, roots and compaction markers (2.0.21/22) | Vibeongo uses HTTP/SSE rather than ACP. Its existing question/web-search forms, compaction replay/live handling, and session model/agent handling remain applicable; no ACP adapter was added. |
-| Desktop extension host (2.0.22) | An upstream desktop architecture change, not a new HTTP client requirement. Vibeongo's own terminal/review/file UI does not use that host. |
-| CLI question continuation and upgrade locks (2.0.21/22) | CLI behavior. Vibeongo launches `opencode serve` and submits prompts through the HTTP API. |
-| Browser element comments, session-ID links and read grouping (2.0.21) | Optional upstream UI features, not contract migrations. These were not ported in this upgrade. Vibeongo does not attach the upstream desktop browser. |
+| Dependencies | Both `platform/packages/api-client/package.json` and `platform/apps/web-app/package.json` now request `@opencode/client ^2.0.24`. |
+| Lockfile | Client, protocol, and schema resolve to 2.0.24. Unrelated transitive updates introduced by dependency resolution were excluded; a frozen offline installation accepted the resulting lockfile. |
+| Git initialization | Added `initializeOpencodeGit` and `useInitializeOpencodeGit`, using the native `client.vcs.init` API. |
+| Review surfaces | Existing chat Git sidebar, new-chat Git sidebar, and full review page show an **Initialize Git** action when the selected workspace has no VCS repository. |
+| Missing folders | Shared errors recognize the published `_tag`, with a dedicated missing-workspace title. Session/review queries stop retrying a typed `LocationNotFoundError`. |
+| Undo and prompt submission | Shared prompt submission now follows the official staged-revert ordering, preserving the selected model when continuing after an undo. Queued prompts settle a staged revert without switching the active turn's model or agent. |
 
-## Checks and remaining work
+`api-hooks` and mobile consume the SDK through `api-client`; they do not need duplicate direct SDK dependencies. The web app retains its existing direct dependency because it already imports SDK types.
 
-Contract regression checks are in [`opencode-upgrade.test.mjs`](platform/packages/api-client/tests/opencode-upgrade.test.mjs). Run `pnpm --filter @repo/api-client test:opencode-upgrade` from `platform`; this compiles the client and runs five tests against mocked HTTP responses. Checks cover query-encoded feedback/no DELETE body, omission of feedback and propagation of a server failure, the session snapshot endpoint, parent creation without overriding the parent location, and Git project detection at the requested session directory.
+## Git initialization: official API and panel behavior
 
-After upgrading a deployed runtime to 2.0.22:
+Official reference: [Git initialization implementation](https://github.com/anomalyco/opencode/commit/41516c78c8) and `packages/gui-extensions/src/review/model.ts` at the 2.0.24 version-sync commit.
 
-1. Verify `opencode --version` inside that runtime, authenticated health, session creation, prompting/SSE, queues, model inventory and MCP operations.
-2. Dismiss a question with feedback and verify the agent receives it and continues. Dismiss without feedback and check normal cancellation behavior.
-3. Switch review modes after two turns with different edits, reload, and confirm the selected mode persists and the last-turn diff differs from working changes where expected. Test loading, error, mobile and refresh states.
-4. Create a child with `parentID` through the client and confirm its directory matches its parent and a missing parent returns an error.
+The shared helper sends:
 
-Carried-over integration items:
+```ts
+await client.vcs.init({ location: { directory }, provider: "git" });
+```
 
-- The deployed runtime binary version is not pinned by this client upgrade.
-- Provider and MCP OAuth `window.open` calls still need `http:`/`https:` URL validation before adding further uses of server-supplied links.
-- `needs_auth` connections still correctly count as disconnected. A dedicated sign-in-required message/link remains an optional UI follow-up.
-- Raw provider `response.body` is not rendered; displaying it requires sanitization/redaction. Existing normalized messages remain the user-visible errors.
+This is `POST /api/vcs/init`, with `location` and `provider` encoded by the generated client. No shell command, manual `.git` creation, or automatic initialization is used.
 
-## Mobile session chats (follow-up)
+The review panel resolves the selected directory's project before offering initialization. A confirmed project with no VCS displays the action; loading and lookup failures have separate states. A Git repository or another VCS provider does not receive the button. The action is disabled while initializing, and server errors remain visible with an opportunity to retry.
 
-Mobile's question drawer now accepts optional dismissal feedback, including dismissal via Android Back. Feedback is passed through the same shared mutation and generated cancellation client as web. The existing request-ID-string callers remain compatible.
+The mutation refreshes queries belonging to the captured server/workspace: repository detection, directory-scoped queries, and session data for that project session. It waits for cache invalidation before leaving the pending state. This follows the official approach of refreshing project, session, and location information after initialization. A user switching chats does not redirect the completed request's refresh to the new chat.
 
-The mobile Review screen offers Working changes / Last turn changes with accessible selection controls. The choice is saved per session with the existing Expo SecureStore dependency on native platforms and local storage on mobile web. Storage reads do not overwrite a choice made while loading, and writes are serialized so fast switches preserve the latest choice. Last-turn review uses the shared snapshot hook, updates with session timestamps and manual refresh, and displays loading, error/retry, and mode-specific empty states. Switching modes clears the selected file.
+Repository lookup is enabled only while a sidebar is active; mounted hidden panels retain their state without starting this lookup. The existing Refresh button also refreshes repository detection, which allows recovery after a folder is restored or Git is initialized externally.
 
-Mobile already renders markdown `strong` text at weight 700. The shared `useStartOpencodeSession` hook creates independent chats; manual child-session creation has been removed. Mobile requires no direct `@opencode/client` dependency.
+The shared web panel serves desktop and mobile browser layouts. The native Expo Review screen does not gain an initialization button in this update; the new API helper/hook is available to it.
 
-Validation: mobile TypeScript check passed. Native interaction and persistence still need device/simulator verification. Expo APIs were checked against the [SDK 57 reference](https://docs.expo.dev/versions/v57.0.0/) and [SecureStore documentation](https://docs.expo.dev/versions/v57.0.0/sdk/securestore/).
+## Missing workspace folders
 
-## Subtask creation removed
+Official reference: [missing-location handling](https://github.com/anomalyco/opencode/commit/4fb800734d) and `packages/app/src/workspaces/location.tsx` at the released version-sync commit.
 
-The manual subtask creation menu, dialog, delegation prompt builder, and parent-linked creation options in the shared API client and session hook have been removed. Session actions retain export and navigation to an existing parent chat. Existing native subagent results remain readable in the transcript.
+The upgraded client declares `LocationNotFoundError` for location-dependent requests. We export its generated guard as `isOpencodeLocationNotFoundError` through the shared API client and use it in session, repository lookup, working-change, and last-turn-change queries.
 
-## Official v2.0.22 implementation audit
+Only this typed error suppresses retries. Other failures keep bounded retries; a generic network error or ordinary 404 is not interpreted as proof that a workspace disappeared. Error normalization now checks `_tag` before legacy `type` and `name`, and labels this case **Workspace folder not found**. It also recognizes `VcsInitNotSupportedError`. Existing message redaction remains in place.
 
-**Rechecked:** 2026-10-02 against the exact [v2.0.22 source](https://github.com/anomalyco/opencode/tree/v2.0.22), release commit `527f0b9`, and the published 2.0.22 Promise client/schema/protocol. The local upstream checkout is not at that release, so it was not used as the definitive reference for this audit.
+This adopts the official error distinction and retry behavior. It does not copy the official missing-folder relocation prompt or add a new folder-recreation workflow.
 
-| Area | Official implementation | Audit result |
-| --- | --- | --- |
-| Cancellation feedback | `packages/protocol/src/groups/session.ts`: DELETE form cancellation accepts optional query `message`; `core/src/tool/plugin/question.ts` returns it as model feedback. | Shared client and both question UIs conform. The optional feedback input is Vibeongo UI. |
-| Parent-linked creation | `packages/core/src/session.ts`: an existing parent's location supplies the child's location; a missing parent fails. | Shared create helper conforms and sends only `parentID` for children. This does not fork/copy history. |
-| Last turn changes | `packages/gui-extensions/src/review/model.ts`: Git-only option, per-session preference, native `session.diff`, refresh on idle, no window-focus refresh. | Fixed web/mobile Git gating and preference scope in this audit. Both use the native endpoint and refresh on status/timestamp changes. Vibeongo also provides manual refresh. |
-| Child composer | `packages/app/src/session/composer/session-composer-region.tsx`: child sessions cannot be prompted; offers parent navigation while form/permission controls remain usable. | Web and mobile conform. Mobile's shell selector now observes `parentID` changes as well. |
-| Native subagent lifecycle | `packages/core/src/tool/plugin/subagent.ts` and `session/subagent-completion.ts`: foreground result returned through the tool; background result delivered synthetically to the parent. | Server owns execution/delivery. Web cards link to the child, track status, and expose tool output. Live/replayed completion labels are Vibeongo presentation. |
-| Provider/config additions | Published schema adds `headerTimeout`, supports false timeouts, and optional partial model capabilities. | Upgraded dependencies include these types. Runtime implements Azure discovery, timeouts, caching, error handling and capability merging. They are not reimplemented by our UI. |
-| Bold markdown | Official session markdown uses its bold font weight. | Web explicitly uses bold; mobile already uses 700. Styling systems differ. |
+## Continue after undo: preserve model selection
 
-**Intentional differences / remaining gaps:**
+Official reference: [commit staged revert before switching selection](https://github.com/anomalyco/opencode/commit/19f8610c0a).
 
-- Mobile has the child input bar and parent navigation, but its existing subagent tool cards are not yet clickable child-navigation cards and do not load background outcomes like web. No mobile delegation dialog was added.
-- Official review additionally supports branch changes and persists file/open-panel state. This update ports the requested working/last-turn choice, not that entire extension. Vibeongo's existing working-diff loader still falls back to session snapshots when VCS fetching fails on older/unavailable servers; that compatibility fallback is not official review behavior.
-- Desktop extension hosting, embedded browser comments, grouped reads, transcript session-ID links, ACP additions and CLI updater changes were not ported. The release table above identifies the server-only behavior that the upgraded runtime supplies.
+Previously, Vibeongo switched the model, then the agent, and submitted the prompt. OpenCode can commit a staged revert during admission, deleting timeline records from the revert boundary onward, including the newly recorded model switch.
 
-**Validation:** Five upgrade contract checks and five subagent regression checks passed; shared package compilation and web/mobile TypeScript checks passed. Targeted web ESLint has no errors and three existing warnings. Mobile has no ESLint flat config, so a mobile ESLint check could not run. Native/browser interaction and an actual 2.0.22 server/model execution have not been smoke-tested, and the deployed CLI version is still unverified.
+The shared `sendOpencodePrompt` now performs:
+
+1. Prepare attachments and file references.
+2. Apply the chosen agent.
+3. Commit an existing staged revert.
+4. Apply the chosen model and variant.
+5. Admit the prompt.
+
+`queueOpencodePrompt` also commits an existing staged revert before admission. It continues to record the intended selection in metadata without changing the running turn's selection. Failures are awaited and stop admission rather than silently continuing.
+
+Both web and native mobile use these shared functions. This is the official prompt-submission fix; command and shell flows retain their existing behavior. The earlier undo controls, per-answer fork, streaming completion grouping, and queued-message presentation remain intact.
+
+## Other published changes and their availability
+
+| Published addition/change | Handling in this upgrade |
+| --- | --- |
+| `vcs.init` and `VcsInitNotSupportedError` | Used by the new shared helper/hook and web review action. The API supports provider selection; our action deliberately selects Git. |
+| `LocationNotFoundError` and declared location-related 404 responses | Included by the generated client and used for error classification/retry behavior. |
+| Optional `ServerInfo.capabilities.persistentPty` | Available in SDK types. Vibeongo terminals use the existing runtime socket service; they are not switched to OpenCode persistent PTY handoff. Older servers can omit the capability. |
+| `WorktreeError._tag` | Included by upgraded generated types; shared normalization recognizes tagged errors. Existing worktree operations continue to use the SDK. |
+| Removal of unused legacy question schema definitions | No migration needed: our existing compatibility question view types remain local and current forms still use the v2 API. |
+| Background-service startup/shutdown/protocol mismatch fixes | Included in the SDK's service modules. Vibeongo connects to an existing remote server through `OpenCode.make`; it does not use the desktop service launcher, so those fixes are not claimed as changes to our runtime lifecycle. |
+| Official queue/steer, running-work headers, `/btw` tabs, and extension panel refinements | Reviewed as upstream UI changes. They are not new SDK methods automatically rendered in Vibeongo. Existing queue, sidebar, and native subagent viewing behavior is retained. |
+| Provider OAuth labels and server/provider fixes | Supplied by the matching runtime and its inventory, not implemented locally by upgrading an npm dependency. |
+
+The Promise client remains the integration entry point. There is no migration to SolidJS, an Effect UI, or upstream desktop extension hosting.
+
+## Checks performed
+
+The following checks completed successfully after the changes:
+
+- Shared API client TypeScript compilation: `pnpm --filter @repo/api-client exec tsc -p tsconfig.json`.
+- Shared API hooks TypeScript compilation: `pnpm --filter @repo/api-hooks exec tsc -p tsconfig.json`.
+- Web app and native mobile app: `pnpm exec tsc --noEmit` in each application.
+- Targeted ESLint for the review panel, session chat, new-chat workspace, and full review page: no errors or warnings.
+- `pnpm install --frozen-lockfile --offline --ignore-scripts`: successful with the final lockfile.
+- `git diff --check`: successful.
+
+Automated tests, live browser interactions, and execution against a deployed 2.0.24 server were not run. Previous report test results are historical and are not evidence for this upgrade.
+
+## Runtime and compatibility limits
+
+This upgrade changes the TypeScript packages, not the OpenCode executable launched by `core/internal/vibeongo/store/opencodewebstore.go`. The deployed executable version was not verified or changed. Use a 2.0.24 runtime to obtain the matching Git initialization endpoint and server fixes; an older runtime may reject the new action, in which case the panel displays the request error.
+
+The SDK's optional Effect peer still requests `4.0.0-rc.112`, while the workspace consumer resolves `4.0.0-rc.117`. Installation reports this existing mismatch; this update does not alter the workspace's Effect version. The schema/protocol retain their own declared Effect dependency. Other existing workspace peer warnings concern the legacy web resolver and React Native Metro configuration.
+
+Recommended release follow-up: verify the deployed executable version, initialize Git in a disposable markerless workspace, recover after restoring a missing folder, and continue after undo with a different model. Confirm prompting, streaming, review, and mobile queue behavior against that runtime before rollout.
+
+## Previous integrations retained
+
+The earlier 2.0.18 → 2.0.20 and 2.0.20 → 2.0.22 integrations supplied provider `needs_auth` handling, optional form cancellation feedback, and persisted working/last-turn review modes. They remain in the code.
+
+Manual subtask creation and parent-linked creation options remain removed, as requested. Existing child sessions and native subagent results remain readable. React Scan remains removed. This report replaces obsolete claims about parent creation and previously run tests with the current implementation and checks.

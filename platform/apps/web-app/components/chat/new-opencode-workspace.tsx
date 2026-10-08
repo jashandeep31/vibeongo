@@ -156,6 +156,7 @@ export function NewOpencodeWorkspace({
           aria-hidden={active !== "git"}
         >
           <OpencodeReviewPanel
+            gitConnection={{ chatId: projectSessionId, directory, serverUrl, accessToken, password }}
             changes={changes.data ?? []}
             chatUrl={chatUrl}
             isActive={active === "git"}

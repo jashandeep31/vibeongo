@@ -19,7 +19,10 @@ import type {
   WebSearchRequest,
   OpencodeError,
 } from "./opencode-types.js";
-import { normalizeOpencodeError } from "./opencode-errors.js";
+import {
+  isOpencodeLocationNotFoundError,
+  normalizeOpencodeError,
+} from "./opencode-errors.js";
 import {
   isRuntimeRepositoryDirectory,
   RUNTIME_WORKSPACE_DIRECTORY,
@@ -2160,6 +2163,23 @@ export async function getOpencodeReviewProjectVcs(
   return project?.vcs ?? null;
 }
 
+/** Initialize Git at the explicit workspace location through the native VCS API. */
+export async function initializeOpencodeGit(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  if (!directory.trim()) throw new Error("Choose a workspace folder first.");
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  try {
+    await client.vcs.init({ location: { directory }, provider: "git" });
+  } catch (error) {
+    throw new Error(normalizeOpencodeError(error).message, { cause: error });
+  }
+}
+
 /** Working-tree changes are available before an OpenCode chat is created. */
 export async function getOpencodeWorkingChanges(
   chatId: string,
@@ -2771,6 +2791,17 @@ export async function sendOpencodePrompt(
     ...preparedAttachments.files,
   ];
   const model = parseModelSelection(selection.model);
+  if (selection.agent) {
+    await client.session.switchAgent({
+      sessionID: sessionId,
+      agent: selection.agent,
+    });
+  }
+  // Match the official composer: admission commits a staged revert. Settle it
+  // first so that admission cannot delete the newly recorded model selection.
+  if (session.revert) {
+    await client.session.revert.commit({ sessionID: sessionId });
+  }
   if (model) {
     await client.session.switchModel({
       sessionID: sessionId,
@@ -2779,12 +2810,6 @@ export async function sendOpencodePrompt(
         providerID: model.providerID,
         ...(selection.variant ? { variant: selection.variant } : {}),
       },
-    });
-  }
-  if (selection.agent) {
-    await client.session.switchAgent({
-      sessionID: sessionId,
-      agent: selection.agent,
     });
   }
   await postV2Prompt(serverUrl, accessToken, password, sessionId, {
@@ -2889,6 +2914,10 @@ export async function queueOpencodePrompt(
       })),
     ...preparedAttachments.files,
   ];
+  // A queued follow-up settles the staged revert without changing active work's selection.
+  if (session.revert) {
+    await client.session.revert.commit({ sessionID: sessionId });
+  }
   return postV2Prompt(serverUrl, accessToken, password, sessionId, {
     text: [
       text,
@@ -3483,6 +3512,8 @@ async function findOpencodeSession(
     ) {
       return undefined;
     }
+    // Keep the generated error intact so query retry policies can identify it.
+    if (isOpencodeLocationNotFoundError(error)) throw error;
     throw new Error("Could not load OpenCode session", { cause: error });
   }
 }

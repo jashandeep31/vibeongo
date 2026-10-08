@@ -15,6 +15,8 @@ import {
   getOpencodeReviewProjectVcs,
   getOpencodeLastTurnChanges,
   getOpencodeWorkingChanges,
+  initializeOpencodeGit,
+  isOpencodeLocationNotFoundError,
   listOpencodeCommands,
   sendOpencodeCommand,
   getOpencodeWebSearchProviders,
@@ -84,12 +86,14 @@ export const useOpencodeReviewProjectVcs = ({
   serverUrl,
   accessToken,
   password,
+  enabled = true,
 }: {
   chatId: string;
   directory?: string;
   serverUrl: string;
   accessToken: string;
   password?: string;
+  enabled?: boolean;
 }) =>
   useQuery({
     queryKey: ["opencode", "review-project-vcs", chatId, serverUrl, directory],
@@ -101,9 +105,40 @@ export const useOpencodeReviewProjectVcs = ({
         accessToken,
         password,
       ),
-    enabled: !!directory && !!serverUrl && !!accessToken && !!password,
+    enabled: enabled && !!directory && !!serverUrl && !!accessToken && !!password,
     staleTime: 30_000,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
   });
+
+export const useInitializeOpencodeGit = ({
+  chatId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["opencode", "initialize-git", chatId, serverUrl],
+    mutationFn: (directory: string) =>
+      initializeOpencodeGit(chatId, directory, serverUrl, accessToken, password),
+    onSuccess: async (_, directory) => {
+      // Refresh the captured request's location, even if the user switched chats.
+      await queryClient.invalidateQueries({
+        predicate: ({ queryKey }) =>
+          queryKey[0] === "opencode" &&
+          queryKey.includes(chatId) &&
+          queryKey.includes(serverUrl) &&
+          (queryKey.includes(directory) || queryKey[1] === "session"),
+      });
+    },
+  });
+};
 
 export const useOpencodeWorkingChanges = ({
   chatId,
@@ -133,6 +168,8 @@ export const useOpencodeWorkingChanges = ({
     enabled:
       enabled && !!directory && !!serverUrl && !!accessToken && !!password,
     refetchOnWindowFocus: true,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
   });
 
 export const useOpencodeLastTurnChanges = ({
@@ -153,6 +190,8 @@ export const useOpencodeLastTurnChanges = ({
   useQuery({
     queryKey: ["opencode", "last-turn-changes", chatId, sessionId, serverUrl],
     refetchOnWindowFocus: false,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
     queryFn: () =>
       getOpencodeLastTurnChanges(
         chatId,
@@ -198,6 +237,8 @@ export const useOpencodeSession = ({
     true;
   const query = useQuery({
     queryKey,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
     queryFn: async () => {
       const incoming = await getOpencodeSessionRaw(
         chatId,
