@@ -156,7 +156,7 @@ function WorktreeRow({
             ) : null}
           </span>
           <span
-            className="text-muted-foreground block truncate font-mono text-xs"
+            className="text-muted-foreground block min-w-0 truncate text-left font-mono text-xs [direction:rtl]"
             title={worktree.directory}
           >
             {worktree.directory}

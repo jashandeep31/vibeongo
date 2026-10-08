@@ -39,33 +39,8 @@ export function TerminalDirectoryDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="max-h-[60vh] space-y-2 overflow-y-auto py-2">
-          {dirs.map((dir) => (
-            <DirectoryButton
-              key={dir.path}
-              description={dir.path}
-              disabled={isCreating}
-              icon={
-                dir.name === "Home" ? (
-                  <House className="size-4" />
-                ) : (
-                  <Folder className="size-4" />
-                )
-              }
-              name={dir.name}
-              onClick={() => onSelect(dir.path)}
-            />
-          ))}
-
-          {dirs.length === 0 ? (
-            <DirectoryButton
-              description="Default runtime home directory"
-              disabled={isCreating}
-              icon={<House className="size-4" />}
-              name="Home"
-              onClick={() => onSelect()}
-            />
-          ) : null}
+        <div className="max-h-[60vh] overflow-y-auto py-2">
+          <TerminalDirectoryList dirs={dirs} disabled={isCreating} onSelect={onSelect} />
         </div>
 
         <DialogFooter>
@@ -84,6 +59,40 @@ export function TerminalDirectoryDialog({
   );
 }
 
+export function TerminalDirectoryList({
+  dirs,
+  disabled,
+  onSelect,
+}: {
+  dirs: WebFavoriteDir[];
+  disabled: boolean;
+  onSelect: (workingDirectory?: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      {dirs.map((dir) => (
+        <DirectoryButton
+          key={dir.path}
+          description={dir.path}
+          disabled={disabled}
+          icon={dir.name === "Home" ? <House className="size-4" /> : <Folder className="size-4" />}
+          name={dir.name}
+          onClick={() => onSelect(dir.path)}
+        />
+      ))}
+      {dirs.length === 0 ? (
+        <DirectoryButton
+          description="Default runtime home directory"
+          disabled={disabled}
+          icon={<House className="size-4" />}
+          name="Home"
+          onClick={() => onSelect()}
+        />
+      ) : null}
+    </div>
+  );
+}
+
 function DirectoryButton({
   description,
   disabled,
@@ -99,16 +108,16 @@ function DirectoryButton({
 }) {
   return (
     <button
-      className="hover:border-primary hover:bg-muted/50 disabled:hover:border-border flex w-full min-w-0 items-center gap-3 rounded-lg border p-3 text-left transition-colors disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
+      className="hover:bg-muted/50 focus-visible:ring-ring flex w-full min-w-0 items-center gap-2.5 rounded-md p-2 text-left transition-colors focus-visible:ring-2 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-60 disabled:hover:bg-transparent"
       disabled={disabled}
       type="button"
       onClick={onClick}
     >
-      <span className="bg-muted rounded-md p-2">{icon}</span>
-      <span className="min-w-0">
+      <span className="text-muted-foreground shrink-0">{icon}</span>
+      <span className="min-w-0 flex-1">
         <span className="block truncate text-sm font-medium">{name}</span>
         <span
-          className="text-muted-foreground block truncate font-mono text-xs"
+          className="text-muted-foreground block truncate text-left font-mono text-xs [direction:rtl]"
           title={description}
         >
           {description}

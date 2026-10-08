@@ -1,11 +1,16 @@
 import type { OpencodeError } from "./opencode-types.js";
+export { isLocationNotFoundError as isOpencodeLocationNotFoundError } from "@opencode/client";
 
 const REDACTED_MESSAGE = "OpenCode could not complete this request.";
 
 export function normalizeOpencodeError(value: unknown): OpencodeError {
   const record = asRecord(value);
   const legacyData = asRecord(record.data);
-  const code = stringValue(record.type) ?? stringValue(record.name) ?? "UnknownError";
+  const code =
+    stringValue(record._tag) ??
+    stringValue(record.type) ??
+    stringValue(record.name) ??
+    "UnknownError";
   const rawMessage =
     stringValue(record.message) ?? stringValue(legacyData.message) ?? REDACTED_MESSAGE;
   const statusCode =
@@ -34,6 +39,9 @@ function getOpencodeErrorTitle(
   message: string,
 ) {
   const value = `${code} ${message}`.toLowerCase();
+  if (code === "LocationNotFoundError") return "Workspace folder not found";
+  if (code === "VcsInitNotSupportedError")
+    return "Repository initialization unavailable";
   if (
     code === "ProviderAuthError" ||
     statusCode === 401 ||

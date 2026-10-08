@@ -155,7 +155,6 @@ export const useStartOpencodeSession = () => {
       accessToken,
       password,
       directory,
-      parentID,
       text,
       files,
       attachments: directAttachments = [],
@@ -168,7 +167,6 @@ export const useStartOpencodeSession = () => {
       accessToken: string;
       password?: string;
       directory?: string;
-      parentID?: string;
       text: string;
       files: File[];
       attachments?: UploadAttachment[];
@@ -182,7 +180,6 @@ export const useStartOpencodeSession = () => {
         accessToken,
         directory,
         password,
-        parentID,
       );
       upsertSessionChat(chatId, session);
       useSessionChatsStore

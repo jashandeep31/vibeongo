@@ -8,10 +8,15 @@ import {
   editOpencodeQueuedPrompt,
   exportOpencodeSession,
   forkOpencodeSession,
+  forkOpencodeSessionThroughTurn,
+  type OpencodeForkDraft,
   getOpencodeInventory,
   getOpencodeSubagentStatus,
   getOpencodeReviewProjectVcs,
   getOpencodeLastTurnChanges,
+  getOpencodeWorkingChanges,
+  initializeOpencodeGit,
+  isOpencodeLocationNotFoundError,
   listOpencodeCommands,
   sendOpencodeCommand,
   getOpencodeWebSearchProviders,
@@ -81,12 +86,14 @@ export const useOpencodeReviewProjectVcs = ({
   serverUrl,
   accessToken,
   password,
+  enabled = true,
 }: {
   chatId: string;
   directory?: string;
   serverUrl: string;
   accessToken: string;
   password?: string;
+  enabled?: boolean;
 }) =>
   useQuery({
     queryKey: ["opencode", "review-project-vcs", chatId, serverUrl, directory],
@@ -98,8 +105,71 @@ export const useOpencodeReviewProjectVcs = ({
         accessToken,
         password,
       ),
-    enabled: !!directory && !!serverUrl && !!accessToken && !!password,
+    enabled: enabled && !!directory && !!serverUrl && !!accessToken && !!password,
     staleTime: 30_000,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
+  });
+
+export const useInitializeOpencodeGit = ({
+  chatId,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationKey: ["opencode", "initialize-git", chatId, serverUrl],
+    mutationFn: (directory: string) =>
+      initializeOpencodeGit(chatId, directory, serverUrl, accessToken, password),
+    onSuccess: async (_, directory) => {
+      // Refresh the captured request's location, even if the user switched chats.
+      await queryClient.invalidateQueries({
+        predicate: ({ queryKey }) =>
+          queryKey[0] === "opencode" &&
+          queryKey.includes(chatId) &&
+          queryKey.includes(serverUrl) &&
+          (queryKey.includes(directory) || queryKey[1] === "session"),
+      });
+    },
+  });
+};
+
+export const useOpencodeWorkingChanges = ({
+  chatId,
+  directory,
+  serverUrl,
+  accessToken,
+  password,
+  enabled = true,
+}: {
+  chatId: string;
+  directory?: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+  enabled?: boolean;
+}) =>
+  useQuery({
+    queryKey: ["opencode", "working-changes", chatId, serverUrl, directory],
+    queryFn: () =>
+      getOpencodeWorkingChanges(
+        chatId,
+        directory!,
+        serverUrl,
+        accessToken,
+        password,
+      ),
+    enabled:
+      enabled && !!directory && !!serverUrl && !!accessToken && !!password,
+    refetchOnWindowFocus: true,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
   });
 
 export const useOpencodeLastTurnChanges = ({
@@ -120,6 +190,8 @@ export const useOpencodeLastTurnChanges = ({
   useQuery({
     queryKey: ["opencode", "last-turn-changes", chatId, sessionId, serverUrl],
     refetchOnWindowFocus: false,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
     queryFn: () =>
       getOpencodeLastTurnChanges(
         chatId,
@@ -165,6 +237,8 @@ export const useOpencodeSession = ({
     true;
   const query = useQuery({
     queryKey,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
     queryFn: async () => {
       const incoming = await getOpencodeSessionRaw(
         chatId,
@@ -328,7 +402,11 @@ function dedupeOpencodeMessages(messages: OpencodeSessionData["messages"]) {
         : message,
     );
   }
-  return [...byId.values()];
+  // A resync can discover the real user prompt after its live assistant steps.
+  // Restore transcript order before projecting question/answer boundaries.
+  return [...byId.values()].sort(
+    (left, right) => left.info.time.created - right.info.time.created,
+  );
 }
 
 function dedupeOpencodeParts(
@@ -382,6 +460,7 @@ export const useSendOpencodePrompt = ({
       attachments: directAttachments = [],
       fileReferences = [],
       selection,
+      forkDraft,
     }: {
       text: string;
       displayText?: string;
@@ -389,6 +468,7 @@ export const useSendOpencodePrompt = ({
       attachments?: UploadAttachment[];
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
+      forkDraft?: OpencodeForkDraft;
     }) => {
       const fileAttachments = await Promise.all(
         files.map(toOpencodeUploadAttachment),
@@ -400,7 +480,7 @@ export const useSendOpencodePrompt = ({
         serverUrl,
         text,
       );
-      if (command) {
+      if (command && !forkDraft) {
         return sendOpencodeCommand(
           chatId,
           sessionId,
@@ -425,6 +505,7 @@ export const useSendOpencodePrompt = ({
         accessToken,
         password,
         displayText,
+        forkDraft,
       );
     },
     onError: (_error, _variables, context) => {
@@ -457,12 +538,14 @@ export const useQueueOpencodePrompt = ({
       attachments: directAttachments = [],
       fileReferences = [],
       selection,
+      forkDraft,
     }: {
       text: string;
       files: File[];
       attachments?: UploadAttachment[];
       fileReferences?: OpencodeFileReference[];
       selection: OpencodePromptSelection;
+      forkDraft?: OpencodeForkDraft;
     }) => {
       const attachments = await Promise.all(
         files.map(toOpencodeUploadAttachment),
@@ -473,7 +556,7 @@ export const useQueueOpencodePrompt = ({
         serverUrl,
         text,
       );
-      if (command) {
+      if (command && !forkDraft) {
         return sendOpencodeCommand(
           chatId,
           sessionId,
@@ -497,6 +580,7 @@ export const useQueueOpencodePrompt = ({
         serverUrl,
         accessToken,
         password,
+        forkDraft,
       );
     },
     onSuccess: () =>
@@ -993,6 +1077,41 @@ export const useForkOpencodeSession = ({
       upsertSessionChat(chatId, session);
       void queryClient.invalidateQueries({
         queryKey: ["opencode", "chat-sessions", chatId, serverUrl],
+        exact: true,
+      });
+    },
+  });
+};
+
+export const useForkOpencodeTurn = (connection: {
+  chatId: string;
+  sessionId: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (messageId: string) =>
+      forkOpencodeSessionThroughTurn(
+        connection.chatId,
+        connection.sessionId,
+        messageId,
+        connection.serverUrl,
+        connection.accessToken,
+        connection.password,
+      ),
+    onSuccess: ({ session }) => {
+      useSessionChatsStore
+        .getState()
+        .upsertSessionChat(connection.chatId, session);
+      void queryClient.invalidateQueries({
+        queryKey: [
+          "opencode",
+          "chat-sessions",
+          connection.chatId,
+          connection.serverUrl,
+        ],
         exact: true,
       });
     },

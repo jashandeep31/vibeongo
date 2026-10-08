@@ -4,7 +4,6 @@ import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import { OpencodeReviewPanel } from "@/components/chat/opencode-review-panel";
 import {
   useGetInstances,
-  useOpencodeInventory,
   useOpencodeLastTurnChanges,
   useOpencodeReviewProjectVcs,
   useOpencodeSession,
@@ -118,12 +117,6 @@ export default function OpencodeReviewPage() {
   };
   const refreshingChanges =
     isFetching || (reviewMode === "last-turn" && lastTurnQuery.isFetching);
-  const inventoryQuery = useOpencodeInventory(
-    projectSessionId,
-    serverUrl,
-    accessToken,
-    password,
-  );
   const chatUrl = `/projects/${projectId}/sessions/${projectSessionId}/chats/${opencodeSessionId}`;
 
   if (isInstancePending || isPending) return <ReviewSkeleton />;
@@ -159,7 +152,7 @@ export default function OpencodeReviewPage() {
   }
 
   return (
-    <div className="bg-background text-foreground relative flex h-svh min-h-0 flex-col pt-14">
+    <div className="bg-background text-foreground relative flex h-svh min-h-0 flex-col">
       <OpencodeChatTopBar
         projectId={projectId}
         projectSessionId={projectSessionId}
@@ -169,13 +162,12 @@ export default function OpencodeReviewPage() {
         password={password}
         directory={data.session.directory}
         session={data}
-        inventory={inventoryQuery.data}
         isRefreshing={refreshingChanges}
         onRefresh={refreshChanges}
-        reviewActive
       />
       <main className="min-h-0 flex-1">
         <OpencodeReviewPanel
+          gitConnection={{ chatId: projectSessionId, directory: data.session.directory, serverUrl, accessToken, password }}
           changes={
             reviewMode === "last-turn"
               ? (lastTurnQuery.data ?? [])
@@ -208,7 +200,7 @@ function ReviewSkeleton() {
         </div>
       </div>
       <div className="flex min-h-0 flex-1 gap-4 pt-4">
-        <Skeleton className="hidden h-full w-64 md:block" />
+        <Skeleton className="hidden h-full w-72 md:block" />
         <Skeleton className="h-full flex-1" />
       </div>
     </div>

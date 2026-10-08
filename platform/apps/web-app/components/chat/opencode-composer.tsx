@@ -1,6 +1,10 @@
 "use client";
 
 import {
+  readComposerDraft,
+  saveComposerDraft,
+} from "@/lib/opencode-composer-drafts";
+import {
   OpencodeProviderConnectDialog,
   type OpencodeWebProviderConnection,
 } from "@/components/chat/opencode-provider-connect-dialog";
@@ -9,6 +13,7 @@ import {
   getActiveOpencodeSlashCommand,
   type OpencodeCommand,
   type OpencodeFileReference,
+  type OpencodeForkDraft,
   type OpencodeInventory,
   type OpencodePromptSelection,
 } from "@repo/api-client";
@@ -65,7 +70,9 @@ type OpencodeComposerProps = {
     question: string,
     attachments: File[],
     fileReferences: OpencodeFileReference[],
-  ) => void;
+    forkDraft?: OpencodeForkDraft,
+  ) => void | Promise<unknown>;
+  draftKey?: string;
   disabled?: boolean;
   submitDisabled?: boolean;
   isStreaming?: boolean;
@@ -104,6 +111,7 @@ function getActiveFileMention(value: string, cursor: number) {
 
 export function OpencodeComposer({
   onSubmit,
+  draftKey,
   disabled = false,
   submitDisabled = false,
   isStreaming = false,
@@ -123,8 +131,15 @@ export function OpencodeComposer({
   onNewChat,
   actions,
 }: OpencodeComposerProps) {
-  const [hasQuestion, setHasQuestion] = useState(false);
-  const [attachments, setAttachments] = useState<LocalAttachment[]>([]);
+  const [restored] = useState(() =>
+    draftKey ? readComposerDraft(draftKey) : undefined,
+  );
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [forkDraft, setForkDraft] = useState(restored?.forkDraft);
+  const [hasQuestion, setHasQuestion] = useState(Boolean(restored?.text));
+  const [attachments, setAttachments] = useState<LocalAttachment[]>(() =>
+    (restored?.files ?? []).map((file) => ({ id: crypto.randomUUID(), file })),
+  );
   const [isModelPickerOpen, setIsModelPickerOpen] = useState(false);
   const [isVariantPickerOpen, setIsVariantPickerOpen] = useState(false);
   const [isAgentPickerOpen, setIsAgentPickerOpen] = useState(false);
@@ -132,7 +147,7 @@ export function OpencodeComposer({
   const [activeFileMention, setActiveFileMention] =
     useState<ActiveFileMention | null>(null);
   const [fileReferences, setFileReferences] = useState<OpencodeFileReference[]>(
-    [],
+    restored?.fileReferences ?? [],
   );
   const [fileSuggestions, setFileSuggestions] = useState<string[]>([]);
   const [isSearchingFiles, setIsSearchingFiles] = useState(false);
@@ -147,7 +162,48 @@ export function OpencodeComposer({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const isSubmitDisabled =
-    disabled || submitDisabled || (!hasQuestion && attachments.length === 0);
+    disabled ||
+    isSubmitting ||
+    submitDisabled ||
+    (!hasQuestion &&
+      attachments.length === 0 &&
+      !forkDraft?.files.length &&
+      !forkDraft?.attachments.length);
+  const draftStateRef = useRef({
+    attachments,
+    fileReferences,
+    forkDraft,
+    selection,
+  });
+  useEffect(() => {
+    draftStateRef.current = {
+      attachments,
+      fileReferences,
+      forkDraft,
+      selection,
+    };
+  }, [attachments, fileReferences, forkDraft, selection]);
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    return () => {
+      if (!draftKey) return;
+      const state = draftStateRef.current;
+      saveComposerDraft(draftKey, {
+        text: textarea?.value ?? "",
+        files: state.attachments.map((item) => item.file),
+        fileReferences: state.fileReferences,
+        forkDraft: state.forkDraft,
+        selection: state.selection,
+      });
+    };
+  }, [draftKey]);
+  useEffect(() => {
+    if (!restored || !textareaRef.current) return;
+    const textarea = textareaRef.current;
+    textarea.style.height = "auto";
+    textarea.style.height = `${Math.min(textarea.scrollHeight, 240)}px`;
+    textarea.focus();
+  }, [restored]);
   const selectedModel = inventory?.models.find(
     (model) => model.id === selection.model,
   );
@@ -285,32 +341,54 @@ export function OpencodeComposer({
     };
   }, [activeFileQuery, searchFiles]);
 
-  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (isSubmitDisabled) return;
 
     const trimmedQuestion = textareaRef.current?.value.trim() ?? "";
-    onSubmit(
-      trimmedQuestion,
-      attachments.map((attachment) => attachment.file),
-      fileReferences.filter((reference) =>
-        trimmedQuestion.includes(reference.mention),
-      ),
-    );
-    if (textareaRef.current) {
-      textareaRef.current.value = "";
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.overflowY = "hidden";
+    setIsSubmitting(true);
+    try {
+      await onSubmit(
+        trimmedQuestion,
+        attachments.map((attachment) => attachment.file),
+        fileReferences.filter((reference) =>
+          trimmedQuestion.includes(reference.mention),
+        ),
+        forkDraft,
+      );
+      if (textareaRef.current) {
+        textareaRef.current.value = "";
+        textareaRef.current.style.height = "auto";
+        textareaRef.current.style.overflowY = "hidden";
+      }
+      draftStateRef.current = {
+        attachments: [],
+        fileReferences: [],
+        forkDraft: undefined,
+        selection,
+      };
+      setHasQuestion(false);
+      setForkDraft(undefined);
+      if (draftKey)
+        saveComposerDraft(draftKey, {
+          text: "",
+          files: [],
+          fileReferences: [],
+          selection,
+        });
+      setActiveFileMention(null);
+      setActiveSlashCommand(null);
+      setFileReferences([]);
+      attachments.forEach((attachment) => {
+        if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
+      });
+      setAttachments([]);
+      onSubmitSuccess?.();
+    } catch {
+      // The caller reports the error. Keep this draft and its attachments for retry.
+    } finally {
+      setIsSubmitting(false);
     }
-    setHasQuestion(false);
-    setActiveFileMention(null);
-    setActiveSlashCommand(null);
-    setFileReferences([]);
-    attachments.forEach((attachment) => {
-      if (attachment.previewUrl) URL.revokeObjectURL(attachment.previewUrl);
-    });
-    setAttachments([]);
-    onSubmitSuccess?.();
   };
 
   const addAttachments = (files: File[]) => {
@@ -507,6 +585,8 @@ export function OpencodeComposer({
     <form
       ref={formRef}
       onSubmit={handleSubmit}
+      inert={isSubmitting}
+      aria-busy={isSubmitting}
       onDragOver={(event) => {
         event.preventDefault();
         if (!disabled) setIsDraggingAttachment(true);
@@ -520,6 +600,70 @@ export function OpencodeComposer({
         isDraggingAttachment ? "ring-primary/50 ring-2" : ""
       }`}
     >
+      {forkDraft && (
+        <div className="flex flex-wrap gap-2 px-1">
+          {forkDraft.files.map((file, index) => (
+            <div
+              key={`remote-${index}`}
+              className="bg-muted flex max-w-full items-center gap-2 rounded-md border px-2 py-1 text-xs"
+            >
+              <File className="size-3.5 shrink-0" />
+              <span className="truncate" title={file.name ?? file.source?.text}>
+                {file.name || file.source?.text || "Attached file"}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${file.name || "attached file"}`}
+                onClick={() =>
+                  setForkDraft({
+                    ...forkDraft,
+                    files: forkDraft.files.filter((_, i) => i !== index),
+                  })
+                }
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+          {forkDraft.attachments.map((file, index) => (
+            <div
+              key={`uploaded-${index}`}
+              className="bg-muted flex max-w-full items-center gap-2 rounded-md border px-2 py-1 text-xs"
+            >
+              <File className="size-3.5 shrink-0" />
+              <span className="truncate" title={file.name}>
+                {file.name}
+              </span>
+              <button
+                type="button"
+                aria-label={`Remove ${file.name}`}
+                onClick={() =>
+                  setForkDraft({
+                    ...forkDraft,
+                    attachments: forkDraft.attachments.filter(
+                      (_, i) => i !== index,
+                    ),
+                  })
+                }
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          ))}
+          {forkDraft.comments.length > 0 && (
+            <div className="bg-muted flex items-center gap-2 rounded-md border px-2 py-1 text-xs">
+              {forkDraft.comments.length} context comments
+              <button
+                type="button"
+                aria-label="Remove restored comments"
+                onClick={() => setForkDraft({ ...forkDraft, comments: [] })}
+              >
+                <X className="size-3.5" />
+              </button>
+            </div>
+          )}
+        </div>
+      )}
       {attachments.length > 0 ? (
         <div className="flex flex-wrap gap-3 px-1">
           {attachments.map((attachment) => (
@@ -534,7 +678,10 @@ export function OpencodeComposer({
               ) : (
                 <div className="bg-muted flex h-20 w-36 items-center gap-2 rounded-xl border px-3 text-sm">
                   <File className="text-muted-foreground size-5 shrink-0" />
-                  <span className="min-w-0 truncate" title={attachment.file.name}>
+                  <span
+                    className="min-w-0 truncate"
+                    title={attachment.file.name}
+                  >
                     {attachment.file.name}
                   </span>
                 </div>
@@ -814,7 +961,7 @@ export function OpencodeComposer({
                 onClick={() => chooseFile(path)}
               >
                 <File className="text-muted-foreground size-4 shrink-0" />
-                <span className="min-w-0 truncate font-mono text-xs [direction:rtl]">
+                <span className="min-w-0 truncate text-left font-mono text-xs [direction:rtl]">
                   {path}
                 </span>
               </button>
@@ -842,6 +989,7 @@ export function OpencodeComposer({
         <div className="bg-card focus-within:border-foreground/20 flex min-w-0 flex-1 items-end overflow-hidden rounded-[28px] border py-1.5 pr-1.5 pl-1 shadow-[0_12px_40px_rgba(0,0,0,0.08)] transition-colors">
           <textarea
             ref={textareaRef}
+            defaultValue={restored?.text}
             rows={1}
             aria-label="Write an AI message"
             placeholder="Work on anything"

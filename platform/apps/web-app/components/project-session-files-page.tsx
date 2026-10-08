@@ -3,8 +3,6 @@
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
   getRuntimeChildPath,
-  getRuntimeFileBreadcrumbs,
-  getRuntimeParentPath,
   isEditableRuntimeContentType,
   sortRuntimeFileEntries,
   type RuntimeFileEntry,
@@ -15,14 +13,15 @@ import {
   useGetInstances,
   useRuntimeDirectory,
   useRuntimeFile,
-  useRuntimeFileSearch,
   useUpdateRuntimeFile,
   useUploadRuntimeFile,
   type RuntimeFilesConnection,
 } from "@repo/api-hooks";
 import { useSessionsStore } from "@repo/app-store";
-import { Badge } from "@repo/ui/components/badge";
+import { RuntimeFilePreview } from "@/components/runtime-file-preview";
+import { RuntimeFileBrowser } from "@/components/runtime-file-tree";
 import { Button } from "@repo/ui/components/button";
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@repo/ui/components/resizable";
 import {
   Dialog,
   DialogClose,
@@ -33,28 +32,18 @@ import {
   DialogTitle,
 } from "@repo/ui/components/dialog";
 import { Input } from "@repo/ui/components/input";
-import { Textarea } from "@repo/ui/components/textarea";
 import {
   ArrowLeft,
-  Check,
-  ChevronRight,
-  Copy,
-  Ellipsis,
-  File,
-  FileCode2,
-  Folder,
   Loader2,
   Plus,
   RefreshCw,
-  Save,
-  Search,
-  Trash2,
   TriangleAlert,
   Upload,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import {
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -81,27 +70,57 @@ type ProjectSessionFilesPageProps = {
   projectId: string;
   projectSessionId: string;
   sessionId?: string;
+  isActive?: boolean;
 };
 
 export function ProjectSessionFilesPage(props: ProjectSessionFilesPageProps) {
   return <ProjectSessionFilesContent {...props} />;
 }
 
+export const ProjectSessionFilesPanel = memo(function ProjectSessionFilesPanel({
+  onClose,
+  onDirtyChange,
+  ...props
+}: ProjectSessionFilesPageProps & {
+  onClose: () => void;
+  onDirtyChange: (dirty: boolean) => void;
+}) {
+  return (
+    <ProjectSessionFilesContent
+      {...props}
+      mode="panel"
+      onClose={onClose}
+      onDirtyChange={onDirtyChange}
+    />
+  );
+});
+
 function ProjectSessionFilesContent({
   projectId,
   projectSessionId,
   sessionId,
-}: ProjectSessionFilesPageProps) {
+  mode = "page",
+  isActive = true,
+  onClose,
+  onDirtyChange,
+}: ProjectSessionFilesPageProps & {
+  mode?: "page" | "panel";
+  onClose?: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
   const [requestedDirectoryPath, setRequestedDirectoryPath] = useState<
     string | undefined
   >();
-  const [searchInput, setSearchInput] = useState("");
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedFile, setSelectedFile] = useState<RuntimeFileEntry | null>(
     null,
   );
   const [fileContent, setFileContent] = useState("");
-  const [savedFileContent, setSavedFileContent] = useState("");
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const fileDraftRef = useRef("");
+  const savedFileContentRef = useRef("");
+  const dirtyRef = useRef(false);
+  const selectionVersionRef = useRef(0);
+  const selectedPathRef = useRef<string | null>(null);
   const [fileContentType, setFileContentType] = useState("");
   const [openingDirectoryPath, setOpeningDirectoryPath] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -120,7 +139,7 @@ function ProjectSessionFilesContent({
   );
   const instancesQuery = useGetInstances(
     { sessionId: projectSessionId, state: "running", limit: 1 },
-    !storedInstance,
+    isActive && !storedInstance,
   );
   const instance = storedInstance ?? instancesQuery.data?.data[0];
   const connection = useMemo<RuntimeFilesConnection>(
@@ -143,22 +162,17 @@ function ProjectSessionFilesContent({
   const directoryQuery = useRuntimeDirectory(
     connection,
     requestedDirectoryPath,
+    isActive,
   );
   const directory = directoryQuery.data ?? null;
-  const searchQueryResult = useRuntimeFileSearch(
-    connection,
-    searchQuery,
-    directory?.path,
-  );
-  const fileQuery = useRuntimeFile(connection, selectedFile?.path);
+  const refetchDirectory = directoryQuery.refetch;
+  const fileQuery = useRuntimeFile(connection, selectedFile?.path, isActive);
   const createEntryMutation = useCreateRuntimeFileEntry(connection);
-  const updateFileMutation = useUpdateRuntimeFile(connection);
+  const { mutateAsync: updateFile, isPending: isSaving } = useUpdateRuntimeFile(connection);
   const uploadFileMutation = useUploadRuntimeFile(connection);
   const deleteEntryMutation = useDeleteRuntimeFileEntry(connection);
   const isDirectoryLoading = directoryQuery.isFetching;
-  const isSearchLoading = searchQueryResult.isFetching;
-  const isFileLoading = fileQuery.isFetching;
-  const isSaving = updateFileMutation.isPending;
+  const isFileLoading = Boolean(selectedFile) && fileQuery.isPending;
   const isUploading = uploadFileMutation.isPending;
   const isCreating = createEntryMutation.isPending;
   const deletingPath = deleteEntryMutation.isPending
@@ -168,24 +182,39 @@ function ProjectSessionFilesContent({
   const chatUrl = sessionId
     ? `${projectChatUrl}/chats/${sessionId}`
     : projectChatUrl;
-  const hasUnsavedChanges =
-    Boolean(selectedFile) && fileContent !== savedFileContent;
+  const updateDirty = useCallback((dirty: boolean) => {
+    if (dirtyRef.current === dirty) return;
+    dirtyRef.current = dirty;
+    setHasUnsavedChanges(dirty);
+  }, []);
+  const changeFileContent = useCallback((content: string) => {
+    fileDraftRef.current = content;
+    updateDirty(content !== savedFileContentRef.current);
+  }, [updateDirty]);
+  useEffect(
+    () => onDirtyChange?.(hasUnsavedChanges),
+    [hasUnsavedChanges, onDirtyChange],
+  );
   const isImage = fileContentType.startsWith("image/");
   const canEdit = Boolean(
     selectedFile && isEditableRuntimeContentType(fileContentType),
   );
 
   const clearSelection = useCallback(() => {
+    selectionVersionRef.current += 1;
+    selectedPathRef.current = null;
     setSelectedFile(null);
     setFileContent("");
-    setSavedFileContent("");
+    fileDraftRef.current = "";
+    savedFileContentRef.current = "";
+    updateDirty(false);
     setFileContentType("");
-  }, []);
+  }, [updateDirty]);
 
   const confirmDiscard = useCallback(() => {
-    if (!hasUnsavedChanges) return true;
+    if (!dirtyRef.current) return true;
     return window.confirm("Discard your unsaved file changes?");
-  }, [hasUnsavedChanges]);
+  }, []);
 
   useEffect(() => {
     const path = directoryQuery.data?.path;
@@ -207,36 +236,26 @@ function ProjectSessionFilesContent({
   }, [directoryQuery.isFetching]);
 
   useEffect(() => {
-    const timeout = window.setTimeout(
-      () => setSearchQuery(searchInput.trim()),
-      300,
-    );
-    return () => window.clearTimeout(timeout);
-  }, [searchInput]);
-
-  useEffect(() => {
     if (directoryQuery.error) setError(directoryQuery.error.message);
   }, [directoryQuery.error]);
 
   useEffect(() => {
-    if (searchQueryResult.error) setError(searchQueryResult.error.message);
-  }, [searchQueryResult.error]);
-
-  useEffect(() => {
     const result = fileQuery.data;
-    if (!result || !selectedFile || hasUnsavedChanges) return;
+    if (!result || !selectedFile || dirtyRef.current) return;
 
     const contentType = result.contentType || "application/octet-stream";
     setFileContentType(contentType);
     if (isEditableRuntimeContentType(contentType)) {
       const decoded = decodeContent(result.content);
       setFileContent(decoded);
-      setSavedFileContent(decoded);
+      fileDraftRef.current = decoded;
+      savedFileContentRef.current = decoded;
     } else {
       setFileContent(result.content);
-      setSavedFileContent(result.content);
+      fileDraftRef.current = result.content;
+      savedFileContentRef.current = result.content;
     }
-  }, [fileQuery.data, hasUnsavedChanges, selectedFile]);
+  }, [fileQuery.data, selectedFile]);
 
   useEffect(() => {
     if (fileQuery.error) setError(fileQuery.error.message);
@@ -250,40 +269,43 @@ function ProjectSessionFilesContent({
     return () => window.removeEventListener("beforeunload", warnBeforeUnload);
   }, [hasUnsavedChanges]);
 
-  const openDirectory = (path: string) => {
+  const openDirectory = useCallback((path: string) => {
     if (!confirmDiscard()) return;
 
-    setSearchInput("");
-    setSearchQuery("");
     setError("");
     setOpeningDirectoryPath(path);
     if (requestedDirectoryPath === path) {
-      void directoryQuery.refetch();
+      void refetchDirectory();
     } else {
       setRequestedDirectoryPath(path);
     }
-  };
+  }, [confirmDiscard, requestedDirectoryPath, refetchDirectory]);
 
-  const openFile = (entry: RuntimeFileEntry) => {
+  const openFile = useCallback((entry: RuntimeFileEntry) => {
+    if (selectedPathRef.current === entry.path) return;
     if (!confirmDiscard()) return;
 
     setError("");
+    clearSelection();
+    selectedPathRef.current = entry.path;
     setSelectedFile(entry);
-    setFileContent("");
-    setSavedFileContent("");
-    setFileContentType("");
-  };
+  }, [clearSelection, confirmDiscard]);
 
   const saveFile = useCallback(async () => {
-    if (!selectedFile || !canEdit || !hasUnsavedChanges || isSaving) return;
+    if (!selectedFile || !canEdit || !dirtyRef.current || isSaving) return;
 
     setError("");
+    const submittedContent = fileDraftRef.current;
+    const selectionVersion = selectionVersionRef.current;
     try {
-      await updateFileMutation.mutateAsync({
+      await updateFile({
         path: selectedFile.path,
-        content: fileContent,
+        content: submittedContent,
       });
-      setSavedFileContent(fileContent);
+      if (selectionVersionRef.current === selectionVersion) {
+        savedFileContentRef.current = submittedContent;
+        updateDirty(fileDraftRef.current !== submittedContent);
+      }
       toast.success(`${selectedFile.name} saved`);
     } catch (requestError) {
       const message =
@@ -295,14 +317,14 @@ function ProjectSessionFilesContent({
     }
   }, [
     canEdit,
-    fileContent,
-    hasUnsavedChanges,
     isSaving,
     selectedFile,
-    updateFileMutation,
+    updateFile,
+    updateDirty,
   ]);
 
   useEffect(() => {
+    if (!isActive || !canEdit) return;
     const saveWithKeyboard = (event: KeyboardEvent) => {
       if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
@@ -311,7 +333,7 @@ function ProjectSessionFilesContent({
     };
     window.addEventListener("keydown", saveWithKeyboard);
     return () => window.removeEventListener("keydown", saveWithKeyboard);
-  }, [saveFile]);
+  }, [isActive, canEdit, saveFile]);
 
   const createEntry = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -376,155 +398,26 @@ function ProjectSessionFilesContent({
     }
   };
 
-  const copyContent = async () => {
+  const copyContent = useCallback(async () => {
     if (!canEdit) return;
-    await navigator.clipboard.writeText(fileContent);
+    await navigator.clipboard.writeText(fileDraftRef.current);
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1_500);
-  };
+  }, [canEdit]);
 
   const sortedEntries = useMemo(
     () => sortRuntimeFileEntries(directory?.entries ?? []),
     [directory?.entries],
   );
-  const visibleEntries = searchQuery
-    ? (searchQueryResult.data?.entries ?? [])
-    : sortedEntries;
-
-  const breadcrumbs = useMemo(
-    () => getRuntimeFileBreadcrumbs(directory?.path),
-    [directory?.path],
-  );
-
-  const directoryPanel = (
-    <div className="flex h-full min-h-0 flex-col">
-      <div className="flex h-10 shrink-0 items-center gap-0.5 overflow-x-auto border-b px-2">
-        <button
-          type="button"
-          className="hover:bg-muted mr-1 rounded-md p-1.5 disabled:opacity-40"
-          aria-label="Go back one folder"
-          title="Go back one folder"
-          disabled={isDirectoryLoading || directory?.path === "/"}
-          onClick={() =>
-            openDirectory(getRuntimeParentPath(directory?.path ?? "/"))
-          }
-        >
-          {openingDirectoryPath ===
-          getRuntimeParentPath(directory?.path ?? "/") ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            <ArrowLeft className="size-4" />
-          )}
-        </button>
-        {breadcrumbs.length > 3 ? (
-          <div className="text-muted-foreground flex shrink-0 items-center">
-            <ChevronRight className="size-3" />
-            <Ellipsis
-              className="mx-1 size-4"
-              aria-label="Earlier folders hidden"
-            />
-          </div>
-        ) : null}
-        {breadcrumbs.slice(-3).map((part) => (
-          <div key={part.path} className="flex shrink-0 items-center">
-            <ChevronRight className="text-muted-foreground size-3" />
-            <button
-              type="button"
-              className="hover:bg-muted rounded-md px-1.5 py-1 font-mono text-xs"
-              disabled={isDirectoryLoading}
-              onClick={() => openDirectory(part.path)}
-            >
-              {openingDirectoryPath === part.path ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                part.label
-              )}
-            </button>
-          </div>
-        ))}
-      </div>
-
-      <div className="min-h-0 flex-1 overflow-y-auto p-2">
-        {isDirectoryLoading && !directory ? (
-          <div className="text-muted-foreground flex h-full items-center justify-center gap-2 text-sm">
-            <Loader2 className="size-4 animate-spin" /> Loading…
-          </div>
-        ) : (
-          <div className="space-y-0.5">
-            {visibleEntries.map((entry) => {
-              const selected = selectedFile?.path === entry.path;
-              const deleting = deletingPath === entry.path;
-              const opening = openingDirectoryPath === entry.path;
-              return (
-                <div
-                  key={entry.path}
-                  className={`group flex items-center rounded-md transition-colors ${
-                    selected ? "bg-muted" : "hover:bg-muted/70"
-                  }`}
-                >
-                  <button
-                    type="button"
-                    className="flex min-w-0 flex-1 items-center gap-2 px-2 py-1.5 text-left text-sm"
-                    disabled={isDirectoryLoading}
-                    onClick={() =>
-                      entry.type === "directory"
-                        ? openDirectory(entry.path)
-                        : openFile(entry)
-                    }
-                  >
-                    {entry.type === "directory" ? (
-                      opening ? (
-                        <Loader2 className="size-4 shrink-0 animate-spin text-amber-500" />
-                      ) : (
-                        <Folder className="size-4 shrink-0 text-amber-500" />
-                      )
-                    ) : (
-                      <File className="text-muted-foreground size-4 shrink-0" />
-                    )}
-                    <span
-                      className={`truncate font-mono text-xs ${
-                        searchQuery ? "text-left [direction:rtl]" : ""
-                      }`}
-                      title={searchQuery ? entry.path : undefined}
-                    >
-                      {searchQuery && directory
-                        ? entry.path.replace(`${directory.path}/`, "")
-                        : entry.name}
-                    </span>
-                  </button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-xs"
-                    className="text-muted-foreground hover:text-destructive mr-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 md:focus-visible:opacity-100"
-                    disabled={Boolean(deletingPath)}
-                    aria-label={`Delete ${entry.name}`}
-                    onClick={() => setDeleteCandidate(entry)}
-                  >
-                    {deleting ? (
-                      <Loader2 className="animate-spin" />
-                    ) : (
-                      <Trash2 />
-                    )}
-                  </Button>
-                </div>
-              );
-            })}
-            {!isDirectoryLoading &&
-            !isSearchLoading &&
-            visibleEntries.length === 0 ? (
-              <p className="text-muted-foreground px-3 py-10 text-center text-sm">
-                {searchQuery ? "No files found." : "This folder is empty."}
-              </p>
-            ) : null}
-          </div>
-        )}
-      </div>
-    </div>
-  );
 
   if (!instance && instancesQuery.isPending) {
-    return <FilesPageState loading message="Connecting to runtime files…" />;
+    return (
+      <FilesPageState
+        loading
+        message="Connecting to runtime files…"
+        onClose={onClose}
+      />
+    );
   }
 
   if (!instance || !isConnected) {
@@ -537,52 +430,28 @@ function ProjectSessionFilesContent({
               ? "Resume this project session to manage its files."
               : "Runtime credentials are unavailable."
         }
-        chatUrl={chatUrl}
+        chatUrl={onClose ? undefined : chatUrl}
+        onClose={onClose}
       />
     );
   }
 
   return (
     <>
-      <div className="bg-background text-foreground flex h-svh min-h-0 w-full flex-col">
-        <div
-          className={`${selectedFile ? "hidden" : "flex"} shrink-0 flex-col gap-2 border-b px-4 py-2 md:flex md:flex-row md:items-center md:px-6`}
-        >
-          <div className="flex min-w-0 flex-1 items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              {isSearchLoading ? (
-                <Loader2 className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2 animate-spin" />
-              ) : (
-                <Search className="text-muted-foreground absolute top-1/2 left-2.5 size-4 -translate-y-1/2" />
-              )}
-              <Input
-                className="h-8 pr-8 pl-8 text-sm"
-                aria-label="Search files"
-                placeholder="Search files…"
-                spellCheck={false}
-                value={searchInput}
-                onChange={(event) => setSearchInput(event.target.value)}
-              />
-              {searchInput ? (
-                <button
-                  type="button"
-                  className="text-muted-foreground hover:text-foreground absolute top-1/2 right-2 -translate-y-1/2 rounded-sm p-0.5"
-                  aria-label="Clear file search"
-                  onClick={() => {
-                    setSearchInput("");
-                    setSearchQuery("");
-                  }}
-                >
-                  <X className="size-4" />
-                </button>
-              ) : null}
-            </div>
-          </div>
-          <div className="flex items-center gap-1.5">
+      <div
+        className={`bg-background text-foreground flex ${mode === "panel" ? "h-full" : "h-svh"} min-h-0 w-full flex-col`}
+      >
+        <header className="flex h-10 shrink-0 items-center gap-2 border-b px-2">
+          <h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={directory?.path}>
+            Files
+          </h2>
+          <div className="flex shrink-0 items-center gap-0.5">
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Refresh files"
+              title="Refresh files"
               disabled={!directory || isDirectoryLoading}
               onClick={() => {
                 if (!confirmDiscard()) return;
@@ -592,16 +461,17 @@ function ProjectSessionFilesContent({
               }}
             >
               <RefreshCw className={isDirectoryLoading ? "animate-spin" : ""} />
-              Refresh
             </Button>
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="New file or folder"
+              title="New file or folder"
               disabled={!directory}
               onClick={() => setIsCreateDialogOpen(true)}
             >
-              <Plus /> New
+              <Plus />
             </Button>
             <input
               ref={fileInputRef}
@@ -614,16 +484,33 @@ function ProjectSessionFilesContent({
             />
             <Button
               type="button"
-              variant="outline"
-              size="sm"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Upload file"
+              title="Upload file"
               disabled={!directory || isUploading}
               onClick={() => fileInputRef.current?.click()}
             >
               {isUploading ? <Loader2 className="animate-spin" /> : <Upload />}
-              Upload
             </Button>
+            {onClose ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label="Close file browser"
+                title="Close file browser"
+                onClick={() => {
+                  if (!confirmDiscard()) return;
+                  if (hasUnsavedChanges) clearSelection();
+                  onClose();
+                }}
+              >
+                <X />
+              </Button>
+            ) : null}
           </div>
-        </div>
+        </header>
 
         {error ? (
           <div className="border-destructive/30 bg-destructive/5 text-destructive mx-4 mt-3 flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 text-sm md:mx-6">
@@ -635,144 +522,44 @@ function ProjectSessionFilesContent({
           </div>
         ) : null}
 
-        <main className="grid min-h-0 flex-1 grid-cols-1 grid-rows-1 md:grid-cols-[20rem_minmax(0,1fr)]">
-          <aside
-            className={`bg-muted/10 min-h-0 flex-col overflow-hidden border-r ${
-              selectedFile ? "hidden md:flex" : "flex"
-            }`}
-          >
-            {directoryPanel}
+        <main className="flex min-h-0 flex-1">
+          <ResizablePanelGroup orientation="horizontal">
+          <ResizablePanel id="file-tree" defaultSize={mode === "panel" ? "40%" : "30%"} minSize="96px" maxSize="70%">
+          <aside className="bg-muted/10 flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+            <RuntimeFileBrowser
+              key={directory?.path ?? "/"}
+              connection={connection}
+              isActive={isActive}
+              path={directory?.path ?? "/"}
+              entries={sortedEntries}
+              selectedPath={selectedFile?.path}
+              isLoading={isDirectoryLoading}
+              openingPath={openingDirectoryPath}
+              deletingPath={deletingPath}
+              onNavigate={openDirectory}
+              onSelect={openFile}
+              onDelete={setDeleteCandidate}
+            />
           </aside>
-
-          <section
-            className={`min-h-0 min-w-0 flex-col overflow-hidden ${
-              selectedFile ? "flex" : "hidden md:flex"
-            }`}
-          >
-            {selectedFile ? (
-              <div className="flex h-12 shrink-0 items-center gap-2 border-b px-2 md:hidden">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Back to files"
-                  onClick={() => {
-                    if (!confirmDiscard()) return;
-                    clearSelection();
-                  }}
-                >
-                  <ArrowLeft />
-                </Button>
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">
-                  {selectedFile.name}
-                </span>
-                {hasUnsavedChanges ? (
-                  <span
-                    className="size-2 shrink-0 rounded-full bg-amber-500"
-                    title="Unsaved changes"
-                  />
-                ) : null}
-              </div>
-            ) : null}
-            <div className="flex h-10 shrink-0 items-center justify-between gap-2 border-b px-3">
-              <div className="flex min-w-0 items-center gap-2">
-                <FileCode2 className="text-muted-foreground size-4 shrink-0" />
-                <span className="truncate font-mono text-xs">
-                  {selectedFile?.path ?? "Select a file"}
-                </span>
-                {hasUnsavedChanges ? (
-                  <span
-                    className="hidden size-2 shrink-0 rounded-full bg-amber-500 md:block"
-                    title="Unsaved changes"
-                  />
-                ) : null}
-                {fileContentType ? (
-                  <Badge
-                    variant="secondary"
-                    className="hidden font-mono md:flex"
-                  >
-                    {fileContentType}
-                  </Badge>
-                ) : null}
-              </div>
-              {selectedFile ? (
-                <div className="flex shrink-0 items-center gap-1">
-                  {canEdit ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      disabled={!hasUnsavedChanges || isSaving}
-                      onClick={() => void saveFile()}
-                    >
-                      {isSaving ? (
-                        <Loader2 className="animate-spin" />
-                      ) : (
-                        <Save />
-                      )}
-                      Save
-                    </Button>
-                  ) : null}
-                  {canEdit ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => void copyContent()}
-                    >
-                      {copied ? <Check /> : <Copy />}
-                      {copied ? "Copied" : "Copy"}
-                    </Button>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-
-            <div className="min-h-0 flex-1 overflow-auto bg-zinc-950 text-zinc-100">
-              {isFileLoading ? (
-                <div className="flex h-full items-center justify-center gap-2 text-sm text-zinc-400">
-                  <Loader2 className="size-4 animate-spin" /> Loading file…
-                </div>
-              ) : selectedFile && canEdit ? (
-                <Textarea
-                  aria-label={`Contents of ${selectedFile.name}`}
-                  className="field-sizing-fixed h-full min-h-full resize-none rounded-none border-0 bg-transparent p-4 font-mono text-xs leading-5 text-zinc-100 focus-visible:border-0 focus-visible:ring-0 dark:bg-transparent"
-                  spellCheck={false}
-                  value={fileContent}
-                  onChange={(event) => setFileContent(event.target.value)}
-                />
-              ) : selectedFile && isImage ? (
-                <div className="flex min-h-full items-center justify-center p-6">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={`data:${fileContentType};base64,${fileContent}`}
-                    alt={selectedFile.name}
-                    className="max-h-full max-w-full object-contain"
-                  />
-                </div>
-              ) : selectedFile ? (
-                <div className="flex h-full flex-col items-center justify-center p-6 text-center text-zinc-400">
-                  <File className="mb-3 size-8" />
-                  <p className="text-sm font-medium text-zinc-200">
-                    Preview unavailable
-                  </p>
-                  <p className="mt-1 max-w-sm text-xs">
-                    This file type cannot be safely edited in the browser.
-                  </p>
-                </div>
-              ) : (
-                <div className="flex h-full flex-col items-center justify-center p-6 text-center text-zinc-500">
-                  <FileCode2 className="mb-3 size-9" />
-                  <p className="text-sm text-zinc-300">
-                    Select a file to preview or edit
-                  </p>
-                  <p className="mt-1 text-xs">
-                    Text files can be saved with Ctrl or ⌘ + S.
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
+          </ResizablePanel>
+          <ResizableHandle aria-label="Resize file tree and preview" className="hover:bg-ring" />
+          <ResizablePanel id="file-preview" defaultSize={mode === "panel" ? "60%" : "70%"} minSize="100px">
+          <RuntimeFilePreview
+            selectedFile={selectedFile}
+            content={fileContent}
+            contentType={fileContentType}
+            canEdit={canEdit}
+            isImage={isImage}
+            isLoading={isFileLoading}
+            isSaving={isSaving}
+            hasUnsavedChanges={hasUnsavedChanges}
+            copied={copied}
+            onContentChange={changeFileContent}
+            onSave={saveFile}
+            onCopy={copyContent}
+          />
+          </ResizablePanel>
+          </ResizablePanelGroup>
         </main>
 
         <Dialog
@@ -848,34 +635,52 @@ function FilesPageState({
   loading = false,
   message,
   chatUrl,
+  onClose,
 }: {
   loading?: boolean;
   message: string;
   chatUrl?: string;
+  onClose?: () => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 items-center justify-center p-6">
-      <div className="flex max-w-sm flex-col items-center gap-4 text-center">
-        <div className="bg-muted flex size-11 items-center justify-center rounded-full">
-          {loading ? (
-            <Loader2 className="text-muted-foreground size-5 animate-spin" />
-          ) : (
-            <TriangleAlert className="text-destructive size-5" />
-          )}
-        </div>
-        <div className="space-y-1">
-          <h1 className="font-medium">
-            {loading ? "Loading File Manager" : "Runtime unavailable"}
-          </h1>
-          <p className="text-muted-foreground text-sm">{message}</p>
-        </div>
-        {chatUrl ? (
-          <Button asChild>
-            <Link href={chatUrl}>
-              <ArrowLeft /> Back to chat
-            </Link>
+    <div className="flex min-h-0 flex-1 flex-col">
+      {onClose ? (
+        <header className="flex h-12 shrink-0 items-center border-b px-3">
+          <span className="flex-1 text-sm font-medium">Files</span>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Close file browser"
+            onClick={onClose}
+          >
+            <X />
           </Button>
-        ) : null}
+        </header>
+      ) : null}
+      <div className="flex min-h-0 flex-1 items-center justify-center p-6">
+        <div className="flex max-w-sm flex-col items-center gap-4 text-center">
+          <div className="bg-muted flex size-11 items-center justify-center rounded-full">
+            {loading ? (
+              <Loader2 className="text-muted-foreground size-5 animate-spin" />
+            ) : (
+              <TriangleAlert className="text-destructive size-5" />
+            )}
+          </div>
+          <div className="space-y-1">
+            <h1 className="font-medium">
+              {loading ? "Loading File Manager" : "Runtime unavailable"}
+            </h1>
+            <p className="text-muted-foreground text-sm">{message}</p>
+          </div>
+          {chatUrl ? (
+            <Button asChild>
+              <Link href={chatUrl}>
+                <ArrowLeft /> Back to chat
+              </Link>
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );

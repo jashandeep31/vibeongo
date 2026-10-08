@@ -29,6 +29,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@repo/ui/components/card";
+import { cn } from "@repo/ui/lib/utils";
 import { Progress } from "@repo/ui/components/progress";
 import { Skeleton } from "@repo/ui/components/skeleton";
 import {
@@ -98,11 +99,24 @@ export function ProjectSessionSettingsPage({
   projectId,
   projectSessionId,
   sessionId,
+  mode = "page",
+  isActive = true,
+  onOpenFiles,
+  onOpenTerminal,
+  onOpenDomains,
+  onClose,
 }: {
   projectId: string;
   projectSessionId: string;
   sessionId?: string;
+  mode?: "page" | "panel";
+  isActive?: boolean;
+  onOpenFiles?: () => void;
+  onOpenTerminal?: () => void;
+  onOpenDomains?: () => void;
+  onClose?: () => void;
 }) {
+  const isPanel = mode === "panel";
   const [now, setNow] = useState(() => Date.now());
   const [copied, setCopied] = useState<"gateway" | null>(null);
   const projectName = useProjectsStore(
@@ -117,7 +131,7 @@ export function ProjectSessionSettingsPage({
   );
   const instancesQuery = useGetInstances(
     { sessionId: projectSessionId, state: "running", limit: 1 },
-    !storedInstance,
+    isActive && !storedInstance,
   );
   const instance = storedInstance ?? instancesQuery.data?.data[0];
   const instanceId = instance?.id ?? "";
@@ -134,11 +148,14 @@ export function ProjectSessionSettingsPage({
   const restartDevScript = useRestartDevScript(connection);
   const createSshAccess = useCreateSshAccess();
   const revokeSshAccess = useRevokeSshAccess();
-  const sshAccessList = useSshAccess(instanceId);
+  const sshAccessList = useSshAccess(instanceId, isActive);
   const [newSshAccess, setNewSshAccess] =
     useState<CreateSshAccessResponse | null>(null);
   const renewCredentials = useRenewOpencodeCredentials(connection);
-  const domainsQuery = useGetProjectDomainsById(projectId, Boolean(instance));
+  const domainsQuery = useGetProjectDomainsById(
+    projectId,
+    isActive && Boolean(instance),
+  );
   const domainsPointToRuntime =
     domainsQuery.data?.target_instance_id === instance?.id;
   const opencodeDomain = domainsPointToRuntime
@@ -152,10 +169,11 @@ export function ProjectSessionSettingsPage({
       )?.domain
     : undefined;
   useEffect(() => {
-    if (!instance) return;
+    if (!instance || !isActive) return;
+    setNow(Date.now());
     const interval = window.setInterval(() => setNow(Date.now()), 1_000);
     return () => window.clearInterval(interval);
-  }, [instance]);
+  }, [instance, isActive]);
 
   const projectChatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
   const chatUrl = sessionId
@@ -197,7 +215,7 @@ export function ProjectSessionSettingsPage({
   };
 
   if (!instance && instancesQuery.isPending) {
-    return <SettingsSkeleton />;
+    return <SettingsSkeleton isPanel={isPanel} />;
   }
 
   if (!instance) {
@@ -213,11 +231,17 @@ export function ProjectSessionSettingsPage({
               Resume this project session before opening its runtime settings.
             </p>
           </div>
-          <Button asChild>
-            <Link href={chatUrl}>
+          {isPanel && onClose ? (
+            <Button onClick={onClose}>
               <ArrowLeft /> Back to chat
-            </Link>
-          </Button>
+            </Button>
+          ) : (
+            <Button asChild>
+              <Link href={chatUrl}>
+                <ArrowLeft /> Back to chat
+              </Link>
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -225,50 +249,101 @@ export function ProjectSessionSettingsPage({
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">
-      <main className="mx-auto w-full max-w-5xl space-y-6 px-5 py-8 md:px-8 md:py-10">
-        <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2">
-            <Button asChild variant="ghost" size="sm" className="-ml-3">
-              <Link href={chatUrl}>
-                <ArrowLeft /> Back to chat
-              </Link>
+      <main
+        className={cn(
+          "@container/settings mx-auto w-full",
+          isPanel
+            ? "space-y-4 px-3 py-3"
+            : "max-w-5xl space-y-6 px-5 py-8 md:px-8 md:py-10",
+        )}
+      >
+        {isPanel ? (
+          <header className="flex min-w-0 flex-wrap items-center gap-2">
+            <span
+              className="min-w-0 flex-1 truncate text-sm font-medium"
+              title={projectName}
+            >
+              {projectName}
+            </span>
+            <Badge
+              variant="secondary"
+              className="gap-1.5 text-emerald-600 dark:text-emerald-400"
+            >
+              <span className="size-1.5 rounded-full bg-current" /> Live
+            </Badge>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onOpenFiles}
+              aria-label="Open files panel"
+              title="Files"
+            >
+              <FolderOpen />
             </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl font-semibold tracking-tight">
-                  Runtime settings
-                </h1>
-                <Badge
-                  variant="secondary"
-                  className="gap-1.5 text-emerald-600 dark:text-emerald-400"
-                >
-                  <span className="size-1.5 rounded-full bg-current" /> Live
-                </Badge>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              onClick={onOpenTerminal}
+              aria-label="Open terminals panel"
+              title="Terminals"
+            >
+              <Terminal />
+            </Button>
+            <Button variant="ghost" size="icon-sm" aria-label="Open domains panel" title="Domains" onClick={onOpenDomains}>
+              <Network />
+            </Button>
+          </header>
+        ) : (
+          <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+            <div className="space-y-2">
+              <Button asChild variant="ghost" size="sm" className="-ml-3">
+                <Link href={chatUrl}>
+                  <ArrowLeft /> Back to chat
+                </Link>
+              </Button>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl font-semibold tracking-tight">
+                    Runtime settings
+                  </h1>
+                  <Badge
+                    variant="secondary"
+                    className="gap-1.5 text-emerald-600 dark:text-emerald-400"
+                  >
+                    <span className="size-1.5 rounded-full bg-current" /> Live
+                  </Badge>
+                </div>
+                <p className="text-muted-foreground mt-1 text-sm">
+                  {projectName} · Manage this session&apos;s running
+                  environment.
+                </p>
               </div>
-              <p className="text-muted-foreground mt-1 text-sm">
-                {projectName} · Manage this session&apos;s running environment.
-              </p>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline" size="sm">
-              <Link href={`${chatUrl}/files`}>
-                <FolderOpen /> Files
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <Link href={terminalUrl}>
-                <Terminal /> Terminal
-              </Link>
-            </Button>
-            <ProjectDomainsDialog
-              projectId={projectId}
-              projectSessionId={projectSessionId}
-            />
-          </div>
-        </header>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild variant="outline" size="sm">
+                <Link href={`${chatUrl}/files`}>
+                  <FolderOpen /> Files
+                </Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href={terminalUrl}>
+                  <Terminal /> Terminal
+                </Link>
+              </Button>
+              <ProjectDomainsDialog
+                projectId={projectId}
+                projectSessionId={projectSessionId}
+              />
+            </div>
+          </header>
+        )}
 
-        <section className="grid gap-4 sm:grid-cols-2">
+        <section
+          className={cn(
+            "grid gap-4",
+            isPanel ? "@sm/settings:grid-cols-2" : "sm:grid-cols-2",
+          )}
+        >
           <MetricCard
             icon={<Cpu className="size-4" />}
             label="CPU"
@@ -283,7 +358,7 @@ export function ProjectSessionSettingsPage({
           />
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className={cn("grid gap-4", !isPanel && "lg:grid-cols-2")}>
           <RuntimeToolCard
             disabled={!opencodeDomain}
             isConnected={runtimeSocket.status === "connected"}
@@ -311,7 +386,7 @@ export function ProjectSessionSettingsPage({
           />
         </section>
 
-        <section className="grid gap-4 lg:grid-cols-2">
+        <section className={cn("grid gap-4", !isPanel && "lg:grid-cols-2")}>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -336,7 +411,12 @@ export function ProjectSessionSettingsPage({
                 )}
               </CardAction>
             </CardHeader>
-            <CardContent className="grid gap-4 sm:grid-cols-3">
+            <CardContent
+              className={cn(
+                "grid gap-4",
+                isPanel ? "@lg/settings:grid-cols-3" : "sm:grid-cols-3",
+              )}
+            >
               <RuntimeDetail
                 icon={<TimerReset />}
                 label="Terminates in"
@@ -426,7 +506,8 @@ export function ProjectSessionSettingsPage({
                   size="sm"
                   disabled={!instance || createSshAccess.isPending}
                   onClick={() =>
-                    instance && createSshAccess.mutate(instanceId, {
+                    instance &&
+                    createSshAccess.mutate(instanceId, {
                       onSuccess: (connection) => {
                         setNewSshAccess(connection);
                         void copyValue(formatSshCommand(connection));
@@ -631,9 +712,14 @@ function CopyRow({
   );
 }
 
-function SettingsSkeleton() {
+function SettingsSkeleton({ isPanel = false }: { isPanel?: boolean }) {
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-5 py-10 md:px-8">
+    <div
+      className={cn(
+        "mx-auto min-h-0 w-full flex-1 space-y-6 overflow-y-auto",
+        isPanel ? "px-3 py-3" : "max-w-5xl px-5 py-10 md:px-8",
+      )}
+    >
       <Skeleton className="h-8 w-56" />
       <div className="grid gap-4 sm:grid-cols-2">
         <Skeleton className="h-28 rounded-xl" />

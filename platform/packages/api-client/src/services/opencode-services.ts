@@ -19,7 +19,10 @@ import type {
   WebSearchRequest,
   OpencodeError,
 } from "./opencode-types.js";
-import { normalizeOpencodeError } from "./opencode-errors.js";
+import {
+  isOpencodeLocationNotFoundError,
+  normalizeOpencodeError,
+} from "./opencode-errors.js";
 import {
   isRuntimeRepositoryDirectory,
   RUNTIME_WORKSPACE_DIRECTORY,
@@ -1210,10 +1213,11 @@ export function reduceOpencodeSessionData(
         ),
       };
     }
-    if (nativeType === "session.execution.started") {
+    if (nativeType === "session.execution.started" || nativeType === "session.step.started") {
       return {
         ...current,
         status: { type: "busy" },
+        messages: reduceOpencodeMessages(current.messages, event, sessionId),
         executionError: undefined,
         executionOutcome: undefined,
       };
@@ -1943,6 +1947,67 @@ export async function replyOpencodeWebSearchRequest(
   });
 }
 
+export type OpencodeForkDraft = {
+  text: string;
+  files: Array<{
+    uri: string;
+    name?: string;
+    source?: { text: string; start: number; end: number };
+  }>;
+  attachments: Array<{ name: string; mime: string; path: string }>;
+  comments: unknown[];
+  agents?: unknown[];
+  skills?: unknown[];
+  selection: OpencodePromptSelection;
+};
+
+// Copy the selected question and every assistant/tool round answering it.
+// Stop before the following question and its attached context carriers.
+export async function forkOpencodeSessionThroughTurn(
+  chatId: string,
+  sessionId: string,
+  messageId: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  const [source, active] = await Promise.all([
+    client.session.get({ sessionID: sessionId }),
+    client.session.active(),
+  ]);
+  const messages: SessionMessageInfo[] = [];
+  let cursor: string | undefined;
+  do {
+    const page = await client.message.list({
+      sessionID: sessionId,
+      limit: 200,
+      // The cursor carries the original ordering. OpenCode rejects a request
+      // that specifies both a cursor and an explicit order.
+      ...(cursor ? { cursor } : { order: "asc" as const }),
+    });
+    messages.push(...page.data);
+    cursor = page.cursor.next ?? undefined;
+    const selectedIndex = messages.findIndex((message) => message.id === messageId);
+    if (selectedIndex >= 0 && messages.slice(selectedIndex + 1).some((message) => message.type === "user")) break;
+  } while (cursor);
+  const index = messages.findIndex((message) => message.id === messageId);
+  if (index < 0 || messages[index]?.type !== "user") throw new Error("This question is no longer available.");
+  const revertIndex = source.revert ? messages.findIndex((message) => message.id === source.revert?.messageID) : -1;
+  if (revertIndex >= 0 && index >= revertIndex) throw new Error("Restore this turn before forking it.");
+  const nextQuestion = messages.findIndex((message, position) => position > index && message.type === "user");
+  let boundary = nextQuestion < 0 ? messages.length : nextQuestion;
+  if (nextQuestion >= 0) while (boundary > index + 1 && messages[boundary - 1]?.type === "synthetic") boundary -= 1;
+  if (revertIndex >= 0) boundary = Math.min(boundary, revertIndex);
+  const answer = messages.slice(index + 1, boundary).filter((message) => message.type === "assistant");
+  const lastAnswer = answer.at(-1);
+  if (!answer.length || answer.some((message) => message.time.completed === undefined) ||
+    lastAnswer?.finish === "tool-calls" || lastAnswer?.rawFinish === "tool_calls" ||
+    (nextQuestion < 0 && active[sessionId])) throw new Error("Wait for this answer to finish before forking it.");
+  const session = normalizeV2Session(await client.session.fork({ sessionID: sessionId, ...(messages[boundary] ? { before: messages[boundary]!.id } : {}) }));
+  return { session };
+}
+
 export async function forkOpencodeSession(
   chatId: string,
   sessionId: string,
@@ -2098,6 +2163,36 @@ export async function getOpencodeReviewProjectVcs(
   return project?.vcs ?? null;
 }
 
+/** Initialize Git at the explicit workspace location through the native VCS API. */
+export async function initializeOpencodeGit(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+) {
+  if (!directory.trim()) throw new Error("Choose a workspace folder first.");
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
+  try {
+    await client.vcs.init({ location: { directory }, provider: "git" });
+  } catch (error) {
+    throw new Error(normalizeOpencodeError(error).message, { cause: error });
+  }
+}
+
+/** Working-tree changes are available before an OpenCode chat is created. */
+export async function getOpencodeWorkingChanges(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+): Promise<SnapshotFileDiff[]> {
+  const client = getOpencodeClient(chatId, serverUrl, accessToken, password, directory);
+  const result = await client.vcs.diff({ location: { directory }, mode: "working" });
+  return result.data;
+}
+
 /** Snapshot changes from this session's most recent turn, independent of Git working changes. */
 export async function getOpencodeLastTurnChanges(
   chatId: string,
@@ -2120,16 +2215,9 @@ export async function createOpencodeSession(
   accessToken: string,
   directory?: string,
   password?: string,
-  parentID?: string,
 ) {
   if (directory && !isRuntimeRepositoryDirectory(directory)) {
     throw new Error("Invalid repository directory");
-  }
-
-  if (parentID) {
-    const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-    // The server derives the child's location from its parent and rejects missing parents.
-    return normalizeV2Session(await client.session.create({ parentID }));
   }
 
   const selectedDirectory =
@@ -2636,6 +2724,7 @@ export async function sendOpencodePrompt(
   accessToken: string,
   password?: string,
   displayText?: string,
+  forkDraft?: OpencodeForkDraft,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -2670,16 +2759,49 @@ export async function sendOpencodePrompt(
           .map((segment) => encodeURIComponent(segment))
           .join("/")}`,
         name: reference.path.split("/").pop() ?? reference.path,
-        source: {
+        mention: {
           text: reference.mention,
           start: Math.max(0, start),
           end: Math.max(0, start) + reference.mention.length,
         },
       };
     }),
+    ...(forkDraft?.files ?? [])
+      .filter(
+        (file) =>
+          !file.source ||
+          (text.includes(file.source.text) &&
+            !fileReferences.some(
+              (reference) => reference.mention === file.source?.text,
+            )),
+      )
+      .map((file) => ({
+        uri: file.uri,
+        ...(file.name ? { name: file.name } : {}),
+        ...(file.source
+          ? {
+              mention: {
+                ...file.source,
+                start: text.indexOf(file.source.text),
+                end: text.indexOf(file.source.text) + file.source.text.length,
+              },
+            }
+          : {}),
+      })),
     ...preparedAttachments.files,
   ];
   const model = parseModelSelection(selection.model);
+  if (selection.agent) {
+    await client.session.switchAgent({
+      sessionID: sessionId,
+      agent: selection.agent,
+    });
+  }
+  // Match the official composer: admission commits a staged revert. Settle it
+  // first so that admission cannot delete the newly recorded model selection.
+  if (session.revert) {
+    await client.session.revert.commit({ sessionID: sessionId });
+  }
   if (model) {
     await client.session.switchModel({
       sessionID: sessionId,
@@ -2690,19 +2812,26 @@ export async function sendOpencodePrompt(
       },
     });
   }
-  if (selection.agent) {
-    await client.session.switchAgent({
-      sessionID: sessionId,
-      agent: selection.agent,
-    });
-  }
   await postV2Prompt(serverUrl, accessToken, password, sessionId, {
-    text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
+    text: [
+      text,
+      ...(forkDraft?.attachments ?? []).map(
+        (file) => `Attached file: \`${file.path}\``,
+      ),
+      ...preparedAttachments.references,
+    ]
+      .filter(Boolean)
+      .join("\n"),
     ...(files.length ? { files } : {}),
+    ...(forkDraft?.agents ? { agents: forkDraft.agents } : {}),
+    ...(forkDraft?.skills ? { skills: forkDraft.skills } : {}),
     metadata: {
       displayText: displayText ?? text,
-      comments: [],
-      attachments: preparedAttachments.attachments,
+      comments: forkDraft?.comments ?? [],
+      attachments: [
+        ...(forkDraft?.attachments ?? []),
+        ...preparedAttachments.attachments,
+      ],
     },
     delivery: "steer",
   });
@@ -2718,6 +2847,7 @@ export async function queueOpencodePrompt(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  forkDraft?: OpencodeForkDraft,
 ) {
   const session = await findOpencodeSession(
     chatId,
@@ -2753,22 +2883,61 @@ export async function queueOpencodePrompt(
           .map((segment) => encodeURIComponent(segment))
           .join("/")}`,
         name: reference.path.split("/").pop() ?? reference.path,
-        source: {
+        mention: {
           text: reference.mention,
           start: Math.max(0, start),
           end: Math.max(0, start) + reference.mention.length,
         },
       };
     }),
+    ...(forkDraft?.files ?? [])
+      .filter(
+        (file) =>
+          !file.source ||
+          (text.includes(file.source.text) &&
+            !fileReferences.some(
+              (reference) => reference.mention === file.source?.text,
+            )),
+      )
+      .map((file) => ({
+        uri: file.uri,
+        ...(file.name ? { name: file.name } : {}),
+        ...(file.source
+          ? {
+              mention: {
+                ...file.source,
+                start: text.indexOf(file.source.text),
+                end: text.indexOf(file.source.text) + file.source.text.length,
+              },
+            }
+          : {}),
+      })),
     ...preparedAttachments.files,
   ];
+  // A queued follow-up settles the staged revert without changing active work's selection.
+  if (session.revert) {
+    await client.session.revert.commit({ sessionID: sessionId });
+  }
   return postV2Prompt(serverUrl, accessToken, password, sessionId, {
-    text: [text, ...preparedAttachments.references].filter(Boolean).join("\n"),
+    text: [
+      text,
+      ...(forkDraft?.attachments ?? []).map(
+        (file) => `Attached file: \`${file.path}\``,
+      ),
+      ...preparedAttachments.references,
+    ]
+      .filter(Boolean)
+      .join("\n"),
     ...(files.length ? { files } : {}),
+    ...(forkDraft?.agents ? { agents: forkDraft.agents } : {}),
+    ...(forkDraft?.skills ? { skills: forkDraft.skills } : {}),
     metadata: {
       displayText: text,
-      comments: [],
-      attachments: preparedAttachments.attachments,
+      comments: forkDraft?.comments ?? [],
+      attachments: [
+        ...(forkDraft?.attachments ?? []),
+        ...preparedAttachments.attachments,
+      ],
       ...(selection.agent ? { agent: selection.agent } : {}),
       ...(model
         ? {
@@ -2849,6 +3018,7 @@ async function postV2Prompt(
       uri: string;
       name?: string;
       source?: { text: string; start: number; end: number };
+      mention?: { text: string; start: number; end: number };
     }>;
     agents?: unknown[];
     metadata?: Record<string, unknown>;
@@ -3342,6 +3512,8 @@ async function findOpencodeSession(
     ) {
       return undefined;
     }
+    // Keep the generated error intact so query retry policies can identify it.
+    if (isOpencodeLocationNotFoundError(error)) throw error;
     throw new Error("Could not load OpenCode session", { cause: error });
   }
 }
@@ -3353,6 +3525,7 @@ function normalizeV2Session(session: SessionInfo): Session {
     projectID: session.projectID,
     directory: session.location.directory,
     ...(session.parentID ? { parentID: session.parentID } : {}),
+    ...(session.fork ? { fork: session.fork } : {}),
     cost: session.cost,
     tokens: session.tokens,
     title: session.title?.trim() || "New chat",
