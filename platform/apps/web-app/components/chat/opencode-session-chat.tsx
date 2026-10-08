@@ -83,6 +83,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
+import {
+  useWorkspaceTool,
+  type WorkspaceTool,
+} from "@/hooks/use-workspace-tool";
 
 type SessionMessages = OpencodeSessionData["messages"];
 
@@ -381,35 +385,32 @@ export function OpencodeSessionChat({
     password,
     directory: rawResponse.session.directory,
   });
-  const [isContextOpen, setIsContextOpen] = useState(false);
-  const [hasOpenedContext, setHasOpenedContext] = useState(false);
+  const { active, opened, openPanel, closePanel, togglePanel, forgetPanel } =
+    useWorkspaceTool();
+  const isContextOpen = active === "context";
+  const isFilesOpen = active === "files";
+  const isSettingsOpen = active === "settings";
+  const isDomainsOpen = active === "domains";
+  const isBrowserOpen = active === "browser";
+  const isGitOpen = active === "git";
+  const isTerminalOpen = active === "terminal";
+  const hasOpenedContext = opened.context;
+  const hasOpenedFiles = opened.files;
+  const hasOpenedSettings = opened.settings;
+  const hasOpenedDomains = opened.domains;
+  const hasOpenedBrowser = opened.browser;
+  const hasOpenedGit = opened.git;
+  const hasOpenedTerminal = opened.terminal;
   const contextButtonRef = useRef<HTMLButtonElement>(null);
-  const previousContextOpenRef = useRef(false);
-  const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
-  const [isFilesOpen, setIsFilesOpen] = useState(false);
-  const [hasOpenedFiles, setHasOpenedFiles] = useState(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [hasOpenedSettings, setHasOpenedSettings] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
-  const previousSettingsOpenRef = useRef(false);
-  const [isDomainsOpen, setIsDomainsOpen] = useState(false);
-  const [hasOpenedDomains, setHasOpenedDomains] = useState(false);
   const domainsButtonRef = useRef<HTMLButtonElement>(null);
-  const [isBrowserOpen, setIsBrowserOpen] = useState(false);
-  const [hasOpenedBrowser, setHasOpenedBrowser] = useState(false);
   const browserButtonRef = useRef<HTMLButtonElement>(null);
-  const previousBrowserOpenRef = useRef(false);
-  const [isGitOpen, setIsGitOpen] = useState(false);
-  const [hasOpenedGit, setHasOpenedGit] = useState(false);
   const gitButtonRef = useRef<HTMLButtonElement>(null);
-  const previousGitOpenRef = useRef(false);
-  const [isTerminalOpen, setIsTerminalOpen] = useState(false);
-  const [hasOpenedTerminal, setHasOpenedTerminal] = useState(false);
-  const [hasUnsavedFileChanges, setHasUnsavedFileChanges] = useState(false);
   const filesButtonRef = useRef<HTMLButtonElement>(null);
   const terminalButtonRef = useRef<HTMLButtonElement>(null);
-  const previousFilesOpenRef = useRef(false);
-  const previousTerminalOpenRef = useRef(false);
+  const previousWorkspaceTool = useRef<WorkspaceTool | null>(null);
+  const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
+  const [hasUnsavedFileChanges, setHasUnsavedFileChanges] = useState(false);
   const revertSessionMutate = revertSession.mutate;
   const restoreMessageMutate = restoreMessage.mutate;
   const reloadConfigMutate = reloadConfig.mutate;
@@ -614,228 +615,49 @@ export function OpencodeSessionChat({
 
   const sessionUrl = `/projects/${projectId}/sessions/${chatId}`;
   const chatUrl = `${sessionUrl}/chats/${sessionId}`;
-  const closeContextPanel = useCallback(() => setIsContextOpen(false), []);
-  const toggleContextPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    setHasOpenedContext(true);
-    setIsFilesOpen(false);
-    setIsTerminalOpen(false);
-    setIsGitOpen(false);
-    setIsBrowserOpen(false);
-    setIsSettingsOpen(false);
-    setIsContextOpen((open) => !open);
-  }, []);
+  const closeContextPanel = closePanel;
+  const closeFilesPanel = closePanel;
+  const closeSettingsPanel = closePanel;
+  const closeBrowserPanel = closePanel;
+  const closeGitPanel = closePanel;
+  const closeTerminalPanel = closePanel;
+  const closeDomainsPanel = closePanel;
+  const toggleContextPanel = useCallback(
+    () => togglePanel("context"),
+    [togglePanel],
+  );
+  const toggleSettingsPanel = useCallback(
+    () => togglePanel("settings"),
+    [togglePanel],
+  );
+  const toggleBrowserPanel = useCallback(
+    () => togglePanel("browser"),
+    [togglePanel],
+  );
+  const toggleGitPanel = useCallback(() => togglePanel("git"), [togglePanel]);
+  const toggleDomainsPanel = useCallback(
+    () => togglePanel("domains"),
+    [togglePanel],
+  );
+  const openFilesPanel = useCallback(() => openPanel("files"), [openPanel]);
+  const openTerminalPanel = useCallback(() => openPanel("terminal"), [openPanel]);
+  const openDomainsPanel = useCallback(() => openPanel("domains"), [openPanel]);
   useEffect(() => {
-    const wasOpen = previousContextOpenRef.current;
-    previousContextOpenRef.current = isContextOpen;
-    if (
-      wasOpen &&
-      !isContextOpen &&
-      !isFilesOpen &&
-      !isTerminalOpen &&
-      !isGitOpen &&
-      !isBrowserOpen &&
-      !isSettingsOpen &&
-      !isDomainsOpen
-    )
-      contextButtonRef.current?.focus();
-  }, [
-    isDomainsOpen,
-    isContextOpen,
-    isFilesOpen,
-    isTerminalOpen,
-    isGitOpen,
-    isBrowserOpen,
-    isSettingsOpen,
-  ]);
-  const closeFilesPanel = useCallback(() => setIsFilesOpen(false), []);
-  const closeSettingsPanel = useCallback(() => setIsSettingsOpen(false), []);
-  const toggleSettingsPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    setIsContextOpen(false);
-    setHasOpenedSettings(true);
-    setIsFilesOpen(false);
-    setIsTerminalOpen(false);
-    setIsGitOpen(false);
-    setIsBrowserOpen(false);
-    setIsSettingsOpen((open) => !open);
-  }, []);
-  const openFilesPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    setIsContextOpen(false);
-    setHasOpenedFiles(true);
-    setIsSettingsOpen(false);
-    setIsTerminalOpen(false);
-    setIsGitOpen(false);
-    setIsBrowserOpen(false);
-    setIsFilesOpen(true);
-  }, []);
-  const openTerminalPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    setIsContextOpen(false);
-    setHasOpenedTerminal(true);
-    setIsSettingsOpen(false);
-    setIsFilesOpen(false);
-    setIsGitOpen(false);
-    setIsBrowserOpen(false);
-    setIsTerminalOpen(true);
-  }, []);
-  const closeBrowserPanel = useCallback(() => setIsBrowserOpen(false), []);
-  const toggleBrowserPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    setIsContextOpen(false);
-    setIsSettingsOpen(false);
-    setHasOpenedBrowser(true);
-    setIsFilesOpen(false);
-    setIsTerminalOpen(false);
-    setIsGitOpen(false);
-    setIsBrowserOpen((open) => !open);
-  }, []);
-  const closeGitPanel = useCallback(() => setIsGitOpen(false), []);
-  const toggleGitPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    setIsContextOpen(false);
-    setIsBrowserOpen(false);
-    setIsSettingsOpen(false);
-    setHasOpenedGit(true);
-    setIsFilesOpen(false);
-    setIsTerminalOpen(false);
-    setIsGitOpen((open) => !open);
-  }, []);
-  const closeTerminalPanel = useCallback(() => setIsTerminalOpen(false), []);
-  useEffect(() => {
-    const wasOpen = previousFilesOpenRef.current;
-    previousFilesOpenRef.current = isFilesOpen;
-    if (
-      wasOpen &&
-      !isFilesOpen &&
-      !isTerminalOpen &&
-      !isGitOpen &&
-      !isBrowserOpen &&
-      !isSettingsOpen &&
-      !isContextOpen &&
-      !isDomainsOpen
-    )
-      filesButtonRef.current?.focus();
-  }, [
-    isDomainsOpen,
-    isFilesOpen,
-    isTerminalOpen,
-    isGitOpen,
-    isBrowserOpen,
-    isSettingsOpen,
-    isContextOpen,
-  ]);
-  useEffect(() => {
-    const wasOpen = previousTerminalOpenRef.current;
-    previousTerminalOpenRef.current = isTerminalOpen;
-    if (
-      wasOpen &&
-      !isTerminalOpen &&
-      !isFilesOpen &&
-      !isGitOpen &&
-      !isBrowserOpen &&
-      !isSettingsOpen &&
-      !isContextOpen &&
-      !isDomainsOpen
-    )
-      terminalButtonRef.current?.focus();
-  }, [
-    isDomainsOpen,
-    isTerminalOpen,
-    isFilesOpen,
-    isGitOpen,
-    isBrowserOpen,
-    isSettingsOpen,
-    isContextOpen,
-  ]);
-  useEffect(() => {
-    const wasOpen = previousGitOpenRef.current;
-    previousGitOpenRef.current = isGitOpen;
-    if (
-      wasOpen &&
-      !isGitOpen &&
-      !isFilesOpen &&
-      !isTerminalOpen &&
-      !isBrowserOpen &&
-      !isSettingsOpen &&
-      !isContextOpen &&
-      !isDomainsOpen
-    )
-      gitButtonRef.current?.focus();
-  }, [
-    isDomainsOpen,
-    isGitOpen,
-    isFilesOpen,
-    isTerminalOpen,
-    isBrowserOpen,
-    isSettingsOpen,
-    isContextOpen,
-  ]);
-  useEffect(() => {
-    const wasOpen = previousBrowserOpenRef.current;
-    previousBrowserOpenRef.current = isBrowserOpen;
-    if (
-      wasOpen &&
-      !isBrowserOpen &&
-      !isFilesOpen &&
-      !isTerminalOpen &&
-      !isGitOpen &&
-      !isSettingsOpen &&
-      !isContextOpen &&
-      !isDomainsOpen
-    )
-      browserButtonRef.current?.focus();
-  }, [
-    isDomainsOpen,
-    isBrowserOpen,
-    isFilesOpen,
-    isTerminalOpen,
-    isGitOpen,
-    isSettingsOpen,
-    isContextOpen,
-  ]);
-  useEffect(() => {
-    const wasOpen = previousSettingsOpenRef.current;
-    previousSettingsOpenRef.current = isSettingsOpen;
-    if (
-      wasOpen &&
-      !isSettingsOpen &&
-      !isFilesOpen &&
-      !isTerminalOpen &&
-      !isGitOpen &&
-      !isBrowserOpen &&
-      !isContextOpen &&
-      !isDomainsOpen
-    )
-      settingsButtonRef.current?.focus();
-  }, [
-    isDomainsOpen,
-    isSettingsOpen,
-    isFilesOpen,
-    isTerminalOpen,
-    isGitOpen,
-    isBrowserOpen,
-    isContextOpen,
-  ]);
-  const openDomainsPanel = useCallback(() => {
-    setHasOpenedDomains(true);
-    setIsContextOpen(false);
-    setIsFilesOpen(false);
-    setIsTerminalOpen(false);
-    setIsGitOpen(false);
-    setIsBrowserOpen(false);
-    setIsSettingsOpen(false);
-    setIsDomainsOpen(true);
-  }, []);
-  const closeDomainsPanel = useCallback(() => {
-    setIsDomainsOpen(false);
-    domainsButtonRef.current?.focus();
-  }, []);
-  const toggleDomainsPanel = () => {
-    if (isDomainsOpen) closeDomainsPanel();
-    else openDomainsPanel();
-  };
+    const previous = previousWorkspaceTool.current;
+    previousWorkspaceTool.current = active;
+    if (!active && previous) {
+      const buttons = {
+        context: contextButtonRef,
+        files: filesButtonRef,
+        settings: settingsButtonRef,
+        domains: domainsButtonRef,
+        browser: browserButtonRef,
+        git: gitButtonRef,
+        terminal: terminalButtonRef,
+      };
+      buttons[previous].current?.focus({ preventScroll: true });
+    }
+  }, [active]);
   const parentSessionId = rawResponse.session.parentID;
   const isSubagentSession = Boolean(
     parentSessionId && !rawResponse.session.fork,
@@ -1511,9 +1333,10 @@ export function OpencodeSessionChat({
                 if (hasUnsavedFileChanges) {
                   if (!window.confirm("Discard your unsaved file changes?"))
                     return;
-                  setHasOpenedFiles(false);
+                  forgetPanel("files");
+                  setHasUnsavedFileChanges(false);
                 }
-                setIsFilesOpen(false);
+                closeFilesPanel();
                 return;
               }
               openFilesPanel();

@@ -1,6 +1,7 @@
 "use client";
 
 import { OpencodeContextPanel } from "@/components/chat/opencode-context-panel";
+import { useWorkspaceTool, type WorkspaceTool } from "@/hooks/use-workspace-tool";
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
@@ -52,7 +53,7 @@ const ProjectSessionSettingsPanel = dynamic(
   { ssr: false, loading: loadingPanel },
 );
 
-type Panel = "context" | "files" | "git" | "terminal" | "browser" | "domains" | "settings";
+type Panel = WorkspaceTool;
 const TOOLS = [
   { id: "context", label: "Context", icon: Gauge },
   { id: "files", label: "Files", icon: Files },
@@ -84,8 +85,7 @@ export function NewOpencodeWorkspace({
   sessionName: string;
   directoryError?: string;
 }) {
-  const [active, setActive] = useState<Panel | null>(null);
-  const [opened, setOpened] = useState<Partial<Record<Panel, boolean>>>({});
+  const { active, opened, openPanel, closePanel, forgetPanel } = useWorkspaceTool();
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
   const [filesDirty, setFilesDirty] = useState(false);
   const previousPanel = useRef<Panel | null>(null);
@@ -99,11 +99,6 @@ export function NewOpencodeWorkspace({
     directory,
     enabled: active === "git",
   });
-  const closePanel = useCallback(() => setActive(null), []);
-  const openPanel = useCallback((panel: Panel) => {
-    setOpened((previous) => ({ ...previous, [panel]: true }));
-    setActive(panel);
-  }, []);
   const openFiles = useCallback(() => openPanel("files"), [openPanel]);
   const openDomains = useCallback(() => openPanel("domains"), [openPanel]);
   const openTerminal = useCallback(() => openPanel("terminal"), [openPanel]);
@@ -115,7 +110,7 @@ export function NewOpencodeWorkspace({
     }
     if (panel === "files" && filesDirty) {
       if (!window.confirm("Discard your unsaved file changes?")) return;
-      setOpened((previous) => ({ ...previous, files: false }));
+      forgetPanel("files");
       setFilesDirty(false);
     }
     closePanel();

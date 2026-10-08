@@ -1,6 +1,15 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
+import { ChevronDown } from "lucide-react";
+import { Button } from "@repo/ui/components/button";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -9,12 +18,103 @@ import {
 } from "@repo/ui/components/resizable";
 
 export function WorkspaceToolRail({ children }: { children: ReactNode }) {
+  const [expanded, setExpanded] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(false);
+  const controlsId = useId();
+  const controlsRef = useRef<HTMLDivElement>(null);
+  const toggleRef = useRef<HTMLButtonElement>(null);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  const clearTimer = useCallback(() => {
+    clearTimeout(timerRef.current);
+    timerRef.current = undefined;
+  }, []);
+
+  const collapse = useCallback(() => {
+    if (controlsRef.current?.contains(document.activeElement)) {
+      toggleRef.current?.focus({ preventScroll: true });
+    }
+    clearTimer();
+    setExpanded(false);
+  }, [clearTimer]);
+
+  const restartTimer = useCallback(() => {
+    clearTimer();
+    if (!isDesktop) timerRef.current = setTimeout(collapse, 4_000);
+  }, [clearTimer, collapse, isDesktop]);
+
+  useEffect(() => {
+    const media = window.matchMedia("(min-width: 1024px)");
+    const update = () => {
+      setIsDesktop(media.matches);
+      clearTimer();
+      setExpanded(false);
+    };
+    update();
+    media.addEventListener("change", update);
+    return () => {
+      media.removeEventListener("change", update);
+      clearTimer();
+    };
+  }, [clearTimer]);
+
+  const keepOpen = () => {
+    if (expanded && !isDesktop) restartTimer();
+  };
+
   return (
     <nav
       aria-label="Session workspace"
-      className="bg-background/35 absolute top-0 right-[env(safe-area-inset-right)] z-[60] flex max-h-full w-11 flex-col items-center gap-0 overflow-y-auto rounded-lg p-0 shadow-sm backdrop-blur-sm [&>button]:size-11 [&>button]:shrink-0 lg:static lg:max-h-none lg:w-12 lg:shrink-0 lg:gap-1 lg:overflow-visible lg:rounded-none lg:border-l lg:bg-background lg:px-0 lg:py-2 lg:shadow-none lg:backdrop-blur-none lg:[&>button]:size-8"
+      className="bg-background absolute top-2 right-[calc(0.5rem+env(safe-area-inset-right))] z-[60] flex max-h-[calc(100%-1rem)] w-11 flex-col items-center overflow-hidden rounded-lg p-0 shadow-sm lg:static lg:max-h-none lg:w-12 lg:shrink-0 lg:overflow-visible lg:rounded-none lg:border-l lg:py-2 lg:shadow-none"
+      onPointerDownCapture={keepOpen}
+      onPointerMoveCapture={keepOpen}
+      onFocusCapture={keepOpen}
+      onKeyDownCapture={(event) => {
+        if (!isDesktop && expanded) {
+          if (event.key === "Escape") {
+            event.preventDefault();
+            event.stopPropagation();
+            collapse();
+          } else restartTimer();
+        }
+      }}
     >
-      {children}
+      <div
+        id={controlsId}
+        className={`grid min-h-0 w-full transition-[grid-template-rows] duration-150 ease-out motion-reduce:transition-none lg:grid-rows-[1fr] ${expanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"}`}
+        aria-hidden={!isDesktop && !expanded}
+        inert={!isDesktop && !expanded}
+      >
+        <div
+          ref={controlsRef}
+          className="flex min-h-0 flex-col items-center gap-0 overflow-y-auto lg:gap-1 lg:overflow-visible [&>button]:size-11 [&>button]:shrink-0 lg:[&>button]:size-8"
+        >
+          {children}
+        </div>
+      </div>
+      <Button
+        ref={toggleRef}
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-11 shrink-0 lg:hidden"
+        aria-label={
+          expanded ? "Collapse workspace tools" : "Expand workspace tools"
+        }
+        aria-expanded={expanded}
+        aria-controls={controlsId}
+        onClick={() => {
+          if (expanded) collapse();
+          else {
+            setExpanded(true);
+            restartTimer();
+          }
+        }}
+      >
+        <ChevronDown
+          className={`transition-transform duration-150 motion-reduce:transition-none ${expanded ? "rotate-180" : ""}`}
+        />
+      </Button>
     </nav>
   );
 }
@@ -58,7 +158,11 @@ export function WorkspaceResizableLayout({
         }
       }}
     >
-      <ResizablePanel id="chat" defaultSize="100%" minSize={isDesktop ? "300px" : "0px"}>
+      <ResizablePanel
+        id="chat"
+        defaultSize="100%"
+        minSize={isDesktop ? "300px" : "0px"}
+      >
         <div
           className="h-full min-h-0 min-w-0"
           inert={isOpen && !isDesktop}
@@ -80,7 +184,7 @@ export function WorkspaceResizableLayout({
         style={{ overflow: "visible" }}
       >
         <div
-          className={`bg-background absolute inset-0 z-50 pr-[calc(3rem+env(safe-area-inset-right))] shadow-xl lg:relative lg:z-auto lg:h-full lg:pr-0 lg:shadow-none ${isOpen ? "" : "hidden"}`}
+          className={`bg-background absolute inset-0 z-50 shadow-xl lg:relative lg:z-auto lg:h-full lg:shadow-none ${isOpen ? "" : "hidden"}`}
           aria-hidden={!isOpen}
         >
           {sidebar}
