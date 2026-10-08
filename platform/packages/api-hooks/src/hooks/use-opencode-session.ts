@@ -361,7 +361,11 @@ function dedupeOpencodeMessages(messages: OpencodeSessionData["messages"]) {
         : message,
     );
   }
-  return [...byId.values()];
+  // A resync can discover the real user prompt after its live assistant steps.
+  // Restore transcript order before projecting question/answer boundaries.
+  return [...byId.values()].sort(
+    (left, right) => left.info.time.created - right.info.time.created,
+  );
 }
 
 function dedupeOpencodeParts(

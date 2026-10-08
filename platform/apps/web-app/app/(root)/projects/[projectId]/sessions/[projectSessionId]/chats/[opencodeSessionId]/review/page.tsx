@@ -4,7 +4,6 @@ import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import { OpencodeReviewPanel } from "@/components/chat/opencode-review-panel";
 import {
   useGetInstances,
-  useOpencodeInventory,
   useOpencodeLastTurnChanges,
   useOpencodeReviewProjectVcs,
   useOpencodeSession,
@@ -118,12 +117,6 @@ export default function OpencodeReviewPage() {
   };
   const refreshingChanges =
     isFetching || (reviewMode === "last-turn" && lastTurnQuery.isFetching);
-  const inventoryQuery = useOpencodeInventory(
-    projectSessionId,
-    serverUrl,
-    accessToken,
-    password,
-  );
   const chatUrl = `/projects/${projectId}/sessions/${projectSessionId}/chats/${opencodeSessionId}`;
 
   if (isInstancePending || isPending) return <ReviewSkeleton />;
@@ -169,7 +162,6 @@ export default function OpencodeReviewPage() {
         password={password}
         directory={data.session.directory}
         session={data}
-        inventory={inventoryQuery.data}
         isRefreshing={refreshingChanges}
         onRefresh={refreshChanges}
       />

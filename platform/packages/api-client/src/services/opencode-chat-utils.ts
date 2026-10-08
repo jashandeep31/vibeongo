@@ -255,6 +255,7 @@ export type OpencodeChatTurn = {
   questionCreatedAt?: number;
   answerCreatedAt?: number;
   answerCompletedAt?: number;
+  isStreaming?: boolean;
 };
 
 export function groupConsecutiveOpencodeToolContent(
@@ -363,6 +364,7 @@ export function getRevertedMessageLabel(parts: SessionPart[]) {
 export function createOpencodeChatTurns(
   messages: OpencodeSessionData["messages"],
   models: OpencodeModelOption[] = [],
+  options: { isStreaming?: boolean; pendingInputIds?: ReadonlySet<string> } = {},
 ) {
   const modelsById = new Map(
     models.map((model) => [`${model.providerID}/${model.modelID}`, model]),
@@ -412,6 +414,11 @@ export function createOpencodeChatTurns(
       : {}),
   });
   const turnsByMessageId = new Map<string, OpencodeChatTurn>();
+  let currentTurn: OpencodeChatTurn | undefined;
+  const lastAssistantByTurnId = new Map<
+    string,
+    Extract<SessionMessage["info"], { role: "assistant" }>
+  >();
   const latestTodoByTurnId = new Map<string, ToolPart>();
   const seenPartIdsByTurnId = new Map<string, Set<string>>();
   const seenTextByTurnId = new Map<string, Set<string>>();
@@ -420,22 +427,34 @@ export function createOpencodeChatTurns(
     if (message.info.role === "user") {
       const existing = turnsByMessageId.get(message.info.id);
       const hydrated = createTurn(message.info.id, message);
-      if (existing) Object.assign(existing, hydrated);
+      if (existing)
+        Object.assign(existing, { ...hydrated, content: existing.content });
       else {
         turns.push(hydrated);
         turnsByMessageId.set(hydrated.id, hydrated);
       }
+      currentTurn = existing ?? hydrated;
       continue;
     }
     if (message.info.role !== "assistant") continue;
 
-    let turn = turnsByMessageId.get(message.info.parentID);
+    // V2 transcript order defines the question/answer boundary. Parent IDs can
+    // still reference an optimistic prompt or a previous assistant step while
+    // streaming; neither should create a second answer card.
+    const isShellBoundary =
+      message.info.mode === "system" &&
+      message.info.parentID === `timeline:${message.info.id}`;
+    let turn = isShellBoundary
+      ? undefined
+      : currentTurn ?? turnsByMessageId.get(message.info.parentID);
     if (!turn) {
       const id = message.info.parentID || `timeline:${message.info.id}`;
       turn = createTurn(id);
       turns.push(turn);
       turnsByMessageId.set(id, turn);
     }
+    currentTurn = turn;
+    turnsByMessageId.set(message.info.id, turn);
     const seenPartIds = seenPartIdsByTurnId.get(turn.id) ?? new Set<string>();
     seenPartIdsByTurnId.set(turn.id, seenPartIds);
     const seenText = seenTextByTurnId.get(turn.id) ?? new Set<string>();
@@ -541,6 +560,7 @@ export function createOpencodeChatTurns(
     // Notice records are normalized as assistants, but do not represent model
     // work. Do not let them replace the response metadata or its timestamps.
     if (message.info.mode !== "system") {
+      lastAssistantByTurnId.set(turn.id, message.info);
       turn.agent = message.info.agent;
       turn.provider = model?.providerName ?? message.info.providerID;
       turn.model = model?.name ?? message.info.modelID;
@@ -550,17 +570,31 @@ export function createOpencodeChatTurns(
           message.info.time.created,
         );
       }
-      const completed = message.info.time.completed;
-      if (completed !== undefined && Number.isFinite(completed)) {
-        turn.answerCompletedAt = Math.max(
-          turn.answerCompletedAt ?? completed,
-          completed,
-        );
-      }
     }
   }
 
+  const activeTurn = turns.findLast(
+    (turn) => !options.pendingInputIds?.has(turn.id),
+  );
   for (const turn of turns) {
+    turn.isStreaming = Boolean(options.isStreaming && turn === activeTurn);
+    const lastAssistant = lastAssistantByTurnId.get(turn.id);
+    const completed = lastAssistant?.time.completed;
+    const pendingTools =
+      lastAssistant?.finish === "tool-calls" ||
+      lastAssistant?.rawFinish === "tool_calls" ||
+      lastAssistant?.rawFinish === "function_call";
+    // A tool round's completion is a step boundary, not the end of the answer.
+    // The latest step must have settled and execution must no longer be active.
+    if (
+      !turn.isStreaming &&
+      !pendingTools &&
+      !lastAssistant?.retry &&
+      completed !== undefined &&
+      Number.isFinite(completed)
+    ) {
+      turn.answerCompletedAt = completed;
+    }
     // Match the official timeline: latest assistant completion minus the user
     // prompt's creation, covering every assistant/tool round in the turn.
     if (
@@ -596,26 +630,4 @@ function isInterruptedError(error: {
 
 function isFileChangeTool(tool: OpencodeToolPart) {
   return ["edit", "write", "patch", "apply_patch"].includes(tool.tool);
-}
-
-/** Requests delegation through the parent agent so OpenCode owns child jobs and result delivery. */
-export function buildOpencodeSubtaskPrompt(
-  task: string,
-  options: { agent?: string; background?: boolean } = {},
-) {
-  const prompt = task.trim();
-  if (!prompt) throw new Error("Enter a subtask to delegate");
-  return [
-    "Delegate the following task using the native subagent tool. Do not perform it yourself.",
-    options.agent
-      ? `Use agent ${JSON.stringify(options.agent)}.`
-      : "Choose an available subagent suited to this task.",
-    options.background
-      ? "Set background=true. Continue only with independent work; let OpenCode deliver the result automatically."
-      : "Set background=false. Wait for the subagent's final response, then explain its findings here.",
-    "Include the relevant context from this conversation in the child's prompt. Keep the current model unless I explicitly requested another one.",
-    "If delegation is unavailable or denied, explain the problem rather than substituting a manually linked session.",
-    "Task:",
-    prompt,
-  ].join("\n\n");
 }

@@ -3,7 +3,6 @@ import type { Metadata, Viewport } from "next";
 import "./web-app.css";
 import Provider from "./provider";
 import { Toaster } from "sonner";
-import Script from "next/script";
 
 export const metadata: Metadata = {
   title: "VibeOnGo AI Playground",
@@ -38,14 +37,6 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased" suppressHydrationWarning>
       <body className="min-h-full">
-        {/* eslint-disable-next-line turbo/no-undeclared-env-vars -- NODE_ENV keeps the optional scan development-only. */}
-        {process.env.NODE_ENV === "development" ? (
-          <Script
-            src="https://unpkg.com/react-scan/dist/auto.global.js"
-            crossOrigin="anonymous"
-            strategy="beforeInteractive"
-          />
-        ) : null}
         <PwaRegistration />
         <Toaster richColors />
         <Provider>{children}</Provider>

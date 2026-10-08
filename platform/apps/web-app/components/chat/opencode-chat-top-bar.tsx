@@ -4,26 +4,12 @@ import { OpencodeMcpMenu } from "@/components/chat/opencode-mcp-menu";
 import { OpencodeWorktreeDialog } from "@/components/chat/opencode-worktree-dialog";
 import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import { RuntimePulseMenu } from "@/components/runtime-pulse-menu";
+import { useExportOpencodeSession } from "@repo/api-hooks";
 import {
-  useExportOpencodeSession,
-  useSendOpencodePrompt,
-} from "@repo/api-hooks";
-import {
-  buildOpencodeSubtaskPrompt,
   getOpencodeSessionExportFilename,
-  type OpencodeInventory,
   type OpencodeSessionData,
 } from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@repo/ui/components/dialog";
-import { Textarea } from "@repo/ui/components/textarea";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -34,7 +20,6 @@ import {
   ArrowUpLeft,
   Download,
   Ellipsis,
-  GitBranch,
   Loader2,
   Plus,
   RefreshCw,
@@ -54,7 +39,6 @@ export function OpencodeChatTopBar({
   password,
   directory,
   session,
-  inventory,
   isRefreshing = false,
   onRefresh,
   title,
@@ -71,7 +55,6 @@ export function OpencodeChatTopBar({
   password?: string;
   directory?: string;
   session?: OpencodeSessionData;
-  inventory?: OpencodeInventory;
   isRefreshing?: boolean;
   onRefresh?: () => void;
   title?: string;
@@ -165,7 +148,6 @@ export function OpencodeChatTopBar({
             accessToken={accessToken}
             password={password}
             session={session}
-            inventory={inventory}
           />
         ) : null}
         <RuntimePulseMenu projectSessionId={projectSessionId} />
@@ -193,7 +175,6 @@ function OpencodeSessionActions({
   accessToken,
   password,
   session,
-  inventory,
 }: {
   chatUrl: string;
   projectSessionId: string;
@@ -201,51 +182,12 @@ function OpencodeSessionActions({
   accessToken: string;
   password?: string;
   session: OpencodeSessionData;
-  inventory?: OpencodeInventory;
 }) {
   const router = useRouter();
-  const [subtaskOpen, setSubtaskOpen] = useState(false);
-  const [subtaskPrompt, setSubtaskPrompt] = useState("");
-  const [subtaskAgent, setSubtaskAgent] = useState("");
-  const [subtaskBackground, setSubtaskBackground] = useState(false);
-  const availableSubagents =
-    inventory?.agents.filter((agent) => agent.mode !== "primary") ?? [];
-  const startSubtask = useSendOpencodePrompt({
-    chatId: projectSessionId,
-    sessionId: session.session.id,
-    serverUrl,
-    accessToken,
-    password,
-  });
   const openSession = (sessionId: string) => {
     const target = chatUrl.replace(/\/chats\/[^/]+$/, `/chats/${sessionId}`);
     const params = new URLSearchParams({ serverUrl });
     router.push(`${target}?${params.toString()}`);
-  };
-  const handleStartSubtask = () => {
-    const text = subtaskPrompt.trim();
-    if (!text || startSubtask.isPending) return;
-    startSubtask.mutate(
-      {
-        text: buildOpencodeSubtaskPrompt(text, {
-          ...(subtaskAgent ? { agent: subtaskAgent } : {}),
-          background: subtaskBackground,
-        }),
-        displayText: `Delegate to ${subtaskAgent || "a subagent"}${subtaskBackground ? " in the background" : ""}:\n${text}`,
-        files: [],
-        selection: {},
-      },
-      {
-        onSuccess: () => {
-          setSubtaskOpen(false);
-          setSubtaskPrompt("");
-          openSession(session.session.id);
-          toast.success("Subtask delegation requested");
-        },
-        onError: (error) =>
-          toast.error(error.message || "Could not request subtask"),
-      },
-    );
   };
   const exportSession = useExportOpencodeSession({
     chatId: projectSessionId,
@@ -275,145 +217,39 @@ function OpencodeSessionActions({
   };
 
   return (
-    <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            className="bg-background/90 shadow-sm backdrop-blur"
-            aria-label="Session actions"
-            title="Session actions"
-          >
-            {exportSession.isPending || startSubtask.isPending ? (
-              <Loader2 className="animate-spin" />
-            ) : (
-              <Ellipsis />
-            )}
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          className="bg-background/90 shadow-sm backdrop-blur"
+          aria-label="Session actions"
+          title="Session actions"
+        >
+          {exportSession.isPending ? (
+            <Loader2 className="animate-spin" />
+          ) : (
+            <Ellipsis />
+          )}
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {session.session.parentID ? (
           <DropdownMenuItem
-            disabled={
-              startSubtask.isPending || !serverUrl || !accessToken || !password
-            }
-            onSelect={() => setSubtaskOpen(true)}
+            onSelect={() => openSession(session.session.parentID!)}
           >
-            <GitBranch /> Start related subtask
+            <ArrowUpLeft /> Open parent chat
           </DropdownMenuItem>
-          {session.session.parentID ? (
-            <DropdownMenuItem
-              onSelect={() => openSession(session.session.parentID!)}
-            >
-              <ArrowUpLeft /> Open parent chat
-            </DropdownMenuItem>
-          ) : null}
-          <DropdownMenuItem
-            disabled={exportSession.isPending}
-            onSelect={handleExport}
-          >
-            <Download /> Export JSON
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-      <Dialog
-        open={subtaskOpen}
-        onOpenChange={(open) => {
-          if (!startSubtask.isPending) setSubtaskOpen(open);
-        }}
-      >
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Start related subtask</DialogTitle>
-            <DialogDescription>
-              Ask the parent agent to delegate this task and bring the result
-              back here. You can open the child chat from its subagent card.
-              Both agents use the same workspace files.
-            </DialogDescription>
-          </DialogHeader>
-          <form
-            className="space-y-4"
-            onSubmit={(event) => {
-              event.preventDefault();
-              handleStartSubtask();
-            }}
-          >
-            <div className="space-y-2">
-              <label
-                htmlFor="opencode-subtask-prompt"
-                className="text-sm font-medium"
-              >
-                What should this subtask do?
-              </label>
-              <Textarea
-                id="opencode-subtask-prompt"
-                autoFocus
-                required
-                rows={5}
-                placeholder="For example: Investigate why Google sign-in fails and fix the validation."
-                value={subtaskPrompt}
-                disabled={startSubtask.isPending}
-                onChange={(event) => setSubtaskPrompt(event.target.value)}
-              />
-            </div>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <label className="space-y-2 text-sm">
-                <span className="font-medium">Subagent</span>
-                <select
-                  className="border-input bg-background h-10 w-full rounded-md border px-3"
-                  value={subtaskAgent}
-                  disabled={startSubtask.isPending}
-                  onChange={(event) => setSubtaskAgent(event.target.value)}
-                >
-                  <option value="">Let parent choose</option>
-                  {availableSubagents.map((agent) => (
-                    <option key={agent.id} value={agent.id}>
-                      {agent.name}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label className="space-y-2 text-sm">
-                <span className="font-medium">Execution</span>
-                <select
-                  className="border-input bg-background h-10 w-full rounded-md border px-3"
-                  value={subtaskBackground ? "background" : "foreground"}
-                  disabled={startSubtask.isPending}
-                  onChange={(event) =>
-                    setSubtaskBackground(event.target.value === "background")
-                  }
-                >
-                  <option value="foreground">Wait for result</option>
-                  <option value="background">Run in background</option>
-                </select>
-              </label>
-            </div>
-            <DialogFooter>
-              <Button
-                type="button"
-                variant="outline"
-                disabled={startSubtask.isPending}
-                onClick={() => setSubtaskOpen(false)}
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={!subtaskPrompt.trim() || startSubtask.isPending}
-              >
-                {startSubtask.isPending ? (
-                  <Loader2 className="animate-spin" />
-                ) : (
-                  <GitBranch />
-                )}
-                {startSubtask.isPending ? "Starting…" : "Start subtask"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </DialogContent>
-      </Dialog>
-    </>
+        ) : null}
+        <DropdownMenuItem
+          disabled={exportSession.isPending}
+          onSelect={handleExport}
+        >
+          <Download /> Export JSON
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 

@@ -1210,10 +1210,11 @@ export function reduceOpencodeSessionData(
         ),
       };
     }
-    if (nativeType === "session.execution.started") {
+    if (nativeType === "session.execution.started" || nativeType === "session.step.started") {
       return {
         ...current,
         status: { type: "busy" },
+        messages: reduceOpencodeMessages(current.messages, event, sessionId),
         executionError: undefined,
         executionOutcome: undefined,
       };
@@ -1968,7 +1969,10 @@ export async function forkOpencodeSessionThroughTurn(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const source = await client.session.get({ sessionID: sessionId });
+  const [source, active] = await Promise.all([
+    client.session.get({ sessionID: sessionId }),
+    client.session.active(),
+  ]);
   const messages: SessionMessageInfo[] = [];
   let cursor: string | undefined;
   do {
@@ -1993,7 +1997,10 @@ export async function forkOpencodeSessionThroughTurn(
   if (nextQuestion >= 0) while (boundary > index + 1 && messages[boundary - 1]?.type === "synthetic") boundary -= 1;
   if (revertIndex >= 0) boundary = Math.min(boundary, revertIndex);
   const answer = messages.slice(index + 1, boundary).filter((message) => message.type === "assistant");
-  if (!answer.length || answer.some((message) => message.time.completed === undefined)) throw new Error("Wait for this answer to finish before forking it.");
+  const lastAnswer = answer.at(-1);
+  if (!answer.length || answer.some((message) => message.time.completed === undefined) ||
+    lastAnswer?.finish === "tool-calls" || lastAnswer?.rawFinish === "tool_calls" ||
+    (nextQuestion < 0 && active[sessionId])) throw new Error("Wait for this answer to finish before forking it.");
   const session = normalizeV2Session(await client.session.fork({ sessionID: sessionId, ...(messages[boundary] ? { before: messages[boundary]!.id } : {}) }));
   return { session };
 }
@@ -2188,16 +2195,9 @@ export async function createOpencodeSession(
   accessToken: string,
   directory?: string,
   password?: string,
-  parentID?: string,
 ) {
   if (directory && !isRuntimeRepositoryDirectory(directory)) {
     throw new Error("Invalid repository directory");
-  }
-
-  if (parentID) {
-    const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-    // The server derives the child's location from its parent and rejects missing parents.
-    return normalizeV2Session(await client.session.create({ parentID }));
   }
 
   const selectedDirectory =

@@ -226,8 +226,11 @@ export function OpencodeSessionChat({
     password,
   });
   const turns = useMemo(
-    () => createOpencodeChatTurns(projectedMessages, inventory?.models),
-    [inventory?.models, projectedMessages],
+    () => createOpencodeChatTurns(projectedMessages, inventory?.models, {
+      isStreaming,
+      pendingInputIds: new Set(rawResponse.pendingInbox.map((item) => item.id)),
+    }),
+    [inventory?.models, projectedMessages, isStreaming, rawResponse.pendingInbox],
   );
   const hasInlineExecutionError = messages.some(
     (message) => message.info.role === "assistant" && message.info.error,
@@ -981,7 +984,6 @@ export function OpencodeSessionChat({
         password={password}
         directory={rawResponse.session.directory}
         session={rawResponse}
-        inventory={inventory}
         showSettings={false}
         showDomains={false}
         isRefreshing={isRefreshing}
@@ -1077,7 +1079,7 @@ export function OpencodeSessionChat({
                           fork.isPending || Boolean(forkBlockedReason)
                         }
                         isForking={fork.isPending && fork.variables === turn.id}
-                        isStreaming={isStreaming && index === turns.length - 1}
+                        isStreaming={turn.isStreaming}
                         isReverting={
                           revertSession.isPending &&
                           revertSession.variables === turn.id

@@ -27,7 +27,7 @@ The existing Promise client methods remain available. The changes below are addi
 | Contract | Change | Vibeongo handling |
 | --- | --- | --- |
 | `session.form.cancel` | Optional `message` query parameter; cancelled form state also exposes optional `message`. | `rejectOpencodeQuestion` uses the generated client, which encodes feedback in the URL query. It sends no DELETE body. The hook accepts either the existing request ID string or `{ requestId, message? }`, preserving mobile callers. Web questions expose optional dismissal feedback. |
-| `session.create` | Optional `parentID`; a missing parent can return `SessionNotFoundError`. The server derives the child's location from its parent. | `createOpencodeSession` accepts an optional final `parentID` argument, forwards it without a location override or project discovery, and preserves returned `parentID`. `useStartOpencodeSession` exposes the option. The web chat Session actions menu now offers Start related subtask; mobile creation remains a developer option. |
+| `session.create` | Optional `parentID`; a missing parent can return `SessionNotFoundError`. The server derives the child's location from its parent. | `createOpencodeSession` and `useStartOpencodeSession` create independent chats. Parent-linked creation and the manual subtask action have been removed; received `parentID` values remain available for existing child navigation. |
 | Provider settings | Adds `headerTimeout?: number \| false`; `chunkTimeout` now also accepts `false`. | Included through the upgraded generated types. Vibeongo has no separate provider-settings editor to change. These inference timeouts are separate from the client's inventory request and SSE idle timeouts. |
 | Config model capabilities | Config fields `tools`, `input`, and `output` become individually optional. Omitted fields inherit the base model. | Included through generated configuration types. Runtime model inventory remains normalized using the resolved model capabilities. |
 | Plugin session APIs | Compaction/removal support and metadata update fixes. | Server/plugin behavior; Vibeongo uses the HTTP client rather than the plugin session API. |
@@ -78,22 +78,13 @@ Mobile's question drawer now accepts optional dismissal feedback, including dism
 
 The mobile Review screen offers Working changes / Last turn changes with accessible selection controls. The choice is saved per session with the existing Expo SecureStore dependency on native platforms and local storage on mobile web. Storage reads do not overwrite a choice made while loading, and writes are serialized so fast switches preserve the latest choice. Last-turn review uses the shared snapshot hook, updates with session timestamps and manual refresh, and displays loading, error/retry, and mode-specific empty states. Switching modes clears the selected file.
 
-Mobile already renders markdown `strong` text at weight 700. Parent-linked creation is inherited through the shared `useStartOpencodeSession` hook; it remains a developer option without a new mobile child-session button. Mobile requires no direct `@opencode/client` dependency.
+Mobile already renders markdown `strong` text at weight 700. The shared `useStartOpencodeSession` hook creates independent chats; manual child-session creation has been removed. Mobile requires no direct `@opencode/client` dependency.
 
 Validation: mobile TypeScript check passed. Native interaction and persistence still need device/simulator verification. Expo APIs were checked against the [SDK 57 reference](https://docs.expo.dev/versions/v57.0.0/) and [SecureStore documentation](https://docs.expo.dev/versions/v57.0.0/sdk/securestore/).
 
-## Web subtask delegation (follow-up)
+## Subtask creation removed
 
-Open a chat's **Session actions** (ellipsis) menu and select **Start related subtask**. Enter the task, optionally pick a subagent, and choose **Wait for result** or **Run in background**. The action submits a delegation request to the existing parent conversation and stays on that parent chat. It does not manually call `session.create({ parentID })`.
-
-The parent model is explicitly asked to use OpenCode's native `subagent` tool, include relevant conversation context, and retain its existing model. Tool availability, agent permissions and nesting limits are enforced upstream. If delegation is unavailable or denied, the model is asked to explain it rather than substituting a manually linked child. Submission acknowledgement says **Subtask delegation requested**; it does not claim the child has already been created. The visible user message contains the task and selected execution mode rather than the internal delegation instructions.
-
-OpenCode handles child creation and job lifecycle. Foreground execution returns the child's final response as a parent tool result. Background execution delivers its result to the parent as a synthetic message and resumes the parent through OpenCode's native completion path. Fresh children do not receive a copied transcript; the parent supplies their context. The agents edit the same workspace files.
-
-Subagent tool cards now link to child chats, show running/completed/failed/cancelled state, and expose foreground results or launch/failure details. A completed background launch is not shown as completed child execution: child status and outcome are loaded separately and refreshed by live SSE lifecycle events. Background synthetic completion notices are labelled in both live processing and replay. General synthetic model context remains hidden. Child chats retain **Open parent chat** in their Session actions menu. Web and mobile child chats replace the prompt composer with a **Back to main session** bar; permission/question/web-search requests remain actionable.
-
-Validation: five contract/regression checks cover foreground/background request instructions, live completion labels, background outcome detection, and prompting the parent without creating a manual child. Run `pnpm --filter @repo/api-client test:opencode-subagent` from `platform`. Package builds/type checks and targeted web lint were run. No live server/browser delegation test was performed; actual invocation depends on the configured parent model and available tools.
-
+The manual subtask creation menu, dialog, delegation prompt builder, and parent-linked creation options in the shared API client and session hook have been removed. Session actions retain export and navigation to an existing parent chat. Existing native subagent results remain readable in the transcript.
 
 ## Official v2.0.22 implementation audit
 
@@ -111,7 +102,6 @@ Validation: five contract/regression checks cover foreground/background request 
 
 **Intentional differences / remaining gaps:**
 
-- The web **Start related subtask** dialog is a Vibeongo convenience, not a port of an official direct invocation button. It submits an instruction to the parent model to call the native tool; it cannot guarantee that the model invokes it. Tool permissions/availability still apply.
 - Mobile has the child input bar and parent navigation, but its existing subagent tool cards are not yet clickable child-navigation cards and do not load background outcomes like web. No mobile delegation dialog was added.
 - Official review additionally supports branch changes and persists file/open-panel state. This update ports the requested working/last-turn choice, not that entire extension. Vibeongo's existing working-diff loader still falls back to session snapshots when VCS fetching fails on older/unavailable servers; that compatibility fallback is not official review behavior.
 - Desktop extension hosting, embedded browser comments, grouped reads, transcript session-ID links, ACP additions and CLI updater changes were not ported. The release table above identifies the server-only behavior that the upgraded runtime supplies.

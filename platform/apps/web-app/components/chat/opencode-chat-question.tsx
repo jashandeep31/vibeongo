@@ -36,6 +36,7 @@ export type OpencodeChatTurn = {
   questionCreatedAt?: number;
   answerCreatedAt?: number;
   answerCompletedAt?: number;
+  isStreaming?: boolean;
 };
 
 export function OpencodeChatQuestion({
@@ -257,7 +258,7 @@ export function OpencodeChatQuestion({
                   ))
                 : null}
             </div>
-            {!isStreaming && (answer || item.answerCreatedAt !== undefined) ? (
+            {!isStreaming && item.answerCompletedAt !== undefined ? (
               <div className="text-muted-foreground mt-4 flex flex-wrap items-center gap-2 text-xs opacity-100 transition-opacity md:opacity-0 md:group-hover/response:opacity-100 md:focus-within:opacity-100">
                 {answer && (
                   <button

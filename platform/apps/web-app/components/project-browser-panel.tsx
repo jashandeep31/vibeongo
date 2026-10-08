@@ -20,6 +20,8 @@ import { useSessionsStore } from "@repo/app-store";
 import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
 import {
+  ArrowLeft,
+  ArrowRight,
   Check,
   ShieldCheck,
   ExternalLink,
@@ -83,6 +85,11 @@ function BrowserWorkspace({
   const [manualIp, setManualIp] = useState("");
   const [filter, setFilter] = useState("");
   const [visited, setVisited] = useState<string[]>([]);
+  const [navigation, setNavigation] = useState<
+    Record<string, { entries: string[]; index: number }>
+  >({});
+  const [address, setAddress] = useState("");
+  const [addressError, setAddressError] = useState("");
   const [reloads, setReloads] = useState<Record<string, number>>({});
   const tabStrip = useRef<HTMLDivElement>(null);
   const loaded = useRef(false);
@@ -126,6 +133,97 @@ function BrowserWorkspace({
     addAllowedIp.mutate({ id: projectId, ip: currentIp });
   };
   const selected = session.tabs.find((tab) => tab.id === session.activeTabId);
+  const selectedHistory = selected ? navigation[selected.id] : undefined;
+  const previewUrl = selectedHistory
+    ? (selectedHistory.entries[selectedHistory.index] ?? "")
+    : (selected?.url ?? "");
+  const canGoBack = !!selectedHistory && selectedHistory.index > 0;
+  const canGoForward =
+    !!selectedHistory &&
+    selectedHistory.index < selectedHistory.entries.length - 1;
+
+  useEffect(() => {
+    setAddress(previewUrl);
+    setAddressError("");
+  }, [previewUrl, selected?.id]);
+
+  const recordNavigation = (tabId: string, url: string, initialUrl = "") => {
+    setNavigation((previous) => {
+      const current = previous[tabId] ?? { entries: [initialUrl], index: 0 };
+      if (current.entries[current.index] === url) return previous;
+      const entries = [...current.entries.slice(0, current.index + 1), url];
+      return { ...previous, [tabId]: { entries, index: entries.length - 1 } };
+    });
+  };
+  const goHistory = (offset: number) => {
+    if (!selected || !selectedHistory) return;
+    const index = selectedHistory.index + offset;
+    if (index < 0 || index >= selectedHistory.entries.length) return;
+    const url = selectedHistory.entries[index] ?? "";
+    const domain = url
+      ? domains.find(
+          (entry) =>
+            new URL(`https://${entry.domain}`).origin === new URL(url).origin,
+        )
+      : undefined;
+    if (url && !domain) {
+      setAddressError("This domain is no longer available in the project.");
+      return;
+    }
+    setNavigation((previous) => ({
+      ...previous,
+      [selected.id]: { ...selectedHistory, index },
+    }));
+    commit({
+      ...session,
+      tabs: session.tabs.map((tab) =>
+        tab.id === selected.id
+          ? {
+              ...tab,
+              domainId: domain?.id ?? null,
+              url: domain ? `https://${domain.domain}/` : "",
+              title: domain?.domain ?? "New tab",
+            }
+          : tab,
+      ),
+    });
+  };
+  const navigateAddress = () => {
+    try {
+      const url = new URL(
+        address.includes("://") ? address.trim() : `https://${address.trim()}`,
+      );
+      const domain = domains.find(
+        (entry) => new URL(`https://${entry.domain}`).origin === url.origin,
+      );
+      if (url.protocol !== "https:" || url.username || url.password || !domain)
+        throw new Error(
+          "Enter an HTTPS address on one of this project's domains.",
+        );
+      const tab: BrowserTab = {
+        id: selected?.id ?? crypto.randomUUID(),
+        domainId: domain.id,
+        // Persist only the domain root. Path/query history stays in memory.
+        url: `https://${domain.domain}/`,
+        title: domain.domain,
+      };
+      recordNavigation(tab.id, url.href, previewUrl);
+      commit({
+        ...session,
+        tabs: selected
+          ? session.tabs.map((entry) => (entry.id === tab.id ? tab : entry))
+          : [...session.tabs, tab],
+        activeTabId: tab.id,
+      });
+      setAddressError("");
+    } catch (error) {
+      setAddressError(
+        error instanceof Error
+          ? error.message
+          : "Enter a valid project domain address.",
+      );
+    }
+  };
 
   useEffect(() => {
     if (isActive)
@@ -158,8 +256,10 @@ function BrowserWorkspace({
 
   useEffect(() => {
     const sync = (event: StorageEvent) => {
-      if (event.key === browserTabsStorageKey(scope) || event.key === null)
+      if (event.key === browserTabsStorageKey(scope) || event.key === null) {
+        setNavigation({});
         setSession(readBrowserTabs(scope));
+      }
     };
     window.addEventListener("storage", sync);
     return () => window.removeEventListener("storage", sync);
@@ -173,6 +273,7 @@ function BrowserWorkspace({
       if (!current.tabs.length) {
         setVisited([]);
         setReloads({});
+        setNavigation({});
       }
     };
     const timer = window.setTimeout(
@@ -238,11 +339,12 @@ function BrowserWorkspace({
   };
   const openDomain = (domain: (typeof domains)[number]) => {
     const tab: BrowserTab = {
-      id: selected?.domainId === null ? selected.id : crypto.randomUUID(),
+      id: selected && !previewUrl ? selected.id : crypto.randomUUID(),
       domainId: domain.id,
       url: `https://${domain.domain}/`,
       title: domain.domain,
     };
+    recordNavigation(tab.id, tab.url);
     const tabs = session.tabs.some((entry) => entry.id === tab.id)
       ? session.tabs.map((entry) => (entry.id === tab.id ? tab : entry))
       : [...session.tabs, tab];
@@ -260,6 +362,11 @@ function BrowserWorkspace({
           : session.activeTabId,
     });
     setVisited((previous) => previous.filter((tabId) => tabId !== id));
+    setNavigation((previous) => {
+      const next = { ...previous };
+      delete next[id];
+      return next;
+    });
     setReloads((previous) => {
       const next = { ...previous };
       delete next[id];
@@ -284,7 +391,13 @@ function BrowserWorkspace({
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-2">
         <Globe className="size-4 shrink-0" />
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium">Browser</h2>
-        <Button variant="ghost" size="icon-sm" aria-label="Open domains panel" title="Domains" onClick={onOpenDomains}>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Open domains panel"
+          title="Domains"
+          onClick={onOpenDomains}
+        >
           <Network />
         </Button>
         <Button
@@ -402,32 +515,66 @@ function BrowserWorkspace({
           button above to assign them here.
         </p>
       )}
-      {selected?.domainId ? (
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b px-2">
-          <span
-            title={selected.url}
-            className="text-muted-foreground min-w-0 flex-1 truncate text-xs"
-          >
-            {selected.url}
-          </span>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            aria-label="Reload preview"
-            title="Reload preview"
-            onClick={() => {
-              setReloads((previous) => ({
-                ...previous,
-                [selected.id]: (previous[selected.id] ?? 0) + 1,
-              }));
-              commit(session);
-            }}
-          >
-            <RefreshCw />
-          </Button>
+      <form
+        className="flex h-10 shrink-0 items-center gap-1 border-b px-1"
+        onSubmit={(event) => {
+          event.preventDefault();
+          navigateAddress();
+        }}
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Go back"
+          title="Back"
+          disabled={!canGoBack}
+          onClick={() => goHistory(-1)}
+        >
+          <ArrowLeft />
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-sm"
+          aria-label="Go forward"
+          title="Forward"
+          disabled={!canGoForward}
+          onClick={() => goHistory(1)}
+        >
+          <ArrowRight />
+        </Button>
+        <input
+          aria-label="Browser address"
+          className="text-muted-foreground focus-visible:ring-ring h-7 min-w-0 flex-1 rounded-sm bg-transparent px-1 text-xs outline-none focus-visible:ring-2"
+          value={address}
+          placeholder="Enter a project domain address"
+          spellCheck={false}
+          autoComplete="off"
+          onChange={(event) => setAddress(event.target.value)}
+        />
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          type="button"
+          disabled={!selected || !previewUrl}
+          aria-label="Reload preview"
+          title="Reload preview"
+          onClick={() => {
+            if (!selected) return;
+            setReloads((previous) => ({
+              ...previous,
+              [selected.id]: (previous[selected.id] ?? 0) + 1,
+            }));
+            commit(session);
+          }}
+        >
+          <RefreshCw />
+        </Button>
+        {previewUrl ? (
           <Button asChild variant="ghost" size="icon-sm">
             <a
-              href={selected.url}
+              href={previewUrl}
               target="_blank"
               rel="noopener noreferrer"
               aria-label="Open preview externally"
@@ -436,7 +583,12 @@ function BrowserWorkspace({
               <ExternalLink />
             </a>
           </Button>
-        </div>
+        ) : null}
+      </form>
+      {addressError ? (
+        <p role="alert" className="text-destructive px-2 py-1 text-xs">
+          {addressError}
+        </p>
       ) : null}
       <div className="relative min-h-0 flex-1">
         {session.tabs
@@ -458,12 +610,15 @@ function BrowserWorkspace({
               aria-labelledby={`browser-tab-${tab.id}`}
               className={cn(
                 "absolute inset-0",
-                tab.id !== selected?.id && "hidden",
+                (tab.id !== selected?.id || !previewUrl) && "hidden",
               )}
             >
               <iframe
-                key={`${tab.url}:${reloads[tab.id] ?? 0}`}
-                src={tab.url}
+                key={`${navigation[tab.id]?.entries[navigation[tab.id]!.index] || tab.url}:${reloads[tab.id] ?? 0}`}
+                src={
+                  navigation[tab.id]?.entries[navigation[tab.id]!.index] ||
+                  tab.url
+                }
                 title={`Preview of ${tab.title}`}
                 className="h-full w-full border-0 bg-white"
                 sandbox="allow-scripts allow-forms allow-same-origin allow-popups allow-downloads"
@@ -471,7 +626,7 @@ function BrowserWorkspace({
               />
             </div>
           ))}
-        {!selected?.domainId ? (
+        {!previewUrl ? (
           <div
             id={selected ? `browser-preview-${selected.id}` : undefined}
             role={selected ? "tabpanel" : undefined}
@@ -601,9 +756,6 @@ function BrowserWorkspace({
                 </p>
               )}
             </div>
-            <p className="text-muted-foreground shrink-0 border-t px-3 py-2 text-xs">
-              Tabs are remembered for 48 hours after use.
-            </p>
           </div>
         ) : domainQuery.isPending ? (
           <p role="status" className="text-muted-foreground p-4 text-sm">
@@ -615,11 +767,6 @@ function BrowserWorkspace({
           </p>
         ) : null}
       </div>
-      {selected?.domainId && (
-        <p className="text-muted-foreground shrink-0 border-t px-3 py-1.5 text-xs">
-          Preview blank? This site may require opening externally.
-        </p>
-      )}
     </aside>
   );
 }

@@ -59,7 +59,13 @@ export function WorkspaceResizableLayout({
       }}
     >
       <ResizablePanel id="chat" defaultSize="100%" minSize={isDesktop ? "300px" : "0px"}>
-        {children}
+        <div
+          className="h-full min-h-0 min-w-0"
+          inert={isOpen && !isDesktop}
+          aria-hidden={isOpen && !isDesktop}
+        >
+          {children}
+        </div>
       </ResizablePanel>
       <ResizableHandle
         aria-label="Resize chat and workspace sidebar"
@@ -74,7 +80,7 @@ export function WorkspaceResizableLayout({
         style={{ overflow: "visible" }}
       >
         <div
-          className={`bg-background absolute inset-0 right-[calc(3rem+env(safe-area-inset-right))] z-50 shadow-xl lg:right-0 lg:relative lg:z-auto lg:h-full lg:shadow-none ${isOpen ? "" : "hidden"}`}
+          className={`bg-background absolute inset-0 z-50 pr-[calc(3rem+env(safe-area-inset-right))] shadow-xl lg:relative lg:z-auto lg:h-full lg:pr-0 lg:shadow-none ${isOpen ? "" : "hidden"}`}
           aria-hidden={!isOpen}
         >
           {sidebar}
