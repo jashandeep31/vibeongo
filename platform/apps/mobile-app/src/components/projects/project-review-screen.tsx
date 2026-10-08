@@ -3,6 +3,7 @@ import {
   useOpencodeLastTurnChanges,
   useOpencodeReviewProjectVcs,
   useOpencodeSession,
+  useOpencodeWorkingChanges,
 } from "@repo/api-hooks";
 import { useFocusEffect, useLocalSearchParams, useRouter } from "expo-router";
 import { SymbolView } from "expo-symbols";
@@ -112,6 +113,15 @@ export function ProjectReviewScreen() {
     enabled: reviewMode === "last-turn",
   });
   const { refetch: refetchLastTurn } = lastTurnQuery;
+  const workingChanges = useOpencodeWorkingChanges({
+    chatId: projectSessionId,
+    directory: sessionQuery.data?.session.directory,
+    serverUrl: runtime.serverUrl,
+    accessToken: runtime.accessToken,
+    password: runtime.password,
+    enabled: reviewMode === "working",
+  });
+  const { refetch: refetchWorkingChanges } = workingChanges;
   const sessionUpdated = sessionQuery.data?.session.time.updated;
   useEffect(() => {
     if (reviewMode === "last-turn" && sessionUpdated) void refetchLastTurn();
@@ -126,8 +136,8 @@ export function ProjectReviewScreen() {
   const [selectedPath, setSelectedPath] = useState<string>();
   const data = sessionQuery.data;
   const reviewChanges =
-    reviewMode === "last-turn" ? lastTurnQuery.data : data?.changes;
-  const reviewError = reviewMode === "last-turn" ? lastTurnQuery.error : null;
+    reviewMode === "last-turn" ? lastTurnQuery.data : workingChanges.data;
+  const reviewError = reviewMode === "last-turn" ? lastTurnQuery.error : workingChanges.error;
   const changes = useMemo(
     () =>
       (reviewChanges ?? []).map((change) => ({
@@ -181,12 +191,20 @@ export function ProjectReviewScreen() {
     try {
       await Promise.all([
         sessionQuery.resync(),
-        ...(reviewMode === "last-turn" ? [refetchLastTurn()] : []),
+        reviewMode === "last-turn" ? refetchLastTurn() : refetchWorkingChanges(),
       ]);
     } finally {
       setIsManuallyRefreshing(false);
     }
-  }, [isManuallyRefreshing, sessionQuery.resync, reviewMode, refetchLastTurn]);
+  }, [isManuallyRefreshing, sessionQuery.resync, reviewMode, refetchLastTurn, refetchWorkingChanges]);
+
+  useFocusEffect(
+    useCallback(() => {
+      if (reviewMode === "working" && sessionQuery.data?.session.directory) {
+        void refetchWorkingChanges();
+      }
+    }, [reviewMode, sessionQuery.data?.session.directory, refetchWorkingChanges]),
+  );
 
   useFocusEffect(
     useCallback(() => {
@@ -294,14 +312,14 @@ export function ProjectReviewScreen() {
             {reviewError ? (
               <View style={styles.center}>
                 <ThemedText accessibilityRole="alert" style={styles.emptyTitle}>
-                  Could not load last turn changes
+                  Could not load {reviewMode === "last-turn" ? "last turn" : "working"} changes
                 </ThemedText>
                 <ThemedText
                   style={styles.centerCopy}
                   themeColor="textSecondary"
                 >
                   {reviewError.message ||
-                    "The session snapshot is unavailable."}
+                    "The changes are unavailable."}
                 </ThemedText>
                 <Pressable
                   accessibilityRole="button"
@@ -315,11 +333,11 @@ export function ProjectReviewScreen() {
                   <ThemedText style={styles.refreshText}>Retry</ThemedText>
                 </Pressable>
               </View>
-            ) : reviewMode === "last-turn" && lastTurnQuery.isPending ? (
+            ) : (reviewMode === "last-turn" ? lastTurnQuery.isPending : workingChanges.isPending) ? (
               <View style={styles.center}>
                 <ActivityIndicator />
                 <ThemedText themeColor="textSecondary">
-                  Loading last turn changes…
+                  Loading changes…
                 </ThemedText>
               </View>
             ) : changes.length === 0 ? (

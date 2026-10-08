@@ -49,6 +49,7 @@ export function NewOpencodeChat({
     serverUrl,
     accessToken,
     password,
+    directory,
   );
   const inventory = inventoryQuery.data;
   const { data: commands } = useOpencodeCommands(
@@ -67,10 +68,15 @@ export function NewOpencodeChat({
     ? configuredDefaultModel
     : inventory?.models[0]?.id;
   const effectiveSelection: OpencodePromptSelection = {
-    model: selection.model ?? defaultModel,
+    model: inventory?.models.some((model) => model.id === selection.model)
+      ? selection.model
+      : defaultModel,
     variant: selection.variant,
     agent:
-      selection.agent ??
+      (inventory?.agents.some((agent) => agent.id === selection.agent)
+        ? selection.agent
+        : undefined) ??
+      inventory?.defaultSelection.agent ??
       inventory?.agents.find((agent) => agent.mode === "primary")?.id ??
       inventory?.agents[0]?.id,
   };

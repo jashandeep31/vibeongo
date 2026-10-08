@@ -106,6 +106,7 @@ export const useOpencodeReviewProjectVcs = ({
         password,
       ),
     enabled: enabled && !!directory && !!serverUrl && !!accessToken && !!password,
+    refetchOnMount: "always",
     staleTime: 30_000,
     retry: (failureCount, error) =>
       !isOpencodeLocationNotFoundError(error) && failureCount < 3,
@@ -127,7 +128,7 @@ export const useInitializeOpencodeGit = ({
     mutationKey: ["opencode", "initialize-git", chatId, serverUrl],
     mutationFn: (directory: string) =>
       initializeOpencodeGit(chatId, directory, serverUrl, accessToken, password),
-    onSuccess: async (_, directory) => {
+    onSettled: async (_, __, directory) => {
       // Refresh the captured request's location, even if the user switched chats.
       await queryClient.invalidateQueries({
         predicate: ({ queryKey }) =>
@@ -147,6 +148,7 @@ export const useOpencodeWorkingChanges = ({
   accessToken,
   password,
   enabled = true,
+  refetchInterval = false,
 }: {
   chatId: string;
   directory?: string;
@@ -154,6 +156,7 @@ export const useOpencodeWorkingChanges = ({
   accessToken: string;
   password?: string;
   enabled?: boolean;
+  refetchInterval?: number | false;
 }) =>
   useQuery({
     queryKey: ["opencode", "working-changes", chatId, serverUrl, directory],
@@ -168,6 +171,7 @@ export const useOpencodeWorkingChanges = ({
     enabled:
       enabled && !!directory && !!serverUrl && !!accessToken && !!password,
     refetchOnWindowFocus: true,
+    refetchInterval,
     retry: (failureCount, error) =>
       !isOpencodeLocationNotFoundError(error) && failureCount < 3,
   });
@@ -1198,14 +1202,17 @@ export const useOpencodeInventory = (
   serverUrl: string,
   accessToken: string,
   password?: string,
+  directory?: string,
 ) =>
   useQuery({
-    queryKey: ["opencode", "inventory", chatId, serverUrl],
+    queryKey: ["opencode", "inventory", chatId, serverUrl, directory],
     queryFn: () =>
-      getOpencodeInventory(chatId, serverUrl, accessToken, password),
-    enabled: !!serverUrl && !!accessToken,
+      getOpencodeInventory(chatId, serverUrl, accessToken, password, directory),
+    enabled: !!serverUrl && !!accessToken && !!directory,
     refetchInterval: (query) =>
-      query.state.data?.models.length ? false : 2_000,
+      query.state.data?.models.length && query.state.data.agents.length
+        ? false
+        : 2_000,
     refetchOnMount: "always",
     retry: 5,
     retryDelay: 1_000,

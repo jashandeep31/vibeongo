@@ -300,13 +300,20 @@ export function getSessionPromptSelection(
 ): OpencodePromptSelection {
   if (!data) return {};
 
+  // Agent and model are independent session selections. A partial model
+  // snapshot must not prevent the current agent from being recovered.
+  const latestAgent = data.messages.findLast(
+    (message) => Boolean(message.info.agent),
+  )?.info.agent;
+  const agent = data.session.agent || latestAgent;
+
   if (data.session.model?.providerID && data.session.model.id) {
     return {
       model: `${data.session.model.providerID}/${data.session.model.id}`,
       ...(data.session.model.variant
         ? { variant: data.session.model.variant }
         : {}),
-      ...(data.session.agent ? { agent: data.session.agent } : {}),
+      ...(agent ? { agent } : {}),
     };
   }
 
@@ -318,9 +325,7 @@ export function getSessionPromptSelection(
       return {
         model: `${message.model.providerID}/${message.model.modelID}`,
         ...(message.model.variant ? { variant: message.model.variant } : {}),
-        ...(message.agent || data.session.agent
-          ? { agent: message.agent || data.session.agent }
-          : {}),
+        ...(agent ? { agent } : {}),
       };
     }
 
@@ -328,14 +333,12 @@ export function getSessionPromptSelection(
       return {
         model: `${message.providerID}/${message.modelID}`,
         ...(message.variant ? { variant: message.variant } : {}),
-        ...(message.agent || data.session.agent
-          ? { agent: message.agent || data.session.agent }
-          : {}),
+        ...(agent ? { agent } : {}),
       };
     }
   }
 
-  return data.session.agent ? { agent: data.session.agent } : {};
+  return agent ? { agent } : {};
 }
 
 export function getOpencodeMessageText(parts: SessionPart[]) {

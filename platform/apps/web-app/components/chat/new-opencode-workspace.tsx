@@ -7,17 +7,9 @@ import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
 import { ProjectTerminalPanel } from "@/components/project-terminal-panel";
 import { WorkspaceResizableLayout, WorkspaceToolRail } from "@/components/workspace-resizable-layout";
+import { WorkspaceGitButton, WorkspaceToolIcon } from "@/components/workspace-tool-button";
 import { useOpencodeWorkingChanges } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
-import {
-  Files,
-  Gauge,
-  GitCompareArrows,
-  Globe,
-  Network,
-  Settings2,
-  Terminal,
-} from "lucide-react";
 import dynamic from "next/dynamic";
 import { useCallback, useEffect, useRef, useState } from "react";
 
@@ -55,13 +47,13 @@ const ProjectSessionSettingsPanel = dynamic(
 
 type Panel = WorkspaceTool;
 const TOOLS = [
-  { id: "context", label: "Context", icon: Gauge },
-  { id: "files", label: "Files", icon: Files },
-  { id: "git", label: "Git changes", icon: GitCompareArrows },
-  { id: "terminal", label: "Terminals", icon: Terminal },
-  { id: "domains", label: "Domains", icon: Network },
-  { id: "browser", label: "Browser", icon: Globe },
-  { id: "settings", label: "Runtime settings", icon: Settings2 },
+  { id: "context", label: "Context" },
+  { id: "files", label: "Files" },
+  { id: "git", label: "Git changes" },
+  { id: "terminal", label: "Terminals" },
+  { id: "domains", label: "Domains" },
+  { id: "browser", label: "Browser" },
+  { id: "settings", label: "Runtime settings" },
 ] as const;
 
 export function NewOpencodeWorkspace({
@@ -257,13 +249,22 @@ export function NewOpencodeWorkspace({
           </div>
         </WorkspaceResizableLayout>
         <WorkspaceToolRail>
-          {TOOLS.map(({ id, label, icon: Icon }) => (
+          {TOOLS.map(({ id, label }) => id === "git" ? (
+            <WorkspaceGitButton
+              key={id}
+              buttonRef={(node) => { buttons.current.git = node; }}
+              connection={{ chatId: projectSessionId, directory, serverUrl, accessToken, password }}
+              isOpen={active === "git"}
+              onClick={() => togglePanel("git")}
+            />
+          ) : (
             <Button
               key={id}
               ref={(node) => {
                 buttons.current[id] = node;
               }}
               type="button"
+              className="group"
               size="icon-sm"
               variant={active === id ? "secondary" : "ghost"}
               aria-label={`${active === id ? "Close" : "Open"} ${label.toLowerCase()} panel`}
@@ -271,7 +272,7 @@ export function NewOpencodeWorkspace({
               title={label}
               onClick={() => togglePanel(id)}
             >
-              <Icon />
+              <WorkspaceToolIcon tool={id} />
             </Button>
           ))}
         </WorkspaceToolRail>

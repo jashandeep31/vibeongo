@@ -1145,6 +1145,7 @@ const PromptSelectors = memo(function PromptSelectors({
           icon={{ ios: "person.crop.circle", android: "smart_toy" }}
           label={
             selectedAgent?.name ??
+            selection.agent ??
             (inventory ? "Choose agent" : "Loading agent…")
           }
           onPress={() => setPicker("agent")}

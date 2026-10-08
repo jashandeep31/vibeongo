@@ -15,7 +15,7 @@ import {
   useCancelOpencodeQueuedPrompt,
   useDeleteOpencodeSession,
   useEditOpencodeQueuedPrompt,
-  useForkOpencodeSession,
+  useForkOpencodeTurn,
   useOpencodeCommands,
   useOpencodeInventory,
   useOpencodeSession,
@@ -54,7 +54,6 @@ import {
 
 import {
   createChatTurnCache,
-  createChatTurnSelector,
   getRevertedMessageLabel,
   getSessionPromptSelection,
 } from "@/components/projects/opencode-chat-turns";
@@ -67,7 +66,6 @@ import {
   OpencodeComposerController,
 } from "@/components/projects/opencode-composer";
 import { OpencodeQuestionPrompt } from "@/components/projects/opencode-question-prompt";
-import { OpencodeForkDrawer } from "@/components/projects/opencode-fork-drawer";
 import { OpencodeWorktreeDrawer } from "@/components/projects/opencode-worktree-drawer";
 import type { OpencodeComposerAction } from "@/components/projects/opencode-composer";
 import { OpencodePermissionPrompt } from "@/components/projects/opencode-permission-prompt";
@@ -187,50 +185,48 @@ export function ProjectChatScreen() {
     accessToken: runtime.accessToken,
     password: runtime.password,
   });
-  const forkSession = useForkOpencodeSession({
+  const forkSession = useForkOpencodeTurn({
     chatId: projectSessionId,
     sessionId: opencodeSessionId,
     serverUrl: runtime.serverUrl,
     accessToken: runtime.accessToken,
     password: runtime.password,
   });
+  const forkPendingRef = useRef(false);
+  const currentChatRef = useRef(chatScrollKey);
+  currentChatRef.current = chatScrollKey;
+  const forkScreenFocusedRef = useRef(false);
+  useFocusEffect(
+    useCallback(() => {
+      forkScreenFocusedRef.current = true;
+      return () => {
+        forkScreenFocusedRef.current = false;
+      };
+    }, []),
+  );
   const forkChat = useCallback(
     (messageId: string) => {
-      if (forkSession.isPending) return;
-      const userMessages = (sessionQuery.data?.messages ?? []).filter(
-        (message) => message.info.role === "user",
-      );
-      const selectedIndex = userMessages.findIndex(
-        (message) => message.info.id === messageId,
-      );
-      if (selectedIndex === -1) {
-        Alert.alert(
-          "Could not fork chat",
-          "The selected message was not found.",
-        );
-        return;
-      }
-      const before = userMessages[selectedIndex + 1]?.info.id;
-      forkSession.mutate(before, {
+      if (forkPendingRef.current) return;
+      forkPendingRef.current = true;
+      const sourceChat = chatScrollKey;
+      forkSession.mutate(messageId, {
         onError: (error) => Alert.alert("Could not fork chat", error.message),
-        onSuccess: (session) =>
-          router.replace({
+        onSuccess: ({ session }) => {
+          if (
+            !forkScreenFocusedRef.current ||
+            currentChatRef.current !== sourceChat
+          ) return;
+          router.push({
             pathname: "/projects/[projectId]/sessions/[projectSessionId]/chat",
-            params: {
-              chatId: session.id,
-              projectId,
-              projectSessionId,
-            },
-          }),
+            params: { chatId: session.id, projectId, projectSessionId },
+          });
+        },
+        onSettled: () => {
+          forkPendingRef.current = false;
+        },
       });
     },
-    [
-      forkSession,
-      projectId,
-      projectSessionId,
-      router,
-      sessionQuery.data?.messages,
-    ],
+    [forkSession.mutate, chatScrollKey, projectId, projectSessionId, router],
   );
   const revertSession = useRevertOpencodeSession({
     chatId: projectSessionId,
@@ -260,11 +256,11 @@ export function ProjectChatScreen() {
     runtime.serverUrl,
     runtime.accessToken,
     runtime.password,
+    sessionQuery.data?.session.directory,
   );
   const [isChatSwitcherOpen, setIsChatSwitcherOpen] = useState(false);
   const [isSessionChatSwitcherOpen, setIsSessionChatSwitcherOpen] =
     useState(false);
-  const [isForkDrawerOpen, setIsForkDrawerOpen] = useState(false);
   const [isWorktreeDrawerOpen, setIsWorktreeDrawerOpen] = useState(false);
   const [isManuallyRefreshing, setIsManuallyRefreshing] = useState(false);
   const data = sessionQuery.data;
@@ -286,7 +282,14 @@ export function ProjectChatScreen() {
       runtime.serverUrl,
     ],
   );
-  const [selection, setSelection] = useState<OpencodePromptSelection>({});
+  const [storedSelection, setSelection] = useState<OpencodePromptSelection>({});
+  const selection = useMemo<OpencodePromptSelection>(
+    () => ({
+      ...storedSelection,
+      agent: storedSelection.agent ?? inventoryQuery.data?.defaultSelection.agent,
+    }),
+    [storedSelection, inventoryQuery.data?.defaultSelection.agent],
+  );
   const sessionSelection = useMemo(
     () => getSessionPromptSelection(data),
     [data],
@@ -331,9 +334,32 @@ export function ProjectChatScreen() {
     ),
   });
 
+  const followedSelection = useRef({ key: "", selection: sessionSelection });
   useEffect(() => {
-    setSelection(sessionSelection);
+    const previous = followedSelection.current;
+    if (previous.key !== chatScrollKey) {
+      setSelection(sessionSelection);
+    } else {
+      setSelection((current) => {
+        const next = { ...current };
+        for (const field of ["agent", "model", "variant"] as const) {
+          if (sessionSelection[field] !== previous.selection[field]) {
+            next[field] = sessionSelection[field];
+          }
+        }
+        return next.agent === current.agent &&
+          next.model === current.model &&
+          next.variant === current.variant
+          ? current
+          : next;
+      });
+    }
+    followedSelection.current = {
+      key: chatScrollKey,
+      selection: sessionSelection,
+    };
   }, [
+    chatScrollKey,
     opencodeSessionId,
     sessionSelection.agent,
     sessionSelection.model,
@@ -621,7 +647,6 @@ export function ProjectChatScreen() {
                 isRefreshing={isManuallyRefreshing}
                 onBack={goBack}
                 onOpenSwitcher={openChatSwitcher}
-                onForkChat={() => setIsForkDrawerOpen(true)}
                 onRefresh={refreshManually}
                 opencodePassword={runtime.password}
                 opencodeSessionId={opencodeSessionId}
@@ -661,6 +686,9 @@ export function ProjectChatScreen() {
                     revertingId={revertSession.variables}
                     isRestoring={restoreMessage.isPending}
                     onRevert={revertTurn}
+                    onFork={forkChat}
+                    isForking={forkSession.isPending}
+                    forkingId={forkSession.variables}
                     onScrollStateChange={saveChatScrollState}
                   />
                 </View>
@@ -920,15 +948,6 @@ export function ProjectChatScreen() {
         }}
         scopeProjectSessionId={projectSessionId}
         visible={isSessionChatSwitcherOpen}
-      />
-      <OpencodeForkDrawer
-        messages={data.messages}
-        onClose={() => setIsForkDrawerOpen(false)}
-        onSelect={(messageId) => {
-          setIsForkDrawerOpen(false);
-          forkChat(messageId);
-        }}
-        visible={isForkDrawerOpen}
       />
       <OpencodeWorktreeDrawer
         connection={{
@@ -1444,6 +1463,7 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
 function createChatShellSelector() {
   let previous: OpencodeSessionData | undefined;
   return (data: OpencodeSessionData): OpencodeSessionData => {
+    const activeAgent = getSessionPromptSelection(data).agent;
     const messages = data.messages.filter(
       (message) => message.info.role === "user",
     );
@@ -1453,7 +1473,7 @@ function createChatShellSelector() {
       previous.session.parentID === data.session.parentID &&
       previous.session.title === data.session.title &&
       previous.session.directory === data.session.directory &&
-      previous.session.agent === data.session.agent &&
+      previous.session.agent === activeAgent &&
       previous.session.revert?.messageID === data.session.revert?.messageID &&
       previous.session.model?.providerID === data.session.model?.providerID &&
       previous.session.model?.id === data.session.model?.id &&
@@ -1471,6 +1491,10 @@ function createChatShellSelector() {
     }
     previous = {
       ...data,
+      session:
+        activeAgent === data.session.agent
+          ? data.session
+          : { ...data.session, agent: activeAgent },
       messages,
       changes: data.changes,
     };
@@ -1499,25 +1523,6 @@ function getVisibleMessages(data: OpencodeSessionData) {
   return visibleTimelineMessages(messages, data.pendingInbox);
 }
 
-function getCompletedMessages(data: OpencodeSessionData) {
-  const messages = getVisibleMessages(data);
-  if (data.status.type === "idle") return messages;
-
-  const activeUserMessage = messages.findLast(
-    (message) => message.info.role === "user",
-  );
-  if (!activeUserMessage) return messages;
-
-  return messages.filter(
-    (message) =>
-      message.info.id !== activeUserMessage.info.id &&
-      !(
-        message.info.role === "assistant" &&
-        message.info.parentID === activeUserMessage.info.id
-      ),
-  );
-}
-
 function createTimelineDataSelector() {
   let previous: OpencodeSessionData | undefined;
 
@@ -1536,7 +1541,8 @@ function createTimelineDataSelector() {
       previous.messagePage?.hasOlder === data.messagePage?.hasOlder &&
       previous.messagePage?.cursor === data.messagePage?.cursor &&
       sameItems(previous.messages, messages) &&
-      sameItems(previous.questions, data.questions)
+      sameItems(previous.questions, data.questions) &&
+      sameItems(previous.pendingInbox, data.pendingInbox)
     ) {
       return previous;
     }
@@ -1562,6 +1568,9 @@ const ChatTimeline = memo(function ChatTimeline({
   revertingId,
   isRestoring,
   onRevert,
+  onFork,
+  isForking,
+  forkingId,
   onScrollStateChange,
 }: {
   bottomInset: number;
@@ -1579,6 +1588,9 @@ const ChatTimeline = memo(function ChatTimeline({
   revertingId?: string;
   isRestoring: boolean;
   onRevert: (id: string) => void;
+  onFork: (id: string) => void;
+  isForking: boolean;
+  forkingId?: string;
   onScrollStateChange: (key: string, state: ChatScrollState) => void;
 }) {
   const theme = useTheme();
@@ -1605,8 +1617,18 @@ const ChatTimeline = memo(function ChatTimeline({
     [turnCache, projectSessionId, serverUrl, opencodeSessionId],
   );
   const turns = useMemo(
-    () => selectTurns(data?.messages ?? [], models),
-    [data?.messages, models, selectTurns],
+    () =>
+      selectTurns(data?.messages ?? [], models, {
+        isStreaming: sessionQuery.isStreaming,
+        pendingInputIds: new Set(data?.pendingInbox.map((item) => item.id)),
+      }),
+    [
+      data?.messages,
+      data?.pendingInbox,
+      sessionQuery.isStreaming,
+      models,
+      selectTurns,
+    ],
   );
   const hasInlineExecutionError = useMemo(
     () =>
@@ -1632,7 +1654,7 @@ const ChatTimeline = memo(function ChatTimeline({
         sessionQuery.data.webSearchRequests.length > 0,
     );
   }, [opencodeSessionId, projectSessionId, sessionQuery.data]);
-  const activeTurnId = sessionQuery.isStreaming ? turns.at(-1)?.id : undefined;
+  const activeTurnId = turns.find((turn) => turn.isStreaming)?.id;
   const latestTurnId = turns.at(-1)?.id;
   const listRef = useRef<FlatList<(typeof turns)[number]>>(null);
   const initialScrollStateRef = useRef(initialScrollState);
@@ -1822,6 +1844,8 @@ const ChatTimeline = memo(function ChatTimeline({
         isStreaming={turn.id === activeTurnId}
         item={turn}
         onRevert={onRevert}
+        onFork={onFork}
+        isForking={isForking && forkingId === turn.id}
         reserveBottomSpace={
           turn.id === latestTurnId &&
           !activeQuestion &&
@@ -1836,6 +1860,9 @@ const ChatTimeline = memo(function ChatTimeline({
       isTimelineKeyboardVisible,
       latestTurnId,
       onRevert,
+      onFork,
+      isForking,
+      forkingId,
       revertingId,
       turns,
     ],
@@ -1844,7 +1871,7 @@ const ChatTimeline = memo(function ChatTimeline({
   return (
     <>
       <ChatRevertDisabledContext.Provider
-        value={sessionQuery.isStreaming || isReverting || isRestoring}
+        value={sessionQuery.isStreaming || isReverting || isRestoring || isForking}
       >
         <FlatList
           ref={listRef}

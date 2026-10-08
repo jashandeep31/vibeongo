@@ -836,11 +836,11 @@ export function OpencodeComposer({
                 size="sm"
                 disabled={disabled}
                 aria-label="Choose agent"
-                title={selectedAgent?.name ?? "Choose agent"}
+                title={selectedAgent?.name ?? selection.agent ?? "Choose agent"}
                 className="h-10 max-w-56 shrink-0 justify-between gap-2 rounded-full px-4 font-normal"
               >
                 <span className="truncate">
-                  {selectedAgent?.name ?? "Choose agent"}
+                  {selectedAgent?.name ?? selection.agent ?? "Choose agent"}
                 </span>
                 <ChevronsUpDown className="text-muted-foreground size-3.5 shrink-0" />
               </Button>

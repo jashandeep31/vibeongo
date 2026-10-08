@@ -11,6 +11,7 @@ import {
 } from "react";
 import {
   ActivityIndicator,
+  Alert,
   Animated,
   Dimensions,
   Easing,
@@ -42,17 +43,24 @@ function OpencodeChatTurnComponent({
   isStreaming,
   isReverting,
   onRevert,
+  onFork,
+  isForking = false,
   reserveBottomSpace = false,
 }: {
   item: ChatTurn;
   isStreaming: boolean;
   isReverting: boolean;
   onRevert: (id: string) => void;
+  onFork: (id: string) => void;
+  isForking?: boolean;
   reserveBottomSpace?: boolean;
 }) {
   const theme = useTheme();
   const reservedHeight = useRef(new Animated.Value(0)).current;
   const [copied, setCopied] = useState<"question" | "answer" | null>(null);
+  const copyTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const answer = item.content
     .flatMap((content) => (content.type === "text" ? [content.text] : []))
     .join("\n\n")
@@ -61,22 +69,36 @@ function OpencodeChatTurnComponent({
   const firstEditGroupId = content.find(
     (content) => content.type === "tools" && content.tools.every(isEditTool),
   )?.id;
+  const answerMetadata = [
+    item.model,
+    item.agent,
+    formatDuration(item.durationMs),
+  ]
+    .filter(Boolean)
+    .join(" · ");
 
   useEffect(() => {
     const animation = Animated.timing(reservedHeight, {
       duration: 280,
       easing: Easing.out(Easing.cubic),
-      toValue: reserveBottomSpace ? Dimensions.get("window").height * 0.6 : 0,
+      toValue: reserveBottomSpace ? Dimensions.get("window").height * 0.25 : 0,
       useNativeDriver: false,
     });
     animation.start();
     return () => animation.stop();
   }, [reserveBottomSpace, reservedHeight]);
 
+  useEffect(() => () => clearTimeout(copyTimerRef.current), []);
+
   const copy = async (kind: "question" | "answer", value: string) => {
-    await Clipboard.setStringAsync(value);
-    setCopied(kind);
-    setTimeout(() => setCopied(null), 1500);
+    try {
+      await Clipboard.setStringAsync(value);
+      setCopied(kind);
+      clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = setTimeout(() => setCopied(null), 1500);
+    } catch {
+      Alert.alert("Could not copy", "Please try again.");
+    }
   };
 
   return (
@@ -131,6 +153,12 @@ function OpencodeChatTurnComponent({
             ) : null}
           </View>
           <View style={styles.turnActions}>
+            <View style={styles.questionTimestamp}>
+              <MessageTimestamp
+                value={item.questionCreatedAt}
+                label="Question sent"
+              />
+            </View>
             {item.question ? (
               <IconButton
                 label="Copy question"
@@ -171,27 +199,35 @@ function OpencodeChatTurnComponent({
             ))
           : null}
 
-        {answer && !isStreaming ? (
+        {!isStreaming && item.answerCompletedAt !== undefined ? (
           <View style={styles.responseFooter}>
-            <View style={styles.responseActions}>
-              <IconButton
-                label="Copy response"
-                name={copied === "answer" ? "checkmark" : "doc.on.doc"}
-                onPress={() => void copy("answer", answer)}
-              />
-            </View>
             <View style={styles.metadata}>
-              {[item.model, formatDuration(item.durationMs)]
-                .filter((value): value is string => Boolean(value))
-                .map((value) => (
-                  <ThemedText
-                    key={value}
-                    numberOfLines={1}
-                    style={{ color: theme.textSecondary, fontSize: 11 }}
-                  >
-                    {value}
-                  </ThemedText>
-                ))}
+              <ThemedText
+                style={[styles.metadataText, { color: theme.textSecondary }]}
+              >
+                {answerMetadata}
+                <MessageTimestamp
+                  value={item.answerCompletedAt}
+                  label="Answer completed"
+                  prefix={answerMetadata ? " · " : ""}
+                />
+              </ThemedText>
+            </View>
+            <View style={styles.responseActions}>
+              {item.questionCreatedAt !== undefined ? (
+                <ForkButton
+                  id={item.id}
+                  isForking={isForking}
+                  onFork={onFork}
+                />
+              ) : null}
+              {answer ? (
+                <IconButton
+                  label="Copy response"
+                  name={copied === "answer" ? "checkmark" : "doc.on.doc"}
+                  onPress={() => void copy("answer", answer)}
+                />
+              ) : null}
             </View>
           </View>
         ) : null}
@@ -216,8 +252,10 @@ export const OpencodeChatTurn = memo(
   (previous, next) =>
     previous.isStreaming === next.isStreaming &&
     previous.isReverting === next.isReverting &&
+    previous.isForking === next.isForking &&
     previous.reserveBottomSpace === next.reserveBottomSpace &&
     previous.onRevert === next.onRevert &&
+    previous.onFork === next.onFork &&
     previous.item === next.item,
 );
 
@@ -447,7 +485,11 @@ function IconButton({
   disabled?: boolean;
   label: string;
   loading?: boolean;
-  name: "arrow.uturn.backward" | "checkmark" | "doc.on.doc";
+  name:
+    | "arrow.uturn.backward"
+    | "checkmark"
+    | "doc.on.doc"
+    | "arrow.triangle.branch";
   onPress: () => void;
 }) {
   const theme = useTheme();
@@ -455,6 +497,10 @@ function IconButton({
     <Pressable
       accessibilityLabel={label}
       accessibilityRole="button"
+      accessibilityState={{
+        disabled: Boolean(disabled),
+        busy: Boolean(loading),
+      }}
       disabled={disabled}
       onPress={onPress}
       style={({ pressed }) => [
@@ -470,11 +516,13 @@ function IconButton({
           name={{
             ios: name,
             android:
-              name === "arrow.uturn.backward"
-                ? "undo"
-                : name === "checkmark"
-                  ? "check"
-                  : "content_copy",
+              name === "arrow.triangle.branch"
+                ? "account_tree"
+                : name === "arrow.uturn.backward"
+                  ? "undo"
+                  : name === "checkmark"
+                    ? "check"
+                    : "content_copy",
           }}
           size={14}
           tintColor={theme.textSecondary}
@@ -485,9 +533,64 @@ function IconButton({
 }
 
 function formatDuration(durationMs?: number) {
-  if (durationMs === undefined) return undefined;
-  if (durationMs < 1000) return `${durationMs}ms`;
-  return `${Math.round(durationMs / 1000)}s`;
+  if (
+    durationMs === undefined ||
+    !Number.isFinite(durationMs) ||
+    durationMs < 0
+  )
+    return undefined;
+  const seconds = Math.round(durationMs / 1000);
+  return seconds < 60
+    ? `${seconds}s`
+    : `${Math.floor(seconds / 60)}m ${seconds % 60}s`;
+}
+
+function ForkButton({
+  id,
+  isForking,
+  onFork,
+}: {
+  id: string;
+  isForking: boolean;
+  onFork: (id: string) => void;
+}) {
+  const disabled = useContext(ChatRevertDisabledContext);
+  return (
+    <IconButton
+      disabled={disabled || isForking}
+      label="Fork chat through this answer"
+      loading={isForking}
+      name="arrow.triangle.branch"
+      onPress={() => onFork(id)}
+    />
+  );
+}
+
+function MessageTimestamp({
+  value,
+  label,
+  prefix = "",
+}: {
+  value?: number;
+  label: string;
+  prefix?: string;
+}) {
+  const theme = useTheme();
+  if (value === undefined || !Number.isFinite(value)) return null;
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return null;
+  return (
+    <ThemedText
+      accessibilityLabel={`${label}: ${date.toLocaleString()}`}
+      style={{ color: theme.textSecondary, fontSize: 11, lineHeight: 16 }}
+    >
+      {prefix}
+      {date.toLocaleTimeString(undefined, {
+        hour: "numeric",
+        minute: "2-digit",
+      })}
+    </ThemedText>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -508,9 +611,9 @@ const styles = StyleSheet.create({
   errorTitle: { fontSize: 13, fontWeight: "700" },
   iconButton: {
     alignItems: "center",
-    height: 30,
+    height: 44,
     justifyContent: "center",
-    width: 30,
+    width: 28,
   },
   interruption: {
     alignItems: "center",
@@ -522,11 +625,12 @@ const styles = StyleSheet.create({
   image: { borderRadius: 10, height: 112, width: 112 },
   images: { flexDirection: "row", flexWrap: "wrap", gap: 7 },
   metadata: {
-    alignItems: "center",
-    flexDirection: "row",
-    gap: 5,
-    marginLeft: "auto",
+    alignItems: "flex-start",
+    justifyContent: "center",
+    flex: 1,
+    minWidth: 0,
   },
+  metadataText: { fontSize: 11, lineHeight: 16, textAlign: "left" },
   notice: { fontSize: 13, lineHeight: 20, marginTop: 2 },
   pressed: { opacity: 0.65 },
   reasoningBody: {
@@ -543,13 +647,23 @@ const styles = StyleSheet.create({
   },
   questionGroup: { alignItems: "flex-end", gap: 2 },
   questionText: { fontSize: 15, lineHeight: 22 },
+  questionTimestamp: {
+    height: 44,
+    justifyContent: "center",
+    paddingHorizontal: 7,
+  },
   response: { gap: 7 },
-  responseActions: { flexDirection: "row" },
+  responseActions: {
+    alignItems: "center",
+    flexDirection: "row",
+    flexShrink: 0,
+    gap: 0,
+  },
   responseFooter: {
     alignItems: "center",
     flexDirection: "row",
-    gap: 6,
-    marginTop: 5,
+    gap: 8,
+    marginTop: 4,
   },
   thinking: {
     fontSize: 13,
@@ -565,7 +679,13 @@ const styles = StyleSheet.create({
     marginTop: 4,
   },
   workingText: { marginTop: 0 },
-  turnActions: { flexDirection: "row" },
+  turnActions: {
+    alignItems: "center",
+    alignSelf: "flex-end",
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    gap: 0,
+  },
   userMessage: {
     borderRadius: 16,
     borderWidth: StyleSheet.hairlineWidth,

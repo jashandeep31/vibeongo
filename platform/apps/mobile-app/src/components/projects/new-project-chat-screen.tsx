@@ -92,12 +92,6 @@ export function NewProjectChatScreen() {
   const isInstanceExpiring = useInstanceExpiryWarning(
     runtime.instance?.terminates_at,
   );
-  const inventoryQuery = useOpencodeInventory(
-    projectSessionId,
-    runtime.serverUrl,
-    runtime.accessToken,
-    runtime.password,
-  );
   const directoriesQuery = useOpencodeProjectDirectories(
     projectSessionId,
     runtime.serverUrl,
@@ -105,6 +99,13 @@ export function NewProjectChatScreen() {
     runtime.password,
   );
   const resolvedDirectory = directory || directoriesQuery.data?.[0]?.worktree;
+  const inventoryQuery = useOpencodeInventory(
+    projectSessionId,
+    runtime.serverUrl,
+    runtime.accessToken,
+    runtime.password,
+    resolvedDirectory,
+  );
   const commandsQuery = useOpencodeCommands(
     projectSessionId,
     runtime.serverUrl,

@@ -12,6 +12,7 @@ import type { SnapshotFileDiff } from "@repo/api-client";
 import {
   useInitializeOpencodeGit,
   useOpencodeReviewProjectVcs,
+  useOpencodeWorkingChanges,
 } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { cn } from "@repo/ui/lib/utils";
@@ -73,6 +74,13 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
     enabled: isActive && !!gitConnection,
   });
   const initializeGit = useInitializeOpencodeGit(connection);
+  const workingChanges = useOpencodeWorkingChanges({
+    ...connection,
+    enabled: isActive && !!gitConnection && mode !== "last-turn",
+  });
+  const useWorkingChanges = !!gitConnection && mode !== "last-turn";
+  const displayedError = useWorkingChanges ? workingChanges.error?.message : changesError;
+  const refreshing = isRefreshing || (useWorkingChanges && workingChanges.isFetching);
   const noGit = !!gitConnection && reviewVcs.isSuccess && reviewVcs.data === null;
   const checkingVcs = !!gitConnection?.directory && reviewVcs.isLoading;
   const [filter, setFilter] = useState("");
@@ -90,11 +98,11 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
   });
   const normalizedChanges = useMemo(
     () =>
-      changes.map((change) => ({
+      (useWorkingChanges ? workingChanges.data ?? [] : changes).map((change) => ({
         ...change,
         normalizedPath: normalizeOpencodeFilePath(change.file),
       })),
-    [changes],
+    [useWorkingChanges, workingChanges.data, changes],
   );
   const filteredChanges = useMemo(() => {
     const query = filter.trim().toLowerCase();
@@ -224,13 +232,14 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
                 size="icon-sm"
                 aria-label="Refresh changes"
                 title="Refresh changes"
-                disabled={isRefreshing}
+                disabled={refreshing}
                 onClick={() => {
                   if (gitConnection?.directory) void reviewVcs.refetch();
                   onRefresh();
+                  if (useWorkingChanges) void workingChanges.refetch();
                 }}
               >
-                <RefreshCw className={cn(isRefreshing && "animate-spin")} />
+                <RefreshCw className={cn(refreshing && "animate-spin")} />
               </Button>
             ) : null}
             {onClose ? (
@@ -257,6 +266,18 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
             )}
           </div>
         </header>
+
+        {gitConnection ? (
+          <div className="border-border shrink-0 border-b px-2 py-1.5 text-xs">
+            <span className="text-muted-foreground">
+              {mode === "last-turn" ? "Session directory" : "Git request directory"}
+              {": "}
+            </span>
+            <code className="select-all break-all font-mono">
+              {gitConnection.directory || "Waiting for working directory…"}
+            </code>
+          </div>
+        ) : null}
 
         {reviewVcs.error && gitConnection ? (
           <div role="alert" className="text-destructive p-6 text-sm">
@@ -288,11 +309,11 @@ export const OpencodeReviewPanel = memo(function OpencodeReviewPanel({
               </p>
             ) : null}
           </div>
-        ) : changesError ? (
+        ) : displayedError ? (
           <div role="alert" className="text-destructive p-6 text-sm">
-            {changesError}
+            {displayedError}
           </div>
-        ) : isRefreshing && normalizedChanges.length === 0 ? (
+        ) : refreshing && normalizedChanges.length === 0 ? (
           <div role="status" className="text-muted-foreground p-6 text-sm">
             Loading changes…
           </div>

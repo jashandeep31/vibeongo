@@ -33,6 +33,8 @@ import {
 } from "./proxy-auth.js";
 
 const clients = new Map<string, OpenCodeClient>();
+const vcsRecoveryRequests = new WeakMap<OpenCodeClient, Promise<void>>();
+const vcsRepositoryRequests = new WeakMap<OpenCodeClient, Map<string, Promise<string | null>>>();
 const OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
 const OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS = 5_000;
 
@@ -2146,7 +2148,7 @@ function normalizeV2Form(form: OpencodeForm): OpencodeSessionForms {
   };
 }
 
-/** Resolve the session directory's project before enabling Git-only review modes. */
+/** Resolve the directory's live VCS provider before enabling Git review modes. */
 export async function getOpencodeReviewProjectVcs(
   chatId: string,
   directory: string,
@@ -2155,12 +2157,91 @@ export async function getOpencodeReviewProjectVcs(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const [location, projects] = await Promise.all([
-    client.location.get({ location: { directory } }),
-    client.project.list(),
-  ]);
-  const project = projects.find((project) => project.id === location.project.id);
-  return project?.vcs ?? null;
+  return resolveOpencodeReviewVcs(client, directory);
+}
+
+// VCS is location state, not a global project-list lookup. A folder opened
+// before it was cloned can retain a markerless service graph indefinitely.
+function resolveOpencodeReviewVcs(client: OpenCodeClient, directory: string) {
+  let requests = vcsRepositoryRequests.get(client);
+  if (!requests) {
+    requests = new Map();
+    vcsRepositoryRequests.set(client, requests);
+  }
+  const pending = requests.get(directory);
+  if (pending) return pending;
+  const request = discoverOpencodeReviewVcs(client, directory);
+  requests.set(directory, request);
+  const clear = () => {
+    if (requests.get(directory) === request) requests.delete(directory);
+  };
+  void request.then(clear, clear);
+  return request;
+}
+
+async function discoverOpencodeReviewVcs(
+  client: OpenCodeClient,
+  directory: string,
+): Promise<string | null> {
+  if (!directory.trim()) {
+    throw new Error("Choose a workspace folder to review Git changes.");
+  }
+  const input = { location: { directory } };
+  // Resolve this location before reading its provider. Resolving and looking
+  // up a global project in parallel could mistake a missing record for no Git.
+  await client.location.get(input);
+  const vcs = await client.vcs.get(input);
+  if (vcs.data.provider) return vcs.data.provider;
+
+  // The file API lists hidden entries and supports both .git directories and
+  // .git files (linked worktrees). Check ancestors inside the workspace too.
+  let path = directory.replace(/\/+$/, "");
+  let repository: string | undefined;
+  while (
+    path === RUNTIME_WORKSPACE_DIRECTORY ||
+    path.startsWith(`${RUNTIME_WORKSPACE_DIRECTORY}/`)
+  ) {
+    const entries = await client.file.list({ ...input, path });
+    for (const entry of entries.data) {
+      const name = entry.path.replace(/\/+$/, "").split("/").at(-1);
+      if (name === ".git") repository = "git";
+      else if (name === ".hg" && !repository) repository = "hg";
+    }
+    if (repository || path === RUNTIME_WORKSPACE_DIRECTORY) break;
+    path = path.slice(0, path.lastIndexOf("/"));
+  }
+  if (!repository) return null;
+
+  // Startup activation may have completed while the filesystem was read.
+  // Recheck before rebuilding a location that is already healthy.
+  const activated = await client.vcs.get(input);
+  if (activated.data.provider) return activated.data.provider;
+
+  let recovery = vcsRecoveryRequests.get(client);
+  if (!recovery) {
+    recovery = (async () => {
+      const active = await client.session.active();
+      if (Object.values(active).some(Boolean)) {
+        throw new Error(
+          "OpenCode has stale repository state. Finish running chats, then refresh Git changes.",
+        );
+      }
+      await client.location.reload();
+    })();
+    vcsRecoveryRequests.set(client, recovery);
+    const clearRecovery = () => {
+      if (vcsRecoveryRequests.get(client) === recovery) vcsRecoveryRequests.delete(client);
+    };
+    void recovery.then(clearRecovery, clearRecovery);
+  }
+  await recovery;
+  const refreshed = await client.vcs.get(input);
+  if (!refreshed.data.provider) {
+    throw new Error(
+      `The ${repository} repository exists, but OpenCode could not load its VCS provider. Check the OpenCode runtime and refresh.`,
+    );
+  }
+  return refreshed.data.provider;
 }
 
 /** Initialize Git at the explicit workspace location through the native VCS API. */
@@ -2189,6 +2270,8 @@ export async function getOpencodeWorkingChanges(
   password?: string,
 ): Promise<SnapshotFileDiff[]> {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password, directory);
+  const provider = await resolveOpencodeReviewVcs(client, directory);
+  if (!provider) return [];
   const result = await client.vcs.diff({ location: { directory }, mode: "working" });
   return result.data;
 }
@@ -2253,19 +2336,30 @@ export async function getOpencodeInventory(
   serverUrl: string,
   accessToken: string,
   password?: string,
+  directory?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  const [providerResponse, modelsResponse, agentsResponse] = await Promise.all([
+  const location = directory ? { location: { directory } } : {};
+  const [providerResponse, modelsResponse, agentsResponse, config] = await Promise.all([
     getOpencodeInventoryResource("providers", (signal) =>
-      client.provider.list({}, { signal }),
+      client.provider.list(location, { signal }),
     ),
     getOpencodeInventoryResource("models", (signal) =>
-      client.model.list({}, { signal }),
+      client.model.list(location, { signal }),
     ),
     getOpencodeInventoryResource("agents", (signal) =>
-      client.agent.list({}, { signal }),
+      client.agent.list(location, { signal }),
+    ),
+    getOpencodeInventoryResource("config", (signal) =>
+      client.config.get(location, { signal }),
     ),
   ]);
+  let configuredAgent: string | undefined;
+  for (const entry of config) {
+    if (entry.type === "document" && entry.info.default_agent !== undefined) {
+      configuredAgent = entry.info.default_agent;
+    }
+  }
 
   const providers = new Map(
     providerResponse.data.map((provider) => [provider.id, provider]),
@@ -2284,7 +2378,10 @@ export async function getOpencodeInventory(
   const hiddenAgentNames = new Set(["compaction", "title", "summary"]);
   const agents = agentsResponse.data
     .filter(
-      (agent) => agent.mode === "primary" && !hiddenAgentNames.has(agent.id),
+      (agent) =>
+        agent.mode !== "subagent" &&
+        !agent.hidden &&
+        !hiddenAgentNames.has(agent.id),
     )
     .map((agent) => ({
       id: agent.id,
@@ -2298,7 +2395,10 @@ export async function getOpencodeInventory(
     agents,
     defaultSelection: {
       model: models[0]?.id,
-      agent: agents[0]?.id,
+      agent:
+        agents.find((agent) => agent.id === configuredAgent)?.id ??
+        agents.find((agent) => agent.id === "build")?.id ??
+        agents[0]?.id,
     },
   };
 }

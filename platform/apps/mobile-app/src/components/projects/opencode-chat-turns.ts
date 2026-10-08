@@ -58,37 +58,63 @@ export function createChatTimelineSelector() {
 
 // Cache by immutable source messages, so a token only rebuilds its own turn.
 export function createChatTurnSelector() {
-  let cache = new Map<string, { messages: SessionMessage[]; turn: ChatTurn }>();
+  let cache = new Map<
+    string,
+    { messages: SessionMessage[]; turn: ChatTurn; isStreaming: boolean }
+  >();
   let previousModels: OpencodeModelOption[] | undefined;
   let previousTurns: ChatTurn[] = [];
-  return (messages: SessionMessage[], models?: OpencodeModelOption[]) => {
+  return (
+    messages: SessionMessage[],
+    models?: OpencodeModelOption[],
+    options: {
+      isStreaming?: boolean;
+      pendingInputIds?: ReadonlySet<string>;
+    } = {},
+  ) => {
     if (models !== previousModels) cache.clear();
     previousModels = models;
     const groups = new Map<string, SessionMessage[]>();
+    let currentId: string | undefined;
     for (const message of messages) {
       if (message.info.role === "user") {
+        currentId = message.info.id;
         const existing = groups.get(message.info.id) ?? [];
         groups.set(message.info.id, [message, ...existing]);
         continue;
       }
-      const id = message.info.parentID || `timeline:${message.info.id}`;
+      const shellBoundary =
+        message.info.mode === "system" &&
+        message.info.parentID === `timeline:${message.info.id}`;
+      // Transcript order owns the question/answer boundary. Assistant parent IDs
+      // can still point at an optimistic question or an earlier model step.
+      const id =
+        (!shellBoundary && currentId) ||
+        message.info.parentID ||
+        `timeline:${message.info.id}`;
+      currentId = id;
       const group = groups.get(id);
       if (group) group.push(message);
       else groups.set(id, [message]);
     }
     const next = new Map<
       string,
-      { messages: SessionMessage[]; turn: ChatTurn }
+      { messages: SessionMessage[]; turn: ChatTurn; isStreaming: boolean }
     >();
+    const activeId = [...groups.keys()].findLast(
+      (id) => !options.pendingInputIds?.has(id),
+    );
     const turns: ChatTurn[] = [];
     for (const [id, sources] of groups) {
       const old = cache.get(id);
+      const isStreaming = Boolean(options.isStreaming && id === activeId);
       const turn =
         old &&
+        old.isStreaming === isStreaming &&
         old.messages.length === sources.length &&
         sources.every((source, index) => source === old.messages[index])
           ? old.turn
-          : createChatTurns(sources, models)[0]!;
+          : createChatTurns(sources, models, { isStreaming })[0]!;
       if (
         old &&
         turn !== old.turn &&
@@ -96,6 +122,8 @@ export function createChatTurnSelector() {
         sources.every(
           (source, index) =>
             source.parts === old.messages[index]?.parts &&
+            (source.info.role !== "user" ||
+              source.info === old.messages[index]?.info) &&
             (source.info.role !== "assistant" ||
               old.messages[index]?.info.role !== "assistant" ||
               source.info.error === old.messages[index]?.info.error),
@@ -110,7 +138,7 @@ export function createChatTurnSelector() {
         turn.question = old.turn.question;
         turn.summaryDiffs = old.turn.summaryDiffs;
       }
-      next.set(id, { messages: sources, turn });
+      next.set(id, { messages: sources, turn, isStreaming });
       turns.push(turn);
     }
     cache = next;

@@ -27,6 +27,7 @@ import {
 import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
 import { ProjectTerminalPanel } from "@/components/project-terminal-panel";
 import { WorkspaceResizableLayout, WorkspaceToolRail } from "@/components/workspace-resizable-layout";
+import { WorkspaceGitButton, WorkspaceToolIcon } from "@/components/workspace-tool-button";
 import {
   useAbortOpencodeSession,
   useForkOpencodeTurn,
@@ -63,18 +64,11 @@ import {
   ChevronRight,
   Check,
   CircleAlert,
-  Files,
-  GitCompareArrows,
-  Globe,
-  Network,
   GripVertical,
   Loader2,
   ListTodo,
   Pencil,
-  PanelRightClose,
   Send,
-  Settings2,
-  Terminal,
   Trash2,
   Undo2,
   X,
@@ -176,6 +170,7 @@ export function OpencodeSessionChat({
     serverUrl,
     accessToken,
     password,
+    rawResponse.session.directory,
   );
   const inventory = inventoryQuery.data;
   const { data: commands } = useOpencodeCommands(
@@ -504,16 +499,21 @@ export function OpencodeSessionChat({
     agent:
       selection.agent ??
       sessionSelection.agent ??
+      inventory?.defaultSelection.agent ??
       inventory?.agents.find((agent) => agent.mode === "primary")?.id ??
       inventory?.agents[0]?.id,
   };
 
   const selectionIdentity = useRef(draftKey);
+  const followedAgent = useRef(sessionSelection.agent);
   useEffect(() => {
     if (selectionIdentity.current !== draftKey) {
       selectionIdentity.current = draftKey;
       setSelection(readComposerDraft(draftKey)?.selection ?? sessionSelection);
+    } else if (followedAgent.current !== sessionSelection.agent) {
+      setSelection((current) => ({ ...current, agent: sessionSelection.agent }));
     }
+    followedAgent.current = sessionSelection.agent;
   }, [draftKey, sessionSelection]);
 
   useEffect(() => {
@@ -1342,20 +1342,14 @@ export function OpencodeSessionChat({
               openFilesPanel();
             }}
           >
-            {isFilesOpen ? <PanelRightClose /> : <Files />}
+            <WorkspaceToolIcon tool="files" />
           </Button>
-          <Button
-            ref={gitButtonRef}
-            type="button"
-            variant={isGitOpen ? "secondary" : "ghost"}
-            size="icon-sm"
-            aria-label={isGitOpen ? "Close Git changes" : "Open Git changes"}
-            aria-pressed={isGitOpen}
-            title="Git changes"
+          <WorkspaceGitButton
+            buttonRef={gitButtonRef}
+            connection={{ chatId, directory: rawResponse.session.directory, serverUrl, accessToken, password }}
+            isOpen={isGitOpen}
             onClick={toggleGitPanel}
-          >
-            <GitCompareArrows />
-          </Button>
+          />
           <Button
             ref={terminalButtonRef}
             type="button"
@@ -1371,7 +1365,7 @@ export function OpencodeSessionChat({
               else openTerminalPanel();
             }}
           >
-            <Terminal />
+            <WorkspaceToolIcon tool="terminal" />
           </Button>
           <Button
             ref={domainsButtonRef}
@@ -1383,7 +1377,7 @@ export function OpencodeSessionChat({
             title="Domains"
             onClick={toggleDomainsPanel}
           >
-            <Network />
+            <WorkspaceToolIcon tool="domains" />
           </Button>
           <Button
             ref={browserButtonRef}
@@ -1397,10 +1391,11 @@ export function OpencodeSessionChat({
             title="Browser"
             onClick={toggleBrowserPanel}
           >
-            <Globe />
+            <WorkspaceToolIcon tool="browser" />
           </Button>
           <Button
             ref={settingsButtonRef}
+            className="group"
             type="button"
             variant={isSettingsOpen ? "secondary" : "ghost"}
             size="icon-sm"
@@ -1411,7 +1406,7 @@ export function OpencodeSessionChat({
             title="Runtime settings"
             onClick={toggleSettingsPanel}
           >
-            <Settings2 />
+            <WorkspaceToolIcon tool="settings" />
           </Button>
         </WorkspaceToolRail>
       </div>
