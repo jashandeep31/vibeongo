@@ -103,6 +103,7 @@ export function ProjectSessionSettingsPage({
   isActive = true,
   onOpenFiles,
   onOpenTerminal,
+  onOpenDomains,
   onClose,
 }: {
   projectId: string;
@@ -112,6 +113,7 @@ export function ProjectSessionSettingsPage({
   isActive?: boolean;
   onOpenFiles?: () => void;
   onOpenTerminal?: () => void;
+  onOpenDomains?: () => void;
   onClose?: () => void;
 }) {
   const isPanel = mode === "panel";
@@ -287,11 +289,9 @@ export function ProjectSessionSettingsPage({
             >
               <Terminal />
             </Button>
-            <ProjectDomainsDialog
-              projectId={projectId}
-              projectSessionId={projectSessionId}
-              iconOnly
-            />
+            <Button variant="ghost" size="icon-sm" aria-label="Open domains panel" title="Domains" onClick={onOpenDomains}>
+              <Network />
+            </Button>
           </header>
         ) : (
           <header className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

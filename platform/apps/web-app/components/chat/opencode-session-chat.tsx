@@ -26,7 +26,7 @@ import {
 } from "@/components/chat/opencode-context-panel";
 import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
 import { ProjectTerminalPanel } from "@/components/project-terminal-panel";
-import { WorkspaceResizableLayout } from "@/components/workspace-resizable-layout";
+import { WorkspaceResizableLayout, WorkspaceToolRail } from "@/components/workspace-resizable-layout";
 import {
   useAbortOpencodeSession,
   useForkOpencodeTurn,
@@ -66,6 +66,7 @@ import {
   Files,
   GitCompareArrows,
   Globe,
+  Network,
   GripVertical,
   Loader2,
   ListTodo,
@@ -116,6 +117,10 @@ const ProjectBrowserPanel = dynamic(
   },
 );
 
+const ProjectDomainsPanel = dynamic(
+  () => import("@/components/project-domains-panel").then((module) => module.ProjectDomainsPanel),
+  { ssr: false },
+);
 const ProjectSessionSettingsPanel = dynamic(
   () =>
     import("@/components/project-session-settings-panel").then(
@@ -384,6 +389,9 @@ export function OpencodeSessionChat({
   const [hasOpenedSettings, setHasOpenedSettings] = useState(false);
   const settingsButtonRef = useRef<HTMLButtonElement>(null);
   const previousSettingsOpenRef = useRef(false);
+  const [isDomainsOpen, setIsDomainsOpen] = useState(false);
+  const [hasOpenedDomains, setHasOpenedDomains] = useState(false);
+  const domainsButtonRef = useRef<HTMLButtonElement>(null);
   const [isBrowserOpen, setIsBrowserOpen] = useState(false);
   const [hasOpenedBrowser, setHasOpenedBrowser] = useState(false);
   const browserButtonRef = useRef<HTMLButtonElement>(null);
@@ -605,6 +613,7 @@ export function OpencodeSessionChat({
   const chatUrl = `${sessionUrl}/chats/${sessionId}`;
   const closeContextPanel = useCallback(() => setIsContextOpen(false), []);
   const toggleContextPanel = useCallback(() => {
+    setIsDomainsOpen(false);
     setHasOpenedContext(true);
     setIsFilesOpen(false);
     setIsTerminalOpen(false);
@@ -623,10 +632,12 @@ export function OpencodeSessionChat({
       !isTerminalOpen &&
       !isGitOpen &&
       !isBrowserOpen &&
-      !isSettingsOpen
+      !isSettingsOpen &&
+      !isDomainsOpen
     )
       contextButtonRef.current?.focus();
   }, [
+    isDomainsOpen,
     isContextOpen,
     isFilesOpen,
     isTerminalOpen,
@@ -637,6 +648,7 @@ export function OpencodeSessionChat({
   const closeFilesPanel = useCallback(() => setIsFilesOpen(false), []);
   const closeSettingsPanel = useCallback(() => setIsSettingsOpen(false), []);
   const toggleSettingsPanel = useCallback(() => {
+    setIsDomainsOpen(false);
     setIsContextOpen(false);
     setHasOpenedSettings(true);
     setIsFilesOpen(false);
@@ -646,6 +658,7 @@ export function OpencodeSessionChat({
     setIsSettingsOpen((open) => !open);
   }, []);
   const openFilesPanel = useCallback(() => {
+    setIsDomainsOpen(false);
     setIsContextOpen(false);
     setHasOpenedFiles(true);
     setIsSettingsOpen(false);
@@ -655,6 +668,7 @@ export function OpencodeSessionChat({
     setIsFilesOpen(true);
   }, []);
   const openTerminalPanel = useCallback(() => {
+    setIsDomainsOpen(false);
     setIsContextOpen(false);
     setHasOpenedTerminal(true);
     setIsSettingsOpen(false);
@@ -665,6 +679,7 @@ export function OpencodeSessionChat({
   }, []);
   const closeBrowserPanel = useCallback(() => setIsBrowserOpen(false), []);
   const toggleBrowserPanel = useCallback(() => {
+    setIsDomainsOpen(false);
     setIsContextOpen(false);
     setIsSettingsOpen(false);
     setHasOpenedBrowser(true);
@@ -675,6 +690,7 @@ export function OpencodeSessionChat({
   }, []);
   const closeGitPanel = useCallback(() => setIsGitOpen(false), []);
   const toggleGitPanel = useCallback(() => {
+    setIsDomainsOpen(false);
     setIsContextOpen(false);
     setIsBrowserOpen(false);
     setIsSettingsOpen(false);
@@ -694,10 +710,12 @@ export function OpencodeSessionChat({
       !isGitOpen &&
       !isBrowserOpen &&
       !isSettingsOpen &&
-      !isContextOpen
+      !isContextOpen &&
+      !isDomainsOpen
     )
       filesButtonRef.current?.focus();
   }, [
+    isDomainsOpen,
     isFilesOpen,
     isTerminalOpen,
     isGitOpen,
@@ -715,10 +733,12 @@ export function OpencodeSessionChat({
       !isGitOpen &&
       !isBrowserOpen &&
       !isSettingsOpen &&
-      !isContextOpen
+      !isContextOpen &&
+      !isDomainsOpen
     )
       terminalButtonRef.current?.focus();
   }, [
+    isDomainsOpen,
     isTerminalOpen,
     isFilesOpen,
     isGitOpen,
@@ -736,10 +756,12 @@ export function OpencodeSessionChat({
       !isTerminalOpen &&
       !isBrowserOpen &&
       !isSettingsOpen &&
-      !isContextOpen
+      !isContextOpen &&
+      !isDomainsOpen
     )
       gitButtonRef.current?.focus();
   }, [
+    isDomainsOpen,
     isGitOpen,
     isFilesOpen,
     isTerminalOpen,
@@ -757,10 +779,12 @@ export function OpencodeSessionChat({
       !isTerminalOpen &&
       !isGitOpen &&
       !isSettingsOpen &&
-      !isContextOpen
+      !isContextOpen &&
+      !isDomainsOpen
     )
       browserButtonRef.current?.focus();
   }, [
+    isDomainsOpen,
     isBrowserOpen,
     isFilesOpen,
     isTerminalOpen,
@@ -778,10 +802,12 @@ export function OpencodeSessionChat({
       !isTerminalOpen &&
       !isGitOpen &&
       !isBrowserOpen &&
-      !isContextOpen
+      !isContextOpen &&
+      !isDomainsOpen
     )
       settingsButtonRef.current?.focus();
   }, [
+    isDomainsOpen,
     isSettingsOpen,
     isFilesOpen,
     isTerminalOpen,
@@ -789,6 +815,24 @@ export function OpencodeSessionChat({
     isBrowserOpen,
     isContextOpen,
   ]);
+  const openDomainsPanel = useCallback(() => {
+    setHasOpenedDomains(true);
+    setIsContextOpen(false);
+    setIsFilesOpen(false);
+    setIsTerminalOpen(false);
+    setIsGitOpen(false);
+    setIsBrowserOpen(false);
+    setIsSettingsOpen(false);
+    setIsDomainsOpen(true);
+  }, []);
+  const closeDomainsPanel = useCallback(() => {
+    setIsDomainsOpen(false);
+    domainsButtonRef.current?.focus();
+  }, []);
+  const toggleDomainsPanel = () => {
+    if (isDomainsOpen) closeDomainsPanel();
+    else openDomainsPanel();
+  };
   const parentSessionId = rawResponse.session.parentID;
   const isSubagentSession = Boolean(
     parentSessionId && !rawResponse.session.fork,
@@ -841,7 +885,13 @@ export function OpencodeSessionChat({
             onClose={closeSettingsPanel}
             onOpenFiles={openFilesPanel}
             onOpenTerminal={openTerminalPanel}
+            onOpenDomains={openDomainsPanel}
           />
+        </div>
+      ) : null}
+      {hasOpenedDomains ? (
+        <div className={isDomainsOpen ? "h-full" : "hidden"} aria-hidden={!isDomainsOpen}>
+          <ProjectDomainsPanel projectId={projectId} projectSessionId={chatId} isActive={isDomainsOpen} onClose={closeDomainsPanel} />
         </div>
       ) : null}
       {hasOpenedBrowser ? (
@@ -854,6 +904,7 @@ export function OpencodeSessionChat({
             projectSessionId={chatId}
             sessionId={sessionId}
             isActive={isBrowserOpen}
+            onOpenDomains={openDomainsPanel}
             onClose={closeBrowserPanel}
           />
         </div>
@@ -947,6 +998,7 @@ export function OpencodeSessionChat({
             isTerminalOpen ||
             isGitOpen ||
             isBrowserOpen ||
+            isDomainsOpen ||
             isSettingsOpen
           }
         >
@@ -1435,10 +1487,7 @@ export function OpencodeSessionChat({
             </div>
           </section>
         </WorkspaceResizableLayout>
-        <nav
-          aria-label="Session workspace"
-          className="bg-background z-[60] flex w-12 shrink-0 flex-col items-center gap-1 border-l py-2"
-        >
+        <WorkspaceToolRail>
           <OpencodeContextButton
             session={rawResponse}
             inventory={inventory}
@@ -1499,6 +1548,18 @@ export function OpencodeSessionChat({
             <Terminal />
           </Button>
           <Button
+            ref={domainsButtonRef}
+            type="button"
+            variant={isDomainsOpen ? "secondary" : "ghost"}
+            size="icon-sm"
+            aria-label={isDomainsOpen ? "Close domains panel" : "Open domains panel"}
+            aria-pressed={isDomainsOpen}
+            title="Domains"
+            onClick={toggleDomainsPanel}
+          >
+            <Network />
+          </Button>
+          <Button
             ref={browserButtonRef}
             type="button"
             variant={isBrowserOpen ? "secondary" : "ghost"}
@@ -1526,7 +1587,7 @@ export function OpencodeSessionChat({
           >
             <Settings2 />
           </Button>
-        </nav>
+        </WorkspaceToolRail>
       </div>
     </div>
   );

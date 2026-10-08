@@ -1,6 +1,5 @@
 "use client";
 
-import { ProjectDomainsDialog } from "@/components/dialogs/project-domains-dialog";
 import {
   BROWSER_TABS_TTL,
   browserTabsStorageKey,
@@ -25,6 +24,7 @@ import {
   ShieldCheck,
   ExternalLink,
   Globe,
+  Network,
   Loader2,
   Plus,
   RefreshCw,
@@ -39,12 +39,14 @@ export const ProjectBrowserPanel = memo(function ProjectBrowserPanel({
   sessionId,
   isActive,
   onClose,
+  onOpenDomains,
 }: {
   projectId: string;
   projectSessionId: string;
   sessionId?: string;
   isActive: boolean;
   onClose: () => void;
+  onOpenDomains: () => void;
 }) {
   // Include the project and runtime session so tabs never leak across chats.
   const scope = `${projectId}:${projectSessionId}:${sessionId ?? "new"}`;
@@ -56,6 +58,7 @@ export const ProjectBrowserPanel = memo(function ProjectBrowserPanel({
       projectSessionId={projectSessionId}
       isActive={isActive}
       onClose={onClose}
+      onOpenDomains={onOpenDomains}
     />
   );
 });
@@ -66,12 +69,14 @@ function BrowserWorkspace({
   projectSessionId,
   isActive,
   onClose,
+  onOpenDomains,
 }: {
   scope: string;
   projectId: string;
   projectSessionId: string;
   isActive: boolean;
   onClose: () => void;
+  onOpenDomains: () => void;
 }) {
   const [session, setSession] = useState(() => emptyBrowserTabs(scope));
   const [storageUnavailable, setStorageUnavailable] = useState(false);
@@ -279,11 +284,9 @@ function BrowserWorkspace({
       <header className="flex h-10 shrink-0 items-center gap-2 border-b px-2">
         <Globe className="size-4 shrink-0" />
         <h2 className="min-w-0 flex-1 truncate text-sm font-medium">Browser</h2>
-        <ProjectDomainsDialog
-          projectId={projectId}
-          projectSessionId={projectSessionId}
-          iconOnly
-        />
+        <Button variant="ghost" size="icon-sm" aria-label="Open domains panel" title="Domains" onClick={onOpenDomains}>
+          <Network />
+        </Button>
         <Button
           variant="ghost"
           size="icon-sm"

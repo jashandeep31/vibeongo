@@ -15,6 +15,7 @@ export const ProjectSessionSettingsPanel = memo(
     onClose,
     onOpenFiles,
     onOpenTerminal,
+    onOpenDomains,
   }: {
     projectId: string;
     projectSessionId: string;
@@ -23,6 +24,7 @@ export const ProjectSessionSettingsPanel = memo(
     onClose: () => void;
     onOpenFiles: () => void;
     onOpenTerminal: () => void;
+    onOpenDomains: () => void;
   }) {
     const baseUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
     const chatUrl = sessionId ? `${baseUrl}/chats/${sessionId}` : baseUrl;
@@ -65,6 +67,7 @@ export const ProjectSessionSettingsPanel = memo(
           isActive={isActive}
           onOpenFiles={onOpenFiles}
           onOpenTerminal={onOpenTerminal}
+          onOpenDomains={onOpenDomains}
           onClose={onClose}
         />
       </aside>

@@ -8,6 +8,17 @@ import {
   usePanelRef,
 } from "@repo/ui/components/resizable";
 
+export function WorkspaceToolRail({ children }: { children: ReactNode }) {
+  return (
+    <nav
+      aria-label="Session workspace"
+      className="bg-background/35 absolute top-0 right-[env(safe-area-inset-right)] z-[60] flex max-h-full w-11 flex-col items-center gap-0 overflow-y-auto rounded-lg p-0 shadow-sm backdrop-blur-sm [&>button]:size-11 [&>button]:shrink-0 lg:static lg:max-h-none lg:w-12 lg:shrink-0 lg:gap-1 lg:overflow-visible lg:rounded-none lg:border-l lg:bg-background lg:px-0 lg:py-2 lg:shadow-none lg:backdrop-blur-none lg:[&>button]:size-8"
+    >
+      {children}
+    </nav>
+  );
+}
+
 export function WorkspaceResizableLayout({
   children,
   sidebar,
@@ -63,7 +74,7 @@ export function WorkspaceResizableLayout({
         style={{ overflow: "visible" }}
       >
         <div
-          className={`bg-background absolute inset-0 z-50 shadow-xl lg:relative lg:z-auto lg:h-full lg:shadow-none ${isOpen ? "" : "hidden"}`}
+          className={`bg-background absolute inset-0 right-[calc(3rem+env(safe-area-inset-right))] z-50 shadow-xl lg:right-0 lg:relative lg:z-auto lg:h-full lg:shadow-none ${isOpen ? "" : "hidden"}`}
           aria-hidden={!isOpen}
         >
           {sidebar}

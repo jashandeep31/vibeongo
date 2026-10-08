@@ -5,7 +5,7 @@ import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
 import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
 import { ProjectTerminalPanel } from "@/components/project-terminal-panel";
-import { WorkspaceResizableLayout } from "@/components/workspace-resizable-layout";
+import { WorkspaceResizableLayout, WorkspaceToolRail } from "@/components/workspace-resizable-layout";
 import { useOpencodeWorkingChanges } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import {
@@ -13,6 +13,7 @@ import {
   Gauge,
   GitCompareArrows,
   Globe,
+  Network,
   Settings2,
   Terminal,
 } from "lucide-react";
@@ -32,6 +33,10 @@ const OpencodeReviewPanel = dynamic(
     ),
   { ssr: false, loading: loadingPanel },
 );
+const ProjectDomainsPanel = dynamic(
+  () => import("@/components/project-domains-panel").then((module) => module.ProjectDomainsPanel),
+  { ssr: false, loading: loadingPanel },
+);
 const ProjectBrowserPanel = dynamic(
   () =>
     import("@/components/project-browser-panel").then(
@@ -47,12 +52,13 @@ const ProjectSessionSettingsPanel = dynamic(
   { ssr: false, loading: loadingPanel },
 );
 
-type Panel = "context" | "files" | "git" | "terminal" | "browser" | "settings";
+type Panel = "context" | "files" | "git" | "terminal" | "browser" | "domains" | "settings";
 const TOOLS = [
   { id: "context", label: "Context", icon: Gauge },
   { id: "files", label: "Files", icon: Files },
   { id: "git", label: "Git changes", icon: GitCompareArrows },
   { id: "terminal", label: "Terminals", icon: Terminal },
+  { id: "domains", label: "Domains", icon: Network },
   { id: "browser", label: "Browser", icon: Globe },
   { id: "settings", label: "Runtime settings", icon: Settings2 },
 ] as const;
@@ -99,6 +105,7 @@ export function NewOpencodeWorkspace({
     setActive(panel);
   }, []);
   const openFiles = useCallback(() => openPanel("files"), [openPanel]);
+  const openDomains = useCallback(() => openPanel("domains"), [openPanel]);
   const openTerminal = useCallback(() => openPanel("terminal"), [openPanel]);
   const openWorktrees = useCallback(() => setIsWorktreeOpen(true), []);
   const togglePanel = (panel: Panel) => {
@@ -177,6 +184,11 @@ export function NewOpencodeWorkspace({
           />
         </div>
       )}
+      {opened.domains && (
+        <div className={active === "domains" ? "h-full" : "hidden"} aria-hidden={active !== "domains"}>
+          <ProjectDomainsPanel projectId={projectId} projectSessionId={projectSessionId} isActive={active === "domains"} onClose={closePanel} />
+        </div>
+      )}
       {opened.browser && (
         <div
           className={active === "browser" ? "h-full" : "hidden"}
@@ -186,6 +198,7 @@ export function NewOpencodeWorkspace({
             projectId={projectId}
             projectSessionId={projectSessionId}
             isActive={active === "browser"}
+            onOpenDomains={openDomains}
             onClose={closePanel}
           />
         </div>
@@ -202,6 +215,7 @@ export function NewOpencodeWorkspace({
             onClose={closePanel}
             onOpenFiles={openFiles}
             onOpenTerminal={openTerminal}
+            onOpenDomains={openDomains}
           />
         </div>
       )}
@@ -246,10 +260,7 @@ export function NewOpencodeWorkspace({
             />
           </div>
         </WorkspaceResizableLayout>
-        <nav
-          aria-label="Session workspace"
-          className="bg-background z-[60] flex w-12 shrink-0 flex-col items-center gap-1 border-l py-2"
-        >
+        <WorkspaceToolRail>
           {TOOLS.map(({ id, label, icon: Icon }) => (
             <Button
               key={id}
@@ -267,7 +278,7 @@ export function NewOpencodeWorkspace({
               <Icon />
             </Button>
           ))}
-        </nav>
+        </WorkspaceToolRail>
       </div>
     </div>
   );
