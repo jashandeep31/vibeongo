@@ -21,6 +21,7 @@ import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 import { saveAccessToken } from "@/lib/auth";
 import { GithubSignInButton } from "./github-sign-in-button";
+import { AuthHeading } from "./auth-heading";
 
 export function PasswordAuthScreen({
   mode,
@@ -56,16 +57,16 @@ export function PasswordAuthScreen({
       setError("Enter a valid email address.");
       return;
     }
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
     if (
       Array.from(password).length < 8 ||
       Array.from(password).length > 20 ||
       /\s/u.test(password)
     ) {
       setError("Enter a password of 8–20 characters without spaces.");
-      return;
-    }
-    if (!password) {
-      setError("Enter your password.");
       return;
     }
     if (signup && password !== confirmation) {
@@ -146,7 +147,7 @@ export function PasswordAuthScreen({
     styles.input,
     {
       color: theme.text,
-      backgroundColor: theme.backgroundElement,
+      backgroundColor: theme.background,
       borderColor: theme.backgroundSelected,
     },
   ];
@@ -167,11 +168,7 @@ export function PasswordAuthScreen({
           editable={!busy}
           style={[inputStyle, secret && { paddingRight: 64 }]}
           placeholder={
-            secret
-              ? undefined
-              : label === "Email"
-                ? "you@example.com"
-                : "Your name"
+            secret ? label : label === "Email" ? "you@example.com" : "Your name"
           }
           placeholderTextColor={theme.textSecondary}
           autoCapitalize={label === "Name" ? "words" : "none"}
@@ -232,34 +229,7 @@ export function PasswordAuthScreen({
           contentContainerStyle={styles.scroll}
         >
           <View style={styles.content}>
-            <View style={styles.heading}>
-              <ThemedText style={styles.title}>
-                {signup ? "Create your account" : "Welcome back"}
-              </ThemedText>
-              <ThemedText themeColor="textSecondary">
-                {signup
-                  ? "Bring your ideas to life, wherever you are."
-                  : "Sign in to your chats and projects."}
-              </ThemedText>
-            </View>
-            <GithubSignInButton disabled={busy} />
-            <View style={styles.divider}>
-              <View
-                style={[
-                  styles.line,
-                  { backgroundColor: theme.backgroundSelected },
-                ]}
-              />
-              <ThemedText themeColor="textSecondary" style={styles.hint}>
-                {signup ? "Or try with email" : "Or continue with email"}
-              </ThemedText>
-              <View
-                style={[
-                  styles.line,
-                  { backgroundColor: theme.backgroundSelected },
-                ]}
-              />
-            </View>
+            <AuthHeading title={signup ? "Sign up" : "Welcome back"} />
             {signup ? field("Name", name, setName) : null}
             {field("Email", email, setEmail)}
             {field("Password", password, setPassword, true)}
@@ -277,11 +247,9 @@ export function PasswordAuthScreen({
                 accessibilityRole="button"
                 onPress={() => onChangeMode("forgot")}
                 disabled={busy}
-                style={styles.switch}
+                style={styles.forgotLink}
               >
-                <ThemedText themeColor="textSecondary">
-                  Forgot password?
-                </ThemedText>
+                <ThemedText style={styles.linkText}>Forgot password?</ThemedText>
               </Pressable>
             ) : null}
             {unverified ? (
@@ -289,7 +257,7 @@ export function PasswordAuthScreen({
                 accessibilityRole="button"
                 onPress={() => onChangeMode("signup")}
                 disabled={busy}
-                style={styles.switch}
+                style={styles.forgotLink}
               >
                 <ThemedText>Finish signup and verify email</ThemedText>
               </Pressable>
@@ -311,29 +279,42 @@ export function PasswordAuthScreen({
               style={({ pressed }) => [
                 styles.button,
                 {
-                  backgroundColor: theme.background,
-                  borderColor: theme.backgroundSelected,
+                  backgroundColor: theme.text,
                 },
                 (pressed || busy) && { opacity: 0.7 },
               ]}
             >
               {busy ? (
-                <ActivityIndicator color={theme.text} />
+                <ActivityIndicator color={theme.background} />
               ) : (
-                <ThemedText style={[styles.buttonText, { color: theme.text }]}>
+                <ThemedText
+                  style={[styles.buttonText, { color: theme.background }]}
+                >
                   {signup ? "Create account" : "Sign in"}
                 </ThemedText>
               )}
             </Pressable>
+            <View style={styles.divider}>
+              <View
+                style={[styles.line, { backgroundColor: theme.backgroundSelected }]}
+              />
+              <ThemedText themeColor="textSecondary" style={styles.hint}>
+                or
+              </ThemedText>
+              <View
+                style={[styles.line, { backgroundColor: theme.backgroundSelected }]}
+              />
+            </View>
+            <GithubSignInButton disabled={busy} />
             <Pressable
               accessibilityRole="button"
               disabled={busy}
               onPress={() => onChangeMode(signup ? "signin" : "signup")}
-              style={styles.switch}
+              style={styles.accountSwitch}
             >
               <ThemedText themeColor="textSecondary">
-                {signup ? "Already have an account? " : "New here? "}
-                <ThemedText style={styles.label}>
+                {signup ? "Already have an account? " : "New to VibeOnGo? "}
+                <ThemedText style={styles.linkText}>
                   {signup ? "Sign in" : "Sign up"}
                 </ThemedText>
               </ThemedText>
@@ -349,27 +330,21 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 12,
+    paddingBottom: 16,
   },
-  content: { width: "100%", maxWidth: 420, gap: 16 },
-  heading: { gap: 8, marginBottom: 8 },
-  title: {
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  field: { gap: 8 },
-  label: { fontSize: 14, fontWeight: "600" },
+  content: { width: "100%", maxWidth: 420 },
+  field: { gap: 6, marginBottom: 12 },
+  label: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
   inputRow: { position: "relative" },
   input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    minHeight: 48,
+    borderWidth: 1.5,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     fontSize: 16,
   },
   visibility: {
@@ -381,17 +356,33 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  hint: { fontSize: 13, lineHeight: 20 },
-  error: { color: "#ef4444", fontSize: 14, lineHeight: 20 },
+  hint: { fontSize: 14, lineHeight: 20 },
+  error: { color: "#d13f3f", fontSize: 14, lineHeight: 20, marginBottom: 16 },
   button: {
-    borderWidth: 1,
-    minHeight: 52,
-    borderRadius: 12,
+    minHeight: 48,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
+    marginTop: 12,
   },
-  buttonText: { fontWeight: "700" },
-  divider: { flexDirection: "row", alignItems: "center", gap: 16 },
+  buttonText: { fontSize: 16, fontWeight: "600" },
+  divider: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 16,
+    marginVertical: 10,
+  },
   line: { flex: 1, height: 1 },
-  switch: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+  forgotLink: {
+    minHeight: 44,
+    alignSelf: "flex-end",
+    justifyContent: "center",
+  },
+  accountSwitch: {
+    minHeight: 44,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 4,
+  },
+  linkText: { fontWeight: "700" },
 });
