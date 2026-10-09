@@ -78,6 +78,13 @@
       "when": 1791350666801,
       "tag": "0010_regular_dagger",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791538795662,
+      "tag": "0011_big_radioactive_man",
+      "breakpoints": true
     }
   ]
 }
