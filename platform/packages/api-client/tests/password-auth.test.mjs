@@ -5,11 +5,11 @@ import { WebClient, MobileClient } from "../dist/index.js";
 const user = {
   id: "test-user",
   email: "tester@example.invalid",
-  username: "maker_test",
+  username: "vog_test",
   firstName: "Maker",
   lastName: null,
   primaryLoginMethod: "email_password",
-  emailVerified: false,
+  emailVerified: true,
 };
 
 test("password authentication client sends credentialed requests and unwraps user responses", async () => {
@@ -18,7 +18,16 @@ test("password authentication client sends credentialed requests and unwraps use
   client.apiClient.defaults.adapter = async (config) => {
     requests.push(config);
     return {
-      data: { data: user },
+      data: {
+        data: config.url.endsWith("/signup")
+          ? {
+              verificationRequired: true,
+              challengeId: "challenge",
+              expiresInSeconds: 600,
+              resendAfterSeconds: 60,
+            }
+          : user,
+      },
       status: 200,
       statusText: "OK",
       headers: {},
@@ -30,7 +39,12 @@ test("password authentication client sends credentialed requests and unwraps use
     email: user.email,
     password: "a sufficiently long passphrase",
   };
-  assert.deepEqual(await client.users.signupWithPassword(credentials), user);
+  assert.deepEqual(await client.users.signupWithPassword(credentials), {
+    verificationRequired: true,
+    challengeId: "challenge",
+    expiresInSeconds: 600,
+    resendAfterSeconds: 60,
+  });
   assert.deepEqual(await client.users.signinWithPassword(credentials), user);
   assert.deepEqual(await client.users.getCurrentUser(), user);
   assert.deepEqual(
@@ -77,9 +91,21 @@ test("mobile password auth returns bearer tokens and user data without cookies o
   const client = new MobileClient("https://server.example.test", "old-token");
   const requests = [];
   const result = { token: "new-token", data: user };
+  const challenge = {
+    verificationRequired: true,
+    challengeId: "mobile-challenge",
+    expiresInSeconds: 600,
+    resendAfterSeconds: 60,
+  };
   client.apiClient.defaults.adapter = async (config) => {
     requests.push(config);
-    return { data: result, status: 200, statusText: "OK", headers: {}, config };
+    return {
+      data: config.url.endsWith("/signup") ? { data: challenge } : result,
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config,
+    };
   };
   const credentials = {
     firstName: "Test Maker",
@@ -88,7 +114,7 @@ test("mobile password auth returns bearer tokens and user data without cookies o
   };
   assert.deepEqual(
     await client.users.mobileSignupWithPassword(credentials),
-    result,
+    challenge,
   );
   assert.deepEqual(
     await client.users.mobileSigninWithPassword(credentials),
@@ -162,4 +188,118 @@ test("GitHub linking uses account routes and preserves authenticated bearer head
   assert.equal(requests[1].withCredentials, false);
   await client.users.startGithubConnection({ clientType: "web" });
   assert.equal(requests[3].withCredentials, true);
+});
+
+test("OTP clients send the challenge and code to the correct credentialed endpoints", async () => {
+  const client = new WebClient("https://server.example.test");
+  const requests = [];
+  const challenge = {
+    challengeId: "test-challenge",
+    expiresInSeconds: 600,
+    resendAfterSeconds: 60,
+  };
+  const verified = { emailVerified: true, message: "Verified" };
+  const changed = { message: "Password updated" };
+  const recovery = { ...challenge, message: "If eligible" };
+  client.apiClient.defaults.adapter = async (config) => {
+    requests.push(config);
+    const data = config.url.endsWith("/verify-email")
+      ? verified
+      : config.url.endsWith("/reset-password")
+        ? changed
+        : config.url.endsWith("/forgot-password")
+          ? recovery
+          : challenge;
+    return {
+      data: { data },
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config,
+    };
+  };
+  const verify = {
+    email: user.email,
+    challengeId: challenge.challengeId,
+    otp: "012345",
+  };
+  assert.deepEqual(await client.users.verifyEmail(verify), verified);
+  assert.deepEqual(
+    await client.users.resendVerification({
+      email: user.email,
+      challengeId: challenge.challengeId,
+    }),
+    challenge,
+  );
+  assert.deepEqual(
+    await client.users.forgotPassword({ email: user.email }),
+    recovery,
+  );
+  assert.deepEqual(
+    await client.users.resetPassword({ ...verify, newPassword: "newpassword" }),
+    changed,
+  );
+  assert.deepEqual(
+    requests.map((request) => request.url),
+    [
+      "/api/v1/users/verify-email",
+      "/api/v1/users/resend-verification",
+      "/api/v1/users/forgot-password",
+      "/api/v1/users/reset-password",
+    ],
+  );
+  assert.ok(
+    requests.every(
+      (request) =>
+        request.method === "post" && request.withCredentials === true,
+    ),
+  );
+  assert.deepEqual(JSON.parse(requests[0].data), verify);
+  assert.deepEqual(JSON.parse(requests[3].data), {
+    ...verify,
+    newPassword: "newpassword",
+  });
+  const failure = new Error("Invalid or expired OTP");
+  client.apiClient.defaults.adapter = async () => {
+    throw failure;
+  };
+  await assert.rejects(client.users.verifyEmail(verify), failure);
+  await assert.rejects(
+    client.users.resetPassword({ ...verify, newPassword: "newpassword" }),
+    failure,
+  );
+});
+
+test("mobile OTP operations omit cookies and stale bearer tokens", async () => {
+  const client = new MobileClient("https://server.example.test", "old-token");
+  const requests = [];
+  client.apiClient.defaults.adapter = async (config) => {
+    requests.push(config);
+    return {
+      data: { data: { challengeId: "challenge" } },
+      status: 200,
+      statusText: "OK",
+      headers: {},
+      config,
+    };
+  };
+  const payload = {
+    email: user.email,
+    challengeId: "challenge",
+    otp: "012345",
+  };
+  await client.users.verifyEmail(payload);
+  await client.users.resendVerification({
+    email: user.email,
+    challengeId: "challenge",
+  });
+  await client.users.forgotPassword({ email: user.email });
+  await client.users.resetPassword({ ...payload, newPassword: "newpassword" });
+  assert.ok(
+    requests.every(
+      (request) =>
+        request.withCredentials === false && !request.headers.Authorization,
+    ),
+  );
+  assert.deepEqual(JSON.parse(requests[0].data), payload);
 });

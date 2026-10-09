@@ -1,3 +1,4 @@
+import { findAuthorizedUser } from "../../middlewares/check-authorization.js";
 import crypto from "node:crypto";
 import axios from "axios";
 import jwt from "jsonwebtoken";
@@ -192,10 +193,23 @@ export const githubConnectionCallback = catchAsync(
             401,
           );
         const session = await findWebSession(sessionToken);
+        const claims = session
+          ? undefined
+          : jwt.verify(sessionToken, env.JWT_SECRET);
         const subject =
           session?.user_id ??
-          (jwt.verify(sessionToken, env.JWT_SECRET) as { id?: string }).id;
-        if (subject !== pending.userId)
+          (typeof claims === "object" ? claims.id : undefined);
+        const user =
+          typeof subject === "string"
+            ? await findAuthorizedUser(subject)
+            : undefined;
+        if (
+          subject !== pending.userId ||
+          !user ||
+          (!session &&
+            (typeof claims !== "object" ||
+              (claims.authVersion ?? 0) !== user.auth_version))
+        )
           throw new AppError("Invalid connection session", 401);
       }
       if (typeof req.query.code !== "string")

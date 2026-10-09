@@ -24,12 +24,12 @@ if count == 1 then redis.call('EXPIRE', KEYS[1], ARGV[1]) end
 return {count, redis.call('TTL', KEYS[1])}
 `;
 
-function rateLimit(action: "signup" | "signin", max: number) {
+function rateLimit(action: string, max: number) {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
     res.set("Cache-Control", "no-store");
     const ip = req.ip ?? req.socket.remoteAddress ?? "unknown";
     const identifiers = [`ip:${ip}`];
-    if (action === "signin" && typeof req.body?.email === "string") {
+    if (typeof req.body?.email === "string") {
       identifiers.push(`email:${req.body.email.trim().toLowerCase()}`);
     }
     for (const identifier of identifiers) {
@@ -59,6 +59,10 @@ function rateLimit(action: "signup" | "signin", max: number) {
 }
 
 export const signupRateLimit = rateLimit("signup", 5);
+export const otpSendRateLimit = rateLimit("otp-send", 5);
+export const otpVerifyRateLimit = rateLimit("otp-verify", 20);
+export const passwordResetRateLimit = rateLimit("password-reset", 20);
+
 export const signinRateLimit = rateLimit("signin", 20);
 
 // Native requests have no Origin. Browser requests must still come from our apps.

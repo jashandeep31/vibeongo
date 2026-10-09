@@ -20,6 +20,11 @@ import {
   getDummyPasswordHash,
   passwordNeedsRehash,
 } from "../../lib/password.js";
+import {
+  assertEmailOtpConfigured,
+  stageEmailOtp,
+  enqueueEmailOtp,
+} from "./email-otp.js";
 import type { SignupInput, SigninInput } from "./password-auth-validation.js";
 
 type User = typeof users.$inferSelect;
@@ -48,7 +53,11 @@ async function createLogin(tx: Transaction, user: User, context: LoginContext) {
   const { clientType, ...sessionContext } = context;
   const token =
     clientType === "mobile"
-      ? jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: "30d" })
+      ? jwt.sign(
+          { id: user.id, authVersion: user.auth_version },
+          env.JWT_SECRET,
+          { expiresIn: "30d" },
+        )
       : await createWebSession({ userId: user.id, ...sessionContext }, tx);
   await tx.insert(userLoginLogs).values({
     user_id: user.id,
@@ -71,51 +80,76 @@ function postgresError(error: unknown): { code?: string; constraint?: string } {
 
 export async function signupWithPassword(
   input: SignupInput,
-  context: LoginContext,
+  _context?: LoginContext,
 ) {
-  const [existing] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(emailMatches(input.email))
-    .limit(1);
-  if (existing) throw signupConflict();
+  assertEmailOtpConfigured();
   const passwordHash = await hashPassword(input.password);
   for (let attempt = 0; attempt < 3; attempt++) {
     try {
-      return await db.transaction(async (tx) => {
-        const [user] = await tx
-          .insert(users)
-          .values({
-            email: input.email,
-            username: `maker_${randomBytes(6).toString("hex")}`,
-            first_name: input.firstName,
-            primary_login_method: "email_password",
-            status: "active",
-            email_verified_at: null,
-          })
-          .returning();
-        if (!user) throw new AppError("Unable to create user", 500);
-        await tx
-          .insert(userPasswordCredentials)
-          .values({ user_id: user.id, password_hash: passwordHash });
-        await tx.insert(userSettings).values({ user_id: user.id });
-        await tx.insert(userWallet).values({ user_id: user.id, balance: 0 });
-        return createLogin(tx, user, context);
+      const challenge = await db.transaction(async (tx) => {
+        let [user] = await tx
+          .select()
+          .from(users)
+          .where(emailMatches(input.email))
+          .for("update");
+        if (user) {
+          const [credential] = await tx
+            .select()
+            .from(userPasswordCredentials)
+            .where(eq(userPasswordCredentials.user_id, user.id))
+            .for("update");
+          if (
+            user.status !== "active" ||
+            user.email_verified_at ||
+            user.primary_login_method !== "email_password" ||
+            !credential ||
+            credential.revoked_at
+          )
+            throw signupConflict();
+        } else {
+          [user] = await tx
+            .insert(users)
+            .values({
+              email: input.email,
+              username: `vog_${randomBytes(6).toString("hex")}`,
+              first_name: input.firstName,
+              primary_login_method: "email_password",
+              status: "active",
+              email_verified_at: null,
+            })
+            .returning();
+          if (!user) throw new AppError("Unable to create user", 500);
+          await tx
+            .insert(userPasswordCredentials)
+            .values({ user_id: user.id, password_hash: passwordHash });
+          await tx.insert(userSettings).values({ user_id: user.id });
+          await tx.insert(userWallet).values({ user_id: user.id, balance: 0 });
+        }
+        return stageEmailOtp(tx, user, "signup_verification", {
+          passwordHash,
+          name: input.firstName,
+        });
       });
+      return {
+        verificationRequired: true as const,
+        ...(await enqueueEmailOtp(challenge)),
+      };
     } catch (error) {
       const pg = postgresError(error);
       if (pg.code !== "23505") throw error;
-      if (pg.constraint === "users_username_unique") continue;
+      // Retry the transaction after a concurrent signup; the existing user is then locked.
       if (
-        pg.constraint === "users_email_unique" ||
-        pg.constraint === "users_email_case_insensitive_unique"
-      ) {
-        throw signupConflict();
-      }
+        [
+          "users_username_unique",
+          "users_email_unique",
+          "users_email_case_insensitive_unique",
+        ].includes(pg.constraint ?? "")
+      )
+        continue;
       throw error;
     }
   }
-  throw new AppError("Unable to allocate a username; try again", 503);
+  throw new AppError("Unable to create an account; try again", 503);
 }
 
 export async function signinWithPassword(
@@ -142,6 +176,10 @@ export async function signinWithPassword(
   ) {
     throw invalidLogin();
   }
+  if (!row.user.email_verified_at)
+    throw new AppError("Verify your email before signing in", 403, {
+      code: "EMAIL_NOT_VERIFIED",
+    });
   const replacementHash = passwordNeedsRehash(hash)
     ? await hashPassword(input.password)
     : undefined;
@@ -160,6 +198,7 @@ export async function signinWithPassword(
     if (
       !user ||
       user.status !== "active" ||
+      !user.email_verified_at ||
       user.primary_login_method !== "email_password" ||
       !credential ||
       credential.revoked_at !== null ||

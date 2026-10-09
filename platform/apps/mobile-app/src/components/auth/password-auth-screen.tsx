@@ -1,3 +1,5 @@
+import type { EmailOtpChallenge } from "@repo/api-client";
+import { EmailRecoveryScreen } from "./email-recovery-screen";
 import { useState } from "react";
 import {
   ActivityIndicator,
@@ -25,13 +27,15 @@ export function PasswordAuthScreen({
   onChangeMode,
 }: {
   mode: "signin" | "signup";
-  onChangeMode: () => void;
+  onChangeMode: (mode: "signin" | "signup" | "forgot") => void;
 }) {
   const theme = useTheme();
   const signup = mode === "signup";
   const signinMutation = useMobileSigninWithPassword();
   const signupMutation = useMobileSignupWithPassword();
   const queryClient = useQueryClient();
+  const [challenge, setChallenge] = useState<EmailOtpChallenge | null>(null);
+  const [unverified, setUnverified] = useState(false);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [password, setPassword] = useState("");
@@ -43,6 +47,7 @@ export function PasswordAuthScreen({
   const submit = async () => {
     if (busy) return;
     setError(null);
+    setUnverified(false);
     if (signup && (!name.trim() || name.trim().length > 100)) {
       setError("Enter your name.");
       return;
@@ -69,13 +74,21 @@ export function PasswordAuthScreen({
     }
     setBusy(true);
     try {
-      const result = signup
-        ? await signupMutation.mutateAsync({
-            email: email.trim(),
-            password,
-            firstName: name.trim(),
-          })
-        : await signinMutation.mutateAsync({ email: email.trim(), password });
+      if (signup) {
+        const verification = await signupMutation.mutateAsync({
+          email: email.trim(),
+          password,
+          firstName: name.trim(),
+        });
+        setPassword("");
+        setConfirmation("");
+        setChallenge(verification);
+        return;
+      }
+      const result = await signinMutation.mutateAsync({
+        email: email.trim(),
+        password,
+      });
       // Persist only the token. Account data is cached; passwords are never stored.
       await queryClient.cancelQueries();
       await saveAccessToken(result.token);
@@ -84,9 +97,19 @@ export function PasswordAuthScreen({
       setConfirmation("");
     } catch (cause) {
       const failure = cause as {
-        response?: { status?: number; data?: { message?: string } };
+        response?: {
+          status?: number;
+          data?: { message?: string; code?: string };
+        };
       };
       const status = failure.response?.status;
+      if (failure.response?.data?.code === "EMAIL_NOT_VERIFIED") {
+        setUnverified(true);
+        setError(
+          "Verify your email before signing in. Finish signup to request a code.",
+        );
+        return;
+      }
       setError(
         status === 401
           ? "Incorrect email or password."
@@ -104,6 +127,20 @@ export function PasswordAuthScreen({
       setBusy(false);
     }
   };
+
+  if (challenge)
+    return (
+      <EmailRecoveryScreen
+        purpose="verification"
+        initialEmail={email.trim()}
+        initialChallenge={challenge}
+        onBack={() => {
+          setChallenge(null);
+          setError(null);
+        }}
+        onComplete={() => onChangeMode("signin")}
+      />
+    );
 
   const inputStyle = [
     styles.input,
@@ -236,6 +273,28 @@ export function PasswordAuthScreen({
                   true,
                 )
               : null}
+            {!signup ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onChangeMode("forgot")}
+                disabled={busy}
+                style={styles.switch}
+              >
+                <ThemedText themeColor="textSecondary">
+                  Forgot password?
+                </ThemedText>
+              </Pressable>
+            ) : null}
+            {unverified ? (
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => onChangeMode("signup")}
+                disabled={busy}
+                style={styles.switch}
+              >
+                <ThemedText>Finish signup and verify email</ThemedText>
+              </Pressable>
+            ) : null}
             {error ? (
               <ThemedText
                 accessibilityRole="alert"
@@ -270,7 +329,7 @@ export function PasswordAuthScreen({
             <Pressable
               accessibilityRole="button"
               disabled={busy}
-              onPress={onChangeMode}
+              onPress={() => onChangeMode(signup ? "signin" : "signup")}
               style={styles.switch}
             >
               <ThemedText themeColor="textSecondary">

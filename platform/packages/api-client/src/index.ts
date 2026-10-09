@@ -134,6 +134,13 @@ export type {
   UpsertPushTokenInput,
 } from "./services/notification-services.js";
 export type {
+  EmailOtpChallenge,
+  SignupVerificationResponse,
+  VerifyEmailPayload,
+  ResetPasswordPayload,
+  EmailVerificationResponse,
+  ForgotPasswordResponse,
+  ResetPasswordResponse,
   GithubConnectionStatus,
   StartGithubConnectionPayload,
   MobilePasswordAuthResponse,

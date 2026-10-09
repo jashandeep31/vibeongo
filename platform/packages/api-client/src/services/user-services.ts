@@ -24,10 +24,88 @@ export type SignupWithPasswordPayload = SigninWithPasswordPayload & {
   firstName: string;
 };
 
+export type EmailOtpChallenge = {
+  challengeId: string;
+  expiresInSeconds: number;
+  resendAfterSeconds: number;
+};
+export type SignupVerificationResponse = EmailOtpChallenge & {
+  verificationRequired: true;
+};
+export type VerifyEmailPayload = {
+  email: string;
+  challengeId: string;
+  otp: string;
+};
+export type ResetPasswordPayload = VerifyEmailPayload & { newPassword: string };
+export type EmailVerificationResponse = {
+  emailVerified: true;
+  message: string;
+};
+export type ForgotPasswordResponse = EmailOtpChallenge & { message: string };
+export type ResetPasswordResponse = { message: string };
+
+export const verifyEmail =
+  (apiClient: AxiosInstance) =>
+  async (payload: VerifyEmailPayload): Promise<EmailVerificationResponse> => {
+    const response = await apiClient.post<{ data: EmailVerificationResponse }>(
+      "/api/v1/users/verify-email",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+export const resendVerification =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: Pick<VerifyEmailPayload, "email" | "challengeId">,
+  ): Promise<EmailOtpChallenge> => {
+    const response = await apiClient.post<{ data: EmailOtpChallenge }>(
+      "/api/v1/users/resend-verification",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+export const forgotPassword =
+  (apiClient: AxiosInstance) =>
+  async (payload: { email: string }): Promise<ForgotPasswordResponse> => {
+    const response = await apiClient.post<{ data: ForgotPasswordResponse }>(
+      "/api/v1/users/forgot-password",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+export const resetPassword =
+  (apiClient: AxiosInstance) =>
+  async (payload: ResetPasswordPayload): Promise<ResetPasswordResponse> => {
+    const response = await apiClient.post<{ data: ResetPasswordResponse }>(
+      "/api/v1/users/reset-password",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+
 export const signupWithPassword =
   (apiClient: AxiosInstance) =>
-  async (payload: SignupWithPasswordPayload): Promise<PasswordAuthUser> => {
-    const response = await apiClient.post<{ data: PasswordAuthUser }>(
+  async (
+    payload: SignupWithPasswordPayload,
+  ): Promise<SignupVerificationResponse> => {
+    const response = await apiClient.post<{ data: SignupVerificationResponse }>(
       "/api/v1/users/signup",
       payload,
       { withCredentials: true },
@@ -207,13 +285,13 @@ export const mobileSignupWithPassword =
   (apiClient: AxiosInstance) =>
   async (
     payload: SignupWithPasswordPayload,
-  ): Promise<MobilePasswordAuthResponse> => {
-    const response = await apiClient.post<MobilePasswordAuthResponse>(
+  ): Promise<SignupVerificationResponse> => {
+    const response = await apiClient.post<{ data: SignupVerificationResponse }>(
       "/api/v1/users/mobile/signup",
       payload,
       { withCredentials: false, headers: { Authorization: null } },
     );
-    return response.data;
+    return response.data.data;
   };
 
 export const mobileSigninWithPassword =

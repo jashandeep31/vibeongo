@@ -1,4 +1,10 @@
 import {
+  verifyEmail,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/user/email-auth-controller.js";
+import {
   githubConnectionStatus,
   startGithubConnection,
   completeMobileGithubConnection,
@@ -15,6 +21,9 @@ import {
 import {
   requireTrustedMobileAuthOrigin,
   requireTrustedAuthOrigin,
+  otpSendRateLimit,
+  otpVerifyRateLimit,
+  passwordResetRateLimit,
   signupRateLimit,
   signinRateLimit,
 } from "../middlewares/password-auth-limits.js";
@@ -50,6 +59,30 @@ import {
 
 const routes: Router = Router();
 
+routes.post(
+  "/verify-email",
+  requireTrustedMobileAuthOrigin,
+  otpVerifyRateLimit,
+  verifyEmail,
+);
+routes.post(
+  "/resend-verification",
+  requireTrustedMobileAuthOrigin,
+  otpSendRateLimit,
+  resendVerification,
+);
+routes.post(
+  "/forgot-password",
+  requireTrustedMobileAuthOrigin,
+  otpSendRateLimit,
+  forgotPassword,
+);
+routes.post(
+  "/reset-password",
+  requireTrustedMobileAuthOrigin,
+  passwordResetRateLimit,
+  resetPassword,
+);
 routes.post("/signup", requireTrustedAuthOrigin, signupRateLimit, signup);
 routes.post("/signin", requireTrustedAuthOrigin, signinRateLimit, signin);
 routes.post(

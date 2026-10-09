@@ -150,9 +150,11 @@ export const githubAuthCallbackController = catchAsync(
 
     const verifiedEmail = emails.find((email) => email.verified)?.email;
 
-    const email = primaryVerifiedEmail || verifiedEmail || profile.email;
+    const email = primaryVerifiedEmail || verifiedEmail;
     if (!email) {
-      res.status(400).json({ error: "No email found for this github account" });
+      res
+        .status(400)
+        .json({ error: "No verified email found for this GitHub account" });
       return;
     }
 
@@ -226,7 +228,11 @@ export const githubAuthCallbackController = catchAsync(
             ...(ip ? { ipAddress: ip.toString() } : {}),
             ...(user_agent ? { userAgent: user_agent.toString() } : {}),
           })
-        : jwt.sign({ id: user.id }, env.JWT_SECRET, { expiresIn: "30d" });
+        : jwt.sign(
+            { id: user.id, authVersion: user.auth_version },
+            env.JWT_SECRET,
+            { expiresIn: "30d" },
+          );
     res.cookie("session", token, {
       ...sessionCookieOptions,
       maxAge: webSessionMaxAgeMs,

@@ -44,6 +44,7 @@ export const users = pgTable(
     // User access is independent of any linked authentication provider.
     status: accountStatus().notNull().default("active"),
     email_verified_at: timestamp(),
+    auth_version: integer().notNull().default(0),
     // Email signups must explicitly set this to email_password.
     primary_login_method: userLoginMethodEnum().notNull().default("github"),
 

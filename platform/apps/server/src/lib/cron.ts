@@ -1,3 +1,4 @@
+import { cleanupEmailAuthChallenges } from "../services/auth/email-otp.js";
 import {
   and,
   db,
@@ -215,4 +216,16 @@ cron.schedule(
     }
   },
   { name: "cleanup-notifications", noOverlap: true },
+);
+
+cron.schedule(
+  "*/15 * * * *",
+  async () => {
+    try {
+      await cleanupEmailAuthChallenges();
+    } catch {
+      console.error("Could not clean up email authentication challenges");
+    }
+  },
+  { name: "cleanup-email-auth-challenges", noOverlap: true },
 );

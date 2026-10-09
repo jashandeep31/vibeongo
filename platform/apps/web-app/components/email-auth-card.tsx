@@ -1,5 +1,7 @@
 "use client";
 
+import type { EmailOtpChallenge } from "@repo/api-client";
+import { EmailOtpFlow } from "./email-otp-flow";
 import { useSigninWithPassword, useSignupWithPassword } from "@repo/api-hooks";
 import { Button, buttonVariants } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -26,6 +28,8 @@ function authError(error: unknown, signup: boolean) {
     case 429:
       return "Too many attempts. Please wait a few minutes before trying again.";
     case 403:
+      if (error.response.data?.code === "EMAIL_NOT_VERIFIED")
+        return "Verify your email before logging in. Open signup, enter your details, and request a verification code.";
       return "Login is unavailable from this address. Please contact support.";
     default:
       return signup
@@ -42,6 +46,11 @@ export function EmailAuthCard({
   const isSignup = mode === "signup";
   const signup = useSignupWithPassword();
   const signin = useSigninWithPassword();
+  const [pendingVerification, setPendingVerification] = useState<{
+    email: string;
+    challenge: EmailOtpChallenge;
+  } | null>(null);
+  const [emailUnverified, setEmailUnverified] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isRedirecting, setIsRedirecting] = useState(false);
@@ -57,6 +66,7 @@ export function EmailAuthCard({
     event.preventDefault();
     if (busy) return;
     setError(null);
+    setEmailUnverified(false);
     const form = event.currentTarget;
     const data = new FormData(form);
     const firstName = String(data.get("firstName") ?? "").trim();
@@ -77,7 +87,14 @@ export function EmailAuthCard({
     }
     try {
       if (isSignup) {
-        await signup.mutateAsync({ email, password, firstName });
+        const challenge = await signup.mutateAsync({
+          email,
+          password,
+          firstName,
+        });
+        form.reset();
+        setPendingVerification({ email, challenge });
+        return;
       } else {
         await signin.mutateAsync({ email, password });
       }
@@ -86,6 +103,11 @@ export function EmailAuthCard({
       // A fresh document reads the new HTTP-only cookie and clears account-specific UI state.
       window.location.replace("/");
     } catch (failure) {
+      if (
+        isAxiosError(failure) &&
+        failure.response?.data?.code === "EMAIL_NOT_VERIFIED"
+      )
+        setEmailUnverified(true);
       showError(authError(failure, isSignup));
     } finally {
       // Remove password-bearing mutation variables once the request finishes.
@@ -93,6 +115,19 @@ export function EmailAuthCard({
       signin.reset();
     }
   };
+
+  if (pendingVerification)
+    return (
+      <EmailOtpFlow
+        email={pendingVerification.email}
+        initialChallenge={pendingVerification.challenge}
+        purpose="verification"
+        onBack={() => {
+          setPendingVerification(null);
+          setError(null);
+        }}
+      />
+    );
 
   return (
     <main className="bg-background flex min-h-svh items-center justify-center px-6 py-12">
@@ -216,6 +251,22 @@ export function EmailAuthCard({
                 className="h-11"
               />
             </div>
+          )}
+          {!isSignup && (
+            <Link
+              href="/forgot-password"
+              className="text-muted-foreground block rounded-sm text-right text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+            >
+              Forgot password?
+            </Link>
+          )}
+          {emailUnverified && (
+            <Link
+              href="/signup"
+              className="text-foreground block rounded-sm text-sm underline underline-offset-4 focus-visible:outline-2 focus-visible:outline-offset-4"
+            >
+              Finish signup and verify email
+            </Link>
           )}
           {error && (
             <p

@@ -24,9 +24,13 @@ export const exchangeMobileToken = catchAsync(
 
     if (!user) throw new AppError("User not found", 404);
 
-    const jwttoken = jwt.sign({ id: user.id }, env.JWT_SECRET, {
-      expiresIn: "30d",
-    });
+    const jwttoken = jwt.sign(
+      { id: user.id, authVersion: user.auth_version },
+      env.JWT_SECRET,
+      {
+        expiresIn: "30d",
+      },
+    );
     res.status(201).json({
       token: jwttoken,
     });

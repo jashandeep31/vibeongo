@@ -126,18 +126,25 @@ test(
     let server;
     let repo;
     let redis;
+    let mailQueue;
     try {
       await fixture.query(`
       CREATE TABLE users (
         id uuid NOT NULL UNIQUE DEFAULT gen_random_uuid(), email varchar(255) NOT NULL UNIQUE,
         username varchar(255) NOT NULL UNIQUE, tier text NOT NULL DEFAULT 'tier1',
         first_name text NOT NULL, last_name text, role text NOT NULL DEFAULT 'user',
-        status text NOT NULL DEFAULT 'active', email_verified_at timestamp,
+        status text NOT NULL DEFAULT 'active', email_verified_at timestamp, auth_version integer NOT NULL DEFAULT 0,
         primary_login_method text NOT NULL DEFAULT 'github', forgejo_id integer UNIQUE,
         created_at timestamp NOT NULL DEFAULT now(), updated_at timestamp DEFAULT now(),
         CONSTRAINT users_username_unique UNIQUE(username)
       );
       CREATE UNIQUE INDEX users_email_case_insensitive_unique ON users(lower(email));
+      CREATE TABLE email_auth_challenges (
+        id uuid PRIMARY KEY, user_id uuid NOT NULL REFERENCES users(id), purpose varchar(32) NOT NULL,
+        email varchar(255) NOT NULL, otp_digest varchar(64) NOT NULL, staged_password_hash text, staged_name varchar(100),
+        attempt_count integer NOT NULL DEFAULT 0, delivery_status varchar(16) NOT NULL DEFAULT 'pending',
+        created_at timestamptz NOT NULL DEFAULT now(), expires_at timestamptz NOT NULL, consumed_at timestamptz
+      );
       CREATE TABLE user_password_credentials (
         user_id uuid PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
         password_hash text NOT NULL, revoked_at timestamp,
@@ -195,6 +202,9 @@ test(
         BACKEND_URL: "https://server.example.test",
         VIBEONGO_APP_DEEP_LINK: "vibeongo:/",
         SSH_GATEWAY_PORT: "8005",
+        AWS_SES_FROM_EMAIL: "auth@example.test",
+        EMAIL_OTP_HASH_SECRET: "a".repeat(64),
+        AWS_SES_REGION: "us-east-1",
       });
       repo = await import("@repo/db");
       ({ redis } = await import("../src/lib/valkey.ts"));
@@ -224,6 +234,7 @@ test(
         requireTrustedMobileAuthOrigin,
         signupRateLimit,
         signinRateLimit,
+        otpVerifyRateLimit,
       } = await import("../src/middlewares/password-auth-limits.ts");
       const { checkAuthorization } =
         await import("../src/middlewares/check-authorization.ts");
@@ -247,6 +258,48 @@ test(
           ? [{ email: "github@example.invalid", primary: true, verified: true }]
           : { id: 456, login: "connected_github", name: "Connected Maker" },
       });
+      const { SES_CLIENT } = await import("../src/services/mail/send-mail.ts");
+      const sentEmails = [];
+      let failEmail = false;
+      SES_CLIENT.send = async (command) => {
+        if (failEmail) throw new Error("SECRET provider error");
+        sentEmails.push({
+          email: command.input.Destination.ToAddresses[0],
+          otp: command.input.Message.Body.Text.Data.match(/is (\d{6})/)[1],
+        });
+        return { MessageId: "test" };
+      };
+      ({ mailQueue } = await import("../src/jobs/mail.ts"));
+      const { processMailJob } =
+        await import("../src/services/mail/process-mail-job.ts");
+      const { decryptMailOtp } =
+        await import("../src/services/mail/mail-otp-payload.ts");
+      let failQueue = false;
+      let deferMail = false;
+      const mailJobs = [];
+      mailQueue.add = async (name, data, opts) => {
+        if (failQueue) throw new Error("Queue unavailable");
+        assert.equal(name, "send-auth-otp");
+        assert.equal(opts.attempts, 3);
+        assert.equal(opts.removeOnComplete, true);
+        assert.equal(opts.removeOnFail, true);
+        assert.equal(opts.jobId, `mail-otp-${data.challengeId}`);
+        assert.equal(Object.hasOwn(data, "otp"), false);
+        assert.equal(Object.hasOwn(data, "email"), false);
+        mailJobs.push(data);
+        if (!deferMail) {
+          try {
+            await processMailJob(data, true);
+          } catch {}
+        }
+        return { id: opts.jobId };
+      };
+      const latestOtp = (email) =>
+        sentEmails.findLast(
+          (mail) => mail.email.toLowerCase() === email.toLowerCase(),
+        ).otp;
+      const { verifyEmail, resendVerification, forgotPassword, resetPassword } =
+        await import("../src/controllers/user/email-auth-controller.ts");
       const app = express();
       app.use(express.json(), cookieParser());
       app.post("/signup", requireTrustedAuthOrigin, signupRateLimit, signup);
@@ -263,6 +316,16 @@ test(
         signinRateLimit,
         mobileSignin,
       );
+      app.post("/verify-email", verifyEmail);
+      app.post(
+        "/limited-verify",
+        requireTrustedMobileAuthOrigin,
+        otpVerifyRateLimit,
+        verifyEmail,
+      );
+      app.post("/resend-verification", resendVerification);
+      app.post("/forgot-password", forgotPassword);
+      app.post("/reset-password", resetPassword);
       app.get("/me", checkAuthorization(["user"]), getCurrentUser);
       app.get("/logout", logout);
       app.get(
@@ -285,7 +348,10 @@ test(
       );
 
       app.use((error, _req, res, _next) =>
-        res.status(error.status ?? 500).json({ message: error.message }),
+        res.status(error.status ?? 500).json({
+          message: error.message,
+          ...(error.code ? { code: error.code } : {}),
+        }),
       );
       server = app.listen(0, "127.0.0.1");
       await new Promise((resolve) => server.once("listening", resolve));
@@ -310,26 +376,63 @@ test(
       );
       counters.clear();
       const signupResponse = await post("/signup", credentials);
-      assert.equal(signupResponse.status, 201);
-      const signupBody = await signupResponse.json();
-      assert.equal(signupBody.data.emailVerified, false);
+      assert.equal(signupResponse.status, 202);
+      assert.equal(signupResponse.headers.get("set-cookie"), null);
+      const pendingSignup = (await signupResponse.json()).data;
+      assert.equal(pendingSignup.verificationRequired, true);
+      assert.equal(pendingSignup.token, undefined);
+      assert.equal(
+        (await fixture.query("SELECT count(*) FROM auth_sessions")).rows[0]
+          .count,
+        "0",
+      );
+      assert.equal(
+        (await fixture.query("SELECT count(*) FROM user_login_logs")).rows[0]
+          .count,
+        "0",
+      );
+      const unverifiedLogin = await post("/signin", credentials);
+      assert.equal(unverifiedLogin.status, 403);
+      assert.equal((await unverifiedLogin.json()).code, "EMAIL_NOT_VERIFIED");
+      const unverifiedUser = (await fixture.query("SELECT * FROM users"))
+        .rows[0];
+      const { default: jwt } = await import("jsonwebtoken");
+      const oldJwt = jwt.sign(
+        { id: unverifiedUser.id },
+        process.env.JWT_SECRET,
+      );
+      assert.equal(
+        (
+          await fetch(base + "/me", {
+            headers: { Authorization: `Bearer ${oldJwt}` },
+          })
+        ).status,
+        401,
+      );
+      const verify = {
+        email: credentials.email,
+        challengeId: pendingSignup.challengeId,
+        otp: latestOtp(credentials.email),
+      };
+      assert.equal((await post("/verify-email", verify)).status, 200);
+      assert.equal((await post("/verify-email", verify)).status, 400);
+      assert.equal(
+        (
+          await fetch(base + "/me", {
+            headers: { Authorization: `Bearer ${oldJwt}` },
+          })
+        ).status,
+        401,
+      );
+      const signupLogin = await post("/signin", credentials);
+      assert.equal(signupLogin.status, 200);
+      const signupBody = await signupLogin.json();
+      assert.equal(signupBody.data.emailVerified, true);
       assert.equal(signupBody.data.firstName, "Test Maker");
       assert.equal(signupBody.data.primaryLoginMethod, "email_password");
-      assert.match(signupBody.data.username, /^maker_[a-f0-9]{12}$/);
-      assert.deepEqual(
-        Object.keys(signupBody.data).sort(),
-        [
-          "id",
-          "email",
-          "username",
-          "firstName",
-          "lastName",
-          "primaryLoginMethod",
-          "emailVerified",
-        ].sort(),
-      );
-      const cookie = signupResponse.headers.get("set-cookie").split(";")[0];
-      assert.match(signupResponse.headers.get("set-cookie"), /HttpOnly/);
+      assert.match(signupBody.data.username, /^vog_[a-f0-9]{12}$/);
+      const cookie = signupLogin.headers.get("set-cookie").split(";")[0];
+      assert.match(signupLogin.headers.get("set-cookie"), /HttpOnly/);
       assert.equal(
         (await fetch(base + "/me", { headers: { Cookie: cookie } })).status,
         200,
@@ -370,7 +473,6 @@ test(
       assert.equal(nativeLogin.status, 200);
       assert.equal(nativeLogin.headers.get("set-cookie"), null);
       const nativeBody = await nativeLogin.json();
-      const { default: jwt } = await import("jsonwebtoken");
       const claims = jwt.verify(nativeBody.token, process.env.JWT_SECRET);
       assert.equal(claims.id, signupBody.data.id);
       assert.equal(claims.exp - claims.iat, 30 * 86400);
@@ -464,16 +566,32 @@ test(
       ]);
       assert.deepEqual(
         race.map((response) => response.status).sort(),
-        [201, 409],
+        [202, 429],
       );
       counters.clear();
       const nativeSignup = await nativePost("/mobile/signup", {
         ...credentials,
         email: "mobile@example.invalid",
       });
-      assert.equal(nativeSignup.status, 201);
+      assert.equal(nativeSignup.status, 202);
       assert.equal(nativeSignup.headers.get("set-cookie"), null);
-      const createdNative = await nativeSignup.json();
+      const nativeChallenge = (await nativeSignup.json()).data;
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: "mobile@example.invalid",
+            challengeId: nativeChallenge.challengeId,
+            otp: latestOtp("mobile@example.invalid"),
+          })
+        ).status,
+        200,
+      );
+      const createdNative = await (
+        await nativePost("/mobile/signin", {
+          ...credentials,
+          email: "mobile@example.invalid",
+        })
+      ).json();
       assert.equal(
         jwt.verify(createdNative.token, process.env.JWT_SECRET).id,
         createdNative.data.id,
@@ -742,6 +860,523 @@ test(
       axios.post = originalAxiosPost;
       axios.get = originalAxiosGet;
       counters.clear();
+      // Signup retry stages edited credentials until ownership is proven.
+      const retryCredentials = {
+        ...credentials,
+        email: "retry@example.invalid",
+      };
+      const initialRetry = (
+        await (await post("/signup", retryCredentials)).json()
+      ).data;
+      const firstOtp = latestOtp(retryCredentials.email);
+      const originalRetryUser = (
+        await fixture.query("SELECT * FROM users WHERE email = $1", [
+          retryCredentials.email,
+        ])
+      ).rows[0];
+      assert.equal(
+        (
+          await post("/signup", {
+            ...retryCredentials,
+            password: "replacementpass",
+          })
+        ).status,
+        429,
+      );
+      await fixture.query(
+        "UPDATE email_auth_challenges SET created_at = now() - interval '61 seconds' WHERE user_id = $1",
+        [originalRetryUser.id],
+      );
+      counters.clear();
+      const secondRetryResponse = await post("/signup", {
+        ...retryCredentials,
+        password: "replacementpass",
+        firstName: "New Name",
+      });
+      const secondRetryBody = await secondRetryResponse.json();
+      assert.equal(
+        secondRetryResponse.status,
+        202,
+        JSON.stringify(secondRetryBody),
+      );
+      const secondRetry = secondRetryBody.data;
+      assert.notEqual(initialRetry.challengeId, secondRetry.challengeId);
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: retryCredentials.email,
+            challengeId: initialRetry.challengeId,
+            otp: firstOtp,
+          })
+        ).status,
+        400,
+      );
+      const untouchedHash = (
+        await fixture.query(
+          "SELECT password_hash FROM user_password_credentials WHERE user_id = $1",
+          [originalRetryUser.id],
+        )
+      ).rows[0].password_hash;
+      assert.equal(
+        await verifyPassword(untouchedHash, retryCredentials.password),
+        true,
+      );
+      assert.equal(
+        (
+          await fixture.query("SELECT first_name FROM users WHERE id = $1", [
+            originalRetryUser.id,
+          ])
+        ).rows[0].first_name,
+        "Test Maker",
+      );
+      const secondOtp = latestOtp(retryCredentials.email);
+      await fixture.query(
+        "UPDATE email_auth_challenges SET created_at = now() - interval '61 seconds' WHERE id = $1",
+        [secondRetry.challengeId],
+      );
+      const resent = await post("/resend-verification", {
+        email: retryCredentials.email,
+        challengeId: secondRetry.challengeId,
+      });
+      assert.equal(resent.status, 202);
+      const resentId = (await resent.json()).data.challengeId;
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: retryCredentials.email,
+            challengeId: secondRetry.challengeId,
+            otp: secondOtp,
+          })
+        ).status,
+        400,
+      );
+      const verifiedRetry = {
+        email: retryCredentials.email,
+        challengeId: resentId,
+        otp: latestOtp(retryCredentials.email),
+      };
+      const concurrentlyVerified = await Promise.all([
+        post("/verify-email", verifiedRetry),
+        post("/verify-email", verifiedRetry),
+      ]);
+      assert.deepEqual(
+        concurrentlyVerified.map((r) => r.status).sort(),
+        [200, 400],
+      );
+      assert.equal(
+        (
+          await fixture.query(
+            "SELECT id, first_name FROM users WHERE email = $1",
+            [retryCredentials.email],
+          )
+        ).rows[0].id,
+        originalRetryUser.id,
+      );
+      assert.equal((await post("/signin", retryCredentials)).status, 401);
+      assert.equal(
+        (
+          await post("/signin", {
+            ...retryCredentials,
+            password: "replacementpass",
+          })
+        ).status,
+        200,
+      );
+
+      // Reset OTP is separate, single-use, and revokes existing cookies and JWTs.
+      const resetCredentials = {
+        ...retryCredentials,
+        password: "replacementpass",
+      };
+      const resetLogin = await post("/signin", resetCredentials);
+      const resetCookie = resetLogin.headers.get("set-cookie").split(";")[0];
+      const resetNative = await (
+        await nativePost("/mobile/signin", resetCredentials)
+      ).json();
+      const forgot = await post("/forgot-password", {
+        email: retryCredentials.email,
+      });
+      assert.equal(forgot.status, 202);
+      const resetId = (await forgot.json()).data.challengeId;
+      const resetOtp = latestOtp(retryCredentials.email);
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: retryCredentials.email,
+            challengeId: resetId,
+            otp: resetOtp,
+          })
+        ).status,
+        400,
+      );
+      const resetBody = {
+        email: retryCredentials.email,
+        challengeId: resetId,
+        otp: resetOtp,
+        newPassword: "changedpassword",
+      };
+      assert.equal(
+        (
+          await post("/reset-password", {
+            ...resetBody,
+            otp: resetOtp === "000000" ? "111111" : "000000",
+          })
+        ).status,
+        400,
+      );
+      const concurrentResets = await Promise.all([
+        post("/reset-password", resetBody),
+        post("/reset-password", resetBody),
+      ]);
+      assert.deepEqual(
+        concurrentResets.map((response) => response.status).sort(),
+        [200, 400],
+      );
+      assert.equal((await post("/reset-password", resetBody)).status, 400);
+      assert.equal(
+        (await fetch(base + "/me", { headers: { Cookie: resetCookie } }))
+          .status,
+        401,
+      );
+      assert.equal(
+        (
+          await fetch(base + "/me", {
+            headers: { Authorization: `Bearer ${resetNative.token}` },
+          })
+        ).status,
+        401,
+      );
+      assert.equal((await post("/signin", resetCredentials)).status, 401);
+      assert.equal(
+        (
+          await post("/signin", {
+            ...resetCredentials,
+            password: "changedpassword",
+          })
+        ).status,
+        200,
+      );
+      const emailsBeforeUnknown = sentEmails.length;
+      const unknownReset = await post("/forgot-password", {
+        email: "unknown@example.invalid",
+      });
+      assert.equal(unknownReset.status, 202);
+      assert.equal(sentEmails.length, emailsBeforeUnknown);
+      assert.deepEqual(
+        Object.keys((await unknownReset.json()).data).sort(),
+        [
+          "challengeId",
+          "expiresInSeconds",
+          "message",
+          "resendAfterSeconds",
+        ].sort(),
+      );
+
+      // Five bad codes remain exhausted even when a new code is sent.
+      counters.clear();
+      const budgetEmail = "budget@example.invalid";
+      const budgetSignup = (
+        await (
+          await post("/signup", { ...credentials, email: budgetEmail })
+        ).json()
+      ).data;
+      const budgetOtp = latestOtp(budgetEmail);
+      for (let i = 0; i < 5; i++)
+        assert.equal(
+          (
+            await post("/verify-email", {
+              email: budgetEmail,
+              challengeId: budgetSignup.challengeId,
+              otp: budgetOtp === "000000" ? "111111" : "000000",
+            })
+          ).status,
+          400,
+        );
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: budgetEmail,
+            challengeId: budgetSignup.challengeId,
+            otp: budgetOtp,
+          })
+        ).status,
+        400,
+      );
+      await fixture.query(
+        "UPDATE email_auth_challenges SET created_at = now() - interval '61 seconds' WHERE id = $1",
+        [budgetSignup.challengeId],
+      );
+      const budgetResend = (
+        await (
+          await post("/resend-verification", {
+            email: budgetEmail,
+            challengeId: budgetSignup.challengeId,
+          })
+        ).json()
+      ).data;
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: budgetEmail,
+            challengeId: budgetResend.challengeId,
+            otp: latestOtp(budgetEmail),
+          })
+        ).status,
+        400,
+      );
+
+      // Expiry, email binding, malformed codes, and ineligible recovery.
+      counters.clear();
+      const expiredEmail = "expired@example.invalid";
+      const expiring = (
+        await (
+          await post("/signup", { ...credentials, email: expiredEmail })
+        ).json()
+      ).data;
+      const expiringOtp = latestOtp(expiredEmail);
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: retryCredentials.email,
+            challengeId: expiring.challengeId,
+            otp: expiringOtp,
+          })
+        ).status,
+        400,
+      );
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: expiredEmail,
+            challengeId: expiring.challengeId,
+            otp: "12345",
+          })
+        ).status,
+        400,
+      );
+      await fixture.query(
+        "UPDATE email_auth_challenges SET expires_at = now() - interval '1 second' WHERE id = $1",
+        [expiring.challengeId],
+      );
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: expiredEmail,
+            challengeId: expiring.challengeId,
+            otp: expiringOtp,
+          })
+        ).status,
+        400,
+      );
+      const ineligibleEmailsBefore = sentEmails.length;
+      for (const email of [expiredEmail, "github@example.invalid"]) {
+        assert.equal((await post("/forgot-password", { email })).status, 202);
+      }
+      assert.equal(sentEmails.length, ineligibleEmailsBefore);
+      const { cleanupEmailAuthChallenges } =
+        await import("../src/services/auth/email-otp.ts");
+      await cleanupEmailAuthChallenges();
+      assert.equal(
+        (
+          await fixture.query(
+            "SELECT staged_password_hash FROM email_auth_challenges WHERE id = $1",
+            [expiring.challengeId],
+          )
+        ).rows[0].staged_password_hash,
+        null,
+      );
+
+      // API only enqueues. A code cannot verify until the worker has delivered it.
+      counters.clear();
+      deferMail = true;
+      const queuedEmail = "queued@example.invalid";
+      const emailsBeforeQueue = sentEmails.length;
+      const queuedResponse = await post("/signup", {
+        ...credentials,
+        email: queuedEmail,
+      });
+      assert.equal(queuedResponse.status, 202);
+      const queuedChallenge = (await queuedResponse.json()).data;
+      assert.equal(sentEmails.length, emailsBeforeQueue);
+      const queuedJob = mailJobs.at(-1);
+      const queuedOtp = decryptMailOtp(
+        queuedJob.challengeId,
+        queuedJob.encryptedOtp,
+      );
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: queuedEmail,
+            challengeId: queuedChallenge.challengeId,
+            otp: queuedOtp,
+          })
+        ).status,
+        400,
+      );
+      // An intermediate SES failure retains the pending challenge for a later retry.
+      failEmail = true;
+      await assert.rejects(
+        processMailJob(queuedJob, false),
+        /Mail delivery failed/,
+      );
+      assert.equal(
+        (
+          await fixture.query(
+            "SELECT delivery_status FROM email_auth_challenges WHERE id = $1",
+            [queuedChallenge.challengeId],
+          )
+        ).rows[0].delivery_status,
+        "pending",
+      );
+      failEmail = false;
+      await processMailJob(queuedJob, false);
+      await processMailJob(queuedJob, true);
+      assert.equal(sentEmails.length, emailsBeforeQueue + 1);
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: queuedEmail,
+            challengeId: queuedChallenge.challengeId,
+            otp: queuedOtp,
+          })
+        ).status,
+        200,
+      );
+      // Tampering with the bound challenge ID fails authenticated decryption.
+      assert.throws(() =>
+        decryptMailOtp("different-id", queuedJob.encryptedOtp),
+      );
+      // Replaced and expired jobs must not deliver an old code.
+      const staleEmail = "stale-mail@example.invalid";
+      const staleResponse = await post("/signup", {
+        ...credentials,
+        email: staleEmail,
+      });
+      const staleId = (await staleResponse.json()).data.challengeId;
+      const staleJob = mailJobs.at(-1);
+      await fixture.query(
+        "UPDATE email_auth_challenges SET created_at = now() - interval '61 seconds' WHERE id = $1",
+        [staleId],
+      );
+      const replacementResponse = await post("/signup", {
+        ...credentials,
+        email: staleEmail,
+      });
+      assert.equal(replacementResponse.status, 202);
+      const replacementId = (await replacementResponse.json()).data.challengeId;
+      const replacementJob = mailJobs.at(-1);
+      const staleEmailsBefore = sentEmails.length;
+      await processMailJob(staleJob, true);
+      assert.equal(sentEmails.length, staleEmailsBefore);
+      assert.equal(
+        (
+          await fixture.query(
+            "SELECT delivery_status FROM email_auth_challenges WHERE id = $1",
+            [replacementId],
+          )
+        ).rows[0].delivery_status,
+        "pending",
+      );
+      await fixture.query(
+        "UPDATE email_auth_challenges SET expires_at = now() - interval '1 second' WHERE id = $1",
+        [replacementId],
+      );
+      await processMailJob(replacementJob, true);
+      assert.equal(sentEmails.length, staleEmailsBefore);
+      // Producer failures return an error and invalidate only their challenge.
+      failQueue = true;
+      counters.clear();
+      assert.equal(
+        (
+          await post("/signup", {
+            ...credentials,
+            email: "queue-failed@example.invalid",
+          })
+        ).status,
+        503,
+      );
+      assert.equal(
+        (
+          await fixture.query(
+            "SELECT delivery_status FROM email_auth_challenges WHERE email = 'queue-failed@example.invalid'",
+          )
+        ).rows[0].delivery_status,
+        "failed",
+      );
+      failQueue = false;
+      deferMail = false;
+      counters.clear();
+      // Delivery failure leaves no usable challenge or disclosed provider payload.
+      failEmail = true;
+      counters.clear();
+      const failedSignup = await post("/signup", {
+        ...credentials,
+        email: "delivery@example.invalid",
+      });
+      assert.equal(failedSignup.status, 202);
+      assert.equal(
+        JSON.stringify(await failedSignup.json()).includes("SECRET"),
+        false,
+      );
+      const failedChallenge = (
+        await fixture.query(
+          "SELECT * FROM email_auth_challenges WHERE email = 'delivery@example.invalid'",
+        )
+      ).rows[0];
+      assert.equal(failedChallenge.delivery_status, "failed");
+      assert.ok(failedChallenge.staged_password_hash);
+      // A terminal delivery failure can be resent without re-entering credentials.
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: "delivery@example.invalid",
+            challengeId: failedChallenge.id,
+            otp: decryptMailOtp(
+              failedChallenge.id,
+              mailJobs.at(-1).encryptedOtp,
+            ),
+          })
+        ).status,
+        400,
+      );
+      failEmail = false;
+      const recovered = await post("/resend-verification", {
+        email: "delivery@example.invalid",
+        challengeId: failedChallenge.id,
+      });
+      assert.equal(recovered.status, 202);
+      const recoveredId = (await recovered.json()).data.challengeId;
+      assert.notEqual(recoveredId, failedChallenge.id);
+      assert.equal(
+        (
+          await post("/resend-verification", {
+            email: "delivery@example.invalid",
+            challengeId: failedChallenge.id,
+          })
+        ).status,
+        400,
+      );
+      assert.equal(
+        (
+          await post("/verify-email", {
+            email: "delivery@example.invalid",
+            challengeId: recoveredId,
+            otp: latestOtp("delivery@example.invalid"),
+          })
+        ).status,
+        200,
+      );
+      // A completed signup cannot be reopened by resend.
+      assert.equal(
+        (
+          await post("/resend-verification", {
+            email: "delivery@example.invalid",
+            challengeId: recoveredId,
+          })
+        ).status,
+        400,
+      );
+      counters.clear();
       // Force a write failure late in signup and confirm every earlier write rolls back.
       await fixture.query(
         "ALTER TABLE user_wallet ADD CONSTRAINT fail_signup CHECK (balance > 0) NOT VALID",
@@ -766,11 +1401,21 @@ test(
       counters.clear();
       for (let i = 0; i < 5; i++)
         assert.equal((await post("/signup", {})).status, 400);
+      for (let i = 0; i < 20; i++)
+        assert.equal((await post("/limited-verify", {})).status, 400);
+      assert.equal((await post("/limited-verify", {})).status, 429);
+      const originalEval = redis.eval;
+      redis.eval = async () => {
+        throw new Error("unavailable");
+      };
+      assert.equal((await post("/limited-verify", {})).status, 503);
+      redis.eval = originalEval;
       const limited = await post("/signup", {});
       assert.equal(limited.status, 429);
       assert.equal(limited.headers.get("retry-after"), "900");
     } finally {
       if (server) await new Promise((resolve) => server.close(resolve));
+      if (mailQueue) await mailQueue.close();
       redis?.disconnect();
       if (repo) await repo.db.$client.end();
       await fixture.end();

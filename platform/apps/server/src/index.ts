@@ -13,7 +13,10 @@ import { telegramBot } from "./bots/telegram/setup.js";
 import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
 import { AppError } from "./lib/app-error.js";
 import { env } from "./lib/env.js";
-import { checkAuthorization } from "./middlewares/check-authorization.js";
+import {
+  checkAuthorization,
+  findAuthorizedUser,
+} from "./middlewares/check-authorization.js";
 import { authRoutes } from "./routes/auth-routes.js";
 import { chatRoutes } from "./routes/chat-routes.js";
 import { gitRepoRoutes } from "./routes/git-repo-routes.js";
@@ -206,6 +209,11 @@ ws.on("connection", async (socket, req) => {
 
   const session = await findWebSession(token);
   if (session) {
+    const user = await findAuthorizedUser(session.user_id);
+    if (!user) {
+      socket.close(4401, "Invalid authentication");
+      return;
+    }
     socket.userId = session.user_id;
     try {
       await SocketHandler(socket);
@@ -229,6 +237,16 @@ ws.on("connection", async (socket, req) => {
     return;
   }
 
+  const user = await findAuthorizedUser(decoded.id);
+  const authVersion = decoded.authVersion ?? 0;
+  if (
+    !user ||
+    !Number.isInteger(authVersion) ||
+    user.auth_version !== authVersion
+  ) {
+    socket.close(4401, "Invalid authentication");
+    return;
+  }
   socket.userId = decoded.id;
   try {
     await SocketHandler(socket);
@@ -253,6 +271,7 @@ app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
 
   res.status(statusCode).json({
     message,
+    ...(err instanceof AppError && err.code ? { code: err.code } : {}),
     ...(env.NODE_ENV === "development" && { stack: err.stack }),
   });
 });

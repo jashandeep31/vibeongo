@@ -26,12 +26,47 @@ function usePasswordLoginSuccess() {
 
 export function useSignupWithPassword() {
   const client = useApiClient();
-  const onSuccess = usePasswordLoginSuccess();
   return useMutation({
     mutationFn: client.users.signupWithPassword,
-    onSuccess,
     retry: false,
     gcTime: 0,
+  });
+}
+export function useVerifyEmail() {
+  const client = useApiClient();
+  return useMutation({
+    mutationFn: client.users.verifyEmail,
+    retry: false,
+    gcTime: 0,
+  });
+}
+export function useResendVerification() {
+  const client = useApiClient();
+  return useMutation({
+    mutationFn: client.users.resendVerification,
+    retry: false,
+    gcTime: 0,
+  });
+}
+export function useForgotPassword() {
+  const client = useApiClient();
+  return useMutation({
+    mutationFn: client.users.forgotPassword,
+    retry: false,
+    gcTime: 0,
+  });
+}
+export function useResetPassword() {
+  const client = useApiClient();
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: client.users.resetPassword,
+    retry: false,
+    gcTime: 0,
+    onSuccess: async () => {
+      await queryClient.cancelQueries();
+      queryClient.removeQueries();
+    },
   });
 }
 

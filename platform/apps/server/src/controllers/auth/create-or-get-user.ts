@@ -54,10 +54,12 @@ const getUserByGithubAccountId = async (
 const isKnownValue = (value?: string): value is string =>
   Boolean(value?.trim()) && value?.trim().toLowerCase() !== "unknown";
 
-const parseName = (name: string | undefined, username: string, email: string) => {
-  const nameParts = isKnownValue(name)
-    ? name.trim().split(/\s+/)
-    : [];
+const parseName = (
+  name: string | undefined,
+  username: string,
+  email: string,
+) => {
+  const nameParts = isKnownValue(name) ? name.trim().split(/\s+/) : [];
   const [firstName, ...remainingNameParts] = nameParts;
   const emailName = email.split("@")[0]?.trim();
 
@@ -138,6 +140,7 @@ const createUserWithGithubAccount = async ({
       .insert(users)
       .values({
         email,
+        email_verified_at: new Date(),
         first_name: firstName,
         last_name: lastName,
         username,
@@ -176,9 +179,7 @@ const createUserWithGithubAccount = async ({
 export const createOrGetUser = async (
   input: CreateUserInput,
 ): Promise<CreateOrGetUserResult> => {
-  const existingUser = await getUserByGithubAccountId(
-    input.providerAccountId,
-  );
+  const existingUser = await getUserByGithubAccountId(input.providerAccountId);
   const isNewUser = !existingUser;
 
   const ip = input.ip ? input.ip.toString() : "unknown";
@@ -187,6 +188,17 @@ export const createOrGetUser = async (
   let userWithAccount: UserWithAccount;
 
   if (existingUser) {
+    if (
+      existingUser.email.toLowerCase() === input.email.toLowerCase() &&
+      !existingUser.email_verified_at
+    ) {
+      const [verified] = await db
+        .update(users)
+        .set({ email_verified_at: new Date(), updated_at: new Date() })
+        .where(eq(users.id, existingUser.id))
+        .returning();
+      if (verified) existingUser.email_verified_at = verified.email_verified_at;
+    }
     const account = await upsertGithubAccount(
       existingUser.id,
       input.token,

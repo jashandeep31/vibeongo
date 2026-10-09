@@ -5,13 +5,13 @@ export const normalizeEmail = (email: string) => {
   const at = trimmed.lastIndexOf("@");
   return trimmed.slice(0, at + 1) + trimmed.slice(at + 1).toLowerCase();
 };
-const email = z
+export const emailSchema = z
   .string()
   .trim()
   .max(255)
   .pipe(z.email())
   .transform(normalizeEmail);
-const password = z
+export const passwordSchema = z
   .string()
   .max(40)
   .refine((value) => {
@@ -19,7 +19,10 @@ const password = z
     return length >= 8 && length <= 20 && !/\s/u.test(value);
   }, "Password must contain 8–20 characters without spaces");
 
-export const signinSchema = z.object({ email, password });
+export const signinSchema = z.object({
+  email: emailSchema,
+  password: passwordSchema,
+});
 export const signupSchema = signinSchema.extend({
   firstName: z.string().trim().min(1).max(100),
 });

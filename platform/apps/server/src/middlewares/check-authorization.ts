@@ -144,6 +144,7 @@ async function authenticateToken(
   allowedRoles: AllowedCredential[],
 ) {
   let id: string;
+  let authVersion: number;
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET);
@@ -157,11 +158,14 @@ async function authenticateToken(
     }
 
     id = decoded.id;
+    authVersion = decoded.authVersion === undefined ? 0 : decoded.authVersion;
+    if (!Number.isInteger(authVersion) || authVersion < 0)
+      return failedToAuthenticate(res);
   } catch {
     return failedToAuthenticate(res);
   }
 
-  return authenticateUser(req, res, next, id, allowedRoles);
+  return authenticateUser(req, res, next, id, allowedRoles, authVersion);
 }
 
 async function authenticateUser(
@@ -170,9 +174,11 @@ async function authenticateUser(
   next: NextFunction,
   id: string,
   allowedRoles: AllowedCredential[],
+  authVersion?: number,
 ) {
   const user = await findAuthorizedUser(id);
-  if (!user) return failedToAuthenticate(res);
+  if (!user || (authVersion !== undefined && user.auth_version !== authVersion))
+    return failedToAuthenticate(res);
 
   if (user.role !== "admin" && !allowedRoles.includes(user.role)) {
     return res.status(403).json({ error: "not authorized" });
@@ -182,7 +188,7 @@ async function authenticateUser(
   next();
 }
 
-async function findAuthorizedUser(id: string) {
+export async function findAuthorizedUser(id: string) {
   const [row] = await db
     .select({ user: users, account: accounts })
     .from(users)
@@ -193,6 +199,11 @@ async function findAuthorizedUser(id: string) {
     .where(eq(users.id, id))
     .limit(1);
   if (!row || row.user.status !== "active") return undefined;
+  if (
+    row.user.primary_login_method === "email_password" &&
+    !row.user.email_verified_at
+  )
+    return undefined;
   // Preserve legacy GitHub restrictions without requiring a provider for email users.
   if (
     row.account &&

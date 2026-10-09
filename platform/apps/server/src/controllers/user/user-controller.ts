@@ -25,7 +25,7 @@ function context(req: Request): LoginContext {
 
 function sendLogin(
   res: Response,
-  result: Awaited<ReturnType<typeof signupWithPassword>>,
+  result: Awaited<ReturnType<typeof signinWithPassword>>,
   status: 200 | 201,
 ) {
   res.set("Cache-Control", "no-store");
@@ -36,37 +36,48 @@ function sendLogin(
   res.status(status).json({ data: toPublicUser(result.user) });
 }
 
-async function handleBusy<T>(operation: () => Promise<T>): Promise<T> {
+async function handleBusy<T>(
+  operation: () => Promise<T>,
+  res: Response,
+): Promise<T> {
   try {
     return await operation();
   } catch (error) {
     if (error instanceof PasswordHashBusyError) {
+      res.set("Retry-After", "60");
       throw new AppError(
         "Too many authentication attempts; try again later",
         429,
       );
     }
-    if (error instanceof AppError) throw error;
+    if (error instanceof AppError) {
+      if (error.status === 429) res.set("Retry-After", "60");
+      throw error;
+    }
     // Database errors can contain query parameters, including encoded password hashes.
     // Do not pass those errors to the global logger or development error response.
-    throw new AppError("Authentication is temporarily unavailable", 500);
+    throw new AppError("Authentication is temporarily unavailable", 500, {
+      reportToSentry: false,
+    });
   }
 }
 
 export const signup = catchAsync(async (req: Request, res: Response) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError("Invalid signup details", 400);
-  const result = await handleBusy(() =>
-    signupWithPassword(parsed.data, context(req)),
+  const result = await handleBusy(
+    () => signupWithPassword(parsed.data, context(req)),
+    res,
   );
-  sendLogin(res, result, 201);
+  res.set("Cache-Control", "no-store").status(202).json({ data: result });
 });
 
 export const signin = catchAsync(async (req: Request, res: Response) => {
   const parsed = signinSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError("Invalid signin details", 400);
-  const result = await handleBusy(() =>
-    signinWithPassword(parsed.data, context(req)),
+  const result = await handleBusy(
+    () => signinWithPassword(parsed.data, context(req)),
+    res,
   );
   sendLogin(res, result, 200);
 });
@@ -83,20 +94,27 @@ export const getCurrentUser = catchAsync(
 export const mobileSignup = catchAsync(async (req: Request, res: Response) => {
   const parsed = signupSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError("Invalid signup details", 400);
-  const result = await handleBusy(() =>
-    signupWithPassword(parsed.data, { ...context(req), clientType: "mobile" }),
+  const result = await handleBusy(
+    () =>
+      signupWithPassword(parsed.data, {
+        ...context(req),
+        clientType: "mobile",
+      }),
+    res,
   );
-  res
-    .set("Cache-Control", "no-store")
-    .status(201)
-    .json({ token: result.token, data: toPublicUser(result.user) });
+  res.set("Cache-Control", "no-store").status(202).json({ data: result });
 });
 
 export const mobileSignin = catchAsync(async (req: Request, res: Response) => {
   const parsed = signinSchema.safeParse(req.body);
   if (!parsed.success) throw new AppError("Invalid signin details", 400);
-  const result = await handleBusy(() =>
-    signinWithPassword(parsed.data, { ...context(req), clientType: "mobile" }),
+  const result = await handleBusy(
+    () =>
+      signinWithPassword(parsed.data, {
+        ...context(req),
+        clientType: "mobile",
+      }),
+    res,
   );
   res
     .set("Cache-Control", "no-store")
