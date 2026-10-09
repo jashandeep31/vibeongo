@@ -232,7 +232,6 @@ export function PasswordAuthScreen({
           contentContainerStyle={styles.scroll}
         >
           <View style={styles.content}>
-            <ThemedText style={styles.brand}>VibeOnGo</ThemedText>
             <View style={styles.heading}>
               <ThemedText style={styles.title}>
                 {signup ? "Create your account" : "Welcome back"}
@@ -333,7 +332,7 @@ export function PasswordAuthScreen({
               style={styles.switch}
             >
               <ThemedText themeColor="textSecondary">
-                {signup ? "Already have an account? " : "New to VibeOnGo? "}
+                {signup ? "Already have an account? " : "New here? "}
                 <ThemedText style={styles.label}>
                   {signup ? "Sign in" : "Sign up"}
                 </ThemedText>
@@ -355,12 +354,6 @@ const styles = StyleSheet.create({
     padding: 24,
   },
   content: { width: "100%", maxWidth: 420, gap: 16 },
-  brand: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
   heading: { gap: 8, marginBottom: 8 },
   title: {
     fontSize: 30,

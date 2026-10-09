@@ -318,7 +318,6 @@ export function EmailRecoveryScreen({
           contentContainerStyle={styles.scroll}
         >
           <View style={styles.content}>
-            <ThemedText style={styles.brand}>VibeOnGo</ThemedText>
             <View style={styles.heading}>
               <ThemedText accessibilityRole="header" style={styles.title}>
                 {complete
@@ -493,12 +492,6 @@ const styles = StyleSheet.create({
   },
   content: { width: "100%", maxWidth: 420, gap: 16 },
   heading: { gap: 8, marginBottom: 8 },
-  brand: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
   title: {
     fontSize: 30,
     lineHeight: 38,
