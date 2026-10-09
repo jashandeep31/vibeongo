@@ -1,3 +1,4 @@
+import { sql } from "drizzle-orm";
 import {
   pgTable,
   timestamp,
@@ -17,50 +18,98 @@ export const userRoles = pgEnum("users_roles", ["user", "admin"]);
 
 export const userTier = pgEnum("user_tiers", ["tier1", "tier2", "tier3"]);
 
-export const users = pgTable("users", {
-  id: uuid().unique().defaultRandom().notNull(),
-  email: varchar({ length: 255 }).notNull().unique(),
-  username: varchar({ length: 255 }).notNull().unique(),
-
-  tier: userTier().default("tier1").notNull(),
-
-  first_name: varchar().notNull(),
-  last_name: varchar(),
-  role: userRoles().default("user").notNull(),
-
-  // forjego_data
-  forgejo_id: integer().unique(),
-
-  created_at: timestamp().defaultNow().notNull(),
-  updated_at: timestamp().defaultNow(),
-});
-
-export const accountProviders = pgEnum("account_providers", ["github"]);
 export const accountStatus = pgEnum("account_status", [
   "active",
   "banned",
   "deleted",
 ]);
 
-export const accounts = pgTable("accounts", {
-  id: uuid().unique().defaultRandom(),
+export const userLoginMethodEnum = pgEnum("user_login_method_enum", [
+  "github",
+  "email_password",
+]);
+
+export const users = pgTable(
+  "users",
+  {
+    id: uuid().unique().defaultRandom().notNull(),
+    email: varchar({ length: 255 }).notNull().unique(),
+    username: varchar({ length: 255 }).notNull().unique(),
+
+    tier: userTier().default("tier1").notNull(),
+
+    first_name: varchar().notNull(),
+    last_name: varchar(),
+    role: userRoles().default("user").notNull(),
+    // User access is independent of any linked authentication provider.
+    status: accountStatus().notNull().default("active"),
+    email_verified_at: timestamp(),
+    // Email signups must explicitly set this to email_password.
+    primary_login_method: userLoginMethodEnum().notNull().default("github"),
+
+    // forjego_data
+    forgejo_id: integer().unique(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("users_email_case_insensitive_unique").on(
+      sql`lower(${table.email})`,
+    ),
+  ],
+);
+
+export const accountProviders = pgEnum("account_providers", ["github"]);
+
+// Linked OAuth identities; email/password credentials are stored separately.
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuid().unique().defaultRandom(),
+    user_id: uuid()
+      .references(() => users.id)
+      .notNull(),
+
+    provider: accountProviders().notNull(),
+    provider_account_id: varchar({ length: 255 }).notNull(),
+    // Keep the provider username separate from the Vibeongo username.
+    provider_username: varchar({ length: 255 }),
+    status: accountStatus().notNull().default("active"),
+    verified: boolean().notNull().default(true),
+    token: varchar({ length: 255 }).notNull(),
+
+    deleted_at: timestamp(),
+
+    last_login_at: timestamp(),
+
+    created_at: timestamp().defaultNow().notNull(),
+    updated_at: timestamp().defaultNow(),
+  },
+  (table) => [
+    uniqueIndex("accounts_provider_account_id_unique").on(
+      table.provider,
+      table.provider_account_id,
+    ),
+    uniqueIndex("accounts_user_id_provider_unique").on(
+      table.user_id,
+      table.provider,
+    ),
+  ],
+);
+
+export const userPasswordCredentials = pgTable("user_password_credentials", {
   user_id: uuid()
-    .references(() => users.id)
-    .notNull()
-    .unique(),
+    .primaryKey()
+    .references(() => users.id, { onDelete: "cascade" }),
 
-  provider: accountProviders().notNull(),
-  provider_account_id: varchar({ length: 255 }).notNull().unique(),
-  status: accountStatus().notNull().default("active"),
-  verified: boolean().notNull().default(true),
-  token: varchar({ length: 255 }).notNull(),
-
-  deleted_at: timestamp(),
-
-  last_login_at: timestamp(),
+  // Store an encoded Argon2id hash, never the plaintext password.
+  password_hash: text().notNull(),
+  // A non-null value disables password login and password recovery.
+  revoked_at: timestamp(),
 
   created_at: timestamp().defaultNow().notNull(),
-  updated_at: timestamp().defaultNow(),
+  updated_at: timestamp().defaultNow().notNull(),
 });
 
 export const USER_API_KEY_PREFIX = "vog_";
@@ -86,7 +135,6 @@ export const usersApiKeys = pgTable(
   (table) => [index("users_api_keys_user_id_idx").on(table.user_id)],
 );
 
-export const userLoginMethodEnum = pgEnum("user_login_method_enum", ["github"]);
 export const userLoginLogs = pgTable("user_login_logs", {
   id: uuid().unique().defaultRandom(),
   user_id: uuid().references(() => users.id),

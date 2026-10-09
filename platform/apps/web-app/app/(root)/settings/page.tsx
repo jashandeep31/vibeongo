@@ -3,6 +3,7 @@
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import { ModelPicker } from "@/components/model-picker";
 import { SshKeyDialog } from "@/components/dialogs/ssh-key-dialog";
+import { GithubConnectionSettings } from "@/components/settings/github-connection-settings";
 import { ApiKeysSettings } from "@/components/settings/api-keys-settings";
 import { UserConfigDialog } from "@/components/dialogs/user-config-dialog";
 import {
@@ -55,7 +56,10 @@ function formatCredentialDate(value: string | null) {
   const date = new Date(value);
   return Number.isNaN(date.getTime())
     ? "Not available"
-    : date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+    : date.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+      });
 }
 
 const themeOptions = [
@@ -336,6 +340,8 @@ export default function SettingsPage() {
         <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
       </header>
 
+      <GithubConnectionSettings />
+
       <SettingsSection
         title="Appearance"
         description="Choose how the AI Playground looks on this device."
@@ -421,7 +427,9 @@ export default function SettingsPage() {
                       <Bot className="size-4" aria-hidden="true" />
                     </span>
                     <h3 className="text-sm font-semibold">
-                      {connection.provider === "codex" ? "Codex" : connection.provider}
+                      {connection.provider === "codex"
+                        ? "Codex"
+                        : connection.provider}
                     </h3>
                   </div>
                   <dl>
@@ -445,7 +453,9 @@ export default function SettingsPage() {
                       Refresh token expires
                     </dt>
                     <dd className="mt-1.5 font-medium tabular-nums">
-                      {formatCredentialDate(connection.refresh_token_expires_at)}
+                      {formatCredentialDate(
+                        connection.refresh_token_expires_at,
+                      )}
                     </dd>
                   </div>
                 </dl>
@@ -459,7 +469,9 @@ export default function SettingsPage() {
             ))}
           </div>
         ) : (
-          <p className="text-muted-foreground text-sm">No provider connections.</p>
+          <p className="text-muted-foreground text-sm">
+            No provider connections.
+          </p>
         )}
       </SettingsSection>
 

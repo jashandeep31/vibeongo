@@ -134,6 +134,12 @@ export type {
   UpsertPushTokenInput,
 } from "./services/notification-services.js";
 export type {
+  GithubConnectionStatus,
+  StartGithubConnectionPayload,
+  MobilePasswordAuthResponse,
+  PasswordAuthUser,
+  SigninWithPasswordPayload,
+  SignupWithPasswordPayload,
   SetForgejoPasswordPayload,
   SetForgejoPasswordResponse,
   UserConfigValue,

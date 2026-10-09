@@ -1,3 +1,4 @@
+import { GithubConnectionSettings } from "@/components/auth/github-connection-settings";
 import type { ApiKey, UserConfigValue } from "@repo/api-client";
 import {
   useApiKeys,
@@ -405,6 +406,8 @@ export default function SettingsScreen() {
               }
               showsVerticalScrollIndicator={false}
             >
+              <GithubConnectionSettings />
+
               <SettingsSection
                 icon={{ ios: "sun.max", android: "light_mode" }}
                 title="Appearance"

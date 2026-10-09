@@ -27,5 +27,6 @@ export * from "./hooks/use-runtime-files.js";
 export * from "./hooks/use-ssh-keys.js";
 export * from "./hooks/use-ssh-access.js";
 export * from "./hooks/use-user.js";
+export * from "./hooks/use-password-auth.js";
 export * from "./hooks/use-wallet.js";
 export * from "./hooks/use-websocket.js";

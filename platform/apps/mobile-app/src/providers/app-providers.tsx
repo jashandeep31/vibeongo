@@ -108,7 +108,13 @@ export function AppProviders({ children }: { children: ReactNode }) {
 
   if (!accessToken) {
     if (pathname === "/auth/callback") return <>{children}</>;
-    return <SignedOutScreen />;
+    return (
+      <ApiClientProvider client={apiClient}>
+        <QueryClientProvider client={queryClient}>
+          <SignedOutScreen />
+        </QueryClientProvider>
+      </ApiClientProvider>
+    );
   }
 
   return (

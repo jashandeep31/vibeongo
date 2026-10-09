@@ -1,0 +1,345 @@
+import { useState } from "react";
+import {
+  ActivityIndicator,
+  KeyboardAvoidingView,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  TextInput,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import {
+  useMobileSigninWithPassword,
+  useMobileSignupWithPassword,
+  useQueryClient,
+} from "@repo/api-hooks";
+import { ThemedText } from "@/components/themed-text";
+import { useTheme } from "@/hooks/use-theme";
+import { saveAccessToken } from "@/lib/auth";
+import { GithubSignInButton } from "./github-sign-in-button";
+
+export function PasswordAuthScreen({
+  mode,
+  onChangeMode,
+}: {
+  mode: "signin" | "signup";
+  onChangeMode: () => void;
+}) {
+  const theme = useTheme();
+  const signup = mode === "signup";
+  const signinMutation = useMobileSigninWithPassword();
+  const signupMutation = useMobileSignupWithPassword();
+  const queryClient = useQueryClient();
+  const [email, setEmail] = useState("");
+  const [name, setName] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmation, setConfirmation] = useState("");
+  const [visible, setVisible] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async () => {
+    if (busy) return;
+    setError(null);
+    if (signup && (!name.trim() || name.trim().length > 100)) {
+      setError("Enter your name.");
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError("Enter a valid email address.");
+      return;
+    }
+    if (
+      Array.from(password).length < 8 ||
+      Array.from(password).length > 20 ||
+      /\s/u.test(password)
+    ) {
+      setError("Enter a password of 8–20 characters without spaces.");
+      return;
+    }
+    if (!password) {
+      setError("Enter your password.");
+      return;
+    }
+    if (signup && password !== confirmation) {
+      setError("Your passwords do not match.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const result = signup
+        ? await signupMutation.mutateAsync({
+            email: email.trim(),
+            password,
+            firstName: name.trim(),
+          })
+        : await signinMutation.mutateAsync({ email: email.trim(), password });
+      // Persist only the token. Account data is cached; passwords are never stored.
+      await queryClient.cancelQueries();
+      await saveAccessToken(result.token);
+      queryClient.setQueryData(["current-user"], result.data);
+      setPassword("");
+      setConfirmation("");
+    } catch (cause) {
+      const failure = cause as {
+        response?: { status?: number; data?: { message?: string } };
+      };
+      const status = failure.response?.status;
+      setError(
+        status === 401
+          ? "Incorrect email or password."
+          : status === 409
+            ? "An account already uses this email. Try signing in."
+            : status === 429
+              ? "Too many attempts. Please try again later."
+              : status === 400
+                ? "Check your email and password and try again."
+                : "Could not sign in. Check your connection and try again.",
+      );
+    } finally {
+      signinMutation.reset();
+      signupMutation.reset();
+      setBusy(false);
+    }
+  };
+
+  const inputStyle = [
+    styles.input,
+    {
+      color: theme.text,
+      backgroundColor: theme.backgroundElement,
+      borderColor: theme.backgroundSelected,
+    },
+  ];
+  const field = (
+    label: string,
+    value: string,
+    change: (text: string) => void,
+    secret = false,
+    confirm = false,
+  ) => (
+    <View style={styles.field}>
+      <ThemedText style={styles.label}>{label}</ThemedText>
+      <View style={styles.inputRow}>
+        <TextInput
+          accessibilityLabel={label}
+          value={value}
+          onChangeText={change}
+          editable={!busy}
+          style={[inputStyle, secret && { paddingRight: 64 }]}
+          placeholder={
+            secret
+              ? undefined
+              : label === "Email"
+                ? "you@example.com"
+                : "Your name"
+          }
+          placeholderTextColor={theme.textSecondary}
+          autoCapitalize={label === "Name" ? "words" : "none"}
+          autoCorrect={false}
+          keyboardType={label === "Email" ? "email-address" : "default"}
+          autoComplete={
+            label === "Email"
+              ? "email"
+              : secret
+                ? signup
+                  ? "new-password"
+                  : "current-password"
+                : "name"
+          }
+          textContentType={
+            label === "Email"
+              ? "emailAddress"
+              : secret
+                ? signup
+                  ? "newPassword"
+                  : "password"
+                : "givenName"
+          }
+          secureTextEntry={secret && !visible}
+          maxLength={secret ? 512 : label === "Email" ? 255 : 100}
+          returnKeyType={secret && (!signup || confirm) ? "go" : "next"}
+          onSubmitEditing={
+            secret && (!signup || confirm) ? () => void submit() : undefined
+          }
+        />
+        {secret && !confirm ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={visible ? "Hide password" : "Show password"}
+            onPress={() => setVisible(!visible)}
+            style={styles.visibility}
+            disabled={busy}
+          >
+            <ThemedText style={styles.label}>
+              {visible ? "Hide" : "Show"}
+            </ThemedText>
+          </Pressable>
+        ) : null}
+      </View>
+    </View>
+  );
+
+  return (
+    <SafeAreaView
+      style={[styles.screen, { backgroundColor: theme.background }]}
+    >
+      <KeyboardAvoidingView
+        style={styles.screen}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={styles.scroll}
+        >
+          <View style={styles.content}>
+            <ThemedText style={styles.brand}>VibeOnGo</ThemedText>
+            <View style={styles.heading}>
+              <ThemedText style={styles.title}>
+                {signup ? "Create your account" : "Welcome back"}
+              </ThemedText>
+              <ThemedText themeColor="textSecondary">
+                {signup
+                  ? "Bring your ideas to life, wherever you are."
+                  : "Sign in to your chats and projects."}
+              </ThemedText>
+            </View>
+            <GithubSignInButton disabled={busy} />
+            <View style={styles.divider}>
+              <View
+                style={[
+                  styles.line,
+                  { backgroundColor: theme.backgroundSelected },
+                ]}
+              />
+              <ThemedText themeColor="textSecondary" style={styles.hint}>
+                {signup ? "Or try with email" : "Or continue with email"}
+              </ThemedText>
+              <View
+                style={[
+                  styles.line,
+                  { backgroundColor: theme.backgroundSelected },
+                ]}
+              />
+            </View>
+            {signup ? field("Name", name, setName) : null}
+            {field("Email", email, setEmail)}
+            {field("Password", password, setPassword, true)}
+            {signup
+              ? field(
+                  "Confirm password",
+                  confirmation,
+                  setConfirmation,
+                  true,
+                  true,
+                )
+              : null}
+            {error ? (
+              <ThemedText
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+                style={styles.error}
+              >
+                {error}
+              </ThemedText>
+            ) : null}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityState={{ disabled: busy, busy }}
+              disabled={busy}
+              onPress={() => void submit()}
+              style={({ pressed }) => [
+                styles.button,
+                {
+                  backgroundColor: theme.background,
+                  borderColor: theme.backgroundSelected,
+                },
+                (pressed || busy) && { opacity: 0.7 },
+              ]}
+            >
+              {busy ? (
+                <ActivityIndicator color={theme.text} />
+              ) : (
+                <ThemedText style={[styles.buttonText, { color: theme.text }]}>
+                  {signup ? "Create account" : "Sign in"}
+                </ThemedText>
+              )}
+            </Pressable>
+            <Pressable
+              accessibilityRole="button"
+              disabled={busy}
+              onPress={onChangeMode}
+              style={styles.switch}
+            >
+              <ThemedText themeColor="textSecondary">
+                {signup ? "Already have an account? " : "New to VibeOnGo? "}
+                <ThemedText style={styles.label}>
+                  {signup ? "Sign in" : "Sign up"}
+                </ThemedText>
+              </ThemedText>
+            </Pressable>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  screen: { flex: 1 },
+  scroll: {
+    flexGrow: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    padding: 24,
+  },
+  content: { width: "100%", maxWidth: 420, gap: 16 },
+  brand: {
+    fontSize: 24,
+    lineHeight: 32,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  heading: { gap: 8, marginBottom: 8 },
+  title: {
+    fontSize: 30,
+    lineHeight: 38,
+    fontWeight: "700",
+    letterSpacing: -0.5,
+  },
+  field: { gap: 8 },
+  label: { fontSize: 14, fontWeight: "600" },
+  inputRow: { position: "relative" },
+  input: {
+    minHeight: 52,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  visibility: {
+    position: "absolute",
+    right: 4,
+    top: 4,
+    bottom: 4,
+    minWidth: 56,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  hint: { fontSize: 13, lineHeight: 20 },
+  error: { color: "#ef4444", fontSize: 14, lineHeight: 20 },
+  button: {
+    borderWidth: 1,
+    minHeight: 52,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  buttonText: { fontWeight: "700" },
+  divider: { flexDirection: "row", alignItems: "center", gap: 16 },
+  line: { flex: 1, height: 1 },
+  switch: { minHeight: 48, alignItems: "center", justifyContent: "center" },
+});

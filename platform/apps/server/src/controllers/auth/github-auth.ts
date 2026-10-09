@@ -1,3 +1,4 @@
+import { githubConnectionCallback } from "./github-connection.js";
 import { Request, Response } from "express";
 import jwt from "jsonwebtoken";
 import { catchAsync } from "../../lib/catch-async.js";
@@ -90,7 +91,13 @@ export const githubAuthUrl = catchAsync(async (req: Request, res: Response) => {
 });
 
 export const githubAuthCallbackController = catchAsync(
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next) => {
+    if (
+      typeof req.query.state === "string" &&
+      req.query.state.startsWith("connect:")
+    ) {
+      return githubConnectionCallback(req, res, next);
+    }
     const { code, state } = req.query;
 
     if (typeof code !== "string") {

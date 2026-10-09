@@ -100,21 +100,9 @@ async function authenticateApiKey(
     return res.status(403).json({ error: "not authorized" });
   }
 
-  const [userAndAccountRow] = await db
-    .select({ user: users, account: accounts })
-    .from(users)
-    .innerJoin(accounts, eq(accounts.user_id, users.id))
-    .where(eq(users.id, apiKey.userId));
-
-  if (
-    !userAndAccountRow ||
-    !userAndAccountRow.account.verified ||
-    userAndAccountRow.account.status !== "active"
-  ) {
-    return failedToAuthenticate(res);
-  }
-
-  req.user = userAndAccountRow.user;
+  const user = await findAuthorizedUser(apiKey.userId);
+  if (!user) return failedToAuthenticate(res);
+  req.user = user;
   next();
 }
 
@@ -183,30 +171,38 @@ async function authenticateUser(
   id: string,
   allowedRoles: AllowedCredential[],
 ) {
-  const [userAndAccountRow] = await db
-    .select({ user: users, account: accounts })
-    .from(users)
-    .innerJoin(accounts, eq(accounts.user_id, id))
-    .where(eq(users.id, id));
-
-  if (!userAndAccountRow?.user || !userAndAccountRow.account) {
-    return failedToAuthenticate(res);
-  }
-  const { user, account } = userAndAccountRow;
-  if (account.verified === false) {
-    return failedToAuthenticate(res);
-  }
-  if (account.status !== "active") {
-    return failedToAuthenticate(res);
-  }
+  const user = await findAuthorizedUser(id);
+  if (!user) return failedToAuthenticate(res);
 
   if (user.role !== "admin" && !allowedRoles.includes(user.role)) {
-    return res.status(403).json({
-      error: "not authorized",
-    });
+    return res.status(403).json({ error: "not authorized" });
   }
 
   req.user = user;
-
   next();
+}
+
+async function findAuthorizedUser(id: string) {
+  const [row] = await db
+    .select({ user: users, account: accounts })
+    .from(users)
+    .leftJoin(
+      accounts,
+      and(eq(accounts.user_id, users.id), eq(accounts.provider, "github")),
+    )
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!row || row.user.status !== "active") return undefined;
+  // Preserve legacy GitHub restrictions without requiring a provider for email users.
+  if (
+    row.account &&
+    (row.account.status !== "active" ||
+      !row.account.verified ||
+      row.account.deleted_at)
+  ) {
+    return undefined;
+  }
+  if (row.user.primary_login_method === "github" && !row.account)
+    return undefined;
+  return row.user;
 }
