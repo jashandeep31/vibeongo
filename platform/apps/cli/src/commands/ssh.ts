@@ -1,13 +1,18 @@
-import { formatSshCommand, MobileClient, type SshAccessSummary } from "@repo/api-client";
 import { Command } from "commander";
 import { DEFAULT_SERVER_URL, normalizeServerUrl } from "../lib/api.js";
 import { getApiKey } from "../lib/credential-store.js";
+import {
+  ApiHttpError,
+  CliApi,
+  formatSshCommand,
+  type SshAccessSummary,
+} from "../lib/remote-api.js";
 
 type ServerOptions = { serverUrl: string };
 
 async function withSshClient<T>(
   options: ServerOptions,
-  action: (client: MobileClient) => Promise<T>,
+  action: (client: CliApi) => Promise<T>,
   notFoundMessage: string,
 ): Promise<T> {
   const origin = normalizeServerUrl(options.serverUrl);
@@ -18,14 +23,15 @@ async function withSshClient<T>(
     );
   }
 
-  const client = new MobileClient(origin, apiKey);
-  client.apiClient.defaults.timeout = 15_000;
+  const client = new CliApi(origin, apiKey);
   try {
     return await action(client);
   } catch (error) {
-    const status = (error as { response?: { status?: number } })?.response?.status;
+    const status = error instanceof ApiHttpError ? error.status : undefined;
     if (status === 401 || status === 403) {
-      throw new Error(`API key rejected by ${origin}. Run vibeongo login again.`);
+      throw new Error(
+        `API key rejected by ${origin}. Run vibeongo login again.`,
+      );
     }
     if (status === 404) throw new Error(notFoundMessage);
     if (status) throw new Error(`SSH access request failed (HTTP ${status}).`);
@@ -33,10 +39,13 @@ async function withSshClient<T>(
   }
 }
 
-async function createAccess(instanceId: string, options: ServerOptions): Promise<void> {
+async function createAccess(
+  instanceId: string,
+  options: ServerOptions,
+): Promise<void> {
   const access = await withSshClient(
     options,
-    (client) => client.sshAccess.createSshAccess(instanceId),
+    (client) => client.createSshAccess(instanceId),
     "Running instance not found or unavailable for SSH.",
   );
   console.log(formatSshCommand(access));
@@ -96,7 +105,7 @@ export function createSshCommand(): Command {
   ).action(async (instanceId: string, options: ServerOptions) => {
     const accesses = await withSshClient(
       options,
-      (client) => client.sshAccess.listSshAccess(instanceId),
+      (client) => client.listSshAccess(instanceId),
       "Instance not found.",
     );
     printAccessList(accesses);
@@ -108,14 +117,16 @@ export function createSshCommand(): Command {
       .description("Revoke one SSH access ID for an instance")
       .argument("<instance-id>", "Instance ID shown by vibeongo projects")
       .argument("<access-id>", "Access ID shown by vibeongo ssh list"),
-  ).action(async (instanceId: string, accessId: string, options: ServerOptions) => {
-    await withSshClient(
-      options,
-      (client) => client.sshAccess.revokeSshAccess({ instanceId, accessId }),
-      "Instance or SSH access ID not found.",
-    );
-    console.log(`SSH access ${accessId} revoked.`);
-  });
+  ).action(
+    async (instanceId: string, accessId: string, options: ServerOptions) => {
+      await withSshClient(
+        options,
+        (client) => client.revokeSshAccess(instanceId, accessId),
+        "Instance or SSH access ID not found.",
+      );
+      console.log(`SSH access ${accessId} revoked.`);
+    },
+  );
 
   return command;
 }

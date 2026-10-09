@@ -1,8 +1,12 @@
 import { stripVTControlCharacters } from "node:util";
-import { MobileClient, type ProjectOverview } from "@repo/api-client";
 import { Command } from "commander";
 import { DEFAULT_SERVER_URL, normalizeServerUrl } from "../lib/api.js";
 import { getApiKey } from "../lib/credential-store.js";
+import {
+  ApiHttpError,
+  CliApi,
+  type ProjectOverview,
+} from "../lib/remote-api.js";
 
 const PAGE_SIZE = 100;
 
@@ -15,15 +19,11 @@ async function loadProjects(serverUrl: string): Promise<ProjectOverview[]> {
     );
   }
 
-  const client = new MobileClient(origin, apiKey);
-  client.apiClient.defaults.timeout = 15_000;
+  const client = new CliApi(origin, apiKey);
   const projects: ProjectOverview[] = [];
   try {
     for (let page = 1; page <= 1000; page += 1) {
-      const response = await client.projects.getProjectOverview({
-        page,
-        limit: PAGE_SIZE,
-      });
+      const response = await client.getProjectOverview(page, PAGE_SIZE);
       projects.push(...response.data);
       if (!response.hasNext) return projects;
       if (response.data.length === 0)
@@ -32,10 +32,11 @@ async function loadProjects(serverUrl: string): Promise<ProjectOverview[]> {
         );
     }
   } catch (error) {
-    const status = (error as { response?: { status?: number } })?.response
-      ?.status;
+    const status = error instanceof ApiHttpError ? error.status : undefined;
     if (status === 401 || status === 403) {
-      throw new Error(`API key rejected by ${origin}. Run vibeongo login again.`);
+      throw new Error(
+        `API key rejected by ${origin}. Run vibeongo login again.`,
+      );
     }
     if (status)
       throw new Error(`Could not load project overview (HTTP ${status}).`);
@@ -44,7 +45,9 @@ async function loadProjects(serverUrl: string): Promise<ProjectOverview[]> {
       error.message.startsWith("The server returned")
     )
       throw error;
-    throw new Error("Could not reach the Vibeongo server for project overview.");
+    throw new Error(
+      "Could not reach the Vibeongo server for project overview.",
+    );
   }
   throw new Error("Project overview contains too many pages to display.");
 }
@@ -75,7 +78,8 @@ function printProjects(projects: ProjectOverview[]): void {
       );
 
       session.instances.forEach((instance, instanceIndex) => {
-        const branch = instanceIndex === session.instances.length - 1 ? "└──" : "├──";
+        const branch =
+          instanceIndex === session.instances.length - 1 ? "└──" : "├──";
         const prefix = lastSession ? "    " : "│   ";
         console.log(
           `${prefix}${branch} ${label(instance.name)} (${label(instance.id)}) [${label(instance.state)}, ${label(instance.runtime_kind)}]`,
@@ -87,7 +91,9 @@ function printProjects(projects: ProjectOverview[]): void {
 
 export function createProjectsCommand(): Command {
   return new Command("projects")
-    .description("Show projects, their sessions, and active instances as a tree")
+    .description(
+      "Show projects, their sessions, and active instances as a tree",
+    )
     .option("--server-url <url>", "Vibeongo server origin", DEFAULT_SERVER_URL)
     .action(async (options: { serverUrl: string }) => {
       printProjects(await loadProjects(options.serverUrl));
