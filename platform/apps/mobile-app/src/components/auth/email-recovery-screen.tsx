@@ -24,6 +24,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
 import { useTheme } from "@/hooks/use-theme";
 import { clearAccessToken } from "@/lib/auth";
+import { AuthHeading } from "./auth-heading";
 
 export function EmailRecoveryScreen({
   purpose,
@@ -222,7 +223,7 @@ export function EmailRecoveryScreen({
     styles.input,
     {
       color: theme.text,
-      backgroundColor: theme.backgroundElement,
+      backgroundColor: theme.background,
       borderColor: theme.backgroundSelected,
     },
   ];
@@ -278,6 +279,8 @@ export function EmailRecoveryScreen({
             onChangeText={change}
             editable={!busy}
             style={[inputStyle, !confirm && styles.secret]}
+            placeholder={label}
+            placeholderTextColor={theme.textSecondary}
             secureTextEntry={!visible}
             autoComplete="new-password"
             textContentType="newPassword"
@@ -318,10 +321,9 @@ export function EmailRecoveryScreen({
           contentContainerStyle={styles.scroll}
         >
           <View style={styles.content}>
-            <ThemedText style={styles.brand}>VibeOnGo</ThemedText>
-            <View style={styles.heading}>
-              <ThemedText accessibilityRole="header" style={styles.title}>
-                {complete
+            <AuthHeading
+              title={
+                complete
                   ? verification
                     ? "Email verified"
                     : "Password updated"
@@ -329,18 +331,18 @@ export function EmailRecoveryScreen({
                     ? verification
                       ? "Verify your email"
                       : "Reset your password"
-                    : "Forgot your password?"}
-              </ThemedText>
-              <ThemedText themeColor="textSecondary">
-                {complete
-                  ? "Sign in to continue."
+                    : "Forgot your password?"
+              }
+              description={
+                complete
+                  ? "You're all set. Sign in to continue."
                   : challenge
                     ? verification
                       ? `Enter the code sent to ${email}.`
                       : `If ${email} has a verified password account, we’ve sent a reset code.`
-                    : "Enter your email to request a reset code."}
-              </ThemedText>
-            </View>
+                    : "Enter your email and we’ll send a code to reset your password."
+              }
+            />
             {complete ? (
               action("Continue to sign in", onComplete, true)
             ) : (
@@ -380,6 +382,8 @@ export function EmailRecoveryScreen({
                         }
                         editable={!busy}
                         style={[inputStyle, styles.otp]}
+                        placeholder="6-digit code"
+                        placeholderTextColor={theme.textSecondary}
                         keyboardType="number-pad"
                         autoComplete="one-time-code"
                         textContentType="oneTimeCode"
@@ -487,33 +491,21 @@ const styles = StyleSheet.create({
   screen: { flex: 1 },
   scroll: {
     flexGrow: 1,
-    justifyContent: "center",
     alignItems: "center",
-    padding: 24,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 16,
   },
-  content: { width: "100%", maxWidth: 420, gap: 16 },
-  heading: { gap: 8, marginBottom: 8 },
-  brand: {
-    fontSize: 24,
-    lineHeight: 32,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  title: {
-    fontSize: 30,
-    lineHeight: 38,
-    fontWeight: "700",
-    letterSpacing: -0.5,
-  },
-  field: { gap: 8 },
-  label: { fontSize: 14, fontWeight: "600" },
-  hint: { fontSize: 13, lineHeight: 20 },
+  content: { width: "100%", maxWidth: 420, gap: 10 },
+  field: { gap: 6 },
+  label: { fontSize: 14, fontWeight: "600", lineHeight: 20 },
+  hint: { fontSize: 14, lineHeight: 20 },
   input: {
-    minHeight: 52,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    minHeight: 48,
+    borderWidth: 1.5,
+    borderRadius: 24,
+    paddingHorizontal: 20,
+    paddingVertical: 8,
     fontSize: 16,
   },
   inputRow: { position: "relative" },
@@ -527,15 +519,15 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  otp: { textAlign: "center", fontSize: 22, letterSpacing: 8 },
-  error: { color: "#ef4444", fontSize: 14, lineHeight: 20 },
+  otp: { textAlign: "center", fontSize: 18, letterSpacing: 4 },
+  error: { color: "#d13f3f", fontSize: 14, lineHeight: 20 },
   button: {
-    minHeight: 52,
+    minHeight: 48,
     borderWidth: 1,
-    borderRadius: 12,
+    borderRadius: 24,
     alignItems: "center",
     justifyContent: "center",
   },
-  buttonText: { fontWeight: "700" },
+  buttonText: { fontSize: 16, fontWeight: "600" },
   dim: { opacity: 0.7 },
 });
