@@ -698,6 +698,47 @@ test(
         ).rows[0].count,
         "1",
       );
+      // A new email user can provision their repository account without GitHub.
+      const { ensureUserForgejoAccount } =
+        await import("../src/services/forgejo/ensure-user-account.ts");
+      const { forgejoAPIClient } =
+        await import("../src/services/forgejo/user-actions.ts");
+      const originalForgejoGet = forgejoAPIClient.get;
+      const originalForgejoPost = forgejoAPIClient.post;
+      let repositoryAccountCreates = 0;
+      forgejoAPIClient.get = async () => {
+        throw { isAxiosError: true, response: { status: 404 } };
+      };
+      forgejoAPIClient.post = async (_url, body) => {
+        repositoryAccountCreates++;
+        assert.equal(body.username, other.username);
+        return { status: 201, data: { id: 10001, username: other.username } };
+      };
+      const provisioned = await Promise.all([
+        ensureUserForgejoAccount(other.id),
+        ensureUserForgejoAccount(other.id),
+      ]);
+      assert.deepEqual(provisioned, [10001, 10001]);
+      assert.equal(repositoryAccountCreates, 1);
+      assert.equal(
+        (
+          await fixture.query("SELECT forgejo_id FROM users WHERE id = $1", [
+            other.id,
+          ])
+        ).rows[0].forgejo_id,
+        10001,
+      );
+      assert.equal(
+        (
+          await fixture.query(
+            "SELECT count(*) FROM accounts WHERE user_id = $1",
+            [other.id],
+          )
+        ).rows[0].count,
+        "0",
+      );
+      forgejoAPIClient.get = originalForgejoGet;
+      forgejoAPIClient.post = originalForgejoPost;
       axios.post = originalAxiosPost;
       axios.get = originalAxiosGet;
       counters.clear();

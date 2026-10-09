@@ -9,7 +9,7 @@ import {
   generateRepoFromForgejoTemplate,
   getForgejoRepo,
 } from "../../services/forgejo/repo-actions.js";
-import { FORGEJO_ACCOUNT_REQUIRED_MESSAGE } from "../../utils/defined-error-message.js";
+import { ensureUserForgejoAccount } from "../../services/forgejo/ensure-user-account.js";
 import {
   projectTemplates,
   type ProjectTemplate,
@@ -36,11 +36,6 @@ export const createProjectFromTemplate = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
     if (!user) throw new AppError("Authentication is required", 401);
-    if (user.forgejo_id === null)
-      throw new AppError(FORGEJO_ACCOUNT_REQUIRED_MESSAGE, 409);
-
-    const forgejoUsername = await getCachedForgejoUsername(user.forgejo_id);
-
     const { templateId, projectName, regionId, instanceTypeId, sandboxTypeId } =
       z
         .object({
@@ -54,6 +49,9 @@ export const createProjectFromTemplate = catchAsync(
 
     const createTemplate = projectTemplates[templateId];
     if (!createTemplate) throw new AppError("Template not found", 404);
+
+    const forgejoId = await ensureUserForgejoAccount(user.id);
+    const forgejoUsername = await getCachedForgejoUsername(forgejoId);
 
     const repoName = slugifyRepoName(projectName);
     let template = createTemplate(repoName);
