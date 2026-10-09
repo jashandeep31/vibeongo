@@ -33,8 +33,7 @@ export async function exchangeMobileToken(
     );
   }
 
-  await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, body.token);
-  notifyAccessTokenChanged(body.token);
+  await saveAccessToken(body.token);
   return body.token;
 }
 
@@ -50,4 +49,11 @@ export async function clearAccessToken() {
 export function subscribeAccessToken(listener: (token: string | null) => void) {
   accessTokenListeners.add(listener);
   return () => accessTokenListeners.delete(listener);
+}
+
+export async function saveAccessToken(token: string) {
+  if (!token || typeof token !== "string")
+    throw new Error("Invalid login response");
+  await SecureStore.setItemAsync(ACCESS_TOKEN_KEY, token);
+  notifyAccessTokenChanged(token);
 }

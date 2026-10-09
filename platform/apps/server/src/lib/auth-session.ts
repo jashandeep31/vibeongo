@@ -1,20 +1,24 @@
 import crypto from "crypto";
 import { and, authSessions, db, eq, gt, isNull } from "@repo/db";
+import type { Transaction } from "@repo/db";
 
 export const webSessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000;
 
 const hashToken = (token: string) =>
   crypto.createHash("sha256").update(token).digest("hex");
 
-export const createWebSession = async (input: {
-  userId: string;
-  ipAddress?: string;
-  userAgent?: string;
-}) => {
+export const createWebSession = async (
+  input: {
+    userId: string;
+    ipAddress?: string;
+    userAgent?: string;
+  },
+  client: typeof db | Transaction = db,
+) => {
   const token = crypto.randomBytes(32).toString("base64url");
   const now = new Date();
 
-  await db.insert(authSessions).values({
+  await client.insert(authSessions).values({
     user_id: input.userId,
     token_hash: hashToken(token),
     client_type: "web",

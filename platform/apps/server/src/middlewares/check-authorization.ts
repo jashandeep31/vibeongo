@@ -100,21 +100,9 @@ async function authenticateApiKey(
     return res.status(403).json({ error: "not authorized" });
   }
 
-  const [userAndAccountRow] = await db
-    .select({ user: users, account: accounts })
-    .from(users)
-    .innerJoin(accounts, eq(accounts.user_id, users.id))
-    .where(eq(users.id, apiKey.userId));
-
-  if (
-    !userAndAccountRow ||
-    !userAndAccountRow.account.verified ||
-    userAndAccountRow.account.status !== "active"
-  ) {
-    return failedToAuthenticate(res);
-  }
-
-  req.user = userAndAccountRow.user;
+  const user = await findAuthorizedUser(apiKey.userId);
+  if (!user) return failedToAuthenticate(res);
+  req.user = user;
   next();
 }
 
@@ -156,6 +144,7 @@ async function authenticateToken(
   allowedRoles: AllowedCredential[],
 ) {
   let id: string;
+  let authVersion: number;
 
   try {
     const decoded = jwt.verify(token, env.JWT_SECRET);
@@ -169,11 +158,14 @@ async function authenticateToken(
     }
 
     id = decoded.id;
+    authVersion = decoded.authVersion === undefined ? 0 : decoded.authVersion;
+    if (!Number.isInteger(authVersion) || authVersion < 0)
+      return failedToAuthenticate(res);
   } catch {
     return failedToAuthenticate(res);
   }
 
-  return authenticateUser(req, res, next, id, allowedRoles);
+  return authenticateUser(req, res, next, id, allowedRoles, authVersion);
 }
 
 async function authenticateUser(
@@ -182,31 +174,46 @@ async function authenticateUser(
   next: NextFunction,
   id: string,
   allowedRoles: AllowedCredential[],
+  authVersion?: number,
 ) {
-  const [userAndAccountRow] = await db
-    .select({ user: users, account: accounts })
-    .from(users)
-    .innerJoin(accounts, eq(accounts.user_id, id))
-    .where(eq(users.id, id));
-
-  if (!userAndAccountRow?.user || !userAndAccountRow.account) {
+  const user = await findAuthorizedUser(id);
+  if (!user || (authVersion !== undefined && user.auth_version !== authVersion))
     return failedToAuthenticate(res);
-  }
-  const { user, account } = userAndAccountRow;
-  if (account.verified === false) {
-    return failedToAuthenticate(res);
-  }
-  if (account.status !== "active") {
-    return failedToAuthenticate(res);
-  }
 
   if (user.role !== "admin" && !allowedRoles.includes(user.role)) {
-    return res.status(403).json({
-      error: "not authorized",
-    });
+    return res.status(403).json({ error: "not authorized" });
   }
 
   req.user = user;
-
   next();
+}
+
+export async function findAuthorizedUser(id: string) {
+  const [row] = await db
+    .select({ user: users, account: accounts })
+    .from(users)
+    .leftJoin(
+      accounts,
+      and(eq(accounts.user_id, users.id), eq(accounts.provider, "github")),
+    )
+    .where(eq(users.id, id))
+    .limit(1);
+  if (!row || row.user.status !== "active") return undefined;
+  if (
+    row.user.primary_login_method === "email_password" &&
+    !row.user.email_verified_at
+  )
+    return undefined;
+  // Preserve legacy GitHub restrictions without requiring a provider for email users.
+  if (
+    row.account &&
+    (row.account.status !== "active" ||
+      !row.account.verified ||
+      row.account.deleted_at)
+  ) {
+    return undefined;
+  }
+  if (row.user.primary_login_method === "github" && !row.account)
+    return undefined;
+  return row.user;
 }

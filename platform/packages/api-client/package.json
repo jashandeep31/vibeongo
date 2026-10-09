@@ -11,7 +11,8 @@
     "build": "npx tsc -p ./tsconfig.json",
     "start": "node dist/index.js",
     "test:opencode-upgrade": "tsc -p ./tsconfig.json && node tests/opencode-upgrade.test.mjs",
-    "test:opencode-subagent": "tsc -p ./tsconfig.json && node tests/opencode-subagent.test.mjs"
+    "test:opencode-subagent": "tsc -p ./tsconfig.json && node tests/opencode-subagent.test.mjs",
+    "test:password-auth": "tsc -p ./tsconfig.json && node tests/password-auth.test.mjs"
   },
   "keywords": [],
   "devDependencies": {

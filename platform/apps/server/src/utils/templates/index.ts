@@ -30,7 +30,7 @@ export const projectTemplates: Record<
     ownername: "vibeongo",
     reponame: "next-js-project",
     project: {
-      name: "basic-nextjs-project",
+      name: "Next.js",
       description: "A bare-minimum Next.js app with PostgreSQL ready to use.",
       initialScript: "",
       finalScript: `cd "$HOME/workspace/${repoName}"
@@ -74,7 +74,7 @@ volumes:
     ownername: "vibeongo",
     reponame: "next-js-express-project",
     project: {
-      name: "nextjs-express-project",
+      name: "Next.js + Express",
       description:
         "A full-stack TypeScript project with Next.js and Express applications.",
       initialScript: "",
@@ -130,7 +130,7 @@ volumes:
     ownername: "vibeongo",
     reponame: "turborepo-project",
     project: {
-      name: "turborepo-project",
+      name: "Turborepo",
       description:
         "A Turborepo workspace with Next.js web and documentation applications.",
       initialScript: "",

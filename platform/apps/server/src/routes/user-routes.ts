@@ -1,5 +1,32 @@
+import {
+  verifyEmail,
+  resendVerification,
+  forgotPassword,
+  resetPassword,
+} from "../controllers/user/email-auth-controller.js";
+import {
+  githubConnectionStatus,
+  startGithubConnection,
+  completeMobileGithubConnection,
+} from "../controllers/auth/github-connection.js";
 import { Router } from "express";
 import { checkAuthorization } from "../middlewares/check-authorization.js";
+import {
+  mobileSignup,
+  mobileSignin,
+  signup,
+  signin,
+  getCurrentUser,
+} from "../controllers/user/user-controller.js";
+import {
+  requireTrustedMobileAuthOrigin,
+  requireTrustedAuthOrigin,
+  otpSendRateLimit,
+  otpVerifyRateLimit,
+  passwordResetRateLimit,
+  signupRateLimit,
+  signinRateLimit,
+} from "../middlewares/password-auth-limits.js";
 import {
   createSshKey,
   getSshKeys,
@@ -31,6 +58,65 @@ import {
 } from "../controllers/user/api-keys-controller.js";
 
 const routes: Router = Router();
+
+routes.post(
+  "/verify-email",
+  requireTrustedMobileAuthOrigin,
+  otpVerifyRateLimit,
+  verifyEmail,
+);
+routes.post(
+  "/resend-verification",
+  requireTrustedMobileAuthOrigin,
+  otpSendRateLimit,
+  resendVerification,
+);
+routes.post(
+  "/forgot-password",
+  requireTrustedMobileAuthOrigin,
+  otpSendRateLimit,
+  forgotPassword,
+);
+routes.post(
+  "/reset-password",
+  requireTrustedMobileAuthOrigin,
+  passwordResetRateLimit,
+  resetPassword,
+);
+routes.post("/signup", requireTrustedAuthOrigin, signupRateLimit, signup);
+routes.post("/signin", requireTrustedAuthOrigin, signinRateLimit, signin);
+routes.post(
+  "/mobile/signup",
+  requireTrustedMobileAuthOrigin,
+  signupRateLimit,
+  mobileSignup,
+);
+routes.post(
+  "/mobile/signin",
+  requireTrustedMobileAuthOrigin,
+  signinRateLimit,
+  mobileSignin,
+);
+routes.get(
+  "/github-connection",
+  checkAuthorization(["user"]),
+  githubConnectionStatus,
+);
+routes.post(
+  "/github-connection",
+  requireTrustedMobileAuthOrigin,
+  signinRateLimit,
+  checkAuthorization(["user"]),
+  startGithubConnection,
+);
+routes.post(
+  "/github-connection/mobile/complete",
+  requireTrustedMobileAuthOrigin,
+  signinRateLimit,
+  checkAuthorization(["user"]),
+  completeMobileGithubConnection,
+);
+routes.get("/me", checkAuthorization(["user"]), getCurrentUser);
 
 routes
   .route("/api-keys")

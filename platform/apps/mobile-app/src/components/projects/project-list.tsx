@@ -1,3 +1,4 @@
+import { ProjectTemplateList } from "./project-template-list";
 import { getRuntimeRepositoryDirectory, type Project } from "@repo/api-client";
 import {
   useArchiveProjectSession,
@@ -478,32 +479,39 @@ export function ProjectList({ topInset = 0 }: { topInset?: number }) {
 
   if (projects.length === 0) {
     return (
-      <View style={[styles.centeredState, { paddingTop: topInset + 72 }]}>
-        <ThemedText style={styles.emptyTitle}>No projects yet</ThemedText>
-        <ThemedText style={styles.emptyDescription} themeColor="textSecondary">
-          Your projects and sessions will appear here.
-        </ThemedText>
+      <ScrollView
+        contentContainerStyle={{
+          paddingTop: topInset,
+          paddingBottom: 24,
+        }}
+        keyboardShouldPersistTaps="handled"
+        refreshControl={
+          <RefreshControl
+            refreshing={projectsQuery.isRefetching}
+            onRefresh={() => void projectsQuery.refetch()}
+            tintColor={theme.textSecondary}
+          />
+        }
+      >
+        <ThemedText style={styles.emptyTitle}>Start a project</ThemedText>
+        <View style={{ marginTop: 8 }}>
+          <ProjectTemplateList />
+        </View>
         <Pressable
           accessibilityRole="button"
           onPress={() => router.push("/projects/create")}
-          style={({ pressed }) => [
-            styles.emptyCreateButton,
-            { backgroundColor: theme.text },
-            pressed && styles.pressed,
+          style={[
+            styles.retryButton,
+            {
+              minHeight: 44,
+              alignSelf: "flex-start",
+              backgroundColor: theme.backgroundElement,
+            },
           ]}
         >
-          <SymbolView
-            name={{ ios: "plus", android: "add" }}
-            size={16}
-            tintColor={theme.background}
-          />
-          <ThemedText
-            style={[styles.emptyCreateLabel, { color: theme.background }]}
-          >
-            New project
-          </ThemedText>
+          <ThemedText>Create a custom project</ThemedText>
         </Pressable>
-      </View>
+      </ScrollView>
     );
   }
 

@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
+    "test:auth": "node --import tsx --test tests/password-auth.test.mjs",
     "dev": "tsc-watch --onSuccess \"node dist/index.js\"",
     "dev:cron": "tsc-watch --onSuccess \"node dist/cron-worker.js\"",
     "build": "npx tsc",
@@ -36,6 +37,7 @@
     "@types/ws": "^8.18.1",
     "@vercel/sandbox": "^3.3.0",
     "ai": "^7.0.111",
+    "argon2": "^0.45.1",
     "assemblyai": "^4.41.5",
     "axios": "^1.20.0",
     "bullmq": "^5.81.5",
@@ -63,6 +65,7 @@
     "@types/cookie-parser": "^1.4.10",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.2.0",
-    "tsc-watch": "^7.2.1"
+    "tsc-watch": "^7.2.1",
+    "tsx": "^4.23.15"
   }
 }

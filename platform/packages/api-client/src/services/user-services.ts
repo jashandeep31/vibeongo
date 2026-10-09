@@ -9,6 +9,130 @@ import type { AxiosInstance } from "axios";
 
 type UserRow = typeof users.$inferSelect;
 
+export type PasswordAuthUser = {
+  id: string;
+  email: string;
+  username: string;
+  firstName: string;
+  lastName: string | null;
+  primaryLoginMethod: "email_password" | "github";
+  emailVerified: boolean;
+};
+
+export type SigninWithPasswordPayload = { email: string; password: string };
+export type SignupWithPasswordPayload = SigninWithPasswordPayload & {
+  firstName: string;
+};
+
+export type EmailOtpChallenge = {
+  challengeId: string;
+  expiresInSeconds: number;
+  resendAfterSeconds: number;
+};
+export type SignupVerificationResponse = EmailOtpChallenge & {
+  verificationRequired: true;
+};
+export type VerifyEmailPayload = {
+  email: string;
+  challengeId: string;
+  otp: string;
+};
+export type ResetPasswordPayload = VerifyEmailPayload & { newPassword: string };
+export type EmailVerificationResponse = {
+  emailVerified: true;
+  message: string;
+};
+export type ForgotPasswordResponse = EmailOtpChallenge & { message: string };
+export type ResetPasswordResponse = { message: string };
+
+export const verifyEmail =
+  (apiClient: AxiosInstance) =>
+  async (payload: VerifyEmailPayload): Promise<EmailVerificationResponse> => {
+    const response = await apiClient.post<{ data: EmailVerificationResponse }>(
+      "/api/v1/users/verify-email",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+export const resendVerification =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: Pick<VerifyEmailPayload, "email" | "challengeId">,
+  ): Promise<EmailOtpChallenge> => {
+    const response = await apiClient.post<{ data: EmailOtpChallenge }>(
+      "/api/v1/users/resend-verification",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+export const forgotPassword =
+  (apiClient: AxiosInstance) =>
+  async (payload: { email: string }): Promise<ForgotPasswordResponse> => {
+    const response = await apiClient.post<{ data: ForgotPasswordResponse }>(
+      "/api/v1/users/forgot-password",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+export const resetPassword =
+  (apiClient: AxiosInstance) =>
+  async (payload: ResetPasswordPayload): Promise<ResetPasswordResponse> => {
+    const response = await apiClient.post<{ data: ResetPasswordResponse }>(
+      "/api/v1/users/reset-password",
+      payload,
+      {
+        withCredentials: apiClient.defaults.withCredentials === true,
+        headers: { Authorization: null },
+      },
+    );
+    return response.data.data;
+  };
+
+export const signupWithPassword =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: SignupWithPasswordPayload,
+  ): Promise<SignupVerificationResponse> => {
+    const response = await apiClient.post<{ data: SignupVerificationResponse }>(
+      "/api/v1/users/signup",
+      payload,
+      { withCredentials: true },
+    );
+    return response.data.data;
+  };
+
+export const signinWithPassword =
+  (apiClient: AxiosInstance) =>
+  async (payload: SigninWithPasswordPayload): Promise<PasswordAuthUser> => {
+    const response = await apiClient.post<{ data: PasswordAuthUser }>(
+      "/api/v1/users/signin",
+      payload,
+      { withCredentials: true },
+    );
+    return response.data.data;
+  };
+
+export const getCurrentUser =
+  (apiClient: AxiosInstance) => async (): Promise<PasswordAuthUser> => {
+    const response = await apiClient.get<{ data: PasswordAuthUser }>(
+      "/api/v1/users/me",
+      { withCredentials: true },
+    );
+    return response.data.data;
+  };
+
 export type UserMetadata = Pick<UserRow, "id" | "username" | "tier"> & {
   balance: (typeof userWallet.$inferSelect)["balance"];
   forgejo_username: string | null;
@@ -149,5 +273,76 @@ export const getUserCreditGrants =
       params: { page, limit },
       withCredentials: true,
     });
+    return response.data.data;
+  };
+
+export type MobilePasswordAuthResponse = {
+  token: string;
+  data: PasswordAuthUser;
+};
+
+export const mobileSignupWithPassword =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: SignupWithPasswordPayload,
+  ): Promise<SignupVerificationResponse> => {
+    const response = await apiClient.post<{ data: SignupVerificationResponse }>(
+      "/api/v1/users/mobile/signup",
+      payload,
+      { withCredentials: false, headers: { Authorization: null } },
+    );
+    return response.data.data;
+  };
+
+export const mobileSigninWithPassword =
+  (apiClient: AxiosInstance) =>
+  async (
+    payload: SigninWithPasswordPayload,
+  ): Promise<MobilePasswordAuthResponse> => {
+    const response = await apiClient.post<MobilePasswordAuthResponse>(
+      "/api/v1/users/mobile/signin",
+      payload,
+      { withCredentials: false, headers: { Authorization: null } },
+    );
+    return response.data;
+  };
+
+export type GithubConnectionStatus = {
+  connected: boolean;
+  username: string | null;
+};
+export type StartGithubConnectionPayload =
+  | { clientType: "web" }
+  | { clientType: "mobile"; state: string; codeChallenge: string };
+export const getGithubConnection =
+  (api: AxiosInstance) => async (): Promise<GithubConnectionStatus> => {
+    const response = await api.get<{ data: GithubConnectionStatus }>(
+      "/api/v1/users/github-connection",
+      { withCredentials: true },
+    );
+    return response.data.data;
+  };
+export const startGithubConnection =
+  (api: AxiosInstance) =>
+  async (payload: StartGithubConnectionPayload): Promise<{ url: string }> => {
+    const response = await api.post<{ data: { url: string } }>(
+      "/api/v1/users/github-connection",
+      payload,
+      { withCredentials: payload.clientType === "web" },
+    );
+    return response.data.data;
+  };
+export const completeMobileGithubConnection =
+  (api: AxiosInstance) =>
+  async (payload: {
+    ticket: string;
+    state: string;
+    codeVerifier: string;
+  }): Promise<PasswordAuthUser> => {
+    const response = await api.post<{ data: PasswordAuthUser }>(
+      "/api/v1/users/github-connection/mobile/complete",
+      payload,
+      { withCredentials: false },
+    );
     return response.data.data;
   };

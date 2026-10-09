@@ -1,5 +1,7 @@
 "use client";
 
+import { ProjectTemplateList } from "@/components/project-template-list";
+import { useGetProjectOverview } from "@repo/api-hooks";
 import { AutomatedSessionBadge } from "@/components/automated-session-badge";
 import {
   WorkComposer,
@@ -301,6 +303,7 @@ export default function ClientView() {
     isPending: areChatsPending,
     isError: areChatsError,
   } = useGetVibeongoChats(5);
+  const projectsQuery = useGetProjectOverview();
   const projects = useProjectsStore((store) => store.projects);
   const sessions = useSessionsStore((store) => store.sessions);
   const resumeSession = useResumeProjectSession();
@@ -587,14 +590,40 @@ export default function ClientView() {
 
           <section aria-label="Projects">
             {projects.length === 0 ? (
-              <div className="py-10 text-center">
-                <p className="text-lg font-semibold tracking-tight">
-                  No projects yet
+              projectsQuery.isPending ||
+              projectsQuery.hasNextPage ||
+              Boolean(projectsQuery.data?.pages[0]?.data.length) ? (
+                <p
+                  className="text-muted-foreground py-10 text-sm"
+                  role="status"
+                >
+                  Loading projects…
                 </p>
-                <p className="text-muted-foreground mt-2 text-sm leading-7">
-                  Your projects and sessions will appear here.
-                </p>
-              </div>
+              ) : projectsQuery.isError ? (
+                <div className="py-10">
+                  <p
+                    role="alert"
+                    className="text-muted-foreground mb-3 text-sm"
+                  >
+                    Could not load projects.
+                  </p>
+                  <Button
+                    variant="outline"
+                    onClick={() => void projectsQuery.refetch()}
+                  >
+                    Retry
+                  </Button>
+                </div>
+              ) : (
+                <div>
+                  <h2 className="text-xl font-semibold tracking-tight">
+                    Start a project
+                  </h2>
+                  <div className="mt-6">
+                    <ProjectTemplateList />
+                  </div>
+                </div>
+              )
             ) : (
               <div className="space-y-10">
                 {projects.map((project) => {
