@@ -10,7 +10,7 @@ import {
   Settings,
   SquareTerminal,
 } from "lucide-react";
-import { useOpencodeWorkingChanges } from "@repo/api-hooks";
+import { useOpencodeWorkingChangeCount } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import type { WorkspaceTool } from "@/hooks/use-workspace-tool";
 
@@ -55,11 +55,10 @@ export function WorkspaceGitButton({
   onClick: () => void;
   buttonRef?: Ref<HTMLButtonElement>;
 }) {
-  const changes = useOpencodeWorkingChanges({
+  const changes = useOpencodeWorkingChangeCount({
     ...connection,
-    refetchInterval: 15_000,
   });
-  const count = changes.isError ? undefined : changes.data?.length;
+  const count = changes.isError ? undefined : changes.data;
   const countLabel =
     count === undefined
       ? ""

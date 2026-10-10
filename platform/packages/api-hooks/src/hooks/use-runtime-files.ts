@@ -83,9 +83,12 @@ export function useRuntimeDirectory(
 ) {
   return useQuery({
     queryKey: runtimeDirectoryKey(connection.instanceId, path),
-    queryFn: () => getRuntimeDirectory(connection, path),
+    queryFn: ({ signal }) => getRuntimeDirectory(connection, path, signal),
     enabled: enabled && hasConnection(connection),
-    placeholderData: keepPreviousData,
+    placeholderData: (previous, previousQuery) =>
+      previousQuery?.queryKey[1] === connection.instanceId
+        ? keepPreviousData(previous)
+        : undefined,
     retry: false,
     refetchOnWindowFocus: false,
   });
@@ -98,7 +101,7 @@ export function useRuntimeFile(
 ) {
   return useQuery({
     queryKey: runtimeFileKey(connection.instanceId, path ?? ""),
-    queryFn: () => getRuntimeFile(connection, path!),
+    queryFn: ({ signal }) => getRuntimeFile(connection, path!, signal),
     enabled: enabled && hasConnection(connection) && Boolean(path),
     retry: false,
     refetchOnWindowFocus: false,
@@ -113,9 +116,10 @@ export function useRuntimeFileSearch(
 ) {
   return useQuery({
     queryKey: runtimeFileSearchKey(connection.instanceId, query, path),
-    queryFn: () => searchRuntimeFiles(connection, query, path),
+    queryFn: ({ signal }) =>
+      searchRuntimeFiles(connection, query, path, signal),
     enabled: enabled && hasConnection(connection) && Boolean(query),
-    placeholderData: keepPreviousData,
+    staleTime: 30_000,
     retry: false,
     refetchOnWindowFocus: false,
   });

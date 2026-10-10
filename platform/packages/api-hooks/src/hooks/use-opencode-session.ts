@@ -15,6 +15,7 @@ import {
   getOpencodeReviewProjectVcs,
   getOpencodeLastTurnChanges,
   getOpencodeWorkingChanges,
+  getOpencodeWorkingChangeCount,
   initializeOpencodeGit,
   isOpencodeLocationNotFoundError,
   listOpencodeCommands,
@@ -105,7 +106,8 @@ export const useOpencodeReviewProjectVcs = ({
         accessToken,
         password,
       ),
-    enabled: enabled && !!directory && !!serverUrl && !!accessToken && !!password,
+    enabled:
+      enabled && !!directory && !!serverUrl && !!accessToken && !!password,
     refetchOnMount: "always",
     staleTime: 30_000,
     retry: (failureCount, error) =>
@@ -127,7 +129,13 @@ export const useInitializeOpencodeGit = ({
   return useMutation({
     mutationKey: ["opencode", "initialize-git", chatId, serverUrl],
     mutationFn: (directory: string) =>
-      initializeOpencodeGit(chatId, directory, serverUrl, accessToken, password),
+      initializeOpencodeGit(
+        chatId,
+        directory,
+        serverUrl,
+        accessToken,
+        password,
+      ),
     onSettled: async (_, __, directory) => {
       // Refresh the captured request's location, even if the user switched chats.
       await queryClient.invalidateQueries({
@@ -140,6 +148,43 @@ export const useInitializeOpencodeGit = ({
     },
   });
 };
+
+export const useOpencodeWorkingChangeCount = ({
+  chatId,
+  directory,
+  serverUrl,
+  accessToken,
+  password,
+}: {
+  chatId: string;
+  directory?: string;
+  serverUrl: string;
+  accessToken: string;
+  password?: string;
+}) =>
+  useQuery({
+    queryKey: [
+      "opencode",
+      "working-change-count",
+      chatId,
+      serverUrl,
+      directory,
+    ],
+    queryFn: ({ signal }) =>
+      getOpencodeWorkingChangeCount(
+        chatId,
+        directory!,
+        serverUrl,
+        accessToken,
+        password,
+        signal,
+      ),
+    enabled: !!directory && !!serverUrl && !!accessToken && !!password,
+    staleTime: 15_000,
+    refetchInterval: 15_000,
+    retry: (failureCount, error) =>
+      !isOpencodeLocationNotFoundError(error) && failureCount < 3,
+  });
 
 export const useOpencodeWorkingChanges = ({
   chatId,

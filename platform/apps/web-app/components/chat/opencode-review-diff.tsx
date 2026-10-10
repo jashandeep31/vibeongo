@@ -35,7 +35,11 @@ type Props = {
   isActive: boolean;
 };
 
-export function OpencodeReviewDiff({
+export function OpencodeReviewDiff(props: Props) {
+  return props.isActive ? <ActiveOpencodeReviewDiff {...props} /> : null;
+}
+
+function ActiveOpencodeReviewDiff({
   patch,
   path,
   diffStyle,
@@ -44,7 +48,12 @@ export function OpencodeReviewDiff({
 }: Props) {
   const normalizedPatch = useMemo(() => patch.replace(/\r\n/g, "\n"), [patch]);
   const rows = useMemo(
-    () => parseOpencodePatch(normalizedPatch),
+    () =>
+      parseOpencodePatch(
+        normalizedPatch.length > MAX_HIGHLIGHT_BYTES
+          ? normalizedPatch.slice(0, MAX_HIGHLIGHT_BYTES)
+          : normalizedPatch,
+      ),
     [normalizedPatch],
   );
   const parsed = useMemo(() => {
@@ -194,7 +203,7 @@ function DiffRevision({
             parseError
               ? "Showing the available patch; the highlighted view could not parse it."
               : tooLarge
-                ? "Large patch: showing a paged diff to keep the sidebar responsive."
+                ? "Large patch: showing a paged preview of the first 500 KB."
                 : failed || !useWorker
                   ? "Showing the readable diff while syntax highlighting is unavailable."
                   : undefined

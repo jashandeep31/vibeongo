@@ -118,6 +118,14 @@ export function ProjectTerminalWorkspace({
     }
   }, [pendingTerminalId, workspace.terminalSessionIds]);
 
+  useEffect(() => {
+    // Activity runs cleanup when the tool becomes hidden.
+    return () => {
+      setIsDirectoryDialogOpen(false);
+      setTerminalPendingKill(null);
+    };
+  }, []);
+
   const addTerminal = async (workingDirectory?: string) => {
     if (isCreatingTerminal || attachingTmuxTarget) return;
     setIsDirectoryDialogOpen(false);
@@ -499,7 +507,7 @@ export function ProjectTerminalWorkspace({
         isCreating={isCreatingTerminal}
         onOpenChange={setIsDirectoryDialogOpen}
         onSelect={(workingDirectory) => void addTerminal(workingDirectory)}
-        open={isDirectoryDialogOpen}
+        open={isActive && isDirectoryDialogOpen}
       />
       <ConfirmationDialog
         confirmText={
@@ -521,7 +529,7 @@ export function ProjectTerminalWorkspace({
         onOpenChange={(open) => {
           if (!open && !killingTerminalId) setTerminalPendingKill(null);
         }}
-        open={terminalPendingKill !== null}
+        open={isActive && terminalPendingKill !== null}
         title={`${
           pendingTerminalSession?.kind === "tmux" ? "Detach" : "Kill"
         } ${terminalPendingKill?.label ?? "terminal"}?`}

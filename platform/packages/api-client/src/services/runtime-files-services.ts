@@ -19,12 +19,14 @@ export type RuntimeFileEntry = {
 export type RuntimeDirectory = {
   path: string;
   entries: RuntimeFileEntry[];
+  truncated?: boolean;
 };
 
 export type RuntimeFile = {
   content: string;
   contentType: string;
   name: string;
+  truncated?: boolean;
 };
 
 export type RuntimeFileBreadcrumb = {
@@ -130,6 +132,7 @@ function getRuntimeFetch(connection: RuntimeFileConnection) {
 export async function getRuntimeDirectory(
   connection: RuntimeFileConnection,
   path?: string,
+  signal?: AbortSignal,
 ): Promise<RuntimeDirectory> {
   const url = new URL(`${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/list`);
   if (path) url.searchParams.set("path", path);
@@ -137,7 +140,9 @@ export async function getRuntimeDirectory(
   const response = await getRuntimeFetch(connection)(url, {
     headers: getHeaders(connection),
     cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
   });
   await assertResponse(response, "Could not load directory");
   return response.json() as Promise<RuntimeDirectory>;
@@ -147,6 +152,7 @@ export async function searchRuntimeFiles(
   connection: RuntimeFileConnection,
   query: string,
   path?: string,
+  signal?: AbortSignal,
 ): Promise<RuntimeDirectory> {
   const url = new URL(
     `${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/search`,
@@ -157,7 +163,9 @@ export async function searchRuntimeFiles(
   const response = await getRuntimeFetch(connection)(url, {
     headers: getHeaders(connection),
     cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
   });
   await assertResponse(response, "Could not search files");
   return response.json() as Promise<RuntimeDirectory>;
@@ -166,14 +174,18 @@ export async function searchRuntimeFiles(
 export async function getRuntimeFile(
   connection: RuntimeFileConnection,
   path: string,
+  signal?: AbortSignal,
 ): Promise<RuntimeFile> {
   const url = new URL(`${normalizeRuntimeUrl(connection.runtimeUrl)}/fs/get`);
   url.searchParams.set("path", path);
+  url.searchParams.set("maxBytes", "1048576");
 
   const response = await getRuntimeFetch(connection)(url, {
     headers: getHeaders(connection),
     cache: "no-store",
-    signal: AbortSignal.timeout(10_000),
+    signal: signal
+      ? AbortSignal.any([signal, AbortSignal.timeout(10_000)])
+      : AbortSignal.timeout(10_000),
   });
   await assertResponse(response, "Could not load file");
   const payload = (await response.json()) as {
@@ -181,10 +193,12 @@ export async function getRuntimeFile(
     contentType: string;
     name?: string;
     string?: string;
+    truncated?: boolean;
   };
 
   return {
     content: payload.content,
+    truncated: Boolean(payload.truncated),
     contentType: payload.contentType,
     name: payload.name ?? payload.string ?? path.split("/").pop() ?? path,
   };

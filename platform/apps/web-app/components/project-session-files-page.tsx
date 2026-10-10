@@ -1,5 +1,11 @@
 "use client";
 
+import {
+  readRuntimeFileDraft,
+  writeRuntimeFileDraft,
+  discardRuntimeFileDraft,
+  saveRuntimeFileDraft,
+} from "@/lib/runtime-file-drafts";
 import { ConfirmationDialog } from "@/components/dialogs/confirmation-dialog";
 import {
   getRuntimeChildPath,
@@ -21,7 +27,11 @@ import { useSessionsStore } from "@repo/app-store";
 import { RuntimeFilePreview } from "@/components/runtime-file-preview";
 import { RuntimeFileBrowser } from "@/components/runtime-file-tree";
 import { Button } from "@repo/ui/components/button";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "@repo/ui/components/resizable";
+import {
+  ResizableHandle,
+  ResizablePanel,
+  ResizablePanelGroup,
+} from "@repo/ui/components/resizable";
 import {
   Dialog,
   DialogClose,
@@ -83,7 +93,7 @@ export const ProjectSessionFilesPanel = memo(function ProjectSessionFilesPanel({
   ...props
 }: ProjectSessionFilesPageProps & {
   onClose: () => void;
-  onDirtyChange: (dirty: boolean) => void;
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   return (
     <ProjectSessionFilesContent
@@ -122,6 +132,7 @@ function ProjectSessionFilesContent({
   const selectionVersionRef = useRef(0);
   const selectedPathRef = useRef<string | null>(null);
   const [fileContentType, setFileContentType] = useState("");
+  const [isTruncated, setIsTruncated] = useState(false);
   const [openingDirectoryPath, setOpeningDirectoryPath] = useState("");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newEntryName, setNewEntryName] = useState("");
@@ -153,6 +164,10 @@ function ProjectSessionFilesContent({
     }),
     [instance],
   );
+  const instanceIdentityRef = useRef(connection.instanceId);
+  useEffect(() => {
+    instanceIdentityRef.current = connection.instanceId;
+  }, [connection.instanceId]);
   const isConnected = Boolean(
     connection.instanceId &&
     connection.runtimeUrl &&
@@ -168,7 +183,8 @@ function ProjectSessionFilesContent({
   const refetchDirectory = directoryQuery.refetch;
   const fileQuery = useRuntimeFile(connection, selectedFile?.path, isActive);
   const createEntryMutation = useCreateRuntimeFileEntry(connection);
-  const { mutateAsync: updateFile, isPending: isSaving } = useUpdateRuntimeFile(connection);
+  const { mutateAsync: updateFile, isPending: isSaving } =
+    useUpdateRuntimeFile(connection);
   const uploadFileMutation = useUploadRuntimeFile(connection);
   const deleteEntryMutation = useDeleteRuntimeFileEntry(connection);
   const isDirectoryLoading = directoryQuery.isFetching;
@@ -178,6 +194,14 @@ function ProjectSessionFilesContent({
   const deletingPath = deleteEntryMutation.isPending
     ? (deleteEntryMutation.variables ?? "")
     : "";
+  useEffect(() => {
+    // Activity runs cleanup when the tool becomes hidden.
+    return () => {
+      setIsCreateDialogOpen(false);
+      setDeleteCandidate(null);
+    };
+  }, []);
+
   const projectChatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
   const chatUrl = sessionId
     ? `${projectChatUrl}/chats/${sessionId}`
@@ -187,29 +211,57 @@ function ProjectSessionFilesContent({
     dirtyRef.current = dirty;
     setHasUnsavedChanges(dirty);
   }, []);
-  const changeFileContent = useCallback((content: string) => {
-    fileDraftRef.current = content;
-    updateDirty(content !== savedFileContentRef.current);
-  }, [updateDirty]);
+  const changeFileContent = useCallback(
+    (content: string) => {
+      fileDraftRef.current = content;
+      updateDirty(content !== savedFileContentRef.current);
+      if (selectedPathRef.current)
+        writeRuntimeFileDraft(
+          connection.instanceId,
+          selectedPathRef.current,
+          content,
+          savedFileContentRef.current,
+        );
+    },
+    [connection.instanceId, updateDirty],
+  );
   useEffect(
     () => onDirtyChange?.(hasUnsavedChanges),
     [hasUnsavedChanges, onDirtyChange],
   );
   const isImage = fileContentType.startsWith("image/");
   const canEdit = Boolean(
-    selectedFile && isEditableRuntimeContentType(fileContentType),
+    selectedFile &&
+    !isTruncated &&
+    isEditableRuntimeContentType(fileContentType),
   );
 
-  const clearSelection = useCallback(() => {
-    selectionVersionRef.current += 1;
-    selectedPathRef.current = null;
-    setSelectedFile(null);
-    setFileContent("");
-    fileDraftRef.current = "";
-    savedFileContentRef.current = "";
-    updateDirty(false);
-    setFileContentType("");
-  }, [updateDirty]);
+  const clearSelection = useCallback(
+    (discard = false) => {
+      if (discard && selectedPathRef.current)
+        discardRuntimeFileDraft(connection.instanceId, selectedPathRef.current);
+      selectionVersionRef.current += 1;
+      selectedPathRef.current = null;
+      setSelectedFile(null);
+      setFileContent("");
+      fileDraftRef.current = "";
+      savedFileContentRef.current = "";
+      updateDirty(false);
+      setFileContentType("");
+      setIsTruncated(false);
+    },
+    [connection.instanceId, updateDirty],
+  );
+
+  const previousInstanceId = useRef(connection.instanceId);
+  useEffect(() => {
+    if (previousInstanceId.current === connection.instanceId) return;
+    previousInstanceId.current = connection.instanceId;
+    loadedDirectoryPathRef.current = "";
+    setRequestedDirectoryPath(undefined);
+    clearSelection();
+    setError("");
+  }, [connection.instanceId, clearSelection]);
 
   const confirmDiscard = useCallback(() => {
     if (!dirtyRef.current) return true;
@@ -223,7 +275,7 @@ function ProjectSessionFilesContent({
     setOpeningDirectoryPath("");
     if (loadedDirectoryPathRef.current !== path) {
       loadedDirectoryPathRef.current = path;
-      clearSelection();
+      clearSelection(true);
     }
   }, [
     clearSelection,
@@ -241,55 +293,79 @@ function ProjectSessionFilesContent({
 
   useEffect(() => {
     const result = fileQuery.data;
-    if (!result || !selectedFile || dirtyRef.current) return;
-
-    const contentType = result.contentType || "application/octet-stream";
-    setFileContentType(contentType);
-    if (isEditableRuntimeContentType(contentType)) {
-      const decoded = decodeContent(result.content);
-      setFileContent(decoded);
-      fileDraftRef.current = decoded;
-      savedFileContentRef.current = decoded;
-    } else {
-      setFileContent(result.content);
-      fileDraftRef.current = result.content;
-      savedFileContentRef.current = result.content;
+    if (!isActive || !result || !selectedFile || dirtyRef.current) return;
+    try {
+      if (
+        typeof result.content !== "string" ||
+        result.content.length > 1_398_104
+      ) {
+        throw new Error(
+          "This file is too large to preview. Open it in the terminal instead.",
+        );
+      }
+      const contentType = result.contentType || "application/octet-stream";
+      const decoded = isEditableRuntimeContentType(contentType)
+        ? decodeContent(result.content)
+        : result.content;
+      setFileContentType(contentType);
+      setIsTruncated(Boolean(result.truncated));
+      const draft = readRuntimeFileDraft(
+        connection.instanceId,
+        selectedFile.path,
+      );
+      const content = draft?.content ?? decoded;
+      setFileContent(content);
+      fileDraftRef.current = content;
+      savedFileContentRef.current = draft?.savedContent ?? decoded;
+      updateDirty(Boolean(draft));
+    } catch (requestError) {
+      setError(
+        requestError instanceof Error
+          ? requestError.message
+          : "Could not decode file",
+      );
+      setFileContentType("");
+      setFileContent("");
     }
-  }, [fileQuery.data, selectedFile]);
+  }, [
+    fileQuery.data,
+    selectedFile,
+    isActive,
+    connection.instanceId,
+    updateDirty,
+  ]);
 
   useEffect(() => {
     if (fileQuery.error) setError(fileQuery.error.message);
   }, [fileQuery.error]);
 
-  useEffect(() => {
-    if (!hasUnsavedChanges) return;
-    const warnBeforeUnload = (event: BeforeUnloadEvent) =>
-      event.preventDefault();
-    window.addEventListener("beforeunload", warnBeforeUnload);
-    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
-  }, [hasUnsavedChanges]);
+  const openDirectory = useCallback(
+    (path: string) => {
+      if (!confirmDiscard()) return;
 
-  const openDirectory = useCallback((path: string) => {
-    if (!confirmDiscard()) return;
+      setError("");
+      setOpeningDirectoryPath(path);
+      if (requestedDirectoryPath === path) {
+        void refetchDirectory();
+      } else {
+        setRequestedDirectoryPath(path);
+      }
+    },
+    [confirmDiscard, requestedDirectoryPath, refetchDirectory],
+  );
 
-    setError("");
-    setOpeningDirectoryPath(path);
-    if (requestedDirectoryPath === path) {
-      void refetchDirectory();
-    } else {
-      setRequestedDirectoryPath(path);
-    }
-  }, [confirmDiscard, requestedDirectoryPath, refetchDirectory]);
+  const openFile = useCallback(
+    (entry: RuntimeFileEntry) => {
+      if (selectedPathRef.current === entry.path) return;
+      if (!confirmDiscard()) return;
 
-  const openFile = useCallback((entry: RuntimeFileEntry) => {
-    if (selectedPathRef.current === entry.path) return;
-    if (!confirmDiscard()) return;
-
-    setError("");
-    clearSelection();
-    selectedPathRef.current = entry.path;
-    setSelectedFile(entry);
-  }, [clearSelection, confirmDiscard]);
+      setError("");
+      clearSelection(true);
+      selectedPathRef.current = entry.path;
+      setSelectedFile(entry);
+    },
+    [clearSelection, confirmDiscard],
+  );
 
   const saveFile = useCallback(async () => {
     if (!selectedFile || !canEdit || !dirtyRef.current || isSaving) return;
@@ -302,6 +378,11 @@ function ProjectSessionFilesContent({
         path: selectedFile.path,
         content: submittedContent,
       });
+      saveRuntimeFileDraft(
+        connection.instanceId,
+        selectedFile.path,
+        submittedContent,
+      );
       if (selectionVersionRef.current === selectionVersion) {
         savedFileContentRef.current = submittedContent;
         updateDirty(fileDraftRef.current !== submittedContent);
@@ -312,11 +393,16 @@ function ProjectSessionFilesContent({
         requestError instanceof Error
           ? requestError.message
           : "Could not save file";
-      setError(message);
+      if (
+        instanceIdentityRef.current === connection.instanceId &&
+        selectionVersionRef.current === selectionVersion
+      )
+        setError(message);
       toast.error(message);
     }
   }, [
     canEdit,
+    connection.instanceId,
     isSaving,
     selectedFile,
     updateFile,
@@ -345,6 +431,7 @@ function ProjectSessionFilesContent({
       const targetPath = getRuntimeChildPath(directory.path, newEntryName);
       await createEntryMutation.mutateAsync(targetPath);
       toast.success(`${isDirectory ? "Folder" : "File"} created`);
+      if (instanceIdentityRef.current !== connection.instanceId) return;
       setIsCreateDialogOpen(false);
       setNewEntryName("");
     } catch (requestError) {
@@ -352,7 +439,8 @@ function ProjectSessionFilesContent({
         requestError instanceof Error
           ? requestError.message
           : "Could not create item";
-      setError(message);
+      if (instanceIdentityRef.current === connection.instanceId)
+        setError(message);
       toast.error(message);
     }
   };
@@ -372,7 +460,8 @@ function ProjectSessionFilesContent({
         requestError instanceof Error
           ? requestError.message
           : "Could not upload file";
-      setError(message);
+      if (instanceIdentityRef.current === connection.instanceId)
+        setError(message);
       toast.error(message);
     } finally {
       if (fileInputRef.current) fileInputRef.current.value = "";
@@ -382,18 +471,29 @@ function ProjectSessionFilesContent({
   const deleteEntry = async () => {
     if (!deleteCandidate || !directory) return;
     const target = deleteCandidate;
+    const selectionVersion = selectionVersionRef.current;
     setDeleteCandidate(null);
     setError("");
     try {
       await deleteEntryMutation.mutateAsync(target.path);
-      if (selectedFile?.path === target.path) clearSelection();
+      discardRuntimeFileDraft(connection.instanceId, target.path);
+      if (
+        instanceIdentityRef.current === connection.instanceId &&
+        selectionVersionRef.current === selectionVersion &&
+        selectedFile &&
+        (selectedFile.path === target.path ||
+          (target.type === "directory" &&
+            selectedFile.path.startsWith(`${target.path}/`)))
+      )
+        clearSelection(true);
       toast.success(`${target.name} deleted`);
     } catch (requestError) {
       const message =
         requestError instanceof Error
           ? requestError.message
           : "Could not delete item";
-      setError(message);
+      if (instanceIdentityRef.current === connection.instanceId)
+        setError(message);
       toast.error(message);
     }
   };
@@ -442,7 +542,10 @@ function ProjectSessionFilesContent({
         className={`bg-background text-foreground flex ${mode === "panel" ? "h-full" : "h-svh"} min-h-0 w-full flex-col`}
       >
         <header className="flex h-10 shrink-0 items-center gap-2 border-b px-2">
-          <h2 className="min-w-0 flex-1 truncate text-sm font-medium" title={directory?.path}>
+          <h2
+            className="min-w-0 flex-1 truncate text-sm font-medium"
+            title={directory?.path}
+          >
             Files
           </h2>
           <div className="flex shrink-0 items-center gap-0.5">
@@ -455,7 +558,7 @@ function ProjectSessionFilesContent({
               disabled={!directory || isDirectoryLoading}
               onClick={() => {
                 if (!confirmDiscard()) return;
-                clearSelection();
+                clearSelection(true);
                 setError("");
                 void directoryQuery.refetch();
               }}
@@ -468,7 +571,7 @@ function ProjectSessionFilesContent({
               size="icon-sm"
               aria-label="New file or folder"
               title="New file or folder"
-              disabled={!directory}
+              disabled={!directory || isDirectoryLoading}
               onClick={() => setIsCreateDialogOpen(true)}
             >
               <Plus />
@@ -488,7 +591,7 @@ function ProjectSessionFilesContent({
               size="icon-sm"
               aria-label="Upload file"
               title="Upload file"
-              disabled={!directory || isUploading}
+              disabled={!directory || isDirectoryLoading || isUploading}
               onClick={() => fileInputRef.current?.click()}
             >
               {isUploading ? <Loader2 className="animate-spin" /> : <Upload />}
@@ -500,11 +603,7 @@ function ProjectSessionFilesContent({
                 size="icon-sm"
                 aria-label="Close file browser"
                 title="Close file browser"
-                onClick={() => {
-                  if (!confirmDiscard()) return;
-                  if (hasUnsavedChanges) clearSelection();
-                  onClose();
-                }}
+                onClick={onClose}
               >
                 <X />
               </Button>
@@ -524,46 +623,60 @@ function ProjectSessionFilesContent({
 
         <main className="flex min-h-0 flex-1">
           <ResizablePanelGroup orientation="horizontal">
-          <ResizablePanel id="file-tree" defaultSize={mode === "panel" ? "40%" : "30%"} minSize="96px" maxSize="70%">
-          <aside className="bg-muted/10 flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
-            <RuntimeFileBrowser
-              key={directory?.path ?? "/"}
-              connection={connection}
-              isActive={isActive}
-              path={directory?.path ?? "/"}
-              entries={sortedEntries}
-              selectedPath={selectedFile?.path}
-              isLoading={isDirectoryLoading}
-              openingPath={openingDirectoryPath}
-              deletingPath={deletingPath}
-              onNavigate={openDirectory}
-              onSelect={openFile}
-              onDelete={setDeleteCandidate}
+            <ResizablePanel
+              id="file-tree"
+              defaultSize={mode === "panel" ? "40%" : "30%"}
+              minSize="96px"
+              maxSize="70%"
+            >
+              <aside className="bg-muted/10 flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
+                <RuntimeFileBrowser
+                  key={directory?.path ?? "/"}
+                  connection={connection}
+                  isActive={isActive}
+                  path={directory?.path ?? "/"}
+                  entries={sortedEntries}
+                  selectedPath={selectedFile?.path}
+                  isLoading={isDirectoryLoading}
+                  openingPath={openingDirectoryPath}
+                  deletingPath={deletingPath}
+                  onNavigate={openDirectory}
+                  onSelect={openFile}
+                  onDelete={setDeleteCandidate}
+                />
+              </aside>
+            </ResizablePanel>
+            <ResizableHandle
+              aria-label="Resize file tree and preview"
+              className="hover:bg-ring"
             />
-          </aside>
-          </ResizablePanel>
-          <ResizableHandle aria-label="Resize file tree and preview" className="hover:bg-ring" />
-          <ResizablePanel id="file-preview" defaultSize={mode === "panel" ? "60%" : "70%"} minSize="100px">
-          <RuntimeFilePreview
-            selectedFile={selectedFile}
-            content={fileContent}
-            contentType={fileContentType}
-            canEdit={canEdit}
-            isImage={isImage}
-            isLoading={isFileLoading}
-            isSaving={isSaving}
-            hasUnsavedChanges={hasUnsavedChanges}
-            copied={copied}
-            onContentChange={changeFileContent}
-            onSave={saveFile}
-            onCopy={copyContent}
-          />
-          </ResizablePanel>
+            <ResizablePanel
+              id="file-preview"
+              defaultSize={mode === "panel" ? "60%" : "70%"}
+              minSize="100px"
+            >
+              <RuntimeFilePreview
+                isActive={isActive}
+                isTruncated={isTruncated}
+                selectedFile={selectedFile}
+                content={fileContent}
+                contentType={fileContentType}
+                canEdit={canEdit}
+                isImage={isImage}
+                isLoading={isFileLoading}
+                isSaving={isSaving}
+                hasUnsavedChanges={hasUnsavedChanges}
+                copied={copied}
+                onContentChange={changeFileContent}
+                onSave={saveFile}
+                onCopy={copyContent}
+              />
+            </ResizablePanel>
           </ResizablePanelGroup>
         </main>
 
         <Dialog
-          open={isCreateDialogOpen}
+          open={isActive && isCreateDialogOpen}
           onOpenChange={(open) => {
             if (!isCreating) {
               setIsCreateDialogOpen(open);
@@ -612,7 +725,7 @@ function ProjectSessionFilesContent({
         </Dialog>
 
         <ConfirmationDialog
-          open={Boolean(deleteCandidate)}
+          open={isActive && Boolean(deleteCandidate)}
           onOpenChange={(open) => {
             if (!open) setDeleteCandidate(null);
           }}

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint --max-warnings 0",
-    "check-types": "next typegen && tsc --noEmit"
+    "check-types": "next typegen && tsc --noEmit",
+    "test:sidebar": "node tests/workspace-sidebar.test.mjs"
   },
   "dependencies": {
     "@opencode/client": "^2.0.24",

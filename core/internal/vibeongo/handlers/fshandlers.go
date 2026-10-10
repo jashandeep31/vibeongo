@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"io"
 	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/git-pkgs/gitignore"
@@ -32,8 +34,9 @@ type FileEntity struct {
 // in future make it as per need
 
 type FileListResponse struct {
-	Path    string       `json:"path"`
-	Entries []FileEntity `json:"entries"`
+	Path      string       `json:"path"`
+	Entries   []FileEntity `json:"entries"`
+	Truncated bool         `json:"truncated,omitempty"`
 }
 
 func GetListOfDirsAndFiles(c *echo.Context) error {
@@ -76,9 +79,33 @@ func GetFileContent(c *echo.Context) error {
 	}
 
 	filename := filepath.Base(requestFilepath)
-	content, err := os.ReadFile(requestFilepath)
+	info, err := os.Stat(requestFilepath)
+	if err != nil || !info.Mode().IsRegular() {
+		return echo.NewHTTPError(http.StatusBadRequest, "only regular files can be previewed")
+	}
+	file, err := os.Open(requestFilepath)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, "file not found")
+	}
+	defer file.Close()
+	// Sidebar previews are bounded; older clients keep the existing full-file API.
+	var content []byte
+	truncated := false
+	if requestedLimit := c.QueryParam("maxBytes"); requestedLimit != "" {
+		limit, parseErr := strconv.ParseInt(requestedLimit, 10, 64)
+		if parseErr != nil || limit < 1 || limit > 1024*1024 {
+			return echo.NewHTTPError(http.StatusBadRequest, "invalid preview size")
+		}
+		content, err = io.ReadAll(io.LimitReader(file, limit+1))
+		if int64(len(content)) > limit {
+			content = content[:limit]
+			truncated = true
+		}
+	} else {
+		content, err = io.ReadAll(file)
+	}
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, "could not read file")
 	}
 
 	contentSample := content
@@ -91,10 +118,12 @@ func GetFileContent(c *echo.Context) error {
 		Content     []byte `json:"content"`
 		Name        string `json:"string"`
 		ContentType string `json:"contentType"`
+		Truncated   bool   `json:"truncated,omitempty"`
 	}{
 		Name:        filename,
 		Content:     content,
 		ContentType: contentType,
+		Truncated:   truncated,
 	})
 }
 
@@ -266,35 +295,49 @@ func SearchFiles(c *echo.Context) error {
 	}
 	basePath = filepath.Clean(basePath)
 
-	entries, err := searchFileEntries(basePath, query)
+	entries, truncated, err := searchFileEntries(c.Request().Context(), basePath, query)
 	if err != nil {
 		return echo.NewHTTPError(http.StatusBadRequest, err.Error())
 	}
 
 	return c.JSON(http.StatusOK, FileListResponse{
-		Path:    basePath,
-		Entries: entries,
+		Path:      basePath,
+		Entries:   entries,
+		Truncated: truncated,
 	})
 }
 
-func searchFileEntries(basePath, query string) ([]FileEntity, error) {
-	paths, err := ProcessEachDir(basePath)
+func searchFileEntries(ctx context.Context, basePath, query string) ([]FileEntity, bool, error) {
+	paths, scanTruncated, err := collectFilePaths(ctx, basePath, 100_000)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 
 	relativePaths := make([]string, 0, len(paths))
 	for fullPath := range paths {
+		if err := ctx.Err(); err != nil {
+			return nil, false, err
+		}
 		relativePath, err := filepath.Rel(basePath, fullPath)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		relativePaths = append(relativePaths, filepath.ToSlash(relativePath))
 	}
 	// This makes results with equal fuzzy scores deterministic.
 	sort.Strings(relativePaths)
 
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
 	matches := fuzzy.Find(query, relativePaths)
+	truncated := scanTruncated || len(matches) > 500
+	if len(matches) > 500 {
+		matches = matches[:500]
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
 	entries := make([]FileEntity, 0, len(matches))
 	for _, match := range matches {
 		fullPath := filepath.Join(basePath, filepath.FromSlash(match.Str))
@@ -305,12 +348,30 @@ func searchFileEntries(basePath, query string) ([]FileEntity, error) {
 		})
 	}
 
-	return entries, nil
+	return entries, truncated, nil
 }
 
 func ProcessEachDir(dirPath string) (map[string]string, error) {
+	files, _, err := collectFilePaths(context.Background(), dirPath, 0)
+	return files, err
+}
+
+func collectFilePaths(ctx context.Context, dirPath string, limit int) (map[string]string, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, false, err
+	}
 	files := make(map[string]string)
+	truncated := false
+	visited := 0
 	err := gitignore.Walk(dirPath, func(path string, entry fs.DirEntry) error {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if limit > 0 && visited >= limit {
+			truncated = true
+			return fs.SkipAll
+		}
+		visited++
 		if entry.IsDir() {
 			return nil
 		}
@@ -318,9 +379,8 @@ func ProcessEachDir(dirPath string) (map[string]string, error) {
 		files[fullPath] = entry.Name()
 		return nil
 	})
-	if err != nil {
-		return nil, err
+	if err != nil && !(truncated && err == fs.SkipAll) {
+		return nil, false, err
 	}
-
-	return files, nil
+	return files, truncated, nil
 }

@@ -20,7 +20,7 @@ import {
   Sparkles,
   Undo2,
 } from "lucide-react";
-import { useEffect, useState, type ReactElement } from "react";
+import { memo, useEffect, useMemo, useState, type ReactElement } from "react";
 import { Blocks } from "loading-dev";
 
 export type OpencodeChatTurn = {
@@ -39,7 +39,7 @@ export type OpencodeChatTurn = {
   isStreaming?: boolean;
 };
 
-export function OpencodeChatQuestion({
+export const OpencodeChatQuestion = memo(function OpencodeChatQuestion({
   item,
   isStreaming = false,
   reserveBottomSpace = false,
@@ -55,8 +55,8 @@ export function OpencodeChatQuestion({
   reserveBottomSpace?: boolean;
   isReverting?: boolean;
   revertDisabled?: boolean;
-  onRevert: () => void;
-  onFork?: () => void;
+  onRevert: (messageId: string) => void;
+  onFork?: (messageId: string) => void;
   forkDisabled?: boolean;
   isForking?: boolean;
 }): ReactElement {
@@ -66,11 +66,18 @@ export function OpencodeChatQuestion({
   useEffect(() => {
     setReserveSpace(reserveBottomSpace);
   }, [reserveBottomSpace]);
-  const answer = item.content
-    .flatMap((content) => (content.type === "text" ? [content.text] : []))
-    .join("\n\n")
-    .trim();
-  const content = groupConsecutiveOpencodeToolContent(item.content);
+  const answer = useMemo(
+    () =>
+      item.content
+        .flatMap((content) => (content.type === "text" ? [content.text] : []))
+        .join("\n\n")
+        .trim(),
+    [item.content],
+  );
+  const content = useMemo(
+    () => groupConsecutiveOpencodeToolContent(item.content),
+    [item.content],
+  );
   const firstEditGroupId = content.find(
     (content) =>
       content.type === "tools" &&
@@ -147,7 +154,7 @@ export function OpencodeChatQuestion({
                 aria-label="Revert from this question"
                 title="Revert this question and everything after it"
                 disabled={revertDisabled || isReverting}
-                onClick={onRevert}
+                onClick={() => onRevert(item.id)}
               >
                 {isReverting ? (
                   <Loader2 className="size-3.5 animate-spin" />
@@ -306,7 +313,7 @@ export function OpencodeChatQuestion({
                     aria-label="Fork including this question and answer"
                     title="Fork including this question and answer"
                     disabled={forkDisabled || isForking}
-                    onClick={onFork}
+                    onClick={() => onFork?.(item.id)}
                   >
                     {isForking ? (
                       <Loader2 className="size-3.5 animate-spin" />
@@ -325,7 +332,7 @@ export function OpencodeChatQuestion({
       </div>
     </div>
   );
-}
+});
 
 function getReasoningHeading(text: string) {
   const heading = text.match(/^\s{0,3}#{1,6}[ \t]+(.+?)\s*$/m)?.[1];

@@ -591,7 +591,7 @@ function BrowserWorkspace({
         </p>
       ) : null}
       <div className="relative min-h-0 flex-1">
-        {session.tabs
+        {(isActive ? session.tabs : [])
           .filter(
             (tab) =>
               tab.domainId !== null &&

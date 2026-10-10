@@ -2261,6 +2261,31 @@ export async function initializeOpencodeGit(
   }
 }
 
+/** Status contains paths only, so the workspace badge never downloads patches. */
+export async function getOpencodeWorkingChangeCount(
+  chatId: string,
+  directory: string,
+  serverUrl: string,
+  accessToken: string,
+  password?: string,
+  signal?: AbortSignal,
+): Promise<number> {
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
+  const provider = await resolveOpencodeReviewVcs(client, directory);
+  if (!provider) return 0;
+  const result = await client.vcs.status(
+    { location: { directory } },
+    signal ? { signal } : undefined,
+  );
+  return result.data.length;
+}
+
 /** Working-tree changes are available before an OpenCode chat is created. */
 export async function getOpencodeWorkingChanges(
   chatId: string,

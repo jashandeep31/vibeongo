@@ -1,12 +1,17 @@
 "use client";
 
-import type { RuntimeFileEntry } from "@repo/api-client";
+import {
+  isEditableRuntimeContentType,
+  type RuntimeFileEntry,
+} from "@repo/api-client";
 import { Button } from "@repo/ui/components/button";
 import { File, FileCode2, Loader2, Save, Check, Copy } from "lucide-react";
 import { ShikiFileEditor } from "@/components/shiki-file-code";
 import { memo } from "react";
 
 export const RuntimeFilePreview = memo(function RuntimeFilePreview({
+  isActive,
+  isTruncated,
   selectedFile,
   content,
   contentType,
@@ -20,6 +25,8 @@ export const RuntimeFilePreview = memo(function RuntimeFilePreview({
   onSave,
   onCopy,
 }: {
+  isActive: boolean;
+  isTruncated: boolean;
   selectedFile: RuntimeFileEntry | null;
   content: string;
   contentType: string;
@@ -89,10 +96,24 @@ export const RuntimeFilePreview = memo(function RuntimeFilePreview({
           </div>
         ) : selectedFile && canEdit ? (
           <ShikiFileEditor
+            key={selectedFile.path}
+            isActive={isActive}
             code={content}
             path={selectedFile.path}
             onChange={onContentChange}
           />
+        ) : selectedFile && isTruncated ? (
+          <div className="p-3">
+            <p role="status" className="mb-3 text-xs text-amber-300">
+              Large file: showing a limited read-only preview. Open it in the
+              terminal to edit.
+            </p>
+            <pre className="overflow-auto font-mono text-[11px] whitespace-pre">
+              {isEditableRuntimeContentType(contentType)
+                ? content.slice(0, 65_536).split("\n", 2000).join("\n")
+                : "Preview unavailable for this file type."}
+            </pre>
+          </div>
         ) : selectedFile && isImage ? (
           <div className="flex min-h-full items-center justify-center p-4">
             {/* eslint-disable-next-line @next/next/no-img-element */}

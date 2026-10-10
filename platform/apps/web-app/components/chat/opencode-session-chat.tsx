@@ -24,10 +24,15 @@ import {
   OpencodeContextButton,
   OpencodeContextPanel,
 } from "@/components/chat/opencode-context-panel";
-import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
-import { ProjectTerminalPanel } from "@/components/project-terminal-panel";
-import { WorkspaceResizableLayout, WorkspaceToolRail } from "@/components/workspace-resizable-layout";
-import { WorkspaceGitButton, WorkspaceToolIcon } from "@/components/workspace-tool-button";
+import { WorkspacePanel } from "@/components/workspace-panel";
+import {
+  WorkspaceResizableLayout,
+  WorkspaceToolRail,
+} from "@/components/workspace-resizable-layout";
+import {
+  WorkspaceGitButton,
+  WorkspaceToolIcon,
+} from "@/components/workspace-tool-button";
 import {
   useAbortOpencodeSession,
   useForkOpencodeTurn,
@@ -116,7 +121,10 @@ const ProjectBrowserPanel = dynamic(
 );
 
 const ProjectDomainsPanel = dynamic(
-  () => import("@/components/project-domains-panel").then((module) => module.ProjectDomainsPanel),
+  () =>
+    import("@/components/project-domains-panel").then(
+      (module) => module.ProjectDomainsPanel,
+    ),
   { ssr: false },
 );
 const ProjectSessionSettingsPanel = dynamic(
@@ -130,6 +138,36 @@ const ProjectSessionSettingsPanel = dynamic(
       <div role="status" className="text-muted-foreground p-4 text-sm">
         Loading settings…
       </div>
+    ),
+  },
+);
+
+const ProjectSessionFilesPanel = dynamic(
+  () =>
+    import("@/components/project-session-files-page").then(
+      (module) => module.ProjectSessionFilesPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p role="status" className="text-muted-foreground p-4 text-sm">
+        Loading tool…
+      </p>
+    ),
+  },
+);
+
+const ProjectTerminalPanel = dynamic(
+  () =>
+    import("@/components/project-terminal-panel").then(
+      (module) => module.ProjectTerminalPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p role="status" className="text-muted-foreground p-4 text-sm">
+        Loading tool…
+      </p>
     ),
   },
 );
@@ -225,11 +263,19 @@ export function OpencodeSessionChat({
     password,
   });
   const turns = useMemo(
-    () => createOpencodeChatTurns(projectedMessages, inventory?.models, {
+    () =>
+      createOpencodeChatTurns(projectedMessages, inventory?.models, {
+        isStreaming,
+        pendingInputIds: new Set(
+          rawResponse.pendingInbox.map((item) => item.id),
+        ),
+      }),
+    [
+      inventory?.models,
+      projectedMessages,
       isStreaming,
-      pendingInputIds: new Set(rawResponse.pendingInbox.map((item) => item.id)),
-    }),
-    [inventory?.models, projectedMessages, isStreaming, rawResponse.pendingInbox],
+      rawResponse.pendingInbox,
+    ],
   );
   const hasInlineExecutionError = messages.some(
     (message) => message.info.role === "assistant" && message.info.error,
@@ -380,7 +426,7 @@ export function OpencodeSessionChat({
     password,
     directory: rawResponse.session.directory,
   });
-  const { active, opened, openPanel, closePanel, togglePanel, forgetPanel } =
+  const { active, opened, openPanel, closePanel, togglePanel } =
     useWorkspaceTool();
   const isContextOpen = active === "context";
   const isFilesOpen = active === "files";
@@ -405,7 +451,6 @@ export function OpencodeSessionChat({
   const terminalButtonRef = useRef<HTMLButtonElement>(null);
   const previousWorkspaceTool = useRef<WorkspaceTool | null>(null);
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
-  const [hasUnsavedFileChanges, setHasUnsavedFileChanges] = useState(false);
   const revertSessionMutate = revertSession.mutate;
   const restoreMessageMutate = restoreMessage.mutate;
   const reloadConfigMutate = reloadConfig.mutate;
@@ -511,7 +556,10 @@ export function OpencodeSessionChat({
       selectionIdentity.current = draftKey;
       setSelection(readComposerDraft(draftKey)?.selection ?? sessionSelection);
     } else if (followedAgent.current !== sessionSelection.agent) {
-      setSelection((current) => ({ ...current, agent: sessionSelection.agent }));
+      setSelection((current) => ({
+        ...current,
+        agent: sessionSelection.agent,
+      }));
     }
     followedAgent.current = sessionSelection.agent;
   }, [draftKey, sessionSelection]);
@@ -640,7 +688,10 @@ export function OpencodeSessionChat({
     [togglePanel],
   );
   const openFilesPanel = useCallback(() => openPanel("files"), [openPanel]);
-  const openTerminalPanel = useCallback(() => openPanel("terminal"), [openPanel]);
+  const openTerminalPanel = useCallback(
+    () => openPanel("terminal"),
+    [openPanel],
+  );
   const openDomainsPanel = useCallback(() => openPanel("domains"), [openPanel]);
   useEffect(() => {
     const previous = previousWorkspaceTool.current;
@@ -666,10 +717,7 @@ export function OpencodeSessionChat({
   const workspaceSidebar = (
     <>
       {hasOpenedContext && (
-        <div
-          className={isContextOpen ? "h-full" : "hidden"}
-          aria-hidden={!isContextOpen}
-        >
+        <WorkspacePanel isActive={isContextOpen} onClose={closePanel}>
           <OpencodeContextPanel
             session={rawResponse}
             inventory={inventory}
@@ -680,28 +728,21 @@ export function OpencodeSessionChat({
             onLoadOlder={onLoadOlder}
             onClose={closeContextPanel}
           />
-        </div>
+        </WorkspacePanel>
       )}
       {hasOpenedFiles ? (
-        <div
-          className={isFilesOpen ? "h-full" : "hidden"}
-          aria-hidden={!isFilesOpen}
-        >
+        <WorkspacePanel isActive={isFilesOpen} onClose={closePanel}>
           <ProjectSessionFilesPanel
             isActive={isFilesOpen}
             projectId={projectId}
             projectSessionId={chatId}
             sessionId={sessionId}
             onClose={closeFilesPanel}
-            onDirtyChange={setHasUnsavedFileChanges}
           />
-        </div>
+        </WorkspacePanel>
       ) : null}
       {hasOpenedSettings ? (
-        <div
-          className={isSettingsOpen ? "h-full" : "hidden"}
-          aria-hidden={!isSettingsOpen}
-        >
+        <WorkspacePanel isActive={isSettingsOpen} onClose={closePanel}>
           <ProjectSessionSettingsPanel
             projectId={projectId}
             projectSessionId={chatId}
@@ -712,18 +753,20 @@ export function OpencodeSessionChat({
             onOpenTerminal={openTerminalPanel}
             onOpenDomains={openDomainsPanel}
           />
-        </div>
+        </WorkspacePanel>
       ) : null}
       {hasOpenedDomains ? (
-        <div className={isDomainsOpen ? "h-full" : "hidden"} aria-hidden={!isDomainsOpen}>
-          <ProjectDomainsPanel projectId={projectId} projectSessionId={chatId} isActive={isDomainsOpen} onClose={closeDomainsPanel} />
-        </div>
+        <WorkspacePanel isActive={isDomainsOpen} onClose={closePanel}>
+          <ProjectDomainsPanel
+            projectId={projectId}
+            projectSessionId={chatId}
+            isActive={isDomainsOpen}
+            onClose={closeDomainsPanel}
+          />
+        </WorkspacePanel>
       ) : null}
       {hasOpenedBrowser ? (
-        <div
-          className={isBrowserOpen ? "h-full" : "hidden"}
-          aria-hidden={!isBrowserOpen}
-        >
+        <WorkspacePanel isActive={isBrowserOpen} onClose={closePanel}>
           <ProjectBrowserPanel
             projectId={projectId}
             projectSessionId={chatId}
@@ -732,15 +775,18 @@ export function OpencodeSessionChat({
             onOpenDomains={openDomainsPanel}
             onClose={closeBrowserPanel}
           />
-        </div>
+        </WorkspacePanel>
       ) : null}
       {hasOpenedGit ? (
-        <div
-          className={isGitOpen ? "h-full" : "hidden"}
-          aria-hidden={!isGitOpen}
-        >
+        <WorkspacePanel isActive={isGitOpen} onClose={closePanel}>
           <OpencodeReviewPanel
-            gitConnection={{ chatId, directory: rawResponse.session.directory, serverUrl, accessToken, password }}
+            gitConnection={{
+              chatId,
+              directory: rawResponse.session.directory,
+              serverUrl,
+              accessToken,
+              password,
+            }}
             isActive={isGitOpen}
             changes={rawResponse.changes}
             chatUrl={chatUrl}
@@ -748,20 +794,17 @@ export function OpencodeSessionChat({
             onRefresh={onRefresh}
             onClose={closeGitPanel}
           />
-        </div>
+        </WorkspacePanel>
       ) : null}
       {hasOpenedTerminal ? (
-        <div
-          className={isTerminalOpen ? "h-full" : "hidden"}
-          aria-hidden={!isTerminalOpen}
-        >
+        <WorkspacePanel isActive={isTerminalOpen} onClose={closePanel}>
           <ProjectTerminalPanel
             projectId={projectId}
             projectSessionId={chatId}
             isActive={isTerminalOpen}
             onClose={closeTerminalPanel}
           />
-        </div>
+        </WorkspacePanel>
       ) : null}
     </>
   );
@@ -770,31 +813,75 @@ export function OpencodeSessionChat({
     : revertSession.isPending || restoreMessage.isPending
       ? "Wait for the history update to finish before forking."
       : undefined;
-  const forkTurn = (messageId: string) => {
-    if (
-      fork.isPending ||
-      forkBlockedReason ||
-      !turns.some(
-        (turn) => turn.id === messageId && turn.answerCompletedAt !== undefined,
+  const completedTurnIds = useMemo(
+    () =>
+      new Set(
+        turns
+          .filter((turn) => turn.answerCompletedAt !== undefined)
+          .map((turn) => turn.id),
+      ),
+    [turns],
+  );
+  const completedTurnIdsRef = useRef(completedTurnIds);
+  useEffect(() => {
+    completedTurnIdsRef.current = completedTurnIds;
+  }, [completedTurnIds]);
+  const forkMutate = fork.mutate;
+  const isForkPending = fork.isPending;
+  const forkTurn = useCallback(
+    (messageId: string) => {
+      if (
+        isForkPending ||
+        forkBlockedReason ||
+        !completedTurnIdsRef.current.has(messageId)
       )
-    )
-      return;
-    const expectedIdentity = draftKey;
-    fork.mutate(messageId, {
-      onSuccess: ({ session }) => {
-        if (sourceIdentity.current !== expectedIdentity) return;
-        const params = new URLSearchParams({
-          serverUrl,
-          directory: session.directory,
-        });
-        router.push(`${sessionUrl}/chats/${session.id}?${params.toString()}`);
-      },
-      onError: (error) => {
-        if (sourceIdentity.current === expectedIdentity)
-          toast.error(error.message || "Could not fork this answer");
-      },
-    });
-  };
+        return;
+      const expectedIdentity = draftKey;
+      forkMutate(messageId, {
+        onSuccess: ({ session }) => {
+          if (sourceIdentity.current !== expectedIdentity) return;
+          const params = new URLSearchParams({
+            serverUrl,
+            directory: session.directory,
+          });
+          router.push(`${sessionUrl}/chats/${session.id}?${params.toString()}`);
+        },
+        onError: (error) => {
+          if (sourceIdentity.current === expectedIdentity)
+            toast.error(error.message || "Could not fork this answer");
+        },
+      });
+    },
+    [
+      forkMutate,
+      isForkPending,
+      forkBlockedReason,
+      draftKey,
+      router,
+      sessionUrl,
+      serverUrl,
+    ],
+  );
+  const revertTurn = useCallback(
+    (messageId: string) => {
+      revertSessionMutate(messageId, {
+        onSuccess: () => toast.success("Messages rolled back"),
+        onError: (error) =>
+          toast.error(error.message || "Could not revert messages"),
+      });
+    },
+    [revertSessionMutate],
+  );
+  const subagentConnection = useMemo(
+    () => ({
+      chatId,
+      chatUrl: `${sessionUrl}/chats/${sessionId}`,
+      serverUrl,
+      accessToken,
+      password,
+    }),
+    [chatId, sessionUrl, sessionId, serverUrl, accessToken, password],
+  );
 
   return (
     <div className="bg-background text-foreground relative flex h-svh min-h-0 w-full flex-col overflow-hidden">
@@ -880,22 +967,14 @@ export function OpencodeSessionChat({
                       Start the chat by describing what you want to build.
                     </div>
                   ) : null}
-                  <OpencodeSubagentProvider
-                    connection={{
-                      chatId,
-                      chatUrl: `${sessionUrl}/chats/${sessionId}`,
-                      serverUrl,
-                      accessToken,
-                      password,
-                    }}
-                  >
+                  <OpencodeSubagentProvider connection={subagentConnection}>
                     {turns.map((turn, index) => (
                       <OpencodeChatQuestion
                         key={turn.id}
                         item={turn}
                         onFork={
                           turn.answerCompletedAt !== undefined
-                            ? () => forkTurn(turn.id)
+                            ? forkTurn
                             : undefined
                         }
                         forkDisabled={
@@ -912,16 +991,7 @@ export function OpencodeSessionChat({
                           revertSession.isPending ||
                           restoreMessage.isPending
                         }
-                        onRevert={() =>
-                          revertSession.mutate(turn.id, {
-                            onSuccess: () =>
-                              toast.success("Messages rolled back"),
-                            onError: (error) =>
-                              toast.error(
-                                error.message || "Could not revert messages",
-                              ),
-                          })
-                        }
+                        onRevert={revertTurn}
                         reserveBottomSpace={
                           index === turns.length - 1 && !activeQuestion
                         }
@@ -1330,12 +1400,6 @@ export function OpencodeSessionChat({
             title="Files"
             onClick={() => {
               if (isFilesOpen) {
-                if (hasUnsavedFileChanges) {
-                  if (!window.confirm("Discard your unsaved file changes?"))
-                    return;
-                  forgetPanel("files");
-                  setHasUnsavedFileChanges(false);
-                }
                 closeFilesPanel();
                 return;
               }
@@ -1346,7 +1410,13 @@ export function OpencodeSessionChat({
           </Button>
           <WorkspaceGitButton
             buttonRef={gitButtonRef}
-            connection={{ chatId, directory: rawResponse.session.directory, serverUrl, accessToken, password }}
+            connection={{
+              chatId,
+              directory: rawResponse.session.directory,
+              serverUrl,
+              accessToken,
+              password,
+            }}
             isOpen={isGitOpen}
             onClick={toggleGitPanel}
           />
@@ -1372,7 +1442,9 @@ export function OpencodeSessionChat({
             type="button"
             variant={isDomainsOpen ? "secondary" : "ghost"}
             size="icon-sm"
-            aria-label={isDomainsOpen ? "Close domains panel" : "Open domains panel"}
+            aria-label={
+              isDomainsOpen ? "Close domains panel" : "Open domains panel"
+            }
             aria-pressed={isDomainsOpen}
             title="Domains"
             onClick={toggleDomainsPanel}

@@ -1,13 +1,21 @@
 "use client";
 
 import { OpencodeContextPanel } from "@/components/chat/opencode-context-panel";
-import { useWorkspaceTool, type WorkspaceTool } from "@/hooks/use-workspace-tool";
+import {
+  useWorkspaceTool,
+  type WorkspaceTool,
+} from "@/hooks/use-workspace-tool";
 import { NewOpencodeChat } from "@/components/chat/new-opencode-chat";
 import { OpencodeChatTopBar } from "@/components/chat/opencode-chat-top-bar";
-import { ProjectSessionFilesPanel } from "@/components/project-session-files-page";
-import { ProjectTerminalPanel } from "@/components/project-terminal-panel";
-import { WorkspaceResizableLayout, WorkspaceToolRail } from "@/components/workspace-resizable-layout";
-import { WorkspaceGitButton, WorkspaceToolIcon } from "@/components/workspace-tool-button";
+import { WorkspacePanel } from "@/components/workspace-panel";
+import {
+  WorkspaceResizableLayout,
+  WorkspaceToolRail,
+} from "@/components/workspace-resizable-layout";
+import {
+  WorkspaceGitButton,
+  WorkspaceToolIcon,
+} from "@/components/workspace-tool-button";
 import { useOpencodeWorkingChanges } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import dynamic from "next/dynamic";
@@ -27,7 +35,10 @@ const OpencodeReviewPanel = dynamic(
   { ssr: false, loading: loadingPanel },
 );
 const ProjectDomainsPanel = dynamic(
-  () => import("@/components/project-domains-panel").then((module) => module.ProjectDomainsPanel),
+  () =>
+    import("@/components/project-domains-panel").then(
+      (module) => module.ProjectDomainsPanel,
+    ),
   { ssr: false, loading: loadingPanel },
 );
 const ProjectBrowserPanel = dynamic(
@@ -56,6 +67,36 @@ const TOOLS = [
   { id: "settings", label: "Runtime settings" },
 ] as const;
 
+const ProjectSessionFilesPanel = dynamic(
+  () =>
+    import("@/components/project-session-files-page").then(
+      (module) => module.ProjectSessionFilesPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p role="status" className="text-muted-foreground p-4 text-sm">
+        Loading tool…
+      </p>
+    ),
+  },
+);
+
+const ProjectTerminalPanel = dynamic(
+  () =>
+    import("@/components/project-terminal-panel").then(
+      (module) => module.ProjectTerminalPanel,
+    ),
+  {
+    ssr: false,
+    loading: () => (
+      <p role="status" className="text-muted-foreground p-4 text-sm">
+        Loading tool…
+      </p>
+    ),
+  },
+);
+
 export function NewOpencodeWorkspace({
   projectId,
   projectSessionId,
@@ -77,9 +118,8 @@ export function NewOpencodeWorkspace({
   sessionName: string;
   directoryError?: string;
 }) {
-  const { active, opened, openPanel, closePanel, forgetPanel } = useWorkspaceTool();
+  const { active, opened, openPanel, closePanel } = useWorkspaceTool();
   const [isWorktreeOpen, setIsWorktreeOpen] = useState(false);
-  const [filesDirty, setFilesDirty] = useState(false);
   const previousPanel = useRef<Panel | null>(null);
   const buttons = useRef<Partial<Record<Panel, HTMLButtonElement | null>>>({});
   const chatUrl = `/projects/${projectId}/sessions/${projectSessionId}`;
@@ -100,11 +140,6 @@ export function NewOpencodeWorkspace({
       openPanel(panel);
       return;
     }
-    if (panel === "files" && filesDirty) {
-      if (!window.confirm("Discard your unsaved file changes?")) return;
-      forgetPanel("files");
-      setFilesDirty(false);
-    }
     closePanel();
   };
   useEffect(() => {
@@ -116,34 +151,30 @@ export function NewOpencodeWorkspace({
   const sidebar = (
     <>
       {opened.context && (
-        <div
-          className={active === "context" ? "h-full" : "hidden"}
-          aria-hidden={active !== "context"}
-        >
+        <WorkspacePanel isActive={active === "context"} onClose={closePanel}>
           <OpencodeContextPanel onClose={closePanel} />
-        </div>
+        </WorkspacePanel>
       )}
       {opened.files && (
-        <div
-          className={active === "files" ? "h-full" : "hidden"}
-          aria-hidden={active !== "files"}
-        >
+        <WorkspacePanel isActive={active === "files"} onClose={closePanel}>
           <ProjectSessionFilesPanel
             isActive={active === "files"}
             projectId={projectId}
             projectSessionId={projectSessionId}
             onClose={closePanel}
-            onDirtyChange={setFilesDirty}
           />
-        </div>
+        </WorkspacePanel>
       )}
       {opened.git && (
-        <div
-          className={active === "git" ? "h-full" : "hidden"}
-          aria-hidden={active !== "git"}
-        >
+        <WorkspacePanel isActive={active === "git"} onClose={closePanel}>
           <OpencodeReviewPanel
-            gitConnection={{ chatId: projectSessionId, directory, serverUrl, accessToken, password }}
+            gitConnection={{
+              chatId: projectSessionId,
+              directory,
+              serverUrl,
+              accessToken,
+              password,
+            }}
             changes={changes.data ?? []}
             chatUrl={chatUrl}
             isActive={active === "git"}
@@ -157,31 +188,30 @@ export function NewOpencodeWorkspace({
             onRefresh={directory ? () => void changes.refetch() : undefined}
             onClose={closePanel}
           />
-        </div>
+        </WorkspacePanel>
       )}
       {opened.terminal && (
-        <div
-          className={active === "terminal" ? "h-full" : "hidden"}
-          aria-hidden={active !== "terminal"}
-        >
+        <WorkspacePanel isActive={active === "terminal"} onClose={closePanel}>
           <ProjectTerminalPanel
             projectId={projectId}
             projectSessionId={projectSessionId}
             isActive={active === "terminal"}
             onClose={closePanel}
           />
-        </div>
+        </WorkspacePanel>
       )}
       {opened.domains && (
-        <div className={active === "domains" ? "h-full" : "hidden"} aria-hidden={active !== "domains"}>
-          <ProjectDomainsPanel projectId={projectId} projectSessionId={projectSessionId} isActive={active === "domains"} onClose={closePanel} />
-        </div>
+        <WorkspacePanel isActive={active === "domains"} onClose={closePanel}>
+          <ProjectDomainsPanel
+            projectId={projectId}
+            projectSessionId={projectSessionId}
+            isActive={active === "domains"}
+            onClose={closePanel}
+          />
+        </WorkspacePanel>
       )}
       {opened.browser && (
-        <div
-          className={active === "browser" ? "h-full" : "hidden"}
-          aria-hidden={active !== "browser"}
-        >
+        <WorkspacePanel isActive={active === "browser"} onClose={closePanel}>
           <ProjectBrowserPanel
             projectId={projectId}
             projectSessionId={projectSessionId}
@@ -189,13 +219,10 @@ export function NewOpencodeWorkspace({
             onOpenDomains={openDomains}
             onClose={closePanel}
           />
-        </div>
+        </WorkspacePanel>
       )}
       {opened.settings && (
-        <div
-          className={active === "settings" ? "h-full" : "hidden"}
-          aria-hidden={active !== "settings"}
-        >
+        <WorkspacePanel isActive={active === "settings"} onClose={closePanel}>
           <ProjectSessionSettingsPanel
             projectId={projectId}
             projectSessionId={projectSessionId}
@@ -205,7 +232,7 @@ export function NewOpencodeWorkspace({
             onOpenTerminal={openTerminal}
             onOpenDomains={openDomains}
           />
-        </div>
+        </WorkspacePanel>
       )}
     </>
   );
@@ -249,32 +276,42 @@ export function NewOpencodeWorkspace({
           </div>
         </WorkspaceResizableLayout>
         <WorkspaceToolRail>
-          {TOOLS.map(({ id, label }) => id === "git" ? (
-            <WorkspaceGitButton
-              key={id}
-              buttonRef={(node) => { buttons.current.git = node; }}
-              connection={{ chatId: projectSessionId, directory, serverUrl, accessToken, password }}
-              isOpen={active === "git"}
-              onClick={() => togglePanel("git")}
-            />
-          ) : (
-            <Button
-              key={id}
-              ref={(node) => {
-                buttons.current[id] = node;
-              }}
-              type="button"
-              className="group"
-              size="icon-sm"
-              variant={active === id ? "secondary" : "ghost"}
-              aria-label={`${active === id ? "Close" : "Open"} ${label.toLowerCase()} panel`}
-              aria-pressed={active === id}
-              title={label}
-              onClick={() => togglePanel(id)}
-            >
-              <WorkspaceToolIcon tool={id} />
-            </Button>
-          ))}
+          {TOOLS.map(({ id, label }) =>
+            id === "git" ? (
+              <WorkspaceGitButton
+                key={id}
+                buttonRef={(node) => {
+                  buttons.current.git = node;
+                }}
+                connection={{
+                  chatId: projectSessionId,
+                  directory,
+                  serverUrl,
+                  accessToken,
+                  password,
+                }}
+                isOpen={active === "git"}
+                onClick={() => togglePanel("git")}
+              />
+            ) : (
+              <Button
+                key={id}
+                ref={(node) => {
+                  buttons.current[id] = node;
+                }}
+                type="button"
+                className="group"
+                size="icon-sm"
+                variant={active === id ? "secondary" : "ghost"}
+                aria-label={`${active === id ? "Close" : "Open"} ${label.toLowerCase()} panel`}
+                aria-pressed={active === id}
+                title={label}
+                onClick={() => togglePanel(id)}
+              >
+                <WorkspaceToolIcon tool={id} />
+              </Button>
+            ),
+          )}
         </WorkspaceToolRail>
       </div>
     </div>

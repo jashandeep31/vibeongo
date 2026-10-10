@@ -40,7 +40,9 @@ const LANGUAGE_BY_EXTENSION: Record<string, string> = {
 
 function languageFromPath(path: string) {
   const name = path.split("/").at(-1) ?? "";
-  const extension = name.includes(".") ? name.split(".").at(-1)?.toLowerCase() : "";
+  const extension = name.includes(".")
+    ? name.split(".").at(-1)?.toLowerCase()
+    : "";
   if (!extension) {
     if (name === "Dockerfile") return "dockerfile";
     if (name === "Makefile") return "make";
@@ -49,8 +51,11 @@ function languageFromPath(path: string) {
   return LANGUAGE_BY_EXTENSION[extension] ?? extension;
 }
 
-function useHighlightedCode(code: string, path: string) {
-  const enabled = useMemo(() => canHighlight(code), [code]);
+function useHighlightedCode(code: string, path: string, isActive: boolean) {
+  const enabled = useMemo(
+    () => isActive && canHighlight(code),
+    [code, isActive],
+  );
   const language = useMemo(() => languageFromPath(path), [path]);
   const [html, setHtml] = useState("");
   const workerRef = useRef<Worker | null>(null);
@@ -105,17 +110,24 @@ const highlightedPreClass =
 export const ShikiFileEditor = memo(function ShikiFileEditor({
   code,
   path,
+  isActive = true,
   onChange,
 }: {
   code: string;
   path: string;
+  isActive?: boolean;
   onChange: (value: string) => void;
 }) {
   const [draft, setDraft] = useState(code);
+  const previousCodeRef = useRef(code);
   const codeLayerRef = useRef<HTMLDivElement>(null);
-  const { html } = useHighlightedCode(draft, path);
+  const { html } = useHighlightedCode(draft, path, isActive);
 
   useEffect(() => {
+    // Activity re-runs effects on reopen. The prop is the last loaded content,
+    // while unsaved typing lives in draft; only a new prop may replace it.
+    if (previousCodeRef.current === code) return;
+    previousCodeRef.current = code;
     setDraft(code);
   }, [code]);
 
@@ -129,7 +141,7 @@ export const ShikiFileEditor = memo(function ShikiFileEditor({
           {html ? (
             <div dangerouslySetInnerHTML={{ __html: html }} />
           ) : (
-            <pre className="m-0 w-max min-w-full whitespace-pre p-3">
+            <pre className="m-0 w-max min-w-full p-3 whitespace-pre">
               <code>{draft}</code>
             </pre>
           )}
@@ -137,7 +149,7 @@ export const ShikiFileEditor = memo(function ShikiFileEditor({
       </div>
       <textarea
         aria-label={`Contents of ${path}`}
-        className="absolute inset-0 size-full resize-none overflow-auto whitespace-pre rounded-none border-0 bg-transparent p-3 font-mono text-[11px] leading-5 text-transparent caret-zinc-100 selection:bg-sky-400/30 focus-visible:border-0 focus-visible:outline-none focus-visible:ring-0 [tab-size:2]"
+        className="absolute inset-0 size-full resize-none overflow-auto rounded-none border-0 bg-transparent p-3 font-mono text-[11px] leading-5 whitespace-pre [tab-size:2] text-transparent caret-zinc-100 selection:bg-sky-400/30 focus-visible:border-0 focus-visible:ring-0 focus-visible:outline-none"
         spellCheck={false}
         wrap="off"
         value={draft}
