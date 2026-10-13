@@ -7,6 +7,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"strconv"
+	"strings"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/utils"
@@ -141,22 +144,79 @@ func ProvisionT3Code(cfg config.Config) error {
 	return nil
 }
 
+const minimumOpenCodeVersion = "2.0.28"
+
+var openCodeVersionPattern = regexp.MustCompile(`v?([0-9]+)\.([0-9]+)\.([0-9]+)`)
+
+func openCodeVersion(opencodeBin string) ([3]int, error) {
+	output, err := exec.Command(opencodeBin, "--version").CombinedOutput()
+	if err != nil {
+		return [3]int{}, fmt.Errorf("check OpenCode version: %w: %s", err, strings.TrimSpace(string(output)))
+	}
+	match := openCodeVersionPattern.FindStringSubmatch(string(output))
+	if match == nil {
+		return [3]int{}, fmt.Errorf("unrecognized OpenCode version: %q", strings.TrimSpace(string(output)))
+	}
+	var version [3]int
+	for index, part := range match[1:] {
+		version[index], err = strconv.Atoi(part)
+		if err != nil {
+			return [3]int{}, fmt.Errorf("parse OpenCode version: %w", err)
+		}
+	}
+	return version, nil
+}
+
+func openCodeVersionSupported(version [3]int) bool {
+	for index, minimum := range [3]int{2, 0, 28} {
+		if version[index] != minimum {
+			return version[index] > minimum
+		}
+	}
+	return true
+}
+
+func ensureOpenCodeVersion(opencodeBin string) error {
+	version, err := openCodeVersion(opencodeBin)
+	if err != nil {
+		return err
+	}
+	if openCodeVersionSupported(version) {
+		return nil
+	}
+
+	fmt.Printf("upgrading OpenCode to %s\n", minimumOpenCodeVersion)
+	cmd := exec.Command(opencodeBin, "upgrade", minimumOpenCodeVersion, "--method", "curl")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("upgrade OpenCode to %s: %w", minimumOpenCodeVersion, err)
+	}
+	version, err = openCodeVersion(opencodeBin)
+	if err != nil {
+		return err
+	}
+	if !openCodeVersionSupported(version) {
+		return fmt.Errorf("OpenCode upgrade did not reach %s", minimumOpenCodeVersion)
+	}
+	return nil
+}
+
 // ProvisionOpenCode imports the credentials (output of `opencode auth export`) with `opencode auth import`
 func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	if cfg == nil {
 		return nil
 	}
 
+	opencodeBin := utils.OpenCodeBinaryPath()
+	if err := ensureOpenCodeVersion(opencodeBin); err != nil {
+		return err
+	}
+
 	authJSON := bytes.TrimSpace(cfg.AuthJSON)
 	if len(authJSON) == 0 || string(authJSON) == "null" || string(authJSON) == "[]" {
 		fmt.Println("no opencode credentials to import")
 		return nil
-	}
-
-	// opencode is pre-insatlled in the ami. OPENCODE_BIN overrides it for local testing
-	opencodeBin := os.Getenv("OPENCODE_BIN")
-	if opencodeBin == "" {
-		opencodeBin = utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.opencode/bin/opencode")
 	}
 
 	fmt.Println("importing opencode credentials")

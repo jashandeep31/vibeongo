@@ -70,7 +70,8 @@ func startWebServerLocked() error {
 	}
 
 	// Appending password to the opencode each time
-	err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" opencode serve --port 4096 --hostname 0.0.0.0")
+	binary := "'" + strings.ReplaceAll(utils.OpenCodeBinaryPath(), "'", "'\\''") + "'"
+	err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" "+binary+" serve --port 4096 --hostname 0.0.0.0")
 
 	if err != nil {
 		return err

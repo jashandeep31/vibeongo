@@ -1,5 +1,7 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.0.28. See the compatibility follow-up below.
+
 **Reviewed:** 2026-10-08
 
 **Latest stable npm release at review:** `@opencode/client 2.0.24`
@@ -118,3 +120,15 @@ Recommended release follow-up: verify the deployed executable version, initializ
 The earlier 2.0.18 → 2.0.20 and 2.0.20 → 2.0.22 integrations supplied provider `needs_auth` handling, optional form cancellation feedback, and persisted working/last-turn review modes. They remain in the code.
 
 Manual subtask creation and parent-linked creation options remain removed, as requested. Existing child sessions and native subagent results remain readable. React Scan remains removed. This report replaces obsolete claims about parent creation and previously run tests with the current implementation and checks.
+
+## 2.0.28 compatibility follow-up (2026-10-13)
+
+The web app's direct `@opencode/client` dependency and the shared API client's dependency now request `^2.0.28`. The lockfile resolves the client, protocol, and schema to 2.0.28. The native mobile app continues to consume the shared client through `api-client` and `api-hooks`.
+
+The published Promise client retains the entry points and methods used here. Its new `integration.connect.external` method and optional `project.list({ archived })` input do not require changes to existing calls. External provider connection is a separate feature for a later integration. Both apps and the shared packages compile against 2.0.28, and a direct import check confirms that `OpenCode.make`, `vcs.init`, and `isLocationNotFoundError` remain available.
+
+The optional Effect peer now requests 4.0.1 while this workspace resolves 4.0.0-rc.117 for that peer; installation still reports a peer warning. The Promise client is the integration entry point. The deployed `opencode serve` executable has not been upgraded or verified, so newer server behavior and live compatibility still need runtime validation.
+
+## Agent worktree tools (2026-10-13)
+
+OpenCode 2.0.27 added Code Mode tools for creating, listing, and removing worktrees. `vibeongo provision-opencode` now upgrades a preinstalled OpenCode runtime older than 2.0.28 using the official curl installation method, then verifies the installed version before proceeding. This runs during new instance setup, before `opencode serve` starts and even when no credentials need importing. The server and model inventory use the same verified binary. On existing instances, rerun `vibeongo provision-opencode` and restart the OpenCode server after active turns finish; a package-only deployment does not change an already running server. Existing web and native mobile tool rendering and edit-permission prompts handle agent tool activity without dedicated worktree UI changes.

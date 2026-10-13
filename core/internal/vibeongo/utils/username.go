@@ -37,3 +37,10 @@ func ReplaceUsernamePlaceholder(value string) string {
 func WorkspaceDirectory() string {
 	return filepath.Join(CurrentUser.HomeDir, "workspace")
 }
+
+func OpenCodeBinaryPath() string {
+	if binary := os.Getenv("OPENCODE_BIN"); binary != "" {
+		return binary
+	}
+	return filepath.Join(CurrentUser.HomeDir, ".opencode", "bin", "opencode")
+}

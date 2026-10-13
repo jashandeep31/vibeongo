@@ -18,7 +18,7 @@ var opencodeModelNamePattern = regexp.MustCompile(`^[A-Za-z0-9_-]+/[A-Za-z0-9_.-
 func OpencodeInventoryHandler(c *echo.Context) error {
 	startTime := time.Now()
 	opencodeModelsCmd := exec.Command(
-		utils.ReplaceUsernamePlaceholder("/home/_USERNAME_/.opencode/bin/opencode"),
+		utils.OpenCodeBinaryPath(),
 		"models",
 		"--verbose",
 	)
