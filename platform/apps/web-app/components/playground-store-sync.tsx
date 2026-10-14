@@ -456,7 +456,6 @@ function ProjectSessionRuntimeSync({
       ) {
         void queryClient.invalidateQueries({
           queryKey: ["opencode", "inventory", sessionId, serverUrl],
-          exact: true,
         });
       }
 

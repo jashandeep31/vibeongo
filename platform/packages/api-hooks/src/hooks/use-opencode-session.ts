@@ -1248,18 +1248,22 @@ export const useOpencodeInventory = (
   accessToken: string,
   password?: string,
   directory?: string,
-) =>
-  useQuery({
+) => {
+  const initialPollDeadline = useRef(Date.now() + 120_000);
+  return useQuery({
     queryKey: ["opencode", "inventory", chatId, serverUrl, directory],
     queryFn: () =>
       getOpencodeInventory(chatId, serverUrl, accessToken, password, directory),
     enabled: !!serverUrl && !!accessToken && !!directory,
     refetchInterval: (query) =>
       query.state.data?.models.length && query.state.data.agents.length
-        ? false
+        ? Date.now() < initialPollDeadline.current
+          ? 5_000
+          : 60_000
         : 2_000,
     refetchOnMount: "always",
     retry: 5,
     retryDelay: 1_000,
     staleTime: 60_000,
   });
+};

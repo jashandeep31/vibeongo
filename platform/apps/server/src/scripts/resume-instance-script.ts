@@ -89,6 +89,26 @@ else
   setsid nohup /usr/local/bin/vibeongo serve > "$HOME/.logs/vibeongo-serve.log" 2>&1 < /dev/null &
 fi
 
+echo "Synchronizing OpenCode credentials"
+opencode_password=$(jq -er '.instanceConfig.opencodePassword | select(type == "string" and length > 0)' "$CONFIG_DIR/config.json")
+for attempt in {1..30}; do
+  if curl -fsS --connect-timeout 2 --max-time 3 \
+    --user "opencode:$opencode_password" \
+    http://127.0.0.1:4096/global/health > /dev/null 2>&1; then
+    break
+  fi
+  if [[ "$attempt" -eq 30 ]]; then
+    echo "OpenCode did not become ready after resume" >&2
+    exit 1
+  fi
+  sleep 2
+done
+local_token=$(jq -er '.instanceConfig.vibeongoLocalToken | select(type == "string" and length > 0)' "$CONFIG_DIR/config.json")
+curl -fsS --connect-timeout 5 --max-time 95 \
+  --request POST \
+  --url http://127.0.0.1:3101/opencode/renew-credentials \
+  --header "Authorization: Bearer $local_token" > /dev/null
+
 echo "Restoring remaining tools"
 /usr/local/bin/vibeongo provisiontools --skip-docker
 
