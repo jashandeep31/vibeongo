@@ -1,6 +1,6 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.0.28. See the compatibility follow-up below.
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.0.32. See the latest compatibility follow-up below.
 
 **Reviewed:** 2026-10-08
 
@@ -132,3 +132,9 @@ The optional Effect peer now requests 4.0.1 while this workspace resolves 4.0.0-
 ## Agent worktree tools (2026-10-13)
 
 OpenCode 2.0.27 added Code Mode tools for creating, listing, and removing worktrees. `vibeongo provision-opencode` now upgrades a preinstalled OpenCode runtime older than 2.0.28 using the official curl installation method, then verifies the installed version before proceeding. This runs during new instance setup, before `opencode serve` starts and even when no credentials need importing. The server and model inventory use the same verified binary. On existing instances, rerun `vibeongo provision-opencode` and restart the OpenCode server after active turns finish; a package-only deployment does not change an already running server. Existing web and native mobile tool rendering and edit-permission prompts handle agent tool activity without dedicated worktree UI changes.
+
+## 2.0.32 compatibility follow-up (2026-10-18)
+
+The npm `latest` dist-tag resolved to `@opencode/client` 2.0.32. The web app and shared API client now request `^2.0.32`; the lockfile resolves the client, protocol, and schema to 2.0.32. API hooks and the native mobile app continue to consume the shared API client and therefore do not need duplicate direct SDK dependencies.
+
+The shared API client, API hooks, web app, and native mobile app pass TypeScript compilation against the installed packages. A direct import check confirms that `OpenCode.make` and `isLocationNotFoundError` remain available. No compatibility code changes or new feature integration were required by these checks. The deployed `opencode serve` executable was not updated or exercised in this follow-up; its provisioning minimum remains 2.0.28. Runtime compatibility still requires validation against the deployed server.
