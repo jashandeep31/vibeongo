@@ -621,10 +621,10 @@ export function reduceOpencodeMessages(
                 ...(typeof native.rawFinish === "string"
                   ? { rawFinish: native.rawFinish }
                   : {}),
-                ...(native.providerState &&
-                typeof native.providerState === "object"
+                ...(nativeReplayData(native, "providerState") &&
+                typeof nativeReplayData(native, "providerState") === "object"
                   ? {
-                      providerState: native.providerState as Record<
+                      providerState: nativeReplayData(native, "providerState") as Record<
                         string,
                         unknown
                       >,
@@ -999,7 +999,7 @@ function reduceV2ToolPart(
     return {
       ...tool,
       executed: native.executed === true,
-      providerState: recordValue(native.state),
+      providerState: nativeReplayData(native, "state"),
       state: {
         status: "running",
         input: recordValue(native.input) ?? {},
@@ -1025,7 +1025,7 @@ function reduceV2ToolPart(
     return {
       ...tool,
       executed: native.executed === true || tool.executed === true,
-      providerResultState: recordValue(native.resultState),
+      providerResultState: nativeReplayData(native, "resultState"),
       state: {
         status: "completed",
         input,
@@ -1073,7 +1073,7 @@ function reduceV2ToolPart(
     return {
       ...tool,
       executed: native.executed === true || tool.executed === true,
-      providerResultState: recordValue(native.resultState),
+      providerResultState: nativeReplayData(native, "resultState"),
       state: {
         status: "error",
         input: tool.state.input,
@@ -1102,6 +1102,12 @@ function parseToolInput(value: unknown): Record<string, unknown> {
   } catch {
     return {};
   }
+}
+
+// OpenCode 2.1 unifies provider replay fields under `native`; retain older-server support.
+function nativeReplayData(value: object, legacyKey: string) {
+  const fields = value as Record<string, unknown>;
+  return recordValue(fields.native ?? fields[legacyKey]);
 }
 
 function recordValue(value: unknown) {
@@ -3878,8 +3884,8 @@ function normalizeV2Message(
     ...(message.model.variant ? { variant: message.model.variant } : {}),
     ...(message.finish ? { finish: message.finish } : {}),
     ...(message.rawFinish ? { rawFinish: message.rawFinish } : {}),
-    ...(message.providerState
-      ? { providerState: message.providerState as Record<string, unknown> }
+    ...(nativeReplayData(message, "providerState")
+      ? { providerState: nativeReplayData(message, "providerState") as Record<string, unknown> }
       : {}),
     ...(message.error ? { error: normalizeOpencodeError(message.error) } : {}),
     ...(message.retry
@@ -3898,6 +3904,7 @@ function normalizeV2Message(
       content.type === "tool"
         ? content.id
         : `${message.id}:${content.type}:${index}`;
+    const replayData = nativeReplayData(content, "state");
     if (content.type === "text") {
       return {
         id: contentId,
@@ -3905,8 +3912,8 @@ function normalizeV2Message(
         messageID: message.id,
         type: "text",
         text: content.text,
-        ...(content.state
-          ? { metadata: content.state as Record<string, unknown> }
+        ...(replayData
+          ? { metadata: replayData }
           : {}),
       };
     }
@@ -3917,8 +3924,8 @@ function normalizeV2Message(
         messageID: message.id,
         type: "reasoning",
         text: content.text,
-        ...(content.state
-          ? { metadata: content.state as Record<string, unknown> }
+        ...(replayData
+          ? { metadata: replayData }
           : {}),
         time: {
           start: content.time?.created ?? message.time.created,
@@ -3934,10 +3941,10 @@ function normalizeV2Message(
       callID: contentId,
       tool: content.name,
       executed: content.executed,
-      providerState: content.providerState as
+      providerState: nativeReplayData(content, "providerState") as
         | Record<string, unknown>
         | undefined,
-      providerResultState: content.providerResultState as
+      providerResultState: nativeReplayData(content, "providerResultState") as
         | Record<string, unknown>
         | undefined,
       state: normalizeV2ToolState(content.state, content.time, content.name),
