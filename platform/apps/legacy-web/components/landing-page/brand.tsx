@@ -1,11 +1,11 @@
 import Image from "next/image";
 import Link from "next/link";
 
-export function Wordmark({ logoOnly = false }: { logoOnly?: boolean }) {
+export function Wordmark() {
   return (
     <Link
       href="/"
-      aria-label={logoOnly ? "VibeOnGo home" : undefined}
+      aria-label="VibeOnGo home"
       className="flex items-center gap-2.5 font-semibold"
     >
       <Image
@@ -15,7 +15,7 @@ export function Wordmark({ logoOnly = false }: { logoOnly?: boolean }) {
         height={32}
         className="size-8 rounded-lg"
       />
-      {!logoOnly && <span>VibeOnGo</span>}
+      <span>VibeOnGo</span>
     </Link>
   );
 }

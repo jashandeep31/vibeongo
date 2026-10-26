@@ -34,7 +34,7 @@ export function LandingHeader({ appLoginUrl }: { appLoginUrl: string }) {
       }}
     >
       <div className="home-container home-header-row">
-        <Wordmark logoOnly />
+        <Wordmark />
         <nav aria-label="Main navigation" className="home-desktop-nav">
           {navLinks.map(({ href, label }) => (
             <a
