@@ -1,0 +1,36 @@
+x-server: &server
+  image: ${IMAGE_NAME:-vibeongo:latest}
+  build:
+    context: ./platform
+    dockerfile: apps/server/Dockerfile
+  env_file:
+    - ${ENV_FILE:-./platform/apps/server/.env}
+  volumes:
+    - type: bind
+      source: ${PEM_FILE:-./platform/apps/server/vibeongo.pem}
+      target: /app/apps/server/vibeongo.pem
+      read_only: true
+      bind:
+        create_host_path: false
+  restart: unless-stopped
+  networks:
+    - app
+
+services:
+  server:
+    <<: *server
+    container_name: vibeongo-server
+    environment:
+      PORT: "8000"
+    ports:
+      - "8000:8000"
+    command: ["node", "dist/index.js"]
+
+  worker:
+    <<: *server
+    container_name: vibeongo-worker
+    command: ["node", "dist/cron-worker.js"]
+
+networks:
+  app:
+    name: vibeongo-network
