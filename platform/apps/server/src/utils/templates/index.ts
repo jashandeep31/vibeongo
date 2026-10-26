@@ -26,9 +26,9 @@ export const projectTemplates: Record<
   string,
   (repoName: string) => ProjectTemplate
 > = {
-  "next-js-project": (repoName: string) => ({
+  "nextjs": (repoName: string) => ({
     ownername: "vibeongo",
-    reponame: "next-js-project",
+    reponame: "nextjs",
     project: {
       name: "Next.js",
       description: "A bare-minimum Next.js app with PostgreSQL ready to use.",
@@ -70,13 +70,13 @@ volumes:
       },
     ],
   }),
-  "next-js-express-project": (repoName: string) => ({
+  "express-vite": (repoName: string) => ({
     ownername: "vibeongo",
-    reponame: "next-js-express-project",
+    reponame: "express-vite",
     project: {
-      name: "Next.js + Express",
+      name: "Express + Vite",
       description:
-        "A full-stack TypeScript project with Next.js and Express applications.",
+        "A full-stack TypeScript project with Express and Vite applications.",
       initialScript: "",
       finalScript: `cd "$HOME/workspace/${repoName}/frontend"
 npm install
@@ -126,9 +126,9 @@ volumes:
       },
     ],
   }),
-  "turborepo-project": (repoName: string) => ({
+  "turbo-repo": (repoName: string) => ({
     ownername: "vibeongo",
-    reponame: "turborepo-project",
+    reponame: "turbo-repo",
     project: {
       name: "Turborepo",
       description:
