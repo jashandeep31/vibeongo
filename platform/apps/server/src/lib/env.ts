@@ -39,6 +39,7 @@ const envSchema = z.object({
   JWT_SECRET: z.string(),
   GITHUB_APP_ID: z.string(),
   GITHUB_WEBHOOK_SECRET: z.string(),
+  GITHUB_APP_PRIVATE_KEY_PATH: z.string().optional(),
   PROXY_SERVER_URL: z.string(),
   DODO_PAYMENT_PRODUCT_ID: z.string(),
   DODO_PAYMENT_BEARER_TOKEN: z.string(),
