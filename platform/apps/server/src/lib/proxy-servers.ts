@@ -11,7 +11,7 @@ interface ProxyServerConfig {
 const prodServers: ProxyServerConfig[] = [
   {
     region: "us-east-1",
-    domain: ".vibeongo.one",
+    domain: ".in.vibeongo.one",
   },
   {
     region: "ap-south-1",

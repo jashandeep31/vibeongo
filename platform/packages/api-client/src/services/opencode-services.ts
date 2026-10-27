@@ -4242,7 +4242,7 @@ function normalizeOpencodeServerUrl(serverUrl: string) {
 
   if (
     url.protocol !== "https:" ||
-    (!url.hostname.endsWith(".vibeongo.one") && url.hostname !== "vibeongo.one")
+    !url.hostname.endsWith(".in.vibeongo.one")
   ) {
     throw new Error("Invalid OpenCode server URL");
   }

@@ -219,7 +219,6 @@ export const suspendInstanceAndRevokeAccess = async ({
     await invalidateProxyHosts(
       instance.project_id,
       [`3101-${instance.id}`, `4096-${instance.id}`],
-      instance.proxy_domain,
     );
   }
 

@@ -59,7 +59,7 @@ export function FeatureBento() {
               <span>localhost:3000</span>
               <strong>
                 <ArrowRight size={16} aria-hidden="true" />
-                https://3000-project.vibeongo.one
+                https://3000-project.in.vibeongo.one
               </strong>
             </div>
           </div>

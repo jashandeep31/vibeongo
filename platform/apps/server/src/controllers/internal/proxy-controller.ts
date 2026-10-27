@@ -124,7 +124,7 @@ async function handleInstanceProxyUrl({
   });
 }
 
-// Handles custom URLs such as randomID.vibeongo.one.
+// Handles custom URLs such as randomID.in.vibeongo.one.
 async function handleCustomProxyUrl(domain: string, res: Response) {
   const subdomain = domain.split(".")[0];
 

@@ -281,7 +281,6 @@ const resumeSuspendedSessionUnderLock = async ({
     await invalidateProjectProxiesByPid(
       instance.project_id,
       [`3101-${instance.id}`, `4096-${instance.id}`],
-      instance.proxy_domain,
     );
   }
 
@@ -341,7 +340,6 @@ const resumeSuspendedSessionUnderLock = async ({
     await invalidateProjectProxiesByPid(
       instance.project_id,
       [`3101-${instance.id}`, `4096-${instance.id}`],
-      instance.proxy_domain,
     );
   }
 };

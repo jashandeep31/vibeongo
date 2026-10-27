@@ -15,7 +15,7 @@ export const proxyDomains = pgTable(
   {
     id: uuid("id").defaultRandom().primaryKey(),
 
-    // only add intials of the domain if its xyz.vibeongo.one then just add xyz
+    // Store only the subdomain; xyz.in.vibeongo.one is stored as xyz.
     domain: varchar("domain").notNull().unique(),
 
     // domain-level port mapping; host is chosen from project_domain_routing

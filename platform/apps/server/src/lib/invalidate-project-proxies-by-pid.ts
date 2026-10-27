@@ -6,9 +6,8 @@ import { getProxyServerUrl } from "./proxy-servers.js";
 export const invalidateProxyHosts = async (
   pid: string,
   hosts: string[],
-  proxyDomain?: string,
 ) => {
-  const domain = proxyDomain ?? (await getProxyServerUrl(pid));
+  const domain = await getProxyServerUrl(pid);
   const uniqueHosts = [
     ...new Set(
       hosts
@@ -35,7 +34,6 @@ export const invalidateProxyHosts = async (
 export const invalidateProjectProxiesByPid = async (
   pid: string,
   additionalHosts: string[] = [],
-  proxyDomain?: string,
 ) => {
   const data = await db
     .select({
@@ -48,9 +46,8 @@ export const invalidateProjectProxiesByPid = async (
     )
     .where(eq(projectDomainRouting.project_id, pid));
 
-  await invalidateProxyHosts(
-    pid,
-    [...data.map((d) => d.domain), ...additionalHosts],
-    proxyDomain,
-  );
+  await invalidateProxyHosts(pid, [
+    ...data.map((d) => d.domain),
+    ...additionalHosts,
+  ]);
 };
