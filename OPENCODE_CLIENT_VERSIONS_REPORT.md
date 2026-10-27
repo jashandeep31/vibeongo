@@ -1,6 +1,6 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.0.32. See the latest compatibility follow-up below.
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.0. See the latest compatibility follow-up below.
 
 **Reviewed:** 2026-10-08
 
@@ -138,3 +138,21 @@ OpenCode 2.0.27 added Code Mode tools for creating, listing, and removing worktr
 The npm `latest` dist-tag resolved to `@opencode/client` 2.0.32. The web app and shared API client now request `^2.0.32`; the lockfile resolves the client, protocol, and schema to 2.0.32. API hooks and the native mobile app continue to consume the shared API client and therefore do not need duplicate direct SDK dependencies.
 
 The shared API client, API hooks, web app, and native mobile app pass TypeScript compilation against the installed packages. A direct import check confirms that `OpenCode.make` and `isLocationNotFoundError` remain available. No compatibility code changes or new feature integration were required by these checks. The deployed `opencode serve` executable was not updated or exercised in this follow-up; its provisioning minimum remains 2.0.28. Runtime compatibility still requires validation against the deployed server.
+
+## 2.2.0 compatibility follow-up (2026-10-27)
+
+The npm `latest` dist-tag resolved to [`@opencode/client` 2.2.0](https://registry.npmjs.org/@opencode/client/2.2.0). At the start of this update, both direct dependencies and the lockfile were at 2.1.2; this version was newer than the preceding 2.0.32 report entry. The web app and shared API client now request `^2.2.0`, and the lockfile resolves the [client](https://registry.npmjs.org/@opencode/client/2.2.0), [protocol](https://registry.npmjs.org/@opencode/protocol/2.2.0), and [schema](https://registry.npmjs.org/@opencode/schema/2.2.0) to 2.2.0. The published client declares protocol and schema 2.2.0 as dependencies and optional Effect 4.0.1 and SolidJS peers.
+
+A frozen lockfile installation succeeded. The shared API client, API hooks, web app, and native mobile app pass TypeScript compilation against the installed 2.2.0 packages. A direct import check confirms that `OpenCode.make` and `isLocationNotFoundError` remain available. These checks required no client-side compatibility code changes; they do not establish live compatibility with an OpenCode server. The deployed `opencode serve` executable was not changed or exercised.
+
+### Breaking changes reviewed (2.1.2 → 2.2.0)
+
+[OpenCode 2.2.0's release notes](https://github.com/anomalyco/opencode/releases/tag/v2.2.0) list three breaking changes: the `@opencode/ai` root now exports its Promise API (Effect moved to `@opencode/ai/effect`, and `@opencode/ai/promise` was removed); the OpenCode GitHub Action is no longer published; and TUI plugins require OpenTUI 0.7 with changes to custom renderable hooks. This repository uses none of these surfaces. The published `@opencode/client` package retains its existing root Promise entry point, and the shared client, hooks, web app, and mobile app compile against 2.2.0. No source migration was required for this repository. This does not rule out runtime differences with a deployed server; the 2.2.0 server was not tested here. The earlier 2.1.0 breaking changes predate the repository's 2.1.2 baseline for this update.
+
+### New features available upstream
+
+The published Promise client adds experimental `generate.image` and `generate.decisions`, `voice.models`, client-hosted MCP support through `@opencode/client/mcp` and `mcp.client.token`, file `watch`/`unwatch`, session media retrieval, model filtering by type, and usage limits. See the [2.2.0](https://github.com/anomalyco/opencode/releases/tag/v2.2.0), [2.1.4](https://raw.githubusercontent.com/anomalyco/opencode/v2.2.0/CHANGELOG.md), and [2.1.3](https://github.com/anomalyco/opencode/releases/tag/v2.1.3) notes. OpenCode also added experimental background compaction, MCP input forms, configurable prompt-cache TTLs, and GUI plugin APIs. These are upstream capabilities, not features wired into Vibeongo by this dependency update. New server endpoints and behaviors require an appropriately updated OpenCode runtime.
+
+### Runtime alignment follow-up (2026-10-27)
+
+`vibeongo provision-opencode` now upgrades a preinstalled OpenCode runtime below 2.2.0 using `opencode upgrade 2.2.0 --method curl` and verifies the resulting binary. Server startup checks the same minimum before launching `opencode serve`, including direct starts that bypass provisioning. The standard new-instance and resume paths already run provisioning before server startup. Existing running servers still need provisioning and a restart to pick up the new executable. The version gate and upgrade path passed local Go tests with a fake OpenCode binary; a deployed 2.2.0 server and live client/server behavior were not exercised here.

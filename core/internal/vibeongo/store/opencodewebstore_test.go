@@ -1,9 +1,25 @@
 package store
 
 import (
+	"context"
+	"os"
+	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
+
+func TestStartWebServerRejectsOldOpenCodeBeforeRetry(t *testing.T) {
+	bin := filepath.Join(t.TempDir(), "opencode")
+	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf 'opencode v2.1.2\\n'\n"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("OPENCODE_BIN", bin)
+	err := NewOpencodeWeb().StartWebServerWithRetryContext(context.Background())
+	if err == nil || !strings.Contains(err.Error(), "required 2.2.0") {
+		t.Fatalf("expected minimum version error, got %v", err)
+	}
+}
 
 func TestWaitForOpencodeReadyRetriesHealthCheck(t *testing.T) {
 	checks := 0

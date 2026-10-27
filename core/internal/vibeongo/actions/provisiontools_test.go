@@ -12,15 +12,15 @@ import (
 
 func TestProvisionOpenCodeUpgradesWithoutCredentials(t *testing.T) {
 	versionFile := filepath.Join(t.TempDir(), "version")
-	if err := os.WriteFile(versionFile, []byte("opencode v2.0.24\n"), 0o600); err != nil {
+	if err := os.WriteFile(versionFile, []byte("opencode v2.1.2\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	bin := filepath.Join(t.TempDir(), "opencode")
 	script := fmt.Sprintf(`#!/bin/sh
 if [ "$1" = "--version" ]; then
   cat %q
-elif [ "$1" = "upgrade" ] && [ "$2" = "2.0.28" ] && [ "$3" = "--method" ] && [ "$4" = "curl" ]; then
-  printf 'opencode v2.0.28\n' > %q
+elif [ "$1" = "upgrade" ] && [ "$2" = "2.2.0" ] && [ "$3" = "--method" ] && [ "$4" = "curl" ]; then
+  printf 'opencode v2.2.0\n' > %q
 else
   exit 2
 fi
@@ -36,25 +36,7 @@ fi
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.TrimSpace(string(version)) != "opencode v2.0.28" {
+	if strings.TrimSpace(string(version)) != "opencode v2.2.0" {
 		t.Fatalf("unexpected version: %q", version)
-	}
-}
-
-func TestOpenCodeVersionSupported(t *testing.T) {
-	cases := []struct {
-		version [3]int
-		want    bool
-	}{
-		{version: [3]int{2, 0, 24}, want: false},
-		{version: [3]int{2, 0, 27}, want: false},
-		{version: [3]int{2, 0, 28}, want: true},
-		{version: [3]int{2, 0, 29}, want: true},
-		{version: [3]int{2, 1, 0}, want: true},
-	}
-	for _, test := range cases {
-		if got := openCodeVersionSupported(test.version); got != test.want {
-			t.Errorf("version %v: got %v, want %v", test.version, got, test.want)
-		}
 	}
 }

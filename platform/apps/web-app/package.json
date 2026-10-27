@@ -12,7 +12,7 @@
     "test:sidebar": "node tests/workspace-sidebar.test.mjs"
   },
   "dependencies": {
-    "@opencode/client": "^2.1.2",
+    "@opencode/client": "^2.2.0",
     "@pierre/diffs": "1.5.1",
     "@repo/api-client": "workspace:*",
     "@repo/api-hooks": "workspace:*",
