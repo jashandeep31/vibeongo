@@ -4,7 +4,7 @@ import { z } from "zod";
 export const WORKSPACE_ROOT = "/home/vibe/workspace";
 export const WORKSPACE_GUIDE_URI = "vibeongo://docs/workspace-guide";
 export const WORKSPACE_REMINDER =
-  "Use sandbox by default when runtime is omitted; do not ask the user to choose VM or sandbox. For all project changes, use the installed OpenCode CLI from the target repository by default. Read get_project_context for architecture and repository paths, and get_workspace_guide before operating on an instance. Repositories are normally under /home/vibe/workspace/<folder_name>; use SSH for navigation, inspection, and invoking OpenCode.";
+  "Use sandbox by default when runtime is omitted; do not ask VM or sandbox. For project changes and pull-request work, use the installed OpenCode CLI inside the project session sandbox from the target repository. Read get_project_context for architecture, domains, IPs, containers, and paths, and get_workspace_guide before operating. Repositories are normally under /home/vibe/workspace/<folder_name>. Use MCP network tools for explicit domain/IP access changes.";
 
 export const WORKSPACE_GUIDANCE = {
   guideTool: "get_workspace_guide",
@@ -59,7 +59,8 @@ setup: check get_session_context again. Normal runtime/storage charges apply.
 
 Read get_project_context with projectId before planning or implementing changes.
 It returns the project's saved overview and configured repositories with their
-saved overviews, providers, folder names, and expected workspace paths. It has
+saved overviews, providers, folder names, and expected workspace paths, plus
+domains, allowed IPs, configured container names, and project ports. It has
 no session or instance data. Missing overviews stay empty; do not invent an
 architecture or treat saved documentation as a live inspection of the code.
 
@@ -70,6 +71,43 @@ segment of the repository full_name: company/frontend becomes
 get_projects returns configured repository names and expected workspace paths.
 Confirm the directory exists before working; setup may still be in progress.
 If the runtime user differs from the standard template, use its $HOME/workspace.
+
+## Domains, IP access, and configured containers
+
+Use list_domains to list all owned projects' domains and allowed IPs. It accepts
+an optional projectId filter and paginates by project; follow hasNext. Use
+list_allowed_ips for the complete project IP list. add_allowed_ip accepts an
+explicit IPv4 address; remove_allowed_ips accepts entry IDs from the list. These
+are project-wide routing rules. Never assume the cloud agent's outgoing IP is
+the user's intended address.
+
+To check the requesting machine's IP, use the same proxy endpoint as the web
+domain cards: GET https://<project-domain>/proxy/my-ip. Prefer the project domain
+whose targetPort is 3101 from list_domains. The cards fall back to the instance
+host 3101-<instance-id><proxy-domain-suffix> when that project domain is absent.
+Use a known domain/host rather than guessing the proxy suffix. Example:
+
+    curl --fail --silent --show-error 'https://<project-domain>/proxy/my-ip'
+
+The response is JSON such as {"ip":"203.0.113.10"}; read and trim the ip field.
+No VibeOnGo API key is needed for this proxy route. Run the request from the
+client that needs domain access: a cloud agent gets its own outgoing IP, a
+sandbox gets the sandbox's IP, and a user's browser gets the user's IP. Add the
+returned address with add_allowed_ip only when it is the intended client's IP.
+If the route fails or returns no IP, report that instead of guessing or opening
+the domain to all IPs.
+
+update_domain can change an editable target port or allowAllIps. Setting
+allowAllIps=true bypasses the IP allowlist for that domain; false restores it.
+Other service authentication still applies. These tools use the same ownership
+checks and proxy cache invalidation as the web API. Use them when the user
+requests domain or IP configuration changes.
+
+list_containers and get_project_context expose saved container names and project
+ports only. They do not inspect running Docker containers, expose Compose
+secrets, or verify which container serves a domain. For live inspection and
+container-related code/configuration changes, work through OpenCode inside the
+project session sandbox. Read the saved architecture overview first.
 
 ## Connect through SSH
 
@@ -90,6 +128,12 @@ explain that limitation instead of claiming to have changed the instance.
 ## Required workflow for changes: use OpenCode
 
 Use the installed OpenCode CLI as the default tool for all project changes.
+For commits, branches, and pull requests, delegate the requested work to
+OpenCode inside the project session sandbox from the correct repository. Ask
+OpenCode to create or update the PR when requested and report the actual result
+and PR URL. Do not claim a PR was created or work was synchronized without
+confirmation. Do not bypass OpenCode with direct git/hosting commands for that
+project work. MCP network tools remain the path for explicit domain/IP changes.
 Read the repository's local instructions (such as AGENTS.md) and relevant
 documentation. SSH may be used to navigate, inspect files, check status, and
 invoke OpenCode. For implementation changes, delegate edits to the installed

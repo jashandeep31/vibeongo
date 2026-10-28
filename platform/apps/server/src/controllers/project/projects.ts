@@ -10,9 +10,7 @@ import {
   projectSshKeys,
   desc,
   projectConfig,
-  proxyDomains,
   projectDomainRouting,
-  routingAllowedIps,
   projectFiles,
   instances,
   gitRepos,
@@ -25,7 +23,7 @@ import { Request, Response } from "express";
 import { projectConfigValidator, z } from "@repo/shared";
 import { getDecryptedProjectConfig } from "../../services/project/project-config.js";
 import { encryptData } from "../../lib/encryption-decryption.js";
-import { getProxyServerUrl } from "../../lib/proxy-servers.js";
+import { getProjectDomainRoutingForUser } from "../../services/project/project-network.js";
 import { udpateProjectConfigByProjectIdAndUserId } from "../../services/project/update-project-service.js";
 import { projectSessionRoutes } from "../../routes/project-session-routes.js";
 import { demoReposToFork } from "../../utils/constants.js";
@@ -278,50 +276,9 @@ export const getProjectDomainsById = catchAsync(
     if (!id || typeof id !== "string")
       throw new AppError("project id is required", 400);
 
-    const projectRoutingWithDomains = await db
-      .select()
-      .from(projectDomainRouting)
-      .leftJoin(
-        proxyDomains,
-        eq(proxyDomains.routing_id, projectDomainRouting.id),
-      )
-      .leftJoin(
-        routingAllowedIps,
-        eq(routingAllowedIps.routing_id, projectDomainRouting.id),
-      )
-      .where(
-        and(
-          eq(projectDomainRouting.user_id, user.id),
-          eq(projectDomainRouting.project_id, id),
-        ),
-      );
-
-    const routing = projectRoutingWithDomains[0]?.project_domain_routing;
+    const routing = await getProjectDomainRoutingForUser(user.id, id);
     if (!routing) throw new AppError("routing not found", 404);
-
-    const domains: Map<string, typeof proxyDomains.$inferSelect> = new Map();
-    const ips: Map<string, typeof routingAllowedIps.$inferSelect> = new Map();
-    const postfix = await getProxyServerUrl(id);
-
-    for (const item of projectRoutingWithDomains) {
-      if (item.proxy_domains) {
-        domains.set(item.proxy_domains.id, {
-          ...item.proxy_domains,
-          domain: item.proxy_domains.domain + postfix,
-        });
-      }
-      if (item.routing_allowed_ips) {
-        ips.set(item.routing_allowed_ips.id, item.routing_allowed_ips);
-      }
-    }
-
-    res.status(200).json({
-      data: {
-        ...routing,
-        proxy_domains: [...domains.values()],
-        allowed_ips: [...ips.values()],
-      },
-    });
+    res.status(200).json({ data: routing });
   },
 );
 
