@@ -412,6 +412,12 @@ importers:
       '@grammyjs/stream':
         specifier: ^1.1.0
         version: 1.1.0(grammy@1.46.0)
+      '@modelcontextprotocol/node':
+        specifier: ^2.1.1
+        version: 2.1.1(@modelcontextprotocol/server@2.3.1)
+      '@modelcontextprotocol/server':
+        specifier: ^2.3.1
+        version: 2.3.1
       '@octokit/types':
         specifier: ^18.0.0
         version: 18.0.0
