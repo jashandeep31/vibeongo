@@ -74,7 +74,7 @@ export function registerSessionRuntimeTools(
           await startManualSession(user.id, sessionId, runtime),
         ),
         message:
-          "Instance created; runtime setup may still be in progress. Check get_session_context before requesting SSH access.",
+          "Instance created. Wait at least 60 seconds for project setup before requesting SSH access or running OpenCode, then check get_session_context. Setup may take longer; a running state alone does not guarantee readiness.",
         workspaceGuidance: WORKSPACE_GUIDANCE,
       })),
   );

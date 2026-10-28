@@ -44,6 +44,13 @@ suspended E2B/Boat instance in place, preserving its existing runtime; if no
 active instance exists, it creates a fresh sandbox by default.
 Fresh instances do not restore a terminated instance's unsaved filesystem.
 
+After spin_up_session or resume_session succeeds, wait at least 60 seconds before
+using SSH, running OpenCode, or starting project work so setup/restart scripts
+can run. Then check get_session_context and confirm the runtime is accessible.
+Setup can take longer than one minute; a running database state alone does not
+prove readiness. create_session only creates a record and needs no setup wait
+until an instance is actually started.
+
 extend_session_time, pause_session, and terminate_session require both sessionId
 and the exact instanceId from get_session_context. Time extension adds to the
 current expiration; supply a unique requestId and reuse it with the same minutes

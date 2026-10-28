@@ -212,7 +212,7 @@ export async function resumeManualSession(
       instanceId: active.id,
       status: "restarting",
       message:
-        "Instance resumed; its runtime is restarting in the background. Check get_session_context before using SSH.",
+        "Instance resumed; its runtime is restarting in the background. Wait at least 60 seconds before using SSH or OpenCode, then check get_session_context. Setup may take longer; a running state alone does not guarantee readiness.",
     };
   }
   const instance = await startManualSession(
@@ -224,7 +224,8 @@ export async function resumeManualSession(
     sessionId,
     instance: runtimeSummary(instance),
     status: "starting",
-    message: "Instance created; runtime setup may still be in progress.",
+    message:
+      "Instance created. Wait at least 60 seconds for project setup before using SSH or OpenCode, then check get_session_context. Setup may take longer; a running state alone does not guarantee readiness.",
   };
 }
 
