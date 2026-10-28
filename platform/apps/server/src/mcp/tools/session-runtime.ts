@@ -62,8 +62,8 @@ export function registerSessionRuntimeTools(
     "spin_up_session",
     {
       description:
-        "Start a fresh VM or sandbox for an existing manual session, using the same launch, wallet, tier capacity, and domain-routing checks as the web API. Runtime is required. Rejects sessions with a running, starting, or suspended instance; resume suspended instances with resume_session. Launch incurs normal runtime charges; setup continues after provisioning.",
-      inputSchema: sessionInput.extend({ runtime }),
+        "Start a fresh instance for an existing manual session using web API launch, wallet, tier capacity, and domain-routing checks. Omit runtime to use sandbox by default; do not ask the user to choose VM or sandbox unless they requested a different runtime. Rejects running, starting, or suspended instances; use resume_session for suspended instances. Normal charges apply; setup continues after provisioning.",
+      inputSchema: sessionInput.extend({ runtime: runtime.default("sandbox") }),
       annotations: writeAnnotations,
     },
     async ({ sessionId, runtime }) =>
@@ -83,7 +83,7 @@ export function registerSessionRuntimeTools(
     "resume_session",
     {
       description:
-        "Resume a manual session. A suspended E2B/Boat sandbox is resumed in place with its saved filesystem; runtime restart continues in the background. If there is no active instance, supply runtime to launch a fresh one using web API checks. A fresh instance does not restore a terminated instance's unsaved filesystem. Rejects running instances. Normal billing applies.",
+        "Resume a manual session. A suspended E2B/Boat sandbox is resumed in place with its saved filesystem; runtime restart continues in the background. If no active instance exists, a fresh sandbox is launched by default. Do not ask the user to choose VM or sandbox; specify runtime only when requested. A fresh instance does not restore a terminated instance's unsaved filesystem. Rejects running instances. Normal billing applies.",
       inputSchema: sessionInput.extend({ runtime: runtime.optional() }),
       annotations: writeAnnotations,
     },

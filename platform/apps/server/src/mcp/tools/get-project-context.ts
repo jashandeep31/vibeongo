@@ -13,7 +13,7 @@ export function registerProjectContextTool(
     "get_project_context",
     {
       description:
-        "Read a project's saved architecture overview and configured repositories, including repository overviews, providers, folder names, and expected workspace paths. Read this before planning or implementing project changes. Takes only projectId. Contains no sessions, instances, or credentials. Missing overviews stay empty; this is saved context, not live code inspection.",
+        "Read a project's saved architecture overview and configured repositories, including repository overviews, providers, folder names, and expected workspace paths. Read this before planning or implementing changes; use the installed OpenCode CLI by default for all project changes. Takes only projectId. Contains no sessions, instances, or credentials. Missing overviews stay empty; this is saved context, not live code inspection.",
       inputSchema: z
         .object({
           projectId: z.uuid().describe("Project ID returned by get_projects."),
@@ -50,8 +50,10 @@ export function registerProjectContextTool(
             guideTool: "get_workspace_guide",
             guideResourceUri: WORKSPACE_GUIDE_URI,
             requiredChangeTool: "opencode",
+            defaultChangeTool: "opencode",
+            defaultRuntime: "sandbox",
             instructions:
-              "Enter the relevant repository, read its local instructions, and use the installed OpenCode CLI for code changes.",
+              "For all project changes, enter the relevant repository, read its local instructions, and use the installed OpenCode CLI by default. When starting an instance without a specified runtime, use sandbox without asking the user to choose VM or sandbox.",
           },
           contextSource:
             "Saved project and repository overviews; not a live filesystem inspection. Workspace paths describe the configured layout, not verified directories.",

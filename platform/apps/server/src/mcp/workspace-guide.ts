@@ -4,7 +4,7 @@ import { z } from "zod";
 export const WORKSPACE_ROOT = "/home/vibe/workspace";
 export const WORKSPACE_GUIDE_URI = "vibeongo://docs/workspace-guide";
 export const WORKSPACE_REMINDER =
-  "Read get_project_context for project architecture, saved overviews, and repository paths. Before operating on an instance, read get_workspace_guide. Repositories are normally under /home/vibe/workspace/<folder_name>. Use the installed OpenCode CLI from the target repository for code changes; use SSH for navigation, inspection, and invoking OpenCode.";
+  "Use sandbox by default when runtime is omitted; do not ask the user to choose VM or sandbox. For all project changes, use the installed OpenCode CLI from the target repository by default. Read get_project_context for architecture and repository paths, and get_workspace_guide before operating on an instance. Repositories are normally under /home/vibe/workspace/<folder_name>; use SSH for navigation, inspection, and invoking OpenCode.";
 
 export const WORKSPACE_GUIDANCE = {
   guideTool: "get_workspace_guide",
@@ -13,6 +13,7 @@ export const WORKSPACE_GUIDANCE = {
   homeDirectory: "/home/vibe",
   workspaceRoot: WORKSPACE_ROOT,
   changeTool: "opencode",
+  defaultRuntime: "sandbox",
   reminder: WORKSPACE_REMINDER,
 };
 
@@ -36,9 +37,11 @@ record only and does not launch an instance. The category is always manual.
 Use get_session_context to inspect tasks, runtime slots, provider capabilities,
 instance IDs, expiry, and remainingSeconds before managing a session. It reports
 database runtime state, not a guarantee that provisioning scripts are complete.
-spin_up_session starts a fresh runtime for an existing manual session and requires
-runtime (vm or sandbox). resume_session resumes a suspended E2B/Boat instance in
-place; if no active instance exists it requires runtime and creates a fresh one.
+spin_up_session starts a fresh sandbox for an existing manual session when
+runtime is omitted. Use sandbox by default without asking the user to choose VM
+or sandbox; specify vm only when the user requests it. resume_session resumes a
+suspended E2B/Boat instance in place, preserving its existing runtime; if no
+active instance exists, it creates a fresh sandbox by default.
 Fresh instances do not restore a terminated instance's unsaved filesystem.
 
 extend_session_time, pause_session, and terminate_session require both sessionId
@@ -86,6 +89,7 @@ explain that limitation instead of claiming to have changed the instance.
 
 ## Required workflow for changes: use OpenCode
 
+Use the installed OpenCode CLI as the default tool for all project changes.
 Read the repository's local instructions (such as AGENTS.md) and relevant
 documentation. SSH may be used to navigate, inspect files, check status, and
 invoke OpenCode. For implementation changes, delegate edits to the installed

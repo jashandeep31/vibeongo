@@ -215,12 +215,11 @@ export async function resumeManualSession(
         "Instance resumed; its runtime is restarting in the background. Check get_session_context before using SSH.",
     };
   }
-  if (!runtime)
-    throw new AppError(
-      "Specify runtime (vm or sandbox) to start a fresh instance for this session",
-      400,
-    );
-  const instance = await startManualSession(userId, sessionId, runtime);
+  const instance = await startManualSession(
+    userId,
+    sessionId,
+    runtime ?? "sandbox",
+  );
   return {
     sessionId,
     instance: runtimeSummary(instance),
