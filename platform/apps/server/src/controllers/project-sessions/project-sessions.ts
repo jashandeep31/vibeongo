@@ -9,7 +9,6 @@ import {
   instances,
   projectSessions,
   projects,
-  projectDomainRouting,
   projectGitRepos,
   customQuery,
   projectSessionTasks,
@@ -25,8 +24,7 @@ import {
   projectSessionTaskSchema,
   updateProjectSessionTaskSchema,
 } from "@repo/shared";
-import { invalidateProjectProxiesByPid } from "../../lib/invalidate-project-proxies-by-pid.js";
-import { checkAndLaunchInstance } from "../../services/instances/check-and-queue-instance-launch.js";
+import { startManualSession } from "../../services/project-sessions/start-manual-session.js";
 
 import {
   createManualProjectSession,
@@ -308,38 +306,7 @@ export const resumeProjectSession = catchAsync(
       })
       .parse(req.body ?? {});
 
-    const [session] = await db
-      .select({ category: projectSessions.category })
-      .from(projectSessions)
-      .where(
-        and(eq(projectSessions.id, id), eq(projectSessions.user_id, user.id)),
-      );
-
-    if (!session) throw new AppError("Project session not found", 404);
-    if (session.category === "auto") {
-      throw new AppError("Automated sessions cannot be resumed manually", 409);
-    }
-
-    const instance = await checkAndLaunchInstance({
-      userId: user.id,
-      sessionId: id,
-      spinedUpBy: "manual",
-      runtime,
-      category: "manual",
-    });
-
-    if (!instance.project_id) {
-      throw new AppError("Instance project not found", 500);
-    }
-
-    await db
-      .update(projectDomainRouting)
-      .set({
-        target_instance_id: instance.id,
-      })
-      .where(eq(projectDomainRouting.project_id, instance.project_id));
-
-    await invalidateProjectProxiesByPid(instance.project_id);
+    await startManualSession(user.id, id, runtime);
 
     res.status(200).json({ message: "Successfully resumed the instance" });
   },

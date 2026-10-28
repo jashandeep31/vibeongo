@@ -4,6 +4,7 @@ import { registerCurrentUserTool } from "./tools/get-current-user.js";
 import { registerCreateSessionTool } from "./tools/create-session.js";
 import { registerProjectsTool } from "./tools/get-projects.js";
 import { registerSshTools } from "./tools/ssh-access.js";
+import { registerSessionRuntimeTools } from "./tools/session-runtime.js";
 import {
   registerWorkspaceGuide,
   WORKSPACE_REMINDER,
@@ -23,6 +24,7 @@ export function createMcpServer(user?: McpUser): McpServer {
   registerCurrentUserTool(server, user);
   registerProjectsTool(server, user);
   registerCreateSessionTool(server, user);
+  registerSessionRuntimeTools(server, user);
   registerSshTools(server, user);
   return server;
 }

@@ -31,8 +31,26 @@ hasNext to retrieve additional pages. Running and suspended instances appear in
 the overview; SSH access can only be created for running, unexpired instances.
 Use create_session to create a manual session in an owned project, supplying
 projectId, sessionName, and optionally sessionDescription. It creates a session
-record only and does not launch an instance. The category is always manual;
-automatic sessions and session resume are not exposed by this MCP server.
+record only and does not launch an instance. The category is always manual.
+
+Use get_session_context to inspect tasks, runtime slots, provider capabilities,
+instance IDs, expiry, and remainingSeconds before managing a session. It reports
+database runtime state, not a guarantee that provisioning scripts are complete.
+spin_up_session starts a fresh runtime for an existing manual session and requires
+runtime (vm or sandbox). resume_session resumes a suspended E2B/Boat instance in
+place; if no active instance exists it requires runtime and creates a fresh one.
+Fresh instances do not restore a terminated instance's unsaved filesystem.
+
+extend_session_time, pause_session, and terminate_session require both sessionId
+and the exact instanceId from get_session_context. Time extension adds to the
+current expiration; supply a unique requestId and reuse it with the same minutes
+when retrying that extension. Boat allows 1–120 whole minutes per request; VMs
+also support extension. Other sandbox providers do not support extension.
+Only E2B/Boat sandboxes support pause. Termination may lose unsaved instance data.
+Runtime operations use the same provider, wallet, capacity, billing, lifecycle
+locks, and queues as the web API. Mutations are limited to unarchived manual
+sessions. A queued, starting, or restarting response is not completed runtime
+setup: check get_session_context again. Normal runtime/storage charges apply.
 
 ## Workspace layout
 
