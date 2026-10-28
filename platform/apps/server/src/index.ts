@@ -16,6 +16,7 @@ import { env } from "./lib/env.js";
 import { createMcpRouter, mcpHandler } from "./mcp/handler.js";
 import {
   checkAuthorization,
+  checkApiKeyAuthorization,
   findAuthorizedUser,
 } from "./middlewares/check-authorization.js";
 import { authRoutes } from "./routes/auth-routes.js";
@@ -98,7 +99,7 @@ app.get("/", checkAuthorization(["user"]), (_req: Request, res: Response) => {
 });
 
 // --- Application Routes ---
-app.use("/mcp", createMcpRouter(env.ALLOWED_ORIGINS));
+app.use("/mcp", createMcpRouter(env.ALLOWED_ORIGINS, checkApiKeyAuthorization));
 app.use("/", miscellaneousRoutes);
 app.use("/", testRoutes);
 app.use("/api/v1/auth", authRoutes);

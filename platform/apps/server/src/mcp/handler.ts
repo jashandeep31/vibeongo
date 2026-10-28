@@ -1,16 +1,21 @@
 import { toNodeHandler } from "@modelcontextprotocol/node";
-import { createMcpHandler } from "@modelcontextprotocol/server";
-import { Router } from "express";
-import { createMcpServer } from "./create-server.js";
+import { createMcpHandler, type AuthInfo } from "@modelcontextprotocol/server";
+import { Router, type RequestHandler } from "express";
+import { createMcpServer, type McpUser } from "./create-server.js";
 
-export const mcpHandler = createMcpHandler(createMcpServer);
+export const mcpHandler = createMcpHandler(({ authInfo }) =>
+  createMcpServer(authInfo?.extra?.user as McpUser | undefined),
+);
 const handleMcpRequest = toNodeHandler(mcpHandler);
 
-export function createMcpRouter(allowedOrigins: readonly string[]): Router {
+export function createMcpRouter(
+  allowedOrigins: readonly string[],
+  authenticate: RequestHandler,
+): Router {
   const router = Router();
   const origins = new Set(allowedOrigins);
 
-  router.all("/", async (request, response) => {
+  router.use((request, response, next) => {
     // CORS alone does not reject requests. Cloud clients without Origin pass.
     const origin = request.headers.origin;
     if (origin !== undefined && !origins.has(origin)) {
@@ -18,8 +23,26 @@ export function createMcpRouter(allowedOrigins: readonly string[]): Router {
       return;
     }
 
+    next();
+  });
+
+  router.all("/", authenticate, async (request, response) => {
+    if (!request.user) {
+      response.status(401).json({ message: "Authentication is required" });
+      return;
+    }
+
+    // The Node adapter forwards verified caller context into this request's factory.
+    const authenticatedRequest = Object.assign(request, {
+      auth: {
+        token: request.get("authorization")?.trim().split(/\s+/)[1] ?? "",
+        clientId: "vibeongo-api-key",
+        scopes: [],
+        extra: { user: request.user },
+      } satisfies AuthInfo,
+    });
     // Express has already consumed the JSON stream; forward its parsed body.
-    await handleMcpRequest(request, response, request.body);
+    await handleMcpRequest(authenticatedRequest, response, request.body);
   });
 
   return router;
