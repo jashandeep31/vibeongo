@@ -50,6 +50,37 @@ export const checkAuthorization = (allowedRoles: AllowedCredential[]) => {
   };
 };
 
+// Direct integrations must present a user API key, never a cookie or legacy JWT.
+export async function checkApiKeyAuthorization(
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) {
+  const [scheme, token, ...extraParts] = (req.get("authorization") ?? "")
+    .trim()
+    .split(/\s+/);
+
+  res.setHeader("WWW-Authenticate", 'Bearer realm="vibeongo-mcp"');
+  if (
+    scheme?.toLowerCase() !== "bearer" ||
+    !token?.startsWith(USER_API_KEY_PREFIX) ||
+    extraParts.length > 0
+  ) {
+    return failedToAuthenticate(res);
+  }
+
+  return authenticateApiKey(
+    req,
+    res,
+    () => {
+      res.removeHeader("WWW-Authenticate");
+      next();
+    },
+    token,
+    ["api_key"],
+  );
+}
+
 function appBasedAuthenticator(
   req: Request,
   res: Response,

@@ -13,8 +13,10 @@ import { telegramBot } from "./bots/telegram/setup.js";
 import { dodoPaymentsWebhook } from "./controllers/payments/dodo-payments-webhook.js";
 import { AppError } from "./lib/app-error.js";
 import { env } from "./lib/env.js";
+import { createMcpRouter, mcpHandler } from "./mcp/handler.js";
 import {
   checkAuthorization,
+  checkApiKeyAuthorization,
   findAuthorizedUser,
 } from "./middlewares/check-authorization.js";
 import { authRoutes } from "./routes/auth-routes.js";
@@ -97,6 +99,7 @@ app.get("/", checkAuthorization(["user"]), (_req: Request, res: Response) => {
 });
 
 // --- Application Routes ---
+app.use("/mcp", createMcpRouter(env.ALLOWED_ORIGINS, checkApiKeyAuthorization));
 app.use("/", miscellaneousRoutes);
 app.use("/", testRoutes);
 app.use("/api/v1/auth", authRoutes);
@@ -280,6 +283,12 @@ if (env.NODE_ENV === "development") {
   await test();
 }
 // --- Server ---
+server.once("close", () => {
+  void mcpHandler.close().catch((error: unknown) => {
+    console.error("Failed to close MCP handler", error);
+  });
+});
+
 server.listen(env.PORT, () => {
   console.log(`Server is running at 🔥 ${env.PORT}`);
 });
