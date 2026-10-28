@@ -64,7 +64,7 @@ export function CreateProjectSessionDialog({
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const trimmedName = sessionName.trim();
-    if (!projectId || trimmedName.length < 4) return;
+    if (!projectId || trimmedName.length < 4 || trimmedName.length > 50) return;
 
     setErrorMessage(null);
     try {
@@ -85,7 +85,9 @@ export function CreateProjectSessionDialog({
   };
 
   const isSubmitDisabled =
-    createSession.isPending || sessionName.trim().length < 4;
+    createSession.isPending ||
+    sessionName.trim().length < 4 ||
+    sessionName.trim().length > 50;
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -109,6 +111,7 @@ export function CreateProjectSessionDialog({
                 onChange={(event) => setSessionName(event.target.value)}
                 placeholder="e.g. Implement command palette"
                 minLength={4}
+                maxLength={50}
                 autoFocus
                 disabled={createSession.isPending}
               />

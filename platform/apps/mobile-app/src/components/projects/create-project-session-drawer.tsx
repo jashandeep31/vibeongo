@@ -44,6 +44,10 @@ export function CreateProjectSessionDrawer({
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const trimmedName = sessionName.trim();
   const isNameTooShort = sessionName.length > 0 && trimmedName.length < 4;
+  const isSubmitDisabled =
+    trimmedName.length < 4 ||
+    trimmedName.length > 50 ||
+    createSession.isPending;
 
   useEffect(() => {
     if (!project) return;
@@ -67,7 +71,7 @@ export function CreateProjectSessionDrawer({
   };
 
   const submit = async () => {
-    if (!project || trimmedName.length < 4 || createSession.isPending) return;
+    if (!project || isSubmitDisabled) return;
     setErrorMessage(null);
     try {
       await createSession.mutateAsync({
@@ -129,6 +133,7 @@ export function CreateProjectSessionDrawer({
                 </ThemedText>
                 <TextInput
                   editable={!createSession.isPending}
+                  maxLength={50}
                   onChangeText={setSessionName}
                   placeholder="e.g. Implement command palette"
                   placeholderTextColor={theme.textSecondary}
@@ -192,15 +197,14 @@ export function CreateProjectSessionDrawer({
               <Pressable
                 accessibilityRole="button"
                 accessibilityState={{
-                  disabled: trimmedName.length < 4 || createSession.isPending,
+                  disabled: isSubmitDisabled,
                 }}
-                disabled={trimmedName.length < 4 || createSession.isPending}
+                disabled={isSubmitDisabled}
                 onPress={() => void submit()}
                 style={({ pressed }) => [
                   styles.action,
                   { backgroundColor: theme.text },
-                  (trimmedName.length < 4 || createSession.isPending) &&
-                    styles.disabled,
+                  isSubmitDisabled && styles.disabled,
                   pressed && styles.pressed,
                 ]}
               >

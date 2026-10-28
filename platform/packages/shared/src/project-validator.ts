@@ -157,7 +157,8 @@ export const createInstanceSchema = z.object({
   runtime: z.enum(["vm", "sandbox"]).default("vm"),
   sessionName: z
     .string()
-    .min(4, "Session name must be at least 4 characters long"),
+    .min(4, "Session name must be at least 4 characters long")
+    .max(50, "Session name must be at most 50 characters long"),
   sessionDescription: z.string().optional(),
   tasks: z.array(projectSessionTaskSchema),
 });

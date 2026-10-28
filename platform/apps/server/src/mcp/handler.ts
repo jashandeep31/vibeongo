@@ -6,7 +6,14 @@ import { createMcpServer, type McpUser } from "./create-server.js";
 export const mcpHandler = createMcpHandler(({ authInfo }) =>
   createMcpServer(authInfo?.extra?.user as McpUser | undefined),
 );
-const handleMcpRequest = toNodeHandler(mcpHandler);
+const handleMcpRequest = toNodeHandler({
+  async fetch(request, options) {
+    const response = await mcpHandler.fetch(request, options);
+    // Override the transport's cache policy for account data and SSH credentials.
+    response.headers.set("Cache-Control", "no-store, no-transform");
+    return response;
+  },
+});
 
 export function createMcpRouter(
   allowedOrigins: readonly string[],
@@ -31,6 +38,8 @@ export function createMcpRouter(
       response.status(401).json({ message: "Authentication is required" });
       return;
     }
+
+    response.set("Cache-Control", "no-store");
 
     // The Node adapter forwards verified caller context into this request's factory.
     const authenticatedRequest = Object.assign(request, {
