@@ -11,16 +11,18 @@ import {
 export async function getProjectWorkspaceRepositories(
   userId: string,
   projectIds: string[],
+  { includeOverview = false }: { includeOverview?: boolean } = {},
 ) {
   if (projectIds.length === 0) return [];
 
-  // Select only repository identity, never clone credentials or runtime config.
+  // Select repository identity and optional documentation, never credentials.
   return db
     .select({
       projectId: projectGitRepos.project_id,
       id: gitRepos.id,
       full_name: gitRepos.full_name,
       type: gitRepos.type,
+      ...(includeOverview ? { overview: gitRepos.overview } : {}),
     })
     .from(projectGitRepos)
     .innerJoin(projects, eq(projects.id, projectGitRepos.project_id))

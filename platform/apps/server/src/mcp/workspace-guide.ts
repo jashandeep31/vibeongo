@@ -4,7 +4,7 @@ import { z } from "zod";
 export const WORKSPACE_ROOT = "/home/vibe/workspace";
 export const WORKSPACE_GUIDE_URI = "vibeongo://docs/workspace-guide";
 export const WORKSPACE_REMINDER =
-  "Before operating on an instance, read get_workspace_guide. Repositories are normally under /home/vibe/workspace/<folder_name>. Use the installed OpenCode CLI from the target repository for code changes; use SSH for navigation, inspection, and invoking OpenCode.";
+  "Read get_project_context for project architecture, saved overviews, and repository paths. Before operating on an instance, read get_workspace_guide. Repositories are normally under /home/vibe/workspace/<folder_name>. Use the installed OpenCode CLI from the target repository for code changes; use SSH for navigation, inspection, and invoking OpenCode.";
 
 export const WORKSPACE_GUIDANCE = {
   guideTool: "get_workspace_guide",
@@ -53,6 +53,12 @@ sessions. A queued, starting, or restarting response is not completed runtime
 setup: check get_session_context again. Normal runtime/storage charges apply.
 
 ## Workspace layout
+
+Read get_project_context with projectId before planning or implementing changes.
+It returns the project's saved overview and configured repositories with their
+saved overviews, providers, folder names, and expected workspace paths. It has
+no session or instance data. Missing overviews stay empty; do not invent an
+architecture or treat saved documentation as a live inspection of the code.
 
 The standard Linux user is vibe, with home directory /home/vibe. Repositories
 are cloned into /home/vibe/workspace/<folder_name>. The folder name is the last
