@@ -1422,6 +1422,14 @@ const ProjectChatComposer = memo(function ProjectChatComposer({
         </View>
       ) : null}
       <OpencodeComposerController
+        goalConnection={{
+          chatId,
+          sessionId,
+          serverUrl,
+          accessToken,
+          password,
+          directory,
+        }}
         accessibilityLabel={accessibilityLabel}
         actions={actions}
         commands={commands}

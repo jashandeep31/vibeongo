@@ -31,6 +31,40 @@ import {
   getProxyAuthorizationValue,
   PROXY_AUTHORIZATION_HEADER,
 } from "./proxy-auth.js";
+import {
+  opencodeGoalRpc,
+  opencodeGoalSchema,
+  type OpencodeGoalAction,
+  type OpencodeGoalConnection,
+} from "./opencode-goal.js";
+
+export async function getOpencodeGoal(
+  connection: OpencodeGoalConnection,
+  signal?: AbortSignal,
+) {
+  const { chatId, sessionId, serverUrl, accessToken, password, directory } =
+    connection;
+  const goal = await getOpencodeClient(chatId, serverUrl, accessToken, password)
+    .rpc(opencodeGoalRpc)
+    .get(
+      { sessionID: sessionId },
+      { location: { directory }, ...(signal ? { signal } : {}) },
+    );
+  return opencodeGoalSchema.nullable().parse(goal);
+}
+
+export async function controlOpencodeGoal(
+  connection: OpencodeGoalConnection,
+  action: OpencodeGoalAction,
+) {
+  const { chatId, sessionId, serverUrl, accessToken, password } = connection;
+  await getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+  ).session.command({ sessionID: sessionId, name: "goal", text: action });
+}
 
 const clients = new Map<string, OpenCodeClient>();
 const vcsRecoveryRequests = new WeakMap<OpenCodeClient, Promise<void>>();

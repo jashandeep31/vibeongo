@@ -1,6 +1,10 @@
 "use client";
 
-import { useOpencodeStatus } from "@repo/api-hooks";
+import {
+  applyOpencodeGoalEvent,
+  opencodeGoalKey,
+  useOpencodeStatus,
+} from "@repo/api-hooks";
 import { useOpencodeSessions } from "@repo/api-hooks";
 import { useGetProjectOverview } from "@repo/api-hooks";
 import {
@@ -172,6 +176,7 @@ function ProjectSessionRuntimeSync({
     let streamController: AbortController | null = null;
 
     const handleEvent = (event: Event) => {
+      applyOpencodeGoalEvent(queryClient, sessionId, serverUrl, event);
       const opencodeSessionId = getEventSessionId(event);
       const chatsStore = useSessionChatsStore.getState();
       const eventType = (event as { type: string }).type;
@@ -485,6 +490,9 @@ function ProjectSessionRuntimeSync({
             signal,
             handleEvent,
             () => {
+              void queryClient.invalidateQueries({
+                queryKey: opencodeGoalKey(sessionId, serverUrl),
+              });
               void refreshStatuses();
               void queryClient.invalidateQueries({
                 queryKey: ["opencode", "chat-sessions", sessionId, serverUrl],

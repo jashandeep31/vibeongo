@@ -1312,6 +1312,14 @@ export function OpencodeSessionChat({
                       </div>
                     ) : null}
                     <OpencodeComposer
+                      goalConnection={{
+                        chatId,
+                        sessionId,
+                        serverUrl,
+                        accessToken,
+                        password,
+                        directory: rawResponse.session.directory,
+                      }}
                       key={draftKey}
                       draftKey={draftKey}
                       submitDisabled={

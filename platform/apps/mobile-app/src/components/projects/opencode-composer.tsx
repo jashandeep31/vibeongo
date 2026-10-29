@@ -1,5 +1,8 @@
+import { useOpencodeGoal } from "@repo/api-hooks";
 import {
   filterOpencodeCommands,
+  normalizeOpencodeError,
+  type OpencodeGoalConnection,
   getActiveOpencodeSlashCommand,
   type OpencodeCommand,
   type OpencodeFileReference,
@@ -79,6 +82,7 @@ export type ComposerAttachment = UploadAttachment & {
 };
 
 type OpencodeComposerProps = {
+  goalConnection?: OpencodeGoalConnection;
   accessibilityLabel: string;
   actions?: OpencodeComposerAction[];
   attachments?: ComposerAttachment[];
@@ -167,6 +171,7 @@ export const OpencodeComposerController = memo(
 );
 
 export function OpencodeComposer({
+  goalConnection,
   accessibilityLabel,
   actions,
   attachments = [],
@@ -194,6 +199,7 @@ export function OpencodeComposer({
   submitDisabled: submitDisabledProp,
   value,
 }: OpencodeComposerProps) {
+  const goalState = useOpencodeGoal(goalConnection);
   const theme = useTheme();
   const isDark = useColorScheme() === "dark";
   const inputRef = useRef<TextInput>(null);
@@ -735,6 +741,107 @@ export function OpencodeComposer({
 
   return (
     <View style={styles.composerArea}>
+      {goalConnection && (goalState.goal || goalState.error) ? (
+        <View
+          accessibilityLabel="Session goal"
+          style={[styles.goalPanel, { borderColor: theme.backgroundSelected }]}
+        >
+          {goalState.goal ? (
+            <>
+              <View style={styles.goalHeader}>
+                <ThemedText
+                  accessibilityLiveRegion="polite"
+                  style={styles.goalStatus}
+                >
+                  {goalState.goal.status === "active"
+                    ? "Goal active"
+                    : goalState.goal.status === "paused"
+                      ? "Goal paused"
+                      : "Goal met"}
+                </ThemedText>
+                <ThemedText
+                  style={{ fontSize: 11, color: theme.textSecondary }}
+                >
+                  Continuations {goalState.goal.rounds}/
+                  {goalState.goal.maxRounds}
+                </ThemedText>
+              </View>
+              <ScrollView style={{ maxHeight: 96 }} nestedScrollEnabled>
+                <ThemedText style={{ fontSize: 13 }}>
+                  {goalState.goal.objective}
+                </ThemedText>
+              </ScrollView>
+              {goalState.goal.reason ? (
+                <ThemedText
+                  style={{ fontSize: 12, color: theme.textSecondary }}
+                >
+                  {goalState.goal.reason}
+                </ThemedText>
+              ) : null}
+              <View style={styles.goalActions}>
+                {goalState.goal.status !== "complete" ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      goalState.goal.status === "active"
+                        ? "Pause goal"
+                        : "Resume goal"
+                    }
+                    disabled={disabled || goalState.isPending}
+                    style={[
+                      styles.goalAction,
+                      { opacity: disabled || goalState.isPending ? 0.5 : 1 },
+                    ]}
+                    onPress={() =>
+                      goalState.control(
+                        goalState.goal?.status === "active"
+                          ? "pause"
+                          : "resume",
+                      )
+                    }
+                  >
+                    {goalState.isPending ? (
+                      <ActivityIndicator size="small" color={theme.text} />
+                    ) : null}
+                    <ThemedText style={{ fontSize: 13 }}>
+                      {goalState.goal.status === "active" ? "Pause" : "Resume"}
+                    </ThemedText>
+                  </Pressable>
+                ) : null}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear goal"
+                  disabled={disabled || goalState.isPending}
+                  style={[
+                    styles.goalAction,
+                    { opacity: disabled || goalState.isPending ? 0.5 : 1 },
+                  ]}
+                  onPress={() => goalState.control("clear")}
+                >
+                  <ThemedText style={{ fontSize: 13 }}>Clear</ThemedText>
+                </Pressable>
+              </View>
+            </>
+          ) : null}
+          {goalState.error ? (
+            <>
+              <ThemedText accessibilityRole="alert" style={{ fontSize: 12 }}>
+                Goal request failed:{" "}
+                {normalizeOpencodeError(goalState.error).message}
+              </ThemedText>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Refresh goal"
+                disabled={goalState.isLoading || goalState.isPending}
+                style={styles.goalAction}
+                onPress={goalState.refresh}
+              >
+                <ThemedText style={{ fontSize: 13 }}>Refresh</ThemedText>
+              </Pressable>
+            </>
+          ) : null}
+        </View>
+      ) : null}
       {attachments.length ? (
         <ScrollView
           contentContainerStyle={styles.attachmentPreviews}
@@ -1461,6 +1568,30 @@ function SelectionSheet({
 }
 
 const styles = StyleSheet.create({
+  goalPanel: {
+    borderWidth: 1,
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+    marginBottom: 8,
+  },
+  goalHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    gap: 8,
+  },
+  goalStatus: { fontSize: 12, fontWeight: "600" },
+  goalActions: { flexDirection: "row", gap: 8 },
+  goalAction: {
+    minHeight: 44,
+    paddingHorizontal: 12,
+    alignItems: "center",
+    justifyContent: "center",
+    flexDirection: "row",
+    gap: 6,
+  },
   actionControls: {
     alignItems: "center",
     flexDirection: "row",

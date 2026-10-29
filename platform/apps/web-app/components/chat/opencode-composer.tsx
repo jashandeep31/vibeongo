@@ -1,5 +1,7 @@
 "use client";
 
+import { useOpencodeGoal } from "@repo/api-hooks";
+
 import {
   readComposerDraft,
   saveComposerDraft,
@@ -12,6 +14,8 @@ import {
 } from "@/components/chat/opencode-provider-connect-dialog";
 import {
   filterOpencodeCommands,
+  normalizeOpencodeError,
+  type OpencodeGoalConnection,
   getActiveOpencodeSlashCommand,
   type OpencodeCommand,
   type OpencodeFileReference,
@@ -70,6 +74,7 @@ const MAX_ATTACHMENTS = 5;
 const MAX_ATTACHMENT_BYTES = 20 * 1024 * 1024;
 
 type OpencodeComposerProps = {
+  goalConnection?: OpencodeGoalConnection;
   onSubmit: (
     question: string,
     attachments: File[],
@@ -114,6 +119,7 @@ function getActiveFileMention(value: string, cursor: number) {
 }
 
 export function OpencodeComposer({
+  goalConnection,
   onSubmit,
   draftKey,
   disabled = false,
@@ -135,6 +141,7 @@ export function OpencodeComposer({
   onNewChat,
   actions,
 }: OpencodeComposerProps) {
+  const goalState = useOpencodeGoal(goalConnection);
   const [restored] = useState(() =>
     draftKey ? readComposerDraft(draftKey) : undefined,
   );
@@ -645,6 +652,86 @@ export function OpencodeComposer({
         isDraggingAttachment ? "ring-primary/50 ring-2" : ""
       }`}
     >
+      {goalConnection && (goalState.goal || goalState.error) ? (
+        <div
+          className="bg-muted/40 flex flex-col gap-2 rounded-2xl border px-3 py-2"
+          aria-label="Session goal"
+        >
+          {goalState.goal ? (
+            <>
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-xs font-medium" role="status">
+                  {goalState.goal.status === "active"
+                    ? "Goal active"
+                    : goalState.goal.status === "paused"
+                      ? "Goal paused"
+                      : "Goal met"}
+                </span>
+                <span className="text-muted-foreground text-xs">
+                  Continuations {goalState.goal.rounds}/
+                  {goalState.goal.maxRounds}
+                </span>
+              </div>
+              <p className="max-h-24 overflow-y-auto text-sm break-words whitespace-pre-wrap">
+                {goalState.goal.objective}
+              </p>
+              {goalState.goal.reason ? (
+                <p className="text-muted-foreground text-xs">
+                  {goalState.goal.reason}
+                </p>
+              ) : null}
+              <div className="flex items-center gap-2">
+                {goalState.goal.status !== "complete" ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={disabled || goalState.isPending}
+                    onClick={() =>
+                      goalState.control(
+                        goalState.goal?.status === "active"
+                          ? "pause"
+                          : "resume",
+                      )
+                    }
+                  >
+                    {goalState.isPending ? (
+                      <Loader2 className="size-3 animate-spin" />
+                    ) : null}
+                    {goalState.goal.status === "active" ? "Pause" : "Resume"}
+                  </Button>
+                ) : null}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  disabled={disabled || goalState.isPending}
+                  onClick={() => goalState.control("clear")}
+                >
+                  Clear
+                </Button>
+              </div>
+            </>
+          ) : null}
+          {goalState.error ? (
+            <div className="flex items-center justify-between gap-2">
+              <p role="alert" className="text-destructive text-xs">
+                Goal request failed:{" "}
+                {normalizeOpencodeError(goalState.error).message}
+              </p>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={goalState.isLoading || goalState.isPending}
+                onClick={goalState.refresh}
+              >
+                Refresh
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {forkDraft && (
         <div className="flex flex-wrap gap-2 px-1">
           {forkDraft.files.map((file, index) => (

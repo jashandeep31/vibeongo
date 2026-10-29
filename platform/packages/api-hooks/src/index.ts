@@ -17,6 +17,7 @@ export * from "./hooks/use-opencode-session.js";
 export * from "./hooks/use-opencode-mcp.js";
 export * from "./hooks/use-opencode-sessions.js";
 export * from "./hooks/use-opencode-status.js";
+export * from "./hooks/use-opencode-goal.js";
 export * from "./hooks/use-project-metadata.js";
 export * from "./hooks/use-project-automations.js";
 export * from "./hooks/use-project-sessions.js";

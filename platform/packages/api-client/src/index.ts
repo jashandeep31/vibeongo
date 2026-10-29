@@ -280,3 +280,4 @@ export class WebClient {
 }
 
 export type ApiClient = MobileClient | WebClient;
+export * from "./services/opencode-goal.js";

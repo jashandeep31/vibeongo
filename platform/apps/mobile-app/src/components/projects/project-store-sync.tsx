@@ -1,4 +1,6 @@
 import {
+  applyOpencodeGoalEvent,
+  opencodeGoalKey,
   useGetProjectOverview,
   useOpencodeSessions,
   useOpencodeStatus,
@@ -250,6 +252,7 @@ function ProjectSessionRuntimeSync({
     };
 
     const handleEvent = (event: Event) => {
+      applyOpencodeGoalEvent(queryClient, sessionId, serverUrl, event);
       const opencodeSessionId = getEventSessionId(event);
       const store = useSessionChatsStore.getState();
 
@@ -352,6 +355,9 @@ function ProjectSessionRuntimeSync({
             signal,
             handleEvent,
             () => {
+              void queryClient.invalidateQueries({
+                queryKey: opencodeGoalKey(sessionId, serverUrl),
+              });
               void sessionsQuery.refetch();
               const activeSessionId = activeOpencodeSessionIdRef.current;
               if (activeSessionId) {
