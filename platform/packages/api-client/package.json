@@ -20,7 +20,7 @@
     "tsc-watch": "^7.2.1"
   },
   "dependencies": {
-    "@opencode/client": "^2.2.0",
+    "@opencode/client": "^2.2.1",
     "@repo/db": "workspace:*",
     "@repo/shared": "workspace:*",
     "axios": "^1.20.0",

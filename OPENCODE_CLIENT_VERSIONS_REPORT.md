@@ -1,6 +1,6 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.0. See the latest compatibility follow-up below.
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.1. See the latest compatibility follow-up below.
 
 **Reviewed:** 2026-10-08
 
@@ -156,3 +156,35 @@ The published Promise client adds experimental `generate.image` and `generate.de
 ### Runtime alignment follow-up (2026-10-27)
 
 `vibeongo provision-opencode` now upgrades a preinstalled OpenCode runtime below 2.2.0 using `opencode upgrade 2.2.0 --method curl` and verifies the resulting binary. Server startup checks the same minimum before launching `opencode serve`, including direct starts that bypass provisioning. The standard new-instance and resume paths already run provisioning before server startup. Existing running servers still need provisioning and a restart to pick up the new executable. The version gate and upgrade path passed local Go tests with a fake OpenCode binary; a deployed 2.2.0 server and live client/server behavior were not exercised here.
+
+## 2.2.1 dependency-only follow-up (2026-10-29)
+
+The npm `latest` dist-tag was queried directly and resolves to **2.2.1**. Both direct dependencies (`platform/packages/api-client/package.json` and `platform/apps/web-app/package.json`) now request `^2.2.1`; the lockfile resolves client, protocol, and schema to 2.2.1. Unrelated dependency resolution changes were excluded. API hooks and native mobile inherit the shared client upgrade.
+
+Sources: published [client metadata](https://registry.npmjs.org/@opencode/client/2.2.1), [protocol metadata](https://registry.npmjs.org/@opencode/protocol/2.2.1), [schema metadata](https://registry.npmjs.org/@opencode/schema/2.2.1), and the [official versioned changelog](https://github.com/anomalyco/opencode/blob/v2.2.1/CHANGELOG.md). The release notes were read from the upstream checkout at `/home/jashan/Dev/opensource/opencode/CHANGELOG.md`; the installed published 2.2.0 and 2.2.1 client declarations were compared directly.
+
+### Compatibility findings — implementation left unchanged
+
+The release notes list breaking changes for direct `@opencode/ai` consumers: removal of fal, Black Forest Labs, Replicate, and Stability providers; removal of five legacy provider entry points in favor of nested paths; and renaming provider `configure()` input types to `Config`. No direct `@opencode/ai` imports or dependencies were found in this repository. These changes do not change the HTTP API according to upstream.
+
+The generated SDK groups experimental methods under `client.experimental`. Existing locations remain as deprecated aliases in 2.2.1, with removal announced for the next minor release. Five calls in `platform/packages/api-client/src/services/opencode-services.ts` use these aliases:
+
+| Existing call | Upstream replacement for a later migration |
+| --- | --- |
+| `client.session.export` | `client.experimental.session.export` |
+| `client.file.write` (attachment upload) | `client.experimental.file.write` |
+| `client.mcp.add` | `client.experimental.mcp.add` |
+| `client.mcp.connect` | `client.experimental.mcp.connect` |
+| `client.mcp.disconnect` | `client.experimental.mcp.disconnect` |
+
+These are upcoming compatibility risks, not removed APIs in 2.2.1. No migration, application behavior change, or new feature integration was made, as requested. No source changes were required by the compilation checks.
+
+### Validation and runtime limits
+
+- `pnpm install --frozen-lockfile --offline --ignore-scripts`: passed with the final focused lockfile.
+- Shared API client and API hooks: TypeScript compilation passed (`tsc -p tsconfig.json`).
+- Web app and native mobile: TypeScript checks passed (`tsc --noEmit --incremental false`).
+- Direct ESM import check: `OpenCode.make` and `isLocationNotFoundError` remain available.
+- `git diff --check`: passed.
+
+The TypeScript checks invoked the workspace TypeScript executable directly with Node. No live server, browser, or mobile interaction was exercised. The runtime executable and its provisioning/startup minimum remain at 2.2.0; this client dependency update does not upgrade deployed servers. Existing workspace peer warnings concern the legacy web Effect resolver and mobile Metro configuration; the OpenCode optional Effect peer and workspace both resolve 4.0.1.
