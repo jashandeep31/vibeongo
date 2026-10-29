@@ -141,32 +141,6 @@ func ProvisionT3Code(cfg config.Config) error {
 	return nil
 }
 
-func ensureOpenCodeVersion(opencodeBin string) error {
-	version, err := utils.OpenCodeVersion(opencodeBin)
-	if err != nil {
-		return err
-	}
-	if utils.OpenCodeVersionSupported(version) {
-		return nil
-	}
-
-	fmt.Printf("upgrading OpenCode to %s\n", utils.MinimumOpenCodeVersion)
-	cmd := exec.Command(opencodeBin, "upgrade", utils.MinimumOpenCodeVersion, "--method", "curl")
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("upgrade OpenCode to %s: %w", utils.MinimumOpenCodeVersion, err)
-	}
-	version, err = utils.OpenCodeVersion(opencodeBin)
-	if err != nil {
-		return err
-	}
-	if !utils.OpenCodeVersionSupported(version) {
-		return fmt.Errorf("OpenCode upgrade did not reach %s", utils.MinimumOpenCodeVersion)
-	}
-	return nil
-}
-
 // ProvisionOpenCode imports the credentials (output of `opencode auth export`) with `opencode auth import`
 func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	if cfg == nil {
@@ -174,10 +148,6 @@ func ProvisionOpenCode(cfg *config.OpenCodeConfig) error {
 	}
 
 	opencodeBin := utils.OpenCodeBinaryPath()
-	if err := ensureOpenCodeVersion(opencodeBin); err != nil {
-		return err
-	}
-
 	authJSON := bytes.TrimSpace(cfg.AuthJSON)
 	if len(authJSON) == 0 || string(authJSON) == "null" || string(authJSON) == "[]" {
 		fmt.Println("no opencode credentials to import")

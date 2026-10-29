@@ -188,3 +188,9 @@ These are upcoming compatibility risks, not removed APIs in 2.2.1. No migration,
 - `git diff --check`: passed.
 
 The TypeScript checks invoked the workspace TypeScript executable directly with Node. No live server, browser, or mobile interaction was exercised. The runtime executable and its provisioning/startup minimum remain at 2.2.0; this client dependency update does not upgrade deployed servers. Existing workspace peer warnings concern the legacy web Effect resolver and mobile Metro configuration; the OpenCode optional Effect peer and workspace both resolve 4.0.1.
+
+## Runtime version enforcement removed (2026-10-29)
+
+At the user's request, provisioning no longer probes the installed OpenCode version or forces an upgrade. Direct server startup and startup with retries no longer enforce a minimum version. The unused minimum-version and version-parsing utilities and their obsolete tests were removed. Credential import, server configuration/password validation, and startup health checks remain in place. Compatibility failures are left to the installed runtime and its API responses. This supersedes the minimum-version behavior described in earlier entries.
+
+The affected Go packages (`actions`, `store`, and `utils`) passed `go test`; the provisioning regression test confirms that credential import works with a binary that has no version or upgrade commands. `git diff --check` passed. No deployed runtime was exercised.

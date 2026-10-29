@@ -63,9 +63,6 @@ func startWebServerLocked() error {
 	if cfg.OpenCode == nil {
 		return fmt.Errorf("opencode is not configured")
 	}
-	if err := utils.CheckOpenCodeVersion(utils.OpenCodeBinaryPath()); err != nil {
-		return err
-	}
 
 	projectDir := utils.WorkspaceDirectory()
 	if err := validateOpencodePassword(cfg.InstanceConfig.OpencodePassword); err != nil {
@@ -163,9 +160,6 @@ func (o *OpencodeWeb) StartWebServerWithRetry() error {
 
 func (o *OpencodeWeb) StartWebServerWithRetryContext(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
-		return err
-	}
-	if err := utils.CheckOpenCodeVersion(utils.OpenCodeBinaryPath()); err != nil {
 		return err
 	}
 	startErr := o.StartWebServer()

@@ -1,42 +1,45 @@
 package actions
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/jashandeep31/vibeongo/core/internal/vibeongo/config"
 )
 
-func TestProvisionOpenCodeUpgradesWithoutCredentials(t *testing.T) {
-	versionFile := filepath.Join(t.TempDir(), "version")
-	if err := os.WriteFile(versionFile, []byte("opencode v2.1.2\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	bin := filepath.Join(t.TempDir(), "opencode")
-	script := fmt.Sprintf(`#!/bin/sh
-if [ "$1" = "--version" ]; then
-  cat %q
-elif [ "$1" = "upgrade" ] && [ "$2" = "2.2.0" ] && [ "$3" = "--method" ] && [ "$4" = "curl" ]; then
-  printf 'opencode v2.2.0\n' > %q
+func TestProvisionOpenCodeWithoutVersionChecks(t *testing.T) {
+	for _, auth := range []string{"", "null", "[]", `[{"id":"test"}]`} {
+		t.Run(auth, func(t *testing.T) {
+			dir := t.TempDir()
+			bin := filepath.Join(dir, "opencode")
+			imported := filepath.Join(dir, "imported")
+			// A runtime without version or upgrade commands can still import credentials.
+			script := `#!/bin/sh
+if [ "$#" = 3 ] && [ "$1" = auth ] && [ "$2" = import ] && [ "$3" = --standalone ]; then
+  cat > "$OPENCODE_TEST_IMPORTED"
 else
   exit 2
 fi
-`, versionFile, versionFile)
-	if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	t.Setenv("OPENCODE_BIN", bin)
-	if err := ProvisionOpenCode(&config.OpenCodeConfig{}); err != nil {
-		t.Fatal(err)
-	}
-	version, err := os.ReadFile(versionFile)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.TrimSpace(string(version)) != "opencode v2.2.0" {
-		t.Fatalf("unexpected version: %q", version)
+`
+			if err := os.WriteFile(bin, []byte(script), 0o700); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("OPENCODE_BIN", bin)
+			t.Setenv("OPENCODE_TEST_IMPORTED", imported)
+			if err := ProvisionOpenCode(&config.OpenCodeConfig{AuthJSON: []byte(auth)}); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(imported)
+			if auth == "" || auth == "null" || auth == "[]" {
+				if !os.IsNotExist(err) {
+					t.Fatalf("expected no credential import, got %q, error %v", data, err)
+				}
+				return
+			}
+			if err != nil || string(data) != auth {
+				t.Fatalf("credential import = %q, error %v; want %q", data, err, auth)
+			}
+		})
 	}
 }
