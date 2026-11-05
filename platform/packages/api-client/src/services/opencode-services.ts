@@ -2083,7 +2083,7 @@ export async function exportOpencodeSession(
   password?: string,
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
-  return client.session.export({ sessionID: sessionId });
+  return client.experimental.session.export({ sessionID: sessionId });
 }
 
 export function getOpencodeSessionExportFilename(session: {
@@ -3149,7 +3149,7 @@ async function prepareOpencodeAttachments(
         attachment.name.split(/[\\/]/).at(-1)?.replace(/[`\r\n]/g, "_") ||
         "attachment";
       const path = `${temporaryRoot}/uploads/${Date.now()}-${Math.random().toString(36).slice(2)}-${index}/${name}`;
-      const uploaded = await client.file.write({
+      const uploaded = await client.experimental.file.write({
         location: { directory },
         path,
         payload: bytes,
@@ -4191,7 +4191,7 @@ export async function addOpencodeMcpServer(
     password,
     directory,
   );
-  await client.mcp.add({ server, config, location: { directory } });
+  await client.experimental.mcp.add({ server, config, location: { directory } });
 }
 
 export async function toggleOpencodeMcpServer(
@@ -4217,7 +4217,7 @@ export async function toggleOpencodeMcpServer(
 
   if (server.status.status === "pending") return {};
   if (server.status.status === "connected") {
-    await client.mcp.disconnect({ server: name, location });
+    await client.experimental.mcp.disconnect({ server: name, location });
   } else if (server.status.status === "needs_auth") {
     if (!server.integrationID) {
       throw new Error(`MCP server ${name} has no authentication integration`);
@@ -4239,7 +4239,7 @@ export async function toggleOpencodeMcpServer(
     });
     return { authorizationUrl: attempt.data.url };
   } else {
-    await client.mcp.connect({ server: name, location });
+    await client.experimental.mcp.connect({ server: name, location });
   }
 
   const current = (await client.mcp.list({ location })).data.find(

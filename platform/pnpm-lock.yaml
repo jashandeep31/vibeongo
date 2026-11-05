@@ -126,7 +126,7 @@ importers:
     dependencies:
       '@hookform/resolvers':
         specifier: ^5.9.1
-        version: 5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.1)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
+        version: 5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.6)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)
       '@repo/db':
         specifier: workspace:*
         version: link:../../packages/database
@@ -543,8 +543,8 @@ importers:
   apps/web-app:
     dependencies:
       '@opencode/client':
-        specifier: ^2.2.1
-        version: 2.2.1(effect@4.0.1)
+        specifier: ^2.2.5
+        version: 2.2.5(effect@4.0.6)
       '@pierre/diffs':
         specifier: 1.5.1
         version: 1.5.1(@shikijs/themes@4.4.3)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
@@ -643,8 +643,8 @@ importers:
   packages/api-client:
     dependencies:
       '@opencode/client':
-        specifier: ^2.2.1
-        version: 2.2.1(effect@4.0.1)
+        specifier: ^2.2.5
+        version: 2.2.5(effect@4.0.6)
       '@repo/db':
         specifier: workspace:*
         version: link:../database
@@ -2882,10 +2882,10 @@ packages:
     resolution: {integrity: sha512-da6KbdNCV5sr1/txD896V+6W0iamFWrvVl8cHkBSPT+YlvmT3DwXa4jxZnQc+gnuTEqSWbBeoSZYTayXH9wXcw==}
     engines: {node: '>= 20'}
 
-  '@opencode/client@2.2.1':
-    resolution: {integrity: sha512-7QWtocDRR9eUsCJpyaj6k+aAEVDWO2CIzn9lwDNBJhiyt2hMf+yOyV/BKeK/9R7qKcXEOZ0tlGDvQC8HEtyjQg==}
+  '@opencode/client@2.2.5':
+    resolution: {integrity: sha512-EjYrFGWHURsIbjtmQdIsGSPmYZGaulxqwEfYxQH5t9838508BCIvDX9f7/ZsgNGHYXM0punA3W8hTt6GjxIEaw==}
     peerDependencies:
-      effect: 4.0.1
+      effect: 4.0.6
       solid-js: '>=1.9.0'
     peerDependenciesMeta:
       effect:
@@ -2893,11 +2893,11 @@ packages:
       solid-js:
         optional: true
 
-  '@opencode/protocol@2.2.1':
-    resolution: {integrity: sha512-lqkkRhrckEKmiSJi249rvfX/fXX8JeiMS7adtXonO1Ol3IqnEqY4uSZgvQiQ11SBR5RyDQaRW9KGoOjaTY4PAQ==}
+  '@opencode/protocol@2.2.5':
+    resolution: {integrity: sha512-T3ET0kS1kj8sv7/d+c1T2he7TXoZ4Rki7zTqHuv8b0kWhg3Vk6o0t+T9KsEQdEat7PFksgH5haC2iSSdJOB7/w==}
 
-  '@opencode/schema@2.2.1':
-    resolution: {integrity: sha512-TicxPQC1UKqq954X1yUKmBlXfJYl5CRr52FKwLZbYOfTxJd406Hoqt2arM4YI3c+abs17b9sumoq5uqFLhiGFA==}
+  '@opencode/schema@2.2.5':
+    resolution: {integrity: sha512-hlKk6cX28BwvOMOVG3Mtt4tEHxwY68Z6Gz5/cL32N8qfZexykCKsZai49Jms4/2gD8BzvVuBERnnlLDbdLstUA==}
 
   '@opentelemetry/api-logs@0.220.0':
     resolution: {integrity: sha512-CmVa4ImJ+ynfrPMNaAXHET6Bhb44SwzmfyVJFq9ni2jgXJR/l7C6gfVFddNmHP+ZOkP9cf4f9DBe68qVLTHc9w==}
@@ -5893,8 +5893,8 @@ packages:
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
 
-  effect@4.0.1:
-    resolution: {integrity: sha512-b1VlQG9g8fwxE5QnIZuPoOP/0MsqHJSRKxUijjoM80E5q95FXrX5yWtY5XI8G+GJsBQAVSDbLS458z9a++uVvw==}
+  effect@4.0.6:
+    resolution: {integrity: sha512-Tc3mkzuLR6t6P9dhLt0D2GrxYtmU5td4XEJEiXCmILz53IRIfJyHsKZWjTA3xEjiwpNTtXBgI4iqYPxMztBDrw==}
 
   electron-to-chromium@1.5.434:
     resolution: {integrity: sha512-7EeFW9OLf1NN9NKQP9xdOE/XKqjxv7JDPP6AEAkHli11+Fae1OaLoNuAf13hQv1PPNtuES0pLQSPk2+fS3s8ww==}
@@ -11663,7 +11663,7 @@ snapshots:
     dependencies:
       hono: 4.13.13
 
-  '@hookform/resolvers@5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.1)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)':
+  '@hookform/resolvers@5.9.1(@sinclair/typebox@0.34.52)(@standard-schema/spec@1.1.0)(ajv@8.20.0)(effect@4.0.6)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.5)':
     dependencies:
       '@standard-schema/utils': 0.3.0
       react-hook-form: 7.88.0(react@19.3.0)
@@ -11671,7 +11671,7 @@ snapshots:
       '@sinclair/typebox': 0.34.52
       '@standard-schema/spec': 1.1.0
       ajv: 8.20.0
-      effect: 4.0.1
+      effect: 4.0.6
       zod: 4.6.5
 
   '@humanfs/core@0.19.2':
@@ -12220,22 +12220,22 @@ snapshots:
       '@octokit/request-error': 7.1.2
       '@octokit/webhooks-methods': 6.0.0
 
-  '@opencode/client@2.2.1(effect@4.0.1)':
+  '@opencode/client@2.2.5(effect@4.0.6)':
     dependencies:
-      '@opencode/protocol': 2.2.1
-      '@opencode/schema': 2.2.1
+      '@opencode/protocol': 2.2.5
+      '@opencode/schema': 2.2.5
     optionalDependencies:
-      effect: 4.0.1
+      effect: 4.0.6
 
-  '@opencode/protocol@2.2.1':
+  '@opencode/protocol@2.2.5':
     dependencies:
-      '@opencode/schema': 2.2.1
-      effect: 4.0.1
+      '@opencode/schema': 2.2.5
+      effect: 4.0.6
 
-  '@opencode/schema@2.2.1':
+  '@opencode/schema@2.2.5':
     dependencies:
       '@standard-schema/spec': 1.1.0
-      effect: 4.0.1
+      effect: 4.0.6
 
   '@opentelemetry/api-logs@0.220.0':
     dependencies:
@@ -15497,7 +15497,7 @@ snapshots:
 
   ee-first@1.1.1: {}
 
-  effect@4.0.1: {}
+  effect@4.0.6: {}
 
   electron-to-chromium@1.5.434: {}
 

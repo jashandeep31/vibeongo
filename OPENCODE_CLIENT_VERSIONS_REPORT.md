@@ -1,6 +1,6 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.1. See the latest compatibility follow-up below.
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.5. See the latest compatibility follow-up below.
 
 **Reviewed:** 2026-10-08
 
@@ -204,3 +204,15 @@ Shared API helpers read `opencode.goal`'s `get` RPC in the session directory and
 Errors appear beside the goal controls with a Refresh action; failed actions are not treated as successful state changes. An installed runtime without the goal RPC surfaces its request error. No runtime version gate or forced upgrade was restored.
 
 Validation: shared API client, API hooks, web, and native mobile TypeScript compilation passed. Five automated goal integration tests passed, covering authenticated/directory-scoped RPC, all three control commands, unsupported-runtime errors, event/snapshot races and cache isolation, and streamed goal events through the shared SSE parser. The generated goal test file and its package script were subsequently removed at the user's request; the test results describe validation performed before removal. Targeted web ESLint reported no errors and one existing unused `_instances` warning in the store sync component. `git diff --check` passed. Live browser, native device, and deployed OpenCode goal execution were not exercised.
+
+## 2.2.5 compatibility follow-up (2026-11-05)
+
+The npm `latest` dist-tag was queried directly and resolves to **2.2.5**. The web app and shared API client now request `^2.2.5`; client, protocol, and schema resolve to 2.2.5. Native mobile inherits the upgrade through the shared API client and hooks. Effect resolves to 4.0.6 to match the new protocol/schema dependency and optional client peer. Unrelated dependency updates were excluded from the final lockfile.
+
+The [official versioned changelog](https://github.com/anomalyco/opencode/blob/v2.2.5/CHANGELOG.md) was reviewed for 2.2.2 through 2.2.5. The documented breaking changes concern OpenTUI 0.8 plugin requirements and separate managed-policy actions for MCP, skills, and plugins. No matching integration requiring migration was found in the app code. New upstream artifacts, media, schedule, and persistent-terminal capabilities are not automatically integrated by this upgrade.
+
+The five deprecated calls identified in the 2.2.1 entry now use `client.experimental`: session export, attachment file writes, and MCP add/connect/disconnect. This removes the previously recorded migration risk for these calls. The installed SDK exposes the same function through both paths, preserving request behavior.
+
+Validation: TypeScript compilation passed for the shared API client, API hooks, web app, and native mobile. The final focused lockfile passed `pnpm install --frozen-lockfile --offline --ignore-scripts`. A direct ESM check verified the Promise entry point, missing-location error guard, and all five migrated methods and their alias identity. `git diff --check` passed.
+
+No deployed server, browser, or native-device interaction was exercised. Runtime provisioning and startup remain without version enforcement or forced upgrades; this update changes client dependencies only. Existing legacy web Effect resolver and mobile Metro peer incompatibilities remain.
