@@ -1,6 +1,6 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.5. See the latest compatibility follow-up below.
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.6. See the latest compatibility follow-up below.
 
 **Reviewed:** 2026-10-08
 
@@ -216,3 +216,29 @@ The five deprecated calls identified in the 2.2.1 entry now use `client.experime
 Validation: TypeScript compilation passed for the shared API client, API hooks, web app, and native mobile. The final focused lockfile passed `pnpm install --frozen-lockfile --offline --ignore-scripts`. A direct ESM check verified the Promise entry point, missing-location error guard, and all five migrated methods and their alias identity. `git diff --check` passed.
 
 No deployed server, browser, or native-device interaction was exercised. Runtime provisioning and startup remain without version enforcement or forced upgrades; this update changes client dependencies only. Existing legacy web Effect resolver and mobile Metro peer incompatibilities remain.
+
+## 2.2.6 compatibility follow-up (2026-11-10)
+
+The npm `latest` dist-tag was queried directly and resolves to **2.2.6**. The web app and shared API client now request `^2.2.6`; the lockfile resolves client, protocol, and schema to 2.2.6. Native mobile inherits this upgrade through `@repo/api-client` and `@repo/api-hooks`, so its package manifest needs no duplicate SDK dependency. Effect resolves to 4.1.0, matching the new protocol/schema dependency and optional client peer. Unrelated dependency changes were excluded from the final lockfile.
+
+### Breaking-change review
+
+The [official 2.2.6 release notes](https://github.com/anomalyco/opencode/releases/tag/v2.2.6) declare no breaking changes. Comparing the published 2.2.5 and 2.2.6 Promise client declarations found no removed APIs used by these applications. Additions include `client.experimental.job.list`, optional MCP connection pooling, cache warming settings, and the `websearch.use` policy action. Both apps and the shared packages compile without compatibility source changes. The new upstream desktop/mobile composer and plugin features are not automatically integrated by updating this dependency.
+
+The release notes also describe server behavior changes relevant to a future runtime upgrade:
+
+- `/api/*` rejects disallowed browser origins and cross-site navigations; file reads and media are served as sandboxed downloads. Validate web access through the Vibeongo proxy and its origin configuration when upgrading the server.
+- `opencode run` waits for background shells, subagents, and image jobs before exiting. Long-running jobs can keep it open indefinitely, so scripted/CI callers may need timeouts. These apps connect through the HTTP client rather than `opencode run`.
+
+These runtime changes are separate from this client dependency update. No deployed OpenCode executable was upgraded, and no version enforcement or forced upgrade was added.
+
+### Validation
+
+- `pnpm install --frozen-lockfile --ignore-scripts`: passed with the final focused lockfile.
+- Shared API client and API hooks: TypeScript compilation passed (`tsc -p tsconfig.json`).
+- Web app: Next.js route type generation and TypeScript compilation passed (`next typegen`, then `tsc --noEmit --incremental false`).
+- Native mobile: TypeScript compilation passed (`tsc --noEmit --incremental false`).
+- Direct ESM check: the installed client is 2.2.6; `OpenCode.make`, `isLocationNotFoundError`, `vcs.init`, the five previously migrated experimental methods, and `experimental.job.list` remain callable API methods.
+- `git diff --check`: passed.
+
+The TypeScript checks invoked the installed TypeScript executables directly with Node. No live server, browser, or native-device interaction was exercised. Existing legacy web Effect resolver and mobile Metro peer incompatibilities remain.
