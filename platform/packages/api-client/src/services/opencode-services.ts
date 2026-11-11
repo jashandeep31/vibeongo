@@ -68,7 +68,10 @@ export async function controlOpencodeGoal(
 
 const clients = new Map<string, OpenCodeClient>();
 const vcsRecoveryRequests = new WeakMap<OpenCodeClient, Promise<void>>();
-const vcsRepositoryRequests = new WeakMap<OpenCodeClient, Map<string, Promise<string | null>>>();
+const vcsRepositoryRequests = new WeakMap<
+  OpenCodeClient,
+  Map<string, Promise<string | null>>
+>();
 const OPENCODE_EVENT_STREAM_IDLE_TIMEOUT_MS = 45_000;
 const OPENCODE_INVENTORY_REQUEST_TIMEOUT_MS = 5_000;
 
@@ -173,10 +176,7 @@ export function reduceOpencodeMessages(
           }
         | undefined;
       const messageID = native.inboxID;
-      if (
-        item?.type === "user" &&
-        typeof messageID === "string"
-      ) {
+      if (item?.type === "user" && typeof messageID === "string") {
         // Match OpenCode's data model: admit the user message immediately and
         // let the timeline projection hide it while its inbox delivery is queue.
         const message = {
@@ -261,7 +261,10 @@ export function reduceOpencodeMessages(
       native.text.trim()
     ) {
       const isInstructionUpdate = nativeType === "session.instructions.updated";
-      const syntheticDescription = getSyntheticNoticeLabel(native.description, native.metadata);
+      const syntheticDescription = getSyntheticNoticeLabel(
+        native.description,
+        native.metadata,
+      );
       // Synthetic text is model context (such as an AGENTS.md body), not
       // assistant prose. OpenCode's transcript displays its description.
       if (!isInstructionUpdate && !syntheticDescription) return messages;
@@ -434,8 +437,7 @@ export function reduceOpencodeMessages(
       const started =
         typeof native.started === "number" ? native.started : Date.now();
       const model = native.model as
-        | { id?: string; providerID?: string; variant?: string }
-        | undefined;
+        { id?: string; providerID?: string; variant?: string } | undefined;
       const parentID = messages.findLast(
         (message) => message.info.role === "user",
       )?.info.id;
@@ -658,10 +660,10 @@ export function reduceOpencodeMessages(
                 ...(nativeReplayData(native, "providerState") &&
                 typeof nativeReplayData(native, "providerState") === "object"
                   ? {
-                      providerState: nativeReplayData(native, "providerState") as Record<
-                        string,
-                        unknown
-                      >,
+                      providerState: nativeReplayData(
+                        native,
+                        "providerState",
+                      ) as Record<string, unknown>,
                     }
                   : {}),
                 ...(nativeType === "session.step.failed"
@@ -917,13 +919,19 @@ function appendTimelineText(
 
 function getSyntheticNoticeLabel(description: unknown, metadata: unknown) {
   const label =
-    typeof description === "string" && description.trim() ? description : undefined;
+    typeof description === "string" && description.trim()
+      ? description
+      : undefined;
   const info = recordValue(metadata);
   if (info?.source !== "subagent") return label;
   const state =
-    info.state === "completed" ? "completed"
-      : info.state === "error" ? "failed"
-        : info.state === "cancelled" ? "cancelled" : undefined;
+    info.state === "completed"
+      ? "completed"
+      : info.state === "error"
+        ? "failed"
+        : info.state === "cancelled"
+          ? "cancelled"
+          : undefined;
   return state ? `${label ?? "Subagent"} — ${state}` : label;
 }
 
@@ -1255,7 +1263,10 @@ export function reduceOpencodeSessionData(
         ),
       };
     }
-    if (nativeType === "session.execution.started" || nativeType === "session.step.started") {
+    if (
+      nativeType === "session.execution.started" ||
+      nativeType === "session.step.started"
+    ) {
       return {
         ...current,
         status: { type: "busy" },
@@ -1884,7 +1895,7 @@ export async function getOpencodeSubagentStatus(
     client.session.active(),
   ]);
   return {
-    status: active[sessionId] ? "busy" as const : "idle" as const,
+    status: active[sessionId] ? ("busy" as const) : ("idle" as const),
     outcome: session.outcome,
   };
 }
@@ -2030,23 +2041,51 @@ export async function forkOpencodeSessionThroughTurn(
     });
     messages.push(...page.data);
     cursor = page.cursor.next ?? undefined;
-    const selectedIndex = messages.findIndex((message) => message.id === messageId);
-    if (selectedIndex >= 0 && messages.slice(selectedIndex + 1).some((message) => message.type === "user")) break;
+    const selectedIndex = messages.findIndex(
+      (message) => message.id === messageId,
+    );
+    if (
+      selectedIndex >= 0 &&
+      messages
+        .slice(selectedIndex + 1)
+        .some((message) => message.type === "user")
+    )
+      break;
   } while (cursor);
   const index = messages.findIndex((message) => message.id === messageId);
-  if (index < 0 || messages[index]?.type !== "user") throw new Error("This question is no longer available.");
-  const revertIndex = source.revert ? messages.findIndex((message) => message.id === source.revert?.messageID) : -1;
-  if (revertIndex >= 0 && index >= revertIndex) throw new Error("Restore this turn before forking it.");
-  const nextQuestion = messages.findIndex((message, position) => position > index && message.type === "user");
+  if (index < 0 || messages[index]?.type !== "user")
+    throw new Error("This question is no longer available.");
+  const revertIndex = source.revert
+    ? messages.findIndex((message) => message.id === source.revert?.messageID)
+    : -1;
+  if (revertIndex >= 0 && index >= revertIndex)
+    throw new Error("Restore this turn before forking it.");
+  const nextQuestion = messages.findIndex(
+    (message, position) => position > index && message.type === "user",
+  );
   let boundary = nextQuestion < 0 ? messages.length : nextQuestion;
-  if (nextQuestion >= 0) while (boundary > index + 1 && messages[boundary - 1]?.type === "synthetic") boundary -= 1;
+  if (nextQuestion >= 0)
+    while (boundary > index + 1 && messages[boundary - 1]?.type === "synthetic")
+      boundary -= 1;
   if (revertIndex >= 0) boundary = Math.min(boundary, revertIndex);
-  const answer = messages.slice(index + 1, boundary).filter((message) => message.type === "assistant");
+  const answer = messages
+    .slice(index + 1, boundary)
+    .filter((message) => message.type === "assistant");
   const lastAnswer = answer.at(-1);
-  if (!answer.length || answer.some((message) => message.time.completed === undefined) ||
-    lastAnswer?.finish === "tool-calls" || lastAnswer?.rawFinish === "tool_calls" ||
-    (nextQuestion < 0 && active[sessionId])) throw new Error("Wait for this answer to finish before forking it.");
-  const session = normalizeV2Session(await client.session.fork({ sessionID: sessionId, ...(messages[boundary] ? { before: messages[boundary]!.id } : {}) }));
+  if (
+    !answer.length ||
+    answer.some((message) => message.time.completed === undefined) ||
+    lastAnswer?.finish === "tool-calls" ||
+    lastAnswer?.rawFinish === "tool_calls" ||
+    (nextQuestion < 0 && active[sessionId])
+  )
+    throw new Error("Wait for this answer to finish before forking it.");
+  const session = normalizeV2Session(
+    await client.session.fork({
+      sessionID: sessionId,
+      ...(messages[boundary] ? { before: messages[boundary]!.id } : {}),
+    }),
+  );
   return { session };
 }
 
@@ -2270,7 +2309,8 @@ async function discoverOpencodeReviewVcs(
     })();
     vcsRecoveryRequests.set(client, recovery);
     const clearRecovery = () => {
-      if (vcsRecoveryRequests.get(client) === recovery) vcsRecoveryRequests.delete(client);
+      if (vcsRecoveryRequests.get(client) === recovery)
+        vcsRecoveryRequests.delete(client);
     };
     void recovery.then(clearRecovery, clearRecovery);
   }
@@ -2334,10 +2374,19 @@ export async function getOpencodeWorkingChanges(
   accessToken: string,
   password?: string,
 ): Promise<SnapshotFileDiff[]> {
-  const client = getOpencodeClient(chatId, serverUrl, accessToken, password, directory);
+  const client = getOpencodeClient(
+    chatId,
+    serverUrl,
+    accessToken,
+    password,
+    directory,
+  );
   const provider = await resolveOpencodeReviewVcs(client, directory);
   if (!provider) return [];
-  const result = await client.vcs.diff({ location: { directory }, mode: "working" });
+  const result = await client.vcs.diff({
+    location: { directory },
+    mode: "working",
+  });
   return result.data;
 }
 
@@ -2405,20 +2454,21 @@ export async function getOpencodeInventory(
 ) {
   const client = getOpencodeClient(chatId, serverUrl, accessToken, password);
   const location = directory ? { location: { directory } } : {};
-  const [providerResponse, modelsResponse, agentsResponse, config] = await Promise.all([
-    getOpencodeInventoryResource("providers", (signal) =>
-      client.provider.list(location, { signal }),
-    ),
-    getOpencodeInventoryResource("models", (signal) =>
-      client.model.list(location, { signal }),
-    ),
-    getOpencodeInventoryResource("agents", (signal) =>
-      client.agent.list(location, { signal }),
-    ),
-    getOpencodeInventoryResource("config", (signal) =>
-      client.config.get(location, { signal }),
-    ),
-  ]);
+  const [providerResponse, modelsResponse, agentsResponse, config] =
+    await Promise.all([
+      getOpencodeInventoryResource("providers", (signal) =>
+        client.provider.list(location, { signal }),
+      ),
+      getOpencodeInventoryResource("models", (signal) =>
+        client.model.list(location, { signal }),
+      ),
+      getOpencodeInventoryResource("agents", (signal) =>
+        client.agent.list(location, { signal }),
+      ),
+      getOpencodeInventoryResource("config", (signal) =>
+        client.config.get(location, { signal }),
+      ),
+    ]);
   let configuredAgent: string | undefined;
   for (const entry of config) {
     if (entry.type === "document" && entry.info.default_agent !== undefined) {
@@ -3146,8 +3196,10 @@ async function prepareOpencodeAttachments(
         character.charCodeAt(0),
       );
       const name =
-        attachment.name.split(/[\\/]/).at(-1)?.replace(/[`\r\n]/g, "_") ||
-        "attachment";
+        attachment.name
+          .split(/[\\/]/)
+          .at(-1)
+          ?.replace(/[`\r\n]/g, "_") || "attachment";
       const path = `${temporaryRoot}/uploads/${Date.now()}-${Math.random().toString(36).slice(2)}-${index}/${name}`;
       const uploaded = await client.experimental.file.write({
         location: { directory },
@@ -3157,7 +3209,11 @@ async function prepareOpencodeAttachments(
       return {
         file: undefined,
         reference: `Attached file: \`${uploaded.data.path}\``,
-        attachment: { name, mime: attachment.mimeType, path: uploaded.data.path },
+        attachment: {
+          name,
+          mime: attachment.mimeType,
+          path: uploaded.data.path,
+        },
       };
     }),
   );
@@ -3243,12 +3299,7 @@ export async function steerOpencodeQueuedPrompt(
   accessToken: string,
   password?: string,
 ) {
-  const client = getOpencodeClient(
-    sessionId,
-    serverUrl,
-    accessToken,
-    password,
-  );
+  const client = getOpencodeClient(sessionId, serverUrl, accessToken, password);
   await client.session.inbox.update({
     sessionID: sessionId,
     inboxID: inboxId,
@@ -3329,9 +3380,7 @@ export async function editOpencodeQueuedPrompt(
   }
 }
 
-function normalizePendingInboxItem(
-  value: unknown,
-): OpencodePendingInboxItem[] {
+function normalizePendingInboxItem(value: unknown): OpencodePendingInboxItem[] {
   if (!value || typeof value !== "object") return [];
   const item = value as Record<string, unknown>;
   const payload = item.payload;
@@ -3782,20 +3831,18 @@ function normalizeV2Message(
         type: "text",
         text: message.text,
       },
-      ...(message.files ?? []).map(
-        (file, index): Part => ({
-          id: `${message.id}:file:${index}`,
-          sessionID: session.id,
-          messageID: message.id,
-          type: "file",
-          mime: file.mime,
-          ...(file.name ? { filename: file.name } : {}),
-          url:
-            file.source.type === "uri"
-              ? file.source.uri
-              : `data:${file.mime};base64,${file.data}`,
-        }),
-      ),
+      ...(message.files ?? []).map((file, index): Part => ({
+        id: `${message.id}:file:${index}`,
+        sessionID: session.id,
+        messageID: message.id,
+        type: "file",
+        mime: file.mime,
+        ...(file.name ? { filename: file.name } : {}),
+        url:
+          file.source.type === "uri"
+            ? file.source.uri
+            : `data:${file.mime};base64,${file.data}`,
+      })),
     ];
     return { info, parts };
   }
@@ -3878,7 +3925,10 @@ function normalizeV2Message(
               message.type === "system"
                 ? (message.description ?? "Instructions updated")
                 : message.type === "synthetic"
-                  ? (getSyntheticNoticeLabel(message.description, message.metadata) ?? "")
+                  ? (getSyntheticNoticeLabel(
+                      message.description,
+                      message.metadata,
+                    ) ?? "")
                   : `Skill ${message.name}`,
           },
         ],
@@ -3919,7 +3969,12 @@ function normalizeV2Message(
     ...(message.finish ? { finish: message.finish } : {}),
     ...(message.rawFinish ? { rawFinish: message.rawFinish } : {}),
     ...(nativeReplayData(message, "providerState")
-      ? { providerState: nativeReplayData(message, "providerState") as Record<string, unknown> }
+      ? {
+          providerState: nativeReplayData(message, "providerState") as Record<
+            string,
+            unknown
+          >,
+        }
       : {}),
     ...(message.error ? { error: normalizeOpencodeError(message.error) } : {}),
     ...(message.retry
@@ -3946,9 +4001,7 @@ function normalizeV2Message(
         messageID: message.id,
         type: "text",
         text: content.text,
-        ...(replayData
-          ? { metadata: replayData }
-          : {}),
+        ...(replayData ? { metadata: replayData } : {}),
       };
     }
     if (content.type === "reasoning") {
@@ -3958,9 +4011,7 @@ function normalizeV2Message(
         messageID: message.id,
         type: "reasoning",
         text: content.text,
-        ...(replayData
-          ? { metadata: replayData }
-          : {}),
+        ...(replayData ? { metadata: replayData } : {}),
         time: {
           start: content.time?.created ?? message.time.created,
           ...(content.time?.completed ? { end: content.time.completed } : {}),
@@ -3976,11 +4027,9 @@ function normalizeV2Message(
       tool: content.name,
       executed: content.executed,
       providerState: nativeReplayData(content, "providerState") as
-        | Record<string, unknown>
-        | undefined,
+        Record<string, unknown> | undefined,
       providerResultState: nativeReplayData(content, "providerResultState") as
-        | Record<string, unknown>
-        | undefined,
+        Record<string, unknown> | undefined,
       state: normalizeV2ToolState(content.state, content.time, content.name),
     } as Part;
   });
@@ -4191,7 +4240,11 @@ export async function addOpencodeMcpServer(
     password,
     directory,
   );
-  await client.experimental.mcp.add({ server, config, location: { directory } });
+  await client.experimental.mcp.add({
+    server,
+    config,
+    location: { directory },
+  });
 }
 
 export async function toggleOpencodeMcpServer(
@@ -4276,7 +4329,9 @@ function normalizeOpencodeServerUrl(serverUrl: string) {
 
   if (
     url.protocol !== "https:" ||
-    !url.hostname.endsWith(".in.vibeongo.one")
+    // Allowing all vibeongo.one urls
+    // This hardcoding will cause hte issue in the self deploying
+    !["vibeongo.one"].some((domain) => url.hostname.endsWith(domain))
   ) {
     throw new Error("Invalid OpenCode server URL");
   }

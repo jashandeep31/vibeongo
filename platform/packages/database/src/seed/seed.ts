@@ -71,13 +71,31 @@ const ensureSandboxRegion = async (
 };
 
 const main = async () => {
+  // Seed only one AWS EC2 type and one E2B type, with their required regions.
+  const awsRegion = awsRegionsSeed[0];
+  const awsType = awsInstanceTypesSeed.find(
+    (type) => type.region_slug === awsRegion.slug,
+  );
+  const e2bRegion = sandboxRegionsSeed.find(
+    (region) => region.provider === "e2b",
+  );
+  const e2bType = sandboxTypesSeed.find(
+    (type) => type.provider === "e2b" && type.region_slug === e2bRegion?.slug,
+  );
+
+  if (!awsType || !e2bRegion || !e2bType) {
+    throw new Error("The AWS EC2 and E2B seed entries are required");
+  }
+
   const awsRegionIds = new Map<string, string>();
-  for (const region of awsRegionsSeed) {
+  // for (const region of awsRegionsSeed) {
+  for (const region of [awsRegion]) {
     const savedRegion = await ensureAwsRegion(region);
     awsRegionIds.set(region.slug, savedRegion.id);
   }
 
-  for (const instanceType of awsInstanceTypesSeed) {
+  // for (const instanceType of awsInstanceTypesSeed) {
+  for (const instanceType of [awsType]) {
     const regionId = awsRegionIds.get(instanceType.region_slug);
     if (!regionId) {
       throw new Error(`AWS region ${instanceType.region_slug} was not found`);
@@ -107,12 +125,14 @@ const main = async () => {
   }
 
   const sandboxRegionIds = new Map<string, string>();
-  for (const region of sandboxRegionsSeed) {
+  // for (const region of sandboxRegionsSeed) {
+  for (const region of [e2bRegion]) {
     const savedRegion = await ensureSandboxRegion(region);
     sandboxRegionIds.set(`${region.provider}:${region.slug}`, savedRegion.id);
   }
 
-  for (const sandboxType of sandboxTypesSeed) {
+  // for (const sandboxType of sandboxTypesSeed) {
+  for (const sandboxType of [e2bType]) {
     const regionId = sandboxRegionIds.get(
       `${sandboxType.provider}:${sandboxType.region_slug}`,
     );
@@ -142,7 +162,7 @@ const main = async () => {
     }
   }
 
-  console.log("Instance and sandbox metadata seeded.");
+  console.log("One AWS EC2 type and one E2B type seeded with their regions.");
 };
 
 void main()
