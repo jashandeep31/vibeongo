@@ -1,15 +1,15 @@
 /* These tokens and rules are scoped to the home page. */
 .home-page {
-  --lp-canvas: #f5f8fd;
+  --lp-canvas: #faf9f6;
   --lp-surface: #fff;
-  --lp-muted: #eaf0fb;
-  --lp-ink: #152342;
+  --lp-muted: #eeefeb;
+  --lp-ink: #242c30;
   --lp-on-ink: #fff;
-  --lp-accent: #2449d8;
-  --lp-accent-soft: #eaf0fb;
-  --lp-accent-tint: #eaf0fb;
-  --home-blue: #1b3da8;
-  --home-secondary: #52617b;
+  --lp-accent: #466d83;
+  --lp-accent-soft: #e7eeef;
+  --lp-accent-tint: #edf1f1;
+  --home-blue: #466d83;
+  --home-secondary: #626d70;
   background: var(--lp-canvas);
   color: var(--lp-ink);
   font-family: var(--font-sans), sans-serif;
@@ -18,19 +18,19 @@
   caret-color: var(--lp-accent);
 }
 .dark .home-page {
-  --lp-canvas: #101a2d;
-  --lp-surface: #16233a;
-  --lp-muted: #20304a;
-  --lp-ink: #f0f4ff;
-  --lp-on-ink: #152342;
-  --lp-accent: #a9bdff;
-  --lp-accent-soft: #203557;
-  --lp-accent-tint: #20304a;
-  --home-secondary: #b3c2dc;
+  --lp-canvas: #1c2225;
+  --lp-surface: #232b2f;
+  --lp-muted: #2a3337;
+  --lp-ink: #f0efea;
+  --lp-on-ink: #242c30;
+  --lp-accent: #a1c5d5;
+  --lp-accent-soft: #2c4049;
+  --lp-accent-tint: #29383e;
+  --home-secondary: #b4bfc2;
 }
 .home-page ::selection {
-  background: #cbd8ff;
-  color: #152342;
+  background: #d5e5e9;
+  color: #242c30;
 }
 .home-page :is(a, button, summary):focus-visible {
   outline: 3px solid var(--lp-accent);
@@ -60,7 +60,9 @@
   position: sticky;
   top: 0;
   z-index: 50;
-  background: var(--lp-surface);
+  background: color-mix(in srgb, var(--lp-canvas) 72%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
   border-bottom: 1px solid color-mix(in srgb, var(--lp-ink) 12%, transparent);
 }
 .home-header-row {
@@ -125,7 +127,7 @@
   color: white;
 }
 .home-button-blue:hover {
-  background: #153187;
+  background: #36576b;
 }
 .home-button-white {
   background: white;
@@ -150,47 +152,62 @@
   display: none;
 }
 .home-hero {
-  background: var(--home-blue);
-  color: white;
-  padding: 80px 0 88px;
+  background: var(--lp-canvas);
+  padding: 88px 0 72px;
+  border-bottom: 1px solid color-mix(in srgb, var(--lp-ink) 12%, transparent);
 }
 .home-hero > .home-container {
   max-width: 1120px;
 }
-.home-hero :is(a, button):focus-visible {
-  outline-color: white;
-}
 .home-hero-intro {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 28px;
-  max-width: 1040px;
-  margin-inline: auto;
-  margin-bottom: 72px;
+  display: grid;
+  grid-template-columns: 1.4fr 1fr;
+  align-items: end;
+  gap: 48px;
+  margin-bottom: 56px;
+}
+.home-hero-eyebrow {
+  color: var(--home-secondary);
+  font-family: var(--font-mono), monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  margin-bottom: 24px;
 }
 .home-hero h1 {
-  font-family: var(--font-sans), sans-serif;
-  font-size: clamp(40px, 4.4vw, 64px);
-  font-weight: 600;
-  line-height: 1.02;
-  letter-spacing: -0.035em;
+  font-family: var(--font-heading), var(--font-sans), sans-serif;
+  font-size: clamp(40px, 4.6vw, 68px);
+  font-weight: 500;
+  line-height: 1.07;
+  letter-spacing: -0.055em;
+}
+.home-hero h1 span {
+  color: var(--lp-accent);
 }
 .home-hero-copy {
-  max-width: 100%;
+  padding-bottom: 4px;
 }
 .home-hero-copy p {
-  font-size: clamp(18px, 1.55vw, 22px);
-  line-height: 1.4;
+  color: var(--home-secondary);
+  font-size: 16px;
+  line-height: 1.75;
   max-width: 38ch;
-  margin-bottom: 24px;
-  text-wrap: balance;
+  margin-bottom: 26px;
 }
 .home-hero-actions {
   display: flex;
   align-items: center;
   flex-wrap: wrap;
-  gap: 20px 28px;
+  gap: 16px 22px;
+}
+.home-hero-primary {
+  background: var(--lp-ink);
+  color: var(--lp-on-ink);
+  border-radius: 6px;
+}
+.home-hero-primary:hover {
+  background: color-mix(in srgb, var(--lp-ink) 80%, var(--lp-accent));
 }
 .home-watch {
   display: inline-flex;
@@ -198,19 +215,14 @@
   gap: 5px;
   font-size: 13px;
   text-decoration: underline;
-  text-decoration-color: #8ea8f2;
+  text-decoration-color: color-mix(in srgb, var(--lp-ink) 30%, transparent);
 }
 .home-watch:hover {
-  text-decoration-color: white;
+  text-decoration-color: var(--lp-accent);
 }
 .home-product-stage {
   width: 100%;
-  max-width: 1040px;
   margin-inline: auto;
-  overflow: hidden;
-  border-radius: 14px;
-  background: #181818;
-  aspect-ratio: 2.37;
 }
 .home-product-stage img {
   display: block;
@@ -397,7 +409,7 @@
   animation: none;
 }
 .home-page #forgejo {
-  background: #152342;
+  background: #242c30;
 }
 .home-page #pricing {
   background: var(--home-blue);
@@ -452,6 +464,13 @@
   .home-section-heading {
     gap: 32px;
   }
+  .home-hero-intro {
+    grid-template-columns: 1fr;
+    gap: 28px;
+  }
+  .home-hero-copy p {
+    max-width: 54ch;
+  }
 }
 @media (max-width: 720px) {
   .home-container {
@@ -499,21 +518,15 @@
     padding-bottom: 56px;
   }
   .home-hero-intro {
-    gap: 20px;
-    margin-bottom: 48px;
+    gap: 24px;
+    margin-bottom: 36px;
   }
   .home-hero h1 {
-    font-size: clamp(32px, 9vw, 48px);
-    line-height: 1.04;
+    font-size: clamp(34px, 8.2vw, 54px);
   }
   .home-hero-copy p {
-    font-size: 18px;
-    max-width: 32ch;
+    font-size: 15px;
     margin-bottom: 20px;
-  }
-  .home-product-stage {
-    aspect-ratio: 1.55;
-    border-radius: 10px;
   }
   .home-page main > section:not(.home-hero) {
     padding-block: 68px;

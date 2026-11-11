@@ -1,24 +1,16 @@
 "use client";
 
 import type { PricingMetadata } from "@/services/instance-metadata-service";
-import { ClosingCta } from "@/components/landing-page/closing-cta";
 import { getAppUrl } from "@/lib/app-url";
 import { getProviderLogo } from "@/lib/provider-logos";
 import { formatInternalMoney } from "@repo/shared";
 import {
   ArrowRight,
   Box,
-  Check,
-  Cpu,
-  HardDrive,
   Info,
-  MemoryStick,
   Plus,
-  Power,
   RotateCw,
   Server,
-  Timer,
-  X,
 } from "lucide-react";
 import Image from "next/image";
 import { useState } from "react";
@@ -41,7 +33,6 @@ type PricingRow = {
   storage: number;
   /** Price per billing unit, already formatted. */
   price: string;
-  finePrint?: string;
   /** Per-minute cost in internal money units, including the management charge. */
   perMinute: number;
 };
@@ -79,10 +70,6 @@ export default function PricingClientView({
         type.price_per_second * 60 * MANAGEMENT_CHARGE_MULTIPLIER,
         5,
       ),
-      finePrint: `${formatPrice(
-        type.price_per_second * MANAGEMENT_CHARGE_MULTIPLIER,
-        7,
-      )}/sec rate`,
       perMinute: type.price_per_second * 60 * MANAGEMENT_CHARGE_MULTIPLIER,
     }));
 
@@ -119,25 +106,10 @@ export default function PricingClientView({
     <article className="home-page pricing-page">
       <section className="pricing-intro" aria-labelledby="pricing-title">
         <div className="pricing-container">
-          <h1 id="pricing-title">Pay for the work, not the waiting.</h1>
+          <h1 id="pricing-title">Pricing</h1>
           <p>
-            Sandboxes and virtual machines bill per started minute. Run your
-            agent, then let auto-shutdown stop idle compute.
+            Pay per started minute. Choose a workspace and estimate your usage.
           </p>
-          <div className="pricing-billing-facts">
-            <span>
-              <Timer size={16} aria-hidden="true" />
-              Usage-based billing
-            </span>
-            <span>
-              <Check size={16} aria-hidden="true" />
-              Management charge included
-            </span>
-            <span>
-              <Power size={16} aria-hidden="true" />
-              Automatic shutdown
-            </span>
-          </div>
         </div>
       </section>
 
@@ -147,8 +119,7 @@ export default function PricingClientView({
       >
         <div className="pricing-section-heading">
           <div>
-            <h2 id="compute-title">Find your workspace.</h2>
-            <p>Compare compute. Set your schedule. See what it costs.</p>
+            <h2 id="compute-title">Compute rates</h2>
           </div>
           <fieldset className="pricing-kind-toggle">
             <legend className="sr-only">Workspace type</legend>
@@ -201,8 +172,8 @@ export default function PricingClientView({
             <div className="pricing-controls">
               <p>
                 {kind === "sandbox"
-                  ? "Disposable, isolated workspaces. Billed per started minute."
-                  : "Persistent workspaces for ongoing development. Billed per started minute."}
+                  ? "Isolated environments for short tasks."
+                  : "Full virtual machines for ongoing development."}
               </p>
               {kind === "vm" && instanceRegions.length > 0 && (
                 <label className="pricing-region">
@@ -245,12 +216,11 @@ export default function PricingClientView({
                   </div>
                   <fieldset className="pricing-options">
                     <legend className="sr-only">Workspace size</legend>
-                    {rows.map((row, index) => (
+                    {rows.map((row) => (
                       <OptionRow
                         key={row.id}
                         row={row}
                         selected={row.id === selectedRow.id}
-                        lowest={index === 0 && rows.length > 1}
                         onSelect={() => setSelectedRowId(row.id)}
                       />
                     ))}
@@ -269,17 +239,14 @@ export default function PricingClientView({
             <p className="pricing-network-note">
               <Info size={17} aria-hidden="true" />
               <span>
-                <strong>Network usage is separate.</strong> Prices and estimates
-                cover base compute only. Data-transfer charges depend on how
-                much network data your workspace uses.
+                Prices include the management charge. Network usage is billed
+                separately. Estimates cover base compute only.
               </span>
             </p>
           </>
         )}
       </section>
-      <IncludedFeatures />
       <PricingFaq />
-      <ClosingCta />
     </article>
   );
 }
@@ -306,15 +273,12 @@ function Specs({ row }: { row: PricingRow }) {
   return (
     <span className="pricing-specs">
       <span>
-        <Cpu size={13} aria-hidden="true" />
         {row.cpu} vCPU
       </span>
       <span>
-        <MemoryStick size={13} aria-hidden="true" />
         {row.ram} GB RAM
       </span>
       <span>
-        <HardDrive size={13} aria-hidden="true" />
         {row.storage} GB storage
       </span>
     </span>
@@ -324,12 +288,10 @@ function Specs({ row }: { row: PricingRow }) {
 function OptionRow({
   row,
   selected,
-  lowest,
   onSelect,
 }: {
   row: PricingRow;
   selected: boolean;
-  lowest: boolean;
   onSelect: () => void;
 }) {
   return (
@@ -348,7 +310,6 @@ function OptionRow({
           <span className="pricing-option-provider">
             {providerLabel(row.provider)}
             {row.region ? ` · ${row.region}` : ""}
-            {lowest && <span className="pricing-lowest">Lowest price</span>}
           </span>
         </span>
       </span>
@@ -378,7 +339,7 @@ function Estimator({
 }) {
   return (
     <aside className="pricing-estimator" aria-labelledby="estimate-title">
-      <h3 id="estimate-title">Your 30-day estimate</h3>
+      <h3 id="estimate-title">30-day estimate</h3>
       <output
         className="pricing-estimate-amount"
         aria-live="polite"
@@ -387,16 +348,8 @@ function Estimator({
         {formatPrice(row.perMinute * hoursInEstimate * 60, 2)}
       </output>
       <p className="pricing-runtime-hours">
-        {Math.round(hoursInEstimate)} hours of runtime
+        {row.name} · {Math.round(hoursInEstimate)} hours
       </p>
-      <div className="pricing-estimate-workspace">
-        <strong>{row.name}</strong>
-        <span>
-          {providerLabel(row.provider)}
-          {row.region ? ` · ${row.region}` : ""}
-        </span>
-        <span>{row.price} / minute</span>
-      </div>
       <div className="pricing-schedule">
         <ScheduleSlider
           label="Hours per day"
@@ -420,28 +373,10 @@ function Estimator({
         {daysPerWeek} {daysPerWeek === 1 ? "day" : "days"} per week, over 30
         days.
       </p>
-      <ul className="pricing-estimate-includes">
-        <li>
-          <Check size={15} aria-hidden="true" />
-          Management charge included
-        </li>
-        <li>
-          <Power size={15} aria-hidden="true" />
-          Auto-shutdown stops idle billing
-        </li>
-        <li>
-          <Timer size={15} aria-hidden="true" />
-          Billed per started minute
-        </li>
-      </ul>
-      {row.finePrint && <p className="pricing-second-rate">{row.finePrint}</p>}
-      <a href={getAppUrl("/login")} className="home-button home-button-white">
-        Launch this workspace
+      <a href={getAppUrl("/login")} className="home-button home-hero-primary">
+        Start building
         <ArrowRight size={17} aria-hidden="true" />
       </a>
-      <p className="pricing-estimate-exclusion">
-        Base compute only. Network usage is extra.
-      </p>
     </aside>
   );
 }
@@ -483,56 +418,6 @@ function ScheduleSlider({
   );
 }
 
-function IncludedFeatures() {
-  const features = [
-    "Automatic pull-request review",
-    "Automatic issue review and fixing",
-    "Fresh isolated environment for automated work",
-    "Live HTTPS preview URLs",
-    "Parallel workspace execution (tier-limited)",
-    "Automatic workspace expiration",
-  ];
-  return (
-    <section className="pricing-included" aria-labelledby="included-title">
-      <div className="pricing-container pricing-support-grid">
-        <div>
-          <h2 id="included-title">
-            More than a VM
-            <br />
-            with a price tag.
-          </h2>
-          <p>
-            A standard always-on provider VM gives you a machine. VibeOnGo wraps
-            it in the platform your agents need.
-          </p>
-        </div>
-        <div className="pricing-comparison">
-          <div className="pricing-comparison-row pricing-comparison-head">
-            <span>Feature</span>
-            <span>Plain VM</span>
-            <span>VibeOnGo</span>
-          </div>
-          <ul>
-            {features.map((feature) => (
-              <li key={feature} className="pricing-comparison-row">
-                <span>{feature}</span>
-                <span>
-                  <X size={16} aria-hidden="true" />
-                  <span className="sr-only">Not included in a plain VM</span>
-                </span>
-                <span>
-                  <Check size={17} aria-hidden="true" />
-                  <span className="sr-only">Included in VibeOnGo</span>
-                </span>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </div>
-    </section>
-  );
-}
-
 function PricingFaq() {
   const questions = [
     {
@@ -557,10 +442,10 @@ function PricingFaq() {
       className="pricing-faq pricing-container"
       aria-labelledby="pricing-faq-title"
     >
-      <h2 id="pricing-faq-title">Pricing, answered.</h2>
+      <h2 id="pricing-faq-title">Billing questions</h2>
       <div>
-        {questions.map(({ question, answer }, index) => (
-          <details key={question} open={index === 0}>
+        {questions.map(({ question, answer }) => (
+          <details key={question}>
             <summary>
               {question}
               <Plus size={18} aria-hidden="true" />

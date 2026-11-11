@@ -8,15 +8,22 @@ export function Hero({ appLoginUrl }: { appLoginUrl: string }) {
     <section className="home-hero" aria-labelledby="home-title">
       <div className="home-container">
         <div className="home-hero-intro">
-          <h1 id="home-title">
-            Give your agent
-            <br />a real computer.
-          </h1>
+          <div className="home-hero-heading">
+            <p className="home-hero-eyebrow">Cloud workspaces. Web & Android.</p>
+            <h1 id="home-title">
+              Your workspace.
+              <br />
+              <span>Beyond your desk.</span>
+            </h1>
+          </div>
           <div className="home-hero-copy">
-            <p>Connect your code. Launch a workspace. Build from anywhere.</p>
+            <p>
+              A real computer for your code and your agents. Connect a repository,
+              start building, and pick up where you left off on your phone.
+            </p>
             <div className="home-hero-actions">
-              <Link href={appLoginUrl} className="home-button home-button-white">
-                Launch a workspace <ArrowRight size={18} aria-hidden="true" />
+              <Link href={appLoginUrl} className="home-button home-hero-primary">
+                Start building <ArrowRight size={17} aria-hidden="true" />
               </Link>
               <a
                 className="home-watch"
@@ -24,7 +31,7 @@ export function Hero({ appLoginUrl }: { appLoginUrl: string }) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                Watch the product <ArrowUpRight size={15} aria-hidden="true" />
+                See it in action <ArrowUpRight size={15} aria-hidden="true" />
               </a>
             </div>
           </div>
@@ -34,12 +41,8 @@ export function Hero({ appLoginUrl }: { appLoginUrl: string }) {
             src={heroImage}
             alt="VibeOnGo projects dashboard alongside an agent conversation in the Android app"
             priority
-            sizes="(max-width: 720px) calc(100vw - 40px), (max-width: 1104px) calc(100vw - 64px), 1040px"
+            sizes="(max-width: 720px) calc(100vw - 40px), (max-width: 1180px) calc(100vw - 64px), 1120px"
           />
-          <figcaption className="sr-only">
-            A real development environment in the cloud, controlled from the web
-            or your phone.
-          </figcaption>
         </figure>
       </div>
     </section>
