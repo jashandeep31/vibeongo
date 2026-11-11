@@ -13,7 +13,7 @@
   "dependencies": {
     "@repo/api-client": "workspace:*",
     "@repo/app-store": "workspace:*",
-    "@tanstack/react-query": "^5.103.2"
+    "@tanstack/react-query": "^5.107.1"
   },
   "devDependencies": {
     "@types/react": "19.2.2",

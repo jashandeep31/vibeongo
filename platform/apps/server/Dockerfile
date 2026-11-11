@@ -1,5 +1,5 @@
 # ---------- BASE ----------
-FROM node:22-alpine AS base
+FROM node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 RUN corepack enable
@@ -8,7 +8,7 @@ WORKDIR /app
 # ---------- PRUNE MONOREPO ----------
 FROM base AS prepare
 COPY . .
-RUN pnpm dlx turbo prune server --docker
+RUN pnpm dlx turbo@2.11.10 prune server --docker
 
 
 
@@ -26,7 +26,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store \
     pnpm install --prod --frozen-lockfile
 
 # ---------- RUNTIME ----------
-FROM node:22-alpine AS runner
+FROM node:22-alpine@sha256:0e1754758c2df4cfa3e68d59e2e1b7374bb7fd9ea6328eaaacf15cc934af8202 AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=builder /app ./
