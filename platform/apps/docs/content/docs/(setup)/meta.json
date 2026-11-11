@@ -1,4 +1,4 @@
 {
   "title": "Setup",
-  "pages": ["how-to-install-vibeongo", "developer-server-guide"]
+  "pages": ["how-to-install-vibeongo", "connect-mcp-server", "developer-server-guide"]
 }

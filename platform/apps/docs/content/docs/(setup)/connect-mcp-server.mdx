@@ -1,0 +1,201 @@
+---
+title: Connect the MCP server
+description: Connect Codex, Claude Code, OpenCode, or another MCP client to your Vibeongo projects with a user API key.
+---
+
+# Connect the MCP server
+
+Vibeongo's Model Context Protocol (MCP) server lets your AI assistant discover
+your projects, read saved project context, manage sessions, configure preview
+access, and prepare temporary SSH connections.
+
+## Connection details
+
+| Setting | Value |
+| --- | --- |
+| Server name | `vibeongo` |
+| Transport | Streamable HTTP |
+| URL | `https://server.vibeongo.com/mcp` |
+| Authentication | Vibeongo user API key |
+| Header | `Authorization: Bearer YOUR_VIBEONGO_API_KEY` |
+
+Use the platform API server URL, not a project's preview domain or OpenCode
+runtime URL. For a self-hosted deployment, append `/mcp` to your API server's
+origin.
+
+## Create an API key
+
+1. Sign in to the Vibeongo web or mobile app.
+2. Open **Settings → API keys** and create a named key, such as `My MCP client`.
+3. Copy the key when it is displayed. The full key cannot be retrieved later.
+
+Keys begin with `vog_` and currently expire after 90 days. You can rotate or
+revoke them from the same settings section. After rotation, update the key in
+your MCP client.
+
+<Callout type="warn" title="Use a Vibeongo API key">
+  Browser session cookies, login JWTs, OpenAI keys, and Codex/ChatGPT provider
+  credentials do not authenticate this endpoint. Vibeongo MCP uses a bearer
+  API key; it does not offer an OAuth sign-in flow.
+</Callout>
+
+For the examples below, make the key available to your client's process:
+
+```bash
+export VIBEONGO_API_KEY='YOUR_VIBEONGO_API_KEY'
+```
+
+Replace the placeholder with your key. Keep it out of shared configuration,
+commits, screenshots, and chat messages. A client started from a desktop
+launcher may need its environment configured separately from your shell.
+
+## Connect a client
+
+### Codex
+
+Add this entry to your user configuration at `~/.codex/config.toml`:
+
+```toml
+[mcp_servers.vibeongo]
+url = "https://server.vibeongo.com/mcp"
+bearer_token_env_var = "VIBEONGO_API_KEY"
+```
+
+Start Codex with `VIBEONGO_API_KEY` available in its environment. Run
+`codex mcp list` to check the configured entry, then ask Codex to use Vibeongo's
+`get_current_user` tool to verify authentication.
+
+See the [official Codex MCP documentation](https://learn.chatgpt.com/docs/extend/mcp)
+for configuration options.
+
+### Claude Code
+
+Register the HTTP server for your user account:
+
+```bash
+claude mcp add --transport http --scope user \
+  --header "Authorization: Bearer ${VIBEONGO_API_KEY}" \
+  vibeongo https://server.vibeongo.com/mcp
+```
+
+This command expands the environment variable and saves the resulting header
+in Claude Code's local configuration. Protect that configuration and rerun the
+setup with your replacement key after rotation.
+
+In Claude Code, open `/mcp` to inspect the connection. Ask it to call
+`get_current_user` before starting a workspace.
+
+See the [official Claude Code MCP documentation](https://code.claude.com/docs/en/mcp)
+for server scopes and authentication options.
+
+### OpenCode
+
+For **OpenCode V2**, merge this into your `opencode.json` or `opencode.jsonc`:
+
+```json
+{
+  "$schema": "https://opencode.ai/config.json",
+  "mcp": {
+    "servers": {
+      "vibeongo": {
+        "type": "remote",
+        "url": "https://server.vibeongo.com/mcp",
+        "oauth": false,
+        "headers": {
+          "Authorization": "Bearer {env:VIBEONGO_API_KEY}"
+        }
+      }
+    }
+  }
+}
+```
+
+Start OpenCode with `VIBEONGO_API_KEY` in its environment. Open `/mcps` to
+inspect the server and ask it to use Vibeongo's `get_current_user` tool.
+
+The example uses V2's `mcp.servers` structure. If you use OpenCode V1, consult
+the [V1 MCP configuration guide](https://opencode.ai/v1/docs/mcp-servers/)
+for its configuration format. See the [current OpenCode MCP documentation](https://opencode.ai/docs/mcp-servers/)
+for V2 options.
+
+### Other MCP clients
+
+Add a remote Streamable HTTP server with the URL and Authorization header
+shown above. Your client must support custom headers or bearer-token
+configuration. A client that only supports OAuth login or local stdio servers
+cannot connect directly using just this URL.
+
+## Verify the connection
+
+Start with a read-only request:
+
+```text
+Use Vibeongo's get_current_user tool and show my username and wallet balance.
+Then list my projects with get_projects.
+```
+
+A successful response identifies the account associated with your API key.
+If no projects are returned, confirm that you created the key in the account
+that owns your projects. A configured server entry alone does not prove the
+key works; complete a tool call to verify it.
+
+## Available tools
+
+| Task | Tools |
+| --- | --- |
+| Read account and wallet details | `get_current_user` |
+| List projects and read saved context | `get_projects`, `get_project_context` |
+| Read the workspace workflow | `get_workspace_guide` |
+| Read configured project containers | `list_containers` |
+| Create a session record | `create_session` |
+| Inspect or start a session runtime | `get_session_context`, `spin_up_session`, `resume_session` |
+| Extend, pause, or terminate a runtime | `extend_session_time`, `pause_session`, `terminate_session` |
+| Inspect preview domains and allowed IPs | `list_domains`, `list_allowed_ips` |
+| Change preview access | `add_allowed_ip`, `remove_allowed_ips`, `update_domain` |
+| Create temporary SSH credentials | `create_ssh_access`, `connect_ssh` |
+| Inspect or revoke temporary SSH access | `list_ssh_access`, `revoke_ssh_access` |
+
+The API key is not read-only: the tools include paid runtime and network-access
+actions. Review your client's tool approvals before allowing these operations.
+Starting or resuming a runtime and extending its time can incur charges.
+
+## Example workflow
+
+1. Call `get_projects` and follow pagination while `hasNext` is true.
+2. Call `get_project_context` for the selected project and
+   `get_workspace_guide` for the development workflow.
+3. Select an existing manual session or create one with `create_session`.
+   Creating a session record does not start a machine.
+4. Use `spin_up_session` for a fresh runtime or `resume_session` for a paused
+   session. Sandbox is the default runtime.
+5. Wait at least 60 seconds for initial setup, then check `get_session_context`.
+   A running instance does not necessarily mean setup has finished.
+6. Use `connect_ssh` for a running instance and run the returned SSH command
+   in an SSH-capable terminal.
+
+The SSH tools return connection details; they do not open a terminal or execute
+commands through MCP. The gateway supports interactive shells, not remote exec,
+SFTP, or port forwarding. Temporary SSH credentials are secrets; revoke access
+when finished. Revocation prevents new connections but does not close an
+existing SSH session.
+
+For code changes, use the installed OpenCode CLI inside the project sandbox
+from the relevant repository. Saved project context is not a live filesystem
+inspection. Pausing or terminating a runtime can interrupt work; review the
+result and save needed files first.
+
+## Troubleshooting
+
+| Symptom | What to check |
+| --- | --- |
+| `401` or failed authentication | Supply `Authorization: Bearer …` with a valid Vibeongo API key. Check expiration, revocation, and whether the client can read its environment variable. |
+| `403` with `Origin not allowed` | Browser-origin requests must match the API server's configured `ALLOWED_ORIGINS`. Ask the deployment administrator to allow the intended client origin. |
+| OAuth login prompt | Configure bearer authentication. For OpenCode, set `oauth` to `false`. Vibeongo does not provide MCP OAuth discovery or login. |
+| `404` or an HTML response during connection | Use the API origin plus `/mcp`, not the web app, `/api/v1/mcp`, or an instance preview URL. |
+| Tool says the project or session was not found | Use IDs returned by this account's tools. Each user can access only their own resources. |
+| Runtime does not start | Check wallet balance, capacity, and session state. A suspended runtime should be resumed rather than started as a fresh instance. |
+| SSH fails | Confirm the instance is running and use newly issued, unexpired SSH access details. |
+
+To disconnect a client, remove its server entry and revoke its Vibeongo API key
+in **Settings → API keys**. Removing a client entry alone does not revoke the
+key.
