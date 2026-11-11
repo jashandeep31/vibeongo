@@ -20,3 +20,11 @@ export const getProviderCredentials =
     );
     return response.data;
   };
+
+export const deleteProviderCredentials =
+  (apiClient: AxiosInstance) =>
+  async (provider: ProviderCredentialSummary["provider"]): Promise<void> => {
+    await apiClient.delete(
+      `/api/v1/users/provider-credentials/${encodeURIComponent(provider)}`,
+    );
+  };

@@ -1,4 +1,4 @@
-import { db, eq, userProviderCredentials } from "@repo/db";
+import { and, db, eq, userProviderCredentials } from "@repo/db";
 import { Request, Response } from "express";
 import { z } from "zod";
 import { AppError } from "../../lib/app-error.js";
@@ -49,6 +49,29 @@ export const getProviderCredentials = catchAsync(
   },
 );
 
+export const deleteProviderCredentials = catchAsync(
+  async (req: Request, res: Response) => {
+    const user = req.user;
+    if (!user) throw new AppError("Authentication is required", 401);
+
+    if (req.params.provider !== "codex") {
+      throw new AppError("Unsupported provider. Only codex is supported", 400);
+    }
+
+    await db
+      .delete(userProviderCredentials)
+      .where(
+        and(
+          eq(userProviderCredentials.user_id, user.id),
+          eq(userProviderCredentials.provider, req.params.provider),
+        ),
+      );
+
+    res.set("Cache-Control", "no-store");
+    res.status(204).end();
+  },
+);
+
 export const saveProviderCredentials = catchAsync(
   async (req: Request, res: Response) => {
     const user = req.user;
@@ -67,15 +90,18 @@ export const saveProviderCredentials = catchAsync(
     }
 
     const { metadata: suppliedMetadata, ...credentials } = parsed.data;
-    if (suppliedMetadata && suppliedMetadata.clientID !== credentials.client_id) {
+    if (
+      suppliedMetadata &&
+      suppliedMetadata.clientID !== credentials.client_id
+    ) {
       throw new AppError("Metadata clientID must match client_id", 400);
     }
     const scopes = credentials.scope?.split(/\s+/).filter(Boolean);
     if (
-      suppliedMetadata && scopes && (
-        scopes.some((scope) => !suppliedMetadata.scopes.includes(scope)) ||
-        suppliedMetadata.scopes.some((scope) => !scopes.includes(scope))
-      )
+      suppliedMetadata &&
+      scopes &&
+      (scopes.some((scope) => !suppliedMetadata.scopes.includes(scope)) ||
+        suppliedMetadata.scopes.some((scope) => !scopes.includes(scope)))
     ) {
       throw new AppError("Metadata scopes must match the granted scope", 400);
     }
@@ -91,8 +117,12 @@ export const saveProviderCredentials = catchAsync(
       encrypted_data: encrypted.encryptedData,
       iv: encrypted.iv,
       tag: encrypted.tag,
-      access_token_expires_at: new Date(now.getTime() + ACCESS_TOKEN_LIFETIME_MS),
-      refresh_token_expires_at: new Date(now.getTime() + REFRESH_TOKEN_LIFETIME_MS),
+      access_token_expires_at: new Date(
+        now.getTime() + ACCESS_TOKEN_LIFETIME_MS,
+      ),
+      refresh_token_expires_at: new Date(
+        now.getTime() + REFRESH_TOKEN_LIFETIME_MS,
+      ),
       revoked_at: null,
       updated_at: now,
     };
@@ -101,7 +131,10 @@ export const saveProviderCredentials = catchAsync(
       .insert(userProviderCredentials)
       .values({ user_id: user.id, provider: "codex", ...values })
       .onConflictDoUpdate({
-        target: [userProviderCredentials.user_id, userProviderCredentials.provider],
+        target: [
+          userProviderCredentials.user_id,
+          userProviderCredentials.provider,
+        ],
         set: values,
       })
       .returning(safeProviderCredentialSelection);

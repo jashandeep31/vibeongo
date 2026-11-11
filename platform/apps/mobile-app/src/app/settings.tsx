@@ -1,11 +1,16 @@
 import { GithubConnectionSettings } from "@/components/auth/github-connection-settings";
-import type { ApiKey, UserConfigValue } from "@repo/api-client";
+import type {
+  ApiKey,
+  ProviderCredentialSummary,
+  UserConfigValue,
+} from "@repo/api-client";
 import {
   useApiKeys,
   useCreateApiKey,
   useDeleteApiKey,
   useRotateApiKey,
   useProviderCredentials,
+  useDeleteProviderCredentials,
   useCreateSshKey,
   useCreateUserConfig,
   useDeleteSshKey,
@@ -159,6 +164,9 @@ export default function SettingsScreen() {
   const [apiKeyPage, setApiKeyPage] = useState(1);
   const apiKeysQuery = useApiKeys({ page: apiKeyPage, limit: 10 });
   const providerCredentialsQuery = useProviderCredentials();
+  const deleteProviderCredentials = useDeleteProviderCredentials();
+  const [providerToDisconnect, setProviderToDisconnect] =
+    useState<ProviderCredentialSummary | null>(null);
   const deleteApiKey = useDeleteApiKey();
   const [apiKeyEditor, setApiKeyEditor] = useState<ApiKey | "new" | null>(null);
   const [apiKeyToRevoke, setApiKeyToRevoke] = useState<ApiKey | null>(null);
@@ -304,6 +312,17 @@ export default function SettingsScreen() {
         "Could not save auto-termination settings",
         "Please try again.",
       );
+    }
+  };
+
+  const confirmDisconnectProvider = async () => {
+    if (!providerToDisconnect || deleteProviderCredentials.isPending) return;
+    try {
+      await deleteProviderCredentials.mutateAsync(providerToDisconnect.provider);
+      setProviderToDisconnect(null);
+      Toast.show({ type: "success", text1: "Provider disconnected" });
+    } catch {
+      showSettingsError("Could not disconnect provider", "Please try again.");
     }
   };
 
@@ -681,14 +700,23 @@ export default function SettingsScreen() {
                               ? "Codex"
                               : connection.provider}
                           </ThemedText>
-                          <ThemedText
-                            themeColor="textSecondary"
-                            style={styles.credentialCaption}
-                          >
-                            {connection.auth_type === "oauth"
-                              ? "OAuth"
-                              : "API key"}
-                          </ThemedText>
+                          <View style={styles.providerActions}>
+                            <ThemedText
+                              themeColor="textSecondary"
+                              style={styles.credentialCaption}
+                            >
+                              {connection.auth_type === "oauth"
+                                ? "OAuth"
+                                : "API key"}
+                            </ThemedText>
+                            <IconButton
+                              accessibilityLabel="Disconnect Codex"
+                              destructive
+                              disabled={deleteProviderCredentials.isPending}
+                              icon={{ ios: "trash", android: "delete" }}
+                              onPress={() => setProviderToDisconnect(connection)}
+                            />
+                          </View>
                         </View>
                         <View style={styles.providerDetails}>
                           <CredentialDetail
@@ -1017,6 +1045,17 @@ export default function SettingsScreen() {
       <ApiKeyDrawer
         editor={apiKeyEditor}
         onClose={() => setApiKeyEditor(null)}
+      />
+      <ConfirmationDrawer
+        title="Disconnect Codex?"
+        description="Remove this saved connection from Vibeongo. Sign in again with the Vibeongo CLI to reconnect."
+        confirmLabel="Disconnect"
+        isConfirming={deleteProviderCredentials.isPending}
+        onCancel={() => {
+          if (!deleteProviderCredentials.isPending) setProviderToDisconnect(null);
+        }}
+        onConfirm={() => void confirmDisconnectProvider()}
+        visible={Boolean(providerToDisconnect)}
       />
       <ConfirmationDrawer
         title="Revoke API key?"
@@ -1915,6 +1954,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   providerDetails: { padding: 16, gap: 16 },
+  providerActions: { flexDirection: "row", alignItems: "center", gap: 12 },
   credentialDetail: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
   credentialDetailLabel: { fontSize: 13, lineHeight: 19, flex: 1 },
   credentialValue: {

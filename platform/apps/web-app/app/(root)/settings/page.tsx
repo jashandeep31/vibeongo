@@ -11,6 +11,7 @@ import {
   setNotificationSoundEnabled,
 } from "@/lib/notification-sound";
 import { logout } from "@/services/auth-services";
+import type { ProviderCredentialSummary } from "@repo/api-client";
 import { useDeleteSshKey, useSshKeys } from "@repo/api-hooks";
 import {
   useSetForgejoPassword,
@@ -18,6 +19,7 @@ import {
   useUserConfigs,
   useUserSettings,
   useProviderCredentials,
+  useDeleteProviderCredentials,
 } from "@repo/api-hooks";
 import { Button } from "@repo/ui/components/button";
 import { Input } from "@repo/ui/components/input";
@@ -153,6 +155,7 @@ export default function SettingsPage() {
   const settingsQuery = useUserSettings();
   const configsQuery = useUserConfigs();
   const providerCredentialsQuery = useProviderCredentials();
+  const deleteProviderCredentials = useDeleteProviderCredentials();
   const sshKeysQuery = useSshKeys();
   const updateTelegramSettings = useUpdateUserSettings();
   const updateModelSettings = useUpdateUserSettings();
@@ -180,6 +183,18 @@ export default function SettingsPage() {
     useState("");
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [soundEnabled, setSoundEnabled] = useState(true);
+
+  const disconnectProvider = async (
+    provider: ProviderCredentialSummary["provider"],
+  ) => {
+    if (deleteProviderCredentials.isPending) return;
+    try {
+      await deleteProviderCredentials.mutateAsync(provider);
+      toast.success("Provider disconnected");
+    } catch {
+      toast.error("Could not disconnect provider. Please try again.");
+    }
+  };
 
   // stored in this browser only, read after mount to match the server render
   useEffect(() => {
@@ -432,12 +447,35 @@ export default function SettingsPage() {
                         : connection.provider}
                     </h3>
                   </div>
-                  <dl>
-                    <dt className="sr-only">Auth type</dt>
-                    <dd className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
-                      {connection.auth_type === "oauth" ? "OAuth" : "API key"}
-                    </dd>
-                  </dl>
+                  <div className="flex flex-wrap items-center justify-end gap-2">
+                    <dl>
+                      <dt className="sr-only">Auth type</dt>
+                      <dd className="bg-muted text-muted-foreground rounded-full px-2.5 py-1 text-xs font-medium">
+                        {connection.auth_type === "oauth" ? "OAuth" : "API key"}
+                      </dd>
+                    </dl>
+                    <ConfirmationDialog
+                      title="Disconnect Codex?"
+                      description="Remove this saved connection from Vibeongo. Sign in again with the Vibeongo CLI to reconnect."
+                      confirmText="Disconnect"
+                      isDestructive
+                      onConfirm={() =>
+                        void disconnectProvider(connection.provider)
+                      }
+                    >
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="destructive"
+                        disabled={deleteProviderCredentials.isPending}
+                      >
+                        <Trash2 />
+                        {deleteProviderCredentials.isPending
+                          ? "Disconnecting..."
+                          : "Disconnect"}
+                      </Button>
+                    </ConfirmationDialog>
+                  </div>
                 </div>
                 <dl className="grid gap-5 px-5 pb-5 text-sm sm:grid-cols-2">
                   <div>
