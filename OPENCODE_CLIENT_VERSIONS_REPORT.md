@@ -1,6 +1,6 @@
 # OpenCode client 2.0.22 → 2.0.24 integration report
 
-**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.2.6. See the latest compatibility follow-up below.
+**Historical report:** The platform now resolves `@opencode/client`, `@opencode/protocol`, and `@opencode/schema` at 2.3.0. See the latest compatibility follow-up below.
 
 **Reviewed:** 2026-10-08
 
@@ -242,3 +242,13 @@ These runtime changes are separate from this client dependency update. No deploy
 - `git diff --check`: passed.
 
 The TypeScript checks invoked the installed TypeScript executables directly with Node. No live server, browser, or native-device interaction was exercised. Existing legacy web Effect resolver and mobile Metro peer incompatibilities remain.
+
+## 2.3.0 compatibility follow-up (2026-11-16)
+
+The npm `latest` tag resolves to **2.3.0**. The web app and shared API client request `^2.3.0`; the lockfile resolves the client, protocol, and schema to 2.3.0. Mobile consumes the shared client and hooks. The prior repository baseline was 2.2.7, newer than the preceding report entry. The lockfile changes are limited to these three packages.
+
+The [2.3.0 release notes](https://github.com/anomalyco/opencode/releases/tag/v2.3.0) do not list breaking changes. The [2.2.7 release notes](https://github.com/anomalyco/opencode/releases/tag/v2.2.7) list removal of `@opencode/ai`'s `ImageResponse.image` (no direct usage was found here), and a runtime behavior change: several endpoints, including agent and integration listing, Git initialization, and RPC calls, no longer wait for plugins to finish loading. Results can initially omit plugin-provided entries; upstream recommends refreshing on corresponding update events. Web handles `agent.updated`, but plugin-loading behavior and event coverage across both apps were not verified against a running server. Upgrading the client alone does not change server behavior or upgrade the deployed runtime.
+
+Validation: TypeScript checks passed for the shared API client, API hooks, web app, and mobile app. `git diff --check` passed. Installation reported the existing legacy web Effect peer warning.
+
+The SDK update does not automatically add upstream UI features. No live server, browser, or native-device interaction was exercised.
