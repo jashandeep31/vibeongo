@@ -179,17 +179,30 @@ export const spinUpAndSaveInstanceV2 = async ({
     autoExpire: true,
   });
 
-  // TODO: look for a better way
-  await createOpenRouterVirtualKeyAndSave({
-    instanceId: instance.id,
-    limit_in_dollars: await getOpenRouterKeyLimitInDollars({
-      userId,
-      instanceTypeId,
-      sandboxTypeId,
-      autoTerminateAfterInMinutes,
-    }),
-    expires_after_in_minutes: autoTerminateAfterInMinutes,
-  });
+  // The sandbox is already running. Optional AI credentials must not fail
+  // provisioning and leave its slot unlinked and incorrectly marked failed.
+  try {
+    const keyCreated = await createOpenRouterVirtualKeyAndSave({
+      instanceId: instance.id,
+      limit_in_dollars: await getOpenRouterKeyLimitInDollars({
+        userId,
+        instanceTypeId,
+        sandboxTypeId,
+        autoTerminateAfterInMinutes,
+      }),
+      expires_after_in_minutes: autoTerminateAfterInMinutes,
+    });
+    if (!keyCreated) {
+      console.warn(
+        `OpenRouter key was not created for instance ${instance.id}`,
+      );
+    }
+  } catch (error) {
+    // Axios errors can contain authorization headers; log only the message.
+    console.warn(
+      `OpenRouter key was not created for instance ${instance.id}: ${error instanceof Error ? error.message : "Unknown error"}`,
+    );
+  }
   return instance;
 };
 

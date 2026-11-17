@@ -25,12 +25,16 @@ export async function createOpenRouterVirtualKeyAndSave({
   const expires_at = new Date();
   expires_at.setMinutes(expires_at.getMinutes() + expires_after_in_minutes);
 
-  const res = await openRouterInterface.post("/keys", {
-    expires_at: expires_at.toISOString(),
-    include_byok_in_limit: true,
-    limit: limit_in_dollars,
-    name: instanceId,
-  });
+  const res = await openRouterInterface.post(
+    "/keys",
+    {
+      expires_at: expires_at.toISOString(),
+      include_byok_in_limit: true,
+      limit: limit_in_dollars,
+      name: instanceId,
+    },
+    { timeout: 10_000 },
+  );
   if (res.status !== 201) {
     // TODO: implment a some log system here to tell a system incase creation of keys fails
     return false;
