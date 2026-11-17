@@ -71,7 +71,9 @@ func startWebServerLocked() error {
 
 	// Appending password to the opencode each time
 	binary := "'" + strings.ReplaceAll(utils.OpenCodeBinaryPath(), "'", "'\\''") + "'"
-	err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" "+binary+" serve --port 4096 --hostname 0.0.0.0")
+	// OpenCode checks browser origins before serving API requests. Trust the
+	// VibeOnGo web app explicitly so proxied cross-site requests are accepted.
+	err = utils.StartTmuxSession("ops", projectDir, "OPENCODE_SERVER_PASSWORD="+cfg.InstanceConfig.OpencodePassword+" "+binary+" serve --port 4096 --hostname 0.0.0.0 --cors https://app.vibeongo.com")
 
 	if err != nil {
 		return err
