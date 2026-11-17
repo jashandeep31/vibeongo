@@ -5,6 +5,7 @@ import {
   desc,
   eq,
   inArray,
+  isNull,
   instanceSlots,
   projectAutomationRuns,
   projectSessions,
@@ -14,7 +15,10 @@ import {
 } from "@repo/db";
 import { tierLimits } from "../../utils/constants.js";
 import { AppError } from "../../lib/app-error.js";
-import { spinUpAndSaveInstanceV2 } from "./spin-up-and-save-instance-v2.js";
+import {
+  ProvisionedInstancePersistenceError,
+  spinUpAndSaveInstanceV2,
+} from "./spin-up-and-save-instance-v2.js";
 import { InstanceAutoTerminateSetting } from "./get-user-instance-auto-terminate-minutes.js";
 import { InstanceRuntime } from "../../providers/types.js";
 import { z } from "zod";
@@ -44,17 +48,29 @@ const markInstanceSlotFailed = async (slotId: string, error: unknown) => {
     const [slot] = await tx
       .update(instanceSlots)
       .set({
-        status: "failed",
+        status:
+          error instanceof ProvisionedInstancePersistenceError
+            ? "provisioning"
+            : "failed",
         error: message,
         updated_at: new Date(),
       })
-      .where(eq(instanceSlots.id, slotId))
+      .where(
+        and(
+          eq(instanceSlots.id, slotId),
+          isNull(instanceSlots.instance_id),
+          inArray(instanceSlots.status, ["queued", "provisioning"]),
+        ),
+      )
       .returning({
         session_id: instanceSlots.session_id,
         spun_up_by: instanceSlots.spun_up_by,
       });
 
-    if (slot?.spun_up_by === "automation") {
+    if (
+      slot?.spun_up_by === "automation" &&
+      !(error instanceof ProvisionedInstancePersistenceError)
+    ) {
       await tx
         .update(projectAutomationRuns)
         .set({
@@ -316,6 +332,7 @@ export const checkAndLaunchInstance = async ({
 
   try {
     const instance = await spinUpAndSaveInstanceV2({
+      slotId: slot.id,
       userId: userId,
       projectId: session.projectId,
       sessionId,
@@ -323,15 +340,6 @@ export const checkAndLaunchInstance = async ({
       runtime,
       category: slot.category,
     });
-
-    await db
-      .update(instanceSlots)
-      .set({
-        instance_id: instance.id,
-        status: "active",
-        updated_at: new Date(),
-      })
-      .where(eq(instanceSlots.id, slot.id));
 
     return instance;
   } catch (error) {
@@ -408,6 +416,7 @@ const spinUpInstanceFromSlot = async (slotId: string) => {
     .parse(slot.spun_up_by);
 
   const instance = await spinUpAndSaveInstanceV2({
+    slotId,
     userId: user.id,
     sessionId: session.id,
     projectId: project.id,
@@ -415,16 +424,6 @@ const spinUpInstanceFromSlot = async (slotId: string) => {
     category: slot.category,
     runtime: slot.runtime_kind,
   });
-
-  await db
-    .update(instanceSlots)
-    .set({
-      instance_id: instance.id,
-      status: "active",
-      error: null,
-      updated_at: new Date(),
-    })
-    .where(eq(instanceSlots.id, slotId));
 
   return instance;
 };

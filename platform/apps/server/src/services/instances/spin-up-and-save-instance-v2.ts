@@ -5,6 +5,7 @@ import {
   instanceRegions,
   instances,
   instanceSlotCategory,
+  instanceSlots,
   instanceTypes,
   projects,
   projectSshKeys,
@@ -33,6 +34,16 @@ import { addTerminateOrPauseInstanceJob } from "../../jobs/terminate-or-pause-in
 
 type ProviderInstance = Awaited<ReturnType<typeof createProviderInstance>>;
 
+export class ProvisionedInstancePersistenceError extends Error {
+  constructor(instanceId: string, providerInstanceId: string, cause: unknown) {
+    super(
+      `Instance ${instanceId} (provider ${providerInstanceId}) was created, but saving its launch failed. Its slot remains reserved and needs reconciliation.`,
+      { cause },
+    );
+    this.name = "ProvisionedInstancePersistenceError";
+  }
+}
+
 type ProvisionedInstance =
   | {
       runtime: "vm";
@@ -50,6 +61,7 @@ type ProvisionedInstance =
     };
 
 interface SpinUpAndSaveInstanceV2 {
+  slotId: string;
   userId: string;
   projectId: string;
   sessionId: string;
@@ -59,6 +71,7 @@ interface SpinUpAndSaveInstanceV2 {
 }
 
 export const spinUpAndSaveInstanceV2 = async ({
+  slotId,
   userId,
   sessionId,
   projectId,
@@ -129,50 +142,83 @@ export const spinUpAndSaveInstanceV2 = async ({
   } = provisionedInstance;
 
   const startedAt = new Date();
-  const instance = await db.transaction(async (tx) => {
-    const [createdInstance] = await tx
-      .insert(instances)
-      .values({
-        name: newInstance.instanceName,
-        id: instanceId,
-        project_id: project.id,
-        user_id: userId,
-        runtime_kind: provisionedInstance.runtime,
-        instance_type_id: instanceTypeId,
-        sandbox_type_id: sandboxTypeId,
-        provider_instance_id: newInstance.instanceId,
-        proxy_domain: await getProxyServerUrl(project.id),
-        terminated_at: null,
-        terminates_at: new Date(
-          new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
-        ),
-        started_at: startedAt,
-        public_ip: newInstance.publicIPv4,
-        state: "running",
-        project_session_id: sessionId,
-        access_token: createId(),
-        config: {
-          opencodePassword: createId(),
-          terminate: category === "auto",
-          vibeongoLocalToken: createId(),
-          sessionToken: sessionToken,
-        },
-      })
-      .returning();
+  const instance = await db
+    .transaction(async (tx) => {
+      const [createdInstance] = await tx
+        .insert(instances)
+        .values({
+          name: newInstance.instanceName,
+          id: instanceId,
+          project_id: project.id,
+          user_id: userId,
+          runtime_kind: provisionedInstance.runtime,
+          instance_type_id: instanceTypeId,
+          sandbox_type_id: sandboxTypeId,
+          provider_instance_id: newInstance.instanceId,
+          proxy_domain: await getProxyServerUrl(project.id),
+          terminated_at: null,
+          terminates_at: new Date(
+            new Date().getTime() + autoTerminateAfterInMinutes * 60 * 1000,
+          ),
+          started_at: startedAt,
+          public_ip: newInstance.publicIPv4,
+          state: "running",
+          project_session_id: sessionId,
+          access_token: createId(),
+          config: {
+            opencodePassword: createId(),
+            terminate: category === "auto",
+            vibeongoLocalToken: createId(),
+            sessionToken: sessionToken,
+          },
+        })
+        .returning();
 
-    if (!createdInstance) {
-      throw new AppError("Failed to create instance", 500);
-    }
+      if (!createdInstance) {
+        throw new AppError("Failed to create instance", 500);
+      }
 
-    await openInstancePeriod({
-      tx,
-      instanceId: createdInstance.id,
-      kind: "running",
-      startedAt,
-      ratePerSecond,
+      await openInstancePeriod({
+        tx,
+        instanceId: createdInstance.id,
+        kind: "running",
+        startedAt,
+        ratePerSecond,
+      });
+
+      // Commit the running instance and its occupied limit together, before
+      // scheduling expiry or contacting optional services.
+      const [activatedSlot] = await tx
+        .update(instanceSlots)
+        .set({
+          instance_id: createdInstance.id,
+          status: "active",
+          error: null,
+          updated_at: startedAt,
+        })
+        .where(
+          and(
+            eq(instanceSlots.id, slotId),
+            eq(instanceSlots.user_id, userId),
+            eq(instanceSlots.session_id, sessionId),
+            eq(instanceSlots.status, "provisioning"),
+          ),
+        )
+        .returning({ id: instanceSlots.id });
+      if (!activatedSlot) {
+        throw new AppError("Failed to activate instance slot", 500);
+      }
+      return createdInstance;
+    })
+    .catch((error: unknown) => {
+      // The provider has already created the resource. Preserve the reservation
+      // even if saving it fails, rather than freeing capacity for another launch.
+      throw new ProvisionedInstancePersistenceError(
+        instanceId,
+        newInstance.instanceId,
+        error,
+      );
     });
-    return createdInstance;
-  });
 
   await addTerminateOrPauseInstanceJob({
     instanceId: instance.id,
